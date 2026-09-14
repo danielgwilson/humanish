@@ -4,7 +4,7 @@
 .evidence-player .player-heading { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); flex: none; }
 .evidence-player .player-mode { display: grid; gap: 3px; min-width: 0; flex: 1; }
 .evidence-player .player-mode strong { font: 500 13px var(--sans); color: var(--ink); }
-.evidence-player .player-mode .player-participant { display: none; font: 500 14px var(--sans); color: var(--ink); }
+.evidence-player .player-mode .player-participant { display: block; font: 500 14px var(--sans); color: var(--ink); }
 .evidence-player .player-mode > span { font: 11px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .evidence-player .player-entry-context { display: flex; flex: none; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 7px 16px; border-bottom: 1px solid var(--line-soft); font: 12px/1.5 var(--sans); color: var(--muted); }
 .evidence-player .entry-label { font: 11px var(--mono); color: var(--ink); }
@@ -33,8 +33,8 @@
 .evidence-player :is(button, a, summary, select, input, [role="separator"]):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .evidence-player .elapsed { font: 12px var(--mono); white-space: nowrap; color: var(--ink); }
 .evidence-player .elapsed > span { color: var(--muted); }
-.evidence-player .scrubwrap { min-width: 140px; }
-.evidence-player .scrub { height: 36px; }
+/* The hit area, native thumb and overlaid evidence marks share one box. */
+.evidence-player .scrubwrap { min-width: 140px; height: 36px; }
 .evidence-player .player-review-tools { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 0 12px 6px; border-bottom: 1px solid var(--line-soft); }
 .evidence-player label { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font: 11px var(--sans); color: var(--muted); }
 .evidence-player input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
@@ -79,7 +79,7 @@
 .evidence-player .run-notice-message { white-space: pre-wrap; margin-top: 4px; }
 .evidence-player .run-notices-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding-top: 8px; }
 .evidence-player .viewer:fullscreen { height: 100dvh; width: 100vw; background: var(--mineral); display: flex; }
-@media (max-width: 880px) {
+@container observer-content (max-width: 880px) {
   .evidence-player .player-heading { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
   .evidence-player .player-mode { flex-basis: 180px; }
   .evidence-player .player-mode .player-participant { display: block; overflow-wrap: anywhere; }
@@ -89,8 +89,7 @@
   .evidence-player .evidence-stage[data-fit-recording] { height: min(52dvh, var(--fit-stage-height)); min-height: 0; }
   .evidence-player .tbtn { min-height: 44px; min-width: 44px; }
   .evidence-player label, .evidence-player select { min-height: 44px; }
-  .evidence-player .scrub { height: 44px; }
-  .evidence-player .scrubwrap { flex: 1 1 150px; }
+  .evidence-player .scrubwrap { flex: 1 1 150px; height: 44px; }
   .evidence-player .player-review-tools { gap: 2px 6px; padding: 0 8px 6px; }
   .evidence-player .inspector-resize { display: none; }
   .evidence-player .inspector { width: 100% !important; max-width: none; }

@@ -51,14 +51,17 @@ export function replaceHash(next: string): void {
   const current = window.location.hash;
   if (current === next || (next === "" && current === "")) return;
   const base = window.location.href.split("#")[0] ?? window.location.href;
-  window.history.replaceState(null, "", `${base}${next}`);
+  window.history.replaceState(window.history.state, "", `${base}${next}`);
 }
 
 /** Write the hash as a history entry (lane open/close), so browser Back returns.
  *  pushState never fires hashchange, so writes cannot echo into our own listener. */
-export function pushHash(next: string): void {
+export function pushHash(next: string, state: unknown = null): void {
   const current = window.location.hash;
-  if (current === next || (next === "" && current === "")) return;
+  if (current === next || (next === "" && current === "")) {
+    if (state !== null) window.history.replaceState(state, "");
+    return;
+  }
   const base = window.location.href.split("#")[0] ?? window.location.href;
-  window.history.pushState(null, "", `${base}${next}`);
+  window.history.pushState(state, "", `${base}${next}`);
 }

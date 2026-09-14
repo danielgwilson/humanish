@@ -10,6 +10,7 @@ import type { ActorStopCause } from "../../src/actor-contract";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { App } from "../app";
 import { Sidebar } from "../components/sidebar";
+import type { StudyReport } from "../lib/study-report";
 import type { ObserverData } from "../lib/observer-data";
 
 // The golden is schema-proven at the repo root (tests/observer-data-contract.test.ts);
@@ -88,7 +89,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     expect(container.querySelector(".dot.active")).toBeNull();
     expect(container.querySelector(".run-entry small")?.textContent).not.toContain("Running");
     await click(container.querySelector('input[type="checkbox"]') as Element);
-    expect(container.textContent).toContain("No matching runs.");
+    expect(container.textContent).toContain("No matching studies.");
   });
 
   it("does not animate an active dot when a formerly running study is unconfirmed", async () => {
@@ -133,7 +134,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
 describe("the share chip (#584)", () => {
   it("an unverified projection says local_only; a verified artifact shows its recorded grade", async () => {
     await mount(<App data={data} />);
-    expect(container.querySelector(".chip-mute")?.textContent).toBe("Local only");
+    expect(container.querySelector(".study-viewbar .chip-mute")?.textContent).toBe("Local only");
     await act(async () => {
       root.unmount();
     });
@@ -231,8 +232,8 @@ describe("observer scaffold rendering the first-run golden", () => {
     await click(overlay as Element);
     expect(container.textContent).toContain("no screenshot frames");
     expect(container.querySelector(".pager")).not.toBeNull();
-    // The player breadcrumbs carry an explicit back affordance.
-    const back = container.querySelector(".crumb-back");
+    // Explicit recording navigation lives in its pane, below the shared header.
+    const back = container.querySelector('.study-context-actions [aria-label="Back to participants"]');
     expect(back).not.toBeNull();
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -368,7 +369,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(1);
 
     // Report tab carries the recorded reason verbatim and the RAW chip shows in transport.
-    const reportTab = [...container.querySelectorAll(".itabs button")].find((b) => b.textContent === "report");
+    const reportTab = [...container.querySelectorAll(".itabs button")].find((b) => b.textContent === "Feedback");
     await click(reportTab as Element);
     expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
     expect(container.querySelector(".rawchip")).not.toBeNull();
@@ -512,7 +513,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
       });
       const link = container.querySelector('a[href="/_humanish/runs/other-run/observer/index.html"]');
       expect(link).not.toBeNull();
-      expect(container.querySelector(".side [data-on] .mono-id")?.textContent).toBe("golden-first-run");
+      expect(container.querySelector(".side [data-on]")?.getAttribute("data-study-id")).toBe("golden-first-run");
     } finally {
       vi.unstubAllGlobals();
     }
@@ -565,7 +566,7 @@ describe("recorded interruption labels across the review surfaces", () => {
     expect(container.textContent).toContain(`0/1 recorded completions, 1 interrupted (${label})`);
     expect(container.textContent).not.toContain("ran out of session");
     await click(container.querySelector(".open-overlay") as Element);
-    const reportTab = [...container.querySelectorAll('[role="tab"]')].find(el => el.textContent === "report");
+    const reportTab = [...container.querySelectorAll('[role="tab"]')].find(el => el.textContent === "Feedback");
     await click(reportTab!);
     expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain(label);
     expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain("Interrupted");
@@ -588,5 +589,58 @@ describe("recorded interruption labels across the review surfaces", () => {
     delete snapshot.streams[0]!.ending;
     await mount(<App data={snapshot} />);
     expect(container.querySelector(".card-outcome")?.textContent).toBe("limit reached");
+  });
+});
+
+// Even an empty or unavailable report is a pane within the same study shell.
+const emptyReport: StudyReport = { id: "empty", runId: data.run.runId, summary: "", scope: "", findings: [], outcomes: [], methodology: [] };
+describe("study shell continuity", () => {
+  it("keeps the same library and its local state while switching study views", async () => {
+    await mount(<App data={data} report={emptyReport} />);
+    const sidebar = container.querySelector(".side");
+    const checkbox = sidebar!.querySelector<HTMLInputElement>('[type="checkbox"]')!;
+    await click(checkbox);
+    const links = container.querySelectorAll<HTMLAnchorElement>('.study-views a');
+    links[1]!.focus();
+    await click(links[1]!);
+    expect(container.querySelector(".study-report-empty")).not.toBeNull();
+    expect(container.querySelector(".side")).toBe(sidebar);
+    expect(checkbox.checked).toBe(true);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(links[1]);
+    expect(links[1]!.getAttribute("aria-current")).toBe("page");
+    expect(links[1]!.getAttribute("href")).toBe("#/report");
+    await click(links[0]!);
+    expect(container.querySelector(".side")).toBe(sidebar);
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it("uses the same persistent desktop collapse control from Report and Participants", async () => {
+    localStorage.setItem("humanish-sidebar", "closed");
+    await mount(<App data={data} report={emptyReport} snapshot />);
+    await click(container.querySelector('.study-views a:last-child')!);
+    expect(container.querySelector(".side")).toBeNull();
+    await click(container.querySelector('[aria-label="Toggle run library"]')!);
+    expect(localStorage.getItem("humanish-sidebar")).toBe("open");
+    expect(container.querySelector(".side")).not.toBeNull();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await click(container.querySelector('.study-views a:first-child')!);
+    expect(container.querySelector(".side")).not.toBeNull();
+    await click(container.querySelector('[aria-label="Toggle run library"]')!);
+    await click(container.querySelector('.study-views a:last-child')!);
+    expect(container.querySelector(".side")).toBeNull();
+    expect(localStorage.getItem("humanish-sidebar")).toBe("closed");
+  });
+
+  it("keeps the desktop library while entering and leaving a participant", async () => {
+    localStorage.setItem("humanish-sidebar", "open");
+    await mount(<App data={data} report={emptyReport} snapshot />);
+    const sidebar = container.querySelector(".side");
+    await click(container.querySelector(".open-overlay")!);
+    expect(window.location.hash).toContain("#/lane/");
+    expect(container.querySelector(".side")).toBe(sidebar);
+    await click(container.querySelector('.study-views a:first-child')!);
+    expect(container.querySelector(".gallery")).not.toBeNull();
+    expect(container.querySelector(".side")).toBe(sidebar);
   });
 });

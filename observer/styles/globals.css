@@ -753,6 +753,8 @@ a:hover {
   padding: 0 8px;
 }
 .scrubwrap {
+  --scrub-thumb-size: 12px;
+  --scrub-track-size: 2px;
   position: relative;
   flex: 1;
   min-width: 120px;
@@ -760,8 +762,10 @@ a:hover {
 }
 .scrub-track {
   position: absolute;
-  inset: 12px 0 auto 0;
-  height: 2px;
+  inset: auto calc(var(--scrub-thumb-size) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+  height: var(--scrub-track-size);
   background: var(--line);
   border-radius: 2px;
 }
@@ -769,17 +773,17 @@ a:hover {
   position: absolute;
   left: 0;
   top: 0;
-  height: 2px;
+  height: 100%;
   background: var(--accent);
 }
 .scrub-tick {
   position: absolute;
-  top: -2px;
+  top: 50%;
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--accent-dim);
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 .scrub-flag {
   position: absolute;
@@ -800,13 +804,13 @@ a:hover {
 }
 .scrub::-webkit-slider-runnable-track {
   background: transparent;
-  height: 26px;
+  height: var(--scrub-track-size);
 }
 .scrub::-webkit-slider-thumb {
   appearance: none;
-  width: 12px;
-  height: 12px;
-  margin-top: 7px;
+  width: var(--scrub-thumb-size);
+  height: var(--scrub-thumb-size);
+  margin-top: calc((var(--scrub-track-size) - var(--scrub-thumb-size)) / 2);
   border-radius: 50%;
   background: var(--accent);
   border: 0;
@@ -814,11 +818,11 @@ a:hover {
 }
 .scrub::-moz-range-track {
   background: transparent;
-  height: 26px;
+  height: var(--scrub-track-size);
 }
 .scrub::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: var(--scrub-thumb-size);
+  height: var(--scrub-thumb-size);
   border-radius: 50%;
   background: var(--accent);
   border: 0;
@@ -1089,11 +1093,20 @@ button.arow:hover {
     grid-template-columns: 1fr;
   }
 
-  /* player: stage first, inspector below, page scroll owns the vertical axis */
-  .content.player-host {
-    display: block;
-    overflow-y: auto;
+  .statusbar {
+    height: auto;
+    min-height: 38px;
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    gap: 8px 12px;
   }
+  .statusbar .links {
+    display: none;
+  }
+}
+
+@container observer-content (max-width: 880px) {
+  /* player: stage first, inspector below, page scroll owns the vertical axis */
   .player {
     flex-direction: column;
     height: auto;
@@ -1130,16 +1143,6 @@ button.arow:hover {
   .ipanel {
     max-height: 56vh;
     overflow-y: auto;
-  }
-  .statusbar {
-    height: auto;
-    min-height: 38px;
-    flex-wrap: wrap;
-    padding: 6px 12px;
-    gap: 8px 12px;
-  }
-  .statusbar .links {
-    display: none;
   }
 }
 
