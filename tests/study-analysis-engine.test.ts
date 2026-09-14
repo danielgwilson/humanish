@@ -14,7 +14,8 @@ const config: StudyAnalysisConfig = { model: "gpt-5.6-sol", question: null, maxC
 function input(): StudyAnalysisInput {
   const value: StudyAnalysisInput = {
     runId: "synthetic-study", sourceRunSha256: "a".repeat(64), inputDigest: "",
-    participants: [{ streamId: "participant-1", label: "Synthetic participant", assignment: "Save a task.", recordedStatus: "passed", recordedReason: "goal_satisfied" }],
+    participants: [{ streamId: "participant-1", label: "Synthetic participant", assignment: "Save a task.", recordedStatus: "passed", recordedReason: "goal_satisfied",
+      provenance: { actorStatus: null, completionReason: null, stopCause: null, goalSource: null, declaredOutcome: null, taskOutcomes: null } }],
     coverage: { includedStreamIds: ["participant-1"], omittedStreamIds: [], evidenceCount: 1, captureCount: 0, complete: true, omissions: [] },
     evidence: [{ id: "e000001", streamId: "participant-1", eventId: "message-1", kind: "message", text: "I could not save the task.",
       quoteEligible: true, at: null, elapsedMs: null, frame: null, capture: null }], images: []
@@ -70,6 +71,46 @@ describe("bounded study analysis engine", () => {
     const h = transport(answer);
     const artifact = await runStudyAnalysis(packet, config, { apiKey: "synthetic-key", fetch: h.fetchFn });
     expect(artifact).toMatchObject({ status: "partial", result: { findings: [] }, coverage: packet.coverage, error: null });
+    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it("sends conflicting recorded provenance and unmeasured task states without rewriting them", async () => {
+    const packet = input();
+    packet.participants[0]!.provenance = {
+      actorStatus: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit",
+      goalSource: "unavailable", declaredOutcome: "reached", taskOutcomes: [
+        { taskId: "save", completed: false, observable: true, inputsObserved: false, turn: null },
+        { taskId: "review", completed: false, observable: false, inputsObserved: null, turn: null }
+      ]
+    };
+    packet.inputDigest = digestStudyAnalysisInput(packet);
+    const h = transport();
+    const artifact = await runStudyAnalysis(packet, config, { apiKey: "synthetic-key", fetch: h.fetchFn });
+    const body = JSON.parse(String(h.fetchFn.mock.calls[0]?.[1]?.body));
+    const sent = JSON.parse(body.input[0].content[0].text);
+    expect(sent.participants).toEqual(packet.participants);
+    expect(artifact.participants).toEqual(packet.participants);
+    expect(artifact.promptVersion).toBe("study-evidence-2");
+    expect(body.instructions).toContain("inputsObserved=false means the task was never measured");
+    expect(body.instructions).toContain("Null fields are unavailable information");
+    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
+  });
+
+  it.each(["participant_report", "condition_matched", "unavailable", null] as const)("retains %s completion provenance as recorded context", async goalSource => {
+    const packet = input();
+    packet.participants[0]!.provenance = {
+      actorStatus: "passed", completionReason: "goal_satisfied", stopCause: null, goalSource,
+      declaredOutcome: "reached", taskOutcomes: [
+        { taskId: "save", completed: true, observable: true, inputsObserved: null, turn: 4 }
+      ]
+    };
+    packet.inputDigest = digestStudyAnalysisInput(packet);
+    const h = transport();
+    const artifact = await runStudyAnalysis(packet, config, { apiKey: "synthetic-key", fetch: h.fetchFn });
+    const body = JSON.parse(String(h.fetchFn.mock.calls[0]?.[1]?.body));
+    expect(JSON.parse(body.input[0].content[0].text).participants[0].provenance).toEqual(packet.participants[0]!.provenance);
+    expect(artifact.participants[0]!.provenance.goalSource).toBe(goalSource);
+    expect(body.instructions).toContain("condition_matched establishes only the declared condition");
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
