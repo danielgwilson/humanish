@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { isCommandExitError } from "../src/command-failure.js";
 import { createE2BDesktopExecutor, CuaTypeFallbackError, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
-import { CuaTypeInputError, NATIVE_TYPE_MAX_CODE_POINTS, typeTextNative } from "../src/e2b-desktop-type.js";
+import { CuaTypeInputError, hasUnsettledDesktopTyping, NATIVE_TYPE_MAX_CODE_POINTS, typeTextNative } from "../src/e2b-desktop-type.js";
 
 type Result = { exitCode?: number; stdout?: string; stderr?: string };
 function fake() {
@@ -31,6 +31,46 @@ const commandError = () => Object.assign(new Error(secret), {
 describe("native typing without replay (#340)", () => {
   it("retains the legacy error export without using clipboard recovery", () => {
     expect(new CuaTypeFallbackError("clipboard-command", ["legacy caller"]).name).toBe("CuaTypeFallbackError");
+  });
+
+  it.each([true, false])("blocks new executor mutations while typing is pending and after abort, native=%s", async nativeTyping => {
+    const { desktop, calls } = fake();
+    const controller = new AbortController();
+    let release!: () => void;
+    let started!: () => void;
+    const dispatched = new Promise<void>(resolve => { started = resolve; });
+    const input = async () => { started(); await new Promise<void>(resolve => { release = resolve; }); };
+    desktop.write = input;
+    desktop.commands!.run = async command => {
+      calls.push(command);
+      if (isInput(command)) await input();
+      return { exitCode: 0 };
+    };
+    desktop.leftClick = () => { calls.push("click"); };
+    const pending = createE2BDesktopExecutor(desktop, { nativeTyping }).execute({ kind: "type", text: secret }, controller.signal);
+    await dispatched;
+    expect(hasUnsettledDesktopTyping(desktop)).toBe(true);
+    const later = createE2BDesktopExecutor(desktop, { nativeTyping });
+    await expect(later.execute({ kind: "click", x: 1, y: 2 })).rejects.toMatchObject({ phase: "input-uncertain" });
+    await expect(later.execute({ kind: "type", text: "new input" })).rejects.toMatchObject({ phase: "input-uncertain" });
+    await expect(later.execute({ kind: "screenshot" })).resolves.toBeUndefined();
+    await expect(later.execute({ kind: "wait", ms: 0 })).resolves.toBeUndefined();
+    controller.abort();
+    // A late success is still unsafe: input was unacknowledged when the actor stopped.
+    release();
+    await expect(pending).rejects.toMatchObject({ phase: "input-uncertain" });
+    expect(hasUnsettledDesktopTyping(desktop)).toBe(true);
+    await expect(later.execute({ kind: "keypress", keys: ["ENTER"] })).rejects.toMatchObject({ phase: "input-uncertain" });
+    expect(calls).not.toContain("click");
+    expect(calls).not.toContain("press");
+  });
+
+  it.each([true, false])("admits a later executor only after acknowledged clean input, native=%s", async nativeTyping => {
+    const { desktop, calls } = fake();
+    await createE2BDesktopExecutor(desktop, { nativeTyping }).execute({ kind: "type", text: "first" });
+    expect(hasUnsettledDesktopTyping(desktop)).toBe(false);
+    await createE2BDesktopExecutor(desktop, { nativeTyping }).execute({ kind: "keypress", keys: ["ENTER"] });
+    expect(calls).toContain("press");
   });
 
   it("types one whole UTF-8 value without SDK slicing or shell interpolation", async () => {
@@ -81,6 +121,9 @@ describe("native typing without replay (#340)", () => {
     expect(calls.filter(isInput)).toHaveLength(1);
     expect(calls).not.toContain("sdk-write");
     expect(calls).not.toContain("press");
+    expect(hasUnsettledDesktopTyping(desktop)).toBe(true);
+    await expect(createE2BDesktopExecutor(desktop).execute({ kind: "keypress", keys: ["ENTER"] }))
+      .rejects.toMatchObject({ phase: "input-uncertain" });
   });
 
   it.each(["before", "preparation", "upload", "input"])("closes input admission when aborted during %s", async stage => {

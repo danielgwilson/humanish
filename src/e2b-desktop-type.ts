@@ -30,6 +30,33 @@ export class CuaTypeInputError extends Error {
   }
 }
 
+// Shared seats and new executor instances must see the same unresolved typing.
+// An abort closes admission synchronously even while the command promise is pending.
+const desktopTyping = new WeakMap<object, { unsafe: boolean }>();
+
+export function hasUnsettledDesktopTyping(desktop: object): boolean {
+  return desktopTyping.has(desktop);
+}
+
+export function assertDesktopInputReady(desktop: object): void {
+  if (hasUnsettledDesktopTyping(desktop)) throw new CuaTypeInputError("input-uncertain");
+}
+
+/** Begin immediately before input dispatch; only a clean, non-aborted acknowledgment clears it. */
+export function beginDesktopTyping(desktop: object, signal?: AbortSignal): (acknowledged: boolean) => void {
+  signal?.throwIfAborted();
+  assertDesktopInputReady(desktop);
+  const state = { unsafe: false };
+  desktopTyping.set(desktop, state);
+  const onAbort = (): void => { state.unsafe = true; };
+  signal?.addEventListener("abort", onAbort, { once: true });
+  return (acknowledged): void => {
+    if (!acknowledged || signal?.aborted) state.unsafe = true;
+    signal?.removeEventListener("abort", onAbort);
+    if (!state.unsafe) desktopTyping.delete(desktop);
+  };
+}
+
 function validateNativeText(text: string): void {
   let count = 0;
   for (const character of text) {
@@ -52,6 +79,7 @@ export async function typeTextNative(
   signal?: AbortSignal,
 ): Promise<void> {
   signal?.throwIfAborted();
+  assertDesktopInputReady(desktop);
   validateNativeText(text);
   if (text.length === 0) return;
   const { commands, files } = desktop;
@@ -93,6 +121,7 @@ export async function typeTextNative(
   let phase: CuaTypeInputPhase = "preparation";
   let failure: CuaTypeInputPhase | undefined;
   let cleanup: "not-created" | "confirmed" | "unconfirmed" = "not-created";
+  let finishTyping: ((acknowledged: boolean) => void) | undefined;
   try {
     signal?.throwIfAborted();
     cleanup = "unconfirmed";
@@ -107,6 +136,7 @@ export async function typeTextNative(
     signal?.throwIfAborted();
     phase = "input-uncertain";
     // No await between the final admission check and this sole keyboard dispatch.
+    finishTyping = beginDesktopTyping(desktop, signal);
     const result = await commands.run(inputCommand, {
       requestTimeoutMs: REQUEST_TIMEOUT_MS,
       timeoutMs: NATIVE_TYPE_TIMEOUT_MS + 5_000,
@@ -133,6 +163,7 @@ export async function typeTextNative(
       }
     }
   }
+  finishTyping?.(failure === undefined && cleanup === "confirmed");
   if (failure !== undefined) throw new CuaTypeInputError(failure, cleanup);
   if (cleanup !== "confirmed") throw new CuaTypeInputError("cleanup", cleanup);
 }

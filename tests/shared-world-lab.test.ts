@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import type { CuaLoopResult, CuaTurn } from "../src/computer-use.js";
+import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import { hasUnsettledDesktopTyping } from "../src/e2b-desktop-type.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -1169,6 +1171,73 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(bundle.sharedWorld?.sequence).toEqual(["role-author"]);
     expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it.each(["lost-ack", "pending-deadline"])("does not change windows or start another seat after native typing %s", async mode => {
+    const setup = baseHooks({ worldVersion: 0 });
+    const { sandbox, hooks, killed } = setup;
+    const desktop = sandbox as unknown as E2BDesktopLike;
+    const runCommand = desktop.commands!.run;
+    let release!: () => void;
+    let inputPending: Promise<void> | undefined;
+    let sessions = 0;
+    let providerCalls = 0;
+    let inputCommands = 0;
+    desktop.press = async () => {};
+    desktop.commands!.run = async (command, options) => {
+      if (!command.includes("xdotool type --delay")) return runCommand(command, options);
+      sandbox.calls.push(["commands.run", command]);
+      inputCommands += 1;
+      if (mode === "lost-ack") throw Object.assign(new Error("synthetic private input"), { name: "CommandExitError", exitCode: 1 });
+      await new Promise<void>(resolve => { release = resolve; });
+      return { exitCode: 0 };
+    };
+    hooks.runSession = async options => {
+      sessions += 1;
+      const executor = createE2BDesktopExecutor(desktop, { nativeTyping: true });
+      let observation = 0;
+      return runCuaActorSession({ ...options, timeoutMs: 100,
+        executor: {
+          observe: async () => ({ stateSignature: `typing-state-${observation++}` }),
+          execute: (action, signal) => {
+            const pending = executor.execute(action, signal);
+            if (action.kind === "type") inputPending = pending;
+            return pending;
+          }
+        },
+        provider: {
+          id: "typing-boundary-fixture", version: "gpt-5.6-sol", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+          nextTurn: async () => {
+            providerCalls += 1;
+            if (providerCalls > 1) throw new Error("Unexpected later provider request");
+            return { actions: [{ kind: "keypress", keys: ["END"] }, { kind: "type", text: "synthetic private input" }], pendingSafetyChecks: [], done: false };
+          }
+        }
+      });
+    };
+    try {
+      const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+      expect(sessions).toBe(1);
+      expect(providerCalls).toBe(1);
+      expect(inputCommands).toBe(1);
+      expect(result.roles[0]?.session?.completionReason).toBe(mode === "lost-ack" ? "actor_error" : "budget_reached");
+      expect(result.roles[1]?.status).toBe("blocked");
+      expect(result.roles[1]?.skippedReason).toContain("typing pending or uncertain");
+      const commands = sandbox.calls.filter(call => call[0] === "commands.run").map(call => String(call[1]));
+      expect(commands.some(command => command.includes("profile_dir='/tmp/seat-role-reviewer'"))).toBe(false);
+      expect(commands.some(command => command.includes("profile_pattern="))).toBe(false);
+      expect(killed).toEqual([sandbox.sandboxId]);
+      expect(hasUnsettledDesktopTyping(desktop)).toBe(true);
+      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+      expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+      expect(bundle.streams[0]?.actor?.completionReason).toBe(mode === "lost-ack" ? "actor_error" : "budget_reached");
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    } finally {
+      release?.();
+      await inputPending?.catch(() => undefined);
+    }
+    // A late clean response must not reopen a desktop the actor already abandoned.
+    expect(hasUnsettledDesktopTyping(desktop)).toBe(true);
   });
 
   it("MISSION failure (non-harness) is DATA, never trips fail-fast: every role still runs", async () => {

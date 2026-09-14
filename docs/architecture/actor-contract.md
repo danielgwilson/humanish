@@ -318,6 +318,13 @@ it does not prove already admitted keystrokes stopped immediately. The native
 runtime bound and owned sandbox cleanup remain necessary when the caller stops
 waiting. Temporary-file cleanup is tracked separately from process termination.
 
+Pending or uncertain typing blocks later mutating actions on that same desktop,
+including through a new executor. Abort makes this state permanent for the
+desktop even if a late acknowledgment reports success. Sequential shared-world
+runs preserve the participant's original ending, skip browser changes and later
+participants, then clean up the owned sandbox. Ordinary mission failures and
+per-participant budget stops still allow later seats when no typing is unresolved.
+
 Custom desktop ports retain their own successful `write(text)` path unless
 they explicitly opt into native typing. A failed custom write is also uncertain
 and is not replayed. Custom injected executors retain their own contract.

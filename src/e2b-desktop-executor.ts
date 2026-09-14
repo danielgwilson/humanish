@@ -1,6 +1,6 @@
 import { PNG } from "pngjs";
 
-import { CuaTypeInputError, typeTextNative } from "./e2b-desktop-type.js";
+import { assertDesktopInputReady, beginDesktopTyping, CuaTypeInputError, typeTextNative } from "./e2b-desktop-type.js";
 
 export { CuaTypeInputError } from "./e2b-desktop-type.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
@@ -238,6 +238,7 @@ export function createE2BDesktopExecutor(
 
     async execute(action: CuaAction, signal?: AbortSignal): Promise<void> {
       signal?.throwIfAborted();
+      if (action.kind !== "wait" && action.kind !== "screenshot") assertDesktopInputReady(desktop);
       switch (action.kind) {
         case "click": {
           const button = action.button ?? "left";
@@ -248,6 +249,7 @@ export function createE2BDesktopExecutor(
           } else {
             const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
             signal?.throwIfAborted();
+            assertDesktopInputReady(desktop);
             if (alreadyAtTarget) await desktop.leftClick();
             else await desktop.leftClick(action.x, action.y);
           }
@@ -256,6 +258,7 @@ export function createE2BDesktopExecutor(
         case "double_click": {
           const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
           signal?.throwIfAborted();
+          assertDesktopInputReady(desktop);
           if (alreadyAtTarget) await desktop.doubleClick();
           else await desktop.doubleClick(action.x, action.y);
           return;
@@ -270,6 +273,8 @@ export function createE2BDesktopExecutor(
           // dx (horizontal) has no SDK target and is ignored; a zero dy is a no-op.
           if (action.dy === 0) return;
           await desktop.moveMouse(action.x, action.y);
+          signal?.throwIfAborted();
+          assertDesktopInputReady(desktop);
           const direction = action.dy > 0 ? "down" : "up";
           const amount = Math.max(1, Math.round(Math.abs(action.dy) / scrollAmountPerTick));
           await desktop.scroll(direction, amount);
@@ -280,13 +285,18 @@ export function createE2BDesktopExecutor(
           if (options.nativeTyping === true) {
             await typeTextNative(desktop, action.text, signal);
           } else {
+            const finishTyping = beginDesktopTyping(desktop, signal);
+            let acknowledged = false;
             try {
               await desktop.write(action.text);
               signal?.throwIfAborted();
+              acknowledged = true;
             } catch {
               // A custom port may already have inserted a prefix. No replay or
               // raw error reaches the loop's recoverable CommandExitError path.
               throw new CuaTypeInputError("input-uncertain");
+            } finally {
+              finishTyping(acknowledged);
             }
           }
           return;
