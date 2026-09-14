@@ -198,8 +198,8 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   "daybreak-red-latest": gpt56Rate(12.5, 1.25, 15.625, 75),
   // gpt-6-astra (shipped 2026-09-03; API access announced as rolling out). Same two mechanics
   // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
-  // output ($20 / $2 / $25 / $75 long-context columns). Priced so a lab that declares it never
-  // reads as unpriced; NOT the default and not yet exercised by a live run here.
+  // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit lab
+  // model choices and the study-analysis default; the computer-use default is separate.
   "gpt-6-astra": gpt56Rate(10, 1, 12.5, 50, GPT56_SOL_PROMO_AS_OF)
 };
 
