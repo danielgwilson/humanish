@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { LoadedStudyAnalysis } from "../../src/study-analysis";
 import { fetchStudyAnalysis, NO_ANALYSIS, parseStudyAnalysis, projectStudyAnalysis, readInlineStudyAnalysis, STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { formatHash, parseHash } from "../lib/route";
-import { resolveReportMoment } from "../lib/study-report";
+import { reportProblem, resolveReportMoment } from "../lib/study-report";
 
 // Same synthetic input used by the built-artifact browser suite. No provider wire
 // response is asserted here; this checks the independent renderer contract.
@@ -57,6 +57,18 @@ describe("independent analysis admission and projection", () => {
   it("rejects a successful artifact under an invalid selection", () => {
     const saved = fixture(); saved.state = "invalid";
     expect(parseStudyAnalysis(saved, data)).toMatchObject({ state: "invalid", analysis: null });
+  });
+  it("keeps stale claims readable when a participant was removed, without current outcomes or fabricated evidence", () => {
+    const saved = fixture(); saved.state = "stale";
+    const current = structuredClone(data); current.streams = current.streams.slice(1);
+    const loaded = parseStudyAnalysis(saved, current);
+    const projected = projectStudyAnalysis(loaded, current)!;
+    expect(loaded.state).toBe("stale"); expect(projected.findings).toHaveLength(2);
+    expect(projected.outcomes).toEqual([]); expect(reportProblem(current, projected)).toBeNull();
+    const moment = projected.findings[0]!.moments[0]!;
+    expect(resolveReportMoment(current, moment.streamId, moment.eventId)).toBeNull();
+    saved.state = "ready";
+    expect(parseStudyAnalysis(saved, current)).toMatchObject({ state: "invalid", analysis: null });
   });
   it("retains the selected successful analysis when the store reports a later failed attempt", () => {
     const saved = fixture(); saved.warnings = ["ANALYSIS_FAILED"];

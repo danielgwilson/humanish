@@ -1014,6 +1014,14 @@ try {
     await page.reload(); await page.locator('[data-analysis-state="stale"]').waitFor();
     await page.locator('[data-finding="F1"]').click(); await page.locator('.report-evidence:disabled').waitFor();
     await snap("stale-evidence-unavailable"); record.checks.states.push("stale");
+    // A changed source can remove an entire participant, not just one event.
+    analysis.analysis.result.findings[0].observations[0].evidenceIds = ["lane-3/lane-3-final"];
+    data = fixture({ laneCount: 2 });
+    await page.reload(); await page.locator('[data-analysis-state="stale"]').waitFor();
+    await page.locator('.report-evidence:disabled').waitFor();
+    assert((await page.locator('.report-text-evidence').innerText()).includes("no longer available"));
+    await snap("stale-participant-unavailable"); record.checks.states.push("stale-participant-unavailable");
+    data = fixture();
     analysis = { ...analysis, state: "ready", analysis: { ...analysis.analysis, runId: "another-study" } };
     await page.reload(); await page.locator('[data-analysis-state="invalid"]').waitFor();
     await page.getByRole("link", { name: "All participants", exact: true }).click();

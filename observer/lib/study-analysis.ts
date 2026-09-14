@@ -70,8 +70,11 @@ export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedSt
   const evidence = new Map(analysis.evidence.map((e) => [e.id, e]));
   const included = analysis.coverage.includedStreamIds;
   const omitted = analysis.coverage.omittedStreamIds;
-  if (evidence.size !== analysis.evidence.length || included.some((s) => !streams.has(s) || omitted.includes(s)) || omitted.some((s) => !streams.has(s))) return invalid();
-  if (analysis.evidence.some((e) => !streams.has(e.streamId) || !included.includes(e.streamId))) return invalid();
+  if (evidence.size !== analysis.evidence.length || included.some((s) => omitted.includes(s))) return invalid();
+  // A stale analysis may name a participant that is no longer in this source.
+  // Preserve its claim; resolution against current data disables that evidence.
+  if (value.state !== "stale" && [...included, ...omitted].some((s) => !streams.has(s))) return invalid();
+  if (analysis.evidence.some((e) => !included.includes(e.streamId))) return invalid();
   // Link addresses come from the current evidence, never the manifest's stored path.
   // Stale reports remain readable, but missing references render as unavailable.
   const recordedIds = new Map(data.streams.map((stream) => [stream.id, new Set([...traceItems(stream).map((item) => item.id), ...stream.timeline.map((event) => event.id)])]));
