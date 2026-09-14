@@ -234,6 +234,17 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
     || (coverage.complete && (coverage.omittedStreamIds.length > 0 || coverage.omissions.length > 0))) {
     throw new Error("ANALYSIS_COVERAGE_INVALID");
   }
+  if (!distinct(artifact.participants.map((participant) => participant.streamId))
+    || artifact.participants.length !== included.size
+    || artifact.participants.some((participant) => !included.has(participant.streamId))) throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
+  const usage = artifact.usage;
+  if ((usage.usageComplete && (usage.inputTokens === null || usage.outputTokens === null))
+    || (!usage.dispatched && (usage.inputTokens !== null || usage.outputTokens !== null || usage.cachedInputTokens !== null
+      || usage.cacheWriteInputTokens !== null || usage.estimatedCostUsd !== null || usage.usageComplete))
+    || ((usage.cachedInputTokens !== null || usage.cacheWriteInputTokens !== null) && (usage.inputTokens === null
+      || (usage.cachedInputTokens ?? 0) + (usage.cacheWriteInputTokens ?? 0) > usage.inputTokens))) {
+    throw new Error("ANALYSIS_USAGE_INVALID");
+  }
   const hasResult = artifact.status === "complete" || artifact.status === "partial";
   if (hasResult !== (artifact.result !== null)
     || (hasResult && artifact.error !== null && !(artifact.status === "partial" && artifact.error === "analysis_admission_estimate_exceeded"))

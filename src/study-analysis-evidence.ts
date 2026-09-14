@@ -1,0 +1,369 @@
+import { createHash } from "node:crypto";
+import { screenshotEvidenceError } from "./image-evidence.js";
+import type { PreparedRunArtifactPaths } from "./run-paths.js";
+import type { ActorTraceItem } from "./actor-contract.js";
+import type { RunBundle, RunStream } from "./run.js";
+import type { AnalysisEvidence, StudyAnalysisArtifact, StudyAnalysisInput } from "./study-analysis.js";
+import { digestStudyAnalysisInput } from "./study-analysis-validation.js";
+import { constants } from "node:fs";
+import { lstat, open, realpath } from "node:fs/promises";
+import path from "node:path";
+
+import { isPathInside, validatePreparedRunRootIdentity } from "./run-paths.js";
+import {
+  assertPreparedSelectedOutputDirectory,
+  type PreparedOutputRoot
+} from "./selected-output-paths.js";
+
+/** Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. */
+export function isStudyEvidencePath(value: string): boolean {
+  if (!value || value.length > 1024) return false;
+  try { encodeURIComponent(value); } catch { return false; }
+  let checked = value;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (/[\\:\x00-\x1f\x7f]/.test(checked) || checked.startsWith("/")
+      || checked.split("/").some((part) => part === "" || part === "." || part === "..")) return false;
+    let decoded: string;
+    try { decoded = decodeURIComponent(checked); } catch { return !/%[0-9a-f]{2}/i.test(checked); }
+    if (decoded === checked) return true;
+    if (decoded.split("/").length !== checked.split("/").length) return false;
+    checked = decoded;
+  }
+  return false;
+}
+
+/**
+ * Bounded companion to readContainedRegularFile. A growing or swapped file must
+ * not turn an analysis budget into an unbounded read. No returned bytes have
+ * authority to select another file or initiate a network request.
+ */
+export async function readBoundedStudyFile(
+  root: PreparedOutputRoot,
+  relativePath: string,
+  maxBytes: number
+): Promise<Buffer | null> {
+  if (!isStudyEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1) return null;
+  const validateRoot = async (): Promise<string> => {
+    if ("physicalRunRoot" in root) {
+      await validatePreparedRunRootIdentity(root);
+      return root.physicalRunRoot;
+    }
+    await assertPreparedSelectedOutputDirectory(root);
+    return root.physicalPath;
+  };
+  try {
+    const physicalRoot = await validateRoot();
+    const candidate = path.join(physicalRoot, relativePath);
+    if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return null;
+    const validateParents = async (): Promise<void> => {
+      let current = physicalRoot;
+      for (const segment of relativePath.split("/").slice(0, -1)) {
+        current = path.join(current, segment);
+        const info = await lstat(current);
+        if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("Unsafe analysis input directory.");
+      }
+    };
+    await validateParents();
+    const before = await lstat(candidate, { bigint: true });
+    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n || before.size > BigInt(maxBytes)) return null;
+    if (await realpath(candidate) !== candidate) return null;
+    // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
+    const handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+    try {
+      const opened = await handle.stat({ bigint: true });
+      if (!opened.isFile() || opened.nlink !== 1n || opened.dev !== before.dev || opened.ino !== before.ino
+        || opened.size !== before.size || opened.mtimeNs !== before.mtimeNs) return null;
+      const chunks: Buffer[] = [];
+      let total = 0;
+      while (total <= maxBytes) {
+        const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maxBytes + 1 - total));
+        const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
+        if (bytesRead === 0) break;
+        total += bytesRead;
+        if (total > maxBytes) return null;
+        chunks.push(chunk.subarray(0, bytesRead));
+      }
+      const after = await handle.stat({ bigint: true });
+      if (after.size !== before.size || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs
+        || after.nlink !== 1n || total !== Number(before.size)) return null;
+      if (await validateRoot() !== physicalRoot) return null;
+      await validateParents();
+      const final = await lstat(candidate, { bigint: true });
+      if (!final.isFile() || final.isSymbolicLink() || final.dev !== before.dev || final.ino !== before.ino
+        || final.nlink !== 1n || final.size !== before.size || final.mtimeNs !== before.mtimeNs) return null;
+      return Buffer.concat(chunks, total);
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+
+
+export const STUDY_EVIDENCE_LIMITS = Object.freeze({
+  participants: 16, evidence: 800, captures: 40, textBytes: 160 * 1024,
+  imageBytes: 8 * 1024 * 1024, totalImageBytes: 20 * 1024 * 1024,
+  sourceBytes: 16 * 1024 * 1024
+});
+export type StudyEvidenceLimits = { [Key in keyof typeof STUDY_EVIDENCE_LIMITS]?: number };
+const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");
+const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+const stamp = (value: unknown): string | null => typeof value === "string" && Number.isFinite(Date.parse(value))
+  ? new Date(value).toISOString() : null;
+const itemText = (item: ActorTraceItem): string => ["message", "reasoning"].includes(item.kind) && item.text !== undefined
+  ? item.text : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
+const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
+
+function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
+  if (bytes.length > STUDY_EVIDENCE_LIMITS.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  if (!object(value) || value.schema !== "humanish.run-bundle.v1"
+    || value.runId !== path.basename(prepared.physicalRunRoot)
+    || !Array.isArray(value.streams) || value.streams.length > 128 || !Array.isArray(value.events)
+    || value.events.length > 100000) throw new Error("ANALYSIS_SOURCE_INVALID");
+  const ids = new Set<string>();
+  for (const stream of value.streams) {
+    if (!object(stream) || typeof stream.id !== "string" || stream.id.length === 0 || stream.id.length > 256
+      || ids.has(stream.id) || typeof stream.label !== "string" || typeof stream.status !== "string") {
+      throw new Error("ANALYSIS_SOURCE_INVALID");
+    }
+    ids.add(stream.id);
+    const actor = stream.actor;
+    if (actor !== undefined && (!object(actor) || !Array.isArray(actor.items) || actor.items.length > 100000)) {
+      throw new Error("ANALYSIS_SOURCE_INVALID");
+    }
+    const eventIds = new Set<string>();
+    for (const item of object(actor) ? actor.items as unknown[] : []) {
+      if (!object(item) || typeof item.id !== "string" || item.id.length === 0 || item.id.length > 256
+        || eventIds.has(item.id) || typeof item.kind !== "string" || typeof item.title !== "string"
+        || (item.text !== undefined && typeof item.text !== "string")) throw new Error("ANALYSIS_SOURCE_INVALID");
+      eventIds.add(item.id);
+    }
+  }
+  for (const event of value.events) {
+    if (!object(event) || typeof event.id !== "string" || typeof event.message !== "string"
+      || typeof event.type !== "string") throw new Error("ANALYSIS_SOURCE_INVALID");
+  }
+  return value as unknown as RunBundle;
+}
+
+function boundedText(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value) <= maxBytes) return value;
+  let output = "";
+  let bytes = 0;
+  for (const char of value) {
+    const size = Buffer.byteLength(char);
+    if (bytes + size > maxBytes) break;
+    output += char;
+    bytes += size;
+  }
+  return output;
+}
+
+// Count the same frame declarations as Observer even when analysis omits their bytes.
+function isObserverCapturePath(value: string): boolean {
+  if (/^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return true;
+  if (!value || value.length > 8192) return false;
+  try { encodeURIComponent(value); } catch { return false; }
+  let checked = value;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (/^[\\/]|[\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked)
+      || checked.split("/").some((part) => part === "." || part === ".." || part === "")) return false;
+    let decoded: string;
+    try { decoded = decodeURIComponent(checked); } catch { return !/%[0-9a-f]{2}/i.test(checked); }
+    if (decoded === checked) return true;
+    if (decoded.split("/").length !== checked.split("/").length) return false;
+    checked = decoded;
+  }
+  return false;
+}
+
+interface SourceEntry {
+  eventId: string;
+  kind: string;
+  text: string;
+  quoteEligible: boolean;
+  at: string | null;
+  elapsedMs: number | null;
+  frame: number | null;
+  capturePath: string | null;
+}
+function sourceEntries(bundle: RunBundle, stream: RunStream): SourceEntry[] {
+  const items = itemsFor(stream);
+  const captures = items.filter((item) => item.kind === "screenshot" && object(item.screenshotRef)
+    && typeof item.screenshotRef.path === "string" && isObserverCapturePath(item.screenshotRef.path));
+  const frameIds = new Set(captures.map((item) => item.id));
+  const firstAt = stamp(captures[0]?.at);
+  let frame = -1;
+  const entries: SourceEntry[] = [];
+  for (const item of items) {
+    const capturePath = item.kind === "screenshot" && object(item.screenshotRef)
+      && typeof item.screenshotRef.path === "string" && isStudyEvidencePath(item.screenshotRef.path)
+      ? item.screenshotRef.path : null;
+    if (frameIds.has(item.id)) frame++;
+    const at = stamp(item.at);
+    const delta = at !== null && firstAt !== null ? Date.parse(at) - Date.parse(firstAt) : null;
+    entries.push({ eventId: item.id, kind: item.kind, text: itemText(item),
+      quoteEligible: ["message", "reasoning"].includes(item.kind) && typeof item.text === "string",
+      at, elapsedMs: delta !== null && delta >= 0 ? delta : null,
+      frame: captures.length > 0 ? Math.max(0, frame) : null, capturePath });
+  }
+  const runEventIds = new Set<string>();
+  for (const event of bundle.events.filter((entry) => entry.streamId === stream.id
+    || (entry.streamId === undefined && entry.simId === stream.simId))) {
+    if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
+    runEventIds.add(event.id);
+    entries.push({ eventId: event.id, kind: `run_event:${event.type}`, text: event.message,
+      quoteEligible: false, at: stamp(event.at), elapsedMs: null, frame: null, capturePath: null });
+  }
+  return entries;
+}
+
+/** Select once from retained source. Models receive no filesystem or network resolver. */
+export async function captureStudyEvidence(
+  prepared: PreparedRunArtifactPaths,
+  bundleBytes: Buffer,
+  requested: StudyEvidenceLimits = {}
+): Promise<StudyAnalysisInput> {
+  const limits: Required<StudyEvidenceLimits> = { ...STUDY_EVIDENCE_LIMITS, ...requested };
+  for (const key of Object.keys(STUDY_EVIDENCE_LIMITS) as Array<keyof typeof STUDY_EVIDENCE_LIMITS>) {
+    if (!Number.isSafeInteger(limits[key]) || limits[key] < 1 || limits[key] > STUDY_EVIDENCE_LIMITS[key]) {
+      throw new Error("ANALYSIS_INPUT_LIMIT_INVALID");
+    }
+  }
+  if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
+  const current = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
+  if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+  const bundle = parseSource(prepared, bundleBytes);
+  if (bundle.streams.some((stream) => stream.liveActor !== undefined
+    || ["running", "pending", "queued", "starting", "preparing", "not_started", "suspended"].includes(stream.status))) {
+    throw new Error("ANALYSIS_RUN_UNFINISHED");
+  }
+  const selected = bundle.streams.slice(0, limits.participants);
+  const evidence: AnalysisEvidence[] = [];
+  const images: StudyAnalysisInput["images"] = [];
+  const omissions = new Set<string>();
+  let textBytes = 0;
+  let imageBytes = 0;
+  const participants = selected.map((stream) => {
+    const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
+      ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
+    const reason = stream.actor?.reason ?? null;
+    const label = boundedText(stream.label, 1000);
+    const safeAssignment = assignment === null ? null : boundedText(assignment, 8000);
+    const safeReason = reason === null ? null : boundedText(reason, 4000);
+    if (label !== stream.label || safeAssignment !== assignment || safeReason !== reason) omissions.add("Participant context exceeded the text limit.");
+    textBytes += Buffer.byteLength(label) + Buffer.byteLength(safeAssignment ?? "") + Buffer.byteLength(safeReason ?? "");
+    return { streamId: stream.id, label, assignment: safeAssignment, recordedStatus: stream.status, recordedReason: safeReason };
+  });
+  if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
+  for (const stream of selected) {
+    if (!stream.actor) omissions.add("Some participants have no normalized recorded trace.");
+    for (const source of sourceEntries(bundle, stream)) {
+      if (evidence.length >= limits.evidence || textBytes >= limits.textBytes) {
+        omissions.add("Some evidence was omitted by the packet size limit.");
+        continue;
+      }
+      const text = boundedText(source.text, Math.min(16000, limits.textBytes - textBytes));
+      if (text !== source.text) omissions.add("Some evidence text was truncated by the packet size limit.");
+      textBytes += Buffer.byteLength(text);
+      const id = `e${String(evidence.length + 1).padStart(6, "0")}`;
+      let capture: AnalysisEvidence["capture"] = null;
+      if (source.capturePath !== null) {
+        if (images.length >= limits.captures) omissions.add("Some captures were omitted by the capture count limit.");
+        else {
+          const bytes = await readBoundedStudyFile(prepared, source.capturePath, limits.imageBytes);
+          if (bytes === null || screenshotEvidenceError(source.capturePath, bytes) !== null) {
+            omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
+          } else if (imageBytes + bytes.length > limits.totalImageBytes) {
+            omissions.add("Some captures were omitted by the image byte limit.");
+          } else {
+            imageBytes += bytes.length;
+            capture = { eventId: source.eventId, path: source.capturePath, sha256: sha256(bytes), mimeType: "image/png" };
+            images.push({ evidenceId: id, dataUrl: `data:image/png;base64,${bytes.toString("base64")}` });
+          }
+        }
+      } else if (source.kind === "screenshot") {
+        omissions.add("Some screenshot references were absent or nonlocal.");
+      }
+      evidence.push({ id, streamId: stream.id, eventId: source.eventId, kind: source.kind, text,
+        quoteEligible: source.quoteEligible, at: source.at, elapsedMs: source.elapsedMs, frame: source.frame, capture });
+    }
+  }
+  const omittedStreamIds = bundle.streams.slice(limits.participants).map((stream) => stream.id);
+  const coverage = { includedStreamIds: selected.map((stream) => stream.id), omittedStreamIds,
+    evidenceCount: evidence.length, captureCount: images.length,
+    complete: omittedStreamIds.length === 0 && omissions.size === 0, omissions: [...omissions] };
+  const result = { runId: bundle.runId, sourceRunSha256: sha256(bundleBytes), inputDigest: "", participants, coverage, evidence, images };
+  result.inputDigest = digestStudyAnalysisInput(result);
+  const after = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
+  if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+  return result;
+}
+
+/** Validate exact source membership before any stored path may be read. */
+export async function validateStudyAnalysisEvidence(
+  prepared: PreparedRunArtifactPaths,
+  artifact: StudyAnalysisArtifact,
+  bundleBytes: Buffer
+): Promise<void> {
+  const bundle = parseSource(prepared, bundleBytes);
+  if (artifact.runId !== bundle.runId || artifact.sourceRunSha256 !== sha256(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+  const included = new Set(artifact.coverage.includedStreamIds);
+  const omitted = new Set(artifact.coverage.omittedStreamIds);
+  if (bundle.streams.some((stream) => !included.has(stream.id) && !omitted.has(stream.id))
+    || included.size + omitted.size !== bundle.streams.length) throw new Error("ANALYSIS_SOURCE_COVERAGE_INVALID");
+  const sourceByStream = new Map(bundle.streams.map((stream) => [stream.id, sourceEntries(bundle, stream)]));
+  const context = new Map(artifact.participants.map((participant) => [participant.streamId, participant]));
+  if (context.size !== included.size || artifact.participants.length !== included.size) throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
+  for (const stream of bundle.streams.filter((candidate) => included.has(candidate.id))) {
+    const participant = context.get(stream.id);
+    const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
+      ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
+    if (!participant || participant.label !== boundedText(stream.label, 1000)
+      || participant.assignment !== (assignment === null ? null : boundedText(assignment, 8000))
+      || participant.recordedStatus !== stream.status
+      || participant.recordedReason !== (stream.actor?.reason === undefined ? null : boundedText(stream.actor.reason, 4000))) {
+      throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
+    }
+  }
+  const sourceKeys = new Set<string>();
+  const checkedCaptures = new Map<string, string>();
+  let checkedImageBytes = 0;
+  for (const entry of artifact.evidence) {
+    const matches = sourceByStream.get(entry.streamId)?.filter((source) => source.eventId === entry.eventId && source.kind === entry.kind) ?? [];
+    const source = matches[0];
+    const sourceKey = JSON.stringify([entry.streamId, entry.kind, entry.eventId]);
+    if (sourceKeys.has(sourceKey)) throw new Error("ANALYSIS_SOURCE_REFERENCE_DUPLICATE");
+    sourceKeys.add(sourceKey);
+    if (matches.length !== 1 || source === undefined || !source.text.startsWith(entry.text)
+      || entry.quoteEligible !== source.quoteEligible || entry.at !== source.at || entry.elapsedMs !== source.elapsedMs
+      || entry.frame !== source.frame) throw new Error("ANALYSIS_SOURCE_REFERENCE_INVALID");
+    if (artifact.coverage.complete && (entry.text !== source.text || (source.capturePath !== null && entry.capture === null))) {
+      throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
+    }
+    if (entry.capture !== null) {
+      if (source.capturePath === null || entry.capture.path !== source.capturePath
+        || entry.capture.eventId !== source.eventId || entry.capture.mimeType !== "image/png") throw new Error("ANALYSIS_CAPTURE_REFERENCE_INVALID");
+      let hash = checkedCaptures.get(source.capturePath);
+      if (hash === undefined) {
+        const bytes = await readBoundedStudyFile(prepared, source.capturePath, STUDY_EVIDENCE_LIMITS.imageBytes);
+        if (!bytes || screenshotEvidenceError(source.capturePath, bytes) !== null) throw new Error("ANALYSIS_CAPTURE_UNAVAILABLE");
+        checkedImageBytes += bytes.length;
+        if (checkedImageBytes > STUDY_EVIDENCE_LIMITS.totalImageBytes) throw new Error("ANALYSIS_IMAGE_LIMIT_EXCEEDED");
+        hash = sha256(bytes);
+        checkedCaptures.set(source.capturePath, hash);
+      }
+      if (hash !== entry.capture.sha256) throw new Error("ANALYSIS_CAPTURE_CHANGED");
+    }
+  }
+  if (artifact.coverage.complete && [...sourceByStream.values()].reduce((total, entries) => total + entries.length, 0) !== artifact.evidence.length) {
+    throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
+  }
+
+  const current = await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes);
+  if (!current?.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+
+}
