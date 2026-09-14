@@ -35,6 +35,12 @@ success. Findings keep reported concerns and observed recovery distinct across
 participants. Other supported models can be selected explicitly, but evidence
 reference validation does not certify their interpretation of small visual details.
 
+Analysis distinguishes participant actions from harness setup and accounting.
+Runtime credentials or model usage do not establish that a participant made an
+external call while performing their task. Observations with an action basis
+must cite an action-bearing source; invalid source bases are rejected with the
+attempt's status and known usage retained.
+
 Identical source input, configuration, and prompt version reuse a current valid
 analysis. `--rerun` creates another immutable version. Failed attempts do not
 hide earlier valid findings. Ctrl-C cancels the request; usage remains unknown

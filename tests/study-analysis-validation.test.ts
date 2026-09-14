@@ -102,6 +102,24 @@ describe("study analysis validation", () => {
     expect(checkAnalysisResult(syntheticInput(), result)).toMatchObject({ ok: false, errors: ["ANALYSIS_ACTION_SOURCE_INVALID"] });
   });
 
+  it("keeps runtime accounting context from satisfying an action observation", () => {
+    const input = syntheticInput();
+    const result = syntheticResult(input);
+    input.evidence.push({ id: "runtime-context", streamId: input.participants[0]!.streamId,
+      eventId: "runtime-accounting", kind: "run_event:runtime.accounted", text: "The harness recorded model usage.",
+      quoteEligible: false, at: null, elapsedMs: null, frame: null, capture: null });
+    input.coverage.evidenceCount++;
+    input.inputDigest = digestStudyAnalysisInput(input);
+    const observation = result.findings[0]!.observations[0]!;
+    observation.claim = "The harness record describes model usage, not a participant-issued service call.";
+    observation.evidenceIds = ["runtime-context"];
+    observation.basis = "action";
+    expect(checkAnalysisResult(input, result)).toMatchObject({ ok: false, errors: ["ANALYSIS_ACTION_SOURCE_INVALID"] });
+    observation.basis = "inference";
+    observation.limitation = "The record does not attribute a service call to the participant.";
+    expect(checkAnalysisResult(input, result).ok).toBe(true);
+  });
+
   it("does not accept invented complete usage in a standalone accounting receipt", () => {
     const artifact = syntheticArtifact();
     const { config: _config, participants: _participants, evidence: _evidence, coverage: _coverage,

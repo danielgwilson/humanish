@@ -91,7 +91,7 @@ describe("bounded study analysis engine", () => {
     const sent = JSON.parse(body.input[0].content[0].text);
     expect(sent.participants).toEqual(packet.participants);
     expect(artifact.participants).toEqual(packet.participants);
-    expect(artifact.promptVersion).toBe("study-evidence-3");
+    expect(artifact.promptVersion).toBe("study-evidence-4");
     expect(body.instructions).toContain("inputsObserved=false means the task was never measured");
     expect(body.instructions).toContain("Null fields are unavailable information");
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
