@@ -541,7 +541,7 @@ async function buildAnalysisDraft(context: FeedbackRunContext, options: Feedback
   const evidenceIds = new Set(finding.observations.flatMap((item) => item.evidenceIds));
   const evidence = analysis.evidence.filter((item) => evidenceIds.has(item.id));
   const claim = correction?.status === "amended" ? correction.replacementClaim! : finding.title;
-  const firstLine = claim.split(/\r?\n/)[0] ?? claim;
+  const firstLine = claim.trim().split(/\r?\n/)[0] || `Reviewed finding ${finding.id}`;
   const summary = Array.from(firstLine).length > 160 ? Array.from(firstLine).slice(0, 159).join("") + "…" : firstLine;
   const source = { id: analysis.id, sha256: hashStudyAnalysisValue(analysis), finding_id: finding.id,
     finding_sha256: hashStudyAnalysisValue(finding), correction_id: correction?.id ?? null };

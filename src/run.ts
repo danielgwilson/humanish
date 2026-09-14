@@ -7060,7 +7060,7 @@ async function scanRunPublicSafetyDirectory(
   findings: string[],
   derivedFindings: string[]
 ): Promise<void> {
-  if (findings.length >= 50) {
+  if (findings.length + derivedFindings.length >= 50) {
     return;
   }
 
@@ -7075,19 +7075,19 @@ async function scanRunPublicSafetyDirectory(
       || relativePath === "observer/study-analysis.json" ? derivedFindings : findings;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
       selectedFindings.push(`risky artifact path ${relativePath}`);
-      if (findings.length >= 50) return;
+      if (findings.length + derivedFindings.length >= 50) return;
     }
 
     const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     if (!stats || stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink > 1n)) {
       selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
-      if (findings.length >= 50) return;
+      if (findings.length + derivedFindings.length >= 50) return;
       continue;
     }
 
     if (stats.isDirectory()) {
       await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings);
-      if (findings.length >= 50) return;
+      if (findings.length + derivedFindings.length >= 50) return;
       continue;
     }
 
@@ -7099,7 +7099,7 @@ async function scanRunPublicSafetyDirectory(
     const text = bytes?.toString("utf8") ?? null;
     if (text !== null && containsSensitivePattern(text)) {
       selectedFindings.push(`sensitive text ${relativePath}`);
-      if (findings.length >= 50) return;
+      if (findings.length + derivedFindings.length >= 50) return;
     }
   }
 }
