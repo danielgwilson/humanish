@@ -4,6 +4,9 @@ import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { completionLabel } from "@/lib/signal";
 import { participantLabels } from "@/lib/participant-label";
 import { ParticipantAssignment } from "./participant-assignment";
+import { ParticipantAnalysis } from "./participant-analysis";
+import { ParticipantFeedback } from "./participant-feedback";
+import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
 
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
@@ -19,7 +22,7 @@ function evidenceLines(plain: string): TerminalLine[] {
 }
 
 // Frame-free lanes retain readable terminal output and their recorded events.
-export function ParticipantStub({ data, stream, updating = true, selectedEventId }: { data: ObserverData; stream: ObserverStream; updating?: boolean; selectedEventId?: string | undefined }) {
+export function ParticipantStub({ data, stream, updating = true, selectedEventId, analysisReview }: { data: ObserverData; stream: ObserverStream; updating?: boolean; selectedEventId?: string | undefined; analysisReview?: AnalysisReview | undefined }) {
   const selectedItem = traceItems(stream).find((item) => item.id === selectedEventId);
   const selectedEvent = stream.timeline.find((item) => item.id === selectedEventId);
   const terminal = evidenceLines(stream.terminalPlain);
@@ -34,6 +37,7 @@ export function ParticipantStub({ data, stream, updating = true, selectedEventId
   return (
     <div className="stub">
       <ParticipantAssignment stream={stream} />
+      {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
       {selectedEventId ? <section className="blk selected-recorded-entry" aria-label="Selected evidence" data-selected-entry={selectedEventId}>
         <h3 className="o-label">Recorded entry</h3>
         {selectedItem || selectedEvent ? <>
@@ -108,6 +112,7 @@ export function ParticipantStub({ data, stream, updating = true, selectedEventId
         ) : null}
       </div>
       {actor ? <div className="blk"><span className="o-label">Recorded reason, verbatim</span><p className="verbatim">{actor.reason}</p></div> : null}
+      <ParticipantFeedback data={data} stream={stream} />
       {stream.terminalPlain !== "" ? (
         <div className="blk">
           <span className="o-label">Recorded terminal output · lines {page * 50 + 1}–{Math.min((page + 1) * 50, terminal.length)} of {terminal.length}</span>

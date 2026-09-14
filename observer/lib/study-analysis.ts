@@ -142,17 +142,21 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
     messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
     findings: result?.findings.map((f) => {
-      const moments = [...new Set(f.observations.flatMap((o) => o.evidenceIds))].flatMap((key) => {
-        const e = evidence.get(key); return e ? [{ streamId: e.streamId, eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", note: f.observations.find((o) => o.evidenceIds.includes(key))?.claim ?? e.kind }] : [];
+      const cited = new Set(f.observations.flatMap((o) => o.evidenceIds));
+      const moments = [...cited].flatMap((key) => {
+        const e = evidence.get(key), observations = f.observations.filter((o) => o.evidenceIds.includes(key));
+        return e ? [{ streamId: e.streamId, eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", note: observations.map((o) => o.claim).join(" "), bases: [...new Set(observations.map((o) => o.basis))] }] : [];
       });
-      const accounts = result.participants.filter((p) => f.affectedStreamIds.includes(p.streamId)).flatMap((p) => p.feedback.map((q) => ({ text: q.text, label: labels.get(p.streamId) ?? p.streamId })));
+      const accounts = result.participants.filter((p) => f.affectedStreamIds.includes(p.streamId)).flatMap((p) => p.feedback.filter((q) => cited.has(q.evidenceId)).map((q) => ({ text: q.text, label: labels.get(p.streamId) ?? p.streamId, streamId: p.streamId, eventId: evidence.get(q.evidenceId)!.eventId })));
       return { id: f.id, title: f.title, impact: impact[f.impact], summary: f.summary,
         scope: `${f.affectedStreamIds.length} of ${f.exposedStreamIds.length} exposed participants affected`,
         limitation: [...new Set(f.observations.map((o) => o.limitation).filter(Boolean)), `Exposure: ${f.exposureReason}`, `Recovery: ${f.recovery === "not_observed" ? "not observed" : f.recovery}. Confidence: ${f.confidence}.`].join(" "),
-        nextStep: f.nextStep, priorityReason: f.priorityReason, account: accounts.map((q) => q.text).join("\n\n"), accountSource: accounts.map((q) => q.label).join(" · "), moments,
+        nextStep: f.nextStep, priorityReason: f.priorityReason, account: "", accountSource: "", accounts, observations: f.observations.map(({ claim, basis, limitation }) => ({ claim, basis, limitation })), moments,
         corrections: loaded.corrections.filter((c) => c.findingId === f.id).map((c) => ({ status: c.status, reason: c.reason, replacementClaim: c.replacementClaim, createdAt: c.createdAt })) };
     }) ?? [],
     outcomes: loaded.state === "ready" ? result?.participants.map((p) => ({ streamId: p.streamId, label: p.outcome.charAt(0).toUpperCase() + p.outcome.slice(1) })) ?? [] : [],
+    participants: result?.participants.map((p) => ({ streamId: p.streamId, summary: p.summary, intent: p.intent, outcome: p.outcome, outcomeReason: p.outcomeReason,
+      limitations: p.limitations, stale: loaded.state === "stale", moments: p.evidenceIds.flatMap((key) => { const e = evidence.get(key); return e ? [{ eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence" }] : []; }) })) ?? [],
     methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`, `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
       "This independent interpretation does not change the participant account or recorded completion evidence.", ...(a.config.question ? [`Additional review question: ${a.config.question}`] : [])] : [] };
 }

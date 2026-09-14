@@ -12,7 +12,15 @@ export interface StudyReport {
   scope: string;
   findings: StudyFinding[];
   outcomes: { streamId: string; label: string }[];
+  participants?: ParticipantAnalysis[];
   methodology: string[];
+}
+
+export type ObservationBasis = "visual" | "action" | "participant_statement" | "inference";
+export const basisLabel: Record<ObservationBasis, string> = { visual: "Visual observation", action: "Recorded action", participant_statement: "Participant statement", inference: "Inference" };
+export interface ParticipantAnalysis {
+  streamId: string; summary: string; intent: string; outcome: string; outcomeReason: string;
+  limitations: string[]; stale: boolean; moments: { eventId: string; label: string }[];
 }
 
 export interface StudyFinding {
@@ -27,9 +35,11 @@ export interface StudyFinding {
   priorityReason: string;
   account: string;
   accountSource: string;
+  accounts?: { text: string; label: string; streamId: string; eventId: string }[];
+  observations?: { claim: string; basis: ObservationBasis; limitation: string }[];
   leadEventId?: string;
   corrections?: { status: "confirmed" | "dismissed" | "amended"; reason: string; replacementClaim: string | null; createdAt: string }[];
-  moments: { streamId: string; eventId: string; label: string; note: string }[];
+  moments: { streamId: string; eventId: string; label: string; note: string; bases?: ObservationBasis[] }[];
 }
 
 export function resolveReportMoment(data: ObserverData, streamId: string, eventId: string) {

@@ -13,6 +13,7 @@ checked in the built Observer. Passing one does not imply the other passed.
 | Study navigation | Semantic links in `app.tsx`; study identity remains in `Topbar` | Findings and ordinary review cases check stable outer geometry, active branch, exact return source and reload |
 | Finding disclosure | Base UI Accordion in `study-report.tsx` | Collapsed ranked list, keyboard expansion, evidence links, bounded previews, empty/error/stale states and long content |
 | Participant inspector | Base UI Tabs in `player.tsx` | Actions, Details and Feedback retain their existing panel/keyboard semantics; recorded evidence remains distinct from analysis |
+| Participant statements and analysis | Native disclosures and source links in `participant-feedback.tsx` / `participant-analysis.tsx` | Statement pagination, original evidence navigation, per-speaker attribution, observation basis, stale interpretation and outcome explanation |
 | Playback scrubber | Native range input in `player.tsx`; application-owned CSS and marker overlay | Painted thumb/track alignment, endpoints, mouse/touch/keyboard behavior, focus and deliberately broken negative control |
 | Other native inputs/selects | Application-owned controls using Humanish tokens | Filter/density persistence, honest empty results, phone containment and keyboard journeys |
 | Comparison and saved moments | Application-level composition over the same evidence and primitives | Exact handoff, per-run clock limits, storage contents, re-entry and explicit origin |

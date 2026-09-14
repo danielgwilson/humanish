@@ -999,6 +999,43 @@ try {
     record.checks = { shell: before, bothPriorityRowsVisible: true, exactReference: expected.eventId, evidenceWidth };
     await snap("source-aware-recording");
   });
+  await runCase("analysis-attribution", { prepare() {
+    analysis = analysisFixture(data);
+    const finding = analysis.analysis.result.findings[0];
+    finding.affectedStreamIds = data.streams.map((s) => s.id);
+    finding.observations[0].basis = "inference";
+    for (const stream of data.streams) {
+      const e = analysis.analysis.evidence.find((e) => e.streamId === stream.id && e.eventId.endsWith(stream.id === "lane-3" ? "action-2" : "final"));
+      finding.observations.push({ claim: `Bounded statement about ${stream.id}.`, basis: stream.id === "lane-3" ? "action" : "participant_statement", evidenceIds: [e.id], limitation: "Synthetic source only." });
+    }
+    analysis.corrections.push({ schema: "humanish.study-analysis-correction.v1", id: "review-1", analysisId: analysis.analysis.id, analysisSha256: "a".repeat(64), findingId: "F1", findingSha256: "b".repeat(64), createdAt: "2026-01-01T00:02:00Z", status: "dismissed", reason: "Synthetic reviewer found this inconclusive.", replacementClaim: null });
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    assert.equal(await page.locator('[data-finding="F1"] [data-disposition]').innerText(), "Dismissed");
+    await page.locator('[data-finding="F1"]').click();
+    await page.locator('.report-evidence-caption').getByText("Inference · Capture shown for context", { exact: true }).waitFor();
+    await page.locator('.report-account summary').click();
+    assert.equal(await page.locator('.report-account figure').count(), 2, "Uncited third participant feedback leaked into the finding");
+    const speakers = await page.locator('.report-account figcaption').allTextContents();
+    assert.equal(new Set(speakers).size, 2, "Separate speakers were concatenated or lost");
+    assert.equal(new Set(await page.locator('.moment-source strong').allTextContents()).size, 3, "Evidence buttons lost participant identity");
+    await page.locator('.report-observations summary').click();
+    assert.equal(await page.locator('.report-observations .observation-basis').count(), 4);
+    await snap("attributed-findings");
+    await page.locator('.report-evidence').click();
+    await page.getByRole('tab', { name: 'details', exact: true }).click();
+    await page.locator('.participant-analysis summary').click();
+    await page.getByText('Synthetic interpretation kept separate from actor status.', { exact: true }).waitFor();
+    await page.locator('.participant-analysis-evidence a').first().click();
+    await page.getByRole('button', { name: /^Back to finding:/ }).waitFor();
+    await page.getByRole('tab', { name: 'Feedback', exact: true }).click();
+    await page.getByRole('region', { name: 'Original participant feedback' }).getByText('FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE', { exact: true }).waitFor();
+    await page.getByRole('link', { name: 'Open recorded statement', exact: true }).click();
+    assert(new URL(page.url()).hash.endsWith('/e/lane-1-final'));
+    await page.getByRole('button', { name: /^Back to finding:/ }).waitFor();
+    await page.setViewportSize({ width: 390, height: 844 }); await snap("phone-original-feedback");
+    record.checks = { citedSpeakers: speakers, uncitedQuoteExcluded: true, basisPreserved: true, dispositionVisible: true, independentOutcomeExplained: true, originalStatementSourceLinked: true };
+  });
   await runCase("analysis-states", { prepare() { analysis = analysisFixture(data, { empty: true }); } }, async ({ page, record, snap }) => {
     await page.getByRole("link", { name: /^Findings/ }).click();
     await page.getByRole("heading", { name: "No findings in the reviewed evidence", exact: true }).waitFor(); await snap("complete-empty");

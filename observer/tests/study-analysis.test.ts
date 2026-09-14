@@ -17,9 +17,24 @@ describe("independent analysis admission and projection", () => {
     expect(loaded.state).toBe("ready");
     const report = projectStudyAnalysis(loaded, data)!;
     expect(report.findings[0]?.scope).toBe("1 of 3 exposed participants affected");
-    expect(report.findings[0]?.account).toBe("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE");
+    expect(report.findings[0]?.accounts).toEqual([]);
     expect(report.findings[0]?.moments[0]).toMatchObject({ streamId: "lane-1", eventId: "lane-1-action-2" });
     expect(report.outcomes[0]).toEqual({ streamId: "lane-1", label: "Blocked" });
+    expect(report.participants?.[0]).toMatchObject({ summary: "Recorded synthetic activity.", intent: "Inspect the fictional interface.", outcomeReason: "Synthetic interpretation kept separate from actor status.", stale: false });
+  });
+  it("associates only cited quotes with their own speaker and preserves each observation basis", () => {
+    const saved = fixture(), finding = saved.analysis!.result!.findings[0]!;
+    finding.affectedStreamIds = ["lane-1", "lane-2"];
+    const quote = saved.analysis!.result!.participants[0]!.feedback[0]!;
+    const otherEvidence = saved.analysis!.evidence.find((e) => e.streamId === "lane-2" && e.kind === "screenshot")!;
+    finding.observations.push({ claim: "A cited participant statement.", basis: "participant_statement", evidenceIds: [quote.evidenceId], limitation: "Statement only." },
+      { claim: "A separate capture from the other affected participant.", basis: "visual", evidenceIds: [otherEvidence.id], limitation: "Does not cite that participant's feedback." });
+    const projected = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!.findings[0]!;
+    expect(projected.accounts).toHaveLength(1);
+    expect(projected.accounts?.[0]).toMatchObject({ streamId: "lane-1", eventId: "lane-1-final", text: quote.text });
+    expect(projected.accounts?.[0]?.label).toBeTruthy();
+    expect(projected.observations?.map((o) => o.basis)).toEqual(["action", "participant_statement", "visual"]);
+    expect(projected.moments.find((m) => m.eventId === "lane-1-final")?.bases).toEqual(["participant_statement"]);
   });
   it.each([
     (v: LoadedStudyAnalysis) => { v.analysis!.runId = "other-study"; },

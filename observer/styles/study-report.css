@@ -142,3 +142,26 @@
 .finding-correction span { display: block; margin-top: 8px; color: var(--muted); font-size: 11px; }
 .selected-recorded-entry { border-left: 2px solid var(--accent); padding-left: 12px; }
 .selected-recorded-entry pre { overflow-wrap: anywhere; white-space: pre-wrap; }
+.finding-disposition { padding: 1px 7px; border: 1px solid var(--line); border-radius: 3px; font: 11px/1.5 var(--mono); color: var(--body-c); }
+.report-observations { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+.report-observations summary { color: var(--muted); cursor: pointer; }
+.report-observations > div { margin-top: 12px; }
+.observation-basis { font: 10px/1.5 var(--mono); color: var(--label); }
+.observation-limit { color: var(--muted); margin-top: 4px; }
+.report-account figure { margin: 12px 0 0; }
+.report-account figcaption { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.report-moments button .moment-source { display: flex; flex-direction: column; gap: 2px; font: 12px/1.5 var(--sans); text-align: left; min-width: 0; }
+.moment-source strong { overflow-wrap: anywhere; }
+.moment-source > span { font-size: 11px; color: var(--muted); }
+.participant-analysis { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); font-size: 12px; line-height: 1.6; }
+.participant-analysis summary { cursor: pointer; color: var(--accent-ink); font-weight: 500; }
+.participant-analysis p, .participant-analysis dl, .participant-analysis ul, .participant-analysis-evidence { margin-top: 10px; }
+.participant-analysis dt { color: var(--muted); margin-top: 8px; }
+.participant-analysis dd { margin: 0; overflow-wrap: anywhere; }
+.participant-analysis ul, .participant-feedback ul { padding-left: 18px; }
+.participant-analysis-evidence { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.participant-analysis a, .participant-feedback a { color: var(--accent-ink); font-size: 12px; }
+.analysis-source-note { color: var(--muted); font-size: 11px; }
+.participant-feedback { margin-block: 16px; }
+.participant-feedback .verbatim { overflow-wrap: anywhere; }
+.participant-feedback nav { display: flex; flex-wrap: wrap; gap: 8px; }

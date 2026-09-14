@@ -14,6 +14,9 @@ import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
+import { ParticipantAnalysis } from "./participant-analysis";
+import { ParticipantFeedback } from "./participant-feedback";
+import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
 import "@/styles/player.css";
 
 type Tab = "actions" | "details" | "report";
@@ -49,10 +52,11 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange, recordedActorStatus }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange, recordedActorStatus, analysisReview }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
   initialEventId?: string | null;
   recordedActorStatus?: string | undefined;
+  analysisReview?: AnalysisReview | undefined;
   /** An explicit in-app navigation may repeat the original address after local seeking. */
   navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
@@ -420,6 +424,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           </div>
         </Tabs.Panel>
         <Tabs.Panel value="details" className="ipanel">
+            {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
             {!stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
             <div className="kv">
               <span className="k">Persona</span>
@@ -482,6 +487,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
                 <p className="verbatim">“{actor.reason}”</p>
               </div>
             ) : null}
+            <ParticipantFeedback data={data} stream={stream} />
             {data.run.knownGaps.length > 0 ? (
               <div className="blk">
                 <span className="o-label">Study-level gaps</span>
