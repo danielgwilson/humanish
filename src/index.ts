@@ -1,3 +1,7 @@
+export { ANALYZE_RESULT_SCHEMA, analyzeStudy, showStudyAnalysis, correctStudyAnalysis } from "./study-analysis-service.js";
+export type { AnalyzeOptions, AnalyzeResult, AnalyzeDeps } from "./study-analysis-service.js";
+export { STUDY_ANALYSIS_SCHEMA, STUDY_ANALYSIS_CORRECTION_SCHEMA } from "./study-analysis.js";
+export type { StudyAnalysisConfig, StudyAnalysisArtifact, StudyAnalysisResult, StudyAnalysisCorrection, LoadedStudyAnalysis } from "./study-analysis.js";
 export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,

@@ -28,6 +28,7 @@ const TEXT_EXTENSIONS = new Set([".json", ".ndjson", ".jsonl", ".md", ".txt", ".
 const OMITTED = new Map([
   ["observer/index.html", "regenerated Observer"],
   ["observer/observer-data.json", "regenerated Observer projection"],
+  ["observer/study-analysis.json", "analysis must be regenerated against derivative evidence"],
   ["status.json", "local process status is not a new attempt"],
   ["sandbox-receipts.ndjson", "operational journal does not confer a derivative resource lease"]
 ]);
@@ -57,6 +58,9 @@ function jsonBytes(value: unknown): Buffer {
 }
 
 function omittedReason(relative: string): string | undefined {
+  if (relative.startsWith("analysis/")) return "analysis and corrections bind original evidence hashes; reanalyze the derivative";
+  if (relative.startsWith("analysis-attempts/")) return "analysis execution receipts refer to the original evidence";
+  if (relative.startsWith(".analysis-lock/")) return "local analysis execution lock";
   return OMITTED.get(relative)
     ?? (["feedback/draft.json", "feedback/issue.md"].includes(relative) ? "regenerate feedback from derivative evidence" : undefined);
 }
