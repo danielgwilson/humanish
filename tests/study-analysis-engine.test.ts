@@ -112,6 +112,21 @@ describe("bounded study analysis engine", () => {
     expect(h.fetchFn).not.toHaveBeenCalled();
   });
 
+  it.each(["oversized-text", "invalid-id", "digest-mismatch", "wrong-stream", "invalid-control"])("refuses malformed %s packet metadata before dispatch", async kind => {
+    const packet = input();
+    if (kind === "oversized-text") packet.evidence[0]!.text = "x".repeat(16001);
+    if (kind === "invalid-id") packet.evidence[0]!.id = "../outside";
+    if (kind === "wrong-stream") packet.evidence[0]!.streamId = "other-participant";
+    if (kind === "invalid-control") packet.participants[0]!.label += "\u0000";
+    packet.inputDigest = digestStudyAnalysisInput(packet);
+    if (kind === "digest-mismatch") packet.inputDigest = "b".repeat(64);
+    expect(estimateStudyAnalysisAdmission(packet, config)).toMatchObject({ allowed: false, error: "analysis_input_invalid" });
+    const h = transport();
+    await expect(runStudyAnalysis(packet, config, { apiKey: "synthetic-key", fetch: h.fetchFn }))
+      .rejects.toThrow("ANALYSIS_INPUT_INVALID");
+    expect(h.fetchFn).not.toHaveBeenCalled();
+  });
+
   it("validates capture hashes before sending images and omits paths from model input", async () => {
     const packet = input();
     const bytes = syntheticPng1x1();

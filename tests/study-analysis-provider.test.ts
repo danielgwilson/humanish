@@ -101,13 +101,15 @@ describe("study analysis provider boundary", () => {
     expect(parseStudyAnalysisResponse(value).status).not.toBe("completed");
   });
 
-  it.each(["missing", "negative", "fractional", "missing-output", "overlapping-cache"])("keeps %s usage unknown instead of $0", kind => {
+  it.each(["missing", "negative", "fractional", "missing-output", "overlapping-cache", "excessive-count", "invalid-cache-count"])("keeps %s usage unknown instead of $0", kind => {
     const value = wire();
     if (kind === "missing") delete value.usage;
     if (kind === "negative") value.usage.input_tokens = -1;
     if (kind === "fractional") value.usage.output_tokens = 0.5;
     if (kind === "missing-output") delete value.usage.output_tokens;
     if (kind === "overlapping-cache") value.usage.input_tokens_details.cached_tokens = 13543;
+    if (kind === "excessive-count") value.usage.input_tokens = 1e12 + 1;
+    if (kind === "invalid-cache-count") value.usage.input_tokens_details.cache_write_tokens = "invalid";
     expect(parseStudyAnalysisResponse(value)).toMatchObject({ status: "completed", usage: null });
   });
 });

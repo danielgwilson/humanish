@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "./pricing.js";
 import { STUDY_ANALYSIS_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput } from "./study-analysis.js";
 import { createStudyAnalysisProvider } from "./study-analysis-provider.js";
-import { digestStudyAnalysisInput, hashStudyAnalysisValue, studyAnalysisResultJsonSchema, validateAnalysisResult } from "./study-analysis-validation.js";
+import { hashStudyAnalysisValue, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-1";
 const SUPPORTED_MODELS = new Set(["gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
@@ -51,14 +51,8 @@ function evidenceText(input: StudyAnalysisInput): string {
 }
 
 function inputError(input: StudyAnalysisInput): string | null {
-  if (input.inputDigest !== digestStudyAnalysisInput(input)) return "analysis_input_changed";
-  const included = new Set(input.coverage.includedStreamIds);
-  const participantIds = input.participants.map(participant => participant.streamId);
-  if (included.size !== input.coverage.includedStreamIds.length
-    || new Set(participantIds).size !== participantIds.length || participantIds.length !== included.size
-    || participantIds.some(id => !included.has(id)) || input.evidence.some(item => !included.has(item.streamId))
-    || input.coverage.omittedStreamIds.some(id => included.has(id))
-    || (input.coverage.complete && (input.coverage.omittedStreamIds.length > 0 || input.coverage.omissions.length > 0))) return "analysis_input_invalid";
+  try { validateStudyAnalysisInputMetadata(input); }
+  catch { return "analysis_input_invalid"; }
   if (!input.participants.length || input.participants.length > 16 || !input.evidence.length || input.evidence.length > 800
     || input.images.length > 128 || Buffer.byteLength(evidenceText(input)) > MAX_EVIDENCE_BYTES) return "analysis_input_limit";
   if (new Set(input.evidence.map(item => item.id)).size !== input.evidence.length
@@ -127,6 +121,7 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   input = structuredClone(input);
   config = structuredClone(config);
   const createdAt = new Date().toISOString();
+  validateStudyAnalysisInputMetadata(input);
   const admission = estimateStudyAnalysisAdmission(input, config);
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
   const artifact: StudyAnalysisArtifact = {

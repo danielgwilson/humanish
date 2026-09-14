@@ -35,7 +35,7 @@ const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const INPUT_IMAGE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value)
   ? value as Record<string, unknown> : {};
-const count = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
+const count = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1e12;
 
 function usageOf(raw: unknown): StudyAnalysisTokenUsage | null {
   const usage = record(record(raw).usage);
