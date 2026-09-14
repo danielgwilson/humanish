@@ -17,6 +17,7 @@ import {
 import { defaultRedactionHooks } from "../src/redaction.js";
 import { participantFeedbackCandidates } from "../src/cua-actor-lab.js";
 import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../src/run.js";
+import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
 
 const FAKE_CAPS: ActorCapabilities = {
   headless: true,
@@ -560,6 +561,47 @@ describe("runComputerUseLoop", () => {
       title: "computer-use loop error",
       text: "phase: executing click (11, 22); error: Error; message: desktop actuator exited 1; last action: click (11, 22)"
     });
+  });
+
+  it("ends after partial native typing without recording a skipped or completed action", async () => {
+    const text = "synthetic typing secret";
+    let partialValue = "";
+    let inputCommands = 0;
+    let otherInput = 0;
+    const unexpected = () => { otherInput += 1; };
+    const desktop: E2BDesktopLike = {
+      screenshot: frame, leftClick: unexpected, rightClick: unexpected, middleClick: unexpected,
+      doubleClick: unexpected, moveMouse: unexpected, scroll: unexpected, drag: unexpected,
+      wait: unexpected, write: unexpected, press: unexpected,
+      files: { write: async () => undefined },
+      commands: { run: async command => {
+        if (command.includes("xdotool type --delay")) {
+          inputCommands += 1;
+          partialValue = "synthetic";
+          throw commandExitError({ exitCode: 1, stderr: text });
+        }
+        return { exitCode: 0 };
+      } },
+    };
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "type", text }, { kind: "click", x: 5, y: 5 }], pendingSafetyChecks: [], done: false },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done" },
+    ]);
+    const result = await runComputerUseLoop({
+      instructions: "go", provider, executor: createE2BDesktopExecutor(desktop, { nativeTyping: true }),
+      persona, redaction: defaultRedactionHooks, timeoutMs: 10_000_000, now: monotonicClock(),
+    });
+    expect(result.completionReason).toBe("actor_error");
+    expect(result.status).toBe("failed");
+    expect(partialValue).toBe("synthetic");
+    expect(inputCommands).toBe(1);
+    expect(otherInput).toBe(0);
+    expect(provider.seen).toHaveLength(1);
+    expect(result.trace.items.some(item => item.title === "action skipped: desktop command failed")).toBe(false);
+    expect(result.trace.items.filter(item => item.kind === "ui_action")).toHaveLength(0);
+    expect(result.trace.items.at(-1)?.text).toContain("CuaTypeInputError");
+    expect(result.trace.items.at(-1)?.text).toContain("input may be partial");
+    expect(JSON.stringify(result.trace)).not.toContain(text);
   });
 
   it("reads the fixed closing line the prompt asks for, and nothing looser (#570, second half)", async () => {

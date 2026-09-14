@@ -293,6 +293,35 @@ not cost — a live scripted run drives a real browser against a real running ap
 declaration as spend. "Live" on this route must never silently come to mean "costs money";
 this paragraph is the record of that decision.
 
+## Managed E2B text input
+
+Humanish-managed E2B desktops opt into `nativeTyping: true` on the desktop
+executor. Text is transferred as UTF-8 file data, then one native xdotool
+command types into the focused window with a 75ms delay. This preserves the
+current caret and selected range; it does not select all, paste, normalize
+text, or set DOM values. Newlines and tabs remain keyboard events, whose
+effects depend on the target control.
+
+A native action accepts at most 2,048 Unicode scalar values. Empty text sends
+no input; NUL, malformed UTF-16 and over-limit values are rejected before
+input. The native process uses GNU timeout: 180 seconds, then a one-second
+forced-stop grace period. Longer text must be split into explicit participant
+actions. This is a new per-action compatibility limit, not an arbitrary-Unicode
+guarantee. Images need xdotool, GNU timeout and the `C.UTF-8` locale.
+
+An input error, missing completion status, or native diagnostic output stops
+the action as uncertain: some text may already be present. The executor never
+replays the full text through SDK typing or clipboard paste. These errors are
+fatal to the participant loop and are not recorded as unactuated skipped
+commands. An abort closes new input dispatch after asynchronous preparation;
+it does not prove already admitted keystrokes stopped immediately. The native
+runtime bound and owned sandbox cleanup remain necessary when the caller stops
+waiting. Temporary-file cleanup is tracked separately from process termination.
+
+Custom desktop ports retain their own successful `write(text)` path unless
+they explicitly opt into native typing. A failed custom write is also uncertain
+and is not replayed. Custom injected executors retain their own contract.
+
 ## Optional closing report
 
 `CuaProvider.debrief` is an optional read-only request after a structured

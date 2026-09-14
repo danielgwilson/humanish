@@ -3093,6 +3093,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(launchedBrowserFamily === "chromium"
           ? {
               executorOptions: {
+                nativeTyping: true,
                 observeBrowserState: makeChromeBrowserStateObserver(
                   desktop,
                   deps.requestTimeoutMs,
@@ -3132,7 +3133,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
                 )
               }
             }
-          : {}),
+          : { executorOptions: { nativeTyping: true } }),
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
         writeScreenshot,

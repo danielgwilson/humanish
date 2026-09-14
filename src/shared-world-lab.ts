@@ -980,6 +980,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             ...(launchedBrowserFamily === "chromium"
               ? {
                   executorOptions: {
+                    nativeTyping: true,
                     observeBrowserState: makeChromeBrowserStateObserver(
                       desktop,
                       requestTimeoutMs,
@@ -992,7 +993,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
                     )
                   }
                 }
-              : {}),
+              : { executorOptions: { nativeTyping: true } }),
             redactScreenshots,
             scrubText: scrubKnownValues,
             writeScreenshot,

@@ -3,7 +3,7 @@ import { PNG } from "pngjs";
 
 import type { CuaAction } from "../src/computer-use.js";
 import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
-import { createE2BDesktopExecutor, CuaTypeFallbackError, perceptualSignature } from "../src/e2b-desktop-executor.js";
+import { createE2BDesktopExecutor, CuaTypeInputError, perceptualSignature } from "../src/e2b-desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.
 interface Call {
@@ -149,37 +149,22 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     expect(calls).toEqual([{ method: "write", args: ["hello@example.test"] }]);
   });
 
-  it("falls back to clipboard paste when desktop.write fails and clipboard surfaces are present", async () => {
+  it("does not replay a failed custom write even when command/file surfaces exist", async () => {
     const { desktop, calls } = makeFakeDesktop(SHOT, {
       writeError: new Error("exit status 1"),
       withClipboardFallback: true
     });
-    const executor = createE2BDesktopExecutor(desktop);
-
-    await executor.execute({ kind: "type", text: "hello — with punctuation" });
-
-    expect(calls.map((call) => call.method)).toEqual([
-      "write",
-      "files.write",
-      "commands.run",
-      "press"
-    ]);
-    expect(calls[1]?.args[1]).toBe("hello — with punctuation");
-    expect(String(calls[2]?.args[0])).not.toContain("hello");
-    expect(calls[3]).toEqual({ method: "press", args: [["Control", "v"]] });
+    await expect(createE2BDesktopExecutor(desktop).execute({ kind: "type", text: "hello — with punctuation" }))
+      .rejects.toMatchObject({ name: "CuaTypeInputError", phase: "input-uncertain" });
+    expect(calls.map((call) => call.method)).toEqual(["write"]);
   });
 
-  it("throws a structured type-fallback error when clipboard fallback surfaces are unavailable", async () => {
-    const { desktop } = makeFakeDesktop(SHOT, {
-      writeError: new Error("exit status 1")
-    });
-    const executor = createE2BDesktopExecutor(desktop);
-
-    const error = await executor
-      .execute({ kind: "type", text: "hello" })
-      .catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(CuaTypeFallbackError);
-    expect((error as CuaTypeFallbackError).phase).toBe("clipboard-unavailable");
+  it("sanitizes an uncertain write failure on a minimal custom desktop", async () => {
+    const { desktop, calls } = makeFakeDesktop(SHOT, { writeError: new Error("secret typed content") });
+    const error = await createE2BDesktopExecutor(desktop).execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CuaTypeInputError);
+    expect(String(error)).not.toContain("secret typed content");
+    expect(calls.map((call) => call.method)).toEqual(["write"]);
   });
 
   it("maps keypress to press(keys array)", async () => {
