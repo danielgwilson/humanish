@@ -6,7 +6,8 @@ export const hashBytes = (bytes: Buffer): string => createHash("sha256").update(
 export function syntheticInput(): StudyAnalysisInput {
   const input: StudyAnalysisInput = {
     runId: "synthetic-study", sourceRunSha256: "a".repeat(64), inputDigest: "",
-    participants: [{ streamId: "participant-a", label: "Participant A", assignment: "Create an item.", recordedStatus: "complete", recordedReason: "Finished." }],
+    participants: [{ streamId: "participant-a", label: "Participant A", assignment: "Create an item.", recordedStatus: "complete", recordedReason: "Finished.",
+      provenance: { actorStatus: null, completionReason: null, stopCause: null, goalSource: null, declaredOutcome: null, taskOutcomes: null } }],
     coverage: { includedStreamIds: ["participant-a"], omittedStreamIds: [], evidenceCount: 2, captureCount: 1, complete: true, omissions: [] },
     evidence: [
       { id: "e000001", streamId: "participant-a", eventId: "capture-1", kind: "screenshot", text: "Capture", quoteEligible: false,

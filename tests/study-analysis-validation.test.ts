@@ -111,4 +111,18 @@ describe("study analysis validation", () => {
     expect(() => validateStudyAnalysisExecutionReceipt(receipt)).toThrow("ANALYSIS_USAGE_INVALID");
   });
 
+
+  it("bounds and validates task provenance before dispatch", () => {
+    for (const tasks of [
+      [{ taskId: "task-1", completed: false, observable: true, inputsObserved: null, turn: -1 }],
+      Array.from({ length: 129 }, (_, index) => ({ taskId: `task-${index}`, completed: false, observable: true, inputsObserved: null, turn: null })),
+      Array.from({ length: 2 }, () => ({ taskId: "duplicate", completed: false, observable: true, inputsObserved: null, turn: null }))
+    ]) {
+      const input = syntheticInput();
+      input.participants[0]!.provenance.taskOutcomes = tasks;
+      input.inputDigest = digestStudyAnalysisInput(input);
+      expect(() => validateStudyAnalysisInputMetadata(input)).toThrow("ANALYSIS_INPUT_INVALID");
+    }
+  });
+
 });

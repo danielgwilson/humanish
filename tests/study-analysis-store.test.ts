@@ -238,4 +238,82 @@ describe("immutable study analysis store", () => {
     expect(captured.images).toHaveLength(1);
   });
 
+
+  it("retains completion provenance separately from participant declarations and task measurements", async () => {
+    const changed = JSON.parse(source.toString());
+    Object.assign(changed.streams[0].actor, {
+      status: "passed", completionReason: "goal_satisfied", lane: "computer-use", protocol: "cua-loop",
+      declaredOutcome: "blocked", taskFunnel: { tasks: [
+        { id: "first-task", completed: true, observable: true, turn: 0 },
+        { id: "unmeasured-task", completed: false, observable: true, inputsObserved: false },
+        { id: "unobservable-task", completed: false, observable: false }
+      ] }
+    });
+    for (const item of changed.streams[0].actor.items) item.lifecycle = "completed";
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    const captured = await captureStudyEvidence(prepared, source);
+    expect(captured.participants[0]).toMatchObject({ recordedStatus: "complete", provenance: {
+      actorStatus: "passed", completionReason: "goal_satisfied", stopCause: null,
+      goalSource: "participant_report", declaredOutcome: "blocked", taskOutcomes: [
+        { taskId: "first-task", completed: true, observable: true, inputsObserved: null, turn: 0 },
+        { taskId: "unmeasured-task", completed: false, observable: true, inputsObserved: false, turn: null },
+        { taskId: "unobservable-task", completed: false, observable: false, inputsObserved: null, turn: null }
+      ]
+    } });
+    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadStudyAnalysis(prepared)).analysis?.participants).toEqual(captured.participants);
+    expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+  });
+
+  it("uses condition-matched provenance only for the recorded harness notice and preserves explicit interruption causes", async () => {
+    const changed = JSON.parse(source.toString());
+    Object.assign(changed.streams[0].actor, { status: "passed", completionReason: "goal_satisfied", lane: "computer-use", protocol: "cua-loop" });
+    for (const item of changed.streams[0].actor.items) item.lifecycle = "completed";
+    changed.streams[0].actor.items.push({ id: "matched-1", kind: "notice", lifecycle: "completed", status: "matched", title: "stopWhen matched: synthetic-check" });
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    expect((await captureStudyEvidence(prepared, source)).participants[0]!.provenance.goalSource).toBe("condition_matched");
+    Object.assign(changed.streams[0].actor, { status: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit" });
+    changed.streams[0].status = "incomplete";
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    expect((await captureStudyEvidence(prepared, source)).participants[0]!.provenance).toMatchObject({
+      actorStatus: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit", goalSource: null
+    });
+  });
+
+  it("preserves null versus an explicitly empty task measurement and rejects forged provenance", async () => {
+    expect(input.participants[0]!.provenance).toEqual({ actorStatus: null, completionReason: null, stopCause: null,
+      goalSource: null, declaredOutcome: null, taskOutcomes: null });
+    const changed = JSON.parse(source.toString());
+    changed.streams[0].actor.taskFunnel = { tasks: [] };
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    const captured = await captureStudyEvidence(prepared, source);
+    expect(captured.participants[0]!.provenance.taskOutcomes).toEqual([]);
+    const forged = syntheticArtifact(captured);
+    forged.participants[0]!.provenance.declaredOutcome = "reached";
+    forged.inputDigest = digestStudyAnalysisInput(forged);
+    await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow("ANALYSIS_PARTICIPANT_INPUT_INVALID");
+  });
+
+  it("ignores unrelated legacy analysis files while retaining producer-record and link rejection", async () => {
+    const directory = path.join(prepared.physicalRunRoot, "analysis");
+    await mkdir(directory);
+    await writeFile(path.join(directory, "frame.png"), png);
+    await writeFile(path.join(directory, "observations.txt"), "Synthetic legacy observations.");
+    expect(await loadStudyAnalysis(prepared)).toEqual({ state: "none", analysis: null, corrections: [], warnings: [] });
+    await writeFile(path.join(directory, "analysis.json"), "{}");
+    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+    await rm(path.join(directory, "analysis.json"));
+    const outside = path.join(cwd, "outside.txt");
+    await writeFile(outside, "Synthetic unrelated file.");
+    await link(outside, path.join(directory, "linked.txt"));
+    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+    await rm(path.join(directory, "linked.txt"));
+    await symlink(outside, path.join(directory, ".humanish-write-synthetic.tmp"));
+    expect((await loadStudyAnalysis(prepared)).state).toBe("invalid");
+  });
+
 });

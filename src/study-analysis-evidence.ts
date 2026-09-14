@@ -1,10 +1,11 @@
+import { cuaGoalSource } from "./actor-goal-source.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import type { PreparedRunArtifactPaths } from "./run-paths.js";
 import type { ActorTraceItem } from "./actor-contract.js";
 import type { RunBundle, RunStream } from "./run.js";
-import type { AnalysisEvidence, StudyAnalysisArtifact, StudyAnalysisInput } from "./study-analysis.js";
-import { digestStudyAnalysisInput, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
+import type { AnalysisEvidence, AnalysisParticipantInput, StudyAnalysisArtifact, StudyAnalysisInput } from "./study-analysis.js";
+import { digestStudyAnalysisInput, hashStudyAnalysisValue, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -180,6 +181,30 @@ function isObserverCapturePath(value: string): boolean {
   return false;
 }
 
+function participantSource(stream: RunStream): AnalysisParticipantInput {
+  const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
+    ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
+  const actor = stream.actor;
+  return {
+    streamId: stream.id,
+    label: boundedText(stream.label, 1000),
+    assignment: assignment === null ? null : boundedText(assignment, 8000),
+    recordedStatus: stream.status,
+    recordedReason: actor?.reason === undefined ? null : boundedText(actor.reason, 4000),
+    provenance: {
+      actorStatus: actor?.status ?? null,
+      completionReason: actor?.completionReason ?? null,
+      stopCause: actor?.stopCause ?? null,
+      goalSource: cuaGoalSource(actor, stream.status) ?? null,
+      declaredOutcome: actor?.declaredOutcome ?? null,
+      taskOutcomes: actor?.taskFunnel === undefined ? null : actor.taskFunnel.tasks.map((task) => ({
+        taskId: task.id, completed: task.completed, observable: task.observable,
+        inputsObserved: task.inputsObserved ?? null, turn: task.turn ?? null
+      }))
+    }
+  };
+}
+
 interface SourceEntry {
   eventId: string;
   kind: string;
@@ -248,15 +273,13 @@ export async function captureStudyEvidence(
   let textBytes = 0;
   let imageBytes = 0;
   const participants = selected.map((stream) => {
+    const participant = participantSource(stream);
     const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
       ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
-    const reason = stream.actor?.reason ?? null;
-    const label = boundedText(stream.label, 1000);
-    const safeAssignment = assignment === null ? null : boundedText(assignment, 8000);
-    const safeReason = reason === null ? null : boundedText(reason, 4000);
-    if (label !== stream.label || safeAssignment !== assignment || safeReason !== reason) omissions.add("Participant context exceeded the text limit.");
-    textBytes += Buffer.byteLength(label) + Buffer.byteLength(safeAssignment ?? "") + Buffer.byteLength(safeReason ?? "");
-    return { streamId: stream.id, label, assignment: safeAssignment, recordedStatus: stream.status, recordedReason: safeReason };
+    if (participant.label !== stream.label || participant.assignment !== assignment
+      || participant.recordedReason !== (stream.actor?.reason ?? null)) omissions.add("Participant context exceeded the text limit.");
+    textBytes += Buffer.byteLength(JSON.stringify(participant));
+    return participant;
   });
   if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
   for (const stream of selected) {
@@ -321,12 +344,7 @@ export async function validateStudyAnalysisEvidence(
   if (context.size !== included.size || artifact.participants.length !== included.size) throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
   for (const stream of bundle.streams.filter((candidate) => included.has(candidate.id))) {
     const participant = context.get(stream.id);
-    const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
-      ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
-    if (!participant || participant.label !== boundedText(stream.label, 1000)
-      || participant.assignment !== (assignment === null ? null : boundedText(assignment, 8000))
-      || participant.recordedStatus !== stream.status
-      || participant.recordedReason !== (stream.actor?.reason === undefined ? null : boundedText(stream.actor.reason, 4000))) {
+    if (!participant || hashStudyAnalysisValue(participant) !== hashStudyAnalysisValue(participantSource(stream))) {
       throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
     }
   }

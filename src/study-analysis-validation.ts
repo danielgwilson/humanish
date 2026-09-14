@@ -89,6 +89,24 @@ export const studyAnalysisEvidenceSchema = z.object({
   }).strict().nullable()
 }).strict();
 
+export const studyAnalysisParticipantProvenanceSchema = z.object({
+  actorStatus: z.enum(["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"]).nullable(),
+  completionReason: z.enum(["goal_satisfied", "turn_completed", "gave_up", "blocked_approval", "timed_out",
+    "budget_reached", "actor_error", "step_failed", "harness_error"]).nullable(),
+  stopCause: z.enum(["provider_output_limit", "provider_token_limit", "time_limit", "spend_limit",
+    "study_spend_limit", "adapter_limit", "provider_incomplete", "provider_status", "harness_aborted"]).nullable(),
+  goalSource: z.enum(["participant_report", "condition_matched", "unavailable"]).nullable(),
+  declaredOutcome: z.enum(["reached", "not_reached", "blocked"]).nullable(),
+  taskOutcomes: z.array(z.object({
+    taskId: sourceId,
+    completed: z.boolean(),
+    observable: z.boolean(),
+    inputsObserved: z.boolean().nullable(),
+    turn: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullable()
+  }).strict()).max(128).refine((tasks) => new Set(tasks.map((task) => task.taskId)).size === tasks.length,
+    "Task IDs must be distinct.").nullable()
+}).strict();
+
 export const studyAnalysisArtifactSchema = z.object({
   schema: z.literal(STUDY_ANALYSIS_SCHEMA),
   id,
@@ -124,7 +142,8 @@ export const studyAnalysisArtifactSchema = z.object({
     label: text(1000),
     assignment: text(8000).nullable(),
     recordedStatus: text(128).min(1),
-    recordedReason: text(4000).nullable()
+    recordedReason: text(4000).nullable(),
+    provenance: studyAnalysisParticipantProvenanceSchema
   }).strict()).max(128),
   coverage: studyAnalysisCoverageSchema,
   evidence: z.array(studyAnalysisEvidenceSchema).max(2000),

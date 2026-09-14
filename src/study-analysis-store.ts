@@ -13,6 +13,7 @@ import {
   type PreparedSelectedOutputDirectory
 } from "./selected-output-paths.js";
 import {
+  isStudyEvidencePath,
   readBoundedStudyFile,
   STUDY_EVIDENCE_LIMITS,
   validateStudyAnalysisEvidence
@@ -78,7 +79,7 @@ export async function writeStudyAnalysis(prepared: PreparedRunArtifactPaths, val
   await writeContainedOutputFile(claimed, "analysis.json", bytes);
 }
 
-async function directoryIds(root: PreparedSelectedOutputDirectory, limit: number): Promise<{ ids: string[]; warnings: string[] }> {
+async function directoryIds(root: PreparedSelectedOutputDirectory, limit: number, ignoreLegacyFiles = false): Promise<{ ids: string[]; warnings: string[] }> {
   await assertPreparedSelectedOutputDirectory(root);
   const directory = await opendir(root.physicalPath);
   const ids: string[] = [];
@@ -86,8 +87,21 @@ async function directoryIds(root: PreparedSelectedOutputDirectory, limit: number
   let count = 0;
   for await (const entry of directory) {
     if (++count > limit) throw new Error("ANALYSIS_INVENTORY_LIMIT");
-    if (!safeId(entry.name) || !entry.isDirectory() || entry.isSymbolicLink()) {
-      if (!entry.name.startsWith(".humanish-write-")) warnings.push("ANALYSIS_UNSAFE_ENTRY_IGNORED");
+    const stats = await lstat(path.join(root.physicalPath, entry.name)).catch(() => null);
+    if (!stats) continue;
+    if (stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink !== 1)) {
+      warnings.push("ANALYSIS_UNSAFE_ENTRY_IGNORED");
+      continue;
+    }
+    if (stats.isFile()) {
+      if (entry.name.startsWith(".humanish-write-")) continue;
+      if (ignoreLegacyFiles && isStudyEvidencePath(entry.name)
+        && !["analysis.json", "correction.json", "receipt.json"].includes(entry.name)) continue;
+      warnings.push("ANALYSIS_UNSAFE_ENTRY_IGNORED");
+      continue;
+    }
+    if (!safeId(entry.name)) {
+      warnings.push("ANALYSIS_UNSAFE_ENTRY_IGNORED");
       continue;
     }
     ids.push(entry.name);
@@ -141,7 +155,7 @@ export async function listStudyAnalyses(prepared: PreparedRunArtifactPaths): Pro
   try {
     const root = await existingRoot(prepared);
     if (!root) return [];
-    const inventory = await directoryIds(root, MAX_VERSIONS);
+    const inventory = await directoryIds(root, MAX_VERSIONS, true);
     const source = await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes);
     const results: StudyAnalysisListEntry[] = [];
     for (const id of inventory.ids) {
