@@ -1011,7 +1011,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         // old keystrokes could otherwise land in that next participant's browser.
         const unsettledTyping = hasUnsettledDesktopTyping(desktop);
         if (unsettledTyping) {
-          sessionError = `Role "${spec.roleId}" left typing pending or uncertain; the shared desktop cannot be reused. Later participants will not start; owned sandbox cleanup follows.`;
+          sessionError = `Role "${spec.roleId}" left typing pending or uncertain; the shared desktop cannot be reused. Later participants will not start.`;
           warnings.push(sessionError);
         }
 
