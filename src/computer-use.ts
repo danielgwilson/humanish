@@ -291,8 +291,8 @@ export interface CuaLoopOptions {
   /**
    * FAIL-CLOSED spend cap (USD). When set, the loop aborts (completionReason "budget_reached")
    * the moment the running ESTIMATED spend crosses it, BEFORE the next provider turn — the
-   * runaway-retry-loop guard. Absent = uncapped (the historical CUA behavior). maxUsd: 0 means
-   * no-spend (any measurable estimate > 0 aborts). Enforcement needs a measurable estimate, so
+   * runaway-retry-loop guard. Absent = uncapped (the historical CUA behavior). maxUsd: 0 can
+   * still permit a model request before its reported positive spend trips the check. Enforcement needs a measurable estimate, so
    * the lab refuses a cap on an unpriced model at PREFLIGHT rather than running uncapped.
    */
   maxUsd?: number;
@@ -312,6 +312,9 @@ export interface CuaLoopOptions {
    * limit, not this participant's runaway, so it never reads as `gave_up`.
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
+  /** Fail closed on unavailable request usage for routes requiring complete cap accounting.
+   * Enabled by sequential capped studies; absent preserves other routes' existing behavior. */
+  requireReportedUsageForSpendCap?: boolean;
   /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
    * after EVERY executor.observe() (the initial observe and each post-action observe), so the
@@ -703,6 +706,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     maxUsd,
     overRunBudget,
     estimateTurnCostUsd,
+    requireReportedUsageForSpendCap = false,
     onObservedUrl,
     onMessage,
     onScreenshot,
@@ -879,6 +883,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     reason = "the adapter reported a local admission limit before provider dispatch; the participant did not report completion. No actions or closing request followed the refusal.";
     record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "warn",
       title: "adapter admission limit reached", text: reason });
+  };
+
+  const requiresUsage = requireReportedUsageForSpendCap && (maxUsd !== undefined || overRunBudget !== undefined);
+  const stopForUnreportedUsage = (): void => {
+    unreportedInteractionUsage = true;
+    completionReason = "harness_error";
+    stopCause = "usage_unreported";
+    reason = "provider usage is unavailable for a request, so the declared model-spend cap cannot be established; no further participant or closing request was dispatched";
+    record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
+      title: "provider usage unavailable", text: reason });
   };
 
   // A vision provider against a screenshot-less observation is a fail-closed harness error, not
@@ -1061,10 +1075,22 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // and cost the lane its whole remaining budget. One retry with a notice; then the lane ends
       // as harness_error, named, instead of thirty silent minutes.
       let turn: CuaTurn;
+      // A timeout race alone does not cancel its losing provider promise. Strict accounting
+      // owns this signal so a delayed transport failure cannot retry after the loop has ended.
+      const requestController = requiresUsage ? new AbortController() : undefined;
+      const onRequestAbort = (): void => requestController?.abort();
+      if (requestController) {
+        if (signal?.aborted) requestController.abort();
+        else signal?.addEventListener("abort", onRequestAbort, { once: true });
+      }
+      const requestSignal = requestController?.signal ?? signal ?? neverAbort;
       try {
-        turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, signal ?? neverAbort), remaining(), turnTimeoutMs, signal);
+        turn = await raceBounded(`provider turn ${turnNumber}`, provider.nextTurn(request, requestSignal), remaining(), turnTimeoutMs, signal);
       } catch (error) {
         if (isCuaAdmissionLimitError(error)) { stopForAdmissionLimit(); break; }
+        // A thrown request may have been billed without returning usage. Admission refusal is
+        // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
+        if (requiresUsage) { stopForUnreportedUsage(); break; }
         if (!(error instanceof CuaStallError)) throw error;
         unreportedInteractionUsage = true;
         record({
@@ -1093,6 +1119,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           });
           break;
         }
+      } finally {
+        if (requestController) signal?.removeEventListener("abort", onRequestAbort);
+        requestController?.abort();
       }
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
@@ -1125,6 +1154,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             : "the provider returned an explicitly incomplete response; the participant did not report completion. No actions or closing request followed the incomplete response.";
         record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: tokenLimit ? "warn" : "error",
           title: tokenLimit ? "provider token limit reached" : unexpectedStatus ? "unexpected provider response status" : "provider response incomplete", text: reason });
+        break;
+      }
+      if (requiresUsage && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
+        stopForUnreportedUsage();
         break;
       }
       // RUNTIME-ONLY: hand the model's narration back so the concurrent host-first barrier can read
@@ -1683,7 +1716,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
-    ...(hasUnreportedInteractionUsage() ? { interactionUsageIncomplete: true as const } : {}),
+    ...(hasUnreportedInteractionUsage() || (requiresUsage && incompleteInteractionUsage) ? { interactionUsageIncomplete: true as const } : {}),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),

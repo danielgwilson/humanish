@@ -752,6 +752,17 @@ export interface SharedWorldTurn {
 
 export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
 
+/** Declared seats that were never started after one executed sequential role stopped the run.
+ * The executed timeline plus this ordered tail must account for every declared sim/stream. */
+export interface SharedWorldSkippedTail {
+  afterRoleId: string;
+  roles: Array<{ roleId: string; simId: string; streamId: string }>;
+  cause: "harness_error" | "session_error" | "usage_unreported" | "study_spend_limit";
+  /** Present only for a measured aggregate threshold; estimates, not provider billing. */
+  maxTotalUsd?: number;
+  estimatedTotalUsd?: number;
+}
+
 /**
  * The shared-world evidence block (`humanish.shared-world.v1`). TWO variants discriminated by
  * `topologyMode` (FIX-8 — renamed off `RunBundle.mode` to avoid the dry-run|live collision):
@@ -797,6 +808,8 @@ export interface SharedWorldEvidence {
   /** The role ids that actually took a turn, in declared order. */
   sequence?: string[];
   timeline?: SharedWorldTimelineEntry[];
+  /** Explicit unstarted suffix; absent on historical/full-execution bundles. */
+  skippedTail?: SharedWorldSkippedTail;
   // --- CONCURRENT shape ---
   /** Per-actor harness-clocked windows (overlap proves simultaneity). */
   laneWindows?: SharedWorldLaneWindow[];
@@ -6362,7 +6375,7 @@ const SHARED_WORLD_STATESERIES_KEYS = new Set(["timestamp", "digest"]);
  */
 function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   if (bundle.mode !== "live") {
-    return [];
+    return bundle.sharedWorld?.skippedTail === undefined ? [] : ["skippedTail requires a live executed interruption"];
   }
   const sw = bundle.sharedWorld;
   if (!sw) {
@@ -6374,6 +6387,9 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   }
   // FIX-8: dispatch on topologyMode FIRST; unknown/missing → fail closed.
   const topologyMode = (sw as { topologyMode?: unknown }).topologyMode;
+  if (topologyMode !== "sequential" && sw.skippedTail !== undefined) {
+    return ["skippedTail is only valid on sequential shared-world evidence"];
+  }
   if (topologyMode === "sequential") {
     return sequentialSharedWorldFindings(bundle, sw);
   }
@@ -6407,6 +6423,91 @@ function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): 
   return findings;
 }
 
+/** Validate the declared suffix against the executed prefix and existing participant evidence. */
+function sequentialSkippedTailFindings(
+  bundle: RunBundle, sw: SharedWorldEvidence, sequence: string[], turns: Record<string, unknown>[]
+): string[] {
+  const failures: string[] = [];
+  const reject = (message: string): void => { failures.push(`skippedTail: ${message}`); };
+  const tail: unknown = sw.skippedTail;
+  if (!isRecord(tail) || !Array.isArray(tail.roles) || tail.roles.length === 0 || !tail.roles.every(isRecord)) {
+    return ["skippedTail: a nonempty declared role suffix is required"];
+  }
+  const roster = [...turns, ...tail.roles];
+  if (!Number.isSafeInteger(sw.roleCount) || sw.roleCount < 1
+    || roster.length !== sw.roleCount || bundle.simCount !== sw.roleCount
+    || bundle.simulations.length !== sw.roleCount || bundle.streams.length !== sw.roleCount
+    || sequence.length !== turns.length || turns.length === 0) {
+    reject("executed prefix and blocked suffix must account for every declared simulation and stream");
+  }
+  for (const key of ["roleId", "simId", "streamId"] as const) {
+    const ids = roster.map(role => role[key]);
+    if (ids.some(id => typeof id !== "string" || id.length === 0) || new Set(ids).size !== ids.length) {
+      reject(`declared ${key} values must be nonempty and unique`);
+    }
+  }
+  if (tail.afterRoleId !== sequence.at(-1) || tail.afterRoleId !== turns.at(-1)?.roleId) {
+    reject("blocker must be the immediately preceding executed role");
+  }
+  if (bundle.review.verdict === "pass") reject("blocked participants cannot accompany a passed run review");
+  roster.forEach((role, index) => {
+    const sim = bundle.simulations[index], stream = bundle.streams[index];
+    if (!sim || !stream || sim.index !== index + 1 || role.simId !== sim.id || role.streamId !== stream.id
+      || stream.simId !== sim.id || sim.streamIds.length !== 1 || sim.streamIds[0] !== stream.id) {
+      reject("ordered role, simulation and stream identities must agree");
+      return;
+    }
+    const roleEvents = bundle.events.filter(event => event.simId === sim.id && event.streamId === stream.id);
+    if (index < turns.length) {
+      if (!stream.actor && !roleEvents.some(event => event.type === "shared-world.session.error")) {
+        reject("an executed role needs an actor or an explicit attempted-session error");
+      }
+      return;
+    }
+    if (sim.status !== "blocked" || stream.status !== "blocked"
+      || stream.actor !== undefined || stream.liveActor !== undefined || stream.embed?.kind !== "placeholder"
+      || stream.ui?.actorStatus !== undefined || stream.ui?.screenshotUrl !== undefined
+      || stream.artifacts.some(artifact => artifact.kind === "trace" || artifact.kind === "screenshot")
+      || typeof sim.currentStep !== "string" || sim.currentStep.length === 0 || stream.ui?.state !== sim.currentStep) {
+      reject("an unstarted role must be blocked with a reason and no actor, trace or screenshot");
+    }
+    const sessionEvents = roleEvents.filter(event => event.type.startsWith("shared-world.session."));
+    if (sessionEvents.length !== 1 || sessionEvents[0]?.type !== "shared-world.session.blocked") {
+      reject("each unstarted role needs exactly one blocked session event");
+    }
+  });
+  const predecessor = bundle.streams[turns.length - 1];
+  const actor = predecessor?.actor;
+  if (tail.cause === "session_error") {
+    if (!predecessor || !bundle.events.some(event => event.type === "shared-world.session.error"
+      && event.simId === predecessor.simId && event.streamId === predecessor.id)) {
+      reject("session_error requires the predecessor's explicit orchestration error");
+    }
+  } else if (tail.cause === "harness_error") {
+    if (actor?.completionReason !== "harness_error") reject("harness_error must match the predecessor actor");
+  } else if (tail.cause === "usage_unreported") {
+    if (!actor || !(actor.interactionUsageIncomplete === true || actor.debrief?.usageReported === false
+      || actor.estimatedCost?.estimatedCostUsd === null)) reject("usage_unreported requires recorded unavailable usage");
+  } else if (tail.cause === "study_spend_limit") {
+    const estimates = bundle.streams.slice(0, turns.length).map(stream => stream.actor?.estimatedCost?.estimatedCostUsd);
+    const allKnown = estimates.every(value => typeof value === "number" && Number.isFinite(value) && value >= 0)
+      && bundle.streams.slice(0, turns.length).every(stream => stream.actor?.interactionUsageIncomplete !== true
+        && stream.actor?.debrief?.usageReported !== false);
+    const sum = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
+    if (!allKnown || typeof tail.maxTotalUsd !== "number" || !Number.isFinite(tail.maxTotalUsd) || tail.maxTotalUsd < 0
+      || typeof tail.estimatedTotalUsd !== "number" || !Number.isFinite(tail.estimatedTotalUsd)
+      || tail.estimatedTotalUsd !== sum || !(sum > tail.maxTotalUsd)) {
+      reject("study_spend_limit requires known prefix estimates exceeding the recorded finite threshold");
+    }
+  } else {
+    reject("a supported typed interruption cause is required");
+  }
+  if (tail.cause !== "study_spend_limit" && (tail.maxTotalUsd !== undefined || tail.estimatedTotalUsd !== undefined)) {
+    reject("budget figures require a measured study_spend_limit cause");
+  }
+  return failures;
+}
+
 /**
  * SEQUENTIAL branch (the PoC #164): the alternating timeline must be well-formed, single-plane,
  * digest-only, and carry the sequential attributionLimits. FIX-8: a sequential bundle must NOT
@@ -6438,8 +6539,11 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   const checkpoints = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "checkpoint");
   const turns = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "turn");
 
-  // Phantom/dropped role: sequence length == roleCount == executed-turn count.
-  if (!(sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
+  // Historical full-execution bundles keep the original equality rule. A shorter executed
+  // prefix requires explicit blocked-tail evidence, never an inference from absent actors.
+  if (sw.skippedTail !== undefined) {
+    findings.push(...sequentialSkippedTailFindings(bundle, sw, sequence, turns));
+  } else if (!(sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
     findings.push(`phantom/dropped role: sequence length (${sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`);
   }
 
@@ -6469,6 +6573,12 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   turns.forEach((turn, index) => {
     if (turn.roleId !== sequence[index]) {
       findings.push(`turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sequence[index])}")`);
+    }
+    if (sw.skippedTail !== undefined) {
+      const checkpoint = rawTimeline[index * 2 + 2];
+      if (!isRecord(checkpoint) || checkpoint.name !== `cp-after-${String(turn.roleId)}`) {
+        findings.push("skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat");
+      }
     }
   });
 

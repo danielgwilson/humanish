@@ -11,7 +11,7 @@ export type CuaDiagnosticCategory = typeof CUA_DIAGNOSTIC_CATEGORIES[number];
 /** Closed at both projection and telemetry boundaries. No provider messages are classified. */
 export const CUA_DIAGNOSTIC_STOP_CAUSES = [
   "provider_output_limit", "provider_token_limit", "time_limit", "spend_limit", "study_spend_limit",
-  "provider_incomplete", "provider_status", "harness_aborted", "adapter_limit",
+  "provider_incomplete", "provider_status", "harness_aborted", "adapter_limit", "usage_unreported",
   "unspecified_limit", "mixed", "unknown"
 ] as const;
 export type CuaDiagnosticStopCause = typeof CUA_DIAGNOSTIC_STOP_CAUSES[number];

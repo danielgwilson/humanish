@@ -6,8 +6,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
-import type { CuaActorSessionOptions } from "../src/computer-use-actor.js";
-import type { CuaLoopResult } from "../src/computer-use.js";
+import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
+import type { CuaLoopResult, CuaTurn } from "../src/computer-use.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
@@ -23,7 +23,10 @@ import {
 } from "../src/shared-world-lab.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
-import { createOpenAiResponsesProvider, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "../src/openai-responses-cu.js";
+import { createOpenAiResponsesProvider, DEFAULT_OPENAI_CU_REASONING_EFFORT, OPENAI_RESPONSES_CU_CAPABILITIES, parseOpenAiResponse } from "../src/openai-responses-cu.js";
+import { estimateActorCost } from "../src/pricing.js";
+import { readRunDetail } from "../src/run-detail.js";
+import { actorEnding } from "../src/actor-stop-cause.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------
@@ -310,6 +313,321 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
+});
+
+describe("sequential shared-world model-spend caps (#766)", () => {
+  // Usage and action parsing come from the kept Sept 5 wire fixture. Completion and missing-
+  // usage cases below are explicit neutral-loop mutations, not additional provider captures.
+  async function capturedTurn(): Promise<CuaTurn> {
+    const raw = JSON.parse(await readFile(new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url), "utf8"));
+    return parseOpenAiResponse(raw).turn;
+  }
+  const finish = (turn: CuaTurn): CuaTurn => ({ ...turn, actions: [], done: true, message: "Finished the synthetic task." });
+  async function exercise(config: LabConfig, turns: Array<Array<CuaTurn | Error>>, closing?: CuaTurn) {
+    const state = { worldVersion: 0 };
+    const setup = baseHooks(state);
+    const calls: number[] = [];
+    const actions: number[] = [];
+    const debriefs: number[] = [];
+    setup.hooks.runSession = async (options) => {
+      const seat = calls.length;
+      calls.push(0); actions.push(0); debriefs.push(0);
+      let observation = 0;
+      return runCuaActorSession({ ...options,
+        provider: {
+          id: "captured-usage-fixture", version: "gpt-5.6-sol", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+          nextTurn: async () => {
+            const next = turns[seat]?.[calls[seat]!];
+            calls[seat]! += 1;
+            if (!next) throw new Error("Unexpected extra provider dispatch");
+            if (next instanceof Error) throw next;
+            return structuredClone(next);
+          },
+          debrief: async () => {
+            debriefs[seat]! += 1;
+            if (!closing) throw new Error("Unexpected debrief dispatch");
+            return structuredClone(closing);
+          }
+        },
+        executor: {
+          observe: async () => ({ stateSignature: `state-${observation++}`, text: actions[seat]! > 0 ? "after-action" : "before-action" }),
+          execute: async () => { actions[seat]! += 1; state.worldVersion += 1; }
+        }
+      });
+    };
+    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks: setup.hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    return { result, bundle, calls, actions, debriefs, ...setup };
+  }
+
+  it("enforces each seat through the real loop and retains dated estimates and meaningful progress", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxUsd: unit * 1.5 };
+    const proof = await exercise(config, [[turn, turn], [turn, turn]]);
+    expect(proof.calls).toEqual([2, 2]);
+    expect(proof.actions).toEqual([turn.actions.length, turn.actions.length]);
+    expect(proof.debriefs).toEqual([0, 0]);
+    expect(proof.result.roles.map(role => role.session?.completionReason)).toEqual(["budget_reached", "budget_reached"]);
+    for (const stream of proof.bundle.streams) {
+      expect(stream.actor).toMatchObject({ status: "incomplete", stopCause: "spend_limit" });
+      expect(stream.actor?.reason).toContain("after productive activity");
+      expect(stream.actor?.estimatedCost).toMatchObject({ estimatedCostUsd: 0.033953, ratesAsOf: "2026-09-03" });
+      expect(actorEnding(stream.actor)).toEqual({ cause: "spend_limit", label: "estimated spend limit" });
+    }
+    expect(proof.bundle.cost).toMatchObject({ fullyEstimated: false, estimatedTotalUsd: 0.067906 });
+    expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration" }));
+    expect(proof.bundle.cost?.note).toContain("Desktop compute is unmeasured");
+    expect(proof.bundle.cost?.note).not.toContain("uses observed CPU/RAM");
+    const detail = await readRunDetail(cwd, proof.result.runId);
+    expect(detail?.participants.map(role => role.estimatedCostUsd)).toEqual([0.033953, 0.033953]);
+    expect(proof.killed).toHaveLength(1);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("shares aggregate spend, interrupts the crossing seat and never starts the later seat", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.execution!.caps = { maxTotalUsd: unit * 2.5 };
+    const proof = await exercise(config, [[turn, finish(turn)], [turn]]);
+    expect(proof.calls).toEqual([2, 1]);
+    expect(proof.result.sequence).toEqual(["role-author", "role-reviewer"]);
+    expect(proof.result.roles[1]?.session).toMatchObject({ status: "incomplete", completionReason: "budget_reached" });
+    expect(proof.bundle.streams[1]?.actor?.stopCause).toBe("study_spend_limit");
+    expect(proof.result.roles[2]).toMatchObject({ status: "blocked", ok: false });
+    expect(proof.result.roles[2]?.skippedReason).toContain("study budget reached");
+    expect(proof.bundle.streams[2]?.actor).toBeUndefined();
+    expect(proof.bundle.sharedWorld?.timeline?.filter(item => item.kind === "checkpoint")).toHaveLength(3);
+    expect(proof.killed).toHaveLength(1);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("reconciles a per-seat stop into the aggregate before admitting another participant", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxUsd: unit * 1.5, maxTotalUsd: unit * 1.75 };
+    const proof = await exercise(config, [[turn, turn]]);
+    expect(proof.calls).toEqual([2]);
+    expect(proof.bundle.streams[0]?.actor?.stopCause).toBe("spend_limit");
+    expect(proof.result.roles[1]?.skippedReason).toContain("study budget reached");
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it.each([true, false])("reconciles closing-request spend before another seat (usage reported: %s)", async reported => {
+    const turn = await capturedTurn();
+    const raw = JSON.parse(await readFile(new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url), "utf8"));
+    const closing = parseOpenAiResponse(raw).turn;
+    closing.closingReport = JSON.parse(closing.message!);
+    if (!reported) delete closing.usage;
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.actors[0]!.stopWhen = { any: [{ textIncludes: "after-action" }] };
+    config.execution!.caps = { maxTotalUsd: unit * 1.5 };
+    const proof = await exercise(config, [[turn]], closing);
+    expect(proof.calls).toEqual([1]); expect(proof.debriefs).toEqual([1]);
+    expect(proof.result.roles[0]?.session?.completionReason).toBe("goal_satisfied");
+    expect(proof.bundle.streams[0]?.actor?.items.some(item => item.title.startsWith("stopWhen matched:"))).toBe(true);
+    expect(proof.bundle.streams[0]?.actor?.debrief?.usageReported).toBe(reported);
+    expect(proof.result.roles[1]?.skippedReason).toContain(reported ? "study budget reached" : "budget is unknown");
+    if (!reported) expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "closing_usage_unreported", estimatedCostUsd: null }));
+    expect(proof.killed).toHaveLength(1);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("verifies the live timeout cohort's synthesized passed/error/blocked shape without changing its outcome", async () => {
+    const turn = await capturedTurn();
+    turn.actions = Array.from({ length: 5 }, () => structuredClone(turn.actions[0]!));
+    const config = sharedWorldConfig();
+    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.execution!.caps = { maxUsd: 2, maxTotalUsd: 0.15 };
+    const proof = await exercise(config, [[turn, finish(turn)], [new Error("Synthetic unreported provider timeout")]]);
+    expect(proof.actions).toEqual([5, 0]);
+    expect(proof.calls).toEqual([2, 1]);
+    expect(proof.result.ok).toBe(false);
+    expect(proof.bundle.streams.map(stream => stream.status)).toEqual(["passed", "failed", "blocked"]);
+    expect(proof.bundle.streams[1]?.actor?.stopCause).toBe("usage_unreported");
+    expect(proof.bundle.simulations[1]?.summary).toContain("session ended with harness_error");
+    expect(proof.bundle.simulations[1]?.summary).not.toContain("drove the shared app");
+    expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
+      afterRoleId: "role-reviewer", cause: "usage_unreported",
+      roles: [{ roleId: "role-later", simId: "sim-003", streamId: "stream-003" }]
+    });
+    const verified = await verifyRun(cwd, proof.result.runId);
+    expect(verified.ok).toBe(true);
+    expect(proof.bundle.review.verdict).toBe("fail");
+  });
+
+  it("verifies a tiny strict aggregate crossing using the same estimate precision as enforcement", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxTotalUsd: unit - 0.00000001 };
+    const proof = await exercise(config, [[turn]]);
+    expect(proof.calls).toEqual([1]);
+    expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
+      cause: "study_spend_limit", maxTotalUsd: unit - 0.00000001, estimatedTotalUsd: unit
+    });
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("rejects malformed or missing role evidence even with a declared blocked tail", async () => {
+    const turn = await capturedTurn();
+    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+    const config = sharedWorldConfig();
+    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.execution!.caps = { maxTotalUsd: unit * 2.5 };
+    const proof = await exercise(config, [[turn, finish(turn)], [turn]]);
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+    const mutations: Array<[string, (bundle: RunBundle) => void]> = [
+      ["no explicit tail", b => { delete b.sharedWorld!.skippedTail; }],
+      ["empty tail", b => { b.sharedWorld!.skippedTail!.roles = []; }],
+      ["wrong blocker", b => { b.sharedWorld!.skippedTail!.afterRoleId = "role-author"; }],
+      ["unknown cause", b => { Object.assign(b.sharedWorld!.skippedTail!, { cause: "because it stopped" }); }],
+      ["unsupported usage cause", b => { b.sharedWorld!.skippedTail!.cause = "usage_unreported"; }],
+      ["invented threshold crossing", b => { b.sharedWorld!.skippedTail!.maxTotalUsd = 100; }],
+      ["invented cost", b => { b.sharedWorld!.skippedTail!.estimatedTotalUsd = 100; }],
+      ["dropped simulation", b => { b.simulations.splice(1, 1); }],
+      ["dropped stream", b => { b.streams.splice(1, 1); }],
+      ["duplicate role", b => { b.sharedWorld!.skippedTail!.roles[0]!.roleId = "role-reviewer"; }],
+      ["duplicate sim", b => { b.sharedWorld!.skippedTail!.roles[0]!.simId = "sim-002"; }],
+      ["duplicate stream", b => { b.sharedWorld!.skippedTail!.roles[0]!.streamId = "stream-002"; }],
+      ["wrong stream mapping", b => { b.streams[1]!.simId = "sim-001"; }],
+      ["wrong simulation mapping", b => { b.simulations[1]!.streamIds = ["stream-001"]; }],
+      ["missing executed actor", b => { delete b.streams[1]!.actor; }],
+      ["blocked middle", b => { [b.streams[1], b.streams[2]] = [b.streams[2]!, b.streams[1]!]; }],
+      ["fabricated blocked actor", b => { b.streams[2]!.actor = b.streams[0]!.actor!; }],
+      ["fabricated live actor", b => { Object.assign(b.streams[2]!, { liveActor: { items: [] } }); }],
+      ["fabricated blocked trace", b => { b.streams[2]!.artifacts.push({ kind: "trace", path: "actors/stream-001.json", label: "invented" }); }],
+      ["fabricated blocked screenshot", b => { b.streams[2]!.embed = { kind: "screenshot", url: "invented.png" }; }],
+      ["fabricated skipped checkpoint", b => { Object.assign(b.sharedWorld!.timeline![4]!, { name: "cp-after-role-later" }); }],
+      ["missing blocked event", b => { b.events = b.events.filter(event => event.type !== "shared-world.session.blocked"); }],
+      ["passed review", b => { b.review.verdict = "pass"; }],
+      ["concurrent tail", b => { b.sharedWorld!.topologyMode = "concurrent"; }],
+      ["dry-run tail", b => { b.mode = "dry-run"; }]
+    ];
+    for (const [name, mutate] of mutations) {
+      const bundle = structuredClone(proof.bundle); mutate(bundle);
+      await writeFile(path.join(cwd, ".humanish/runs", proof.result.runId, "run.json"), JSON.stringify(bundle));
+      expect((await verifyRun(cwd, proof.result.runId)).ok, name).toBe(false);
+    }
+  });
+
+  it("zero thresholds interrupt after the first measured request without claiming abandonment", async () => {
+    const turn = await capturedTurn();
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxUsd: 0 };
+    const proof = await exercise(config, [[turn], [turn]]);
+    expect(proof.calls).toEqual([1, 1]);
+    expect(proof.actions).toEqual([0, 0]);
+    expect(proof.result.roles.every(role => role.session?.status === "incomplete")).toBe(true);
+    expect(proof.bundle.streams[0]?.actor?.reason).toContain("no material progress");
+  });
+
+  it.each(["clone", "local-tree"] as const)("refuses either unknown-model cap before %s allocation through parsed and direct entrypoints", async source => {
+    for (const caps of [{ maxUsd: 1 }, { maxTotalUsd: 1 }]) {
+      const config = sharedWorldConfig();
+      config.actors[0]!.model = "synthetic-unknown-model";
+      config.execution!.caps = caps;
+      if (source === "local-tree") { config.subject.source = source; config.subject.localTree = {}; delete config.subject.repos; }
+      const parsed = parseLabConfig(config);
+      expect(parsed.ok).toBe(true);
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      expect(parsed.warnings).toEqual([]);
+      const { hooks, created } = baseHooks({ worldVersion: 0 });
+      const direct = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+      const routed = await runLab(parsed.config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+      expect(direct.error?.message).toContain("unpriced model");
+      expect(routed.result.ok).toBe(false);
+      expect(created).toHaveLength(0);
+    }
+  });
+
+  it.each(["constructor", "__proto__", "toString"])("never accepts prototype key %s as a model rate", async model => {
+    const config = sharedWorldConfig(); config.actors[0]!.model = model; config.execution!.caps = { maxUsd: 1 };
+    const { hooks, created } = baseHooks({ worldVersion: 0 });
+    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+    expect(result.error?.message).toContain("unpriced model"); expect(created).toHaveLength(0);
+  });
+
+  it.each([NaN, Infinity, -1])("rejects direct-library invalid threshold %s before allocation", async value => {
+    for (const key of ["maxUsd", "maxTotalUsd"] as const) {
+      const config = sharedWorldConfig(); config.execution!.caps = { [key]: value };
+      const { hooks, created } = baseHooks({ worldVersion: 0 });
+      const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+      expect(result.error?.message).toContain(`execution.caps.${key} must be a finite nonnegative number`);
+      expect(created).toHaveLength(0);
+    }
+  });
+
+  it.each([{ maxUsd: 1 }, { maxTotalUsd: 1 }])("fails capped custom-session model mismatch without rewriting the participant (%j)", async caps => {
+    const config = sharedWorldConfig(); config.execution!.caps = caps;
+    const state = { worldVersion: 0 };
+    const { hooks, created, killed } = baseHooks(state);
+    const original = hooks.runSession!;
+    let sessionCalls = 0;
+    hooks.runSession = async options => {
+      sessionCalls++;
+      const session = await original(options);
+      session.trace.ids.model = "gpt-5.6-terra";
+      session.trace.tokenUsage = { input: 1000, output: 100 };
+      return session;
+    };
+    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(result.ok).toBe(false); expect(sessionCalls).toBe(1);
+    expect(result.roles[0]).toMatchObject({ ok: false, session: { status: "passed", completionReason: "goal_satisfied" } });
+    expect(result.roles[0]?.error?.message).toContain("differs from the declared cap model");
+    expect(result.roles[1]?.status).toBe("blocked");
+    expect(bundle.streams[0]?.actor).toMatchObject({ status: "passed", completionReason: "goal_satisfied",
+      ids: { model: "gpt-5.6-terra" }, estimatedCost: { estimatedCostUsd: 0.0032, modelId: "gpt-5.6-terra" } });
+    expect(bundle.review?.verdict).toBe("fail");
+    expect(created).toHaveLength(1); expect(killed).toHaveLength(1);
+    expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it("retains known partial usage and stops before more requests when later usage is absent", async () => {
+    const turn = await capturedTurn();
+    const missing = finish(turn); delete missing.usage;
+    const config = sharedWorldConfig(); config.execution!.caps = { maxTotalUsd: 5 };
+    const proof = await exercise(config, [[turn, missing]]);
+    expect(proof.calls).toEqual([2]); expect(proof.debriefs).toEqual([0]);
+    expect(proof.bundle.streams[0]?.actor).toMatchObject({ completionReason: "harness_error", stopCause: "usage_unreported", interactionUsageIncomplete: true });
+    expect(proof.bundle.streams[0]?.actor?.estimatedCost?.estimatedCostUsd).toBe(estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd);
+    expect(proof.bundle.cost?.fullyEstimated).toBe(false);
+    expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "interaction_usage_unreported", estimatedCostUsd: null }));
+    expect(proof.result.roles[1]?.status).toBe("blocked");
+    expect(actorEnding(proof.bundle.streams[0]?.actor)?.label).toBe("provider usage unavailable");
+    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+  });
+
+  it("distinguishes genuinely reported zero usage from no usage", async () => {
+    const turn = finish(await capturedTurn()); turn.usage = { input: 0, output: 0 };
+    const config = sharedWorldConfig(); config.execution!.caps = { maxUsd: 0, maxTotalUsd: 0 };
+    const action = { ...turn, actions: (await capturedTurn()).actions, done: false };
+    const proof = await exercise(config, [[action, turn], [action, turn]]);
+    expect(proof.calls).toEqual([2, 2]);
+    expect((await verifyRun(cwd, proof.result.runId)).checks.filter(check => !check.ok)).toEqual([]);
+    expect(proof.result.error).toBeUndefined();
+    expect(proof.result.ok).toBe(true);
+    expect(proof.bundle.streams.map(stream => stream.actor?.estimatedCost?.estimatedCostUsd)).toEqual([0, 0]);
+    expect(proof.bundle.streams.every(stream => stream.actor?.interactionUsageIncomplete !== true)).toBe(true);
+  });
+
+  it("preserves uncapped completion when a provider omits usage", async () => {
+    const turn = finish(await capturedTurn()); delete turn.usage;
+    const action = { ...turn, actions: (await capturedTurn()).actions, done: false };
+    const proof = await exercise(sharedWorldConfig(), [[action, turn], [action, turn]]);
+    expect((await verifyRun(cwd, proof.result.runId)).checks.filter(check => !check.ok)).toEqual([]);
+    expect(proof.result.error).toBeUndefined();
+    expect(proof.result.ok).toBe(true);
+    expect(proof.calls).toEqual([2, 2]);
+    expect(proof.bundle.streams.map(stream => stream.actor?.estimatedCost?.reason)).toEqual(["no_token_usage", "no_token_usage"]);
+  });
 });
 
 describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () => {
@@ -837,6 +1155,20 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
 
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
     expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(true);
+    expect(bundle.sharedWorld.skippedTail.cause).toBe("harness_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
+  it("verifies an attempted session error separately from the unstarted tail", async () => {
+    const { hooks } = baseHooks({ worldVersion: 0 });
+    hooks.runSession = async () => { throw new Error("Synthetic session setup failed before an actor trace"); };
+    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    expect(bundle.streams[0]?.actor).toBeUndefined();
+    expect(bundle.streams[0]?.status).toBe("failed");
+    expect(bundle.sharedWorld?.sequence).toEqual(["role-author"]);
+    expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
   it("MISSION failure (non-harness) is DATA, never trips fail-fast: every role still runs", async () => {

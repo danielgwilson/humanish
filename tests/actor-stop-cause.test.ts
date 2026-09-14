@@ -14,7 +14,7 @@ const cases: [ActorStopCause, string][] = [
   ["provider_output_limit", "provider output limit"], ["provider_token_limit", "provider token limit"],
   ["time_limit", "time limit"], ["spend_limit", "estimated spend limit"], ["study_spend_limit", "study spend limit"],
   ["provider_incomplete", "provider response incomplete"], ["provider_status", "unexpected provider status"],
-  ["harness_aborted", "stopped by harness"], ["adapter_limit", "adapter admission limit"]
+  ["harness_aborted", "stopped by harness"], ["adapter_limit", "adapter admission limit"], ["usage_unreported", "provider usage unavailable"]
 ];
 
 describe("recorded stop causes", () => {

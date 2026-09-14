@@ -5430,7 +5430,9 @@ export function buildCuaCostSummary(args: {
     ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/pricing.ts to estimate this model.`
     : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
   const note = estimateNote + ((args.desktops?.length ?? 0) > 0
-    ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    ? args.desktops!.some(usage => usage.observation !== undefined && "resources" in usage.observation)
+      ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+      : " Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
     : "");
 
   return {

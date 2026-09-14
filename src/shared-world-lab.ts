@@ -28,7 +28,7 @@ import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunSt
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "./actor-contract.js";
+import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage } from "./actor-contract.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
@@ -46,6 +46,8 @@ import type { ResolvedPersona } from "./persona.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import {
   commandDigestOf,
+  buildCuaCostSummary,
+  makeCuaRunBudget,
   composeLaneInstructions,
   defaultPackLocalTree,
   makeChromeBrowserStateObserver,
@@ -110,6 +112,8 @@ import {
   type SharedWorldTimelineEntry
 } from "./run.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
+import { estimateActorCost, MODEL_RATES, round6 } from "./pricing.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 
 export const SHARED_WORLD_LAB_SCHEMA = "humanish.shared-world-lab-result.v1";
 
@@ -635,6 +639,27 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", "maxOutputTokens cannot be enforced by a custom runSession.", descriptor.id);
   }
 
+  const caps = config.execution?.caps;
+  const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
+  const invalidCap = (["maxUsd", "maxTotalUsd"] as const).find(key =>
+    caps?.[key] !== undefined && (!Number.isFinite(caps[key]) || caps[key]! < 0));
+  if (invalidCap) return fail("HUMANISH_SHARED_WORLD_LAB_INVALID",
+    `execution.caps.${invalidCap} must be a finite nonnegative number.`, descriptor.id);
+  if (!dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)
+    && !Object.hasOwn(MODEL_RATES, capModelId.trim().toLowerCase())) {
+    return fail("HUMANISH_SHARED_WORLD_LAB_INVALID",
+      `The declared spend cap cannot be enforced for unpriced model "${capModelId}".`, descriptor.id);
+  }
+  const runBudget = !dryRun && caps?.maxTotalUsd !== undefined ? makeCuaRunBudget(caps.maxTotalUsd) : undefined;
+  let budgetBlockedReason: string | undefined;
+  const noteModelEstimate = (roleId: string, estimate: number | null): string | undefined => {
+    if (!runBudget) return undefined;
+    const total = runBudget.note(roleId, estimate);
+    return total > runBudget.maxTotalUsd
+      ? `study budget reached: estimated model spend $${round6(total)} crossed execution.caps.maxTotalUsd=${runBudget.maxTotalUsd}; subsequent sequential participants will not start`
+      : undefined;
+  };
+
   const serve = config.subject.serve!;
   const localTreeRoute = config.subject.source === "local-tree";
   const subjectRepo = config.subject.repos?.[0] ?? "";
@@ -882,11 +907,11 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       // Sequential per-role loop (DECLARED order). A HARNESS error blocks the REMAINING roles
       // (the shared-state premise is broken); a MISSION failure is data, never trips fail-fast.
       for (const [index, spec] of roleSpecs.entries()) {
-        if (failFastReason) {
+        if (failFastReason || budgetBlockedReason) {
           roleOutcomes.push({
             spec,
             screenshots: [],
-            skippedReason: `skipped: ${failFastReason}`,
+            skippedReason: `skipped: ${failFastReason ?? budgetBlockedReason}`,
             noEngagement: false,
             harnessError: false
           });
@@ -934,6 +959,14 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             throw new Error(`HUMANISH_CUA_LAB_DEVICE_GEOMETRY: ${browserGeometry.unusable} Participant actions were not started.`);
           }
           const sessionOptions: CuaActorSessionOptions = {
+            ...(caps?.maxUsd === undefined ? {} : {
+              maxUsd: caps.maxUsd,
+              estimateTurnCostUsd: (usage: ActorTokenUsage) => estimateActorCost(usage, capModelId).estimatedCostUsd
+            }),
+            ...(caps?.maxUsd === undefined && runBudget === undefined ? {} : { requireReportedUsageForSpendCap: true }),
+            ...(runBudget === undefined ? {} : {
+              overRunBudget: (usage: ActorTokenUsage) => noteModelEstimate(spec.roleId, estimateActorCost(usage, capModelId).estimatedCostUsd) ?? null
+            }),
             instructions: spec.instructions,
             persona: spec.persona,
             timeoutMs,
@@ -1019,6 +1052,21 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         }
 
         if (session) {
+          session.trace.estimatedCost = estimateActorCost(session.trace.tokenUsage, session.trace.ids.model);
+          // A per-seat stop can occur before the shared callback. Closing-report usage is also
+          // part of this participant's total, so reconcile the final trace before admitting a seat.
+          budgetBlockedReason = noteModelEstimate(spec.roleId, session.trace.estimatedCost.estimatedCostUsd);
+          if ((caps?.maxUsd !== undefined || runBudget !== undefined)
+            && session.trace.ids.model?.trim().toLowerCase() !== capModelId.trim().toLowerCase()) {
+            // A custom session owns its provider. We cannot retrospectively enforce the declared
+            // rate against a different model, or rewrite its already-recorded participant outcome.
+            sessionError = `Role "${spec.roleId}" returned a model identity that differs from the declared cap model; model-spend enforcement cannot be established. The original participant trace and its returned-model estimate are retained; later participants will not start.`;
+            warnings.push(sessionError);
+          }
+          if (runBudget && (session.trace.estimatedCost.estimatedCostUsd === null
+            || session.trace.interactionUsageIncomplete === true || session.trace.debrief?.usageReported === false)) {
+            budgetBlockedReason = `study model budget is unknown after role "${spec.roleId}" because provider usage was unavailable; subsequent sequential participants will not start`;
+          }
           await writeContainedOutputFile(runPaths, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
           if (session.trace.redaction.screenshots === "raw") {
             warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
@@ -1061,7 +1109,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         });
 
         if (harnessError && !failFastReason) {
-          failFastReason = `role "${spec.roleId}" ended in a harness error — the shared-state premise is broken (fail-fast)`;
+          failFastReason = sessionError ?? `role "${spec.roleId}" ended in a harness error — the shared-state premise is broken (fail-fast)`;
         }
       }
     } catch (error) {
@@ -1134,6 +1182,8 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     source,
     roleSpecs,
     roleOutcomes,
+    desktopAllocated: sandboxId !== undefined,
+    desktopLifetimeComplete: killed,
     baselineCheckpoint,
     subject,
     sandboxResolution,
@@ -1301,6 +1351,8 @@ export function buildSharedWorldBundle(args: {
   seedDigest: string;
   subjectCommit?: string;
   failFastReason?: string;
+  desktopAllocated?: boolean;
+  desktopLifetimeComplete?: boolean;
 }): RunBundle {
   const { config, descriptor, createdAt, dryRun, roleSpecs, roleOutcomes } = args;
   const simulations: RunSimulation[] = [];
@@ -1377,7 +1429,7 @@ export function buildSharedWorldBundle(args: {
       progress: 100,
       currentStep: reason,
       summary: session
-        ? `Role ${spec.roleId} (${spec.persona.id}): drove the shared app; ${session.completionReason}.`
+        ? `Role ${spec.roleId} (${spec.persona.id}): session ended with ${session.completionReason}.`
         : outcome?.skippedReason !== undefined
           ? `Role ${spec.roleId} ${outcome.skippedReason}.`
           : outcome?.sessionError
@@ -1476,6 +1528,15 @@ export function buildSharedWorldBundle(args: {
         streamId: spec.streamId
       });
     }
+    // A custom session can return a valid actor trace while orchestration fails (for example,
+    // a capped model mismatch). Preserve the actor and record the wrapper failure separately.
+    if (session && outcome?.sessionError) {
+      events.push({
+        id: nextEventId(`session-error-${spec.roleId}`), at: createdAt, level: "error",
+        type: "shared-world.session.error", message: outcome.sessionError,
+        simId: spec.simId, streamId: spec.streamId
+      });
+    }
 
     for (const warning of desktopGeometry.warnings ?? []) {
       events.push({
@@ -1541,6 +1602,27 @@ export function buildSharedWorldBundle(args: {
     timeline,
     attributionLimits: ["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"]
   };
+  const firstSkipped = roleOutcomes.findIndex(outcome => outcome.skippedReason !== undefined);
+  const blocker = roleOutcomes[firstSkipped - 1];
+  if (!dryRun && firstSkipped > 0 && blocker?.afterCheckpoint) {
+    const actor = blocker.session?.trace;
+    const cause = blocker.sessionError !== undefined ? "session_error"
+      : actor?.interactionUsageIncomplete === true || actor?.debrief?.usageReported === false ? "usage_unreported"
+      : blocker.harnessError ? "harness_error"
+      : actor?.estimatedCost?.estimatedCostUsd === null ? "usage_unreported" : "study_spend_limit";
+    sharedWorld.skippedTail = {
+      afterRoleId: blocker.spec.roleId,
+      roles: roleOutcomes.slice(firstSkipped).map(({ spec }) => ({
+        roleId: spec.roleId, simId: spec.simId, streamId: spec.streamId
+      })),
+      cause,
+      ...(cause === "study_spend_limit" ? {
+        maxTotalUsd: config.execution!.caps!.maxTotalUsd!,
+        estimatedTotalUsd: roleOutcomes.slice(0, firstSkipped)
+          .reduce((total, outcome) => total + (outcome.session?.trace.estimatedCost?.estimatedCostUsd ?? 0), 0)
+      } : {})
+    };
+  }
 
   events.push({
     id: nextEventId("timeline"),
@@ -1608,6 +1690,14 @@ export function buildSharedWorldBundle(args: {
 
   const anyRaw = roleOutcomes.some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
   const ranLive = roleOutcomes.some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
+  // Sequential studies now retain model estimates. Desktop resources/lifetime have no measured
+  // cost on this route; include an unknown line so a model subtotal is never labeled a full total.
+  const cost = buildCuaCostSummary({
+    lanes: roleOutcomes.flatMap((outcome) => outcome.session
+      ? [{ laneId: outcome.spec.roleId, trace: outcome.session.trace }] : []),
+    ...(args.desktopAllocated ? { desktops: [{ minutes: undefined, observation: undefined,
+      lifetimeComplete: args.desktopLifetimeComplete === true }] } : {})
+  });
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -1658,6 +1748,7 @@ export function buildSharedWorldBundle(args: {
       events: "events.ndjson"
     },
     review,
+    ...(cost === undefined ? {} : { cost }),
     feedbackCandidates: [],
     // Custom desktop image provenance (the ONE shared plane launched on it); omitted on the default.
     ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),

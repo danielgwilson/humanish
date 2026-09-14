@@ -10,7 +10,10 @@ export function buildTally(data: ObserverData): string {
   if (data.run.tasksLine) parts.push(data.run.tasksLine);
   if (data.summary.blocked > 0) parts.push(`${data.summary.blocked} need attention`);
   if (data.run.mode === "dry-run") parts.push("dry run");
-  if (data.cost && typeof data.cost.estimatedTotalUsd === "number") parts.push(`est. ~$${data.cost.estimatedTotalUsd.toFixed(2)} (rates as of ${data.cost.ratesAsOf}${data.cost.placeholder ? ", placeholder" : ""})`);
+  if (data.cost && typeof data.cost.estimatedTotalUsd === "number") {
+    const estimate = `est. ~$${data.cost.estimatedTotalUsd.toFixed(2)}`;
+    parts.push(`${data.cost.fullyEstimated === false ? `known cost ${estimate}; total unknown` : estimate} (rates as of ${data.cost.ratesAsOf}${data.cost.placeholder ? ", placeholder" : ""})`);
+  }
   else if (data.cost) parts.push("cost not estimated");
   return parts.join(" · ");
 }

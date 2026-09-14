@@ -536,6 +536,9 @@ export interface OpenAiResponsesProviderOptions {
   endpoint?: string;
   fetchFn?: FetchLike;
   maxRetries?: number;
+  /** Internal strict-accounting policy: one HTTP dispatch, including policy negotiation.
+   * Used by capped sequential sessions; missing usage must stop before another paid request. */
+  singleDispatch?: boolean;
   delayFn?: (ms: number) => Promise<void>;
   zeroDataRetention?: boolean;
   /**
@@ -626,7 +629,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
   const endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
   const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
-  const maxRetries = options.maxRetries ?? 3;
+  const maxRetries = options.singleDispatch === true ? 0 : options.maxRetries ?? 3;
   const fetchFn = options.fetchFn ?? defaultFetch();
   const delayFn = options.delayFn ?? defaultDelay;
   // Opt-in response wire capture (see module header): unset/empty means OFF and
@@ -694,6 +697,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     let lastStatus = 0;
     let sawNetworkError = false;
     for (let attempt = 0; attempt <= retries; attempt += 1) {
+      signal?.throwIfAborted();
       let res: Awaited<ReturnType<FetchLike>>;
       try {
         res = await fetchFn(endpoint, {
@@ -782,6 +786,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           } }
         }, signal, 0, false);
       }
+      if (options.singleDispatch === true) return post(build(buildContext(req.instructions)), signal, 0);
       for (;;) {
         try {
           return await post(build(buildContext(req.instructions)), signal);
