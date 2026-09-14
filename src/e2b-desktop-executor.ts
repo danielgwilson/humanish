@@ -1,6 +1,8 @@
 import { PNG } from "pngjs";
 
-import { commandFailureInfo, tailOf } from "./command-failure.js";
+import { assertDesktopInputReady, beginDesktopTyping, CuaTypeInputError, typeTextNative } from "./e2b-desktop-type.js";
+
+export { CuaTypeInputError } from "./e2b-desktop-type.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
@@ -51,7 +53,7 @@ import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
  * executor awaits every call, which is correct for both sync and async returns.
  */
 export interface E2BDesktopLike {
-  /** Optional command surface used only for best-effort substrate fallbacks. */
+  /** Optional command surface required by the explicit native typing capability. */
   commands?: {
     run(command: string, options?: { requestTimeoutMs?: number; timeoutMs?: number }): Promise<{
       exitCode?: number;
@@ -90,6 +92,8 @@ export interface E2BDesktopLike {
 }
 
 export interface E2BDesktopExecutorOptions {
+  /** Opt into managed Linux/X11 UTF-8 file typing; custom ports retain write(text). */
+  nativeTyping?: boolean;
   /** Fallback wait when a wait action carries no ms. Default 500. */
   defaultWaitMs?: number;
   /**
@@ -107,7 +111,6 @@ export interface E2BDesktopExecutorOptions {
 
 const DEFAULT_WAIT_MS = 500;
 const DEFAULT_SCROLL_AMOUNT_PER_TICK = 100;
-const TYPE_FALLBACK_TIMEOUT_MS = 15_000;
 const CURSOR_READ_TIMEOUT_MS = 500;
 
 /**
@@ -159,10 +162,6 @@ function toBuffer(bytes: Uint8Array | Buffer): Buffer {
   return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
 }
 
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
 /**
  * The stage of the type -> clipboard-paste fallback chain that failed. Public-safe
  * (a path label, never typed text). Surfaced so a run bundle can tell app focus
@@ -176,6 +175,7 @@ export type CuaTypeFallbackPhase =
   | "paste-keypress";
 
 /**
+ * @deprecated Retained for source compatibility; automatic clipboard replay is no longer used.
  * A `type` action that failed after both the primary write and the clipboard
  * paste fallback. Carries a redacted attempt chain (path labels only, never the
  * typed text), the failing phase, and a sanitized stderr/stdout tail when the
@@ -201,127 +201,6 @@ export class CuaTypeFallbackError extends Error {
     this.attemptChain = attemptChain;
     if (stderrTail !== undefined && stderrTail.length > 0) this.stderrTail = stderrTail;
     if (cause !== undefined) (this as { cause?: unknown }).cause = cause;
-  }
-}
-
-type DesktopCommandResult = { exitCode?: number; stderr?: string; stdout?: string };
-
-/** Map a clipboard-command exit code to a CuaTypeFallbackError phase and throw. */
-function throwClipboardCommandFailure(
-  exitCode: number | undefined,
-  stderrTail: string,
-  attemptChain: string[],
-  cause?: unknown,
-): never {
-  if (exitCode === 127) {
-    throw new CuaTypeFallbackError(
-      "clipboard-utility-missing",
-      [...attemptChain, "no xclip/xsel clipboard utility"],
-      stderrTail,
-      cause,
-    );
-  }
-  throw new CuaTypeFallbackError(
-    "clipboard-command",
-    [
-      ...attemptChain,
-      exitCode === undefined ? "clipboard command errored" : `clipboard command failed (exit ${exitCode})`,
-    ],
-    stderrTail,
-    cause,
-  );
-}
-
-/**
- * Best-effort clipboard-paste fallback for a `type` action after the primary
- * `desktop.write` failed. Records each attempt into `attemptChain` (path labels
- * only) and throws a CuaTypeFallbackError naming the failing phase + a sanitized
- * stderr tail when the chain cannot complete. The typed text is transferred via a
- * temp file (never shell-quoted) and is never included in the chain or error.
- */
-async function pasteTextViaClipboard(
-  desktop: E2BDesktopLike,
-  text: string,
-  attemptChain: string[],
-): Promise<void> {
-  const files = desktop.files;
-  const commands = desktop.commands;
-  if (!files || !commands) {
-    throw new CuaTypeFallbackError("clipboard-unavailable", [
-      ...attemptChain,
-      "clipboard fallback unavailable (no command/file surface)",
-    ]);
-  }
-
-  const path = `/tmp/humanish-cua-type-${Date.now()}-${Math.random().toString(16).slice(2)}.txt`;
-  try {
-    await files.write(path, text, { requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS });
-  } catch (writeError) {
-    throw new CuaTypeFallbackError(
-      "clipboard-tempfile",
-      [...attemptChain, "clipboard temp-file write failed"],
-      undefined,
-      writeError,
-    );
-  }
-
-  const clipboardCommand = [
-    "set -euo pipefail",
-    "export DISPLAY=\"${DISPLAY:-:0}\"",
-    `text_path=${shellSingleQuote(path)}`,
-    "cleanup() { rm -f \"$text_path\"; }",
-    "trap cleanup EXIT",
-    // Try xclip, then fall back to xsel if xclip is absent OR fails; distinguish a
-    // missing utility (exit 127) from a utility that ran but failed (exit 1) so the
-    // caller can name the phase.
-    // Selection owners fork and keep serving the clipboard. Their inherited output pipes
-    // must not keep the sandbox command runner waiting after the write command exits.
-    "if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < \"$text_path\" >/dev/null 2>&1; then",
-    "  :",
-    "elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < \"$text_path\" >/dev/null 2>&1; then",
-    "  :",
-    "elif command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then",
-    "  echo 'clipboard utility present but failed to set the clipboard' >&2",
-    "  exit 1",
-    "else",
-    "  echo 'no xclip/xsel clipboard utility available for paste fallback' >&2",
-    "  exit 127",
-    "fi"
-  ].join("\n");
-
-  // The real @e2b/desktop Sandbox THROWS CommandExitError on any non-zero exit
-  // (it does not return a non-zero exitCode), so the exit code + stderr must be
-  // recovered from the thrown error. A structural fake that returns a non-zero
-  // exitCode instead of throwing is also handled, so both shapes are covered.
-  let runResult: DesktopCommandResult | undefined;
-  let runError: unknown;
-  try {
-    runResult = await commands.run(clipboardCommand, {
-      requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
-      timeoutMs: TYPE_FALLBACK_TIMEOUT_MS
-    });
-  } catch (error) {
-    runError = error;
-  }
-
-  if (runError !== undefined) {
-    const detail = commandFailureInfo(runError);
-    throwClipboardCommandFailure(detail.exitCode, detail.stderrTail, attemptChain, runError);
-  }
-  if (runResult !== undefined && runResult.exitCode !== undefined && runResult.exitCode !== 0) {
-    throwClipboardCommandFailure(runResult.exitCode, tailOf(runResult.stderr ?? runResult.stdout), attemptChain);
-  }
-  attemptChain.push("clipboard write ok");
-
-  try {
-    await desktop.press(["Control", "v"]);
-  } catch (pressError) {
-    throw new CuaTypeFallbackError(
-      "paste-keypress",
-      [...attemptChain, "paste keypress (Control+V) failed"],
-      undefined,
-      pressError,
-    );
   }
 }
 
@@ -359,6 +238,7 @@ export function createE2BDesktopExecutor(
 
     async execute(action: CuaAction, signal?: AbortSignal): Promise<void> {
       signal?.throwIfAborted();
+      if (action.kind !== "wait" && action.kind !== "screenshot") assertDesktopInputReady(desktop);
       switch (action.kind) {
         case "click": {
           const button = action.button ?? "left";
@@ -369,6 +249,7 @@ export function createE2BDesktopExecutor(
           } else {
             const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
             signal?.throwIfAborted();
+            assertDesktopInputReady(desktop);
             if (alreadyAtTarget) await desktop.leftClick();
             else await desktop.leftClick(action.x, action.y);
           }
@@ -377,6 +258,7 @@ export function createE2BDesktopExecutor(
         case "double_click": {
           const alreadyAtTarget = await cursorAlreadyAt(desktop, action.x, action.y, signal);
           signal?.throwIfAborted();
+          assertDesktopInputReady(desktop);
           if (alreadyAtTarget) await desktop.doubleClick();
           else await desktop.doubleClick(action.x, action.y);
           return;
@@ -391,24 +273,32 @@ export function createE2BDesktopExecutor(
           // dx (horizontal) has no SDK target and is ignored; a zero dy is a no-op.
           if (action.dy === 0) return;
           await desktop.moveMouse(action.x, action.y);
+          signal?.throwIfAborted();
+          assertDesktopInputReady(desktop);
           const direction = action.dy > 0 ? "down" : "up";
           const amount = Math.max(1, Math.round(Math.abs(action.dy) / scrollAmountPerTick));
           await desktop.scroll(direction, amount);
           return;
         }
         case "type": {
-          const attemptChain: string[] = [];
-          try {
-            await desktop.write(action.text);
-            return;
-          } catch {
-            // The primary write failed; record the path and try the clipboard
-            // fallback, which throws a CuaTypeFallbackError naming the phase if it
-            // also fails. (The write error carries no diagnostics beyond "it
-            // threw"; the typed text is never recorded.)
-            attemptChain.push("desktop.write failed");
+          if (action.text.length === 0) return;
+          if (options.nativeTyping === true) {
+            await typeTextNative(desktop, action.text, signal);
+          } else {
+            const finishTyping = beginDesktopTyping(desktop, signal);
+            let acknowledged = false;
+            try {
+              await desktop.write(action.text);
+              signal?.throwIfAborted();
+              acknowledged = true;
+            } catch {
+              // A custom port may already have inserted a prefix. No replay or
+              // raw error reaches the loop's recoverable CommandExitError path.
+              throw new CuaTypeInputError("input-uncertain");
+            } finally {
+              finishTyping(acknowledged);
+            }
           }
-          await pasteTextViaClipboard(desktop, action.text, attemptChain);
           return;
         }
         case "keypress":

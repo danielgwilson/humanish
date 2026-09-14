@@ -67,6 +67,7 @@ import {
   type SubjectPhaseEvent
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
+import { hasUnsettledDesktopTyping } from "./e2b-desktop-type.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
@@ -980,6 +981,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             ...(launchedBrowserFamily === "chromium"
               ? {
                   executorOptions: {
+                    nativeTyping: true,
                     observeBrowserState: makeChromeBrowserStateObserver(
                       desktop,
                       requestTimeoutMs,
@@ -992,7 +994,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
                     )
                   }
                 }
-              : {}),
+              : { executorOptions: { nativeTyping: true } }),
             redactScreenshots,
             scrubText: scrubKnownValues,
             writeScreenshot,
@@ -1004,7 +1006,16 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           sessionError = redactText(scrubKnownValues(toErrorMessage(error)));
         }
 
-        if (browserLaunched) {
+        // The actor deadline may win while native input is still running. Keep its
+        // original trace, but do not close/change windows or admit another seat:
+        // old keystrokes could otherwise land in that next participant's browser.
+        const unsettledTyping = hasUnsettledDesktopTyping(desktop);
+        if (unsettledTyping) {
+          sessionError = `Role "${spec.roleId}" left typing pending or uncertain; the shared desktop cannot be reused. Later participants will not start.`;
+          warnings.push(sessionError);
+        }
+
+        if (browserLaunched && !unsettledTyping) {
           const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
             desktop,
             browserFamily: launchedBrowserFamily,

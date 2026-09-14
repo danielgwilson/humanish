@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-13. Published baseline: `0.88.2`.
+Status date: 2026-09-14. Source baseline: `0.88.3`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.88.2-sequential-study-budgets.md).
+in the [release notes](../release/0.88.3-native-text-input.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.88.2`)
+## Current Program Truth (source `0.88.3`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
