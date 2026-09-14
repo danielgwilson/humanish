@@ -1236,10 +1236,20 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
           ...(options.rerun === undefined ? {} : { rerun: options.rerun })
         }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
           `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
-        writeResult(command, io, result, (value) => forTerminal(value.ok
-          ? value.dryRun ? `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}. No request sent.\n`
-            : `${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}\n${value.warnings.join("\n")}${value.warnings.length ? "\n" : ""}`
-          : `${value.error?.message ?? "Analysis unavailable."}\n${value.error?.code ?? ""}\n`));
+        writeResult(command, io, result, (value) => {
+          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}. No request sent.\n`;
+          const lines: string[] = [];
+          if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
+          if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);
+          if (value.executionReceiptPath) lines.push(`Execution receipt: ${value.executionReceiptPath}`);
+          if (value.usage) {
+            lines.push(`Recorded attempt usage: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`);
+            lines.push(`Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`);
+          }
+          if (value.reused) lines.push("No new request sent.");
+          lines.push(...value.warnings);
+          return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+        });
         io.setExitCode(result.ok ? 0 : 2);
       } finally { process.removeListener("SIGINT", cancel); }
     });

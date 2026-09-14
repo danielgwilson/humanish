@@ -104,6 +104,38 @@ describe("ordinary study analysis flow", () => {
     expect(await readdir(runRoot)).toContain(".analysis-lock");
   });
 
+  it("refuses an unreadable oversized status instead of treating it as an absent legacy status", async () => {
+    await writeFile(path.join(runRoot, "status.json"), " ".repeat(64 * 1024 + 1));
+    const fetch = await transport();
+    const result = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(result.ok).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await readdir(runRoot)).not.toContain("analysis");
+    expect(await readdir(runRoot)).not.toContain(".analysis-lock");
+  });
+
+  it("retains an overrun as a nonzero result on fresh dispatch and CLI reuse, with inspectable usage", async () => {
+    const wire = JSON.parse(await readFile(wirePath, "utf8"));
+    wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
+    // Perturb captured usage to exercise a provider exceeding the requested token bound.
+    wire.usage.output_tokens = config.maxOutputTokens + 1;
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(JSON.stringify(wire)));
+    const result = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(result).toMatchObject({ ok: false, status: "partial", error: { code: "analysis_admission_estimate_exceeded" },
+      usage: { outputTokens: config.maxOutputTokens + 1, dispatched: true } });
+    expect(result.artifactPath).toBeTruthy();
+    expect(result.executionReceiptPath).toBeTruthy();
+    const output: string[] = []; let exit = 0;
+    const program = createProgram({ writeOut: (text) => output.push(text), writeErr: () => {}, setExitCode: (code) => { exit = code; } });
+    await program.parseAsync(["analyze", "--cwd", cwd, "--run", "analysis-flow", "--max-cost", "5", "--timeout-ms", "1000"], { from: "user" });
+    expect(exit).toBe(2);
+    expect(output.join("")).toContain(result.artifactPath!);
+    expect(output.join("")).toContain(`${config.maxOutputTokens + 1} output tokens`);
+    expect(output.join("")).toContain("No new request sent.");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
   it("a failed attempt does not hide later valid findings or permanently block sharing", async () => {
     const fetch = await transport();
     const failed = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key",
