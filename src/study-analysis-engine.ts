@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "./pricing.js";
+import { containsSensitive } from "./redaction.js";
 import { STUDY_ANALYSIS_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput } from "./study-analysis.js";
 import { createStudyAnalysisProvider } from "./study-analysis-provider.js";
 import { hashStudyAnalysisValue, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
@@ -55,8 +56,13 @@ function evidenceText(input: StudyAnalysisInput): string {
 function inputError(input: StudyAnalysisInput): string | null {
   try { validateStudyAnalysisInputMetadata(input); }
   catch { return "analysis_input_invalid"; }
+  const packetText = evidenceText(input);
   if (!input.participants.length || input.participants.length > 16 || !input.evidence.length || input.evidence.length > 800
-    || input.images.length > 128 || Buffer.byteLength(evidenceText(input)) > MAX_EVIDENCE_BYTES) return "analysis_input_limit";
+    || input.images.length > 128 || Buffer.byteLength(packetText) > MAX_EVIDENCE_BYTES) return "analysis_input_limit";
+  // Source JSON may encode a sensitive string using Unicode escapes. Check the
+  // decoded text we actually send, independently of raw-file verification. Image
+  // bytes and filesystem-only capture metadata are not part of this text scan.
+  if (containsSensitive(packetText)) return "analysis_input_sensitive";
   if (new Set(input.evidence.map(item => item.id)).size !== input.evidence.length
     || new Set(input.images.map(image => image.evidenceId)).size !== input.images.length) return "analysis_input_invalid";
   const captures = input.evidence.filter(item => item.capture !== null);
@@ -83,6 +89,8 @@ function inputError(input: StudyAnalysisInput): string | null {
  * use at most 2,500 patches × 1.2 = 3,000 input tokens per image (official vision guide,
  * 2026-09-14). Unknown models/rates fail closed rather than inheriting those assumptions.
  * https://developers.openai.com/api/docs/guides/images-vision
+ * Known-sensitive decoded text denies admission with analysis_input_sensitive or
+ * analysis_question_sensitive. Neither error includes rejected input values.
  */
 export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisAdmission {
   const denied = (error: string): StudyAnalysisAdmission =>
@@ -93,6 +101,7 @@ export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config
     || (config.question !== null && (typeof config.question !== "string" || config.question.length > 4000))) {
     return denied("analysis_config_invalid");
   }
+  if (config.question !== null && containsSensitive(config.question)) return denied("analysis_question_sensitive");
   const badInput = inputError(input);
   if (badInput) return denied(badInput);
   const rate = MODEL_RATES[config.model];
@@ -126,6 +135,11 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   validateStudyAnalysisInputMetadata(input);
   const admission = estimateStudyAnalysisAdmission(input, config);
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
+  // Do not emit progress or construct an artifact containing rejected sensitive
+  // input. Direct callers receive only a stable code, as with malformed metadata.
+  if (admission.error === "analysis_input_sensitive" || admission.error === "analysis_question_sensitive") {
+    throw new Error(admission.error.toUpperCase());
+  }
   const artifact: StudyAnalysisArtifact = {
     schema: STUDY_ANALYSIS_SCHEMA, id: `analysis-${randomUUID()}`, runId: input.runId, status: "failed",
     createdAt, completedAt: createdAt, sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,

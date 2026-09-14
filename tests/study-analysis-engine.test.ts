@@ -121,6 +121,42 @@ describe("bounded study analysis engine", () => {
     expect(artifact).toMatchObject({ status: "complete", result: { findings: [] }, error: null });
   });
 
+  it.each(["participant-context", "evidence-text"])("refuses sensitive decoded JSON in %s before progress or transport", async location => {
+    const packet = input();
+    const marker = "sk-" + "syntheticvalue1234567890abcdef";
+    if (location === "participant-context") packet.participants[0]!.label = marker;
+    else packet.evidence[0]!.text = marker;
+    const escaped = [...marker].map(char => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`).join("");
+    const encoded = JSON.stringify(packet).replace(marker, escaped);
+    expect(encoded).not.toContain(marker);
+    const decoded = JSON.parse(encoded) as StudyAnalysisInput;
+    decoded.inputDigest = digestStudyAnalysisInput(decoded);
+    const admission = estimateStudyAnalysisAdmission(decoded, config);
+    expect(admission).toMatchObject({ allowed: false, error: "analysis_input_sensitive", estimatedCostUsd: null });
+    expect(JSON.stringify(admission)).not.toContain(marker);
+    const h = transport();
+    const onProgress = vi.fn();
+    await expect(runStudyAnalysis(decoded, config, { apiKey: "synthetic-key", fetch: h.fetchFn, onProgress }))
+      .rejects.toThrow(/^ANALYSIS_INPUT_SENSITIVE$/);
+    expect(onProgress).not.toHaveBeenCalled();
+    expect(h.fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sensitive direct-engine researcher question before progress or transport", async () => {
+    const question = "Review " + "sk-" + "syntheticvalue1234567890abcdef";
+    const unsafeConfig = { ...config, question };
+    const packet = input();
+    const admission = estimateStudyAnalysisAdmission(packet, unsafeConfig);
+    expect(admission).toMatchObject({ allowed: false, error: "analysis_question_sensitive", estimatedCostUsd: null });
+    expect(JSON.stringify(admission)).not.toContain(question);
+    const h = transport();
+    const onProgress = vi.fn();
+    await expect(runStudyAnalysis(packet, unsafeConfig, { apiKey: "synthetic-key", fetch: h.fetchFn, onProgress }))
+      .rejects.toThrow(/^ANALYSIS_QUESTION_SENSITIVE$/);
+    expect(onProgress).not.toHaveBeenCalled();
+    expect(h.fetchFn).not.toHaveBeenCalled();
+  });
+
   it.each(["unknown-evidence", "foreign-participant", "invented-quote", "visual-without-image", "duplicate-denominator", "extra-field"])("fails closed on %s while preserving reported token usage", async kind => {
     const answer = result();
     if (kind === "unknown-evidence") answer.findings[0]!.observations[0]!.evidenceIds = ["missing"];
