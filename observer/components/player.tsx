@@ -290,7 +290,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
       {stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
-      {selectedRow || state.eventId ? <div className="player-entry-context" aria-label="Selected evidence">
+      {selectedRow || state.eventId ? <div className="player-entry-context" role="group" aria-label="Selected evidence">
         {selectedRow ? <>
           <span className="entry-label">{selectedRow.kind === "reasoning" ? "Reported thinking" : isActionRow(selectedRow) ? "Recorded action" : isWaitRow(selectedRow) ? "Recorded wait" : "Recorded entry"}
             {selectedRow.atMs !== undefined ? ` · ${model.paced === "recorded" ? formatElapsed(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}` : " · Time unavailable"}
@@ -369,7 +369,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       {notice ? <p className="player-notice" role="status">{notice}</p> : null}
       {manualLink ? <label className="moment-fallback">Moment link<input readOnly value={manualLink} aria-label="Moment link" onFocus={(event) => event.target.select()} /></label> : null}
-      <div className="filmstrip" ref={filmRef} aria-label="Recorded frames">
+      <div className="filmstrip" ref={filmRef} role="group" aria-label="Recorded frames">
         {filmWindow.start > 0 ? <button type="button" className="tbtn film-page" onClick={() => seek(Math.max(0, filmWindow.start - 1))}>Earlier frames</button> : null}
         {frames.slice(filmWindow.start, filmWindow.end).map((f) => <button key={f.itemId} type="button" className="fs" {...(f.index === frame ? { "data-on": "" } : {})}
           aria-label={`Frame ${f.index + 1}, ${formatElapsed(frameElapsedMs(model, f.index))}, ${f.title}`} onClick={() => seek(f.index)}>

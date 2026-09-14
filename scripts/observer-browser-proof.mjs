@@ -253,7 +253,7 @@ async function runCase(id, options, action) {
         });
         return { violations: result.violations.filter((v) => !tooltipAdvisory(v)).map(describe),
           reviewedAdvisories: result.violations.filter(tooltipAdvisory).map((v) => ({ ...describe(v), reason: "A transient WAI-ARIA tooltip is associated with its trigger and rendered in Base UI's body portal; it does not need a separate page landmark." })),
-          incomplete: result.incomplete.map((v) => v.id), passes: result.passes.length };
+          incomplete: result.incomplete.map(describe), passes: result.passes.length };
       });
       assert.equal(record.checks.accessibility.violations.length, 0, "Automated accessibility violations remain; inspect the recorded targets");
     }

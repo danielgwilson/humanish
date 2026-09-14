@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import type { LoadedStudyAnalysis } from "../../src/study-analysis";
-import { NO_ANALYSIS, parseStudyAnalysis, projectStudyAnalysis, readInlineStudyAnalysis, STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
+import { fetchStudyAnalysis, NO_ANALYSIS, parseStudyAnalysis, projectStudyAnalysis, readInlineStudyAnalysis, STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { formatHash, parseHash } from "../lib/route";
 import { resolveReportMoment } from "../lib/study-report";
 
@@ -40,10 +40,29 @@ describe("independent analysis admission and projection", () => {
     expect(projectStudyAnalysis(parseStudyAnalysis(empty, data), data)).toMatchObject({ state: "complete", findings: [] });
     const malformed = fixture(); malformed.analysis!.result = null;
     expect(parseStudyAnalysis(malformed, data).state).toBe("invalid");
-    const failed = fixture(); failed.analysis!.result = null; failed.analysis!.status = "failed";
-    expect(projectStudyAnalysis(parseStudyAnalysis(failed, data), data)).toMatchObject({ state: "failed", findings: [] });
     const stale = fixture(); stale.state = "stale"; stale.analysis!.evidence[0]!.eventId = "removed";
     expect(parseStudyAnalysis(stale, data).state).toBe("stale");
+  });
+  it.each(["failed", "cancelled"] as const)("preserves the store's invalid selection with a valid %s artifact", (status) => {
+    const saved = fixtures.analysisFixture(data, { status });
+    expect(saved.state).toBe("invalid");
+    const loaded = parseStudyAnalysis(saved, data);
+    expect(loaded).toMatchObject({ state: "invalid", analysis: { status, result: null }, warnings: [`ANALYSIS_${status.toUpperCase()}`] });
+    expect(projectStudyAnalysis(loaded, data)).toMatchObject({ state: status, findings: [], outcomes: [] });
+    // A terminal record must never smuggle a successful interpretation through
+    // the invalid selection, or erase the distinction between failure/cancel.
+    saved.analysis!.result = fixture().analysis!.result;
+    expect(parseStudyAnalysis(saved, data)).toMatchObject({ state: "invalid", analysis: null });
+  });
+  it("rejects a successful artifact under an invalid selection", () => {
+    const saved = fixture(); saved.state = "invalid";
+    expect(parseStudyAnalysis(saved, data)).toMatchObject({ state: "invalid", analysis: null });
+  });
+  it("retains the selected successful analysis when the store reports a later failed attempt", () => {
+    const saved = fixture(); saved.warnings = ["ANALYSIS_FAILED"];
+    const projected = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    expect(projected.state).toBe("complete"); expect(projected.findings).toHaveLength(2);
+    expect(projected.messages).toContain("ANALYSIS_FAILED");
   });
   it("keeps corrections separate from the original claim", () => {
     const loaded = fixture(); loaded.corrections.push({ schema: "humanish.study-analysis-correction.v1", id: "correction-1", analysisId: loaded.analysis!.id, analysisSha256: "a".repeat(64),
@@ -71,5 +90,24 @@ describe("independent analysis admission and projection", () => {
     expect(parseHash(href)).toEqual({ laneId: stream.id, frame: null, eventId: "before" });
     const terminal = fixtures.fixture({ frames: 0 });
     expect(resolveReportMoment(terminal, "lane-1", "lane-1-final")).toMatchObject({ frame: null, eventId: "lane-1-final", text: "FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE" });
+  });
+});
+
+describe("bounded optional analysis fetch", () => {
+  const signal = new AbortController().signal;
+  const fetchResponse = (response: Response) => (async () => response) as typeof fetch;
+  it("reads a valid streamed projection and treats missing companions as optional", async () => {
+    expect(await fetchStudyAnalysis(fetchResponse(new Response(JSON.stringify(fixture()))), data, signal)).toMatchObject({ state: "ready" });
+    expect(await fetchStudyAnalysis(fetchResponse(new Response(null, { status: 404 })), data, signal)).toEqual(NO_ANALYSIS);
+  });
+  it.each([true, false])("cancels over-limit data with declared length %s", async (declared) => {
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) { controller.enqueue(new Uint8Array(1_000_001)); },
+      cancel() { cancelled = true; },
+    });
+    const response = new Response(body, { headers: declared ? { "content-length": "8000001" } : {} });
+    expect(await fetchStudyAnalysis(fetchResponse(response), data, signal)).toMatchObject({ state: "invalid", analysis: null });
+    expect(cancelled).toBe(true);
   });
 });

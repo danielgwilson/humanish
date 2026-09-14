@@ -41,7 +41,7 @@ export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedSt
     || !list(value.warnings, text) || !list(value.corrections, correction)) return invalid();
   if (value.analysis === null) return value.state === "none" || value.state === "invalid"
     ? { state: value.state, analysis: null, corrections: [], warnings: value.warnings as string[] } : invalid();
-  if (value.state === "none" || value.state === "invalid") return invalid();
+  if (value.state === "none") return invalid();
   const a = value.analysis;
   if (!object(a) || a.schema !== STUDY_ANALYSIS_SCHEMA || !id(a.id) || a.runId !== data.run.runId
     || !enumeration(a.status, ["complete", "partial", "failed", "cancelled"])
@@ -61,6 +61,10 @@ export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedSt
     || !(a.result === null || (object(a.result) && text(a.result.summary) && list(a.result.participants, participant)
       && list(a.result.findings, finding, 100) && list(a.result.limitations, text)))) return invalid();
   if ((a.status === "complete" || a.status === "partial") && a.result === null) return invalid();
+  // A failed latest attempt is a valid artifact under the store's invalid
+  // selection state. Preserve that terminal status without admitting claims.
+  const terminal = a.status === "failed" || a.status === "cancelled";
+  if ((value.state === "invalid" && !terminal) || (terminal && a.result !== null)) return invalid();
   const analysis = a as unknown as StudyAnalysisArtifact;
   const streams = new Set(data.streams.map((s) => s.id));
   const evidence = new Map(analysis.evidence.map((e) => [e.id, e]));
@@ -103,8 +107,24 @@ export async function fetchStudyAnalysis(fetchImpl: typeof fetch, data: Observer
     const response = await fetchImpl("study-analysis.json", { signal, cache: "no-store" });
     if (response.status === 404) return NO_ANALYSIS;
     if (!response.ok) return null;
-    const value = await response.text();
-    return value.length > 8_000_000 ? invalid() : parseStudyAnalysis(JSON.parse(value), data);
+    const maxBytes = 8_000_000;
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (declaredLength > maxBytes) { await response.body?.cancel(); return invalid(); }
+    const reader = response.body?.getReader();
+    if (!reader) return invalid();
+    const decoder = new TextDecoder();
+    let bytes = 0, value = "";
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > maxBytes) { await reader.cancel(); return invalid(); }
+        value += decoder.decode(chunk.value, { stream: true });
+      }
+      value += decoder.decode();
+    } finally { reader.releaseLock(); }
+    return parseStudyAnalysis(JSON.parse(value), data);
   } catch { return null; }
 }
 
@@ -114,7 +134,8 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
   const a = loaded.analysis, result = a?.result;
   const labels = participantLabels(data.streams);
   const evidence = new Map(a?.evidence.map((e) => [e.id, e]) ?? []);
-  return { id: a?.id ?? "unavailable", runId: data.run.runId, state: loaded.state === "ready" ? a?.status ?? "invalid" : loaded.state,
+  const state = loaded.state === "ready" || (loaded.state === "invalid" && (a?.status === "failed" || a?.status === "cancelled")) ? a?.status ?? "invalid" : loaded.state;
+  return { id: a?.id ?? "unavailable", runId: data.run.runId, state,
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
     messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
     findings: result?.findings.map((f) => {
