@@ -186,7 +186,19 @@ async function readCorrections(
     warnings.push(...inventory.warnings);
     for (const id of inventory.ids) {
       const bytes = await readBoundedStudyFile(root, `${analysis.id}/corrections/${id}/correction.json`, 32 * 1024);
-      if (!bytes) continue;
+      if (!bytes) {
+        // An unpublished claim directory is harmless; a present record that
+        // cannot be checked must not silently erase a prior review decision.
+        try {
+          await lstat(path.join(root.physicalPath, analysis.id, "corrections", id, "correction.json"));
+          warnings.push("ANALYSIS_CORRECTION_UNREADABLE");
+        } catch (error) {
+          if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+            warnings.push("ANALYSIS_CORRECTION_UNREADABLE");
+          }
+        }
+        continue;
+      }
       try {
         const correction = validateStudyAnalysisCorrection(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
         assertCorrectionBinding(analysis, correction);

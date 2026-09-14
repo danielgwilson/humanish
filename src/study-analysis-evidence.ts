@@ -181,9 +181,15 @@ function isObserverCapturePath(value: string): boolean {
   return false;
 }
 
+function participantAssignment(stream: RunStream): string | null {
+  if (stream.assignment === undefined) return null;
+  return [stream.assignment.mission, stream.assignment.focus,
+    ...(stream.assignment.tasks ?? []).map((task) => `Task ${JSON.stringify(task.id)}: ${task.goal}`)]
+    .filter((entry) => typeof entry === "string").join("\n");
+}
+
 function participantSource(stream: RunStream): AnalysisParticipantInput {
-  const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
-    ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
+  const assignment = participantAssignment(stream);
   const actor = stream.actor;
   return {
     streamId: stream.id,
@@ -274,8 +280,7 @@ export async function captureStudyEvidence(
   let imageBytes = 0;
   const participants = selected.map((stream) => {
     const participant = participantSource(stream);
-    const assignment = stream.assignment === undefined ? null : [stream.assignment.mission, stream.assignment.focus,
-      ...(stream.assignment.tasks ?? []).map((task) => task.goal)].filter((entry) => typeof entry === "string").join("\n");
+    const assignment = participantAssignment(stream);
     if (participant.label !== stream.label || participant.assignment !== assignment
       || participant.recordedReason !== (stream.actor?.reason ?? null)) omissions.add("Participant context exceeded the text limit.");
     textBytes += Buffer.byteLength(JSON.stringify(participant));

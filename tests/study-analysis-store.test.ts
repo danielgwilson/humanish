@@ -152,6 +152,41 @@ describe("immutable study analysis store", () => {
     await expect(appendStudyAnalysisCorrection(prepared, { ...correction(), analysisSha256: "c".repeat(64) })).rejects.toThrow("ANALYSIS_CORRECTION_BINDING_INVALID");
   });
 
+  it.each(["oversized", "malformed", "empty", "symlink", "hardlink"] as const)(
+    "warns when a present %s correction cannot preserve the recorded dismissal", async (kind) => {
+      await writeStudyAnalysis(prepared, artifact);
+      const record = { ...correction(), status: "dismissed" as const };
+      await appendStudyAnalysisCorrection(prepared, record);
+      expect((await loadStudyAnalysis(prepared)).corrections).toEqual([record]);
+      const target = path.join(prepared.physicalRunRoot, "analysis", artifact.id, "corrections", record.id, "correction.json");
+      if (kind === "oversized") await writeFile(target, JSON.stringify(record) + " ".repeat(33 * 1024));
+      else if (kind === "malformed") await writeFile(target, '{"status":"dismissed"');
+      else if (kind === "empty") await writeFile(target, "");
+      else {
+        const outside = path.join(cwd, "outside-correction.json");
+        await writeFile(outside, JSON.stringify(record));
+        await rm(target);
+        if (kind === "symlink") await symlink(outside, target);
+        else await link(outside, target);
+      }
+      const expected = ["malformed", "empty"].includes(kind) ? "ANALYSIS_CORRECTION_INVALID" : "ANALYSIS_CORRECTION_UNREADABLE";
+      for (const id of [undefined, artifact.id]) {
+        expect(await loadStudyAnalysis(prepared, id)).toMatchObject({
+          state: "ready", analysis: { id: artifact.id }, corrections: [], warnings: [expected]
+        });
+      }
+      expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+    }
+  );
+
+  it("ignores an unpublished correction directory while retaining an existing dismissal", async () => {
+    await writeStudyAnalysis(prepared, artifact);
+    const record = { ...correction(), status: "dismissed" as const };
+    await appendStudyAnalysisCorrection(prepared, record);
+    await mkdir(path.join(prepared.physicalRunRoot, "analysis", artifact.id, "corrections", "interrupted"));
+    expect(await loadStudyAnalysis(prepared)).toMatchObject({ corrections: [record], warnings: [] });
+  });
+
   it("does not carry approval forward to a subsequent analysis version", async () => {
     await writeStudyAnalysis(prepared, artifact);
     await appendStudyAnalysisCorrection(prepared, correction());
@@ -281,6 +316,44 @@ describe("immutable study analysis store", () => {
     expect((await captureStudyEvidence(prepared, source)).participants[0]!.provenance).toMatchObject({
       actorStatus: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit", goalSource: null
     });
+  });
+
+  it("keeps task goals paired with their IDs independently of measurement order", async () => {
+    const changed = JSON.parse(source.toString());
+    changed.streams[0].assignment.tasks = [
+      { id: "opaque-b", goal: "Rename the item." }, { id: "opaque-a", goal: "Save the item." }
+    ];
+    changed.streams[0].actor.taskFunnel = { tasks: [
+      { id: "opaque-a", completed: false, observable: true, inputsObserved: false },
+      { id: "opaque-b", completed: true, observable: true, turn: 2 }
+    ] };
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    const captured = await captureStudyEvidence(prepared, source);
+    expect(captured.participants[0]!.assignment).toBe('Create an item.\nTask "opaque-b": Rename the item.\nTask "opaque-a": Save the item.');
+    expect(captured.participants[0]!.provenance.taskOutcomes).toMatchObject([
+      { taskId: "opaque-a", completed: false, inputsObserved: false },
+      { taskId: "opaque-b", completed: true, inputsObserved: null }
+    ]);
+    expect(captured.coverage).toMatchObject({ complete: true, omissions: [] });
+    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadStudyAnalysis(prepared)).analysis?.participants).toEqual(captured.participants);
+    const forged = syntheticArtifact(captured, "analysis-forged");
+    forged.participants[0]!.assignment = forged.participants[0]!.assignment!.replace('"opaque-b": Rename', '"opaque-a": Rename');
+    forged.inputDigest = digestStudyAnalysisInput(forged);
+    await expect(writeStudyAnalysis(prepared, forged)).rejects.toThrow("ANALYSIS_PARTICIPANT_INPUT_INVALID");
+  });
+
+  it("declares truncation when task identifiers and goals exceed the assignment limit", async () => {
+    const changed = JSON.parse(source.toString());
+    changed.streams[0].assignment.tasks = [{ id: "opaque-a", goal: "Long task description. ".repeat(400) }];
+    source = Buffer.from(JSON.stringify(changed));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
+    const captured = await captureStudyEvidence(prepared, source);
+    expect(Buffer.byteLength(captured.participants[0]!.assignment!)).toBeLessThanOrEqual(8000);
+    expect(captured.coverage).toMatchObject({ complete: false, omissions: ["Participant context exceeded the text limit."] });
+    await writeStudyAnalysis(prepared, syntheticArtifact(captured));
+    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
   });
 
   it("preserves null versus an explicitly empty task measurement and rejects forged provenance", async () => {
