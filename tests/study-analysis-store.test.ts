@@ -5,7 +5,7 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
 import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
-import { appendStudyAnalysisCorrection, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis } from "../src/study-analysis-store.js";
+import { appendStudyAnalysisCorrection, listStudyAnalyses, listStudyAnalysisExecutions, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "../src/study-analysis-store.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
 import type { StudyAnalysisArtifact, StudyAnalysisCorrection, StudyAnalysisInput } from "../src/study-analysis.js";
 import { syntheticArtifact } from "./study-analysis-fixtures.js";
@@ -185,4 +185,42 @@ describe("immutable study analysis store", () => {
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
     expect(await captureStudyEvidence(prepared, source)).toMatchObject({ images: [], coverage: { complete: false } });
   });
+
+  it("retains accounting after source changes without persisting report or participant text", async () => {
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), Buffer.concat([source, Buffer.from("\n")]));
+    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    await expect(writeStudyAnalysis(prepared, artifact)).rejects.toThrow("ANALYSIS_SOURCE_CHANGED");
+    const execution = await listStudyAnalysisExecutions(prepared);
+    expect(execution.warnings).toEqual([]);
+    expect(execution.receipts).toHaveLength(1);
+    expect(execution.receipts[0]).toMatchObject({ id: artifact.id, sourceRunSha256: artifact.sourceRunSha256, usage: artifact.usage });
+    const saved = await readFile(path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, "receipt.json"), "utf8");
+    for (const text of ["participant-a", "Create an item", "I could not", "data:image", '"result"', '"config"', '"participants"', '"evidence"']) {
+      expect(saved).not.toContain(text);
+    }
+    await expect(writeStudyAnalysisExecutionReceipt(prepared, artifact)).rejects.toThrow("ANALYSIS_ID_EXISTS");
+  });
+
+  it("retains failed execution accounting and rejects malformed receipt text", async () => {
+    const failed = { ...artifact, status: "failed" as const, result: null, error: "analysis_provider_failed" };
+    await writeStudyAnalysisExecutionReceipt(prepared, failed);
+    expect((await listStudyAnalysisExecutions(prepared)).receipts[0]?.status).toBe("failed");
+    const target = path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, "receipt.json");
+    const receipt = JSON.parse(await readFile(target, "utf8"));
+    await writeFile(target, JSON.stringify({ ...receipt, privateTranscript: "Synthetic disallowed extra field" }));
+    expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: ["ANALYSIS_RECEIPT_INVALID"] });
+  });
+
+  it("rejects linked execution receipts and cross-run execution IDs", async () => {
+    await expect(writeStudyAnalysisExecutionReceipt(prepared, { ...artifact, runId: "different-study",
+      inputDigest: digestStudyAnalysisInput({ ...artifact, runId: "different-study" }) })).rejects.toThrow("ANALYSIS_ID_MISMATCH");
+    await writeStudyAnalysisExecutionReceipt(prepared, artifact);
+    const target = path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, "receipt.json");
+    const outside = path.join(cwd, "outside-receipt.json");
+    await writeFile(outside, await readFile(target));
+    await rm(target);
+    await symlink(outside, target);
+    expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: ["ANALYSIS_RECEIPT_UNREADABLE"] });
+  });
+
 });

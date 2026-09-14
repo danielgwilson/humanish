@@ -261,3 +261,21 @@ export function validateStudyAnalysisCorrection(value: unknown): StudyAnalysisCo
   }
   return parsed.data;
 }
+
+/** Accounting survives a stale source without retaining generated or participant text. */
+export const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema.pick({
+  id: true,
+  runId: true,
+  status: true,
+  createdAt: true,
+  completedAt: true,
+  sourceRunSha256: true,
+  inputDigest: true,
+  configDigest: true,
+  promptVersion: true,
+  provider: true,
+  usage: true,
+  error: true
+}).extend({ schema: z.literal("humanish.analysis-execution.v1") }).strict();
+
+export type StudyAnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
