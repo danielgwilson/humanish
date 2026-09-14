@@ -50,6 +50,12 @@ Full-fidelity screenshots are local-only by default. The automated scan catches 
 
 ## Draft an issue
 
+Use `npx humanish feedback list --run latest` to see recorded candidates and any
+saved draft. With no candidates, `feedback draft` and `feedback issue` can still
+create a follow-up: a contract reminder for a dry run, or a summary of the recorded
+review for a live run. That summary is not a new finding, so the candidate list
+stays empty. Listing does not create a draft or verify that it is safe to share.
+
 For a `share_ready` run:
 
 ```bash

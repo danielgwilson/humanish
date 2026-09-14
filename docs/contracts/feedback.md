@@ -58,6 +58,10 @@ setup-quality gap, ceremonial/absent study quality, target-app blocker, or
 Humanish CLI blocker. The OSS
 meta-lab is one maintainer dogfood example, not the only candidate source.
 
+The list also shows any saved draft. An empty `candidates` array means no usable
+candidate was recorded; it does not mean a run-summary draft is unavailable.
+Listing does not create a draft or check public-sharing eligibility.
+
 For completed computer-use sessions, participant-reported friction comes from
 the redacted closing report and observed-report clauses in earlier messages.
 Matching `stopWhen` or ending a dwell window does not discard an earlier
@@ -74,9 +78,11 @@ was not repeated in the message trace.
 
 ### `draft`
 
-Builds structured feedback from the strongest run candidate first. If no
-candidate is present, falls back to the dry-run contract follow-up. Writes a
-draft under the run bundle, not GitHub.
+Builds structured feedback from the first usable run candidate, or the candidate
+selected with `--candidate`. With no candidate, a dry run produces a contract
+follow-up and a live run produces a summary of its recorded review. These
+fallbacks do not add a finding to the candidate list. All drafts require a
+verified `share_ready` run and are written under the run bundle, not GitHub.
 
 ### `verify`
 

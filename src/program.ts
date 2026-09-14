@@ -2124,7 +2124,8 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
 
   feedback
     .command("list")
-    .description("List feedback draft state for a run.")
+    .description("List recorded feedback candidates and any saved draft.")
+    .addHelpText("after", "\nWith no candidates, feedback draft and feedback issue can generate a run-summary follow-up. Public drafting still requires share_ready verification.\n")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -4135,12 +4136,18 @@ function formatFeedbackHuman(result: FeedbackResult): string {
   }
 
   const candidates = result.candidates ?? [];
+  const noCandidates = result.candidates !== undefined && candidates.length === 0;
   return [
-    "humanish feedback ready",
+    noCandidates && result.draft === undefined ? "humanish feedback: no recorded candidates" : "humanish feedback ready",
     `run: ${result.run}`,
     ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
     ...(result.issuePath ? [`issue: ${result.issuePath}`] : []),
     ...(result.draft?.source_candidate_id ? [`candidate: ${result.draft.source_candidate_id}`] : []),
+    ...(noCandidates ? [
+      "candidates: none recorded",
+      "With no candidates, feedback draft and feedback issue can generate a run-summary follow-up after share_ready verification.",
+      ...(result.draft ? [`summary: ${result.draft.summary}`] : [])
+    ] : []),
     // Every finding the run produced, so the second and third are one flag away (#609).
     ...(candidates.length > 1 || (candidates.length === 1 && result.draft === undefined)
       ? [
