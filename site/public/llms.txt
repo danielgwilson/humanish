@@ -77,6 +77,10 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish verify`: Validate a run bundle and public-safety gates.
 - `humanish cleanup`: Write a resource cleanup inspection receipt.
 - `humanish review`: Build a review packet from verified run evidence.
+- `humanish analyze`: Generate evidence-linked study findings.
+- `humanish analyze list`: List immutable analysis versions, including failed attempts.
+- `humanish analyze show`: Read validated analysis and correction history. Defaults to the latest usable version.
+- `humanish analyze correct`: Append a human review note bound to one exact finding version; original claims remain intact.
 - `humanish runs`: List local Humanish runs and latest pointers.
 - `humanish stats`: Roll up cost, outcomes, and durations across runs.
 - `humanish export`: Export Observer HTML or a redacted bundle workspace.

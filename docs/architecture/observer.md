@@ -187,12 +187,21 @@ entry-point capabilities, timing limits and browser acceptance commands.
 
 The Observer shell has:
 
-- top mission-control band with run status and metrics;
+- a persistent study library and a compact study header;
+- Participants and Findings views that share the same shell geometry;
 - stream filters for UI, CLI, TUI, and Codex UI lanes;
 - grid mode with one tile per sim stream;
 - focus mode with left stream rail, center stage, and right tabs;
 - terminal/TUI transcript stage;
 - right evidence rail for events, artifacts, and known gaps.
+
+Findings use the independent [study analysis contract](../contracts/study-analysis.md).
+The renderer injects a separate JSON slot and HTTP companion; it does not extend
+the frozen Observer data schema or start provider requests. Analysis polling has
+an independent lifecycle, so a delayed companion does not stall recording updates.
+Invalid or stale interpretation never overwrites original participant outcomes.
+Recording navigation retains its originating view, and nonvisual citations open
+the source event rather than inventing a playback frame.
 
 The participant grid uses equal-height previews whose widths follow each screen's
 aspect ratio. A 44px identity/source/outcome caption sits below the captured pixels;

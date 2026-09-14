@@ -70,6 +70,40 @@ Starting a run is a separate action. `npx humanish lab run first-run --json --no
 creates a keyless preview; replacing `first-run` with a live lab can launch providers
 and incur spend. See the [CLI reference](/docs/cli) for all flags.
 
+## Review study findings
+
+Participants and Findings share one Observer workspace. The participant grid,
+recordings and original feedback remain available while you review ranked
+observations and follow their evidence links.
+
+Analysis is opt-in. Inspect the local admission estimate, then generate:
+
+```bash
+npx humanish analyze --run latest --max-cost 2 --dry-run --json
+npx humanish analyze --run latest --max-cost 2 --json
+npx humanish observe --run latest
+```
+
+Generation sends selected retained text and captures to OpenAI and requires
+`OPENAI_API_KEY`. The cost ceiling applies to a conservative admission estimate,
+not an exact bill. Opening Observer does not start analysis. The review covers
+intent, outcome, friction, recovery and participant feedback; each finding links
+to original evidence. Coverage limits and missing evidence remain visible.
+
+`analyze list --json` includes version history and execution receipts.
+`analyze show --json` reads the latest usable version. Use `--rerun` to request
+a new version, or `--question` for an additional reviewer question.
+
+```bash
+npx humanish analyze correct --run latest --analysis <id> --finding F1 \
+  --status confirmed --reason "The cited captures reproduce the issue."
+npx humanish feedback issue --run latest --analysis <id> --finding F1 --repo owner/repo
+```
+
+Corrections are bound to the exact version reviewed. Feedback still requires
+share-ready evidence. Redacted exports omit analysis that refers to original
+source hashes; analyze the derived run again.
+
 ## Serve the run library
 
 `humanish watch` follows one attached run; `humanish serve` serves the whole
