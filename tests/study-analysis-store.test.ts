@@ -190,6 +190,29 @@ describe("immutable study analysis store", () => {
     await expect(appendStudyAnalysisCorrection(prepared, { ...correction(), analysisSha256: "c".repeat(64) })).rejects.toThrow("ANALYSIS_CORRECTION_BINDING_INVALID");
   });
 
+  it("refuses the 257th correction before claiming it and preserves all prior review decisions", async () => {
+    await writeStudyAnalysis(prepared, artifact);
+    const before = await readFile(artifactPath());
+    const parent = path.join(prepared.physicalRunRoot, "analysis", artifact.id, "corrections");
+    await mkdir(parent);
+    const records = Array.from({ length: 255 }, (_, index) => ({ ...correction(),
+      id: `correction-${String(index).padStart(3, "0")}` }));
+    await Promise.all(records.map(async (record) => {
+      const directory = path.join(parent, record.id);
+      await mkdir(directory);
+      await writeFile(path.join(directory, "correction.json"), JSON.stringify(record));
+    }));
+    const last = { ...correction(), id: "correction-255", status: "dismissed" as const };
+    await appendStudyAnalysisCorrection(prepared, last);
+    records.push(last);
+    await expect(appendStudyAnalysisCorrection(prepared, { ...correction(), id: "correction-256" }))
+      .rejects.toThrow("ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE");
+    await expect(access(path.join(parent, "correction-256"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await loadStudyAnalysis(prepared)).toMatchObject({ state: "ready", corrections: records, warnings: [] });
+    expect(await readFile(artifactPath())).toEqual(before);
+    expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+  });
+
   it.each(["oversized", "malformed", "empty", "symlink", "hardlink"] as const)(
     "warns when a present %s correction cannot preserve the recorded dismissal", async (kind) => {
       await writeStudyAnalysis(prepared, artifact);

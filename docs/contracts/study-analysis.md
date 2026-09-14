@@ -131,6 +131,10 @@ version does not approve a later claim. Dismissed findings cannot become feedbac
 drafts; amendments preserve the original and record the replacement. Feedback
 drafts include source/version/evidence references and remain explicitly
 independent of participant-authored candidates. No command above posts to GitHub.
+Each analysis has room for 256 correction inventory entries, including interrupted
+writes. A full or unsafe inventory refuses a new correction before creating its
+entry; prior records remain unchanged. Analysis and correction commands share the
+run lock so concurrent writers cannot overrun that bound.
 
 The existing sharing gate scans source and derived text. Export and feedback
 also check the exact in-memory analysis snapshot they include. Sensitive derived

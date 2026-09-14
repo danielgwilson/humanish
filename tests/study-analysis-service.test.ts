@@ -114,6 +114,28 @@ describe("ordinary study analysis flow", () => {
     expect(await readdir(runRoot)).not.toContain(".analysis-lock");
   });
 
+  it("serializes correction writers with the same run lock before changing history", async () => {
+    const prepared = (await resolveRunPath(cwd, "analysis-flow"))!;
+    const artifact = syntheticArtifact(input);
+    await writeStudyAnalysis(prepared, artifact);
+    const options = { analysisId: artifact.id, findingId: "finding-1", status: "confirmed" as const,
+      reason: "The retained evidence supports this finding." };
+    await withStudyAnalysisLock(prepared, async () => {
+      await expect(correctStudyAnalysis(cwd, "analysis-flow", options)).rejects.toThrow("ANALYSIS_BUSY");
+      const output: string[] = []; let exit = 0;
+      const program = createProgram({ writeOut: (text) => output.push(text), writeErr: () => {}, setExitCode: (code) => { exit = code; } });
+      await program.parseAsync(["analyze", "correct", "--cwd", cwd, "--run", "analysis-flow", "--analysis", artifact.id,
+        "--finding", "finding-1", "--status", "confirmed", "--reason", options.reason, "--json"], { from: "user" });
+      expect(exit).toBe(2);
+      expect(JSON.parse(output.join(""))).toMatchObject({ ok: false, error: { code: "ANALYSIS_BUSY" } });
+      expect((await showStudyAnalysis(cwd, "analysis-flow")).corrections).toEqual([]);
+    });
+    await correctStudyAnalysis(cwd, "analysis-flow", options);
+    expect((await showStudyAnalysis(cwd, "analysis-flow")).corrections).toHaveLength(1);
+    expect(await readdir(runRoot)).not.toContain(".analysis-lock");
+    expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
   it("refuses a new paid attempt when history is unreadable or lacks publication capacity, while preserving valid reuse", async () => {
     const fetch = await transport();
     const first = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });

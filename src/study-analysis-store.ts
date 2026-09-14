@@ -265,6 +265,14 @@ export async function appendStudyAnalysisCorrection(
   const root = await existingRoot(prepared);
   if (!root) throw new Error("ANALYSIS_STORAGE_UNAVAILABLE");
   const parent = await prepareContainedOutputDirectoryRoot(root, `${correction.analysisId}/corrections`);
+  // The service's run lock serializes this check with ordinary correction writers.
+  // Reserve the new entry before claiming it so a full history stays readable.
+  try {
+    const inventory = await directoryIds(parent, MAX_CORRECTIONS - 1);
+    if (inventory.warnings.length > 0) throw new Error("Unsafe correction inventory.");
+  } catch {
+    throw new Error("ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE");
+  }
   const claimed = await claimDirectory(parent, correction.id);
   await writeContainedOutputFile(claimed, "correction.json", `${JSON.stringify(correction, null, 2)}\n`);
 }

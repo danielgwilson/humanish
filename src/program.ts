@@ -1300,9 +1300,16 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
         writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
           (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`);
         io.setExitCode(0);
-      } catch {
+      } catch (error) {
+        const code = error instanceof Error && ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
+          ? error.message : "ANALYSIS_CORRECTION_INVALID";
+        const message = code === "ANALYSIS_BUSY"
+          ? "Another analysis or correction holds this run's lock. Retry after it finishes."
+          : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
+            ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
+            : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
         writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: false,
-          error: { code: "ANALYSIS_CORRECTION_INVALID", message: "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected." } },
+          error: { code, message } },
           (value) => value.error.message + "\n");
         io.setExitCode(2);
       }

@@ -64,7 +64,7 @@ const fail = (run: string, dryRun: boolean, code: string): AnalyzeResult => ({
   error: { code, message: messages[code] ?? messages.ANALYSIS_UNAVAILABLE! }
 });
 
-/** One dispatch owner per run. A stale on-disk lock is never stolen based on an untrusted PID. */
+/** One analysis or correction writer per run. Never steal a lock based on an untrusted PID. */
 export async function withStudyAnalysisLock<T>(prepared: PreparedRunArtifactPaths, action: () => Promise<T>): Promise<T> {
   await validatePreparedRunRootIdentity(prepared);
   const target = path.join(prepared.physicalRunRoot, ".analysis-lock");
@@ -194,18 +194,20 @@ export async function correctStudyAnalysis(cwd: string, run: string, options: {
 }): Promise<StudyAnalysisCorrection> {
   const prepared = await resolveRunPath(path.resolve(cwd), run);
   if (!prepared) throw new Error("ANALYSIS_RUN_NOT_FOUND");
-  const loaded = await loadStudyAnalysis(prepared, options.analysisId);
-  const analysis = loaded.analysis;
-  const finding = analysis?.result?.findings.find((item) => item.id === options.findingId);
-  if (loaded.state !== "ready" || !analysis || !finding) throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
-  if (containsSensitive(options.reason) || containsSensitive(options.replacementClaim ?? "")) throw new Error("ANALYSIS_CORRECTION_TEXT_UNSAFE");
-  const correction: StudyAnalysisCorrection = {
-    schema: STUDY_ANALYSIS_CORRECTION_SCHEMA, id: `correction-${randomUUID()}`,
-    analysisId: analysis.id, analysisSha256: hashStudyAnalysisValue(analysis), findingId: finding.id,
-    findingSha256: hashStudyAnalysisValue(finding), createdAt: new Date().toISOString(),
-    status: options.status, reason: options.reason, replacementClaim: options.replacementClaim ?? null
-  };
-  await appendStudyAnalysisCorrection(prepared, correction);
-  await renderObserver(cwd, run, { open: false }).catch(() => null);
-  return correction;
+  return withStudyAnalysisLock(prepared, async () => {
+    const loaded = await loadStudyAnalysis(prepared, options.analysisId);
+    const analysis = loaded.analysis;
+    const finding = analysis?.result?.findings.find((item) => item.id === options.findingId);
+    if (loaded.state !== "ready" || !analysis || !finding) throw new Error("ANALYSIS_CORRECTION_SOURCE_UNAVAILABLE");
+    if (containsSensitive(options.reason) || containsSensitive(options.replacementClaim ?? "")) throw new Error("ANALYSIS_CORRECTION_TEXT_UNSAFE");
+    const correction: StudyAnalysisCorrection = {
+      schema: STUDY_ANALYSIS_CORRECTION_SCHEMA, id: `correction-${randomUUID()}`,
+      analysisId: analysis.id, analysisSha256: hashStudyAnalysisValue(analysis), findingId: finding.id,
+      findingSha256: hashStudyAnalysisValue(finding), createdAt: new Date().toISOString(),
+      status: options.status, reason: options.reason, replacementClaim: options.replacementClaim ?? null
+    };
+    await appendStudyAnalysisCorrection(prepared, correction);
+    await renderObserver(cwd, run, { open: false }).catch(() => null);
+    return correction;
+  });
 }
