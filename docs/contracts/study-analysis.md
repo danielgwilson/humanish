@@ -7,8 +7,8 @@ deterministic review verdict. Opening an Observer never starts a provider reques
 ## Invocation
 
 ```bash
-humanish analyze --run latest --max-cost 2 --dry-run --json
-humanish analyze --run latest --max-cost 2 --json
+humanish analyze --run latest --max-cost 3 --dry-run --json
+humanish analyze --run latest --max-cost 3 --json
 humanish observe --run latest
 humanish analyze list --run latest --json
 humanish analyze show --run latest --json
@@ -19,7 +19,7 @@ not a participant study. Here, `analyze --dry-run` means checking an existing
 study's input and admission estimate without credentials, a provider request,
 or a new analysis artifact.
 
-The default model is `gpt-5.6-sol`. A request sends selected retained text and
+The default model is `gpt-6-astra`, with high reasoning effort. A request sends selected retained text and
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
 participant assignment. `--max-cost` is required, including for dry-run
@@ -27,6 +27,13 @@ admission. It bounds a conservative estimate, not an exact provider bill.
 `--timeout-ms` and `--max-output-tokens` bound the request. An exceeded admission
 estimate retains valid findings and usage but returns a partial result and a
 nonzero command exit, including when that version is reused.
+
+The defaults allow five minutes and 16,384 output tokens, including reasoning.
+The analysis checks the assigned requirements against the retained end state;
+an unverified essential result remains unknown even if the participant reported
+success. Findings keep reported concerns and observed recovery distinct across
+participants. Other supported models can be selected explicitly, but evidence
+reference validation does not certify their interpretation of small visual details.
 
 Identical source input, configuration, and prompt version reuse a current valid
 analysis. `--rerun` creates another immutable version. Failed attempts do not

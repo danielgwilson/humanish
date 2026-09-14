@@ -97,7 +97,7 @@ a separately verified copy while preserving the readable original.
 participant's report, task outcomes, costs, and how to turn a finding into an issue.
 
 For a ranked review of a completed live study, run
-`npx humanish analyze --run latest --max-cost 2 --dry-run --json` to inspect
+`npx humanish analyze --run latest --max-cost 3 --dry-run --json` to inspect
 admission, then remove `--dry-run` to generate findings. This sends selected
 retained evidence to OpenAI and requires `OPENAI_API_KEY`. Findings appear
 beside Participants in Observer, with evidence links and separate participant

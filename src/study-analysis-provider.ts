@@ -109,7 +109,7 @@ export function createStudyAnalysisProvider(options: {
     ];
     const body = JSON.stringify({ model: request.model, instructions: request.instructions,
       input: [{ role: "user", content }], store: false, tools: [], tool_choice: "none",
-      truncation: "disabled", service_tier: "default", max_output_tokens: request.maxOutputTokens,
+      truncation: "disabled", service_tier: "default", reasoning: { effort: "high" }, max_output_tokens: request.maxOutputTokens,
       text: { format: { type: "json_schema", name: "study_analysis", strict: true, schema: request.schema } } });
     if (Buffer.byteLength(body) > MAX_REQUEST_BYTES) return failure("invalid_request", false);
     const controller = new AbortController();

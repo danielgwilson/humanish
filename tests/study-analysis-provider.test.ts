@@ -29,7 +29,7 @@ describe("study analysis provider boundary", () => {
     expect(url).toBe("https://api.openai.com/v1/responses");
     expect(init?.redirect).toBe("error");
     expect(JSON.parse(String(init?.body))).toMatchObject({ store: false, tools: [], tool_choice: "none",
-      service_tier: "default", truncation: "disabled", max_output_tokens: 8192,
+      service_tier: "default", truncation: "disabled", reasoning: { effort: "high" }, max_output_tokens: 8192,
       text: { format: { type: "json_schema", strict: true, schema: request.schema } } });
     expect(String(init?.body)).not.toContain("synthetic-key");
   });

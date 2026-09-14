@@ -164,7 +164,8 @@ describe("ordinary study analysis flow", () => {
     expect(result.executionReceiptPath).toBeTruthy();
     const output: string[] = []; let exit = 0;
     const program = createProgram({ writeOut: (text) => output.push(text), writeErr: () => {}, setExitCode: (code) => { exit = code; } });
-    await program.parseAsync(["analyze", "--cwd", cwd, "--run", "analysis-flow", "--max-cost", "5", "--timeout-ms", "1000"], { from: "user" });
+    await program.parseAsync(["analyze", "--cwd", cwd, "--run", "analysis-flow", "--max-cost", "5",
+      "--model", config.model, "--timeout-ms", String(config.timeoutMs), "--max-output-tokens", String(config.maxOutputTokens)], { from: "user" });
     expect(exit).toBe(2);
     expect(output.join("")).toContain(result.artifactPath!);
     expect(output.join("")).toContain(`${config.maxOutputTokens + 1} output tokens`);

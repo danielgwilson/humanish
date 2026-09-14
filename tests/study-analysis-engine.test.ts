@@ -41,17 +41,18 @@ function transport(output: unknown = result()) {
 }
 
 describe("bounded study analysis engine", () => {
-  it("validates and persists an independent review without changing the participant's recorded outcome", async () => {
+  it.each(["gpt-5.6-sol", "gpt-6-astra"])("validates and accounts for %s without changing the participant's recorded outcome", async (model) => {
+    const selectedConfig = { ...config, model };
     const packet = input();
     const before = structuredClone(packet);
     const h = transport();
     const onProgress = vi.fn();
-    const artifact = await runStudyAnalysis(packet, config, { apiKey: "synthetic-key", fetch: h.fetchFn, onProgress });
+    const artifact = await runStudyAnalysis(packet, selectedConfig, { apiKey: "synthetic-key", fetch: h.fetchFn, onProgress });
     expect(artifact.status).toBe("complete");
     expect(artifact.result?.participants[0]?.outcome).toBe("blocked");
     expect(packet).toEqual(before);
     expect(artifact).toMatchObject({ schema: "humanish.study-analysis.v1", inputDigest: packet.inputDigest,
-      configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION, provider: "openai", error: null,
+      configDigest: hashStudyAnalysisValue(selectedConfig), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION, provider: "openai", error: null,
       usage: { inputTokens: 13543, outputTokens: 221, cachedInputTokens: 0, cacheWriteInputTokens: 13468,
         dispatched: true, usageComplete: true } });
     expect(artifact.usage.estimatedCostUsd).toBeGreaterThan(0);
@@ -90,7 +91,7 @@ describe("bounded study analysis engine", () => {
     const sent = JSON.parse(body.input[0].content[0].text);
     expect(sent.participants).toEqual(packet.participants);
     expect(artifact.participants).toEqual(packet.participants);
-    expect(artifact.promptVersion).toBe("study-evidence-2");
+    expect(artifact.promptVersion).toBe("study-evidence-3");
     expect(body.instructions).toContain("inputsObserved=false means the task was never measured");
     expect(body.instructions).toContain("Null fields are unavailable information");
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);

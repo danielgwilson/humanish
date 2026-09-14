@@ -286,10 +286,10 @@ humanish analyze [options] [command]
 | `--run <id>` | Completed run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--max-cost <usd>` | Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap. |
-| `--model <id>` | Supported vision analysis model. (default: "gpt-5.6-sol") |
+| `--model <id>` | Supported vision analysis model; analysis uses high reasoning effort. (default: "gpt-6-astra") |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
-| `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "180000") |
-| `--max-output-tokens <n>` | Bound response tokens, from 256 to 32768. (default: "8192") |
+| `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "300000") |
+| `--max-output-tokens <n>` | Bound response tokens, including reasoning, from 256 to 32768. (default: "16384") |
 | `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
 | `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
 | `--json` | Print a machine-readable JSON response. |
