@@ -32,6 +32,7 @@ humanish [options] [command]
 - [humanish verify](#humanish-verify): Validate a run bundle and public-safety gates.
 - [humanish cleanup](#humanish-cleanup): Write a resource cleanup inspection receipt.
 - [humanish review](#humanish-review): Build a review packet from verified run evidence.
+- [humanish analyze](#humanish-analyze): Generate evidence-linked study findings.
 - [humanish runs](#humanish-runs): List local Humanish runs and latest pointers.
 - [humanish stats](#humanish-stats): Roll up cost, outcomes, and durations across runs.
 - [humanish export](#humanish-export): Export Observer HTML or a redacted bundle workspace.
@@ -269,6 +270,79 @@ humanish review [options]
 | --- | --- |
 | `--run <id>` | Run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | display help for command |
+
+## humanish analyze
+
+Analyze retained participant evidence into versioned findings. Explicit opt-in: sends selected text and captures to OpenAI. Opening Observer never starts analysis.
+
+```text
+humanish analyze [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Completed run id or latest pointer. (default: "latest") |
+| `--cwd <path>` | Target project directory. (default: ".") |
+| `--max-cost <usd>` | Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap. |
+| `--model <id>` | Supported vision analysis model; analysis uses high reasoning effort. (default: "gpt-6-astra") |
+| `--question <text>` | Additional reviewer question; does not change participant instructions. |
+| `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "300000") |
+| `--max-output-tokens <n>` | Bound response tokens, including reasoning, from 256 to 32768. (default: "16384") |
+| `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
+| `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | display help for command |
+
+### humanish analyze list
+
+List immutable analysis versions, including failed attempts.
+
+```text
+humanish analyze list [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id or latest pointer. (default: "latest") |
+| `--cwd <path>` | Target project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | display help for command |
+
+### humanish analyze show
+
+Read validated analysis and correction history. Defaults to the latest usable version.
+
+```text
+humanish analyze show [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id or latest pointer. (default: "latest") |
+| `--id <id>` | Exact analysis version. |
+| `--cwd <path>` | Target project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | display help for command |
+
+### humanish analyze correct
+
+Append a human review note bound to one exact finding version; original claims remain intact.
+
+```text
+humanish analyze correct [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--run <id>` | Run id or latest pointer. (default: "latest") |
+| `--cwd <path>` | Target project directory. (default: ".") |
+| `--analysis <id>` | Analysis version to review. |
+| `--finding <id>` | Finding to review. |
+| `--status <status>` | Review disposition. (choices: "confirmed", "dismissed", "amended") |
+| `--reason <text>` | Why this disposition is supported. |
+| `--claim <text>` | Replacement claim, required only for amended findings. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
@@ -698,6 +772,8 @@ humanish feedback draft [options]
 | --- | --- |
 | `--run <id>` | Run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
 | `--candidate <id>` | Which finding to draft (ids from `feedback list`); default: the first. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
@@ -714,6 +790,8 @@ humanish feedback verify [options]
 | --- | --- |
 | `--run <id>` | Run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
 | `--candidate <id>` | Which finding to verify (ids from `feedback list`); default: the first. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
@@ -732,6 +810,8 @@ humanish feedback issue [options]
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--repo <owner/repo>` | Repository slug used in rendered filing instructions. |
 | `--format <format>` | Output format. (default: "markdown") |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
 | `--candidate <id>` | Which finding to file (ids from `feedback list`); default: the first. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
@@ -749,6 +829,8 @@ humanish feedback issue-url [options]
 | `--run <id>` | Run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--repo <owner/repo>` | Repository slug used in the generated URL. |
+| `--analysis <id>` | Independent analysis version; use with --finding. |
+| `--finding <id>` | Finding within --analysis, separate from participant candidates. |
 | `--candidate <id>` | Which finding to link (ids from `feedback list`); default: the first. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |

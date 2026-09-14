@@ -2,6 +2,9 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./feedback-proof.js";
+import { loadStudyAnalysis } from "./study-analysis-store.js";
+import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
+import { studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 
 import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
@@ -34,6 +37,7 @@ export interface FeedbackDraft {
   expected: string;
   actual: string;
   source_candidate_id?: string;
+  source_analysis?: { id: string; sha256: string; finding_id: string; finding_sha256: string; correction_id: string | null };
   source_bundle: string;
   evidence: Array<{
     path: string;
@@ -86,6 +90,9 @@ export interface FeedbackCandidateSummary {
 export interface FeedbackDraftOptions {
   /** A candidate id from `feedback list`. Absent: the first usable candidate, as before. */
   candidate?: string;
+  /** Explicitly select an independent interpretation, separate from participant-authored candidates. */
+  analysis?: string;
+  finding?: string;
 }
 
 function summarizeCandidates(bundle: RunBundle): FeedbackCandidateSummary[] {
@@ -194,7 +201,10 @@ async function draftFeedbackBound(
     } };
   }
 
-  const draft = buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
+  const independent = options.analysis !== undefined || options.finding !== undefined;
+  const draft = independent ? await buildAnalysisDraft(context, options) : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
+  if (!draft) return { context, result: { schema: FEEDBACK_RESULT_SCHEMA, ok: false, cwd, run: runInput,
+    error: { code: "HUMANISH_INVALID_FEEDBACK_DRAFT", message: "Select a current valid analysis and finding together, without --candidate. Dismissed findings cannot be promoted into feedback." } } };
   const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
   await writeJson(context.preparedRunPaths, path.join("feedback", "draft.json"), draft);
 
@@ -514,6 +524,54 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
       feedbackProofCommands(bundle.runId).verify,
       feedbackProofCommands(bundle.runId).watch
     ]
+  };
+}
+
+async function buildAnalysisDraft(context: FeedbackRunContext, options: FeedbackDraftOptions): Promise<FeedbackDraft | null> {
+  if (!options.analysis || !options.finding || options.candidate !== undefined) return null;
+  const loaded = await loadStudyAnalysis(context.preparedRunPaths, options.analysis);
+  const analysis = loaded.analysis;
+  const finding = analysis?.result?.findings.find((item) => item.id === options.finding);
+  const sharing = studyAnalysisSharingProblems(loaded);
+  if (loaded.state !== "ready" || sharing.sensitive || sharing.unverified || !analysis || !finding) return null;
+  const correction = loaded.corrections.filter((item) => item.findingId === finding.id).at(-1);
+  if (correction?.status === "dismissed") return null;
+  const bundle = context.loaded.bundle;
+  const root = path.dirname(context.loaded.bundlePath);
+  const evidenceIds = new Set(finding.observations.flatMap((item) => item.evidenceIds));
+  const evidence = analysis.evidence.filter((item) => evidenceIds.has(item.id));
+  const claim = correction?.status === "amended" ? correction.replacementClaim! : finding.title;
+  const firstLine = claim.trim().split(/\r?\n/)[0] || `Reviewed finding ${finding.id}`;
+  const summary = Array.from(firstLine).length > 160 ? Array.from(firstLine).slice(0, 159).join("") + "…" : firstLine;
+  const source = { id: analysis.id, sha256: hashStudyAnalysisValue(analysis), finding_id: finding.id,
+    finding_sha256: hashStudyAnalysisValue(finding), correction_id: correction?.id ?? null };
+  return {
+    schema: FEEDBACK_SCHEMA, run_id: bundle.runId, adapter_id: bundle.source.packageName ?? bundle.scenario.id,
+    scenario_id: bundle.scenario.id, persona_id: bundle.persona.id, actor: "unknown", substrate: "unknown",
+    failure_owner: "unknown", summary,
+    expected: "Review the cited behavior against the participant assignment and confirm the expected product behavior.",
+    actual: ["Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
+      correction?.status === "amended" ? `Amended claim: ${claim}. Original analysis: ${finding.summary}` : finding.summary,
+      `Impact: ${finding.impact}. ${finding.affectedStreamIds.length} affected / ${finding.exposedStreamIds.length} observed exposed participants. ${finding.exposureReason}`,
+      `Recovery: ${finding.recovery}. Confidence: ${finding.confidence}.`,
+      ...finding.observations.map((item) => `${item.basis}: ${item.claim}${item.limitation ? ` Limitation: ${item.limitation}` : ""}`),
+      `Next check: ${finding.nextStep}`,
+      correction ? `Human review: ${correction.status}. ${correction.reason}` : "Human review: not yet recorded."
+    ].join("\n"), source_bundle: context.loaded.bundlePath, source_analysis: source,
+    evidence: [
+      { path: context.loaded.bundlePath, kind: "state", note: "Original run evidence; participant outcomes remain authoritative for what was recorded." },
+      { path: path.join(root, "analysis", analysis.id, "analysis.json"), kind: "review",
+        note: `Independent analysis ${analysis.id}, finding ${finding.id}; sha256 ${source.sha256}.` },
+      ...(correction ? [{ path: path.join(root, "analysis", analysis.id, "corrections", correction.id, "correction.json"),
+        kind: "review" as const, note: "Append-only review of this exact finding version." }] : []),
+      ...evidence.map((item) => ({ path: item.capture ? path.join(root, item.capture.path) : context.loaded.bundlePath,
+        kind: item.capture ? "screenshot" as const : "state" as const,
+        note: `Participant ${item.streamId}, event ${item.eventId}${item.at ? ` at ${item.at}` : ""}; evidence ${item.id}.` }))
+    ],
+    redaction: { status: "passed", notes: "Source run and derived analysis passed the existing share-safety gate; semantic claims still require human review." },
+    idempotency_key: `humanish:${bundle.runId}:analysis:${hashStudyAnalysisValue(source)}`,
+    proposed_next_state: "study-quality-review",
+    acceptance_proof: [feedbackProofCommands(bundle.runId).verify, feedbackProofCommands(bundle.runId).watch]
   };
 }
 

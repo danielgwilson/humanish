@@ -39,6 +39,8 @@ import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { round6 } from "./pricing.js";
+import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./study-analysis-store.js";
+import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
 import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
 import {
@@ -1359,6 +1361,8 @@ export interface RunResult {
 export interface VerifyResult {
   schema: typeof VERIFY_SCHEMA;
   ok: boolean;
+  /** Only present when source evidence verifies but derived analysis failed the public-safety scan. */
+  recordingOk?: boolean;
   cwd: string;
   run: string;
   bundlePath?: string;
@@ -1373,6 +1377,7 @@ export interface VerifyResult {
       code:
         | "VERIFY_FAILED"
         | "PUBLIC_SAFETY_FINDINGS"
+        | "ANALYSIS_UNVERIFIED"
         | "RAW_SCREENSHOTS";
       message: string;
     }>;
@@ -4380,7 +4385,13 @@ async function verifyPreparedRun(
     ok: reviewJson !== null && reviewMarkdown !== null,
     message: "review.json and review.md must exist"
   });
-  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths);
+  const derivedPublicSafetyFindings: string[] = [];
+  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths, derivedPublicSafetyFindings);
+  // JSON escapes can hide a sensitive value from the byte scan while the
+  // decoded recording exposes it to Observer, feedback, or analysis input.
+  if (publicSafetyFindings.length < 50 && bundle !== null && containsSensitivePattern(JSON.stringify(bundle))) {
+    publicSafetyFindings.push("sensitive decoded run.json");
+  }
   checks.push({
     name: "public-safety scan",
     ok: publicSafetyFindings.length === 0,
@@ -4485,6 +4496,9 @@ async function verifyPreparedRun(
       : `cost labeling findings: ${costFindings.join(", ")}`
   });
 
+  const recordingOk = checks.every((check) => check.ok);
+  if (derivedPublicSafetyFindings.length > 0) checks.push({ name: "derived analysis public-safety scan", ok: false,
+    message: "Derived analysis contains sensitive text or unsafe artifact paths; sharing is blocked, original recording remains independently verifiable." });
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
     ? [...rawScreenshotPostureWarnings(bundle), ...undeclaredSubjectStateWarnings(bundle), ...desktopGeometryWarnings(bundle)]
@@ -4501,9 +4515,22 @@ async function verifyPreparedRun(
         ]
       };
 
+  // Interpretation validity is independent of run validity. Keep recordings usable,
+  // while refusing to silently promote stale or malformed derived text into sharing.
+  const analysis = await loadStudyAnalysis(runPaths);
+  const analysisSharing = studyAnalysisSharingProblems(analysis);
+  const executionHistory = await listStudyAnalysisExecutions(runPaths);
+  if (analysisSharing.unverified || analysisSharing.sensitive || executionHistory.warnings.length > 0) {
+    warnings.push("Some study analysis or correction records could not be validated against current evidence.");
+    shareSafety.reasons.push({ code: "ANALYSIS_UNVERIFIED", message: "Derived analysis or corrections need review against the current evidence before sharing." });
+    if (analysisSharing.sensitive) shareSafety.status = "blocked";
+    else if (shareSafety.status === "share_ready") shareSafety.status = "local_only";
+  }
+
   return {
     schema: VERIFY_SCHEMA,
     ok,
+    ...(!ok && recordingOk ? { recordingOk: true } : {}),
     cwd,
     run: runInput,
     bundlePath: path.relative(cwd, bundlePath),
@@ -7024,10 +7051,10 @@ const riskyPublicArtifactPathSegments = new Set([
   "profiles"
 ]);
 
-async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths): Promise<string[]> {
+async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths, derivedFindings: string[]): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
-  await scanRunPublicSafetyDirectory(runPaths, "", findings);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings);
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
@@ -7035,9 +7062,12 @@ async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths):
 async function scanRunPublicSafetyDirectory(
   runPaths: PreparedRunArtifactPaths,
   relativeDirectory: string,
-  findings: string[]
+  findings: string[],
+  derivedFindings: string[]
 ): Promise<void> {
-  if (findings.length >= 50) {
+  // Each authority has its own finding budget. Derived files must never consume
+  // the source scan's budget and make an unscanned recording appear verified.
+  if (findings.length >= 50 && derivedFindings.length >= 50) {
     return;
   }
 
@@ -7047,23 +7077,26 @@ async function scanRunPublicSafetyDirectory(
   const entries = await readdir(current).catch(() => []);
   for (const entryName of entries) {
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
+    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
+    const selectedFindings = !stats?.isDirectory()
+      && (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath)) ? derivedFindings : findings;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
-      findings.push(`risky artifact path ${relativePath}`);
-      if (findings.length >= 50) return;
+      if (selectedFindings.length < 50) selectedFindings.push(`risky artifact path ${relativePath}`);
     }
 
-    const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
     if (!stats || stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink > 1n)) {
-      findings.push(`unsafe artifact leaf ${relativePath}`);
-      if (findings.length >= 50) return;
+      if (selectedFindings.length < 50) selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
       continue;
     }
 
     if (stats.isDirectory()) {
-      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings);
-      if (findings.length >= 50) return;
+      // A directory named analysis.json is not an owned record. Its children
+      // can contain source evidence even after derived findings are saturated.
+      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings);
       continue;
     }
+
+    if (selectedFindings.length >= 50) continue;
 
     if (!shouldScanTextArtifact(relativePath)) {
       continue;
@@ -7072,8 +7105,7 @@ async function scanRunPublicSafetyDirectory(
     const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
     const text = bytes?.toString("utf8") ?? null;
     if (text !== null && containsSensitivePattern(text)) {
-      findings.push(`sensitive text ${relativePath}`);
-      if (findings.length >= 50) return;
+      selectedFindings.push(`sensitive text ${relativePath}`);
     }
   }
 }

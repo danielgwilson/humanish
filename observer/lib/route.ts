@@ -2,7 +2,8 @@
 // frame is addressable, so a reload keeps its place, a link can carry a moment, and
 // #428's cite-turns flags get frame addresses. The grammar is the visible UI's own:
 // "#/lane/<streamId>" opens a participant; "#/lane/<streamId>/f/<n>" opens it at
-// frame n, 1-based to match the transport counter ("3 / 30"). Anything else — an
+// frame n, 1-based to match the transport counter ("3 / 30"). Screenshot-free
+// evidence uses "#/lane/<streamId>/e/<eventId>" without inventing a frame. Anything else — an
 // empty hash, an unknown lane, garbage — resolves to the grid, never an error.
 
 export interface HashRoute {
@@ -15,9 +16,18 @@ export interface HashRoute {
   eventId?: string;
 }
 
+const ENTRY_ROUTE = /^#\/lane\/([^/]+)\/e\/([^/]+)$/;
 const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live)|\/f\/(\d+)(?:\/e\/([^/]+))?)?$/;
 
 export function parseHash(hash: string): HashRoute {
+  const entry = ENTRY_ROUTE.exec(hash);
+  if (entry) {
+    try {
+      const laneId = decodeURIComponent(entry[1]!); const eventId = decodeURIComponent(entry[2]!);
+      if (laneId && eventId && eventId.length <= 256) return { laneId, frame: null, eventId };
+    } catch { /* Malformed addresses keep the ordinary grid available. */ }
+    return { laneId: null, frame: null };
+  }
   const match = LANE_ROUTE.exec(hash);
   if (!match || match[1] === undefined) return { laneId: null, frame: null };
   let laneId: string;
@@ -40,10 +50,9 @@ export function formatHash(laneId: string | null, frame: number | null, mode?: "
   try { encoded = encodeURIComponent(laneId); } catch { return ""; }
   const base = `#/lane/${encoded}`;
   if (mode === "live") return `${base}/live`;
-  if (frame === null) return base;
   let entry = "";
   try { if (eventId && eventId.length <= 256) entry = `/e/${encodeURIComponent(eventId)}`; } catch { /* Keep the usable capture address. */ }
-  return `${base}/f/${frame + 1}${entry}`;
+  return frame === null ? `${base}${entry}` : `${base}/f/${frame + 1}${entry}`;
 }
 
 /** Write the hash without growing history (frame scrubs); no-op when unchanged. */
@@ -51,14 +60,17 @@ export function replaceHash(next: string): void {
   const current = window.location.hash;
   if (current === next || (next === "" && current === "")) return;
   const base = window.location.href.split("#")[0] ?? window.location.href;
-  window.history.replaceState(null, "", `${base}${next}`);
+  window.history.replaceState(window.history.state, "", `${base}${next}`);
 }
 
 /** Write the hash as a history entry (lane open/close), so browser Back returns.
  *  pushState never fires hashchange, so writes cannot echo into our own listener. */
-export function pushHash(next: string): void {
+export function pushHash(next: string, state: unknown = null): void {
   const current = window.location.hash;
-  if (current === next || (next === "" && current === "")) return;
+  if (current === next || (next === "" && current === "")) {
+    if (state !== null) window.history.replaceState(state, "");
+    return;
+  }
   const base = window.location.href.split("#")[0] ?? window.location.href;
-  window.history.pushState(null, "", `${base}${next}`);
+  window.history.pushState(state, "", `${base}${next}`);
 }

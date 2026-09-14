@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { OBSERVER_DATA_PLACEHOLDER, injectObserverData } from "../scripts/inject";
 
 // The durability constraints from #426, made executable: the Observer is ONE
@@ -48,6 +49,7 @@ describe("observer artifact", () => {
   it("carries exactly one data slot and none of the dev fixture", async () => {
     const html = await readArtifact();
     expect(occurrences(html, OBSERVER_DATA_PLACEHOLDER)).toBe(1);
+    expect(occurrences(html, STUDY_ANALYSIS_PLACEHOLDER)).toBe(1);
     // The dev-only golden import must be dead-code-eliminated from the build.
     expect(html).not.toContain("golden-first-run");
   });

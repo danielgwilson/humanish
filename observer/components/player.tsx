@@ -14,6 +14,9 @@ import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
+import { ParticipantAnalysis } from "./participant-analysis";
+import { ParticipantFeedback } from "./participant-feedback";
+import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
 import "@/styles/player.css";
 
 type Tab = "actions" | "details" | "report";
@@ -49,9 +52,11 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange, recordedActorStatus, analysisReview }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
   initialEventId?: string | null;
+  recordedActorStatus?: string | undefined;
+  analysisReview?: AnalysisReview | undefined;
   /** An explicit in-app navigation may repeat the original address after local seeking. */
   navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
@@ -268,7 +273,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const nextFinding = rowIndex.findings.find((index) => index > frame);
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
-  const modeLabel = !updating ? `Participant status: ${stream.statusLabel || stream.status}` : active
+  const modeLabel = !updating ? recordedActorStatus ? `Actor record: ${recordedActorStatus}` : `Participant status: ${stream.statusLabel || stream.status}` : active
     ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
     : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
 
@@ -288,8 +293,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <button type="button" className="tbtn" aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"} aria-expanded={preferences.inspector}
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
-      <ParticipantAssignment stream={stream} />
-      <div className="player-entry-context" aria-label="Selected evidence">
+      {stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
+      {selectedRow || state.eventId ? <div className="player-entry-context" role="group" aria-label="Selected evidence">
         {selectedRow ? <>
           <span className="entry-label">{selectedRow.kind === "reasoning" ? "Reported thinking" : isActionRow(selectedRow) ? "Recorded action" : isWaitRow(selectedRow) ? "Recorded wait" : "Recorded entry"}
             {selectedRow.atMs !== undefined ? ` · ${model.paced === "recorded" ? formatElapsed(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}` : " · Time unavailable"}
@@ -304,7 +309,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           <button type="button" className="tbtn" onClick={() => seek(frame)}>Show capture interval</button>
         </> : state.eventId ? <span>The selected entry is unavailable in this capture interval. Choose an entry from the activity list.</span>
           : <span>{live ? "Live desktop · select recorded activity to inspect an entry." : `${currentPins.length ? `${currentPins.length} recorded ${currentPins.length === 1 ? "pin" : "pins"} in this capture interval. ` : ""}Select an activity entry to inspect its time and location.`}</span>}
-      </div>
+      </div> : null}
       <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
         emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
           : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
@@ -338,7 +343,10 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
             }}
             onPointerMove={(event) => {
               const bounds = event.currentTarget.getBoundingClientRect();
-              if (bounds.width > 0) setScrubPreview(frameAtElapsedMs(model, Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)) * duration));
+              const thumb = Number.parseFloat(getComputedStyle(event.currentTarget).getPropertyValue("--scrub-thumb-size"));
+              const inset = Number.isFinite(thumb) ? thumb / 2 : 0;
+              const travel = bounds.width - inset * 2;
+              if (travel > 0) setScrubPreview(frameAtElapsedMs(model, Math.max(0, Math.min(1, (event.clientX - bounds.left - inset) / travel)) * duration));
             }}
             onChange={(event) => seek(frameAtElapsedMs(model, Number(event.target.value)))} />
         </div>
@@ -349,7 +357,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       <div className="player-review-tools">
         <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
-        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next finding</button>
+        <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next flagged frame</button>
         <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
           <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
         </select></label>
@@ -358,14 +366,14 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
-      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} actions{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} thoughts` : ""} · {timing}</span>
+      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}
       </div>
       {notice ? <p className="player-notice" role="status">{notice}</p> : null}
       {manualLink ? <label className="moment-fallback">Moment link<input readOnly value={manualLink} aria-label="Moment link" onFocus={(event) => event.target.select()} /></label> : null}
-      <div className="filmstrip" ref={filmRef} aria-label="Recorded frames">
+      <div className="filmstrip" ref={filmRef} role="group" aria-label="Recorded frames">
         {filmWindow.start > 0 ? <button type="button" className="tbtn film-page" onClick={() => seek(Math.max(0, filmWindow.start - 1))}>Earlier frames</button> : null}
         {frames.slice(filmWindow.start, filmWindow.end).map((f) => <button key={f.itemId} type="button" className="fs" {...(f.index === frame ? { "data-on": "" } : {})}
           aria-label={`Frame ${f.index + 1}, ${formatElapsed(frameElapsedMs(model, f.index))}, ${f.title}`} onClick={() => seek(f.index)}>
@@ -387,7 +395,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         onPointerMove={(event) => { const start = resizeRef.current; if (start) setPreferences((value) => ({ ...value, width: Math.max(280, Math.min(520, start.width + start.x - event.clientX)) })); }}
         onPointerUp={() => { resizeRef.current = null; }} onLostPointerCapture={() => { resizeRef.current = null; }} />
       <Tabs.Root className="inspector" style={{ width: preferences.width }} value={tab} onValueChange={(value) => setTab(value as Tab)}>
-        <Tabs.List className="itabs" aria-label="Participant inspector">{(["actions", "details", "report"] as const).map((name) => <Tabs.Tab key={name} value={name}>{name}</Tabs.Tab>)}</Tabs.List>
+        <Tabs.List className="itabs" aria-label="Participant inspector">{(["actions", "details", "report"] as const).map((name) => <Tabs.Tab key={name} value={name}>{name === "report" ? "Feedback" : name}</Tabs.Tab>)}</Tabs.List>
         <Tabs.Panel value="actions" className="action-panel">
           <div className="feed-controls"><label>Show <select aria-label="Filter activity" value={filter} onChange={(event) => { setFilter(event.target.value as FeedFilter); setFeedPage(null); }}>
             <option value="all">All evidence</option><option value="actions">Actions</option><option value="thoughts">Reported thinking</option><option value="findings">Warnings & findings</option>
@@ -416,6 +424,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           </div>
         </Tabs.Panel>
         <Tabs.Panel value="details" className="ipanel">
+            {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
+            {!stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
             <div className="kv">
               <span className="k">Persona</span>
               <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.label}</span>
@@ -477,6 +487,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
                 <p className="verbatim">“{actor.reason}”</p>
               </div>
             ) : null}
+            <ParticipantFeedback data={data} stream={stream} />
             {data.run.knownGaps.length > 0 ? (
               <div className="blk">
                 <span className="o-label">Study-level gaps</span>

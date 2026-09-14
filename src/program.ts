@@ -103,6 +103,9 @@ import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
 import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule} from "./tui-contract.js";
 import { forTerminal } from "./terminal-encoding.js";
+import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./study-analysis-service.js";
+import { listStudyAnalyses, listStudyAnalysisExecutions } from "./study-analysis-store.js";
+import { resolveRunPath } from "./run.js";
 import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
@@ -563,6 +566,7 @@ export function createProgram(
   registerVerifyCommand(program, cliIo);
   registerCleanupCommand(program, cliIo);
   registerReviewCommand(program, cliIo);
+  registerAnalyzeCommand(program, cliIo);
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
   registerExportCommand(program, cliIo);
@@ -1189,6 +1193,126 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
       const result = await readReview(options.cwd, options.run);
       writeResult(command, io, result, (value) => `${JSON.stringify(value, null, 2)}\n`);
       io.setExitCode("ok" in result && result.ok === false ? 2 : 0);
+    });
+}
+
+/** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
+function analysisSelection<T extends { cwd: string; run: string }>(options: T, command: Command): T {
+  const parent = command.parent;
+  const selected = { ...options };
+  for (const key of ["cwd", "run"] as const) {
+    if (parent?.getOptionValueSource(key) === "cli" && command.getOptionValueSource(key) !== "cli") {
+      selected[key] = parent.getOptionValue(key) as T[typeof key];
+    }
+  }
+  return selected;
+}
+
+function registerAnalyzeCommand(parent: Command, io: CliIo): void {
+  const analyze = parent.command("analyze")
+    .enablePositionalOptions()
+    .description("Analyze retained participant evidence into versioned findings. Explicit opt-in: sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
+    .summary("Generate evidence-linked study findings.")
+    .option("--run <id>", "Completed run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--max-cost <usd>", "Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap.")
+    .option("--model <id>", "Supported vision analysis model; analysis uses high reasoning effort.", "gpt-6-astra")
+    .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
+    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", "300000")
+    .option("--max-output-tokens <n>", "Bound response tokens, including reasoning, from 256 to 32768.", "16384")
+    .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
+    .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run: string; maxCost?: string; model: string; question?: string;
+      timeoutMs: string; maxOutputTokens: string; dryRun?: boolean; rerun?: boolean }, command) => {
+      const controller = new AbortController();
+      const cancel = (): void => controller.abort();
+      process.once("SIGINT", cancel);
+      try {
+        const result = await analyzeStudy(options.cwd, options.run, {
+          config: { model: options.model, maxCostUsd: Number(options.maxCost), question: options.question ?? null,
+            timeoutMs: Number(options.timeoutMs), maxOutputTokens: Number(options.maxOutputTokens) },
+          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          ...(options.rerun === undefined ? {} : { rerun: options.rerun })
+        }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
+          `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
+        writeResult(command, io, result, (value) => {
+          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}. No request sent.\n`;
+          const lines: string[] = [];
+          if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
+          if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);
+          if (value.executionReceiptPath) lines.push(`Execution receipt: ${value.executionReceiptPath}`);
+          if (value.usage) {
+            lines.push(`Recorded attempt usage: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`);
+            lines.push(`Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`);
+          }
+          if (value.reused) lines.push("No new request sent.");
+          lines.push(...value.warnings);
+          return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+        });
+        io.setExitCode(result.ok ? 0 : 2);
+      } finally { process.removeListener("SIGINT", cancel); }
+    });
+  analyze.command("list").description("List immutable analysis versions, including failed attempts.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run: string }, command) => {
+      options = analysisSelection(options, command);
+      const prepared = await resolveRunPath(resolve(options.cwd), options.run).catch(() => null);
+      const versions = prepared ? await listStudyAnalyses(prepared) : [];
+      const executions = prepared ? await listStudyAnalysisExecutions(prepared) : { receipts: [], warnings: [] };
+      const result = { schema: "humanish.analysis-history.v1", ok: prepared !== null, run: options.run,
+        executions: executions.receipts, warnings: executions.warnings,
+        versions: versions.map(({ id, state, analysis, warnings }) => ({ id, state, status: analysis?.status ?? null,
+          createdAt: analysis?.createdAt ?? null, findings: analysis?.result?.findings.length ?? null,
+          usage: analysis?.usage ?? null, warnings })) };
+      writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+  analyze.command("show").description("Read validated analysis and correction history. Defaults to the latest usable version.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--id <id>", "Exact analysis version.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run: string; id?: string }, command) => {
+      options = analysisSelection(options, command);
+      const result = await showStudyAnalysis(options.cwd, options.run, options.id);
+      writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+      io.setExitCode(result.state === "invalid" ? 2 : 0);
+    });
+  analyze.command("correct").description("Append a human review note bound to one exact finding version; original claims remain intact.")
+    .option("--run <id>", "Run id or latest pointer.", "latest")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .requiredOption("--analysis <id>", "Analysis version to review.")
+    .requiredOption("--finding <id>", "Finding to review.")
+    .addOption(new Option("--status <status>", "Review disposition.").choices(["confirmed", "dismissed", "amended"]).makeOptionMandatory())
+    .requiredOption("--reason <text>", "Why this disposition is supported.")
+    .option("--claim <text>", "Replacement claim, required only for amended findings.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run: string; analysis: string; finding: string;
+      status: "confirmed" | "dismissed" | "amended"; reason: string; claim?: string }, command) => {
+      options = analysisSelection(options, command);
+      try {
+        const correction = await correctStudyAnalysis(options.cwd, options.run, { analysisId: options.analysis,
+          findingId: options.finding, status: options.status, reason: options.reason,
+          ...(options.claim === undefined ? {} : { replacementClaim: options.claim }) });
+        writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
+          (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`);
+        io.setExitCode(0);
+      } catch (error) {
+        const code = error instanceof Error && ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
+          ? error.message : "ANALYSIS_CORRECTION_INVALID";
+        const message = code === "ANALYSIS_BUSY"
+          ? "Another analysis or correction holds this run's lock. Retry after it finishes."
+          : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
+            ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
+            : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
+        writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: false,
+          error: { code, message } },
+          (value) => value.error.message + "\n");
+        io.setExitCode(2);
+      }
     });
 }
 
@@ -2140,9 +2264,11 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Generate a public-safe feedback draft from verified evidence.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--analysis <id>", "Independent analysis version; use with --finding.")
+    .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option("--candidate <id>", "Which finding to draft (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; cwd: string; json?: boolean; run: string }, command) => {
+    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; run: string }, command) => {
       const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
       writeResult(command, io, result, formatFeedbackHuman);
       io.setExitCode(result.ok ? 0 : 2);
@@ -2153,9 +2279,11 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .description("Verify the feedback draft for public issue eligibility.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--analysis <id>", "Independent analysis version; use with --finding.")
+    .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option("--candidate <id>", "Which finding to verify (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; cwd: string; json?: boolean; run: string }, command) => {
+    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; run: string }, command) => {
       const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
       writeResult(command, io, result, formatFeedbackHuman);
       io.setExitCode(result.ok ? 0 : 2);
@@ -2168,9 +2296,11 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in rendered filing instructions.")
     .option("--format <format>", "Output format.", "markdown")
+    .option("--analysis <id>", "Independent analysis version; use with --finding.")
+    .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option("--candidate <id>", "Which finding to file (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
+    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
       const result = await renderIssueMarkdown(options.cwd, options.run, options.repo, candidateOption(options));
 
       if (wantsJson(command)) {
@@ -2194,9 +2324,11 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
+    .option("--analysis <id>", "Independent analysis version; use with --finding.")
+    .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
     .option("--candidate <id>", "Which finding to link (ids from `feedback list`); default: the first.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; cwd: string; json?: boolean; repo: string; run: string }, command) => {
+    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; repo: string; run: string }, command) => {
       const result = await renderIssueUrl(options.cwd, options.run, options.repo, candidateOption(options));
 
       if (wantsJson(command)) {
@@ -4126,8 +4258,10 @@ function exitCodeForSignal(signal: WatchStopSignal): number {
 }
 
 /** `--candidate` as the module option, absent when not given (exactOptionalPropertyTypes). */
-function candidateOption(options: { candidate?: string }): { candidate?: string } {
-  return options.candidate === undefined ? {} : { candidate: options.candidate };
+function candidateOption(options: { candidate?: string; analysis?: string; finding?: string }): { candidate?: string; analysis?: string; finding?: string } {
+  return { ...(options.candidate === undefined ? {} : { candidate: options.candidate }),
+    ...(options.analysis === undefined ? {} : { analysis: options.analysis }),
+    ...(options.finding === undefined ? {} : { finding: options.finding }) };
 }
 
 function formatFeedbackHuman(result: FeedbackResult): string {

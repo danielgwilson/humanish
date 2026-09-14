@@ -56,6 +56,8 @@ describe("player review controls", () => {
     delete stream.assignment;
     await render({ initialFrame: 0 });
     expect(container.querySelector(".participant-assignment")).toBeNull();
+    await click("Show inspector");
+    await click("details");
     expect(container.querySelector(".assignment-missing")?.textContent).toBe("Assigned task not recorded for this participant.");
     expect(container.querySelector(".assignment-missing")?.textContent).not.toContain(data.run.scenario.goal);
   });

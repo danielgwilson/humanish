@@ -12,7 +12,8 @@ function terminalLines(plain: string): TerminalLine[] {
   return plain.split("\n").filter(Boolean).slice(-6).map((text) => text.startsWith("$ ") ? { kind: "cmd", text } : { kind: "dim", text });
 }
 
-export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true }: {
+export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true, reviewOutcome }: {
+  reviewOutcome?: string | undefined;
   stream: ObserverStream; name: string; onOpen: (id: string) => void; liveThumb?: boolean;
   pinned?: boolean; compared?: boolean; comparisonFull?: boolean; onPin?: ((id: string) => void) | undefined; onCompare?: ((id: string) => void) | undefined; now?: number | undefined; updating?: boolean;
 }) {
@@ -59,7 +60,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
     </div>
     <div className="card-caption">
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        <span className={`card-outcome${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={previewLabel ?? outcome}>{sourceLabel ?? outcome}</span>
+        <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analysis: ${reviewOutcome}` : sourceLabel ?? outcome}</span>
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
         <div className="card-details">

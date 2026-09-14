@@ -13,6 +13,7 @@ import { buildObserverData } from "./observer-data.js";
 import { containsSensitive, redactScreenshot, redactText } from "./redaction.js";
 import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared, type RunBundle } from "./run.js";
 import { isPathInside, prepareRunArtifactPaths, validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "./run-paths.js";
+import { isStudyAnalysisRecordPath } from "./study-analysis-sharing.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,
@@ -28,6 +29,7 @@ const TEXT_EXTENSIONS = new Set([".json", ".ndjson", ".jsonl", ".md", ".txt", ".
 const OMITTED = new Map([
   ["observer/index.html", "regenerated Observer"],
   ["observer/observer-data.json", "regenerated Observer projection"],
+  ["observer/study-analysis.json", "analysis must be regenerated against derivative evidence"],
   ["status.json", "local process status is not a new attempt"],
   ["sandbox-receipts.ndjson", "operational journal does not confer a derivative resource lease"]
 ]);
@@ -57,6 +59,8 @@ function jsonBytes(value: unknown): Buffer {
 }
 
 function omittedReason(relative: string): string | undefined {
+  if (isStudyAnalysisRecordPath(relative)) return "analysis records bind original evidence hashes; reanalyze the derivative";
+  if (relative.startsWith(".analysis-lock/")) return "local analysis execution lock";
   return OMITTED.get(relative)
     ?? (["feedback/draft.json", "feedback/issue.md"].includes(relative) ? "regenerate feedback from derivative evidence" : undefined);
 }

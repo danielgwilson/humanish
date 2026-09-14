@@ -5,7 +5,7 @@ recordings and a controlled local HTTP snapshot endpoint. It covers cropping,
 phone overflow, live/replay navigation, polling failure and recovery, stream
 allocation, long recordings, saved moments, comparison clocks, zoom, native
 permission failures, keyboard navigation, local storage and offline rendering.
-The finite ledger contains 28 local Chromium cases. It does not substitute for actual provider
+The finite ledger contains 50 local Chromium cases. It does not substitute for actual provider
 connection/cleanup, CLI/TUI attachment, or export integration acceptance.
 
 ```bash
@@ -37,9 +37,24 @@ node scripts/observer-browser-proof.mjs --artifact observer/dist/index.html --ca
 `scripts/observer-browser-coverage.json` is the declared coverage ledger. Every
 local case must produce one result; errors fail the command while retaining
 evidence. `localCasesPass` describes only the selected cases and
-`localCoverageComplete` requires all 28 cases to pass in the same invocation.
+`localCoverageComplete` requires all 50 cases to pass in the same invocation.
 `coverageComplete` remains false while the manifest lists externally required acceptance.
 Do not describe a local green report as complete Observer release acceptance.
+
+The additional analysis cases cover the standard companion slot/feed, exact
+visual and nonvisual references, complete-empty and failure states, stale input,
+reviewer annotations, source-aware return navigation, and larger findings lists.
+These synthetic interpretations test projection behavior, not model usefulness.
+A held analysis response proves that the optional feed cannot stall recordings.
+
+Four scrubber cases cover desktop/phone at 1×/2× pixel density. Each measures
+start, middle and end in light and dark themes: 24 rendered states. The check
+reads actual native thumb pixels from screenshots and compares them with the
+visible timeline, then injects the former mismatched geometry and requires its
+rejection. Keyboard and pointer/touch seeking are checked after restoring the
+control. Negative-control screenshots are intentionally broken and labelled;
+they are not accepted product states. Registry drift and rendered component
+behavior are separate checks; see `observer/COMPONENTS.md`.
 
 The intentionally malformed/failed HTTP snapshots exercise the real production
 renderer and polling code. The desktop iframe is explicitly a controlled local
@@ -74,3 +89,18 @@ directories, enable hidden-file inclusion for this exact path, never for all
 of `.humanish/` or the checkout.
 
 Current primary reference: [Playwright browser installation](https://playwright.dev/docs/browsers).
+
+An optional locally installed `axe-core` bundle can audit scenario endpoints:
+
+```bash
+node scripts/observer-browser-proof.mjs --axe /path/to/axe.min.js
+```
+
+The manifest retains violations, incomplete checks and advisory counts. The
+teardown scenario ends on a blank page and marks its final accessibility scan
+not applicable. A narrowly checked `region` advisory is retained separately for
+transient body-portal tooltips that have `role="tooltip"` and a real trigger
+association through `aria-describedby`; unrelated content outside landmarks
+still fails. This reflects the [WAI-ARIA tooltip pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/)
+and distinguishes [Deque's optional landmark rule](https://dequeuniversity.com/rules/axe/4.10/region)
+from a WCAG failure. These scans are not accessibility certification.

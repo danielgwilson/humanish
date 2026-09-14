@@ -22,6 +22,9 @@ import {
 } from "./selected-output-paths.js";
 import { buildArtifactSecurityHeaders, buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
 import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
+import { loadStudyAnalysis } from "./study-analysis-store.js";
+import type { LoadedStudyAnalysis } from "./study-analysis.js";
+import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -145,7 +148,7 @@ export async function renderObserver(
   const verified = await verifyRun(selectedPhysicalCwd, selection.runId);
   await validatePreparedRunArtifactPaths(preparedRunPaths);
 
-  if (!verified.ok) {
+  if (!verified.ok && verified.recordingOk !== true) {
     return observerRunError(
       cwd,
       runInput,
@@ -168,6 +171,7 @@ export async function renderObserver(
   }
 
   const observerPath = path.join(preparedRunPaths.physicalRunRoot, "observer", "index.html");
+  const analysis = projectShareCheckedAnalysis(await loadStudyAnalysis(preparedRunPaths));
   const observerData = buildObserverData(loaded.bundle);
   observerData.publicSafety.share = {
     status: verified.shareSafety.status,
@@ -183,8 +187,14 @@ export async function renderObserver(
   );
   await writeContainedOutputFile(
     preparedRunPaths,
+    path.join("observer", "study-analysis.json"),
+    `${JSON.stringify(analysis, null, 2)}\n`,
+    "utf8"
+  );
+  await writeContainedOutputFile(
+    preparedRunPaths,
     path.join("observer", "index.html"),
-    renderObserverHtml(observerData),
+    renderObserverHtml(observerData, { analysis }),
     "utf8"
   );
   await validatePreparedRunArtifactPaths(preparedRunPaths);
@@ -549,18 +559,47 @@ function newestSourceMtime(dir: string): number {
   return newest;
 }
 
-function renderObserverAppHtml(data: ObserverData, snapshot: boolean): string {
+function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: LoadedStudyAnalysis): string {
   const artifact = loadObserverArtifact();
   // A renderer-owned boot marker, outside the untrusted run-data contract. Only
   // portable HTML exports opt out of a live feed; ordinary served pages still poll.
   return (snapshot ? artifact.replace("</head>", '<meta name="humanish-observer-mode" content="snapshot"></head>') : artifact)
     .replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
+    .replace(/<script id="study-analysis" type="application\/json">[\s\S]*?<\/script>/,
+      () => `<script id="study-analysis" type="application/json">${escapeJsonScript(analysis)}</script>`)
     .replace(/<title>[^<]*<\/title>/, () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
 }
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
-export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean } = {}): string {
-  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true);
+export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean; analysis?: LoadedStudyAnalysis } = {}): string {
+  const analysis = options.analysis ?? { state: "none", analysis: null, corrections: [], warnings: [] };
+  const sharing = studyAnalysisSharingProblems(analysis);
+  if (data.publicSafety && (sharing.sensitive || sharing.unverified)) {
+    const share = data.publicSafety.share;
+    data = { ...data, publicSafety: { ...data.publicSafety, share: {
+      status: sharing.sensitive || share?.status === "blocked" ? "blocked" : "local_only",
+      verifiedAt: share?.verifiedAt ?? new Date().toISOString(),
+      reasons: [...new Set([...(share?.reasons ?? []), "ANALYSIS_UNVERIFIED"])]
+    } } };
+  }
+  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true, projectShareCheckedAnalysis(analysis));
+}
+
+/** Analysis cannot grant filesystem authority or make an otherwise readable recording disappear. */
+async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedStudyAnalysis> {
+  try {
+    const runId = path.basename(runRoot.physicalPath);
+    const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
+    const prepared = await bindExistingRunArtifactPaths(cwd, runId);
+    if (prepared.physicalRunRoot !== runRoot.physicalPath
+      || prepared.runRootIdentity.birthtimeNs !== runRoot.birthtimeNs
+      || prepared.runRootIdentity.dev !== runRoot.dev || prepared.runRootIdentity.ino !== runRoot.ino) {
+      throw new Error("ANALYSIS_STORAGE_CHANGED");
+    }
+    return projectShareCheckedAnalysis(await loadStudyAnalysis(prepared));
+  } catch {
+    return { state: "invalid", analysis: null, corrections: [], warnings: ["Analysis could not be validated against this recording."] };
+  }
 }
 
 /** internal: consumed by observer-serve */
@@ -581,13 +620,24 @@ export async function serveRunPath(
   // Alias spellings such as observer//observer-data.json must use the same projection,
   // not fall through to a raw persisted file and inherit a forged runtime grant.
   const cleanedRelativePath = path.relative(root, filePath).split(path.sep).join("/");
+  // Derived records have a validated projection endpoint below. Never let generic
+  // file serving bypass its current-content checks or a warmed source-only admission cache.
+  const derivedRoot = cleanedRelativePath.split("/")[0];
+  const derivedLeaf = path.posix.basename(cleanedRelativePath);
+  if (derivedRoot === ".analysis-lock"
+    || derivedLeaf.startsWith(".humanish-write-")
+    || isStudyAnalysisRecordPath(cleanedRelativePath)) {
+    writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+    return;
+  }
   if (cleanedRelativePath === "observer/index.html") {
     const observerData = await readObserverData(runRoot, runtimeStreamUrls);
     if (!observerData) {
       writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
       return;
     }
-    writeResponse(response, 200, renderObserverHtml(observerData), "text/html; charset=utf-8");
+    const analysis = await readObserverAnalysis(runRoot);
+    writeResponse(response, 200, renderObserverHtml(observerData, { analysis }), "text/html; charset=utf-8");
     return;
   }
 
@@ -598,6 +648,11 @@ export async function serveRunPath(
       return;
     }
     writeResponse(response, 200, JSON.stringify(observerData, null, 2), "application/json; charset=utf-8");
+    return;
+  }
+
+  if (cleanedRelativePath === "observer/study-analysis.json") {
+    writeResponse(response, 200, JSON.stringify(await readObserverAnalysis(runRoot)), "application/json; charset=utf-8");
     return;
   }
 

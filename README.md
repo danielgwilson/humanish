@@ -96,6 +96,14 @@ a separately verified copy while preserving the readable original.
 [Read results](https://humanish.dev/docs/read-results) explains the
 participant's report, task outcomes, costs, and how to turn a finding into an issue.
 
+For a ranked review of a completed live study, run
+`npx humanish analyze --run latest --max-cost 3 --dry-run --json` to inspect
+admission, then remove `--dry-run` to generate findings. This sends selected
+retained evidence to OpenAI and requires `OPENAI_API_KEY`. Findings appear
+beside Participants in Observer, with evidence links and separate participant
+feedback. See the [analysis contract](docs/contracts/study-analysis.md) for
+coverage limits, estimated cost controls, corrections and sharing behavior.
+
 ## Public-Safety Boundary
 
 Humanish is designed for public repositories and public issue queues. The
