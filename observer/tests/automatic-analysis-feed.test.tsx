@@ -59,6 +59,18 @@ describe("automatic analysis within the existing study shell", () => {
     await advance(5000);
     expect(window.location.hash).toBe(route); expect(container.querySelector(".player")).toBe(player);
   });
+  it("labels a prior unknown task outcome separately from current analysis progress", async () => {
+    remote = fixtures.analysisFixture(data);
+    remote.analysis!.result!.participants[0]!.outcome = "unknown";
+    remote.automatic = job("running");
+    await mount();
+    expect(container.querySelector(".countline")?.textContent).toContain("Analyzed outcomes:");
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("Analyzed outcome: Unknown");
+    await click(".open-overlay");
+    expect(container.querySelector(".report-outcome-context")?.textContent).toBe("Analyzed outcome: Unknown");
+    await click('.study-views a[href="#/report"]');
+    expect(container.textContent).toContain("Analyzing recorded evidence…");
+  });
   it("keeps previous findings visible after a new automatic failure", async () => {
     remote = fixtures.analysisFixture(data); remote.automatic = { ...job("failed"), reason: "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" };
     await mount(); await click('.study-views a[href="#/report"]');
