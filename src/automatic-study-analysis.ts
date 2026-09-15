@@ -1,5 +1,5 @@
 import path from "node:path";
-import { resolveRunPath } from "./run.js";
+import { resolveRunPath, type RunBundle } from "./run.js";
 import { analyzeStudy, readCompletedStudyAnalysisSource, type AnalyzeDeps, type AnalyzeResult } from "./study-analysis-service.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION } from "./study-analysis-engine.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
@@ -7,6 +7,7 @@ import { claimAutomaticStudyAnalysis, readAutomaticStudyAnalysisPrepared, reques
   type AutomaticStudyAnalysisView, type AutomaticStudyAnalysisOutcome, type AutomaticStudyAnalysisCancellation,
   type AutomaticStudyAnalysisJob } from "./study-analysis-job.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
+import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./study-analysis-store.js";
 
 export type { AutomaticStudyAnalysisView, AutomaticStudyAnalysisOutcome, AutomaticStudyAnalysisCancellation } from "./study-analysis-job.js";
 export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch">;
@@ -55,7 +56,11 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   const prepared = await resolveRunPath(cwd, runId).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   // Do not consume a future run's one claim while a producer is still writing it.
-  try { await readCompletedStudyAnalysisSource(cwd, prepared); }
+  try {
+    const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
+    const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
+    if (bundle.streams.some(stream => stream.actor?.stopCause === "harness_aborted")) return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
+  }
   catch { return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"); }
   const config = structuredClone(configInput);
   let job: AutomaticStudyAnalysisJob;
@@ -101,8 +106,19 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   } catch { outcome = { state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" }; }
   finally { clearInterval(cancellationTimer); clearInterval(heartbeat); }
   try {
+    // Bind terminal metadata to the exact safely published execution. Reads never
+    // promote a completed-looking sidecar without rechecking these bindings.
+    const analysisId = outcome.result?.analysisId;
+    const [entry, receipt] = analysisId ? await Promise.all([
+      readStudyAnalysisVersion(prepared, analysisId), readStudyAnalysisExecution(prepared, analysisId)
+    ]) : [null, null];
     await job.update({ state: outcome.state, reason: outcome.reason as Exclude<Parameters<AutomaticStudyAnalysisJob["update"]>[0]["reason"], undefined>,
-      analysisId: outcome.result?.analysisId ?? null });
+      analysisId: analysisId ?? null,
+      ...(receipt === null ? {} : { sourceRunSha256: receipt.sourceRunSha256, inputDigest: receipt.inputDigest,
+        receiptSha256: hashStudyAnalysisValue(receipt) }),
+      ...(entry?.analysis ? { analysisSha256: hashStudyAnalysisValue(entry.analysis) } : {}) });
+    const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
+    if (persisted?.state === "unknown") return { ...outcome, state: "unknown", reason: persisted.reason };
   } catch { return { ...outcome, state: "unknown", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE" }; }
   return outcome;
 }

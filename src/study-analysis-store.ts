@@ -166,6 +166,16 @@ async function readVersion(
   return { id, state: "ready", analysis, warnings: [] };
 }
 
+/** Read one exact result without reading automatic job state or unrelated history. */
+export async function readStudyAnalysisVersion(prepared: PreparedRunArtifactPaths, id: string): Promise<StudyAnalysisListEntry | null> {
+  if (!safeId(id)) return null;
+  try {
+    const root = await existingRoot(prepared);
+    if (!root) return null;
+    return await readVersion(prepared, root, id, await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes));
+  } catch { return null; }
+}
+
 /** Includes failed attempts; callers must not equate the newest attempt with usable findings. */
 export async function listStudyAnalyses(prepared: PreparedRunArtifactPaths): Promise<StudyAnalysisListEntry[]> {
   try {
@@ -287,6 +297,19 @@ export async function appendStudyAnalysisCorrection(
 
 export type { StudyAnalysisExecutionReceipt } from "./study-analysis-validation.js";
 export const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
+
+/** Exact bounded receipt lookup for an already claimed execution, never a dispatch decision. */
+export async function readStudyAnalysisExecution(prepared: PreparedRunArtifactPaths, id: string): Promise<StudyAnalysisExecutionReceipt | null> {
+  if (!safeId(id)) return null;
+  try {
+    const root = await existingRoot(prepared, STUDY_ANALYSIS_EXECUTION_DIRECTORY);
+    if (!root) return null;
+    const bytes = await readBoundedStudyFile(root, `${id}/receipt.json`, 16 * 1024);
+    if (!bytes) return null;
+    const receipt = validateStudyAnalysisExecutionReceipt(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
+    return receipt.id === id && receipt.runId === path.basename(prepared.physicalRunRoot) ? receipt : null;
+  } catch { return null; }
+}
 
 /**
  * Publish accounting first. Unlike a usable report, this receipt does not claim

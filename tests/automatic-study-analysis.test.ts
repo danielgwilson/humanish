@@ -83,6 +83,56 @@ describe("opted-in automatic analysis ownership", () => {
       expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
     }
     expect(h.fetch).toHaveBeenCalledTimes(1);
+    expect((await readAutomaticStudyAnalysis(cwd, runId))?.state).toBe(automatic.state);
+    const record = JSON.parse(await readFile(jobPath(), "utf8"));
+    expect(record).toMatchObject({ sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,
+      analysisId: prior.analysisId, analysisSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      receiptSha256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(record.attemptId).not.toBe(prior.analysisId);
+  });
+
+  it.each(["missing-result", "replaced-result", "missing-receipt", "replaced-receipt", "source", "config", "input", "prompt", "status", "foreign-id"])
+    ("does not trust terminal job metadata after %s changes", async kind => {
+      const h = await transport();
+      const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch });
+      expect(outcome.state).toBe("partial");
+      const record = JSON.parse(await readFile(jobPath(), "utf8"));
+      const artifactPath = path.join(root, "analysis", outcome.result!.analysisId!, "analysis.json");
+      const receiptPath = path.join(root, "analysis-attempts", outcome.result!.analysisId!, "receipt.json");
+      if (kind === "missing-result") await rm(artifactPath);
+      if (kind === "replaced-result") {
+        const artifact = JSON.parse(await readFile(artifactPath, "utf8"));
+        artifact.result.summary = "A changed synthetic review.";
+        await writeFile(artifactPath, JSON.stringify(artifact));
+      }
+      if (kind === "missing-receipt") await rm(receiptPath);
+      if (kind === "replaced-receipt") {
+        const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
+        receipt.completedAt = new Date(Date.parse(receipt.completedAt) + 1).toISOString();
+        await writeFile(receiptPath, JSON.stringify(receipt));
+      }
+      if (kind === "source") await writeFile(path.join(root, "run.json"), Buffer.concat([original, Buffer.from("\n")]));
+      if (kind === "config") record.configDigest = "a".repeat(64);
+      if (kind === "input") record.inputDigest = "a".repeat(64);
+      if (kind === "prompt") record.promptVersion = "synthetic-other-prompt";
+      if (kind === "status") record.state = "complete";
+      if (kind === "foreign-id") record.analysisId = "analysis-other";
+      await writeFile(jobPath(), JSON.stringify(record));
+      expect((await readAutomaticStudyAnalysis(cwd, runId))?.state).toBe("unknown");
+      expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason)
+        .toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+      expect(h.fetch).toHaveBeenCalledTimes(1);
+    });
+
+  it("keeps a prior result selected when the automatic job's newer result disappears", async () => {
+    const h = await transport();
+    const prior = await analyzeStudy(cwd, runId, { config }, { apiKey: "synthetic-key", fetch: h.fetch });
+    const next = await runAutomaticStudyAnalysis(cwd, runId, { ...config, question: "Review recovery." }, { apiKey: "synthetic-key", fetch: h.fetch });
+    await rm(path.join(root, "analysis", next.result!.analysisId!, "analysis.json"));
+    const loaded = await loadStudyAnalysis(prepared);
+    expect(loaded).toMatchObject({ state: "ready", analysis: { id: prior.analysisId }, warnings: [], automatic: { state: "unknown" } });
+    expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
   });
 
   it.each(["missing-key", "admission", "busy", "cancelled"])("retains %s without dispatch or retry", async kind => {
@@ -108,6 +158,34 @@ describe("opted-in automatic analysis ownership", () => {
       expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).state).toBe("skipped");
     }
     expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it("preserves explicit actor cancellation without suppressing ordinary incomplete studies", async () => {
+    const h = await transport();
+    const bundle = JSON.parse(original.toString()) as RunBundle;
+    bundle.streams[0]!.status = "incomplete";
+    bundle.streams[0]!.actor = {
+      schema: "humanish.actor-trace.v1", provider: "synthetic", protocol: "cua-loop", lane: "computer-use",
+      persona: { id: "synthetic-participant", traitsApplied: [], promptDigest: "a".repeat(64) },
+      redaction: { status: "passed", screenshots: "n/a", notes: "Synthetic trace." },
+      startedAt: "2026-09-01T00:00:00.000Z", completedAt: "2026-09-01T00:01:00.000Z", durationMs: 60000,
+      status: "incomplete", completionReason: "budget_reached", stopCause: "harness_aborted", reason: "The operator stopped the study.",
+      ids: {}, counts: {}, items: [], capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"],
+        producesScreenshots: false, byoModel: false, preGrantableApprovals: false, inProcessTools: false, license: "open" }
+    };
+    const aborted = Buffer.from(JSON.stringify(bundle));
+    await writeFile(path.join(root, "run.json"), aborted);
+    expect((await verifyRun(cwd, runId)).checks.filter(check => !check.ok)).toEqual([]);
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }))
+      .toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED" });
+    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(aborted);
+    bundle.streams[0]!.actor.stopCause = "time_limit";
+    bundle.streams[0]!.actor.reason = "The time limit ended the study.";
+    await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch }))
+      .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
     expect(h.fetch).not.toHaveBeenCalled();
   });
 
