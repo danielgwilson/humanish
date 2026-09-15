@@ -140,7 +140,11 @@ describe("opted-in automatic analysis ownership", () => {
     for (const [file, before] of snapshots) expect(await readFile(path.join(root, file))).toEqual(before);
     expect(await readFile(path.join(root, "run.json"))).toEqual(original);
     expect(h.fetch).toHaveBeenCalledTimes(1);
-  });
+    // This fault-injection case copies the complete rendered recording and
+    // performs multiple verified refreshes. Shared CI disks can exceed the
+    // default 5s test allowance; the assertions still require one request and
+    // unchanged replacement bytes. This is not a latency assertion.
+  }, 15_000);
 
   it("identifies an admission overrun in the stored job and static Observer without losing valid findings", async () => {
     const h = await transport();
