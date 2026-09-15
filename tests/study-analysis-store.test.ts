@@ -264,7 +264,8 @@ describe("immutable study analysis store", () => {
     await writeFile(path.join(prepared.physicalRunRoot, "run.json"), source);
     const selected = await captureStudyEvidence(prepared, source, { captures: 1 });
     expect(selected.coverage).toMatchObject({ complete: false, captureCount: 1, evidenceCount: 3 });
-    expect(selected.evidence[2]).toMatchObject({ frame: 1, capture: null, elapsedMs: null });
+    expect(selected.evidence[0]).toMatchObject({ frame: 0, capture: null, elapsedMs: null });
+    expect(selected.evidence[2]).toMatchObject({ frame: 1, capture: { eventId: "capture-2" }, elapsedMs: null });
     await writeStudyAnalysis(prepared, syntheticArtifact(selected));
     expect((await loadStudyAnalysis(prepared)).analysis?.status).toBe("partial");
   });
