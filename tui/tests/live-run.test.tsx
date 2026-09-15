@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/app.js";
 import type { RunDetail } from "../../src/run-detail.js";
@@ -53,7 +53,7 @@ const LIVE_DETAIL: RunDetail = {
   ]
 };
 
-function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
+function options(detail: RunDetail | null, runs = RUNS, overrides: Partial<TuiCapabilities> = {}): TuiOptions {
   const capabilities: TuiCapabilities = {
     readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs, unreadable: [] }),
     listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
@@ -64,7 +64,8 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
       readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
       reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
+      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
+    ...overrides
   };
   return {
     cwd: "/projects/acme-app",
@@ -76,8 +77,8 @@ function options(detail: RunDetail | null, runs = RUNS): TuiOptions {
 }
 
 /** Open the first lab, then its live run (the newest, top of the history list). */
-async function openLiveRun(detail: RunDetail | null, columns = 80) {
-  const surface = await renderToText(<App options={options(detail)} now={NOW} tick={0} />, {
+async function openLiveRun(detail: RunDetail | null, columns = 80, overrides: Partial<TuiCapabilities> = {}) {
+  const surface = await renderToText(<App options={options(detail, RUNS, overrides)} now={NOW} tick={0} />, {
     columns,
     rows: 30,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
@@ -253,4 +254,24 @@ describe("stopping a run that is still going", () => {
     surface.unmount();
     expect(done).toContain("asked the run to stop");
   }, 20_000);
+});
+
+
+describe("analysis cancellation authority", () => {
+  it("carries marker-only intent even when the run index says the participant is running", async () => {
+    const stop = vi.fn<TuiCapabilities["stopRun"]>(async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "analysis cancellation requested" }));
+    const detail: RunDetail = { ...LIVE_DETAIL, automaticAnalysis: {
+      state: "queued", analysisId: null, reason: null, updatedAt: new Date(NOW).toISOString()
+    } };
+    const { surface } = await openLiveRun(detail, 80, { stopRun: stop });
+    let clock: ReturnType<typeof vi.spyOn> | undefined;
+    try {
+      await surface.press(KEY.down, frame => frame.includes("❯ Cancel analysis"));
+      await surface.press(KEY.enter, frame => frame.includes("cancel analysis?"));
+      expect(stop).not.toHaveBeenCalled();
+      clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 500);
+      await surface.press(KEY.enter, frame => frame.includes("analysis cancellation requested"));
+      expect(stop).toHaveBeenCalledExactlyOnceWith("/projects/acme-app", LIVE_DETAIL.runId, "analysis");
+    } finally { clock?.mockRestore(); surface.unmount(); }
+  }, 20000);
 });

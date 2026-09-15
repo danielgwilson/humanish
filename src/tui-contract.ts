@@ -68,8 +68,9 @@ export interface TuiCapabilities {
   openObserver(cwd: string, observerPath: string): Promise<TuiActionResult>;
   /** Stop the sandboxes an interrupted run left behind, keeping its evidence. */
   reclaimRun(cwd: string, runId: string): Promise<ReclaimResult>;
-  /** End a run that is still going. Stops the PROCESS; `reclaimRun` stops what it provisioned. */
-  stopRun(cwd: string, runId: string): Promise<TuiActionResult>;
+  /** End a run that is still going. "analysis" is marker-only regardless of the current status;
+   * it MUST NOT probe or signal a process. The default "run" intent stops the participant process. */
+  stopRun(cwd: string, runId: string, intent?: "run" | "analysis"): Promise<TuiActionResult>;
   /**
    * Set this directory up as a humanish project. The surface's only WRITING action outside of
    * starting runs — offered because "cd somewhere else and run init" is a dead end shown to

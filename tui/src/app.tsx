@@ -153,7 +153,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
 
   const screen = currentScreen(nav);
   const selected = selectedIndex(nav);
-  const rowCount = countRows(screen, data);
+  const rowCount = countRows(screen, data, detail);
 
   useEffect(() => {
     screenRef.current = screen;
@@ -170,7 +170,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
     if (identity === undefined) return;
     const next = indexOfIdentity(screen, data, identity);
     if (next >= 0 && next !== selected) {
-      dispatch({ type: "select", index: next, total: countRows(screen, data) });
+      dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
     }
     // `selected` is deliberately absent: this reacts to DATA changing, not to the operator moving.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -269,7 +269,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
         if (Date.now() - stopArmedAt < LIVE_CONFIRM_MIN_MS) return;
         setStopArmedAt(undefined);
         setActionNote(action === "cancel-analysis" ? "cancelling analysis…" : "stopping…");
-        const result = await options.capabilities.stopRun(options.cwd, run.runId);
+        const result = await options.capabilities.stopRun(options.cwd, run.runId, action === "cancel-analysis" ? "analysis" : "run");
         setActionNote(result.message);
         return;
       }
@@ -686,7 +686,7 @@ function itemsForLab(data: ProjectData, labKey: string): { row?: LabRow; items: 
   return { row, items: labItems(data.runsByLab.get(row.labId) ?? [], row.declared) };
 }
 
-function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined): number {
+function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined, detail?: RunDetail | null): number {
   if (data === undefined) return 0;
   switch (screen.name) {
     case "labs":
@@ -696,6 +696,10 @@ function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData |
       return liveRunsOf(data).length;
     case "lab":
       return itemsForLab(data, screen.labKey).items.length;
+    case "run": {
+      const run = data.runsById.get(screen.runId);
+      return run === undefined ? 0 : runActions(run, detail).length;
+    }
     default:
       return 0;
   }

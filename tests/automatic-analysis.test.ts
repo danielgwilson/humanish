@@ -13,6 +13,9 @@ import { runSharedWorldLab } from "../src/shared-world-lab.js";
 import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
+import { claimAutomaticStudyAnalysis } from "../src/study-analysis-job.js";
+import { resolveRunPath } from "../src/run.js";
+import { readRunDetail } from "../src/run-detail.js";
 import { stopRun } from "../src/tui-actions.js";
 import * as automaticJobs from "../src/automatic-study-analysis.js";
 import type { AutomaticStudyAnalysisOutcome } from "../src/study-analysis-job.js";
@@ -140,6 +143,32 @@ describe("automatic analysis admission and producer boundary", () => {
     const result = await stopRun(cwd, prior.runId);
     expect(result.ok).toBe(true); expect(result.message).toContain("analysis");
     expect(cancel).toHaveBeenCalledExactlyOnceWith(cwd, prior.runId); expect(kill).not.toHaveBeenCalled();
+  });
+  it.each(["running", "missing", "malformed"])("analysis cancellation never signals after source status becomes %s", async state => {
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    await runCuaActorLab({ cwd, config: base, dryRun: true, runId: "changed-status", open: false });
+    const prepared = await resolveRunPath(cwd, "changed-status");
+    if (!prepared) throw new Error("missing synthetic run");
+    // Queue metadata is synthetic here; this test exercises cancellation authority, never admission.
+    const job = await claimAutomaticStudyAnalysis(prepared, { configDigest: "a".repeat(64), promptVersion: "study-evidence-4" });
+    expect(job).not.toBeNull();
+    const statusPath = path.join(prepared.absoluteRunRoot, "status.json");
+    if (state === "missing") await rm(statusPath);
+    else await writeFile(statusPath, state === "malformed" ? "{" : JSON.stringify({
+      schema: "humanish.run-status.v1", runId: "changed-status", state: "running", mode: "live", pid: 424242,
+      startedAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    }));
+    expect((await readRunDetail(cwd, "changed-status"))?.automaticAnalysis?.state).toBe("queued");
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
+    const result = await stopRun(cwd, "changed-status", "analysis");
+    expect(result.ok).toBe(true); expect(await job!.cancellationRequested()).toBe(true);
+    expect(kill).not.toHaveBeenCalled();
+  });
+  it("failed marker cancellation cannot fall back to signalling a recorded process", async () => {
+    const cancel = vi.spyOn(automaticJobs, "requestAutomaticStudyAnalysisCancellation").mockResolvedValue({ requested: false, reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" });
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
+    expect((await stopRun(cwd, "absent", "analysis")).ok).toBe(false);
+    expect(cancel).toHaveBeenCalledOnce(); expect(kill).not.toHaveBeenCalled();
   });
   it.each(["SIGTERM", "SIGINT"] as const)("%s during the real producer retains default termination and never starts analysis", async signal => {
     const script = `

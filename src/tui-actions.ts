@@ -120,7 +120,17 @@ export function createTuiObserverSession(
  * This stops the PROCESS. Sandboxes it created are a separate resource with their own receipts, and
  * `Reclaim` is what stops those — the run screen offers it as soon as this succeeds.
  */
-export async function stopRun(cwd: string, runId: string): Promise<TuiActionResult> {
+export async function stopRun(cwd: string, runId: string, intent: "run" | "analysis" = "run"): Promise<TuiActionResult> {
+  // The selected action carries its authority. Never infer permission to signal a process from
+  // mutable status metadata after the operator asked only to cancel analysis.
+  if (intent === "analysis") {
+    const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
+    return { schema: TUI_ACTION_SCHEMA, ok: analysis.requested, message: analysis.requested
+      ? "asked analysis to cancel; no participant process was signalled"
+      : "analysis is not available for cancellation; no participant process was signalled" };
+  }
+  if (intent !== "run") return { schema: TUI_ACTION_SCHEMA, ok: false, message: "unknown stop action" };
+
   const runPaths = await resolveRunPath(path.resolve(cwd), runId).catch(() => null);
   if (runPaths === null) {
     return { schema: TUI_ACTION_SCHEMA, ok: false, message: `no run directory for ${runId}` };
