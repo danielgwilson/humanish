@@ -41,9 +41,21 @@ export interface AnalyzeDeps {
   onProgress?: (progress: StudyAnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
   fetch?: typeof fetch;
+  /** Internal producer pin: use this original run identity without resolving a replacement. */
+  expectedRun?: PreparedRunArtifactPaths;
   /** Internal post-run orchestration; never populated from an Observer request. */
   analysisId?: string;
   beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+}
+
+/** A producer pin is authority for one physical project and exact run ID only. */
+export async function resolveStudyAnalysisRun(cwd: string, run: string, expectedRun?: PreparedRunArtifactPaths): Promise<PreparedRunArtifactPaths | null> {
+  if (expectedRun === undefined) return resolveRunPath(cwd, run);
+  const physicalCwd = path.dirname(path.dirname(expectedRun.physicalRunsRoot));
+  if (path.resolve(cwd) !== physicalCwd || run !== path.basename(expectedRun.physicalRunRoot)) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
+  try { await validatePreparedRunRootIdentity(expectedRun); }
+  catch { throw new Error("ANALYSIS_SOURCE_CHANGED"); }
+  return expectedRun;
 }
 
 const messages: Record<string, string> = {
@@ -130,7 +142,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
   if (!Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000) return fail(run, dryRun, "ANALYSIS_CONFIG_INVALID");
   if (config.question !== null && containsSensitive(config.question)) return fail(run, dryRun, "ANALYSIS_QUESTION_UNSAFE");
   try {
-    const prepared = await resolveRunPath(cwd, run);
+    const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
     const execute = async (): Promise<AnalyzeResult> => {
       if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
@@ -148,9 +160,12 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
         const prior = (await listStudyAnalyses(prepared)).find((entry) => entry.state === "ready"
           && entry.analysis?.inputDigest === input.inputDigest && entry.analysis.configDigest === hashStudyAnalysisValue(config)
           && entry.analysis.promptVersion === STUDY_ANALYSIS_PROMPT_VERSION)?.analysis;
-        if (prior) return { ...base, ok: prior.error === null, reused: true, analysisId: prior.id, status: prior.status, usage: prior.usage,
-          ...(prior.error === null ? {} : { error: { code: prior.error, message: "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent." } }),
-          artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json") };
+        if (prior) {
+          await validatePreparedRunRootIdentity(prepared);
+          return { ...base, ok: prior.error === null, reused: true, analysisId: prior.id, status: prior.status, usage: prior.usage,
+            ...(prior.error === null ? {} : { error: { code: prior.error, message: "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent." } }),
+            artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json") };
+        }
       }
       // An unreadable inventory is not evidence of an absent prior result.
       // Check readable history capacity before any new paid attempt.

@@ -5,6 +5,7 @@ import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAutomaticStudyAnalysis, readAutomaticStudyAnalysis, requestAutomaticStudyAnalysisCancellation } from "../src/automatic-study-analysis.js";
 import { analyzeStudy, withStudyAnalysisLock } from "../src/study-analysis-service.js";
+import * as analysisService from "../src/study-analysis-service.js";
 import { claimAutomaticStudyAnalysis, readAutomaticStudyAnalysisPrepared, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY } from "../src/study-analysis-job.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../src/study-analysis-store.js";
 import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
@@ -39,7 +40,7 @@ describe("opted-in automatic analysis ownership", () => {
     input = await captureStudyEvidence(prepared, original);
     expect((await verifyRun(cwd, runId)).checks.filter(check => !check.ok)).toEqual([]);
   });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  afterEach(async () => { vi.restoreAllMocks(); await rm(cwd, { recursive: true, force: true }); });
   const jobPath = () => path.join(root, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, "job.json");
   async function transport() {
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
@@ -287,6 +288,54 @@ describe("opted-in automatic analysis ownership", () => {
     expect(await loadStudyAnalysis(prepared)).toMatchObject({ state: "ready", analysis: { id: prior.analysisId }, automatic: { state: "skipped" } });
     expect(await readFile(path.join(root, "analysis", prior.analysisId!, "analysis.json"))).toEqual(before);
     expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["automatic", "service"])("rejects a replaced producer directory before %s can reuse its copied report", async mode => {
+    const h = await transport();
+    const prior = await analyzeStudy(cwd, runId, { config }, { apiKey: "synthetic-key", fetch: h.fetch });
+    expect(prior.analysisId).toBeDefined();
+    const retained = path.join(cwd, "retained-original");
+    await rename(root, retained); await cp(retained, root, { recursive: true });
+    const before = await readdir(root);
+    const result = mode === "automatic"
+      ? await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch, expectedRun: prepared })
+      : await analyzeStudy(cwd, runId, { config }, { apiKey: "", fetch: h.fetch, expectedRun: prepared });
+    if (mode === "automatic") expect(result).toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" });
+    else expect(result).toMatchObject({ ok: false, reused: false, error: { code: "ANALYSIS_SOURCE_CHANGED" } });
+    expect(await readdir(root)).toEqual(before);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the coordinator's original pin through the service boundary", async () => {
+    const h = await transport();
+    const service = analysisService.analyzeStudy;
+    let copiedJob: Buffer | undefined;
+    vi.spyOn(analysisService, "analyzeStudy").mockImplementation(async (...args) => {
+      expect(args[3]?.expectedRun).toBe(prepared);
+      const retained = path.join(cwd, "retained-original");
+      await rename(root, retained); await cp(retained, root, { recursive: true });
+      copiedJob = await readFile(jobPath());
+      return service(...args);
+    });
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch, expectedRun: prepared }))
+      .toMatchObject({ state: "unknown", result: { ok: false, error: { code: "ANALYSIS_SOURCE_CHANGED" } } });
+    expect(h.fetch).not.toHaveBeenCalled();
+    expect(await readFile(jobPath())).toEqual(copiedJob);
+    expect(await readdir(root)).not.toContain("analysis");
+    expect(await readdir(root)).not.toContain("analysis-attempts");
+  });
+
+  it.each(["cwd", "runId"])("an original pin cannot select a different %s", async kind => {
+    const h = await transport();
+    const selectedCwd = kind === "cwd" ? path.join(cwd, "other-project") : cwd;
+    const selectedId = kind === "runId" ? "other-run" : runId;
+    expect(await runAutomaticStudyAnalysis(selectedCwd, selectedId, config, { apiKey: "synthetic-key", fetch: h.fetch, expectedRun: prepared }))
+      .toEqual({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" });
+    expect(await analyzeStudy(selectedCwd, selectedId, { config }, { apiKey: "synthetic-key", fetch: h.fetch, expectedRun: prepared }))
+      .toMatchObject({ ok: false, error: { code: "ANALYSIS_SOURCE_UNAVAILABLE" } });
+    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(h.fetch).not.toHaveBeenCalled();
   });
 
   it("quarantines invalid direct job projection without changing source approval", () => {

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { resolveRunPath, type RunBundle } from "./run.js";
-import { analyzeStudy, readCompletedStudyAnalysisSource, type AnalyzeDeps, type AnalyzeResult } from "./study-analysis-service.js";
+import { analyzeStudy, readCompletedStudyAnalysisSource, resolveStudyAnalysisRun, type AnalyzeDeps, type AnalyzeResult } from "./study-analysis-service.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION } from "./study-analysis-engine.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { claimAutomaticStudyAnalysis, readAutomaticStudyAnalysisPrepared, requestAutomaticStudyAnalysisCancellationPrepared,
@@ -53,7 +53,7 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   deps: AutomaticStudyAnalysisDeps = {}): Promise<AutomaticStudyAnalysisOutcome> {
   if (!exactId(runId)) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   const cwd = path.resolve(cwdInput);
-  const prepared = await resolveRunPath(cwd, runId).catch(() => null);
+  const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   // Do not consume a future run's one claim while a producer is still writing it.
   try {
@@ -92,7 +92,7 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   try {
     await poll();
     const result = await analyzeStudy(cwd, runId, { config }, {
-      ...deps, signal, analysisId: job.attemptId,
+      ...deps, signal, expectedRun: prepared, analysisId: job.attemptId,
       beforeDispatch: async (context) => {
         if (await job.cancellationRequested()) controller.abort();
         if (signal.aborted) return;
