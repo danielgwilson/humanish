@@ -568,7 +568,8 @@ export interface LabExecutionDesktop {
    * user agent (`userAgent`, default an iPhone Safari string). The bundle records what the page
    * then reported about itself under `desktopGeometry.fidelity`; a browser that cannot be
    * emulated (Firefox) fails the lane closed instead of shipping a desktop run labelled mobile.
-   * Applies to the launch tab; a tab the participant opens later is not emulated.
+   * A held CDP session also applies the overrides to later page targets. Their first observed
+   * viewport and touch read-back is recorded separately; missing or different values warn.
    */
   fidelity?: LabDesktopFidelity;
   /** Synthetic media devices behind the browser's own permission prompt (#509). */

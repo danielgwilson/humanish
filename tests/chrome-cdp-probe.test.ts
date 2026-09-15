@@ -18,7 +18,7 @@ import {
   type ChromeCdpProbeResult
 } from "../src/chrome-cdp-probe.js";
 import { makeChromeBrowserStateObserver, makeChromeDesktopGeometryObserver } from "../src/cua-actor-lab.js";
-import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -374,6 +374,85 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
     expect(command.startsWith("python3 -c '")).toBe(true);
     const { stdout } = await execFileAsync("sh", ["-c", command]);
     expect(parseChromeCdpProbeOutput(stdout).url).toBe(pageUrl);
+  });
+
+  it.skipIf(!live)("final geometry follows a new foreground tab and still measures it after the launch tab closes", async (ctx) => {
+    if (!chromeUp) return ctx.skip("headless Chrome did not become readable on this runner");
+    const created: string[] = [];
+    const desktop = { commands: { run: async (command: string) => execFileAsync("sh", ["-c", command]) } } as unknown as E2BDesktopSandbox;
+    const open = async (suffix: string): Promise<string> => {
+      const result = await fetch(`http://127.0.0.1:${cdpPort}/json/new?${pageUrl}?${suffix}`, { method: "PUT" });
+      const page = await result.json() as { id: string };
+      created.push(page.id);
+      await fetch(`http://127.0.0.1:${cdpPort}/json/activate/${page.id}`);
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const read = await runProbe({ mode: "state", prefer: "active", cdpPort, targetUrl: pageUrl });
+        if (read.targetId === page.id && read.text !== undefined) return page.id;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("new page did not become readable");
+    };
+    try {
+      const launch = await open("launch");
+      const foreground = await open("foreground");
+      const endpoint = { cdpPort, targetUrl: `${pageUrl}?launch` };
+      const launchRead = makeChromeDesktopGeometryObserver(desktop, 5_000, endpoint, launch);
+      const finalRead = makeChromeDesktopGeometryObserver(desktop, 5_000, endpoint, launch, undefined, "active");
+      expect((await launchRead())?.targetId).toBe(launch);
+      expect((await finalRead())?.targetId).toBe(foreground);
+      await fetch(`http://127.0.0.1:${cdpPort}/json/close/${launch}`);
+      expect(await launchRead()).toBeUndefined();
+      const remaining = await finalRead();
+      expect(remaining?.targetId).toBe(foreground);
+      expect(remaining?.viewport?.width).toBeGreaterThan(0);
+      expect(remaining?.viewport?.source).toBe("cdp");
+    } finally {
+      for (const id of created) await fetch(`http://127.0.0.1:${cdpPort}/json/close/${id}`).catch(() => undefined);
+    }
+  }, 20_000);
+});
+
+describe("hosted geometry wire capture: independent window and CSS measurements", () => {
+  let captured: Record<string, E2BCommandResult>;
+  beforeAll(async () => {
+    captured = JSON.parse(await readFile(new URL("./fixtures/chrome-cdp/hosted-geometry-2026-09-15.json", import.meta.url), "utf8"));
+  });
+
+  const observe = (reply: E2BCommandResult, reasons: string[]) => makeChromeDesktopGeometryObserver(
+    { commands: { run: async () => reply } } as unknown as E2BDesktopSandbox,
+    1_000, { targetUrl: "http://127.0.0.1:8765/index.html" }, undefined, (reason) => reasons.push(reason)
+  )();
+
+  it("keeps actual CSS read-back when a background navigation reports zero outer dimensions", async () => {
+    const reasons: string[] = [];
+    const read = await observe(captured.backgroundAfterNavigation!, reasons);
+    expect(read).toEqual({
+      viewport: { width: 1512, height: 805, deviceScaleFactor: 1, source: "cdp" }, targetId: "LAUNCH-PAGE"
+    });
+    expect(reasons).toEqual(["the page reported no usable outer-window dimensions"]);
+  });
+
+  it("keeps the foreground page's different CSS read-back", async () => {
+    const reasons: string[] = [];
+    expect((await observe(captured.foreground!, reasons))?.viewport).toEqual({ width: 1512, height: 861, deviceScaleFactor: 1, source: "cdp" });
+    expect(reasons).toEqual([]);
+  });
+
+  it("retains the missing-target reason and never invents dimensions", async () => {
+    const reasons: string[] = [];
+    expect(await observe(captured.closedLaunchTarget!, reasons)).toBeUndefined();
+    expect(reasons).toEqual(["no http page among 3 CDP targets on 127.0.0.1:9222"]);
+  });
+
+  it("does not substitute measured outer bounds for a corrupt CSS channel", async () => {
+    // Deliberately corrupt the captured CSS channel; this is not a claimed provider response.
+    const corrupt = JSON.parse(captured.foreground!.stdout!);
+    corrupt.viewport.width = 0;
+    const reasons: string[] = [];
+    const read = await observe({ ...captured.foreground!, stdout: JSON.stringify(corrupt) }, reasons);
+    expect(read?.browserWindow).toEqual({ x: 0, y: 0, width: 1512, height: 861, source: "cdp" });
+    expect(read?.viewport).toBeUndefined();
+    expect(reasons).toEqual(["the page reported no usable CSS viewport dimensions"]);
   });
 });
 

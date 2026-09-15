@@ -31,12 +31,14 @@ export interface ChromeCdpProbeArgs {
   /** The pinned page target id from the launch-time geometry capture. */
   targetId?: string;
   /**
-   * "pinned" (default): the launch-time target, for measurements about the ORIGINAL window
-   * (geometry). "active": the tab the participant is driving NOW — Chrome's /json lists page
+   * "pinned" (default): the launch-time target, for launch geometry and emulation attribution.
+   * "active": the tab the participant is driving NOW — Chrome's /json lists page
    * targets most-recently-focused first. The state observer must follow the participant: a
    * verification link that opens in a NEW tab left a pinned observer reading the old tab forever,
    * so the observed URL never changed again and stopWhen/task criteria went blind (a live run's
-   * funnel read reach-dashboard 0/2 under a screenshot OF the dashboard).
+   * funnel read reach-dashboard 0/2 under a screenshot OF the dashboard). Final geometry follows
+   * this target too: a closed launch tab is unavailable, and a background tab may report stale
+   * layout dimensions or zero outer bounds after navigation.
    */
   prefer?: ChromeCdpPagePreference;
   /**
