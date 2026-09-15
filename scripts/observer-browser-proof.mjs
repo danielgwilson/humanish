@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { chromium } from "playwright-core";
-import { analysisFixture, appendFrame, fixture, screenshot, START } from "./observer-browser-fixtures.mjs";
+import { analysisFixture, appendFrame, fixture, screenshot, START, reviewPolishFixture } from "./observer-browser-fixtures.mjs";
 
 import { assertScrubberAligned, scrubberPixels } from "./observer-browser-components.mjs";
 
@@ -998,6 +998,44 @@ try {
     await direct.getByRole("button", { name: "Back to participants", exact: true }).waitFor(); await direct.close();
     record.checks = { shell: before, bothPriorityRowsVisible: true, exactReference: expected.eventId, evidenceWidth };
     await snap("source-aware-recording");
+  });
+  for (const phone of [false, true]) await runCase(`analysis-review-polish-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {
+    analysis = reviewPolishFixture(data);
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    const trigger = page.locator('[data-finding="F1"]'); await trigger.focus(); await page.keyboard.press("Enter");
+    const preview = page.locator('.report-evidence'); await preview.waitFor();
+    const settled = () => until(async () => page.locator('.finding-panel').first().evaluate(element => element.clientHeight >= element.scrollHeight - 1), 'Finding content remains clipped after expansion');
+    await settled();
+    assert.equal(await preview.getAttribute('data-report-evidence'), 'lane-1-frame-3', 'Preview retained setup instead of the directly supported issue capture');
+    assert((await preview.locator('img').getAttribute('src')).endsWith('portrait-3.png'));
+    assert.equal(await page.locator('.report-evidence-caption > span:not(.observation-basis)').innerText(), 'The third capture is the cited validation state.');
+    assert.equal(await page.locator('.report-moments [aria-current="true"]').getAttribute('data-report-moment'), 'lane-1-frame-3');
+    assert.equal(await page.locator('.report-scope').innerText(), analysis.analysis.result.findings[0].observations[0].limitation);
+    assert.equal(await page.locator('.report-assessment dd').allTextContents().then(values => values.join('/')), 'medium/Recovered');
+    const limits = page.locator('.report-limits');
+    assert.equal(await limits.getAttribute('open'), null, 'Secondary caveats begin expanded');
+    await snap('representative-capture-and-visible-uncertainty');
+    const disclosure = limits.locator('summary'); await disclosure.focus(); await page.keyboard.press('Enter');
+    await page.locator('.report-limits[open]').waitFor();
+    await settled();
+    assert.equal(await limits.locator('li').count(), 2, 'Duplicate limitations were repeated');
+    assert((await limits.innerText()).includes('including this final sentence about the unmeasured downstream result.'));
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1, 'Expanded caveats overflow the page');
+    if (phone) assert((await disclosure.boundingBox()).height >= 44, 'Phone caveat disclosure is too small');
+    await snap('complete-caveats-keyboard-expanded');
+    await disclosure.press('Space'); await page.locator('.report-limits:not([open])').waitFor();
+    await page.locator('.report-observations > summary').click();
+    assert.equal(await page.locator('.report-observations .observation-basis').count(), 8, 'Original observations were lost during deduplication');
+    await preview.click(); await page.locator('.player').waitFor();
+    assert.equal(new URL(page.url()).hash, '#/lane/lane-1/f/3');
+    assert((await displayedFrame(page)).endsWith('portrait-3.png'));
+    await page.getByRole('button', { name: /^Back to finding:/ }).click();
+    await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+    await until(async () => trigger.evaluate(element => document.activeElement === element), 'Finding return lost keyboard focus');
+    record.checks = { representativeCapture: 'lane-1-frame-3', latestCaptureExcluded: true, duplicateSupportExcluded: true,
+      visibleUncertainty: true, allLimitsRetained: true, originalObservations: 8, exactMoment: '#/lane/lane-1/f/3', keyboardDisclosure: true, width };
+    await snap('exact-evidence-return');
   });
   for (const phone of [false, true]) await runCase(`analysis-concerns-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {
     analysis = analysisFixture(data);

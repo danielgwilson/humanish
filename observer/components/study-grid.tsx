@@ -12,9 +12,9 @@ export function buildTally(data: ObserverData): string {
   if (data.run.mode === "dry-run") parts.push("dry run");
   if (data.cost && typeof data.cost.estimatedTotalUsd === "number") {
     const estimate = `est. ~$${data.cost.estimatedTotalUsd.toFixed(2)}`;
-    parts.push(`${data.cost.fullyEstimated === false ? `known cost ${estimate}; total unknown` : estimate} (rates as of ${data.cost.ratesAsOf}${data.cost.placeholder ? ", placeholder" : ""})`);
+    parts.push(`Participants + desktops: ${data.cost.fullyEstimated === false ? `known cost ${estimate}; total unknown` : estimate} (rates as of ${data.cost.ratesAsOf}${data.cost.placeholder ? ", placeholder" : ""})`);
   }
-  else if (data.cost) parts.push("cost not estimated");
+  else if (data.cost) parts.push("Participants + desktops: cost not estimated");
   return parts.join(" · ");
 }
 

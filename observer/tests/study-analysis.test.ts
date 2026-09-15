@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { LoadedStudyAnalysis } from "../../src/study-analysis";
 import { fetchStudyAnalysis, NO_ANALYSIS, parseStudyAnalysis, projectStudyAnalysis, readInlineStudyAnalysis, STUDY_ANALYSIS_PLACEHOLDER } from "../lib/study-analysis";
 import { formatHash, parseHash } from "../lib/route";
-import { reportProblem, resolveReportMoment } from "../lib/study-report";
+import { reportProblem, resolveReportMoment, representativeReportMoment } from "../lib/study-report";
 
 // Same synthetic input used by the built-artifact browser suite. No provider wire
 // response is asserted here; this checks the independent renderer contract.
@@ -12,6 +12,24 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
+  it("keeps source interpretations intact while selecting a directly supported preview and separating caveats", () => {
+    const saved = fixtures.reviewPolishFixture(data);
+    const before = JSON.stringify(saved);
+    const projected = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    const finding = projected.findings[0]!;
+    const moments = finding.moments.map(moment => ({ ...moment, resolved: resolveReportMoment(data, moment.streamId, moment.eventId) }));
+    const lead = representativeReportMoment(moments)!;
+    expect(lead.eventId).toBe("lane-1-frame-3");
+    expect(lead.note).toBe("The third capture is the cited validation state.");
+    expect(lead.bases).toEqual(["visual", "action"]);
+    expect(finding.moments.find(moment => moment.eventId === "lane-1-frame-1")?.observationCount).toBe(1);
+    expect(finding.assessment).toMatchObject({ confidence: "medium", recovery: "Recovered" });
+    expect(finding.assessment?.limitations).toHaveLength(3);
+    expect(finding.observations).toHaveLength(8);
+    expect(projected.messages).toHaveLength(1);
+    expect(JSON.stringify(saved)).toBe(before);
+    expect(formatHash(lead.streamId, lead.resolved!.frameIndex, null, lead.resolved!.eventId)).toBe("#/lane/lane-1/f/3");
+  });
   it("projects evidence-linked exclusions and preserves absence in older reports", () => {
     expect(projectStudyAnalysis(parseStudyAnalysis(fixture(), data), data)?.concernReviews).toBeUndefined();
     const saved = fixture(), f = saved.analysis!.result!.findings[0]!;

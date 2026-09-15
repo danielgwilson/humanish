@@ -44,6 +44,8 @@
     {"id": "participant-assignment", "goal": "Show lane-specific authored assignment and explicitly unrecorded older assignments"},
     {"id": "analysis-ready-desktop", "goal": "Review ranked findings and return from exact evidence without changing the desktop shell"},
     {"id": "analysis-ready-phone", "goal": "Review findings and keep source-aware evidence navigation usable at 390px"},
+    {"id": "analysis-review-polish-desktop", "goal": "Prefer a directly supported capture, retain visible uncertainty and expose complete deduplicated caveats by keyboard"},
+    {"id": "analysis-review-polish-phone", "goal": "Keep representative evidence, full long caveats and exact recording navigation usable at 390px"},
     {"id": "analysis-concerns-desktop", "goal": "Review a qualified exclusion, open its exact evidence and return to the expanded concern review by keyboard"},
     {"id": "analysis-concerns-phone", "goal": "Keep concern decisions, evidence links and return navigation usable at 390px without changing the shell"},
     {"id": "analysis-attribution", "goal": "Cited statements keep speakers, observation basis, disposition and participant interpretation distinct from original feedback"},

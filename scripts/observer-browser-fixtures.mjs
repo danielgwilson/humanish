@@ -127,3 +127,27 @@ export function analysisFixture(data, { status = "complete", state = status === 
     coverage: { includedStreamIds: participants.map((p) => p.streamId), omittedStreamIds: [], evidenceCount: evidence.length, captureCount: evidence.filter((e) => e.kind === "screenshot").length, complete: status === "complete", omissions: [] },
     evidence, result: status === "failed" || status === "cancelled" ? null : result, error: status === "failed" ? "synthetic_failure" : null } };
 }
+
+/** Review presentation fixture: setup, issue, and later context remain separate
+ * citations. The image markers prove capture identity, not an actual app defect. */
+export function reviewPolishFixture(data) {
+  const analysis = analysisFixture(data, { count: 1 });
+  const finding = analysis.analysis.result.findings[0];
+  const id = data.streams[0].id;
+  const limit = "One retained attempt shows this message. The recording does not establish how often other participants encounter it.";
+  finding.title = "A validation message needs review";
+  finding.summary = "The participant encountered a validation message after submitting a fictional form, then continued through another route.";
+  finding.recovery = "recovered";
+  finding.confidence = "medium";
+  finding.observations = [
+    { claim: "The initial capture provides the form's setup context.", basis: "visual", evidenceIds: [`${id}/${id}-frame-1`], limitation: limit },
+    { claim: "The third capture is the cited validation state.", basis: "visual", evidenceIds: [`${id}/${id}-frame-3`], limitation: limit },
+    { claim: "A submitted action and its retained result establish the attempted path.", basis: "action", evidenceIds: [`${id}/${id}-action-2`, `${id}/${id}-frame-3`], limitation: "The action trace establishes an attempt, not why the participant chose it." },
+    { claim: "The final capture provides later context, without establishing a cause.", basis: "inference", evidenceIds: [`${id}/${id}-frame-4`], limitation: "The later state does not establish a successful final submission. This deliberately long caveat remains available in full when the reviewer opens the evidence limits, including this final sentence about the unmeasured downstream result." },
+  ];
+  // Repetition must not manufacture stronger preview support or duplicate the
+  // visible limitations. The complete original observations remain available.
+  finding.observations.push(...Array.from({ length: 4 }, () => ({ ...finding.observations[0] })));
+  analysis.analysis.result.limitations.push(analysis.analysis.result.limitations[0]);
+  return analysis;
+}

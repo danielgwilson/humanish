@@ -118,6 +118,19 @@ offset. Nonvisual events retain event identity without invented frame offsets.
 Scripted captures without recorded timestamps keep null analysis times; any
 uniform playback pacing is an estimate, not an observed duration.
 
+Finding previews select from the finding's cited entries. They prefer a capture
+directly cited as visual evidence, then the number of distinct visual/action
+observations citing it; equal support keeps citation order. Duplicate claims do
+not increase support. This is a display heuristic, not a confidence score or a
+guarantee that the selected capture is the most relevant. Context-only and
+nonvisual evidence retain their basis and original event. All cited moments stay
+available, with exact recording links.
+
+Confidence, recovery and the first full evidence limitation remain visible when
+a finding opens. Exposure and remaining unique limits are one disclosure away;
+observation details retain each original claim and its specific limitation.
+This presentation does not rewrite the saved analysis or reviewer corrections.
+
 ## Durable records
 
 The frozen `humanish.observer-data.v1` schema is unchanged. A companion

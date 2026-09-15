@@ -247,15 +247,15 @@ describe("buildTally cost line", () => {
       ...base,
       cost: { estimatedTotalUsd: null, fullyEstimated: false, ratesAsOf: "2026-08-01", placeholder: true }
     } as unknown as ObserverData;
-    expect(buildTally(withNull)).toContain("cost not estimated");
+    expect(buildTally(withNull)).toContain("Participants + desktops: cost not estimated");
   });
 
   it("distinguishes a known subtotal from a fully estimated total while preserving rate provenance", () => {
     const cost = { estimatedTotalUsd: 0.034, fullyEstimated: false, ratesAsOf: "2026-09-03", placeholder: true };
     expect(buildTally({ ...base, cost } as unknown as ObserverData))
-      .toContain("known cost est. ~$0.03; total unknown (rates as of 2026-09-03, placeholder)");
+      .toContain("Participants + desktops: known cost est. ~$0.03; total unknown (rates as of 2026-09-03, placeholder)");
     const complete = buildTally({ ...base, cost: { ...cost, fullyEstimated: true } } as unknown as ObserverData);
-    expect(complete).toContain("est. ~$0.03 (rates as of 2026-09-03, placeholder)");
+    expect(complete).toContain("Participants + desktops: est. ~$0.03 (rates as of 2026-09-03, placeholder)");
     expect(complete).not.toContain("known cost");
     expect(complete).not.toContain("total unknown");
   });

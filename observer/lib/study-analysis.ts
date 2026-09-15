@@ -162,17 +162,22 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
   return { id: a?.id ?? "unavailable", runId: data.run.runId, state,
     admissionExceeded: a?.error === "analysis_admission_estimate_exceeded",
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
-    messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
+    messages: [...new Set([...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])])],
     findings: result?.findings.map((f) => {
       const cited = new Set(f.observations.flatMap((o) => o.evidenceIds));
       const moments = [...cited].flatMap((key) => {
         const e = evidence.get(key), observations = f.observations.filter((o) => o.evidenceIds.includes(key));
-        return e ? [{ streamId: e.streamId, eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", note: observations.map((o) => o.claim).join(" "), bases: [...new Set(observations.map((o) => o.basis))] }] : [];
+        return e ? [{ streamId: e.streamId, eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence",
+          note: (observations.find(o => o.basis === "visual") ?? observations[0])!.claim,
+          bases: [...new Set(observations.map((o) => o.basis))],
+          observationCount: new Set(observations.filter(o => o.basis === "visual" || o.basis === "action").map(o => JSON.stringify([o.basis, o.claim]))).size }] : [];
       });
       const accounts = result.participants.filter((p) => f.affectedStreamIds.includes(p.streamId)).flatMap((p) => p.feedback.filter((q) => cited.has(q.evidenceId)).map((q) => ({ text: q.text, label: labels.get(p.streamId) ?? p.streamId, streamId: p.streamId, eventId: evidence.get(q.evidenceId)!.eventId })));
       return { id: f.id, title: f.title, impact: impact[f.impact], summary: f.summary,
         scope: `${f.affectedStreamIds.length} of ${f.exposedStreamIds.length} exposed participants affected`,
         limitation: [...new Set(f.observations.map((o) => o.limitation).filter(Boolean)), `Exposure: ${f.exposureReason}`, `Recovery: ${f.recovery === "not_observed" ? "not observed" : f.recovery}. Confidence: ${f.confidence}.`].join(" "),
+        assessment: { confidence: f.confidence, recovery: f.recovery === "not_observed" ? "Not observed" : outcomeLabel(f.recovery),
+          exposureReason: f.exposureReason, limitations: [...new Set(f.observations.map(o => o.limitation).filter(Boolean))] },
         nextStep: f.nextStep, priorityReason: f.priorityReason, account: "", accountSource: "", accounts, observations: f.observations.map(({ claim, basis, limitation }) => ({ claim, basis, limitation })), moments,
         corrections: loaded.corrections.filter((c) => c.findingId === f.id).map((c) => ({ status: c.status, reason: c.reason, replacementClaim: c.replacementClaim, createdAt: c.createdAt })) };
     }) ?? [],
