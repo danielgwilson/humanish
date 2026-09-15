@@ -43,6 +43,7 @@ import { taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
+import { countTerminalParticipantItems } from "./terminal-participant-activity.js";
 import type { ActorTokenUsage, ActorRuntimeProvenance } from "./actor-contract.js";
 import { buildRuntimeExecPrefix, buildRuntimeVersionCommand, declaredRuntimeProvenance, isExactRuntimeVersion, parseTerminalRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./terminal-runtime.js";
 import { isReasoningEffort } from "./reasoning-effort.js";
@@ -2148,6 +2149,12 @@ function buildTerminalActorTrace(args: {
     ...(args.tokenUsage ? { tokenUsage: args.tokenUsage } : {}),
     counts: {
       commands: args.commandLog.length,
+      // Unlike the legacy transcript message/actions counts, this establishes
+      // actual runtime item activity. Stderr and bootstrap commands never count.
+      // Read the full retained stdout: its early items may no longer be in the tail.
+      runtimeParticipantItems: countTerminalParticipantItems(normalizeLocalActorTranscript(
+        args.terminalEvents.filter(event => event.stream === "stdout").map(event => event.chunk).join("")
+      )),
       // actions == executed commands; messages == 1 when the agent produced any output. The
       // no-engagement guard (run.ts) reads these: a real run bumps them, a no-op is caught.
       actions: args.commandLog.length,

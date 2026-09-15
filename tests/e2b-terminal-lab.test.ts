@@ -17,6 +17,8 @@ import { guardDesktopSandboxCreate, type E2BDesktopCreateOptions, type E2BDeskto
 import { E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "../src/terminal-runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 import { verifyRun } from "../src/run.js";
+import { readAutomaticStudyAnalysis, runAutomaticStudyAnalysis } from "../src/automatic-study-analysis.js";
+import { resolveAutomaticAnalysis } from "../src/automatic-analysis-config.js";
 
 // SLICE 2 deterministic safety net: drive the REAL live orchestration (dryRun:false) against a
 // FAKE E2B module + a MOCK codex CLI at zero spend. The load-bearing assertions are the
@@ -470,6 +472,54 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   // identifiers or participant prose. The E2B callback/returned-stdout duplication is proven
   // byte-for-byte in docs/goals/terminal-product-lane/receipts/2026-09-05-runtime-egress-auth.md.
   const capturedUsage = '{"type":"turn.completed","usage":{"input_tokens":94325,"cached_input_tokens":55936,"cache_write_input_tokens":0,"output_tokens":1407,"reasoning_output_tokens":864}}\n';
+
+  it.each(["stderr-only", "stdout-diagnostic-only", "stderr-item-only", "command-only", "message-only", "split-stdout", "early-item"] as const)(
+    "gates real default analysis on retained participant items (%s)", async mode => {
+      const records = (await readFile(new URL("./fixtures/terminal-runtime/participant-items.ndjson", import.meta.url), "utf8")).trim().split("\n");
+      const message = `${records[0]}\n`;
+      const command = `${records[1]}\n${records[2]}\n`;
+      const eligible = ["command-only", "message-only", "split-stdout", "early-item"].includes(mode);
+      // The real service, admission, receipts, and job owner run. Only transport
+      // rejects locally, so this fixture cannot allocate a provider request.
+      const fetch = vi.fn<typeof globalThis.fetch>(async () => { throw new Error("Synthetic request boundary"); });
+      const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false,
+        automaticAnalysis: { deps: { apiKey: "synthetic-analysis-key", fetch } }, hooks: {
+          env: baseEnv(), now: () => 1_000,
+          loadModule: async () => makeFakeModule({ creates: [], runs: [], killed: [], codexBehavior: () => ({ exitCode: 1,
+            emit: (stdout, stderr) => {
+              if (mode === "stderr-only") stderr("npm error synthetic launcher unavailable\n");
+              if (mode === "stdout-diagnostic-only") stdout(`Synthetic launcher failed\n${capturedUsage}`);
+              if (mode === "stderr-item-only") stderr(message);
+              if (mode === "command-only") stdout(command);
+              if (mode === "message-only") stdout(message);
+              if (mode === "split-stdout") {
+                stdout(command.slice(0, 40)); stderr("Synthetic interleaved diagnostic\n"); stdout(command.slice(40));
+              }
+              if (mode === "early-item") stdout(`${message}${"Synthetic diagnostic\n".repeat(1000)}`);
+            }
+          }) })
+        } });
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const actor = JSON.parse(await readFile(path.join(runDir, "actor.json"), "utf8"));
+      expect(actor.counts.runtimeParticipantItems).toBe(eligible ? 1 : 0);
+      // Preserve the old transcript projection and verdict interpretation.
+      expect(actor.counts.messages).toBe(1);
+      expect(actor.items.some((item: { kind: string }) => item.kind === "message")).toBe(true);
+      expect(result.session?.status).toBe("blocked");
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(eligible ? 1 : 0);
+      expect(result.automaticAnalysis).toMatchObject(eligible
+        ? { state: "failed", reason: "AUTOMATIC_ANALYSIS_FAILED" }
+        : { state: "skipped", reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE" });
+      expect(await readAutomaticStudyAnalysis(cwd, result.runId)).toMatchObject({ state: result.automaticAnalysis!.state });
+      const resolved = resolveAutomaticAnalysis(undefined);
+      if (!resolved.ok || !resolved.config) throw new Error("Default analysis config unavailable");
+      expect(await runAutomaticStudyAnalysis(cwd, result.runId, resolved.config,
+        { defaultRequest: true, apiKey: "synthetic-analysis-key", fetch }))
+        .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ALREADY_REQUESTED" });
+      expect(fetch).toHaveBeenCalledTimes(eligible ? 1 : 0);
+    }
+  );
 
   it.each(["returned-only", "callbacks-only", "split-before-quote"] as const)("preserves nested JSON and report extraction through %s delivery", async (delivery) => {
     const creates: RecordedCreate[] = [], runs: RecordedRun[] = [], killed: string[] = [];
