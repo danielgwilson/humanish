@@ -43,4 +43,22 @@ describe("independent automatic analysis metadata", () => {
   it.each(["complete", "partial", "failed", "cancelled", "skipped", "unknown"] as const)("keeps terminal %s metadata independent of elapsed time", (state) => {
     expect(automaticAnalysisNotice(job(state), false, now + 86400_000)).toMatchObject({ state, pending: false });
   });
+  it.each([
+    ["AUTOMATIC_ANALYSIS_KEY_MISSING", "Set OPENAI_API_KEY", "humanish analyze"],
+    ["AUTOMATIC_ANALYSIS_ADMISSION_REFUSED", "admission estimate", "higher --max-cost"],
+    ["AUTOMATIC_ANALYSIS_BUSY", "Another analysis request", "analysis history"],
+    ["AUTOMATIC_ANALYSIS_CANCELLED", "This request has ended", "remain available"],
+    ["AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN", "analysis history and usage", "explicit request"],
+    ["AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", "could not be saved", "analysis history and usage"],
+    ["AUTOMATIC_ANALYSIS_ACTOR_CANCELLED", "participant run was cancelled", "did not run"],
+  ])("explains %s with a bounded operator next step", (reason, cause, nextStep) => {
+    const notice = automaticAnalysisNotice({ ...job("skipped"), reason }, false, now);
+    expect(notice.detail).toContain(cause); expect(notice.detail).toContain(nextStep);
+    expect(notice.pending).toBe(false);
+  });
+  it("keeps unknown reason codes diagnostic and never treats them as instructions", () => {
+    const notice = automaticAnalysisNotice({ ...job("unknown"), reason: "UNRECOGNIZED_INSTRUCTION" }, false, now);
+    expect(notice.detail).toContain("Inspect the analysis history");
+    expect(notice.detail).not.toContain("UNRECOGNIZED_INSTRUCTION");
+  });
 });

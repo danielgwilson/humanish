@@ -64,6 +64,8 @@ describe("automatic analysis within the existing study shell", () => {
     await mount(); await click('.study-views a[href="#/report"]');
     expect(container.textContent).toContain("Analysis failed.");
     expect(container.textContent).toContain("A previously saved analysis is shown below.");
+    expect(container.textContent).toContain("The admission estimate exceeded the configured cost limit.");
+    expect(container.textContent).toContain("higher --max-cost");
     expect(container.querySelectorAll("[data-finding]")).toHaveLength(2);
     await click('.study-views a[href="#"]'); expect(container.querySelector(".gallery")).not.toBeNull();
   });
