@@ -17,7 +17,7 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
   }
   const state = report.state ?? "complete";
   const notice = state === "stale" ? "Evidence has changed since this analysis. Review these findings against the current recording or generate a new analysis."
-    : state === "partial" ? "Analysis is incomplete. These findings cover only the evidence included so far."
+    : state === "partial" ? "Analysis finished with limitations."
     : state === "failed" ? "Analysis failed. Participant evidence remains available."
     : state === "cancelled" ? "Analysis was cancelled. Participant evidence remains available."
     : state === "invalid" ? "Analysis is unavailable. Participant evidence remains available." : null;
