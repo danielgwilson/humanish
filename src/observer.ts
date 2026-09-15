@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./observer-data.js";
 import type { ObserverData } from "./observer-data.js";
-import { listRuns, loadRunBundle, verifyRun } from "./run.js";
+import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "./run.js";
 import {
   bindExistingRunArtifactPaths,
   isPathInside,
@@ -50,6 +50,8 @@ export interface ObserverResult {
 
 export interface ObserverOptions {
   open?: boolean;
+  /** Internal producer pin: refreshing a finished run must not bind a replacement. */
+  expectedRun?: PreparedRunArtifactPaths;
 }
 
 export interface ObserverServeOptions {
@@ -114,7 +116,19 @@ export async function renderObserver(
   const cwd = path.resolve(cwdInput);
   let selection: ObserverRunSelection | null;
   try {
-    selection = await resolveObserverRunSelection(cwd, runInput);
+    if (options.expectedRun) {
+      const prepared = options.expectedRun;
+      if (runInput !== path.basename(prepared.physicalRunRoot)
+        || await realpath(cwd) !== path.dirname(path.dirname(prepared.physicalRunsRoot))) {
+        throw new Error("Observer source pin does not match the selected run.");
+      }
+      await validatePreparedRunArtifactPaths(prepared);
+      selection = { runId: runInput,
+        runRoot: { ...prepared.runRootIdentity, physicalPath: prepared.physicalRunRoot },
+        runsRoot: { ...prepared.runsRootIdentity, physicalPath: prepared.physicalRunsRoot } };
+    } else {
+      selection = await resolveObserverRunSelection(cwd, runInput);
+    }
   } catch {
     selection = null;
   }
@@ -126,7 +140,7 @@ export async function renderObserver(
   let preparedRunPaths;
   try {
     const selectedPhysicalCwd = path.dirname(path.dirname(selection.runsRoot.physicalPath));
-    preparedRunPaths = await bindExistingRunArtifactPaths(selectedPhysicalCwd, selection.runId);
+    preparedRunPaths = options.expectedRun ?? await bindExistingRunArtifactPaths(selectedPhysicalCwd, selection.runId);
     if (
       preparedRunPaths.physicalRunsRoot !== selection.runsRoot.physicalPath
       || preparedRunPaths.physicalRunRoot !== selection.runRoot.physicalPath
@@ -145,7 +159,7 @@ export async function renderObserver(
 
   await validatePreparedRunArtifactPaths(preparedRunPaths);
   const selectedPhysicalCwd = path.dirname(path.dirname(selection.runsRoot.physicalPath));
-  const verified = await verifyRun(selectedPhysicalCwd, selection.runId);
+  const verified = await verifyRunPrepared(selectedPhysicalCwd, selection.runId, preparedRunPaths);
   await validatePreparedRunArtifactPaths(preparedRunPaths);
 
   if (!verified.ok && verified.recordingOk !== true) {
@@ -157,7 +171,7 @@ export async function renderObserver(
     );
   }
 
-  const loaded = await loadRunBundle(selectedPhysicalCwd, selection.runId);
+  const loaded = await loadRunBundlePrepared(selectedPhysicalCwd, preparedRunPaths);
   await validatePreparedRunArtifactPaths(preparedRunPaths);
   if (!loaded) {
     return observerRunError(cwd, runInput, "HUMANISH_RUN_NOT_FOUND", `Run not found: ${runInput}`);

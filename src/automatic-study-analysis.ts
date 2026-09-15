@@ -1,4 +1,5 @@
 import path from "node:path";
+import { renderObserver } from "./observer.js";
 import { resolveRunPath, type RunBundle } from "./run.js";
 import { analyzeStudy, readCompletedStudyAnalysisSource, resolveStudyAnalysisRun, type AnalyzeDeps, type AnalyzeResult } from "./study-analysis-service.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION } from "./study-analysis-engine.js";
@@ -32,7 +33,8 @@ export async function requestAutomaticStudyAnalysisCancellation(cwd: string, run
 function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
   if (result.error?.code === "ANALYSIS_PUBLICATION_FAILED") return { state: "failed", reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result };
   if (result.status) return { state: result.status, result, reason: result.reused ? "AUTOMATIC_ANALYSIS_REUSED"
-    : result.status === "partial" ? "AUTOMATIC_ANALYSIS_LIMITATIONS"
+    : result.status === "partial" ? (result.error?.code === "analysis_admission_estimate_exceeded"
+      ? "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED" : result.ok ? "AUTOMATIC_ANALYSIS_LIMITATIONS" : "AUTOMATIC_ANALYSIS_FAILED")
     : result.status === "failed" ? "AUTOMATIC_ANALYSIS_FAILED"
     : result.status === "cancelled" ? "AUTOMATIC_ANALYSIS_CANCELLED" : null };
   const code = result.error?.code;
@@ -119,7 +121,17 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
         receiptSha256: hashStudyAnalysisValue(receipt) }),
       ...(entry?.analysis ? { analysisSha256: hashStudyAnalysisValue(entry.analysis) } : {}) });
     const persisted = await readAutomaticStudyAnalysisPrepared(prepared);
-    if (persisted?.state === "unknown") return { ...outcome, state: "unknown", reason: persisted.reason };
+    if (persisted?.state === "unknown") outcome = { ...outcome, state: "unknown", reason: persisted.reason };
   } catch { return { ...outcome, state: "unknown", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE" }; }
+  // The service may render while this owner is still running. Freeze the final
+  // job projection for direct file opening too, including no-request outcomes.
+  // A failed refresh must never erase the durable outcome or measured usage.
+  try {
+    const rendered = await renderObserver(cwd, runId, { open: false, expectedRun: prepared });
+    if (!rendered.ok) throw new Error("AUTOMATIC_ANALYSIS_OBSERVER_UNAVAILABLE");
+  } catch {
+    if (outcome.result) outcome = { ...outcome, result: { ...outcome.result,
+      warnings: [...outcome.result.warnings, "Automatic analysis status was saved, but Observer could not be refreshed. Run humanish observe again."] } };
+  }
   return outcome;
 }

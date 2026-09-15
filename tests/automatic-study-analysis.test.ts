@@ -14,6 +14,7 @@ import { hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
 import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../src/study-analysis-engine.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
 import { pinDirectory, renderObserver, serveRunPath } from "../src/observer.js";
+import * as observer from "../src/observer.js";
 import { exportRun } from "../src/export.js";
 import type { PreparedRunArtifactPaths } from "../src/run-paths.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
@@ -50,6 +51,91 @@ describe("opted-in automatic analysis ownership", () => {
   async function claimed() {
     return (await claimAutomaticStudyAnalysis(prepared, { configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION }))!;
   }
+
+  async function embeddedAnalysis() {
+    const html = await readFile(path.join(root, "observer", "index.html"), "utf8");
+    const embedded = html.match(/<script id="study-analysis" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+    expect(embedded).toBeDefined();
+    return JSON.parse(embedded!);
+  }
+
+  it.each(["complete", "partial", "failed", "skipped"])("writes terminal %s into the actual static Observer without another request", async state => {
+    if (state === "complete") {
+      const bundle = JSON.parse(original.toString()) as RunBundle;
+      for (const stream of bundle.streams) {
+        stream.assignment = { mission: "Review the synthetic item." };
+        stream.actor = {
+          schema: "humanish.actor-trace.v1", provider: "synthetic", protocol: "cua-loop", lane: "computer-use",
+          persona: { id: "synthetic-participant", traitsApplied: [], promptDigest: "a".repeat(64) },
+          redaction: { status: "passed", screenshots: "n/a", notes: "Synthetic trace." },
+          startedAt: "2026-09-01T00:00:00.000Z", completedAt: "2026-09-01T00:01:00.000Z", durationMs: 60000,
+          status: "passed", completionReason: "turn_completed", reason: "The synthetic turn finished.",
+          ids: {}, counts: {}, items: [], capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"],
+            producesScreenshots: false, byoModel: false, preGrantableApprovals: false, inProcessTools: false, license: "open" }
+        };
+      }
+      original = Buffer.from(JSON.stringify(bundle));
+      await writeFile(path.join(root, "run.json"), original);
+      expect((await verifyRun(cwd, runId)).checks.filter(check => !check.ok)).toEqual([]);
+      input = await captureStudyEvidence(prepared, original);
+      expect(input.coverage.complete).toBe(true);
+    }
+    const h = await transport();
+    if (state === "failed") h.fetch.mockRejectedValue(new Error("Synthetic transport failure"));
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config,
+      { apiKey: state === "skipped" ? "" : "synthetic-key", fetch: h.fetch });
+    expect(outcome.state).toBe(state);
+    expect(outcome.result?.ok).toBe(state === "partial" || state === "complete");
+    const projected = await embeddedAnalysis();
+    expect(projected.automatic).toMatchObject({ state, reason: outcome.reason,
+      analysisId: outcome.result?.analysisId ?? null });
+    if (state === "partial" || state === "complete") expect(projected.analysis.id).toBe(outcome.result!.analysisId);
+    expect(JSON.parse(await readFile(path.join(root, "observer", "study-analysis.json"), "utf8"))).toEqual(projected);
+    expect(h.fetch).toHaveBeenCalledTimes(state === "skipped" ? 0 : 1);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
+
+  it("keeps terminal accounting and warns if a replacement prevents the final static refresh", async () => {
+    const h = await transport();
+    const render = observer.renderObserver;
+    const retained = path.join(cwd, "retained-original");
+    const snapshots = new Map<string, Buffer>();
+    let finalRefresh = false;
+    vi.spyOn(observer, "renderObserver").mockImplementation(async (...args) => {
+      expect(args[2]?.expectedRun).toBe(prepared);
+      if (JSON.parse(await readFile(jobPath(), "utf8")).state === "partial") {
+        finalRefresh = true;
+        await rename(root, retained); await cp(retained, root, { recursive: true });
+        for (const file of ["observer/index.html", "observer/observer-data.json", "observer/study-analysis.json", "analysis-automatic/job.json"]) {
+          snapshots.set(file, await readFile(path.join(root, file)));
+        }
+      }
+      return render(...args);
+    });
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config,
+      { apiKey: "synthetic-key", fetch: h.fetch, expectedRun: prepared });
+    expect(finalRefresh).toBe(true);
+    expect(outcome).toMatchObject({ state: "partial", result: { ok: true, usage: { dispatched: true },
+      executionReceiptPath: expect.any(String), warnings: [expect.stringContaining("status was saved, but Observer could not be refreshed")] } });
+    expect(JSON.parse(await readFile(path.join(retained, "analysis-automatic/job.json"), "utf8")).state).toBe("partial");
+    for (const [file, before] of snapshots) expect(await readFile(path.join(root, file))).toEqual(before);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("identifies an admission overrun in the stored job and static Observer without losing valid findings", async () => {
+    const h = await transport();
+    // Perturb the captured envelope's usage count, preserving its wire shape.
+    h.wire.usage.output_tokens = config.maxOutputTokens + 1;
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch });
+    expect(outcome).toMatchObject({ state: "partial", reason: "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED",
+      result: { ok: false, status: "partial", error: { code: "analysis_admission_estimate_exceeded" },
+        usage: { outputTokens: config.maxOutputTokens + 1, dispatched: true } } });
+    expect((await embeddedAnalysis()).automatic).toMatchObject({ state: "partial", reason: "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED" });
+    expect((await loadStudyAnalysis(prepared)).analysis?.result).not.toBeNull();
+    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect(h.fetch).toHaveBeenCalledOnce();
+  });
 
   it("claims once across concurrent invocations and persists running before transport", async () => {
     const h = await transport();

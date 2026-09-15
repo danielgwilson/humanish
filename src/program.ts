@@ -4492,7 +4492,7 @@ export function cliAutomaticAnalysisHooks(io: Pick<CliIo, "writeErr">): Automati
     onStart: () => {
       const cancel = (): void => { controller.abort(); };
       const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
-      io.writeErr("Participants finished; analyzing the recording…\n");
+      io.writeErr("Participants finished; preparing analysis…\n");
       for (const signal of signals) process.on(signal, cancel);
       return () => { for (const signal of signals) process.off(signal, cancel); };
     }

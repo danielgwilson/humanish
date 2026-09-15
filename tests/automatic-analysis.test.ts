@@ -155,6 +155,13 @@ describe("automatic analysis admission and producer boundary", () => {
   it("partial status cannot turn an analysis error into CLI success", () => {
     expect(automaticAnalysisSucceeded({ automaticAnalysis: { state: "partial", reason: "analysis_admission_estimate_exceeded" } })).toBe(false);
   });
+  it("announces preparation before admission without claiming a provider request", () => {
+    const writeErr = vi.fn();
+    const hooks = cliAutomaticAnalysisHooks({ writeErr });
+    const cleanup = hooks.onStart!();
+    try { expect(writeErr).toHaveBeenCalledExactlyOnceWith("Participants finished; preparing analysis…\n"); }
+    finally { if (typeof cleanup === "function") cleanup(); }
+  });
   it.each([{ prefix: ["run"] }, { prefix: ["lab", "run"] }, { prefix: ["watch"] }])("CLI entry $prefix reports dry-run skip without starting analysis", async ({ prefix }) => {
     const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
@@ -166,7 +173,7 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_dry_run" });
     expect(result.ok).toBe(result.runOk);
     expect(exit).toBe(result.ok ? 0 : 2);
-    expect(stderr).not.toContain("analyzing the recording");
+    expect(stderr).not.toContain("preparing analysis");
   });
   it("TUI cancellation of finished source only writes the safe marker, never signals a PID", async () => {
     const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;

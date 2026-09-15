@@ -194,7 +194,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
             : "Storage changed or became unavailable after the attempt. Usage is retained in this response; no durable receipt could be written." } };
       }
       try {
-        const rendered = await renderObserver(cwd, input.runId, { open: false });
+        const rendered = await renderObserver(cwd, input.runId, { open: false, expectedRun: prepared });
         if (!rendered.ok) result.warnings.push("Analysis was saved, but Observer could not be refreshed. Run humanish observe again.");
       } catch { result.warnings.push("Analysis was saved, but Observer could not be refreshed. Run humanish observe again."); }
       return result;
@@ -230,7 +230,7 @@ export async function correctStudyAnalysis(cwd: string, run: string, options: {
       status: options.status, reason: options.reason, replacementClaim: options.replacementClaim ?? null
     };
     await appendStudyAnalysisCorrection(prepared, correction);
-    await renderObserver(cwd, run, { open: false }).catch(() => null);
+    await renderObserver(cwd, path.basename(prepared.physicalRunRoot), { open: false, expectedRun: prepared }).catch(() => null);
     return correction;
   });
 }
