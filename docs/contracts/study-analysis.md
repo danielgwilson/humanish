@@ -105,7 +105,7 @@ status, usage and validated findings:
   analysis/<analysis>/corrections/<correction>/correction.json
   analysis-attempts/<analysis>/receipt.json
   observer/study-analysis.json
-  analysis-automatic/job.json  # opt-in run lifecycle; never a retry instruction
+  analysis-automatic/job.json  # post-run lifecycle; never a retry instruction
 ```
 
 The optional automatic job is separate from the immutable analysis. Its view

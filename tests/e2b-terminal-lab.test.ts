@@ -267,7 +267,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   ] as const)("keeps guarded %s startup failure verifiable after cleanup resolves %s", async (phase, killResult) => {
     const probe = guardedStartupFailure(phase, killResult);
     const config = liveConfig();
-    config.review = { analysis: { maxCostUsd: 3 } };
+    delete config.review; // Omitted config uses the separate default analysis budget.
     const analyze = automaticAnalysisBoundary();
     const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, automaticAnalysis: { run: analyze }, hooks: {
       env: baseEnv(), loadModule: async () => probe.module

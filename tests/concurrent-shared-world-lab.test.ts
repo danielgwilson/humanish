@@ -316,7 +316,7 @@ afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
   it.each([true, false])("preserves each role's authored focus (dryRun %s)", async (dryRun) => {
     const config = concurrentConfig();
-    config.review = { analysis: { maxCostUsd: 3 } };
+    delete config.review; // Omitted config uses the separate default analysis budget.
     const analyze = automaticAnalysisBoundary();
     config.actors[0]!.lanes!.forEach((lane, i) => { lane.instruction = `Review section ${i + 1}.`; });
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";

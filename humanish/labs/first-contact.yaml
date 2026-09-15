@@ -68,3 +68,7 @@ policies:
   allowProviderCredentials: false
   allowPaymentCredentials: false
   allowGitHubMutation: false
+
+# This fixture proves the zero-spend product path; post-run model review is separate.
+review:
+  analysis: false

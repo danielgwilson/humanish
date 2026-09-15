@@ -1,4 +1,5 @@
 import path from "node:path";
+import { automaticAnalysisBudget, type AutomaticAnalysisBudget } from "./automatic-analysis-config.js";
 
 import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "./cua-actor-lab.js";
 import { probeUrl } from "./e2b-detached.js";
@@ -65,6 +66,8 @@ export interface LabPreflightSpend {
 }
 
 export interface LabPreflightResult {
+  /** The separate budget for a future live run, never spend by preflight itself. */
+  analysis?: AutomaticAnalysisBudget;
   schema: typeof LAB_PREFLIGHT_SCHEMA;
   ok: boolean;
   cwd: string;
@@ -394,8 +397,10 @@ async function withPreflightSandbox(
 
 function finalize(ctx: PreflightContext, args?: { check?: LabPreflightCheck }): LabPreflightResult {
   const checks = args?.check ? [...ctx.checks, args.check] : ctx.checks;
+  const analysis = automaticAnalysisBudget(ctx.config.review?.analysis, ctx.backend);
   return {
     schema: LAB_PREFLIGHT_SCHEMA,
+    ...(analysis ? { analysis } : {}),
     ok: checks.every((check) => check.ok) && ctx.targets.every((target) => target.status !== "failed" && target.status !== "blocked"),
     cwd: ctx.cwd,
     lab: ctx.lab,

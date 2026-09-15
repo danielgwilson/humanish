@@ -3,6 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
+    setupFiles: ["./tests/helpers/no-implicit-analysis-key.ts"],
     // Key discovery (#436) reads REAL machine state (gh auth token, ~/.e2b, ~/.config/humanish)
     // through the CLI seam; the suite runs with the documented strict flag so no developer's or
     // CI runner's credentials can leak into assertions. Discovery itself is unit-tested against

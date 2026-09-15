@@ -11,7 +11,10 @@ import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./study-analysis-store.js";
 
 export type { AutomaticStudyAnalysisView, AutomaticStudyAnalysisOutcome, AutomaticStudyAnalysisCancellation } from "./study-analysis-job.js";
-export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch">;
+export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
+  /** A missing default key records a skip before admission, preserving a successful recording. */
+  defaultRequest?: boolean;
+};
 
 const exactId = (runId: string): boolean => runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
 const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
@@ -94,18 +97,23 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   let outcome: AutomaticStudyAnalysisOutcome;
   try {
     await poll();
-    const result = await analyzeStudy(cwd, runId, { config }, {
-      ...deps, signal, expectedRun: prepared, analysisId: job.attemptId,
-      beforeDispatch: async (context) => {
-        if (await job.cancellationRequested()) controller.abort();
-        if (signal.aborted) return;
-        await job.update({ state: "running", analysisId: context.id, startedAt: new Date().toISOString(),
-          sourceRunSha256: context.sourceRunSha256, inputDigest: context.inputDigest });
-      }
-    });
-    outcome = outcomeOf(result);
-    if (cancellationFailed) outcome = { state: "unknown", reason: "AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE", result };
-    if (storageFailed) outcome = { state: "unknown", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE", result };
+    if (deps.defaultRequest === true && !(deps.apiKey ?? process.env.OPENAI_API_KEY)) {
+      outcome = signal.aborted ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
+        : skipped("AUTOMATIC_ANALYSIS_KEY_MISSING");
+    } else {
+      const result = await analyzeStudy(cwd, runId, { config }, {
+        ...deps, signal, expectedRun: prepared, analysisId: job.attemptId,
+        beforeDispatch: async (context) => {
+          if (await job.cancellationRequested()) controller.abort();
+          if (signal.aborted) return;
+          await job.update({ state: "running", analysisId: context.id, startedAt: new Date().toISOString(),
+            sourceRunSha256: context.sourceRunSha256, inputDigest: context.inputDigest });
+        }
+      });
+      outcome = outcomeOf(result);
+    }
+    if (cancellationFailed) outcome = { ...outcome, state: "unknown", reason: "AUTOMATIC_ANALYSIS_CANCELLATION_UNAVAILABLE" };
+    if (storageFailed) outcome = { ...outcome, state: "unknown", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE" };
   } catch { outcome = { state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" }; }
   finally { clearInterval(cancellationTimer); clearInterval(heartbeat); }
   try {

@@ -733,8 +733,8 @@ export interface LabPolicies {
 }
 
 export interface LabReview {
-  /** Opt-in analysis of each finalized live recording; independently bounded provider spend. */
-  analysis?: LabAnalysis;
+  /** Analysis defaults on for eligible live recordings; false disables the separate request. */
+  analysis?: LabAnalysis | false;
   /** FORWARD-DECLARED (PR #2). */
   scoring?: string;
   /** FORWARD-DECLARED (PR #2). */
@@ -3135,7 +3135,7 @@ function parseReview(raw: unknown): { ok: true; value: LabReview | undefined } |
   const analysis = resolveAutomaticAnalysis(raw.analysis);
   if (!analysis.ok) return invalid(analysis.message);
   const review: LabReview = {};
-  if (raw.analysis !== undefined) review.analysis = { ...(raw.analysis as LabAnalysis) };
+  if (raw.analysis !== undefined) review.analysis = raw.analysis === false ? false : { ...(raw.analysis as LabAnalysis) };
   const scoring = str(raw.scoring);
   if (scoring) review.scoring = scoring;
   const milestones = str(raw.milestones);
@@ -3367,7 +3367,7 @@ function nonNegNumber(value: unknown): number | undefined {
 
 /** Analysis requires a live recording producer, including supported dry-run previews. */
 export function automaticAnalysisRouteReason(config: LabConfig): string | undefined {
-  if (config.review?.analysis === undefined) return undefined;
+  if (config.review?.analysis === undefined || config.review.analysis === false) return undefined;
   if (routesToComputerUse(config) || routesToScriptedBrowser(config) || routesToTerminalProduct(config)
     || routesToSharedWorld(config) || routesToConcurrentSharedWorld(config)
     || ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(config.subject.source)) return undefined;

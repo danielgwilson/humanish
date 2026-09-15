@@ -42,9 +42,9 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
  * Returns the surface AND the frame the keypress produced. `surface.last` is the frame from
  * construction, so reading it after pressing a key asserts against the previous screen.
  */
-async function openLab(options: TuiOptions) {
+async function openLab(options: TuiOptions, columns = 80) {
   const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
-    columns: 80,
+    columns,
     until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
   });
   // The first lab is selected by default; Enter opens it.
@@ -53,6 +53,23 @@ async function openLab(options: TuiOptions) {
 }
 
 describe("starting a run", () => {
+  it.each([45, 80])("shows the separate analysis admission budget before starting at %i columns", async columns => {
+    const { options, started } = harness({ readLabSummary: async () => ({
+      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: { laneUsd: 1 },
+      analysis: { model: "gpt-6-astra", maxCostUsd: 3 }
+    }) });
+    const { surface } = await openLab(options, columns);
+    try {
+      const frame = await surface.press(KEY.down, candidate => candidate.includes("billing cap"));
+      expect(frame.replace(/\s+/g, " ")).toContain("separate $3 admission estimate limit");
+      expect(frame.replace(/\s+/g, " ")).toContain("not a billing cap");
+      expect(frame.split("\n").every(line => [...line].length <= columns)).toBe(true);
+      const armed = await surface.press(KEY.enter, candidate => candidate.includes("confirm"));
+      expect(armed.replace(/\s+/g, " ")).toContain("analysis ($3 admission estimate limit, separate from participant spend)");
+      expect(started).toHaveLength(0);
+    } finally { surface.unmount(); }
+  });
+
   it("keeps live and dry start rows distinct through a project refresh", async () => {
     let reads = 0;
     const { started, options } = harness({

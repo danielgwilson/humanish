@@ -634,7 +634,7 @@ describe("sequential shared-world model-spend caps (#766)", () => {
 describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () => {
   it.each([true, false])("preserves distinct role assignments for mission-only studies (dryRun %s)", async (dryRun) => {
     const config = sharedWorldConfig();
-    config.review = { analysis: { maxCostUsd: 3 } };
+    delete config.review; // Omitted config uses the separate default analysis budget.
     const analyze = automaticAnalysisBoundary();
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
     const { hooks } = baseHooks({ worldVersion: 0 });

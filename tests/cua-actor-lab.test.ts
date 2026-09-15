@@ -489,7 +489,7 @@ describe("runCuaActorLab", () => {
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 16;
-    config.review = { analysis: { maxCostUsd: 3 } };
+    delete config.review; // Omitted config uses the separate default analysis budget.
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
     const wire = JSON.parse(await readFile(new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url), "utf8"));

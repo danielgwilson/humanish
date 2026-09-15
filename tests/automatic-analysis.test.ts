@@ -5,9 +5,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
-import { resolveAutomaticAnalysis } from "../src/automatic-analysis-config.js";
+import { automaticAnalysisBudget, resolveAutomaticAnalysis } from "../src/automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, automaticAnalysisSucceeded } from "../src/automatic-analysis-completion.js";
 import { automaticAnalysisEnvelope, cliAutomaticAnalysisHooks, createProgram } from "../src/program.js";
+import { readLabSummary } from "../src/lab-summary.js";
+import { runLabPreflight } from "../src/lab-preflight.js";
+import { parse as parseYaml } from "yaml";
 import { runLab } from "../src/lab-engine.js";
 import { runCuaActorLab } from "../src/cua-actor-lab.js";
 import { runSharedWorldLab } from "../src/shared-world-lab.js";
@@ -33,15 +36,73 @@ describe("automatic analysis admission and producer boundary", () => {
   beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-auto-")); });
   afterEach(async () => { vi.restoreAllMocks(); await rm(cwd, { recursive: true, force: true }); });
 
-  it("defaults match manual analysis and missing config has no effect", () => {
+  it("defaults use a separate three-dollar admission budget and false opts out", () => {
     expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 300000, maxOutputTokens: 16384 });
-    expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: undefined });
+    expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: { ...config, maxCostUsd: 3 } });
+    expect(resolveAutomaticAnalysis(false)).toEqual({ ok: true, config: undefined });
   });
-  it.each([null, false, {}, { maxCostUsd: 0 }, { maxCostUsd: Infinity }, { maxCostUsd: 1001 },
+  it.each([null, true, {}, { maxCostUsd: 0 }, { maxCostUsd: Infinity }, { maxCostUsd: 1001 },
     { maxCostUsd: 2, model: "unsupported" }, { maxCostUsd: 2, timeoutMs: 0 }, { maxCostUsd: 2, timeoutMs: 1.5 },
     { maxCostUsd: 2, maxOutputTokens: 32769 }, { maxCostUsd: 2, question: null }, { maxCostUsd: 2, question: "x".repeat(4001) },
     { maxCostUsd: 2, enabled: true }, { maxCostUsd: 2, maxCost: 1 }])("rejects malformed settings %j", raw => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
+  });
+  it.each(fixtures)("preserves explicit opt-out on every route: $name", ({ config: base }) => {
+    const parsed = parseLabConfig({ ...base, review: { analysis: false } });
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
+  });
+  it.each(fixtures)("only describes defaults for supported live backends: $name", ({ backend }) => {
+    expect(automaticAnalysisBudget(undefined, backend)).toEqual(supported.has(backend)
+      ? { model: "gpt-6-astra", maxCostUsd: 3, trigger: "default" } : undefined);
+    expect(automaticAnalysisBudget(false, backend)).toBeUndefined();
+  });
+  it("false bypasses every lifecycle hook even for a finalized live result", async () => {
+    const original = markFinalizedStudyResult({ cwd, runId: "opted-out", dryRun: false, ok: true }, await prepareRunArtifactPaths(cwd, "opted-out"));
+    const run = vi.fn(); const onStart = vi.fn();
+    const disabled = resolveAutomaticAnalysis(false);
+    expect(disabled.ok).toBe(true);
+    expect(await completeAutomaticAnalysis(original, disabled.ok ? disabled.config : undefined, { run, onStart })).toBe(original);
+    expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
+  });
+  it.each(["default", "explicit"] as const)("a missing key records a skip, preserving success only for %s requests", async trigger => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    await runDryRun({ cwd, dryRun: true, runId: "keyless" });
+    const prepared = (await resolveRunPath(cwd, "keyless"))!;
+    const file = path.join(prepared.physicalRunRoot, "run.json");
+    const source = JSON.parse(await readFile(file, "utf8"));
+    source.mode = "live"; source.streams[0].status = "complete";
+    await writeFile(file, JSON.stringify(source));
+    await rm(path.join(prepared.physicalRunRoot, "status.json"));
+    const original = await readFile(file);
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => { throw new Error("No provider dispatch permitted"); });
+    const result = await completeAutomaticAnalysis(markFinalizedStudyResult({ cwd, runId: "keyless", dryRun: false, ok: true }, prepared),
+      { ...config, maxCostUsd: 0.000001 }, { deps: { apiKey: "", fetch } }, trigger);
+    expect(result.automaticAnalysis).toMatchObject({ state: "skipped", reason: trigger === "default" ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" });
+    expect(automaticAnalysisEnvelope(result)).toMatchObject({ runOk: true, ok: trigger === "default" });
+    expect((await readRunDetail(cwd, "keyless"))?.automaticAnalysis).toMatchObject({ state: "skipped", reason: trigger === "default" ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" });
+    expect(fetch).not.toHaveBeenCalled(); expect(await readFile(file)).toEqual(original);
+  });
+  it("first-contact and the release gate preserve their explicit zero-spend product scope", async () => {
+    const raw = parseYaml(await readFile(path.resolve("humanish/labs/first-contact.yaml"), "utf8"));
+    expect(raw.review.analysis).toBe(false);
+    expect(parseLabConfig(raw).ok).toBe(true);
+    expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain("must explicitly disable automatic analysis");
+  });
+  it.each([undefined, false, { maxCostUsd: 7 }])("metadata preflight and TUI summary disclose resolved budget %j without dispatch", async setting => {
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    const manifest = { ...base, ...(setting === undefined ? {} : { review: { analysis: setting } }) };
+    await writeFile(path.join(cwd, "humanish", "labs", "budget.yaml"), JSON.stringify(manifest));
+    const preflight = await runLabPreflight({ cwd, lab: "budget", env: {} });
+    expect(preflight.spend).toEqual({ e2bDesktop: false, model: false });
+    expect(preflight.analysis).toEqual(automaticAnalysisBudget(setting, "cua"));
+    expect((await readLabSummary(cwd, "budget"))?.analysis).toEqual(preflight.analysis);
+    let stdout = "";
+    const program = createProgram({ writeOut: text => { stdout += text; }, writeErr: () => {}, setExitCode: () => {} });
+    await program.parseAsync(["node", "humanish", "lab", "preflight", "budget", "--cwd", cwd]);
+    if (setting === false) expect(stdout).not.toContain("After live runs:");
+    else { expect(stdout).toContain(`separate $${typeof setting === "object" ? setting.maxCostUsd : 3} admission estimate limit`); expect(stdout).toContain("not a provider billing cap"); }
   });
   it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base, backend }) => {
     const parsed = parseLabConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } });
@@ -65,7 +126,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it.each(["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"])("runLab %s dry-run skips post-run spend exactly once", async backend => {
     const base = fixtures.find(row => row.backend === backend)!.config;
     const run = vi.fn(); const onStart = vi.fn();
-    const output = await runLab({ ...base, review: { analysis: { maxCostUsd: 5 } } },
+    const output = await runLab(base,
       { cwd, dryRun: true, open: false, automaticAnalysis: { run, onStart } });
     expect(output.backend).toBe(backend);
     expect(output.result).toMatchObject({ automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" } });
@@ -161,6 +222,19 @@ describe("automatic analysis admission and producer boundary", () => {
     const cleanup = hooks.onStart!();
     try { expect(writeErr).toHaveBeenCalledExactlyOnceWith("Participants finished; preparing analysis…\n"); }
     finally { if (typeof cleanup === "function") cleanup(); }
+  });
+  it.each([["run"], ["lab", "run"], ["watch"]])("CLI %j discloses default analysis before a keyless live start", async (...prefix) => {
+    vi.stubEnv("E2B_API_KEY", "");
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "labs", "default.yaml"), JSON.stringify(base));
+    let stdout = ""; let stderr = "";
+    const program = createProgram({ writeOut: text => { stdout += text; }, writeErr: text => { stderr += text; }, setExitCode: () => {} });
+    await program.parseAsync(["node", "humanish", ...prefix, "default", "--cwd", cwd, "--json", "--no-open", "--detach"]);
+    expect(stderr).toContain("default analysis · gpt-6-astra · separate $3 admission estimate limit");
+    expect(stderr).toContain("not a provider billing cap");
+    expect(stderr).not.toContain("preparing analysis");
+    expect(JSON.parse(stdout).ok).toBe(false); // Missing participant keys, before any recording/provider.
   });
   it.each([{ prefix: ["run"] }, { prefix: ["lab", "run"] }, { prefix: ["watch"] }])("CLI entry $prefix reports dry-run skip without starting analysis", async ({ prefix }) => {
     const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;

@@ -68,6 +68,7 @@ try {
     // This registry id selects the CUA loop. buildProvider supplies the actual provider.
     actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." }],
     scenario: { mode: "live" },
+    review: { analysis: false }, // Keep this deterministic example free of provider requests.
     execution: { timeoutMs: 15_000 }
   });
   if (!parsed.ok) throw new Error(parsed.error.message);

@@ -302,7 +302,8 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
 export async function runTerminalProductLab(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runTerminalProductLabInScope(options));
-  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
+    options.config.review?.analysis === undefined ? "default" : "explicit");
 }
 
 async function runTerminalProductLabInScope(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {

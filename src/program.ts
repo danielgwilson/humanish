@@ -1,3 +1,4 @@
+import { automaticAnalysisBudget, formatAutomaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -2898,6 +2899,11 @@ async function runLabCommand(args: {
     args.io.writeErr(`warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`);
   }
 
+  const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
+  if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
+    args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
+  }
+
   switch (backend) {
     case "synthetic":
       await runSyntheticBackend({ ...args, config, labProvenance: lab });
@@ -4105,6 +4111,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
     `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
     ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
     `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
+    ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
     ...(result.sandbox.created
       ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
       : []),
