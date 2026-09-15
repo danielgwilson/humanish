@@ -167,6 +167,15 @@ describe("player model", () => {
       .toEqual(Array.from({ length: 4 }, (_, i) => [`step-${i}`, "ui_action", i, false, "Original assertion result.", "passed"]));
     expect(model.paced).toBe("avg");
   });
+  it("preserves a CUA notice's inherited capture without creating a new frame", () => {
+    const ref = { path: "shots/last.png", redaction: "none" };
+    const model = buildPlayerModel(streamWith([
+      { id: "last", kind: "screenshot", title: "Last capture", screenshotRef: ref },
+      { id: "backstop", kind: "notice", title: "computer-use backstop gave up", screenshotRef: ref }
+    ]))!;
+    expect(model.frames.map((frame) => frame.itemId)).toEqual(["last"]);
+    expect(model.rows[1]).toMatchObject({ id: "backstop", kind: "notice", frameIndex: 0, isFrame: false });
+  });
 });
 
 describe("live helpers", () => {

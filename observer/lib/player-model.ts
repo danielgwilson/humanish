@@ -53,7 +53,9 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
   const rows: PlayerRow[] = [];
 
   for (const item of items) {
-    if (item.screenshotRef) {
+    // CUA notices can cite an earlier screenshot for context. Only capture and
+    // scripted action events introduce frames; a notice does not recapture it.
+    if ((item.kind === "screenshot" || item.kind === "ui_action") && item.screenshotRef) {
       const href = screenshotHref(item.screenshotRef.path);
       if (href !== null) {
         const atMs = item.at === undefined ? Number.NaN : Date.parse(item.at);

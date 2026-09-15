@@ -127,4 +127,16 @@ describe("versioned scripted capture evidence", () => {
     expect(() => validateStudyAnalysisArtifact({ ...artifact, captureVersion: 3 })).toThrow("ANALYSIS_ARTIFACT_SCHEMA_INVALID");
     expect(() => validateStudyAnalysisInputMetadata({ ...input, captureVersion: 3 } as unknown as StudyAnalysisInput)).toThrow("ANALYSIS_INPUT_INVALID");
   });
+  it("does not turn a CUA backstop's contextual screenshot reference into another capture", async () => {
+    const bundle = fixture(), stream = bundle.streams[0]!;
+    stream.actor.lane = "computer-use";
+    Object.assign(stream, { assignment: { mission: "Inspect the fictional interface." } });
+    stream.actor.items.forEach((item) => { item.kind = "screenshot"; });
+    stream.actor.items.push({ ...stream.actor.items[3]!, id: "backstop", kind: "notice", title: "computer-use backstop gave up", text: "No visible progress." });
+    const input = await captureStudyEvidence(prepared, await save(bundle));
+    expect(input.coverage).toMatchObject({ evidenceCount: 6, captureCount: 4, complete: true });
+    expect(input.evidence[4]).toMatchObject({ eventId: "backstop", kind: "notice", frame: 3, capture: null, quoteEligible: false });
+    await writeStudyAnalysis(prepared, syntheticArtifact(input));
+    expect((await loadStudyAnalysis(prepared)).state).toBe("ready");
+  });
 });

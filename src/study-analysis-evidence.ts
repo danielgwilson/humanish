@@ -116,14 +116,18 @@ const stamp = (value: unknown): string | null => typeof value === "string" && Nu
 const itemText = (item: ActorTraceItem): string => ["message", "reasoning"].includes(item.kind) && item.text !== undefined
   ? item.text : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
 const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
+const isCaptureItem = (item: ActorTraceItem, captureVersion?: 2): boolean => item.kind === "screenshot"
+  || (captureVersion === 2 && item.kind === "ui_action");
 
 function hasUnmappedCaptures(stream: RunStream): boolean {
-  const paths = new Set(itemsFor(stream).flatMap((item) => typeof item.screenshotRef?.path === "string" ? [item.screenshotRef.path] : []));
+  const items = itemsFor(stream);
+  const paths = new Set(items.flatMap((item) => isCaptureItem(item, 2) && typeof item.screenshotRef?.path === "string" ? [item.screenshotRef.path] : []));
   // Presentation URLs use Observer-relative paths. They cannot manufacture an
   // event/frame, but a declared capture outside the trace must limit coverage.
   const previews = [stream.ui?.screenshotUrl, stream.embed?.kind === "screenshot" ? stream.embed.url : undefined];
   return (Array.isArray(stream.artifacts) && stream.artifacts.some((artifact) => artifact?.kind === "screenshot" && !paths.has(artifact.path)))
-    || previews.some((ref) => typeof ref === "string" && !paths.has(ref) && !paths.has(ref.replace(/^\.\.\//, "")));
+    || previews.some((ref) => typeof ref === "string" && !paths.has(ref) && !paths.has(ref.replace(/^\.\.\//, "")))
+    || items.some((item) => typeof item.screenshotRef?.path === "string" && !paths.has(item.screenshotRef.path));
 }
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
@@ -236,14 +240,14 @@ function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2)
   const items = itemsFor(stream);
   // Absent version retains the exact legacy mapping used by saved 0.89.1 analyses.
   // V2 follows the actor contract: a scripted action can carry its own capture.
-  const captures = items.filter((item) => (captureVersion === 2 || item.kind === "screenshot") && object(item.screenshotRef)
+  const captures = items.filter((item) => isCaptureItem(item, captureVersion) && object(item.screenshotRef)
     && typeof item.screenshotRef.path === "string" && isObserverCapturePath(item.screenshotRef.path));
   const frameIds = new Set(captures.map((item) => item.id));
   const firstAt = stamp(captures[0]?.at);
   let frame = -1;
   const entries: SourceEntry[] = [];
   for (const item of items) {
-    const capturePath = (captureVersion === 2 || item.kind === "screenshot") && object(item.screenshotRef)
+    const capturePath = isCaptureItem(item, captureVersion) && object(item.screenshotRef)
       && typeof item.screenshotRef.path === "string" && isStudyEvidencePath(item.screenshotRef.path)
       ? item.screenshotRef.path : null;
     if (frameIds.has(item.id)) frame++;
@@ -253,7 +257,7 @@ function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2)
       quoteEligible: ["message", "reasoning"].includes(item.kind) && typeof item.text === "string",
       at, elapsedMs: delta !== null && delta >= 0 ? delta : null,
       frame: captures.length > 0 ? Math.max(0, frame) : null, capturePath,
-      captureDeclared: item.kind === "screenshot" || (captureVersion === 2 && item.screenshotRef !== undefined) });
+      captureDeclared: item.kind === "screenshot" || (captureVersion === 2 && item.kind === "ui_action" && item.screenshotRef !== undefined) });
   }
   const runEventIds = new Set<string>();
   for (const event of bundle.events.filter((entry) => entry.streamId === stream.id
