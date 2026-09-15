@@ -8,7 +8,7 @@ import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "
 import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
 import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
-  type StudyAnalysisAdmission, type StudyAnalysisProgress } from "./study-analysis-engine.js";
+  type StudyAnalysisAdmission, type StudyAnalysisProgress, type StudyAnalysisDispatchContext } from "./study-analysis-engine.js";
 import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { STUDY_ANALYSIS_CORRECTION_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig,
@@ -41,6 +41,9 @@ export interface AnalyzeDeps {
   onProgress?: (progress: StudyAnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
   fetch?: typeof fetch;
+  /** Internal post-run orchestration; never populated from an Observer request. */
+  analysisId?: string;
+  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
 }
 
 const messages: Record<string, string> = {
@@ -154,6 +157,8 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
       const apiKey = deps.apiKey ?? process.env.OPENAI_API_KEY ?? "";
       if (!apiKey.trim()) return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
       const analysis = await runStudyAnalysis(input, config, { apiKey,
+        ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
+        ...(deps.beforeDispatch === undefined ? {} : { beforeDispatch: deps.beforeDispatch }),
         ...(deps.signal === undefined ? {} : { signal: deps.signal }),
         ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
         ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }) });
