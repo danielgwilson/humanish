@@ -618,7 +618,7 @@ async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOption
                 : observer.error?.message ?? "Observer failed for the scripted lab run.")
           }
         })
-  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
+  }, runPaths);
 }
 
 interface ResolvedScriptedScenario {

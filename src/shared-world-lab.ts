@@ -1336,7 +1336,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     observer,
     warnings: allWarnings,
     ...(errorResult === undefined ? {} : { error: errorResult })
-  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
+  }, runPaths);
 }
 
 /** Project the shared-world run into a humanish.run-bundle.v1 with the sharedWorld evidence block. */

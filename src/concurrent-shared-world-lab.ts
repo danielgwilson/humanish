@@ -1869,7 +1869,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     observer,
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult })
-  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
+  }, runPaths);
 }
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity

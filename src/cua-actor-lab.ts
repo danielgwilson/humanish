@@ -4630,7 +4630,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     observer,
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult })
-  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
+  }, runPaths);
 }
 
 /** Aggregate lane counts for the result projection. */

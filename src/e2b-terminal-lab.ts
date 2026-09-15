@@ -1659,7 +1659,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
               : declaredScorerFailure ?? sessionError ?? observer.error?.message ?? sessionReason
           }
         })
-  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
+  }, runPaths);
 }
 
 /**

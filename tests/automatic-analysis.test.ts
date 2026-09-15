@@ -1,4 +1,5 @@
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { renameSync } from "node:fs";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -14,7 +15,8 @@ import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js"
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
 import { claimAutomaticStudyAnalysis } from "../src/study-analysis-job.js";
-import { resolveRunPath } from "../src/run.js";
+import { prepareRunArtifactPaths } from "../src/run-paths.js";
+import { resolveRunPath, runDryRun, verifyRun } from "../src/run.js";
 import { readRunDetail } from "../src/run-detail.js";
 import { stopRun } from "../src/tui-actions.js";
 import * as automaticJobs from "../src/automatic-study-analysis.js";
@@ -79,18 +81,49 @@ describe("automatic analysis admission and producer boundary", () => {
   it("keeps a failed participant result while reviewing its finalized recording exactly once", async () => {
     const run = vi.fn(async () => ({ state: "failed", reason: "analysis_validation_failed" }) as AutomaticStudyAnalysisOutcome);
     const cleanup = vi.fn(); const onStart = vi.fn(() => cleanup);
-    const original = markFinalizedStudyResult({ cwd, runId: "exact-recording", dryRun: false, ok: false, session: { status: "incomplete" } }, cwd);
+    const prepared = await prepareRunArtifactPaths(cwd, "exact-recording");
+    const original = markFinalizedStudyResult({ cwd, runId: "exact-recording", dryRun: false, ok: false, session: { status: "incomplete" } }, prepared);
     const result = await completeAutomaticAnalysis(original, config, { run, onStart });
-    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, undefined);
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, { expectedRun: prepared });
     expect(result.session).toEqual(original.session); expect(result.ok).toBe(false);
     expect(onStart).toHaveBeenCalledOnce(); expect(cleanup).toHaveBeenCalledOnce();
     expect(original).not.toHaveProperty("automaticAnalysis");
   });
   it("uses the finalized physical project, not a later-retargeted cwd alias", async () => {
     const run = vi.fn(async () => ({ state: "failed", reason: "synthetic" }) as AutomaticStudyAnalysisOutcome);
-    const original = markFinalizedStudyResult({ cwd: "/synthetic/retargeted-alias", runId: "recording", dryRun: false }, cwd);
-    await completeAutomaticAnalysis(original, config, { run });
-    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, undefined);
+    const prepared = await prepareRunArtifactPaths(cwd, "recording");
+    const original = markFinalizedStudyResult({ cwd: "/synthetic/retargeted-alias", runId: "recording", dryRun: false }, prepared);
+    const unrelated = await prepareRunArtifactPaths(cwd, "unrelated-recording");
+    await completeAutomaticAnalysis(original, config, { run, deps: { expectedRun: unrelated } });
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, { expectedRun: prepared });
+  });
+  it("rejects a replacement recording after final publication instead of rebinding before dispatch", async () => {
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    await runDryRun({ cwd, dryRun: true, runId: "pinned-source" });
+    const prepared = (await resolveRunPath(cwd, "pinned-source"))!;
+    // Existing synthetic live-source construction, matching the coordinator's retained-source tests.
+    const bundle = JSON.parse(await readFile(path.join(prepared.physicalRunRoot, "run.json"), "utf8"));
+    bundle.mode = "live"; bundle.streams[0].status = "complete";
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), JSON.stringify(bundle));
+    await rm(path.join(prepared.physicalRunRoot, "status.json"));
+    expect((await verifyRun(cwd, "pinned-source")).ok).toBe(true);
+    const staging = path.join(cwd, "replacement-staging");
+    const originalRoot = path.join(cwd, "original-retained");
+    await cp(prepared.physicalRunRoot, staging, { recursive: true });
+    const result = markFinalizedStudyResult({ cwd, runId: "pinned-source", dryRun: false, ok: true }, prepared);
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => { throw new Error("unexpected provider call"); });
+    const cleanup = vi.fn();
+    const output = await completeAutomaticAnalysis(result, config, { deps: { apiKey: "synthetic", fetch }, onStart: () => {
+      renameSync(prepared.physicalRunRoot, originalRoot); renameSync(staging, prepared.physicalRunRoot);
+      return cleanup;
+    } });
+    expect(output.automaticAnalysis).toEqual({ state: "failed", reason: "analysis_source_changed" });
+    expect(fetch).not.toHaveBeenCalled(); expect(cleanup).toHaveBeenCalledOnce();
+    expect((await verifyRun(cwd, "pinned-source")).ok).toBe(true);
+    for (const root of [prepared.physicalRunRoot, originalRoot]) {
+      await expect(access(path.join(root, "analysis-automatic"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(access(path.join(root, "analysis-attempts"))).rejects.toMatchObject({ code: "ENOENT" });
+    }
   });
   it("an early producer refusal cannot spend on an existing supplied run ID", async () => {
     const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
@@ -113,7 +146,7 @@ describe("automatic analysis admission and producer boundary", () => {
   });
   it("retains the run after an analysis exception without exposing exception text", async () => {
     const cleanup = vi.fn();
-    const result = await completeAutomaticAnalysis(markFinalizedStudyResult({ cwd, runId: "retained", dryRun: false, ok: true }, cwd), config,
+    const result = await completeAutomaticAnalysis(markFinalizedStudyResult({ cwd, runId: "retained", dryRun: false, ok: true }, await prepareRunArtifactPaths(cwd, "retained")), config,
       { run: async () => { throw new Error("private provider response"); }, onStart: () => cleanup });
     expect(result.ok).toBe(true); expect(result.automaticAnalysis?.state).toBe("failed");
     expect(JSON.stringify(result)).not.toContain("private provider"); expect(cleanup).toHaveBeenCalledOnce();
