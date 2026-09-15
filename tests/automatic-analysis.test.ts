@@ -89,6 +89,11 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(parseLabConfig(raw).ok).toBe(true);
     expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain("must explicitly disable automatic analysis");
   });
+  it("the advertised zero-model-spend scripted demo explicitly disables analysis", async () => {
+    const raw = parseYaml(await readFile(path.resolve("humanish/labs/scripted-demo.yaml"), "utf8"));
+    expect(raw.review.analysis).toBe(false);
+    expect(parseLabConfig(raw).ok).toBe(true);
+  });
   it.each([undefined, false, { maxCostUsd: 7 }])("metadata preflight and TUI summary disclose resolved budget %j without dispatch", async setting => {
     const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
