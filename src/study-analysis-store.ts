@@ -26,6 +26,7 @@ import {
   validateStudyAnalysisCorrection
 } from "./study-analysis-validation.js";
 import type { LoadedStudyAnalysis, StudyAnalysisArtifact, StudyAnalysisCorrection } from "./study-analysis.js";
+import { readAutomaticStudyAnalysisPrepared } from "./study-analysis-job.js";
 
 export const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
@@ -226,7 +227,7 @@ async function readCorrections(
   return { corrections, warnings };
 }
 
-export async function loadStudyAnalysis(prepared: PreparedRunArtifactPaths, id?: string): Promise<LoadedStudyAnalysis> {
+async function loadStudyAnalysisRecord(prepared: PreparedRunArtifactPaths, id?: string): Promise<LoadedStudyAnalysis> {
   if (id !== undefined && !safeId(id)) return empty("invalid", ["ANALYSIS_ID_INVALID"]);
   try {
     const versions = await listStudyAnalyses(prepared);
@@ -245,6 +246,13 @@ export async function loadStudyAnalysis(prepared: PreparedRunArtifactPaths, id?:
     return { state: "ready", analysis: selected.analysis, corrections: corrections.corrections,
       warnings: [...new Set([...warnings, ...corrections.warnings])] };
   } catch { return empty("invalid", ["ANALYSIS_STORAGE_UNAVAILABLE"]); }
+}
+
+export async function loadStudyAnalysis(prepared: PreparedRunArtifactPaths, id?: string): Promise<LoadedStudyAnalysis> {
+  const [loaded, automatic] = await Promise.all([
+    loadStudyAnalysisRecord(prepared, id), readAutomaticStudyAnalysisPrepared(prepared)
+  ]);
+  return automatic === undefined ? loaded : { ...loaded, automatic };
 }
 
 function assertCorrectionBinding(analysis: StudyAnalysisArtifact, correction: StudyAnalysisCorrection): void {

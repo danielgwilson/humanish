@@ -92,7 +92,8 @@ export async function withStudyAnalysisLock<T>(prepared: PreparedRunArtifactPath
   }
 }
 
-async function completedSource(cwd: string, prepared: PreparedRunArtifactPaths): Promise<Buffer> {
+/** Internal completion gate shared with the opt-in post-run owner. */
+export async function readCompletedStudyAnalysisSource(cwd: string, prepared: PreparedRunArtifactPaths): Promise<Buffer> {
   const bytes = await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes);
   if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   const verified = await verifyRunPrepared(cwd, path.basename(prepared.physicalRunRoot), prepared);
@@ -133,7 +134,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
     const execute = async (): Promise<AnalyzeResult> => {
       if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
-      const bytes = await completedSource(cwd, prepared);
+      const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
       const input = await captureStudyEvidence(prepared, bytes);
       if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
       const admission = estimateStudyAnalysisAdmission(input, config);

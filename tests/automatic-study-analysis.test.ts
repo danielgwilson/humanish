@@ -1,0 +1,248 @@
+import { createServer, type Server } from "node:http";
+import { cp, link, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runAutomaticStudyAnalysis, readAutomaticStudyAnalysis, requestAutomaticStudyAnalysisCancellation } from "../src/automatic-study-analysis.js";
+import { analyzeStudy, withStudyAnalysisLock } from "../src/study-analysis-service.js";
+import { claimAutomaticStudyAnalysis, readAutomaticStudyAnalysisPrepared, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY } from "../src/study-analysis-job.js";
+import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../src/study-analysis-store.js";
+import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+import { projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "../src/study-analysis-sharing.js";
+import { hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
+import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../src/study-analysis-engine.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
+import { pinDirectory, renderObserver, serveRunPath } from "../src/observer.js";
+import { exportRun } from "../src/export.js";
+import type { PreparedRunArtifactPaths } from "../src/run-paths.js";
+import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
+import { syntheticResult } from "./study-analysis-fixtures.js";
+
+const config: StudyAnalysisConfig = { model: "gpt-5.6-sol", question: null, maxCostUsd: 5, timeoutMs: 2000, maxOutputTokens: 8192 };
+const runId = "automatic-synthetic";
+// Captured provider envelope; only the explicitly synthetic answer changes.
+const wirePath = new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url);
+
+describe("opted-in automatic analysis ownership", () => {
+  let cwd: string, root: string, prepared: PreparedRunArtifactPaths, input: StudyAnalysisInput, original: Buffer;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-automatic-analysis-"));
+    await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+    await runDryRun({ cwd, dryRun: true, runId });
+    prepared = (await resolveRunPath(cwd, runId))!; root = prepared.physicalRunRoot;
+    const bundle = JSON.parse(await readFile(path.join(root, "run.json"), "utf8")) as RunBundle;
+    bundle.mode = "live";
+    bundle.streams[0]!.status = "complete";
+    await writeFile(path.join(root, "run.json"), JSON.stringify(bundle) + "\n");
+    await rm(path.join(root, "status.json"));
+    original = await readFile(path.join(root, "run.json"));
+    input = await captureStudyEvidence(prepared, original);
+    expect((await verifyRun(cwd, runId)).checks.filter(check => !check.ok)).toEqual([]);
+  });
+  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  const jobPath = () => path.join(root, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, "job.json");
+  async function transport() {
+    const wire = JSON.parse(await readFile(wirePath, "utf8"));
+    wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
+    return { wire, fetch: vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire))) };
+  }
+  async function claimed() {
+    return (await claimAutomaticStudyAnalysis(prepared, { configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION }))!;
+  }
+
+  it("claims once across concurrent invocations and persists running before transport", async () => {
+    const h = await transport();
+    const seen: unknown[] = [];
+    h.fetch.mockImplementation(async () => {
+      seen.push(await readAutomaticStudyAnalysis(cwd, runId));
+      return new Response(JSON.stringify(h.wire));
+    });
+    const outcomes = await Promise.all([1, 2, 3].map(() => runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })));
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    expect(outcomes.filter(value => value.reason === "AUTOMATIC_ANALYSIS_ALREADY_REQUESTED")).toHaveLength(2);
+    const completed = outcomes.find(value => value.result?.analysisId)!;
+    expect(completed.state).toBe("partial");
+    expect(seen).toEqual([expect.objectContaining({ state: "running", analysisId: completed.result!.analysisId })]);
+    const record = JSON.parse(await readFile(jobPath(), "utf8"));
+    expect(record).toMatchObject({ attemptId: completed.result!.analysisId, analysisId: completed.result!.analysisId,
+      sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest, state: "partial" });
+    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+    expect((await captureStudyEvidence(prepared, original)).inputDigest).toBe(input.inputDigest);
+  });
+
+  it("reuses an existing result without another call and never retries after reopening", async () => {
+    const h = await transport();
+    const prior = await analyzeStudy(cwd, runId, { config }, { apiKey: "synthetic-key", fetch: h.fetch });
+    const automatic = await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch });
+    expect(automatic).toMatchObject({ reason: "AUTOMATIC_ANALYSIS_REUSED", result: { reused: true, analysisId: prior.analysisId } });
+    for (let i = 0; i < 3; i++) {
+      await loadStudyAnalysis(prepared);
+      await readAutomaticStudyAnalysis(cwd, runId);
+      await renderObserver(cwd, runId, { open: false });
+      expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+    }
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["missing-key", "admission", "busy", "cancelled"])("retains %s without dispatch or retry", async kind => {
+    const h = await transport();
+    const call = () => runAutomaticStudyAnalysis(cwd, runId, kind === "admission" ? { ...config, maxCostUsd: 0.000001 } : config,
+      { apiKey: kind === "missing-key" ? "" : "synthetic-key", fetch: h.fetch,
+        ...(kind === "cancelled" ? { signal: AbortSignal.abort() } : {}) });
+    const result = kind === "busy" ? await withStudyAnalysisLock(prepared, call) : await call();
+    expect(result.state).toBe(kind === "cancelled" ? "cancelled" : "skipped");
+    expect((await loadStudyAnalysis(prepared)).automatic?.state).toBe(result.state);
+    expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
+    expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not claim active/dry-run evidence or a moving latest pointer", async () => {
+    const h = await transport();
+    expect((await runAutomaticStudyAnalysis(cwd, "latest", config, { apiKey: "", fetch: h.fetch })).state).toBe("skipped");
+    for (const mode of ["active", "dry-run"]) {
+      const bundle = JSON.parse(original.toString()) as RunBundle;
+      if (mode === "active") bundle.streams[0]!.status = "running"; else bundle.mode = "dry-run";
+      await writeFile(path.join(root, "run.json"), JSON.stringify(bundle));
+      expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "", fetch: h.fetch })).state).toBe("skipped");
+    }
+    expect(await readdir(root)).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["queued", "running", "empty"])("leaves interrupted %s claims consumed without readers dispatching", async state => {
+    const h = await transport();
+    const job = await claimed();
+    if (state === "running") await job.update({ state: "running", analysisId: job.attemptId, startedAt: new Date().toISOString() });
+    if (state === "empty") await rm(jobPath());
+    const record = state === "empty" ? undefined : JSON.parse(await readFile(jobPath(), "utf8"));
+    expect((await readAutomaticStudyAnalysisPrepared(prepared, record ? Date.parse(record.updatedAt) + 15001 : Date.now()))?.state).toBe("unknown");
+    expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it("fails the awaited durability guard before provider transport", async () => {
+    const h = await transport();
+    await expect(runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: h.fetch,
+      beforeDispatch: async () => { throw new Error("Synthetic durable write failure"); } })).rejects.toThrow("Synthetic durable write failure");
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["marker", "signal"])("cancels an owned request via %s without a PID or retry", async kind => {
+    const h = await transport();
+    h.fetch.mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      options!.signal!.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    }));
+    const controller = new AbortController();
+    const operation = runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch, signal: controller.signal });
+    await vi.waitFor(() => expect(h.fetch).toHaveBeenCalledTimes(1));
+    if (kind === "marker") expect(await requestAutomaticStudyAnalysisCancellation(cwd, runId)).toEqual({ requested: true, reason: null });
+    else controller.abort();
+    expect(await operation).toMatchObject({ state: "cancelled", result: { usage: { dispatched: true, inputTokens: null, estimatedCostUsd: null } } });
+    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
+
+  it("keeps receipt accounting when source changes after dispatch", async () => {
+    const h = await transport();
+    h.fetch.mockImplementation(async () => {
+      await writeFile(path.join(root, "run.json"), Buffer.concat([original, Buffer.from("\n")]));
+      return new Response(JSON.stringify(h.wire));
+    });
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).toMatchObject({ state: "failed",
+      reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result: { executionReceiptPath: expect.any(String), usage: { dispatched: true } } });
+    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["oversized", "malformed", "symlink", "hardlink", "future"])("quarantines %s job metadata without changing evidence approval", async kind => {
+    await claimed();
+    const before = await readFile(jobPath());
+    if (kind === "oversized") await writeFile(jobPath(), " ".repeat(8193));
+    if (kind === "malformed") await writeFile(jobPath(), "{}");
+    if (kind === "future") { const record = JSON.parse(before.toString()); record.updatedAt = "2999-01-01T00:00:00.000Z"; await writeFile(jobPath(), JSON.stringify(record)); }
+    if (kind === "symlink" || kind === "hardlink") {
+      const outside = path.join(cwd, "synthetic-job.json"); await writeFile(outside, before); await rm(jobPath());
+      if (kind === "symlink") await symlink(outside, jobPath()); else await link(outside, jobPath());
+    }
+    const loaded = await loadStudyAnalysis(prepared);
+    expect(loaded).toMatchObject({ state: "none", warnings: [], automatic: { state: "unknown" } });
+    expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
+
+  it("refuses a replaced claim directory and a foreign cancellation record", async () => {
+    const job = await claimed();
+    const cancelPath = path.join(root, AUTOMATIC_STUDY_ANALYSIS_DIRECTORY, "cancel.json");
+    await writeFile(cancelPath, JSON.stringify({ schema: "humanish.automatic-study-analysis-cancellation.v1", runId,
+      claimId: "00000000-0000-4000-8000-000000000000", requestedAt: new Date().toISOString() }));
+    await expect(job.cancellationRequested()).rejects.toThrow();
+    await rename(path.dirname(jobPath()), path.join(root, "old-automatic"));
+    await mkdir(path.dirname(jobPath()));
+    await expect(job.touch()).rejects.toThrow();
+    expect(await readdir(path.dirname(jobPath()))).toEqual([]);
+  });
+
+  it("never follows a job-root symlink or spends into full history", async () => {
+    const h = await transport();
+    const outside = path.join(cwd, "outside"); await mkdir(outside);
+    await symlink(outside, path.dirname(jobPath()));
+    expect((await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch })).state).toBe("skipped");
+    expect(await readdir(outside)).toEqual([]);
+    await rm(path.dirname(jobPath()));
+    const history = path.join(root, "analysis-attempts"); await mkdir(history);
+    await Promise.all(Array.from({ length: 256 }, (_, index) => mkdir(path.join(history, `attempt-${index}`))));
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch }))
+      .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE" });
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps prior findings when a new automatic configuration cannot run", async () => {
+    const h = await transport();
+    const prior = await analyzeStudy(cwd, runId, { config }, { apiKey: "synthetic-key", fetch: h.fetch });
+    const before = await readFile(path.join(root, "analysis", prior.analysisId!, "analysis.json"));
+    expect(await runAutomaticStudyAnalysis(cwd, runId, { ...config, question: "Review recovery." }, { apiKey: "", fetch: h.fetch }))
+      .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
+    expect(await loadStudyAnalysis(prepared)).toMatchObject({ state: "ready", analysis: { id: prior.analysisId }, automatic: { state: "skipped" } });
+    expect(await readFile(path.join(root, "analysis", prior.analysisId!, "analysis.json"))).toEqual(before);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("quarantines invalid direct job projection without changing source approval", () => {
+    const loaded = { state: "none" as const, analysis: null, corrections: [], warnings: [], automatic: {
+      state: "queued" as const, analysisId: null, updatedAt: new Date().toISOString(), reason: "unexpected raw detail" } };
+    expect(projectShareCheckedAnalysis(loaded)).toMatchObject({ state: "none", warnings: [], automatic: { state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" } });
+    expect(studyAnalysisSharingProblems(loaded)).toEqual({ sensitive: false, unverified: false });
+  });
+
+  it("serves only a safe job projection and exports no live execution authority", async () => {
+    const job = await claimed();
+    await job.update({ state: "running", analysisId: job.attemptId, startedAt: new Date().toISOString() });
+    expect(await requestAutomaticStudyAnalysisCancellation(cwd, runId)).toMatchObject({ requested: true });
+    const pinned = await pinDirectory(root);
+    let server: Server | undefined;
+    try {
+      server = createServer((request, response) => { void serveRunPath(pinned, request.url!.slice(1), response); });
+      await new Promise<void>(resolve => server!.listen(0, "127.0.0.1", resolve));
+      const address = server.address(); if (!address || typeof address === "string") throw new Error("No synthetic listener");
+      const base = `http://127.0.0.1:${address.port}/`;
+      for (const route of ["analysis-automatic/job.json", "analysis-automatic//cancel.json", "observer/../analysis-automatic/job.json"]) {
+        expect((await fetch(new URL(route, base))).status).toBe(404);
+      }
+      const projected = await (await fetch(new URL("observer/study-analysis.json", base))).json() as { automatic: object };
+      expect(projected).toMatchObject({ state: "none", automatic: { state: "running" } });
+      expect(Object.keys(projected.automatic).sort()).toEqual(["analysisId", "reason", "state", "updatedAt"]);
+      await renderObserver(cwd, runId, { open: false });
+      const exported = await exportRun(cwd, runId, { out: path.join(cwd, "snapshot.html") });
+      expect(exported.ok).toBe(true);
+      const html = await readFile(path.join(cwd, "snapshot.html"), "utf8");
+      expect(html).toContain('"state":"unknown"');
+      const derivative = path.join(cwd, "redacted");
+      expect((await exportRun(cwd, runId, { format: "bundle", redactScreenshots: true, out: derivative })).ok).toBe(true);
+      expect(await readdir(path.join(derivative, ".humanish/runs", runId))).not.toContain(AUTOMATIC_STUDY_ANALYSIS_DIRECTORY);
+    } finally { if (server) { server.closeAllConnections(); await new Promise<void>(resolve => server!.close(() => resolve())); } }
+  });
+});

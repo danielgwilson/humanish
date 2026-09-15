@@ -572,7 +572,11 @@ function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: 
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
 export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean; analysis?: LoadedStudyAnalysis } = {}): string {
-  const analysis = options.analysis ?? { state: "none", analysis: null, corrections: [], warnings: [] };
+  let analysis = options.analysis ?? { state: "none", analysis: null, corrections: [], warnings: [] };
+  // A portable snapshot cannot claim that a writer on another machine is still active.
+  if (options.snapshot === true && analysis.automatic && ["queued", "running"].includes(analysis.automatic.state)) {
+    analysis = { ...analysis, automatic: { ...analysis.automatic, state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" } };
+  }
   const sharing = studyAnalysisSharingProblems(analysis);
   if (data.publicSafety && (sharing.sensitive || sharing.unverified)) {
     const share = data.publicSafety.share;
