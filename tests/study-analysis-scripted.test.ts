@@ -86,6 +86,15 @@ describe("versioned scripted capture evidence", () => {
     input.coverage.complete = true; input.coverage.omissions = []; input.inputDigest = digestStudyAnalysisInput(input);
     await expect(writeStudyAnalysis(prepared, syntheticArtifact(input))).rejects.toThrow("ANALYSIS_COVERAGE_INCOMPLETE");
   });
+  it.each(["ui", "embed"])("does not claim full coverage when an extra %s capture has no trace event", async (kind) => {
+    const bundle = fixture(), stream = bundle.streams[0]!;
+    if (kind === "ui") Object.assign(stream.ui, { screenshotUrl: "../screenshots/extra.png" });
+    else Object.assign(stream, { embed: { kind: "screenshot", url: "../screenshots/extra.png" } });
+    const input = await captureStudyEvidence(prepared, await save(bundle));
+    expect(input.coverage).toMatchObject({ captureCount: 4, complete: false });
+    expect(input.coverage.omissions).toContain("Some declared captures have no normalized trace reference.");
+    expect(input.evidence.some((entry) => entry.capture?.path === "screenshots/extra.png")).toBe(false);
+  });
 
   it("validates legacy text-only artifacts and receipts under their original digest without making them v2", async () => {
     const source = await save(), current = await captureStudyEvidence(prepared, source);

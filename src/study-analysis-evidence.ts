@@ -119,8 +119,11 @@ const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ??
 
 function hasUnmappedCaptures(stream: RunStream): boolean {
   const paths = new Set(itemsFor(stream).flatMap((item) => typeof item.screenshotRef?.path === "string" ? [item.screenshotRef.path] : []));
+  // Presentation URLs use Observer-relative paths. They cannot manufacture an
+  // event/frame, but a declared capture outside the trace must limit coverage.
+  const previews = [stream.ui?.screenshotUrl, stream.embed?.kind === "screenshot" ? stream.embed.url : undefined];
   return (Array.isArray(stream.artifacts) && stream.artifacts.some((artifact) => artifact?.kind === "screenshot" && !paths.has(artifact.path)))
-    || (stream.embed?.kind === "screenshot" && paths.size === 0);
+    || previews.some((ref) => typeof ref === "string" && !paths.has(ref) && !paths.has(ref.replace(/^\.\.\//, "")));
 }
 
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
