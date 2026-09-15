@@ -224,7 +224,13 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
         {needsAttention || monitoring ? <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null} /> : null}
         <main id="observer-content" ref={contentRef} tabIndex={-1} className={selected && model ? "content player-host" : "content"}
           onScroll={(event) => scrollPositions.current.set(contentView, event.currentTarget.scrollTop)}>
-          {reportActive ? <StudyReport data={data} report={report} {...(analysis.automatic ? { automatic: analysis.automatic } : {})} snapshot={snapshot} now={now} findingId={reportRoute ?? ""} onFinding={openReport} concernsOpen={concernsOpen} onConcernsOpen={setConcernsOpen}
+          {reportActive ? <StudyReport data={data} report={report} {...(analysis.automatic ? { automatic: analysis.automatic } : {})} snapshot={snapshot} now={now} findingId={reportRoute ?? ""} onFinding={id => {
+            openReport(id);
+            if (id) focus(() => {
+              const target = [...document.querySelectorAll<HTMLButtonElement>("[data-finding]")].find(button => button.dataset.finding === id);
+              target?.scrollIntoView({ block: "nearest" }); return target;
+            });
+          }} concernsOpen={concernsOpen} onConcernsOpen={setConcernsOpen}
             onOpen={(id, frame, eventId, findingId) => openParticipant(id, frame, eventId, findingId ? { runId: data.run.runId, kind: "finding", findingId } : { runId: data.run.runId, kind: "concerns" })} /> : participantContent}
         </main>
       </div>

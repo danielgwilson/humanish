@@ -1029,6 +1029,8 @@ try {
     await until(async () => summary.evaluate(el => el === document.activeElement), "Concern return lost keyboard focus");
     await page.getByRole("button", { name: "Included in F1", exact: true }).click();
     await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+    await until(async () => page.locator('[data-finding="F1"]').evaluate(el => el === document.activeElement), "Included finding lost keyboard focus");
+    assert((await page.locator('[data-finding="F1"]').boundingBox()).y < (phone ? 844 : 1000));
     record.checks = { rankedFindingsUnchanged: count, exactReference: expected.eventId, reloadReturn: "concerns", keyboardFocusRestored: true };
     await snap("concern-return-and-finding");
   });

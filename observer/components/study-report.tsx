@@ -85,13 +85,13 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
             : <span className="concern-disposition">{review.disposition === "context" ? "Context only" : "Not established"}</span>}</div>
         <p className="concern-claim">{review.claim}</p><p>{review.reason}</p>
         {review.limitation ? <p className="observation-limit">{review.limitation}</p> : null}
-        <div className="concern-evidence">{review.moments.map(moment => {
+        <div className="concern-evidence">{review.moments.map((moment, momentIndex) => {
           const resolved = resolveReportMoment(data, moment.streamId, moment.eventId);
           const time = resolved?.elapsedMs != null ? formatElapsed(resolved.elapsedMs) : resolved?.at ? new Date(resolved.at).toLocaleTimeString() : "Time unavailable";
           return <button type="button" key={`${moment.streamId}/${moment.eventId}`} disabled={!resolved}
             onClick={() => { if (resolved) onOpen(moment.streamId, resolved.frameIndex, resolved.eventId, ""); }}
-            aria-label={`Open concern evidence: ${labels.get(moment.streamId) ?? moment.streamId} · ${time}`}>
-            {labels.get(moment.streamId) ?? moment.streamId} · {time}<ArrowRight size={12} aria-hidden="true" /></button>;
+            aria-label={`Open concern evidence: ${labels.get(moment.streamId) ?? moment.streamId} · ${time} · ${momentIndex + 1} of ${review.moments.length}`}>
+            {momentIndex + 1}. {labels.get(moment.streamId) ?? moment.streamId} · {time}<ArrowRight size={12} aria-hidden="true" /></button>;
         })}</div>
       </section>)}
     </details> : null}
