@@ -65,7 +65,7 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(await completeAutomaticAnalysis(original, disabled.ok ? disabled.config : undefined, { run, onStart })).toBe(original);
     expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
   });
-  it.each(["default", "explicit"] as const)("a missing key records a skip, preserving success only for %s requests", async trigger => {
+  it.each((["default", "explicit"] as const).flatMap(trigger => ["", " \t\n"].map(apiKey => ({ trigger, apiKey }))))("a missing key records a skip, preserving success only for $trigger requests (key $apiKey)", async ({ trigger, apiKey }) => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
     await runDryRun({ cwd, dryRun: true, runId: "keyless" });
     const prepared = (await resolveRunPath(cwd, "keyless"))!;
@@ -77,7 +77,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const original = await readFile(file);
     const fetch = vi.fn<typeof globalThis.fetch>(async () => { throw new Error("No provider dispatch permitted"); });
     const result = await completeAutomaticAnalysis(markFinalizedStudyResult({ cwd, runId: "keyless", dryRun: false, ok: true }, prepared),
-      { ...config, maxCostUsd: 0.000001 }, { deps: { apiKey: "", fetch } }, trigger);
+      { ...config, maxCostUsd: 0.000001 }, { deps: { apiKey, fetch } }, trigger);
     expect(result.automaticAnalysis).toMatchObject({ state: "skipped", reason: trigger === "default" ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" });
     expect(automaticAnalysisEnvelope(result)).toMatchObject({ runOk: true, ok: trigger === "default" });
     expect((await readRunDetail(cwd, "keyless"))?.automaticAnalysis).toMatchObject({ state: "skipped", reason: trigger === "default" ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" });

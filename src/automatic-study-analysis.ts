@@ -97,7 +97,7 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   let outcome: AutomaticStudyAnalysisOutcome;
   try {
     await poll();
-    if (deps.defaultRequest === true && !(deps.apiKey ?? process.env.OPENAI_API_KEY)) {
+    if (deps.defaultRequest === true && !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()) {
       outcome = signal.aborted ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
         : skipped("AUTOMATIC_ANALYSIS_KEY_MISSING");
     } else {
