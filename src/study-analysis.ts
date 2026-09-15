@@ -1,5 +1,6 @@
 import type { ActorStatus, ActorCompletionReason, ActorStopCause, ParticipantDeclaredOutcome } from "./actor-contract.js";
 import type { CuaGoalSource } from "./actor-goal-source.js";
+import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
@@ -149,4 +150,6 @@ export interface LoadedStudyAnalysis {
   analysis: StudyAnalysisArtifact | null;
   corrections: StudyAnalysisCorrection[];
   warnings: string[];
+  /** Independent post-run execution metadata; never changes evidence sharing grades. */
+  automatic?: AutomaticStudyAnalysisView;
 }
