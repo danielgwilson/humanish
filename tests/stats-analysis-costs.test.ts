@@ -97,6 +97,17 @@ describe("retained study cost accounting", () => {
     expect((await stats()).totals.costs).toMatchObject({ analysisAttempts: 2, analysisUnresolvedAttempts: 1, analysisUnpricedAttempts: 1 });
   });
 
+  it.each(["queued", "skipped", "unknown"] as const)("does not invent free analysis from an automatic %s job without accounting", async (state) => {
+    const prepared = await study();
+    const first = artifact("study-a", "configuration-only");
+    const job = await claimAutomaticStudyAnalysis(prepared, { configDigest: first.configDigest, promptVersion: first.promptVersion });
+    if (state === "skipped") await job!.update({ state, reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
+    if (state === "unknown") await job!.update({ state, reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" });
+    const result = await stats();
+    expect(result.totals.costs).toMatchObject({ analysisAttempts: 0, analysisEstimatedUsd: null, analysisHistoryUncertainRuns: 1 });
+    expect(result.costsByRun[0]?.warnings).toContain("ANALYSIS_HISTORY_NOT_RECORDED");
+  });
+
   it("keeps absent, malformed, empty and conflicting history uncertain rather than inventing zero", async () => {
     const prepared = await study();
     expect((await stats()).totals.costs).toMatchObject({ analysisEstimatedUsd: null, analysisHistoryUncertainRuns: 1 });
@@ -149,6 +160,35 @@ describe("retained study cost accounting", () => {
     expect((await stats()).totals.costs).toMatchObject({ analysisEstimatedUsd: null, analysisUnpricedAttempts: 1 });
     await writeFile(file, " ".repeat(16 * 1024 + 1));
     expect((await stats()).totals.costs).toMatchObject({ analysisEstimatedUsd: null, analysisUnresolvedAttempts: 1 });
+  });
+
+  it("retains paid receipts when legacy source metadata is unreadable, without guessing filtered attribution", async () => {
+    const prepared = await study();
+    await writeStudyAnalysisExecutionReceipt(prepared, artifact("study-a", "kept-accounting", 0.5));
+    await rm(path.join(prepared.physicalRunRoot, "status.json"));
+    await writeFile(path.join(prepared.physicalRunRoot, "run.json"), "not valid JSON");
+    const result = await stats();
+    expect(result.unreadable).toEqual(["study-a"]);
+    expect(result.totals.costs).toMatchObject({ estimatedTotalUsd: 0.5, runEstimatedUsd: null,
+      analysisEstimatedUsd: 0.5, analysisAttempts: 1, incompleteRunEstimates: 1 });
+    expect(result.days[0]?.day).toBe("(undated)");
+    expect(result.labs[0]?.lab).toBe("(no lab)");
+    for (const options of [{ lab: "sample-lab" }, { since: "2026-09-01" }]) {
+      const filtered = await computeStats(cwd, options);
+      expect(filtered.ok && filtered.totals.runs).toBe(0);
+      expect(filtered.ok && filtered.unreadable).toEqual(["study-a"]);
+    }
+  });
+
+  it("does not treat a copied source bundle's mismatched identity as known run spend", async () => {
+    const prepared = await study();
+    const file = path.join(prepared.physicalRunRoot, "run.json");
+    const bundle = JSON.parse(await readFile(file, "utf8"));
+    bundle.runId = "different-study";
+    await writeFile(file, JSON.stringify(bundle));
+    const result = await stats();
+    expect(result.totals.costs).toMatchObject({ estimatedTotalUsd: null, incompleteRunEstimates: 1 });
+    expect(result.costsByRun[0]?.warnings).toContain("RUN_COST_ID_MISMATCH");
   });
 
   it("counts partial run estimates and rejects linked receipt storage without requests or writes", async () => {

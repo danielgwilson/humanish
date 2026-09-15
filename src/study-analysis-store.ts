@@ -299,6 +299,7 @@ export async function appendStudyAnalysisCorrection(
 
 export type { StudyAnalysisExecutionReceipt } from "./study-analysis-validation.js";
 export const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
+const EXECUTION_BINDING_KEYS = ["id", "runId", "sourceRunSha256", "inputDigest", "configDigest", "promptVersion"] as const;
 
 /** Exact bounded receipt lookup for an already claimed execution, never a dispatch decision. */
 export async function readStudyAnalysisExecution(prepared: PreparedRunArtifactPaths, id: string): Promise<StudyAnalysisExecutionReceipt | null> {
@@ -362,7 +363,7 @@ export async function beginStudyAnalysisExecution(prepared: PreparedRunArtifactP
   let finalized = false;
   return async (value) => {
     const receipt = executionReceipt(value, prepared);
-    if (finalized || Object.keys(context).some((key) => receipt[key as keyof typeof context] !== start[key as keyof typeof context])) {
+    if (finalized || EXECUTION_BINDING_KEYS.some((key) => receipt[key] !== start[key])) {
       throw new Error("ANALYSIS_ID_MISMATCH");
     }
     finalized = true;
@@ -474,8 +475,7 @@ export async function readStudyAnalysisAccountingRecords(prepared: PreparedRunAr
     } catch { warnings.push("ANALYSIS_ACCOUNTING_UNAVAILABLE"); }
   }
   for (const record of records.values()) {
-    if (record.start && record.receipt && ["id", "runId", "sourceRunSha256", "inputDigest", "configDigest", "promptVersion"]
-      .some((key) => record.start![key as keyof StudyAnalysisExecutionStart] !== record.receipt![key as keyof StudyAnalysisExecutionReceipt])) {
+    if (record.start && record.receipt && EXECUTION_BINDING_KEYS.some((key) => record.start![key] !== record.receipt![key])) {
       warnings.push("ANALYSIS_ACCOUNTING_CONFLICT");
       record.receipt = null;
     }

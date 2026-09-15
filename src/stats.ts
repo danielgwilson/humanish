@@ -141,7 +141,12 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
   }
 
   const index = await readRunIndex(cwd, options.nowMs === undefined ? {} : { nowMs: options.nowMs });
-  const selected = index.runs.filter((entry) => {
+  // Corrupt source metadata must not hide separately retained paid analysis receipts.
+  // These directories cannot be attributed to a lab/date, so scoped filters exclude them.
+  const indexedIds = new Set(index.runs.map((entry) => entry.runId));
+  const entries: RunIndexEntry[] = [...index.runs, ...index.unreadable.filter((id) => !indexedIds.has(id))
+    .map((runId) => ({ runId, derivedFrom: "directory" as const, liveness: "interrupted" as const }))];
+  const selected = entries.filter((entry) => {
     if (options.lab !== undefined && entry.lab?.id !== options.lab) return false;
     if (sinceMs !== undefined) {
       const at = entryTime(entry);

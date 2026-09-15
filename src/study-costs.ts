@@ -57,6 +57,11 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
     let bundle = null;
     try { bundle = bytes ? JSON.parse(bytes.toString("utf8")) : null; }
     catch { warnings.push("RUN_COST_SOURCE_UNREADABLE"); }
+    if (bundle?.runId !== undefined && bundle.runId !== entry.runId) {
+      bundle = null;
+      costs.runEstimatedUsd = null;
+      warnings.push("RUN_COST_ID_MISMATCH");
+    }
     if (bundle?.cost !== undefined) {
       costs.runEstimatedUsd = price(bundle.cost?.estimatedTotalUsd) ? bundle.cost.estimatedTotalUsd : null;
       if (bundle.cost?.fullyEstimated !== true || costs.runEstimatedUsd === null) {
@@ -101,11 +106,9 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
         if (!price(usage.estimatedCostUsd) || !usage.usageComplete) costs.analysisUnpricedAttempts += 1;
       }
     }
-    if (records.size === 0) {
-      if (automatic && automatic !== "unknown" && !automatic.uncertain && !automatic.started && automatic.analysisId === null) {
-        costs.analysisEstimatedUsd = 0;
-      } else warnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
-    }
+    // A skipped/queued automatic job says nothing about historical manual requests.
+    // Only final no-dispatch receipts contribute a supported zero to recorded attempts.
+    if (records.size === 0) warnings.push("ANALYSIS_HISTORY_NOT_RECORDED");
     costs.analysisHistoryUncertainRuns = warnings.some((warning) => !warning.startsWith("RUN_COST_")) ? 1 : 0;
   } catch {
     costs.incompleteRunEstimates = 1;

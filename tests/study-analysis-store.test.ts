@@ -323,6 +323,16 @@ describe("immutable study analysis store", () => {
     expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
   });
 
+  it("retains the dispatch binding after the caller mutates its input object", async () => {
+    const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
+    const context = { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion };
+    const finalize = await beginStudyAnalysisExecution(prepared, context);
+    for (const key of Object.keys(context)) delete (context as Record<string, unknown>)[key];
+    await expect(finalize({ ...artifact, id: "different-attempt" })).rejects.toThrow("ANALYSIS_ID_MISMATCH");
+    await finalize(artifact);
+    expect((await listStudyAnalysisExecutions(prepared)).receipts[0]?.id).toBe(id);
+  });
+
   it("retains failed execution accounting and rejects malformed receipt text", async () => {
     const failed = { ...artifact, status: "failed" as const, result: null, error: "analysis_provider_failed" };
     await writeStudyAnalysisExecutionReceipt(prepared, failed);

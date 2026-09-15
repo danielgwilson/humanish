@@ -14,6 +14,11 @@ The filters select runs by lab and run start date. All later analysis reruns
 belong to their source run for filtering and daily grouping. This is study-cost
 attribution, not a calendar of provider charges.
 
+With no filters, a directory whose source metadata is unreadable can still
+contribute valid analysis receipts under `(no lab)` and `(undated)`. Lab/date
+filters exclude such unattributable directories; they remain named in
+`unreadable`. The command does not guess their date or lab from an analysis.
+
 ## Additive JSON contract
 
 The envelope remains `humanish.stats.v1`. Existing fields keep their meanings:
