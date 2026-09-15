@@ -61,3 +61,29 @@ Record any post-output ambiguity adjudication separately without rewriting the
 prospective gold. These deliberately designed regressions support only bounded
 behavior claims; they do not estimate population recall or independent-study
 quality, and they do not replace fresh live studies.
+
+## Initial bounded comparison
+
+On 2026-09-15, the published 0.90.0 service (`study-evidence-4`) and a compiled
+candidate (`study-evidence-5`, source `a834210`) each analyzed these four cases
+once using `gpt-6-astra` with high reasoning effort. Original source bytes and
+selected packets matched exactly: five authored participant paths, thirteen
+rendered captures, and no selection omissions. All eight actual requests produced
+validated retained results; no request was retried. Known token-derived cost
+estimates totaled $2.052040 against $24 of reserved admission allowance.
+
+Both versions recalled all three required concerns, preserved the participant
+sets and recovery distinction, satisfied the blocker-before-detour rank, and
+avoided the negative-control errors. The candidate added eight evidence-linked
+concern assessments: five linked to findings, one retained as context, and two
+excluded as unsupported. A single independent review of all result fields found
+no critical or material factual errors; one minor baseline provenance-citation
+precision issue remained. The original loose outcome allowlist was preserved,
+with an evidence-first clarification recorded before reviewing the affected
+outputs; both versions returned `unknown` for the unsubmitted draft.
+
+This establishes bounded nonregression and inspectable concern accounting on
+these designed cases. The baseline already succeeded, so this comparison does
+not demonstrate improved recall, reproduce an unavailable recording's miss, or
+measure reliability across live participants or repeated model samples. The
+candidate was a pinned compiled build, not a final published package.
