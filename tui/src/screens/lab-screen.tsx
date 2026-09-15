@@ -370,7 +370,7 @@ function PastRun({
   const cost =
     run.estimatedCostUsd === undefined || run.estimatedCostUsd === null
       ? ""
-      : ` · ~$${run.estimatedCostUsd.toFixed(2)}`;
+      : ` · run ~$${run.estimatedCostUsd.toFixed(2)} (excl. analysis)`;
   const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
   return (
     <Box width={columns}>

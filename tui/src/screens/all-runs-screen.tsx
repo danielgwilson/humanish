@@ -112,6 +112,7 @@ export function AllRunsScreen({
       <Box marginTop={1}>
         <Text dimColor>{spendLine(runs, details)}</Text>
       </Box>
+      <Text dimColor>Run + analysis costs: humanish stats</Text>
     </Box>
   );
 }
@@ -178,7 +179,7 @@ function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetai
   let total = 0;
   let priced = 0;
   for (const run of runs) {
-    const value = run.estimatedCostUsd ?? details.get(run.runId)?.participants[0]?.estimatedCostUsd;
+    const value = run.estimatedCostUsd === undefined ? details.get(run.runId)?.participants[0]?.estimatedCostUsd : run.estimatedCostUsd;
     if (typeof value === "number") {
       total += value;
       priced += 1;
@@ -187,7 +188,7 @@ function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetai
   if (priced === 0) return "no spend recorded yet — a live run prices itself as it goes";
   const unpriced = runs.length - priced;
   const tail = unpriced === 0 ? "" : ` · ${unpriced} not priced yet`;
-  return `spend ~$${total.toFixed(2)} so far across ${priced} of ${runs.length}${tail}`;
+  return `run spend ~$${total.toFixed(2)} across ${priced} of ${runs.length}${tail} · excludes analysis`;
 }
 
 function clockOf(ms: number): string {

@@ -1,11 +1,11 @@
-import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { access, link, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
 import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
-import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, listStudyAnalysisExecutions, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "../src/study-analysis-store.js";
+import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, beginStudyAnalysisExecution, listStudyAnalyses, listStudyAnalysisExecutions, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "../src/study-analysis-store.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
 import type { StudyAnalysisArtifact, StudyAnalysisCorrection, StudyAnalysisInput } from "../src/study-analysis.js";
 import { syntheticArtifact } from "./study-analysis-fixtures.js";
@@ -297,6 +297,30 @@ describe("immutable study analysis store", () => {
       expect(saved).not.toContain(text);
     }
     await expect(writeStudyAnalysisExecutionReceipt(prepared, artifact)).rejects.toThrow("ANALYSIS_ID_EXISTS");
+  });
+
+  it("finalizes only the exact pre-dispatch directory it claimed", async () => {
+    const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
+    const context = { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion };
+    const finalize = await beginStudyAnalysisExecution(prepared, context);
+    await expect(beginStudyAnalysisExecution(prepared, context)).rejects.toThrow("ANALYSIS_ID_EXISTS");
+    const target = path.join(prepared.physicalRunRoot, "analysis-attempts", id);
+    const original = `${target}-original`;
+    await rename(target, original);
+    await mkdir(target);
+    await expect(finalize(artifact)).rejects.toThrow();
+    await expect(access(path.join(target, "receipt.json"))).rejects.toThrow();
+    await expect(access(path.join(original, "start.json"))).resolves.toBeUndefined();
+  });
+
+  it("rejects a final receipt with a different dispatch context without replacing the start", async () => {
+    const { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion } = artifact;
+    const finalize = await beginStudyAnalysisExecution(prepared, { id, runId, sourceRunSha256, inputDigest, configDigest, promptVersion });
+    await expect(finalize({ ...artifact, promptVersion: "different-prompt" })).rejects.toThrow("ANALYSIS_ID_MISMATCH");
+    const target = path.join(prepared.physicalRunRoot, "analysis-attempts", id);
+    await expect(access(path.join(target, "receipt.json"))).rejects.toThrow();
+    await finalize(artifact);
+    expect((await listStudyAnalysisExecutions(prepared)).receipts).toHaveLength(1);
   });
 
   it("retains failed execution accounting and rejects malformed receipt text", async () => {

@@ -330,6 +330,12 @@ export const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema.p
 
 export type StudyAnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
 
+/** Persisted before transport. It proves a request may have started, not that it was billed. */
+export const studyAnalysisExecutionStartSchema = studyAnalysisExecutionReceiptSchema.pick({
+  id: true, runId: true, sourceRunSha256: true, inputDigest: true, configDigest: true, promptVersion: true
+}).extend({ schema: z.literal("humanish.analysis-execution-start.v1"), createdAt: z.iso.datetime() }).strict();
+export type StudyAnalysisExecutionStart = z.infer<typeof studyAnalysisExecutionStartSchema>;
+
 function assertAnalysisUsage(usage: AnalysisUsage): void {
   if ((usage.usageComplete && (usage.inputTokens === null || usage.outputTokens === null))
     || (!usage.dispatched && (usage.inputTokens !== null || usage.outputTokens !== null || usage.cachedInputTokens !== null

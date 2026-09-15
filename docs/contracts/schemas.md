@@ -41,6 +41,7 @@ workflow without leaking private upstream truth into core.
 | Study analysis | `humanish.study-analysis.v1` | see [study analysis](study-analysis.md) and synthetic analysis fixtures in `tests/` |
 | Study analysis correction | `humanish.study-analysis-correction.v1` | see [study analysis](study-analysis.md#human-review-and-sharing) |
 | Analysis execution receipt | `humanish.analysis-execution.v1` | see [study analysis](study-analysis.md#durable-records) |
+| Analysis execution start | `humanish.analysis-execution-start.v1` | see [study analysis](study-analysis.md#durable-records) |
 | Verification | `humanish.verify-result.v1` | `five-check-verify` |
 | Policy | `humanish.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
 | Feedback | `humanish.feedback.v1` | `public-safe-feedback` |

@@ -9,7 +9,7 @@ import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
 import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
   type StudyAnalysisAdmission, type StudyAnalysisProgress, type StudyAnalysisDispatchContext } from "./study-analysis-engine.js";
-import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
+import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, beginStudyAnalysisExecution, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { STUDY_ANALYSIS_CORRECTION_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig,
   type StudyAnalysisCorrection, type LoadedStudyAnalysis } from "./study-analysis.js";
@@ -174,9 +174,13 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
       await assertStudyAnalysisPublicationCapacity(prepared);
       const apiKey = deps.apiKey ?? process.env.OPENAI_API_KEY ?? "";
       if (!apiKey.trim()) return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
+      let finalizeExecution: ((value: StudyAnalysisArtifact) => Promise<void>) | undefined;
       const analysis = await runStudyAnalysis(input, config, { apiKey,
         ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
-        ...(deps.beforeDispatch === undefined ? {} : { beforeDispatch: deps.beforeDispatch }),
+        beforeDispatch: async (context) => {
+          await deps.beforeDispatch?.(context);
+          finalizeExecution = await beginStudyAnalysisExecution(prepared, context);
+        },
         ...(deps.signal === undefined ? {} : { signal: deps.signal }),
         ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
         ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }) });
@@ -184,7 +188,8 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
         usage: analysis.usage,
         ...(analysis.error === null ? {} : { error: { code: analysis.error, message: "The attempt retained its status and any known usage. Inspect it with humanish analyze show." } }) };
       try {
-        await writeStudyAnalysisExecutionReceipt(prepared, analysis);
+        if (finalizeExecution) await finalizeExecution(analysis);
+        else await writeStudyAnalysisExecutionReceipt(prepared, analysis);
         result.executionReceiptPath = path.join(prepared.relativeRunRoot, "analysis-attempts", analysis.id, "receipt.json");
         await writeStudyAnalysis(prepared, analysis);
         result.artifactPath = path.join(prepared.relativeRunRoot, "analysis", analysis.id, "analysis.json");
