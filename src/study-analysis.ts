@@ -50,6 +50,8 @@ export interface StudyAnalysisInput {
   runId: string;
   sourceRunSha256: string;
   inputDigest: string;
+  /** Absent selects the original capture mapping for historical artifact validation. */
+  captureVersion?: 2;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
   evidence: AnalysisEvidence[];
@@ -121,6 +123,7 @@ export interface StudyAnalysisArtifact {
   completedAt: string;
   sourceRunSha256: string;
   inputDigest: string;
+  captureVersion?: 2;
   configDigest: string;
   config: StudyAnalysisConfig;
   promptVersion: string;

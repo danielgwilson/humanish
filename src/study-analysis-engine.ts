@@ -153,6 +153,7 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   const artifact: StudyAnalysisArtifact = {
     schema: STUDY_ANALYSIS_SCHEMA, id: `analysis-${randomUUID()}`, runId: input.runId, status: "failed",
     createdAt, completedAt: createdAt, sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,
+    ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
     configDigest: hashStudyAnalysisValue(config), config: structuredClone(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
     provider: "openai", participants: structuredClone(input.participants), coverage: structuredClone(input.coverage), evidence: structuredClone(input.evidence),
     usage: { inputTokens: null, outputTokens: null, cachedInputTokens: null, cacheWriteInputTokens: null,
