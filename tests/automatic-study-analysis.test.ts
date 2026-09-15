@@ -338,6 +338,22 @@ describe("opted-in automatic analysis ownership", () => {
     expect(h.fetch).not.toHaveBeenCalled();
   });
 
+  it("supports an unchanged project alias while preserving the physical pin for reuse", async () => {
+    const h = await transport();
+    const alias = path.join(cwd, "project-alias");
+    await symlink(cwd, alias, "dir");
+    const outcome = await runAutomaticStudyAnalysis(alias, runId, config, { apiKey: "synthetic-key", fetch: h.fetch });
+    expect(outcome).toMatchObject({ state: "partial", result: { reused: false } });
+    expect(await analyzeStudy(alias, runId, { config }, { apiKey: "", fetch: h.fetch, expectedRun: prepared }))
+      .toMatchObject({ ok: true, reused: true, analysisId: outcome.result!.analysisId });
+    const other = path.join(cwd, "other-project"); await mkdir(other); await rm(alias); await symlink(other, alias, "dir");
+    expect(await analyzeStudy(alias, runId, { config }, { apiKey: "", fetch: h.fetch, expectedRun: prepared }))
+      .toMatchObject({ ok: false, reused: false, error: { code: "ANALYSIS_SOURCE_UNAVAILABLE" } });
+    expect(await readdir(other)).toEqual([]);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
+
   it("quarantines invalid direct job projection without changing source approval", () => {
     const loaded = { state: "none" as const, analysis: null, corrections: [], warnings: [], automatic: {
       state: "queued" as const, analysisId: null, updatedAt: new Date().toISOString(), reason: "unexpected raw detail" } };

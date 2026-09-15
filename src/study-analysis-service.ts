@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, rmdir } from "node:fs/promises";
+import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { renderObserver } from "./observer.js";
 import { containsSensitive } from "./redaction.js";
@@ -52,7 +52,8 @@ export interface AnalyzeDeps {
 export async function resolveStudyAnalysisRun(cwd: string, run: string, expectedRun?: PreparedRunArtifactPaths): Promise<PreparedRunArtifactPaths | null> {
   if (expectedRun === undefined) return resolveRunPath(cwd, run);
   const physicalCwd = path.dirname(path.dirname(expectedRun.physicalRunsRoot));
-  if (path.resolve(cwd) !== physicalCwd || run !== path.basename(expectedRun.physicalRunRoot)) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
+  const selectedCwd = await realpath(cwd).catch(() => null);
+  if (selectedCwd !== physicalCwd || run !== path.basename(expectedRun.physicalRunRoot)) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   try { await validatePreparedRunRootIdentity(expectedRun); }
   catch { throw new Error("ANALYSIS_SOURCE_CHANGED"); }
   return expectedRun;
@@ -136,7 +137,7 @@ export async function readCompletedStudyAnalysisSource(cwd: string, prepared: Pr
 }
 
 export async function analyzeStudy(cwdInput: string, run: string, options: AnalyzeOptions, deps: AnalyzeDeps = {}): Promise<AnalyzeResult> {
-  const cwd = path.resolve(cwdInput);
+  let cwd = path.resolve(cwdInput);
   const dryRun = options.dryRun === true;
   const config = structuredClone(options.config);
   if (!Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000) return fail(run, dryRun, "ANALYSIS_CONFIG_INVALID");
@@ -144,6 +145,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
   try {
     const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
+    if (deps.expectedRun !== undefined) cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
     const execute = async (): Promise<AnalyzeResult> => {
       if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
       const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);

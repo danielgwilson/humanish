@@ -52,9 +52,10 @@ function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
 export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string, configInput: StudyAnalysisConfig,
   deps: AutomaticStudyAnalysisDeps = {}): Promise<AutomaticStudyAnalysisOutcome> {
   if (!exactId(runId)) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
-  const cwd = path.resolve(cwdInput);
+  let cwd = path.resolve(cwdInput);
   const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
+  cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
   // Do not consume a future run's one claim while a producer is still writing it.
   try {
     const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
