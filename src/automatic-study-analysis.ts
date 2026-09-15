@@ -19,6 +19,16 @@ export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "befor
 const exactId = (runId: string): boolean => runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
 const skipped = (reason: string): AutomaticStudyAnalysisOutcome => ({ state: "skipped", reason });
 
+function hasParticipantEvidence(bundle: RunBundle): boolean {
+  return bundle.streams.some(stream => {
+    // Terminal commands and transcript messages also include launcher output.
+    // Fresh producers count recognized participant runtime items separately.
+    if (stream.actor?.lane === "terminal") return (stream.actor.counts.runtimeParticipantItems ?? 0) > 0;
+    return stream.actor?.items.some(item => ["screenshot", "ui_action", "command", "tool_call", "file_change", "approval"].includes(item.kind)
+      || (["message", "reasoning"].includes(item.kind) && !!item.text?.trim()));
+  });
+}
+
 /** Small read-only TUI/CLI projection. Neither this nor Observer can resume a job. */
 export async function readAutomaticStudyAnalysis(cwd: string, runId: string): Promise<AutomaticStudyAnalysisView | undefined> {
   if (!exactId(runId)) return undefined;
@@ -52,7 +62,7 @@ function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
 }
 
 /** One permanent claim per completed run, consumed even when preparation/cancellation fails.
- * Only the original opted-in producer calls this after all recording writes return.
+ * Only the original producer calls this after all recording writes return.
  * No file reader, restart recovery, Observer poll or export calls this function. */
 export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string, configInput: StudyAnalysisConfig,
   deps: AutomaticStudyAnalysisDeps = {}): Promise<AutomaticStudyAnalysisOutcome> {
@@ -61,11 +71,13 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
+  let participantEvidence = false;
   // Do not consume a future run's one claim while a producer is still writing it.
   try {
     const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
     const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
     if (bundle.streams.some(stream => stream.actor?.stopCause === "harness_aborted")) return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
+    participantEvidence = hasParticipantEvidence(bundle);
   }
   catch { return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"); }
   const config = structuredClone(configInput);
@@ -97,9 +109,10 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   let outcome: AutomaticStudyAnalysisOutcome;
   try {
     await poll();
-    if (deps.defaultRequest === true && !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()) {
+    const missingKey = !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim();
+    if (deps.defaultRequest === true && (missingKey || !participantEvidence)) {
       outcome = signal.aborted ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
-        : skipped("AUTOMATIC_ANALYSIS_KEY_MISSING");
+        : skipped(missingKey ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE");
     } else {
       const result = await analyzeStudy(cwd, runId, { config }, {
         ...deps, signal, expectedRun: prepared, analysisId: job.attemptId,

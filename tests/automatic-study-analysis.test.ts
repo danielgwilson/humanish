@@ -48,6 +48,52 @@ describe("opted-in automatic analysis ownership", () => {
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
     return { wire, fetch: vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire))) };
   }
+  it.each([undefined, 0, 1])("requires participant runtime activity for terminal default analysis (%s)", async runtimeParticipantItems => {
+    const bundle = JSON.parse(original.toString()) as RunBundle;
+    bundle.streams[0]!.actor = {
+      schema: "humanish.actor-trace.v1", provider: "synthetic", protocol: "terminal-exec", lane: "terminal",
+      persona: { id: "synthetic-participant", traitsApplied: [], promptDigest: "a".repeat(64) },
+      redaction: { status: "passed", screenshots: "n/a", notes: "Synthetic terminal trace." },
+      startedAt: "2026-09-01T00:00:00.000Z", completedAt: "2026-09-01T00:01:00.000Z", durationMs: 60000,
+      status: "failed", completionReason: "actor_error", reason: "The terminal session ended.",
+      ids: {}, counts: runtimeParticipantItems === undefined ? {} : { runtimeParticipantItems },
+      items: [{ id: "message-001", kind: "message", lifecycle: "completed", title: "terminal output", text: "A synthetic terminal diagnostic." }],
+      capabilities: { headless: true, structuredTrace: true, lanes: ["terminal"],
+        producesScreenshots: false, byoModel: false, preGrantableApprovals: false, inProcessTools: false, license: "open" }
+    };
+    original = Buffer.from(JSON.stringify(bundle));
+    await writeFile(path.join(root, "run.json"), original);
+    input = await captureStudyEvidence(prepared, original);
+    const h = await transport();
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch, defaultRequest: true });
+    if (runtimeParticipantItems === 1) {
+      expect(outcome.state).toBe("partial");
+      expect(h.fetch).toHaveBeenCalledTimes(1);
+    } else {
+      expect(outcome).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE" });
+      expect(h.fetch).not.toHaveBeenCalled();
+    }
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
+  it.each(["default", "explicit"] as const)("keeps setup-only evidence request-free for %s eligibility", async trigger => {
+    // The retained synthetic source has run events and no participant trace.
+    // Explicit diagnosis remains available, but a default run must not spend on setup alone.
+    const h = await transport();
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config,
+      { apiKey: "synthetic-key", fetch: h.fetch, defaultRequest: trigger === "default" });
+    if (trigger === "default") {
+      expect(outcome).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE" });
+      expect(h.fetch).not.toHaveBeenCalled();
+      expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: [] });
+    } else {
+      expect(outcome.state).toBe("partial");
+      expect(h.fetch).toHaveBeenCalledTimes(1);
+    }
+    expect(await readAutomaticStudyAnalysis(cwd, runId)).toMatchObject({ state: outcome.state, reason: outcome.reason });
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch, defaultRequest: true }))
+      .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ALREADY_REQUESTED" });
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
   async function claimed() {
     return (await claimAutomaticStudyAnalysis(prepared, { configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION }))!;
   }

@@ -16,6 +16,7 @@ const unknown = (): AutomaticStudyAnalysisView => ({ state: "unknown", analysisI
 // granting this read-only surface authority to launch or retry a paid request.
 const reasonDetails: Record<string, string> = {
   AUTOMATIC_ANALYSIS_KEY_MISSING: "Set OPENAI_API_KEY in the CLI environment, then explicitly run humanish analyze for this study with a cost limit.",
+  AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE: "No participant activity was retained to analyze. The run's setup and failure records remain available.",
   AUTOMATIC_ANALYSIS_ADMISSION_REFUSED: "Analysis was refused before dispatch. Check the CLI admission details. If the estimate exceeds your budget, review it before choosing a higher --max-cost for an explicit humanish analyze request.",
   AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED: ANALYSIS_ADMISSION_EXCEEDED_DETAIL,
   AUTOMATIC_ANALYSIS_BUSY: "Another analysis request owns this study's lock. Let it finish, then inspect the analysis history before deciding whether to retry.",

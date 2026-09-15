@@ -60,6 +60,6 @@ export function automaticAnalysisSucceeded(result: AutomaticAnalysisResult): boo
   const value = result.automaticAnalysis;
   if (value === undefined) return true;
   if (value.state === "skipped") return value.reason === "analysis_dry_run"
-    || (result.automaticAnalysisTrigger === "default" && value.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING");
+    || (result.automaticAnalysisTrigger === "default" && ["AUTOMATIC_ANALYSIS_KEY_MISSING", "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE"].includes(value.reason ?? ""));
   return (value.state === "complete" || value.state === "partial") && value.result?.ok === true;
 }

@@ -49,6 +49,8 @@ for (const phase of ["Xvfb", "startxfce4"]) {
     assert.equal(result.error.code, "HUMANISH_TERMINAL_LAB_FAILED");
     assert.match(result.error.message, /synthetic desktop startup failure/);
     assert.equal(result.observer.ok, true, "failed-session evidence must verify and render");
+    assert.equal(result.automaticAnalysis?.state, "skipped");
+    assert.equal(result.automaticAnalysis?.reason, "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE");
     const proof = JSON.parse(await readFile(proofPath, "utf8"));
     assert.deepEqual(proof.networkAttempts, []);
     assert.equal(proof.instances, 1);

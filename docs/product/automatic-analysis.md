@@ -40,6 +40,9 @@ Participant execution finishes and its recording is finalized before analysis is
 queued. A participant who was blocked or interrupted can still have useful
 retained evidence; analysis requires a verified live recording, not a successful
 participant outcome. An active, missing or invalid recording is not analyzed.
+Default analysis also skips recordings containing only setup or failure records
+with no retained participant activity. A desktop startup failure does not start
+an analysis request. The original failure remains visible.
 
 CLI live starts disclose the separate admission estimate limit before execution.
 `humanish lab preflight <lab> --json` and the TUI lab screen also expose the
