@@ -95,6 +95,19 @@ describe("fair bounded study evidence selection", () => {
     await expect(validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source)).resolves.toBeUndefined();
   });
 
+  it("keeps the next actual capture after a failed capture separated by reasoning", async () => {
+    const lane = await captures("late", 80);
+    lane.actor.items[76] = { ...lane.actor.items[76]!, kind: "ui_action", status: "failed" };
+    lane.actor.items.splice(77, 0, { id: "between-frames", kind: "reasoning", lifecycle: "completed", title: "Review result", text: "Inspect the next state." });
+    lane.actor.items.push(message("ending-account", "The last attempt did not complete."));
+    const source = await save([lane]);
+    const input = await captureStudyEvidence(prepared, source, { captures: 4, evidence: 7 });
+    expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.frame)).toEqual([0, 76, 77, 79]);
+    expect(input.evidence.find((entry) => entry.eventId === "late-76")).toMatchObject({ kind: "ui_action", frame: 76, capture: { eventId: "late-76" } });
+    expect(input.evidence.find((entry) => entry.eventId === "late-77")).toMatchObject({ frame: 77, capture: { eventId: "late-77" } });
+    await expect(validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source)).resolves.toBeUndefined();
+  });
+
   it("keeps selection stable when participant source order changes", async () => {
     const streams = await Promise.all([captures("c", 13), captures("a", 13), captures("b", 13)]);
     const first = await captureStudyEvidence(prepared, await save(streams), { captures: 8, evidence: 17 });
@@ -152,13 +165,123 @@ describe("fair bounded study evidence selection", () => {
   it("reserves bounded read bytes for a later valid lane despite several large invalid early lanes", async () => {
     const streams = await Promise.all(["a", "b", "c", "d", "e"].map((id) => captures(id, 8)));
     for (const lane of streams.slice(0, 4)) {
-      for (const item of lane.actor.items) await fs.writeFile(path.join(prepared.physicalRunRoot, item.screenshotRef!.path), Buffer.alloc(512, 1));
+      for (const item of lane.actor.items) await fs.writeFile(path.join(prepared.physicalRunRoot, item.screenshotRef!.path), Buffer.alloc(256, 1));
     }
-    const input = await captureStudyEvidence(prepared, await save(streams), { captures: 10, imageBytes: 512, totalImageBytes: 1024 });
+    const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, await save(streams), { captures: 10, imageBytes: 512, totalImageBytes: 2048 });
+    // Each initial reservation fits the malformed bytes: this exercises PNG
+    // decoding and consumed read bytes, not a size-only refusal before open.
+    for (const id of ["a", "b", "c", "d"]) {
+      expect(opened.mock.calls.some(([file]) => String(file).endsWith(`/screenshots/${id}-7.png`))).toBe(true);
+    }
     const valid = input.evidence.filter((entry) => entry.streamId === "e" && entry.capture);
     expect(valid.length).toBeGreaterThanOrEqual(2);
     expect(valid.map((entry) => entry.frame)).toEqual(expect.arrayContaining([0, 7]));
     expect(input.coverage.complete).toBe(false);
+    const imagePaths = opened.mock.calls.map(([file]) => String(file)).filter((file) => file.endsWith(".png"));
+    expect(imagePaths.length).toBeLessThanOrEqual(20);
+    expect(imagePaths.reduce((total, file) => total + (file.includes("/e-") ? png.length : 256), 0)).toBeLessThanOrEqual(2 * 2048);
+  });
+
+  it.each([false, true])("releases idle byte reservations for a valid image above the initial sixteen-lane share (missing lanes: %s)", async missing => {
+    const image = new PNG({ width: 900, height: 900 });
+    let noise = 123456789;
+    for (let index = 0; index < image.data.length; index++) {
+      noise ^= noise << 13; noise ^= noise >>> 17; noise ^= noise << 5;
+      image.data[index] = noise & 255;
+    }
+    const large = PNG.sync.write(image);
+    expect(large.length).toBeGreaterThan(2.5 * 1024 * 1024);
+    expect(large.length).toBeLessThan(8 * 1024 * 1024);
+    const validCount = missing ? 8 : 16;
+    const streams = await Promise.all(Array.from({ length: 16 }, (_, index) => captures(`p${String(index).padStart(2, "0")}`, 1, index >= validCount)));
+    await fs.writeFile(path.join(prepared.physicalRunRoot, "screenshots/p00-0.png"), large);
+    const source = await save(streams);
+    const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, source);
+    expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.streamId)).toEqual(streams.slice(0, validCount).map((lane) => lane.id));
+    expect(input.evidence.find((entry) => entry.streamId === "p00")?.capture).not.toBeNull();
+    const imageOpens = opened.mock.calls.map(([file]) => String(file)).filter((file) => file.endsWith(".png"));
+    expect(imageOpens.indexOf(path.join(prepared.physicalRunRoot, "screenshots/p00-0.png")))
+      .toBeGreaterThan(imageOpens.indexOf(path.join(prepared.physicalRunRoot, `screenshots/p${String(validCount - 1).padStart(2, "0")}-0.png`)));
+    const returned = input.images.reduce((total, entry) => total + Buffer.from(entry.dataUrl.split(",")[1]!, "base64").length, 0);
+    expect(returned).toBe(large.length + (validCount - 1) * png.length);
+    expect(input.coverage.complete).toBe(!missing);
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the image byte limit.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the bounded read budget.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the capture count limit.");
+    await expect(validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source)).resolves.toBeUndefined();
+    expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+  });
+
+  it("attributes a nonzero global byte remainder to the byte limit instead of invalid evidence", async () => {
+    const source = await save([await captures("a", 2)]);
+    const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, source, { captures: 2, totalImageBytes: png.length + 1 });
+    expect(input.images).toHaveLength(1);
+    expect(opened.mock.calls.filter(([file]) => String(file).endsWith(".png"))).toHaveLength(1);
+    expect(input.coverage.omissions).toContain("Some captures were omitted by the image byte limit.");
+    expect(input.coverage.omissions).not.toContain("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the capture count limit.");
+  });
+
+  it("reserves a later small lane's first admission before sharing the budget with earlier larger frames", async () => {
+    const largerImage = new PNG({ width: 10, height: 10 });
+    for (let index = 0; index < largerImage.data.length; index++) largerImage.data[index] = (index * 53 + Math.floor(index / 11)) % 256;
+    const larger = PNG.sync.write(largerImage);
+    expect(larger.length).toBeGreaterThan(png.length);
+    const streams = await Promise.all([captures("a", 1), captures("b", 1), captures("c", 1)]);
+    for (const id of ["a", "b"]) await fs.writeFile(path.join(prepared.physicalRunRoot, `screenshots/${id}-0.png`), larger);
+    const source = await save(streams); const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, source, { captures: 3, totalImageBytes: 2 * larger.length });
+    expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.streamId)).toEqual(["a", "c"]);
+    const imagePaths = opened.mock.calls.map(([file]) => String(file)).filter((file) => file.endsWith(".png"));
+    expect(imagePaths[0]).toBe(path.join(prepared.physicalRunRoot, "screenshots/c-0.png"));
+    expect(input.coverage.omissions).toContain("Some captures were omitted by the image byte limit.");
+    expect(input.coverage.omissions).not.toContain("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
+  });
+
+  it("stops actual malformed-byte reads at the returned-byte bound without claiming a count or image limit", async () => {
+    const lane = await captures("invalid", 6);
+    for (const item of lane.actor.items) await fs.writeFile(path.join(prepared.physicalRunRoot, item.screenshotRef!.path), Buffer.alloc(512, 1));
+    const source = await save([lane]); const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, source, { captures: 3, imageBytes: 512, totalImageBytes: 1024 });
+    expect(input.images).toHaveLength(0);
+    expect(opened.mock.calls.filter(([file]) => String(file).endsWith(".png"))).toHaveLength(4);
+    expect(input.coverage.omissions).toContain("Some captures were omitted by the bounded read budget.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the image byte limit.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the capture count limit.");
+  });
+
+  it("does not call attempted missing files a capture-count omission", async () => {
+    const input = await captureStudyEvidence(prepared, await save([await captures("missing", 3, true)]), { captures: 5 });
+    expect(input.images).toHaveLength(0);
+    expect(input.coverage.omissions).toContain("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the capture count limit.");
+  });
+
+  it("reclaims a failed slot for a lane whose initial capture share was zero", async () => {
+    const source = await save([await captures("a-missing", 1, true), await captures("b-valid", 1)]);
+    const stat = vi.mocked(fs.lstat).mockClear();
+    const input = await captureStudyEvidence(prepared, source, { captures: 1 });
+    expect(input.evidence.filter((entry) => entry.capture).map((entry) => entry.streamId)).toEqual(["b-valid"]);
+    const inspected = new Set(stat.mock.calls.map(([file]) => String(file)).filter((file) => file.endsWith(".png")));
+    expect(inspected.size).toBe(2);
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the capture count limit.");
+  });
+
+  it("does not stat or read an evidence leaf beneath a symlink while classifying size limits", async () => {
+    const outside = path.join(cwd, "outside"); await fs.mkdir(outside);
+    await fs.writeFile(path.join(outside, "foreign.png"), Buffer.alloc(1024));
+    await fs.symlink(outside, path.join(prepared.physicalRunRoot, "screenshots/alias"), "dir");
+    const lane = stream("unsafe", [{ id: "unsafe-frame", kind: "screenshot", lifecycle: "completed", title: "Unsafe frame",
+      screenshotRef: { path: "screenshots/alias/foreign.png", redaction: "none" } }]);
+    const source = await save([lane]); const stat = vi.mocked(fs.lstat).mockClear(); const opened = vi.mocked(fs.open).mockClear();
+    const input = await captureStudyEvidence(prepared, source, { totalImageBytes: 100 });
+    expect(input.images).toHaveLength(0);
+    expect(stat.mock.calls.some(([file]) => String(file).endsWith("foreign.png"))).toBe(false);
+    expect(opened.mock.calls.some(([file]) => String(file).endsWith("foreign.png"))).toBe(false);
+    expect(input.coverage.omissions).not.toContain("Some captures were omitted by the image byte limit.");
   });
 
   it("caps image byte reads and keeps both endings when the global byte budget fits two frames", async () => {
