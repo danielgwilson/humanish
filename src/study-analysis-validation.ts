@@ -20,6 +20,12 @@ const timestamp = z.string().datetime({ offset: true });
 const sourceIds = z.array(sourceId).max(128);
 const refs = z.array(id).min(1).max(100);
 const limitations = z.array(text(2000).min(1)).max(100);
+const observationSchema = z.object({
+  claim: text(2000).min(1),
+  basis: z.enum(["visual", "action", "participant_statement", "inference"]),
+  evidenceIds: refs,
+  limitation: text(2000)
+}).strict();
 
 export const studyAnalysisResultSchema = z.object({
   summary: text(4000).min(1),
@@ -43,19 +49,23 @@ export const studyAnalysisResultSchema = z.object({
     exposureReason: text(2000).min(1),
     recovery: z.enum(["recovered", "not_observed", "unknown"]),
     confidence: z.enum(["low", "medium", "high"]),
-    observations: z.array(z.object({
-      claim: text(2000).min(1),
-      basis: z.enum(["visual", "action", "participant_statement", "inference"]),
-      evidenceIds: refs,
-      limitation: text(2000)
-    }).strict()).min(1).max(30),
+    observations: z.array(observationSchema).min(1).max(30),
     nextStep: text(2000).min(1),
     priorityReason: text(2000).min(1)
   }).strict()).max(100),
+  concernReviews: z.array(observationSchema.extend({
+    disposition: z.enum(["finding", "context", "unsupported"]),
+    findingId: id.nullable(),
+    reason: text(2000).min(1)
+  }).strict()).max(60).optional(),
   limitations
 }).strict();
 
-export const studyAnalysisResultJsonSchema = z.toJSONSchema(studyAnalysisResultSchema);
+/** Historical artifacts may omit concernReviews; every new provider response must supply it. */
+export const studyAnalysisResponseSchema = studyAnalysisResultSchema.required({ concernReviews: true });
+export const studyAnalysisResultJsonSchema = z.toJSONSchema(studyAnalysisResponseSchema);
+const normalizedResult = ({ concernReviews, ...result }: z.infer<typeof studyAnalysisResultSchema>): StudyAnalysisResult =>
+  ({ ...result, ...(concernReviews === undefined ? {} : { concernReviews }) });
 
 export const studyAnalysisCoverageSchema = z.object({
   includedStreamIds: sourceIds,
@@ -211,6 +221,14 @@ export function checkAnalysisResult(input: StudyAnalysisInput, value: unknown):
     }
   }
   if (!distinct(result.findings.map((finding) => finding.id))) errors.add("ANALYSIS_FINDING_ID_DUPLICATE");
+  const checkObservation = (observation: z.infer<typeof observationSchema>): Set<string> => {
+    const refs = observation.evidenceIds.map((ref) => evidence.get(ref));
+    if (!distinct(observation.evidenceIds) || refs.some((ref) => !ref || !included.has(ref.streamId))) errors.add("ANALYSIS_OBSERVATION_REFERENCE_INVALID");
+    if (observation.basis === "visual" && !refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined)) errors.add("ANALYSIS_VISUAL_WITHOUT_CAPTURE");
+    if (observation.basis === "action" && !refs.some((ref) => ref && ["ui_action", "command", "tool_call", "file_change", "approval"].includes(ref.kind))) errors.add("ANALYSIS_ACTION_SOURCE_INVALID");
+    if (observation.basis === "participant_statement" && refs.some((ref) => !ref?.quoteEligible)) errors.add("ANALYSIS_STATEMENT_SOURCE_INVALID");
+    return new Set(refs.flatMap(ref => ref ? [ref.streamId] : []));
+  };
   for (const finding of result.findings) {
     const exposed = new Set(finding.exposedStreamIds);
     if (!distinct(finding.affectedStreamIds) || !distinct(finding.exposedStreamIds)
@@ -218,16 +236,20 @@ export function checkAnalysisResult(input: StudyAnalysisInput, value: unknown):
       || finding.affectedStreamIds.some((stream) => !exposed.has(stream))) errors.add("ANALYSIS_FINDING_MEMBERSHIP_INVALID");
     const citedStreams = new Set<string>();
     for (const observation of finding.observations) {
-      const refs = observation.evidenceIds.map((ref) => evidence.get(ref));
-      if (!distinct(observation.evidenceIds) || refs.some((ref) => !ref || !included.has(ref.streamId))) errors.add("ANALYSIS_OBSERVATION_REFERENCE_INVALID");
-      for (const ref of refs) if (ref) citedStreams.add(ref.streamId);
-      if (observation.basis === "visual" && !refs.some((ref) => ref?.capture !== null && ref?.capture !== undefined)) errors.add("ANALYSIS_VISUAL_WITHOUT_CAPTURE");
-      if (observation.basis === "action" && !refs.some((ref) => ref && ["ui_action", "command", "tool_call", "file_change", "approval"].includes(ref.kind))) errors.add("ANALYSIS_ACTION_SOURCE_INVALID");
-      if (observation.basis === "participant_statement" && refs.some((ref) => !ref?.quoteEligible)) errors.add("ANALYSIS_STATEMENT_SOURCE_INVALID");
+      for (const stream of checkObservation(observation)) citedStreams.add(stream);
     }
     if (finding.affectedStreamIds.some((stream) => !citedStreams.has(stream))) errors.add("ANALYSIS_AFFECTED_WITHOUT_EVIDENCE");
   }
-  return errors.size ? { ok: false, errors: [...errors] } : { ok: true, result };
+  for (const review of result.concernReviews ?? []) {
+    const citedStreams = checkObservation(review);
+    const finding = result.findings.find(item => item.id === review.findingId);
+    if (review.disposition === "finding") {
+      if (!finding || [...citedStreams].some(stream => !finding.exposedStreamIds.includes(stream))) {
+        errors.add("ANALYSIS_CONCERN_FINDING_INVALID");
+      }
+    } else if (review.findingId !== null) errors.add("ANALYSIS_CONCERN_FINDING_INVALID");
+  }
+  return errors.size ? { ok: false, errors: [...errors] } : { ok: true, result: normalizedResult(result) };
 }
 
 export function validateAnalysisResult(input: StudyAnalysisInput, value: unknown): StudyAnalysisResult {
@@ -240,7 +262,8 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
   const parsed = studyAnalysisArtifactSchema.safeParse(value);
   if (!parsed.success) throw new Error("ANALYSIS_ARTIFACT_SCHEMA_INVALID");
   const { captureVersion, ...fields } = parsed.data;
-  const artifact: StudyAnalysisArtifact = { ...fields, ...(captureVersion === undefined ? {} : { captureVersion }) };
+  const artifact: StudyAnalysisArtifact = { ...fields, result: fields.result === null ? null : normalizedResult(fields.result),
+    ...(captureVersion === undefined ? {} : { captureVersion }) };
   if (artifact.configDigest !== hashStudyAnalysisValue(artifact.config)
     || artifact.inputDigest !== digestStudyAnalysisInput(artifact)) throw new Error("ANALYSIS_DIGEST_INVALID");
   if (Date.parse(artifact.completedAt) < Date.parse(artifact.createdAt)) throw new Error("ANALYSIS_TIME_INVALID");
@@ -267,7 +290,13 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
     || (hasResult && artifact.error !== null && !(artifact.status === "partial" && artifact.error === "analysis_admission_estimate_exceeded"))
     || (!hasResult && artifact.error === null)
     || (artifact.status === "complete" && !coverage.complete)) throw new Error("ANALYSIS_STATUS_INVALID");
-  if (artifact.result !== null) validateAnalysisResult({ ...artifact, images: [] }, artifact.result);
+  if (artifact.result !== null) {
+    // Concern accounting became required with revision 5. Keep the boundary stable
+    // when the engine advances; a later prompt must not regain legacy omissions.
+    const revision = /^study-evidence-(\d+)$/.exec(artifact.promptVersion)?.[1];
+    if (revision !== undefined && Number(revision) >= 5 && artifact.result.concernReviews === undefined) throw new Error("ANALYSIS_RESULT_SCHEMA_INVALID");
+    validateAnalysisResult({ ...artifact, images: [] }, artifact.result);
+  }
   return artifact;
 }
 

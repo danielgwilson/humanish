@@ -7,10 +7,11 @@ import { basisLabel, reportProblem, resolveReportMoment, type StudyReport as Rep
 import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
 import { ANALYSIS_ADMISSION_EXCEEDED_DETAIL, automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
 
-export function StudyReport({ data, report, automatic, snapshot = false, now = Date.now(), findingId, onFinding, onOpen }: {
+export function StudyReport({ data, report, automatic, snapshot = false, now = Date.now(), findingId, onFinding, onOpen, concernsOpen, onConcernsOpen }: {
   data: ObserverData; report: ReportData | undefined; automatic?: AutomaticStudyAnalysisView; snapshot?: boolean; now?: number; findingId: string;
   onFinding: (id: string) => void;
   onOpen: (streamId: string, frame: number | null, eventId: string | undefined, findingId: string) => void;
+  concernsOpen?: boolean; onConcernsOpen?: (open: boolean) => void;
 }) {
   const automaticState = automatic ? automaticAnalysisNotice(automatic, snapshot, now).state : undefined;
   const sameAnalysis = !!report && automatic?.analysisId === report.id && automaticState === report.state;
@@ -75,6 +76,25 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
         </Accordion.Item>;
       })}
     </Accordion.Root>
+    {report.concernReviews !== undefined ? <details className="report-concerns" open={concernsOpen} onToggle={event => onConcernsOpen?.(event.currentTarget.open)}><summary>Concerns considered ({report.concernReviews.length})</summary>
+      <p className="concern-intro">Material concerns reviewed in this analysis, including those left out of the ranked findings.</p>
+      {!report.concernReviews.length ? <p>No material concerns were recorded in this review.</p> : null}
+      {report.concernReviews.map((review, index) => <section className="concern-review" key={index}>
+        <div className="concern-heading"><span className="observation-basis">{basisLabel[review.basis]}</span>
+          {review.findingId ? <button type="button" onClick={() => onFinding(review.findingId!)}>Included in {review.findingId}<ArrowRight size={12} aria-hidden="true" /></button>
+            : <span className="concern-disposition">{review.disposition === "context" ? "Context only" : "Not established"}</span>}</div>
+        <p className="concern-claim">{review.claim}</p><p>{review.reason}</p>
+        {review.limitation ? <p className="observation-limit">{review.limitation}</p> : null}
+        <div className="concern-evidence">{review.moments.map(moment => {
+          const resolved = resolveReportMoment(data, moment.streamId, moment.eventId);
+          const time = resolved?.elapsedMs != null ? formatElapsed(resolved.elapsedMs) : resolved?.at ? new Date(resolved.at).toLocaleTimeString() : "Time unavailable";
+          return <button type="button" key={`${moment.streamId}/${moment.eventId}`} disabled={!resolved}
+            onClick={() => { if (resolved) onOpen(moment.streamId, resolved.frameIndex, resolved.eventId, ""); }}
+            aria-label={`Open concern evidence: ${labels.get(moment.streamId) ?? moment.streamId} · ${time}`}>
+            {labels.get(moment.streamId) ?? moment.streamId} · {time}<ArrowRight size={12} aria-hidden="true" /></button>;
+        })}</div>
+      </section>)}
+    </details> : null}
     <details className="report-method"><summary>About this analysis</summary>{report.methodology.map((text, index) => <p key={index}>{text}</p>)}</details>
   </section>;
 }

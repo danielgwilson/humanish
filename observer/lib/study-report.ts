@@ -14,6 +14,11 @@ export interface StudyReport {
   findings: StudyFinding[];
   outcomes: { streamId: string; label: string }[];
   participants?: ParticipantAnalysis[];
+  concernReviews?: {
+    claim: string; basis: ObservationBasis; limitation: string;
+    disposition: "finding" | "context" | "unsupported"; findingId: string | null; reason: string;
+    moments: { streamId: string; eventId: string }[];
+  }[];
   methodology: string[];
 }
 

@@ -6,7 +6,7 @@ export type { AutomaticAnalysisHooks, AutomaticAnalysisResult } from "./automati
 export type { AutomaticStudyAnalysisDeps, AutomaticStudyAnalysisOutcome, AutomaticStudyAnalysisView,
   AutomaticStudyAnalysisCancellation } from "./automatic-study-analysis.js";
 export { STUDY_ANALYSIS_SCHEMA, STUDY_ANALYSIS_CORRECTION_SCHEMA } from "./study-analysis.js";
-export type { StudyAnalysisConfig, StudyAnalysisArtifact, StudyAnalysisResult, StudyAnalysisCorrection, LoadedStudyAnalysis } from "./study-analysis.js";
+export type { StudyAnalysisConfig, StudyAnalysisArtifact, StudyAnalysisResult, StudyAnalysisCorrection, AnalysisConcernReview, LoadedStudyAnalysis } from "./study-analysis.js";
 export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,

@@ -89,9 +89,17 @@ export interface AnalysisFinding {
   nextStep: string;
   priorityReason: string;
 }
+/** Evidence-grounded disposition of a material concern, not model reasoning. */
+export interface AnalysisConcernReview extends AnalysisObservation {
+  disposition: "finding" | "context" | "unsupported";
+  findingId: string | null;
+  reason: string;
+}
 export interface StudyAnalysisResult {
   summary: string;
   participants: AnalysisParticipantReview[];
+  /** Absent in older reports. New analyses account for material exclusions as well as findings. */
+  concernReviews?: AnalysisConcernReview[];
   /** Highest priority first; counts are derived from distinct stream sets. */
   findings: AnalysisFinding[];
   limitations: string[];

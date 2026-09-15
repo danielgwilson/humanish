@@ -24,6 +24,8 @@ const hash = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 const quote = (v: unknown) => object(v) && id(v.evidenceId) && text(v.text);
 const observation = (v: unknown) => object(v) && strings(v, ["claim", "limitation"])
   && enumeration(v.basis, ["visual", "action", "participant_statement", "inference"]) && ids(v.evidenceIds);
+const concernReview = (v: unknown) => object(v) && observation(v) && text(v.reason)
+  && enumeration(v.disposition, ["finding", "context", "unsupported"]) && (v.findingId === null || id(v.findingId));
 const participant = (v: unknown) => object(v) && id(v.streamId) && strings(v, ["summary", "intent", "outcomeReason"])
   && enumeration(v.outcome, ["completed", "blocked", "abandoned", "interrupted", "unknown"])
   && ids(v.evidenceIds) && list(v.feedback, quote) && list(v.limitations, text);
@@ -67,7 +69,8 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
       && (e.capture === null || (object(e.capture) && id(e.capture.eventId) && text(e.capture.path) && hash(e.capture.sha256)
         && enumeration(e.capture.mimeType, ["image/png", "image/jpeg", "image/webp"]))), 10_000)
     || !(a.result === null || (object(a.result) && text(a.result.summary) && list(a.result.participants, participant)
-      && list(a.result.findings, finding, 100) && list(a.result.limitations, text)))) return invalid();
+      && list(a.result.findings, finding, 100) && list(a.result.limitations, text)
+      && (a.result.concernReviews === undefined || list(a.result.concernReviews, concernReview, 60))))) return invalid();
   if ((a.status === "complete" || a.status === "partial") && a.result === null) return invalid();
   // A failed latest attempt is a valid artifact under the store's invalid
   // selection state. Preserve that terminal status without admitting claims.
@@ -99,6 +102,15 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
       if (!f.observations.length || !f.affectedStreamIds.length || f.exposedStreamIds.some((s) => !included.includes(s))
         || f.affectedStreamIds.some((s) => !f.exposedStreamIds.includes(s))
         || f.observations.some((o) => !o.evidenceIds.length || o.evidenceIds.some((key) => !evidence.has(key)))) return invalid();
+    }
+    for (const review of result.concernReviews ?? []) {
+      const refs = review.evidenceIds.map(key => evidence.get(key));
+      if (!refs.length || refs.some(ref => !ref)) return invalid();
+      if (review.basis === "visual" && !refs.some(ref => ref?.capture)) return invalid();
+      if (review.basis === "participant_statement" && refs.some(ref => !ref?.quoteEligible)) return invalid();
+      if (review.basis === "action" && !refs.some(ref => ref && ["ui_action", "command", "tool_call", "file_change", "approval"].includes(ref.kind))) return invalid();
+      const matched = result.findings.find(f => f.id === review.findingId);
+      if (review.disposition === "finding" ? !matched || refs.some(ref => ref && !matched.exposedStreamIds.includes(ref.streamId)) : review.findingId !== null) return invalid();
     }
   }
   const corrections = (value.corrections as StudyAnalysisCorrection[]).filter((c) => c.analysisId === analysis.id && result?.findings.some((f) => f.id === c.findingId));
@@ -167,6 +179,8 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
     outcomes: loaded.state === "ready" ? result?.participants.map((p) => ({ streamId: p.streamId, label: outcomeLabel(p.outcome) })) ?? [] : [],
     participants: result?.participants.map((p) => ({ streamId: p.streamId, summary: p.summary, intent: p.intent, outcome: outcomeLabel(p.outcome), outcomeReason: p.outcomeReason,
       limitations: p.limitations, stale: loaded.state === "stale", moments: p.evidenceIds.flatMap((key) => { const e = evidence.get(key); return e ? [{ eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", elapsedMs: e.elapsedMs, at: e.at, text: e.text }] : []; }) })) ?? [],
+    ...(result?.concernReviews === undefined ? {} : { concernReviews: result.concernReviews.map(({ evidenceIds, ...review }) => ({ ...review,
+      moments: evidenceIds.flatMap(key => { const e = evidence.get(key); return e ? [{ streamId: e.streamId, eventId: e.eventId }] : []; }) })) }),
     methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`, `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
       "This independent interpretation does not change the participant account or recorded completion evidence.", ...(a.config.question ? [`Additional review question: ${a.config.question}`] : [])] : [] };
 }
