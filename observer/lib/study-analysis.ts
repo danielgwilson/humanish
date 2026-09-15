@@ -51,6 +51,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
   if (value.state === "none") return invalid();
   const a = value.analysis;
   if (!object(a) || a.schema !== STUDY_ANALYSIS_SCHEMA || !id(a.id) || a.runId !== data.run.runId
+    || !(a.captureVersion === undefined || a.captureVersion === 2)
     || !enumeration(a.status, ["complete", "partial", "failed", "cancelled"])
     || !strings(a, ["createdAt", "completedAt", "promptVersion"]) || a.provider !== "openai"
     || ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) || !nullableText(a.error)

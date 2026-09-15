@@ -109,6 +109,7 @@ export const studyAnalysisParticipantProvenanceSchema = z.object({
 
 export const studyAnalysisArtifactSchema = z.object({
   schema: z.literal(STUDY_ANALYSIS_SCHEMA),
+  captureVersion: z.literal(2).optional(),
   id,
   runId: sourceId,
   status: z.enum(["complete", "partial", "failed", "cancelled"]),
@@ -177,9 +178,10 @@ export function hashStudyAnalysisValue(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 }
 
-export function digestStudyAnalysisInput(input: Pick<StudyAnalysisInput, "runId" | "sourceRunSha256" | "participants" | "coverage" | "evidence">): string {
+export function digestStudyAnalysisInput(input: Pick<StudyAnalysisInput, "runId" | "sourceRunSha256" | "participants" | "coverage" | "evidence" | "captureVersion">): string {
   return hashStudyAnalysisValue({ runId: input.runId, sourceRunSha256: input.sourceRunSha256,
-    participants: input.participants, coverage: input.coverage, evidence: input.evidence });
+    participants: input.participants, coverage: input.coverage, evidence: input.evidence,
+    ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }) });
 }
 
 const distinct = (values: readonly string[]): boolean => new Set(values).size === values.length;
@@ -237,7 +239,8 @@ export function validateAnalysisResult(input: StudyAnalysisInput, value: unknown
 export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArtifact {
   const parsed = studyAnalysisArtifactSchema.safeParse(value);
   if (!parsed.success) throw new Error("ANALYSIS_ARTIFACT_SCHEMA_INVALID");
-  const artifact = parsed.data;
+  const { captureVersion, ...fields } = parsed.data;
+  const artifact: StudyAnalysisArtifact = { ...fields, ...(captureVersion === undefined ? {} : { captureVersion }) };
   if (artifact.configDigest !== hashStudyAnalysisValue(artifact.config)
     || artifact.inputDigest !== digestStudyAnalysisInput(artifact)) throw new Error("ANALYSIS_DIGEST_INVALID");
   if (Date.parse(artifact.completedAt) < Date.parse(artifact.createdAt)) throw new Error("ANALYSIS_TIME_INVALID");
@@ -316,14 +319,17 @@ export function validateStudyAnalysisExecutionReceipt(value: unknown): StudyAnal
 }
 
 const inputMetadataSchema = studyAnalysisArtifactSchema.pick({
-  runId: true, sourceRunSha256: true, inputDigest: true, participants: true, coverage: true, evidence: true
+  runId: true, sourceRunSha256: true, inputDigest: true, participants: true, coverage: true, evidence: true, captureVersion: true
 });
 
 /** Validate the packet before any paid request, including typed-library callers. */
 export function validateStudyAnalysisInputMetadata(input: StudyAnalysisInput): void {
   const parsed = inputMetadataSchema.safeParse({ runId: input.runId, sourceRunSha256: input.sourceRunSha256,
-    inputDigest: input.inputDigest, participants: input.participants, coverage: input.coverage, evidence: input.evidence });
-  if (!parsed.success || digestStudyAnalysisInput(parsed.data) !== input.inputDigest) throw new Error("ANALYSIS_INPUT_INVALID");
+    inputDigest: input.inputDigest, participants: input.participants, coverage: input.coverage, evidence: input.evidence,
+    ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }) });
+  if (!parsed.success) throw new Error("ANALYSIS_INPUT_INVALID");
+  const { captureVersion, ...fields } = parsed.data;
+  if (digestStudyAnalysisInput({ ...fields, ...(captureVersion === undefined ? {} : { captureVersion }) }) !== input.inputDigest) throw new Error("ANALYSIS_INPUT_INVALID");
   const { coverage, evidence, participants } = parsed.data;
   const included = new Set(coverage.includedStreamIds);
   const captures = new Set(evidence.filter((entry) => entry.capture !== null).map((entry) => JSON.stringify([entry.streamId, entry.capture!.eventId])));

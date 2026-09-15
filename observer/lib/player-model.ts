@@ -53,7 +53,7 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
   const rows: PlayerRow[] = [];
 
   for (const item of items) {
-    if (item.kind === "screenshot" && item.screenshotRef) {
+    if (item.screenshotRef) {
       const href = screenshotHref(item.screenshotRef.path);
       if (href !== null) {
         const atMs = item.at === undefined ? Number.NaN : Date.parse(item.at);
@@ -65,8 +65,12 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
           redaction: item.screenshotRef.redaction,
           ...(Number.isFinite(atMs) ? { atMs } : {})
         });
-        rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true, ...(Number.isFinite(atMs) ? { atMs } : {}) });
-        continue;
+        // Scripted actions can carry their own capture. Keep the action row and
+        // event ID so selecting its image does not erase the original action.
+        if (item.kind === "screenshot") {
+          rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true, ...(Number.isFinite(atMs) ? { atMs } : {}) });
+          continue;
+        }
       }
     }
     // Recorded structured coordinates (#441) are the source of truth; the title

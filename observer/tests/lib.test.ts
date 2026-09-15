@@ -155,6 +155,18 @@ describe("player model", () => {
     expect(buildPlayerModel(streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]))).toBeNull();
     expect(buildPlayerModel({} as unknown as ObserverStream)).toBeNull();
   });
+
+  it("keeps scripted action captures as frames and their original action rows", () => {
+    const model = buildPlayerModel(streamWith(Array.from({ length: 4 }, (_, i) => ({
+      id: `step-${i}`, kind: "ui_action", lifecycle: "completed", status: "passed", title: `Step ${i}`,
+      text: "Original assertion result.", screenshotRef: { path: `shots/step-${i}.png`, redaction: "none" }
+    }))))!;
+    expect(model.frames.map((frame) => [frame.itemId, frame.href, frame.atMs]))
+      .toEqual(Array.from({ length: 4 }, (_, i) => [`step-${i}`, `../shots/step-${i}.png`, undefined]));
+    expect(model.rows.map((row) => [row.id, row.kind, row.frameIndex, row.isFrame, row.text, row.status]))
+      .toEqual(Array.from({ length: 4 }, (_, i) => [`step-${i}`, "ui_action", i, false, "Original assertion result.", "passed"]));
+    expect(model.paced).toBe("avg");
+  });
 });
 
 describe("live helpers", () => {

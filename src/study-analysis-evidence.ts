@@ -117,6 +117,12 @@ const itemText = (item: ActorTraceItem): string => ["message", "reasoning"].incl
   ? item.text : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
 const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
 
+function hasUnmappedCaptures(stream: RunStream): boolean {
+  const paths = new Set(itemsFor(stream).flatMap((item) => typeof item.screenshotRef?.path === "string" ? [item.screenshotRef.path] : []));
+  return (Array.isArray(stream.artifacts) && stream.artifacts.some((artifact) => artifact?.kind === "screenshot" && !paths.has(artifact.path)))
+    || (stream.embed?.kind === "screenshot" && paths.size === 0);
+}
+
 function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBundle {
   if (bytes.length > STUDY_EVIDENCE_LIMITS.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
   const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
@@ -181,15 +187,16 @@ function isObserverCapturePath(value: string): boolean {
   return false;
 }
 
-function participantAssignment(stream: RunStream): string | null {
-  if (stream.assignment === undefined) return null;
+function participantAssignment(stream: RunStream, captureVersion?: 2): string | null {
+  if (stream.assignment === undefined) return captureVersion === 2 && stream.actor?.lane === "scripted-browser"
+    && typeof stream.ui?.intent === "string" && stream.ui.intent.trim() ? stream.ui.intent : null;
   return [stream.assignment.mission, stream.assignment.focus,
     ...(stream.assignment.tasks ?? []).map((task) => `Task ${JSON.stringify(task.id)}: ${task.goal}`)]
     .filter((entry) => typeof entry === "string").join("\n");
 }
 
-function participantSource(stream: RunStream): AnalysisParticipantInput {
-  const assignment = participantAssignment(stream);
+function participantSource(stream: RunStream, captureVersion?: 2): AnalysisParticipantInput {
+  const assignment = participantAssignment(stream, captureVersion);
   const actor = stream.actor;
   return {
     streamId: stream.id,
@@ -220,17 +227,20 @@ interface SourceEntry {
   elapsedMs: number | null;
   frame: number | null;
   capturePath: string | null;
+  captureDeclared: boolean;
 }
-function sourceEntries(bundle: RunBundle, stream: RunStream): SourceEntry[] {
+function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2): SourceEntry[] {
   const items = itemsFor(stream);
-  const captures = items.filter((item) => item.kind === "screenshot" && object(item.screenshotRef)
+  // Absent version retains the exact legacy mapping used by saved 0.89.1 analyses.
+  // V2 follows the actor contract: a scripted action can carry its own capture.
+  const captures = items.filter((item) => (captureVersion === 2 || item.kind === "screenshot") && object(item.screenshotRef)
     && typeof item.screenshotRef.path === "string" && isObserverCapturePath(item.screenshotRef.path));
   const frameIds = new Set(captures.map((item) => item.id));
   const firstAt = stamp(captures[0]?.at);
   let frame = -1;
   const entries: SourceEntry[] = [];
   for (const item of items) {
-    const capturePath = item.kind === "screenshot" && object(item.screenshotRef)
+    const capturePath = (captureVersion === 2 || item.kind === "screenshot") && object(item.screenshotRef)
       && typeof item.screenshotRef.path === "string" && isStudyEvidencePath(item.screenshotRef.path)
       ? item.screenshotRef.path : null;
     if (frameIds.has(item.id)) frame++;
@@ -239,7 +249,8 @@ function sourceEntries(bundle: RunBundle, stream: RunStream): SourceEntry[] {
     entries.push({ eventId: item.id, kind: item.kind, text: itemText(item),
       quoteEligible: ["message", "reasoning"].includes(item.kind) && typeof item.text === "string",
       at, elapsedMs: delta !== null && delta >= 0 ? delta : null,
-      frame: captures.length > 0 ? Math.max(0, frame) : null, capturePath });
+      frame: captures.length > 0 ? Math.max(0, frame) : null, capturePath,
+      captureDeclared: item.kind === "screenshot" || (captureVersion === 2 && item.screenshotRef !== undefined) });
   }
   const runEventIds = new Set<string>();
   for (const event of bundle.events.filter((entry) => entry.streamId === stream.id
@@ -247,7 +258,7 @@ function sourceEntries(bundle: RunBundle, stream: RunStream): SourceEntry[] {
     if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
     runEventIds.add(event.id);
     entries.push({ eventId: event.id, kind: `run_event:${event.type}`, text: event.message,
-      quoteEligible: false, at: stamp(event.at), elapsedMs: null, frame: null, capturePath: null });
+      quoteEligible: false, at: stamp(event.at), elapsedMs: null, frame: null, capturePath: null, captureDeclared: false });
   }
   return entries;
 }
@@ -268,6 +279,7 @@ export async function captureStudyEvidence(
   const current = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const bundle = parseSource(prepared, bundleBytes);
+  const captureVersion = 2 as const;
   if (bundle.streams.some((stream) => stream.liveActor !== undefined
     || ["running", "pending", "queued", "starting", "preparing", "not_started", "suspended"].includes(stream.status))) {
     throw new Error("ANALYSIS_RUN_UNFINISHED");
@@ -279,8 +291,9 @@ export async function captureStudyEvidence(
   let textBytes = 0;
   let imageBytes = 0;
   const participants = selected.map((stream) => {
-    const participant = participantSource(stream);
-    const assignment = participantAssignment(stream);
+    const participant = participantSource(stream, captureVersion);
+    const assignment = participantAssignment(stream, captureVersion);
+    if (assignment === null || assignment.trim() === "") omissions.add("Some participants have no recorded assignment.");
     if (participant.label !== stream.label || participant.assignment !== assignment
       || participant.recordedReason !== (stream.actor?.reason ?? null)) omissions.add("Participant context exceeded the text limit.");
     textBytes += Buffer.byteLength(JSON.stringify(participant));
@@ -289,7 +302,8 @@ export async function captureStudyEvidence(
   if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
   for (const stream of selected) {
     if (!stream.actor) omissions.add("Some participants have no normalized recorded trace.");
-    for (const source of sourceEntries(bundle, stream)) {
+    if (hasUnmappedCaptures(stream)) omissions.add("Some declared captures have no normalized trace reference.");
+    for (const source of sourceEntries(bundle, stream, captureVersion)) {
       if (evidence.length >= limits.evidence || textBytes >= limits.textBytes) {
         omissions.add("Some evidence was omitted by the packet size limit.");
         continue;
@@ -313,7 +327,7 @@ export async function captureStudyEvidence(
             images.push({ evidenceId: id, dataUrl: `data:image/png;base64,${bytes.toString("base64")}` });
           }
         }
-      } else if (source.kind === "screenshot") {
+      } else if (source.captureDeclared) {
         omissions.add("Some screenshot references were absent or nonlocal.");
       }
       evidence.push({ id, streamId: stream.id, eventId: source.eventId, kind: source.kind, text,
@@ -324,7 +338,7 @@ export async function captureStudyEvidence(
   const coverage = { includedStreamIds: selected.map((stream) => stream.id), omittedStreamIds,
     evidenceCount: evidence.length, captureCount: images.length,
     complete: omittedStreamIds.length === 0 && omissions.size === 0, omissions: [...omissions] };
-  const result = { runId: bundle.runId, sourceRunSha256: sha256(bundleBytes), inputDigest: "", participants, coverage, evidence, images };
+  const result = { captureVersion, runId: bundle.runId, sourceRunSha256: sha256(bundleBytes), inputDigest: "", participants, coverage, evidence, images };
   result.inputDigest = digestStudyAnalysisInput(result);
   validateStudyAnalysisInputMetadata(result);
   const after = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
@@ -338,20 +352,23 @@ export async function validateStudyAnalysisEvidence(
   artifact: StudyAnalysisArtifact,
   bundleBytes: Buffer
 ): Promise<void> {
+  if (artifact.captureVersion !== undefined && artifact.captureVersion !== 2) throw new Error("ANALYSIS_CAPTURE_VERSION_INVALID");
   const bundle = parseSource(prepared, bundleBytes);
   if (artifact.runId !== bundle.runId || artifact.sourceRunSha256 !== sha256(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const included = new Set(artifact.coverage.includedStreamIds);
   const omitted = new Set(artifact.coverage.omittedStreamIds);
   if (bundle.streams.some((stream) => !included.has(stream.id) && !omitted.has(stream.id))
     || included.size + omitted.size !== bundle.streams.length) throw new Error("ANALYSIS_SOURCE_COVERAGE_INVALID");
-  const sourceByStream = new Map(bundle.streams.map((stream) => [stream.id, sourceEntries(bundle, stream)]));
+  const sourceByStream = new Map(bundle.streams.map((stream) => [stream.id, sourceEntries(bundle, stream, artifact.captureVersion)]));
   const context = new Map(artifact.participants.map((participant) => [participant.streamId, participant]));
   if (context.size !== included.size || artifact.participants.length !== included.size) throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
   for (const stream of bundle.streams.filter((candidate) => included.has(candidate.id))) {
     const participant = context.get(stream.id);
-    if (!participant || hashStudyAnalysisValue(participant) !== hashStudyAnalysisValue(participantSource(stream))) {
+    if (!participant || hashStudyAnalysisValue(participant) !== hashStudyAnalysisValue(participantSource(stream, artifact.captureVersion))) {
       throw new Error("ANALYSIS_PARTICIPANT_INPUT_INVALID");
     }
+    if (artifact.captureVersion === 2 && artifact.coverage.complete && !participant.assignment?.trim()) throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
+    if (artifact.captureVersion === 2 && artifact.coverage.complete && hasUnmappedCaptures(stream)) throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
   }
   const sourceKeys = new Set<string>();
   const checkedCaptures = new Map<string, string>();
@@ -365,7 +382,8 @@ export async function validateStudyAnalysisEvidence(
     if (matches.length !== 1 || source === undefined || !source.text.startsWith(entry.text)
       || entry.quoteEligible !== source.quoteEligible || entry.at !== source.at || entry.elapsedMs !== source.elapsedMs
       || entry.frame !== source.frame) throw new Error("ANALYSIS_SOURCE_REFERENCE_INVALID");
-    if (artifact.coverage.complete && (entry.text !== source.text || (source.capturePath !== null && entry.capture === null))) {
+    if (artifact.coverage.complete && (entry.text !== source.text || ((source.capturePath !== null
+      || (artifact.captureVersion === 2 && source.captureDeclared)) && entry.capture === null))) {
       throw new Error("ANALYSIS_COVERAGE_INCOMPLETE");
     }
     if (entry.capture !== null) {

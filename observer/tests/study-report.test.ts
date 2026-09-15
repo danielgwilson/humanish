@@ -43,6 +43,16 @@ describe("study report evidence navigation", () => {
     changed.findings[0]!.moments[0]!.eventId = "missing";
     expect(reportProblem(data, changed)).toContain("unavailable");
   });
+  it("opens a scripted action's own capture with the action ID and no invented evidence time", () => {
+    const scripted = structuredClone(data);
+    scripted.streams[0]!.actor!.items = Array.from({ length: 4 }, (_, i) => ({
+      id: `step-${i}`, kind: "ui_action", lifecycle: "completed", title: `Step ${i}`,
+      text: "Original action result.", screenshotRef: { path: `screenshots/step-${i}.png`, redaction: "none" }
+    }));
+    const moment = resolveReportMoment(scripted, stream.id, "step-2")!;
+    expect(moment).toMatchObject({ eventId: "step-2", frameIndex: 2, frame: { itemId: "step-2" }, elapsedMs: null });
+    expect(formatHash(stream.id, moment.frameIndex, null, moment.eventId)).toBe("#/lane/participant/f/3/e/step-2");
+  });
   it("rejects mismatched studies, duplicate outcomes and unresolved lead evidence", () => {
     expect(reportProblem(data, report)).toBeNull();
     expect(reportProblem(data, { ...report, runId: "other" })).toContain("different study");
