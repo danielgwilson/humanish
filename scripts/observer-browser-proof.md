@@ -47,6 +47,12 @@ reviewer annotations, source-aware return navigation, and larger findings lists.
 These synthetic interpretations test projection behavior, not model usefulness.
 The review polish cases prefer a directly cited visual capture with distinct observation support over repeated setup citations, preserve exact capture navigation, and check visible uncertainty plus complete caveats by keyboard on desktop and phone. They do not establish semantic relevance for every finding. A held analysis response proves that the optional feed cannot stall recordings.
 
+Review captures wait for accordion expansion to settle and assert that the image,
+caption and evidence list fit inside its clipping boundary. Separate phone
+screenshots show complete caveats, the recording action, all cited moments,
+the exact recording and the return to the finding. The focus-ring check measures
+all clipping ancestors and must reject the former outward outline on phone.
+
 Four scrubber cases cover desktop/phone at 1×/2× pixel density. Each measures
 start, middle and end in light and dark themes: 24 rendered states. The check
 reads actual native thumb pixels from screenshots and compares them with the

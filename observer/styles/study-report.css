@@ -65,6 +65,9 @@
 .report-finding[aria-expanded="true"] > svg { transform: rotate(180deg); }
 .finding-panel { height: var(--accordion-panel-height); overflow: clip; transition: height 180ms ease; }
 .finding-panel[data-starting-style], .finding-panel[data-ending-style] { height: 0; }
+/* The accordion clips during its height transition. Keep all four sides of a
+   focused control's ring inside that clipping boundary. */
+.finding-panel :focus-visible { outline-offset: -2px; }
 .report-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); grid-template-areas: "interpretation evidence" "followup evidence" "moments moments"; grid-template-rows: auto 1fr auto; gap: 18px 24px; padding: 4px 0 20px 36px; }
 .finding-interpretation { grid-area: interpretation; min-width: 0; max-width: 65ch; }
 .report-claim { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
