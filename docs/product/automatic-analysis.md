@@ -18,8 +18,10 @@ Omit `review.analysis` to leave the existing run behavior unchanged. The budget
 is required when analysis is present. It limits an admission estimate, not the
 provider's final bill, and is separate from participant spending limits. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.
-The key is never sent to the target application. Review a manifest's opt-in
-before running it live.
+Analysis runs in the Humanish runner using its credentials. This setting adds no
+credential channel to the target application; each participant backend retains
+its existing authentication boundary. Review a manifest's opt-in before running
+it live.
 
 The same configuration works through `humanish run <lab>`, `lab run <lab>`,
 `watch <lab>`, and TUI live starts. Direct library calls to the five recording
