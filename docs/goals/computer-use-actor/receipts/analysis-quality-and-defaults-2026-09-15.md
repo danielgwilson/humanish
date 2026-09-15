@@ -30,8 +30,8 @@ are not provider invoices or enforced billing caps.
 
 Both versions retained all three required concerns, preserved affected/exposed
 participant membership and recovery distinctions, ranked the blocker above the
-recovered detour, and avoided the negative-control defects. An independent review
-of all result fields found no critical or material factual errors. One minor
+recovered detour, and avoided the negative-control defects. An independent AI
+review of all result fields found no critical or material factual errors. One minor
 baseline source-citation precision issue remained.
 
 The candidate exposed eight evidence-linked concern decisions: five linked to
@@ -106,5 +106,35 @@ boundary is injected and rejects locally; they do not claim provider execution.
 Explicit diagnostic analysis remains available. Positive retained reasoning-item
 wire coverage was unavailable and is not claimed.
 
-The final-package browser retest and first-contact release study are separate
-operational gates; the earlier browser result above does not substitute for them.
+The final package also completed a fresh recording of the same fictional browser
+fixture. It retained four captures and the assignment, then automatically made
+one actual analysis request with no analysis mapping in the manifest. Analysis
+`analysis-927a7a7a-fdaa-4c60-a712-20ac89603967` completed with one grounded finding
+and two concern reviews. Its known usage estimate was **$0.200193**. The model
+correctly left the assigned outcome unknown despite the recorded scripted pass.
+Readers and export did not add requests or change the original source. Twelve
+desktop/phone browser checks covered exact event/frame/image references, concern
+link numbering, keyboard return, finding focus, reload and page overflow. The
+owned browser closed and the sandbox was independently confirmed absent by its
+exact ID. This is
+an operational retest of one fixture lineage, not a second independent study of
+finding quality.
+
+`pnpm release:dogfood` passed on retained run
+`terminal-2026-09-15T18-14-49-717Z-b2a313c1`. An autonomous terminal participant
+used the installed `0.91.0` candidate for initialization, a four-lane preview,
+verification, review, statistics, HTML export, local Observer serving and feedback
+draft generation. It stopped at the live credentials deliberately withheld by
+the gate; analysis correctly refused the synthetic preview. The product's
+zero-spend policy was satisfied, separately from participant runtime costs.
+The trace retained 22 recognized participant items, and the owned sandbox's
+cleanup ledger confirmed reclamation. All 446 local package files matched the
+frozen candidate. The gate separately packed and preinstalled that source, then
+checked that the participant exercised the candidate version.
+
+The first-contact participant also found a wording concern: metadata preflight
+success can sound like live readiness. Independent inspection confirmed the
+response explicitly declared metadata-only scope, unchecked reachability and no
+sandbox or model spend; `doctor` had correctly identified the missing live SDK
+and key. That pre-existing wording opportunity remains a follow-up, rather than
+evidence that this release falsely verified live prerequisites.

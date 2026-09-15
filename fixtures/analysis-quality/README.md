@@ -76,7 +76,7 @@ Both versions recalled all three required concerns, preserved the participant
 sets and recovery distinction, satisfied the blocker-before-detour rank, and
 avoided the negative-control errors. The candidate added eight evidence-linked
 concern assessments: five linked to findings, one retained as context, and two
-excluded as unsupported. A single independent review of all result fields found
+excluded as unsupported. A single independent AI review of all result fields found
 no critical or material factual errors; one minor baseline provenance-citation
 precision issue remained. The original loose outcome allowlist was preserved,
 with an evidence-first clarification recorded before reviewing the affected
