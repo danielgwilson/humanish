@@ -3,6 +3,7 @@ import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";
+import { parseAutomaticAnalysis } from "./automatic-analysis";
 
 export type { LoadedStudyAnalysis } from "../../src/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
@@ -37,6 +38,12 @@ const correction = (v: unknown): v is StudyAnalysisCorrection => object(v) && v.
 /** Browser admission protects rendering; the producer owns filesystem/hash verification.
  * Do not reclassify a stale report as current just because its shape is readable. */
 export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
+  const selected = parseSelectedAnalysis(value, data);
+  const automatic = parseAutomaticAnalysis(object(value) ? value.automatic : undefined);
+  return automatic ? { ...selected, automatic } : selected;
+}
+
+function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
   if (!object(value) || !enumeration(value.state, ["none", "ready", "stale", "invalid"])
     || !list(value.warnings, text) || !list(value.corrections, correction)) return invalid();
   if (value.analysis === null) return value.state === "none" || value.state === "invalid"

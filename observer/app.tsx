@@ -26,6 +26,7 @@ import { formatHash, parseHash, pushHash } from "./lib/route";
 import { savedEntryLabels } from "./lib/saved-entry-labels";
 import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
+import { automaticAnalysisNotice } from "./lib/automatic-analysis";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object" && ["status", "kind", "query"].every((k) => typeof (v as Record<string, unknown>)[k] === "string" && ((v as Record<string, string>)[k]?.length ?? 0) < 256);
@@ -35,11 +36,12 @@ const routeCompareIds = () => new URLSearchParams(window.location.hash.split("?"
 export function App({ data: initialData, snapshot = false, report: suppliedReport, library, analysis: initialAnalysis }: { data: ObserverData | null; snapshot?: boolean; report?: ReportData; library?: StudyLibrary; analysis?: LoadedStudyAnalysis }) {
   const { data, history, connection, retry, analysis } = useObserverFeed(initialData, snapshot, initialAnalysis);
   const report = useMemo(() => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined), [suppliedReport, analysis, data]);
+  const hasFindingsView = !!report || !!analysis.automatic;
   const [reportRoute, setReportRoute] = useState(() => reportFindingId(window.location.hash));
   const reportIds = useRef<string[]>([]); reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
   const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", reportIds.current);
   const [source, setSource] = useState<RecordingSource>(readSource);
-  const reportActive = !!report && reportRoute !== null;
+  const reportActive = hasFindingsView && reportRoute !== null;
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
   const [navigationRevision, setNavigationRevision] = useState(0);
   const [comparison, setComparison] = useState(compareRoute);
@@ -54,6 +56,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const [playerView, setPlayerView] = useState<(PlayerView & { streamId: string }) | null>(null);
   const [monitoring, setMonitoring] = useState(false);
   const [now, setNow] = useState(Date.now);
+  const automaticNotice = analysis.automatic ? automaticAnalysisNotice(analysis.automatic, snapshot, now) : undefined;
   const [sideOpen, setSideOpen] = useState(() => { try { const saved = window.localStorage.getItem("humanish-sidebar"); return saved === "open" || (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1)); } catch { return true; } });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [phone, setPhone] = useState(() => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 880px)").matches);
@@ -209,14 +212,14 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
         <section className="study-viewbar" aria-label="Study navigation">
           <nav className="study-views" aria-label="Study views">
             <a href="#" aria-label="All participants" aria-current={!findingsView ? "page" : undefined} onClick={(event) => followLink(event, toGrid)}>Participants <span>{streams.length}</span></a>
-            {report ? <a href="#/report" aria-current={findingsView ? "page" : undefined} onClick={(event) => followLink(event, () => openReport())}>Findings <span>{report.findings.length}</span></a> : null}
+            {hasFindingsView ? <a href="#/report" aria-current={findingsView ? "page" : undefined} onClick={(event) => followLink(event, () => openReport())}>Findings <span aria-label={!report ? automaticNotice?.message : undefined}>{report ? report.findings.length : automaticNotice?.pending ? "…" : "—"}</span></a> : null}
           </nav>
           <ShareStatus data={data} />
         </section>
         {needsAttention || monitoring ? <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null} /> : null}
         <main id="observer-content" ref={contentRef} tabIndex={-1} className={selected && model ? "content player-host" : "content"}
           onScroll={(event) => scrollPositions.current.set(contentView, event.currentTarget.scrollTop)}>
-          {reportActive && report ? <StudyReport data={data} report={report} findingId={reportRoute ?? ""} onFinding={openReport}
+          {reportActive ? <StudyReport data={data} report={report} {...(analysis.automatic ? { automatic: analysis.automatic } : {})} snapshot={snapshot} now={now} findingId={reportRoute ?? ""} onFinding={openReport}
             onOpen={(id, frame, eventId, findingId) => openParticipant(id, frame, eventId, { runId: data.run.runId, kind: "finding", findingId })} /> : participantContent}
         </main>
       </div>
