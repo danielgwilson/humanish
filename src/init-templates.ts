@@ -256,10 +256,10 @@ execution:
   desktop:
     device: desktop             # mobile | small-mobile | narrow-mobile | tablet | desktop | wide
     # browser: chrome            # default | chrome | chromium | firefox; concrete values fail closed
-    # Only HEIGHT renders as declared: a sub-500 width is floored to Chrome's ~500px window
-    # minimum, so mobile (414) and small-mobile (360) both render 500 wide. The model is told its
-    # device.
-    # True touch/DPR/UA emulation comes with the deterministic CDP actor (a later slice).
+    # Presets size the physical screen; Chrome's window width has a ~500px minimum.
+    # For mobile presets, opt into CSS viewport, touch, DPR and mobile user-agent emulation:
+    # fidelity: { mobileEmulation: true } # Chrome/Chromium only; desktop/tablet lanes unchanged
+    # The bundle records measured screen, page viewport and emulation fidelity separately.
 scenario:
   mode: dry-run
 # policies:
@@ -283,9 +283,10 @@ description: >-
   follower join missions (followers go through the real Join flow). Dry-run (the default) emits ONE
   external-public evidence bundle at $0. A live run needs OPENAI_API_KEY + E2B_API_KEY and
   scenario.mode: live. Point appUrl + publicTarget at a public deployment YOU own/operate.
-  MOBILE FIDELITY: on the E2B-desktop route a sub-500 preset width is FLOORED to 500 (Chrome will
-  not render a narrower window), so mobile (414) and small-mobile (360) render identically; only
-  HEIGHT renders as declared. There is no touch input and DPR/isMobile are prompt-signal + metadata. HONESTY: attribution stays
+  MOBILE FIDELITY: by default Chrome's physical window has a 500px minimum width, no touch
+  emulation and desktop DPR/user-agent behavior. Set execution.desktop.fidelity.mobileEmulation to true
+  to request the mobile preset's CSS viewport, touch, DPR and mobile user agent on Chrome/Chromium.
+  The bundle records measured geometry and emulation fidelity. HONESTY: attribution stays
   shared-world, but every strength claim degrades honestly — provenance external-public (not seeded),
   NO synthetic attestation (you cannot claim synthetic on a real site), NO authoritative shared-state
   proof, concurrency by temporal co-occupancy + observed lobby convergence.
@@ -304,7 +305,7 @@ actors:
     lanes: # the roster (>=2) with EXACTLY ONE host: true seat
       - id: host
         host: true # the designated host seat that creates the shared session
-        device: mobile # 414x896 preset, RENDERED 500 wide (see the width floor above)
+        device: mobile # 414x896 preset; physical window width floors to 500 (see emulation above)
         instruction: Create a shared lobby, wait for the others to join, then start and play.
       - id: player-2
         device: mobile
@@ -319,6 +320,8 @@ execution:
   # example died at 120000 with every seat expiring mid game and zero mission actions taken.
   timeoutMs: 420000
   concurrency: 3 # all 3 seats live at once (the default when omitted); lower only to cap paid desktops
+  # desktop:
+  #   fidelity: { mobileEmulation: true } # opt into mobile CSS viewport, touch, DPR and user agent
 scenario:
   mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
 defaults:
