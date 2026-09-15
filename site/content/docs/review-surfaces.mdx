@@ -76,7 +76,12 @@ Participants and Findings share one Observer workspace. The participant grid,
 recordings and original feedback remain available while you review ranked
 observations and follow their evidence links.
 
-Analysis is opt-in. Inspect the local admission estimate, then generate:
+Supported live studies generate analysis after the recording finishes by default,
+using `gpt-6-astra` with a separate $3 admission estimate limit. Set
+`review.analysis: false` in the lab to disable it, or configure
+`review.analysis.maxCostUsd` to choose another analysis budget.
+
+For an existing recording, inspect the local admission estimate, then generate:
 
 ```bash
 npx humanish analyze --run latest --max-cost 3 --dry-run --json
@@ -89,6 +94,13 @@ Generation sends selected retained text and captures to OpenAI and requires
 not an exact bill. Opening Observer does not start analysis. The review covers
 intent, outcome, friction, recovery and participant feedback; each finding links
 to original evidence. Coverage limits and missing evidence remain visible.
+
+**Concerns considered** shows material concerns reviewed in the analysis,
+including reasons for leaving some out of the ranked findings. Follow those
+evidence links to inspect a reported concern or recovered mistake. Reported
+confusion may be useful even when a link is correct or the study setup explains
+it; the finding should qualify its cause. These decisions are model
+interpretations and still need review.
 
 `analyze list --json` includes version history and execution receipts.
 `analyze show --json` reads the latest usable version. Use `--rerun` to request

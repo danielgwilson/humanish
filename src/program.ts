@@ -1213,7 +1213,7 @@ function analysisSelection<T extends { cwd: string; run: string }>(options: T, c
 function registerAnalyzeCommand(parent: Command, io: CliIo): void {
   const analyze = parent.command("analyze")
     .enablePositionalOptions()
-    .description("Analyze retained participant evidence into versioned findings. Explicit opt-in: sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
+    .description("Analyze retained participant evidence into versioned findings. This request sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
     .summary("Generate evidence-linked study findings.")
     .option("--run <id>", "Completed run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")

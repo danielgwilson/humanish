@@ -50,7 +50,9 @@ npx humanish observe --run latest --open
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
 `try-live` clones and studies drawDB, not your project. Its **$2 cap covers
-estimated model spend**; hosted desktop time is additional. Caps are checked
+estimated participant model spend**. Post-run analysis defaults to a separate
+**$3 admission estimate limit**; set `review.analysis: false` to disable it.
+Hosted desktop time is additional. Participant caps are checked
 between turns and are not provider billing ceilings. Allow a few minutes for
 the app to build and the participant to work. See [budgets and privacy](https://humanish.dev/docs/budgets-and-privacy).
 
