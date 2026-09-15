@@ -174,7 +174,7 @@ function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
   const inProgress = (bundle.simulations ?? []).some((simulation) => simulation?.status === "running");
   const legacyLabId = bundle.lab === undefined ? inferLegacyLabId(bundle) : undefined;
   return {
-    runId: bundle.runId ?? runId,
+    runId,
     derivedFrom: "bundle",
     liveness: inProgress ? "interrupted" : "finished",
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
@@ -239,7 +239,7 @@ export async function readRunIndex(cwdInput: string, options: ReadRunIndexOption
         continue;
       }
       const raw = await readJson(statusFile);
-      if (isRunStatusRecord(raw)) {
+      if (isRunStatusRecord(raw) && raw.runId === runId) {
         const entry = entryFromStatus(raw, nowMs);
         cache?.set(runId, statusKey, entry);
         runs.push(entry);

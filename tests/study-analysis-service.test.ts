@@ -12,6 +12,7 @@ import { renderObserver, serveObserver } from "../src/observer.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
 import { syntheticArtifact, syntheticResult } from "./study-analysis-fixtures.js";
+import { computeStats } from "../src/stats.js";
 
 const config: StudyAnalysisConfig = { model: "gpt-5.6-sol", question: null, maxCostUsd: 5, timeoutMs: 1000, maxOutputTokens: 8192 };
 // Real captured wire envelope; only the synthetic analysis answer is replaced.
@@ -69,6 +70,36 @@ describe("ordinary study analysis flow", () => {
     expect(again).toMatchObject({ ok: true, reused: true, analysisId: result.analysisId });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
+  it("retains an unresolved accounting marker before transport and resolves it exactly once", async () => {
+    const respond = await transport();
+    const fetch = vi.fn<typeof globalThis.fetch>(async (...args) => {
+      const attempts = await readdir(path.join(runRoot, "analysis-attempts"));
+      expect(attempts).toHaveLength(1);
+      const files = await readdir(path.join(runRoot, "analysis-attempts", attempts[0]!));
+      expect(files).toEqual(["start.json"]);
+      const during = await computeStats(cwd);
+      expect(during.ok && during.totals.costs.analysisUnresolvedAttempts).toBe(1);
+      return respond(...args);
+    });
+    const result = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch });
+    expect(result.ok).toBe(true);
+    const after = await computeStats(cwd);
+    expect(after.ok && after.totals.costs).toMatchObject({ analysisAttempts: 1, analysisDispatchedAttempts: 1,
+      analysisUnresolvedAttempts: 0, analysisEstimatedUsd: result.usage?.estimatedCostUsd });
+    await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "", fetch });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((await computeStats(cwd))).toEqual(after);
+  });
+
+  it("a rejected pre-dispatch guard sends nothing and creates no potentially paid attempt", async () => {
+    const fetch = await transport();
+    const result = await analyzeStudy(cwd, "analysis-flow", { config }, { apiKey: "synthetic-key", fetch,
+      beforeDispatch: async () => { throw new Error("guard rejected"); } });
+    expect(result.ok).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await readdir(runRoot)).not.toContain("analysis-attempts");
   });
 
   it("requires opt-in cost and refuses budget, dry-run source, active source and cancellation before dispatch", async () => {

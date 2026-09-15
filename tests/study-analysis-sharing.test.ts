@@ -35,6 +35,7 @@ describe("analysis sharing through a warmed serving cache", () => {
       // files under analysis/ retain the generic contained-file serving contract.
       await writeFile(path.join(prepared.physicalRunRoot, "analysis", artifact.id, ".humanish-write-synthetic.tmp"), marker);
       await writeFile(path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, ".humanish-write-synthetic.tmp"), marker);
+      await writeFile(path.join(prepared.physicalRunRoot, "analysis-attempts", artifact.id, "start.json"), marker);
       await writeFile(path.join(prepared.physicalRunRoot, "analysis", "legacy-notes.txt"), "Synthetic legacy evidence");
       expect((await verifyRun(cwd, "synthetic-study")).shareSafety.status).toBe("blocked");
       // run.json has not changed, so the old admission is deliberately still warm.
@@ -56,6 +57,7 @@ describe("analysis sharing through a warmed serving cache", () => {
         `analysis//${artifact.id}/analysis.json`,
         `observer/../analysis/${artifact.id}/analysis.json`,
         `analysis-attempts/${artifact.id}/receipt.json`,
+        `analysis-attempts/${artifact.id}/start.json`,
         `analysis/${artifact.id}/.humanish-write-synthetic.tmp`,
         `analysis-attempts/${artifact.id}/.humanish-write-synthetic.tmp`
       ]) {

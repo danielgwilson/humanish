@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-09-15T20:49:27.470Z",
+  "desktopSdkVersion": "2.4.0",
+  "source": "Hosted Chrome, synthetic loopback pages; generated target IDs replaced with labels. Command fields and numeric values are unchanged.",
+  "backgroundAfterNavigation": {
+    "exitCode": 0,
+    "stdout": "{\"browserWindow\": {\"x\": 0, \"y\": 0, \"width\": 0, \"height\": 0}, \"viewport\": {\"width\": 1512, \"height\": 805, \"deviceScaleFactor\": 1}, \"targetId\": \"LAUNCH-PAGE\"}\n",
+    "stderr": ""
+  },
+  "foreground": {
+    "exitCode": 0,
+    "stdout": "{\"browserWindow\": {\"x\": 0, \"y\": 0, \"width\": 1512, \"height\": 861}, \"viewport\": {\"width\": 1512, \"height\": 861, \"deviceScaleFactor\": 1}, \"targetId\": \"FOREGROUND-PAGE\"}\n",
+    "stderr": ""
+  },
+  "closedLaunchTarget": {
+    "exitCode": 0,
+    "stdout": "{\"unavailable\": \"no http page among 3 CDP targets on 127.0.0.1:9222\"}\n",
+    "stderr": ""
+  },
+  "remainingForeground": {
+    "exitCode": 0,
+    "stdout": "{\"browserWindow\": {\"x\": 0, \"y\": 0, \"width\": 1512, \"height\": 861}, \"viewport\": {\"width\": 1512, \"height\": 861, \"deviceScaleFactor\": 1}, \"targetId\": \"FOREGROUND-PAGE\"}\n",
+    "stderr": ""
+  },
+  "backgroundRuntimeEvaluateReply": {
+    "id": 1,
+    "result": {
+      "result": {
+        "type": "object",
+        "value": {
+          "browserWindow": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "viewport": {
+            "width": 1512,
+            "height": 805,
+            "deviceScaleFactor": 1
+          }
+        }
+      }
+    }
+  }
+}

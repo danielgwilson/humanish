@@ -8,6 +8,7 @@
 import path from "node:path";
 
 import { readRunIndex, type RunIndexEntry } from "./run-index.js";
+import { addStudyCosts, emptyStudyCosts, readStudyCosts, type StudyCosts, type StudyCostRow } from "./study-costs.js";
 
 export const STATS_SCHEMA = "humanish.stats.v1";
 
@@ -30,20 +31,23 @@ export interface StatsLabRow {
   /** Over live runs with both timestamps. */
   medianDurationMs?: number;
   durationSamples: number;
-  /** Over runs with a known estimate. */
+  /** Legacy participant/desktop-only median over runs with a known estimate. */
   medianCostUsd?: number;
   costSamples: number;
   /** Runs with no estimate: a subscription brain, an interrupted run, an old bundle. Never zero. */
   unpricedRuns: number;
   participants: StatsParticipants;
+  costs: StudyCosts;
 }
 
 export interface StatsDayRow {
   day: string;
   runs: number;
   live: number;
+  /** Legacy participant/desktop subtotal; costs also includes retained analysis. */
   estimatedSpendUsd: number;
   unpricedRuns: number;
+  costs: StudyCosts;
 }
 
 export interface StatsResult {
@@ -57,22 +61,28 @@ export interface StatsResult {
     live: number;
     dryRun: number;
     running: number;
-    /** Sum over runs with a known estimate. */
+    /** Legacy participant/desktop subtotal. Use costs.estimatedTotalUsd for retained analysis too. */
     estimatedSpendUsd: number;
     unpricedRuns: number;
     participants: StatsParticipants;
     verdicts: Record<string, number>;
+    costs: StudyCosts;
   };
   labs: StatsLabRow[];
   days: StatsDayRow[];
+  /** Same selected runs; individual accounting gaps are inspectable without reading private evidence. */
+  costsByRun: StudyCostRow[];
   /** Directories that could not be read, by name — surfaced, never silently dropped. */
   unreadable: string[];
   note: string;
 }
 
 export const STATS_NOTE =
-  "Every dollar figure is an estimate summed from per-run rate-table estimates, never a provider charge. "
-  + "A run with no estimate (a subscription brain, an interrupted run, an older bundle) is counted in unpricedRuns and adds nothing to the sum.";
+  "Every dollar figure is a retained rate-table estimate, never a provider charge. "
+  + "Known spend includes participant/desktop estimates and all distinct recorded analysis attempts; reuse is counted once. "
+  + "Unknown amounts are excluded, not $0. Missing historical attempts cannot be reconstructed. "
+  + "Analysis is attributed to its run's start date, including later reruns. "
+  + "JSON estimatedSpendUsd and medianCostUsd retain their participant/desktop-only meaning; costs includes analysis.";
 
 export interface StatsOptions {
   /** ISO date or datetime; runs that started before it are excluded. */
@@ -131,7 +141,12 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
   }
 
   const index = await readRunIndex(cwd, options.nowMs === undefined ? {} : { nowMs: options.nowMs });
-  const selected = index.runs.filter((entry) => {
+  // Corrupt source metadata must not hide separately retained paid analysis receipts.
+  // These directories cannot be attributed to a lab/date, so scoped filters exclude them.
+  const indexedIds = new Set(index.runs.map((entry) => entry.runId));
+  const entries: RunIndexEntry[] = [...index.runs, ...index.unreadable.filter((id) => !indexedIds.has(id))
+    .map((runId) => ({ runId, derivedFrom: "directory" as const, liveness: "interrupted" as const }))];
+  const selected = entries.filter((entry) => {
     if (options.lab !== undefined && entry.lab?.id !== options.lab) return false;
     if (sinceMs !== undefined) {
       const at = entryTime(entry);
@@ -150,17 +165,22 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     estimatedSpendUsd: 0,
     unpricedRuns: 0,
     participants: emptyParticipants(),
-    verdicts: {}
+    verdicts: {},
+    costs: emptyStudyCosts()
   };
-  const labs = new Map<string, StatsLabRow & { durations: number[]; costs: number[] }>();
+  const labs = new Map<string, StatsLabRow & { durations: number[]; runCosts: number[] }>();
   const days = new Map<string, StatsDayRow>();
+  const costsByRun: StudyCostRow[] = [];
 
   for (const entry of selected) {
+    const accounting = await readStudyCosts(cwd, entry);
+    costsByRun.push(accounting);
+    addStudyCosts(totals.costs, accounting.costs);
     totals.runs += 1;
     if (entry.mode === "live") totals.live += 1;
     if (entry.mode === "dry-run") totals.dryRun += 1;
     if (entry.liveness === "running") totals.running += 1;
-    const priced = typeof entry.estimatedCostUsd === "number";
+    const priced = typeof entry.estimatedCostUsd === "number" && Number.isFinite(entry.estimatedCostUsd) && entry.estimatedCostUsd >= 0;
     if (priced) totals.estimatedSpendUsd += entry.estimatedCostUsd as number;
     else totals.unpricedRuns += 1;
     addParticipants(totals.participants, entry);
@@ -171,7 +191,7 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     if (row === undefined) {
       row = {
         lab: labId, runs: 0, live: 0, dryRun: 0, judged: 0, passed: 0, durationSamples: 0, costSamples: 0,
-        unpricedRuns: 0, participants: emptyParticipants(), durations: [], costs: []
+        unpricedRuns: 0, participants: emptyParticipants(), durations: [], costs: emptyStudyCosts(), runCosts: []
       };
       labs.set(labId, row);
     }
@@ -183,31 +203,33 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
       if (entry.verdict === "pass") row.passed += 1;
     }
     if (entry.mode === "live" && entry.durationMs !== undefined) row.durations.push(entry.durationMs);
-    if (priced) row.costs.push(entry.estimatedCostUsd as number);
+    if (priced) row.runCosts.push(entry.estimatedCostUsd as number);
     else row.unpricedRuns += 1;
     addParticipants(row.participants, entry);
+    addStudyCosts(row.costs, accounting.costs);
 
     const at = entryTime(entry);
     const day = at === undefined ? "(undated)" : at.slice(0, 10);
     let dayRow = days.get(day);
     if (dayRow === undefined) {
-      dayRow = { day, runs: 0, live: 0, estimatedSpendUsd: 0, unpricedRuns: 0 };
+      dayRow = { day, runs: 0, live: 0, estimatedSpendUsd: 0, unpricedRuns: 0, costs: emptyStudyCosts() };
       days.set(day, dayRow);
     }
     dayRow.runs += 1;
     if (entry.mode === "live") dayRow.live += 1;
     if (priced) dayRow.estimatedSpendUsd += entry.estimatedCostUsd as number;
     else dayRow.unpricedRuns += 1;
+    addStudyCosts(dayRow.costs, accounting.costs);
   }
 
   const labRows: StatsLabRow[] = [...labs.values()]
-    .map(({ durations, costs, ...row }) => ({
+    .map(({ durations, runCosts, ...row }) => ({
       ...row,
       ...(row.judged === 0 ? {} : { passRate: round(row.passed / row.judged) }),
       ...(durations.length === 0 ? {} : { medianDurationMs: Math.round(median(durations)!) }),
       durationSamples: durations.length,
-      ...(costs.length === 0 ? {} : { medianCostUsd: round(median(costs)!) }),
-      costSamples: costs.length
+      ...(runCosts.length === 0 ? {} : { medianCostUsd: round(median(runCosts)!) }),
+      costSamples: runCosts.length
     }))
     .sort((a, b) => b.runs - a.runs || a.lab.localeCompare(b.lab));
 
@@ -220,6 +242,7 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     totals: { ...totals, estimatedSpendUsd: round(totals.estimatedSpendUsd) },
     labs: labRows,
     days: [...days.values()].map((row) => ({ ...row, estimatedSpendUsd: round(row.estimatedSpendUsd) })).sort((a, b) => a.day.localeCompare(b.day)),
+    costsByRun,
     unreadable: index.unreadable,
     note: STATS_NOTE
   };
@@ -227,6 +250,10 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
 
 function money(value: number): string {
   return `$${value.toFixed(2)}`;
+}
+
+function knownMoney(value: number | null): string {
+  return value === null ? "no retained estimate" : money(value);
 }
 
 function minutes(ms: number): string {
@@ -243,7 +270,10 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
   const lines = [
     `humanish stats${scope.length === 0 ? "" : ` (${scope.join(", ")})`}`,
     `runs: ${t.runs} (${t.live} live, ${t.dryRun} dry-run${t.running > 0 ? `, ${t.running} running` : ""})`,
-    `estimated spend: ${money(t.estimatedSpendUsd)} over ${t.runs - t.unpricedRuns} priced run(s); ${t.unpricedRuns} unpriced (counted, not $0)`,
+    `known estimated spend: ${knownMoney(t.costs.estimatedTotalUsd)}`,
+    `participants + desktops: ${knownMoney(t.costs.runEstimatedUsd)}; ${t.costs.incompleteRunEstimates} run(s) with incomplete accounting`,
+    `analysis: ${knownMoney(t.costs.analysisEstimatedUsd)} over ${t.costs.analysisAttempts} recorded attempt(s); ${t.costs.analysisUnpricedAttempts} unpriced, ${t.costs.analysisUnresolvedAttempts} unresolved`,
+    `analysis history: ${t.costs.analysisHistoryUncertainRuns} run(s) missing or uncertain; use --json for per-run accounting`,
     `participants: ${t.participants.reachedGoal}/${t.participants.total} recorded goal completions, ${t.participants.reportedFriction} reported friction`,
     `verdicts: ${Object.entries(t.verdicts).map(([verdict, count]) => `${verdict} ${count}`).join(", ") || "none recorded"}`
   ];
@@ -252,14 +282,14 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
     for (const row of result.labs) {
       const rate = row.passRate === undefined ? "no verdicts" : `${row.passed}/${row.judged} pass`;
       const duration = row.medianDurationMs === undefined ? "no timed live runs" : `median ${minutes(row.medianDurationMs)} over ${row.durationSamples}`;
-      const cost = row.medianCostUsd === undefined ? "no priced runs" : `median ${money(row.medianCostUsd)} over ${row.costSamples}`;
-      lines.push(`- ${row.lab}: ${row.runs} run(s), ${row.live} live; ${rate}; ${duration}; ${cost}; ${row.unpricedRuns} unpriced`);
+      const cost = row.medianCostUsd === undefined ? "no priced participant/desktop runs" : `participant/desktop median ${money(row.medianCostUsd)} over ${row.costSamples}`;
+      lines.push(`- ${row.lab}: ${row.runs} run(s), ${row.live} live; ${rate}; ${duration}; known study spend ${knownMoney(row.costs.estimatedTotalUsd)}; ${cost}; ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`);
     }
   }
   if (result.days.length > 0) {
     lines.push("", "by day:");
     for (const row of result.days) {
-      lines.push(`- ${row.day}: ${row.runs} run(s), ${row.live} live, ${money(row.estimatedSpendUsd)} estimated${row.unpricedRuns > 0 ? `, ${row.unpricedRuns} unpriced` : ""}`);
+      lines.push(`- ${row.day}: ${row.runs} run(s), ${row.live} live, known study spend ${knownMoney(row.costs.estimatedTotalUsd)}, ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`);
     }
   }
   if (result.unreadable.length > 0) lines.push("", `unreadable run directories: ${result.unreadable.join(", ")}`);

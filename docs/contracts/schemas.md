@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.91.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.91.1`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -41,6 +41,7 @@ workflow without leaking private upstream truth into core.
 | Study analysis | `humanish.study-analysis.v1` | see [study analysis](study-analysis.md) and synthetic analysis fixtures in `tests/` |
 | Study analysis correction | `humanish.study-analysis-correction.v1` | see [study analysis](study-analysis.md#human-review-and-sharing) |
 | Analysis execution receipt | `humanish.analysis-execution.v1` | see [study analysis](study-analysis.md#durable-records) |
+| Analysis execution start | `humanish.analysis-execution-start.v1` | see [study analysis](study-analysis.md#durable-records) |
 | Verification | `humanish.verify-result.v1` | `five-check-verify` |
 | Policy | `humanish.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
 | Feedback | `humanish.feedback.v1` | `public-safe-feedback` |

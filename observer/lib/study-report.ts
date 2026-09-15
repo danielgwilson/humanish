@@ -37,6 +37,7 @@ export interface StudyFinding {
   summary: string;
   scope: string;
   limitation: string;
+  assessment?: { confidence: string; recovery: string; exposureReason: string; limitations: string[] };
   nextStep: string;
   priorityReason: string;
   account: string;
@@ -45,7 +46,18 @@ export interface StudyFinding {
   observations?: { claim: string; basis: ObservationBasis; limitation: string }[];
   leadEventId?: string;
   corrections?: { status: "confirmed" | "dismissed" | "amended"; reason: string; replacementClaim: string | null; createdAt: string }[];
-  moments: { streamId: string; eventId: string; label: string; note: string; bases?: ObservationBasis[] }[];
+  moments: { streamId: string; eventId: string; label: string; note: string; bases?: ObservationBasis[]; observationCount?: number }[];
+}
+
+/** Select only from cited entries. A capture cited as visual evidence is preferable
+ * to an inherited context image. Broader direct observation coverage breaks ties;
+ * neither chronology nor inferred emotion establishes a more useful preview. */
+export function representativeReportMoment<T extends { eventId: string; bases?: ObservationBasis[]; observationCount?: number; resolved: ReturnType<typeof resolveReportMoment> }>(moments: T[], explicitEventId?: string): T | undefined {
+  const explicit = explicitEventId ? moments.find(moment => moment.eventId === explicitEventId) : undefined;
+  if (explicit) return explicit;
+  const visual = moments.filter(moment => moment.bases?.includes("visual") && moment.resolved?.frame?.itemId === moment.eventId);
+  return visual.reduce<T | undefined>((selected, moment) => !selected || (moment.observationCount ?? 1) > (selected.observationCount ?? 1) ? moment : selected, undefined)
+    ?? moments.find(moment => moment.resolved) ?? moments[0];
 }
 
 export function resolveReportMoment(data: ObserverData, streamId: string, eventId: string) {

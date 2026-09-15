@@ -1024,6 +1024,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             targetUrl: spec.seatUrl,
             requestedScreen: sandboxResolution,
             requestTimeoutMs,
+            pagePreference: "active",
             resize: false
           }).catch((error: unknown) => ({
             warnings: [`Final browser geometry measurement failed for lane ${spec.roleId}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`]

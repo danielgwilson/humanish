@@ -68,7 +68,7 @@ describe("humanish stats", () => {
     const since = await computeStats(cwd, { since: "2026-09-01T19:00:00Z", nowMs: NOW });
     if (!since.ok) throw new Error(since.error.message);
     expect(since.totals.runs).toBe(2);
-    expect(since.days).toEqual([{ day: "2026-09-01", runs: 2, live: 2, estimatedSpendUsd: 0, unpricedRuns: 2 }]);
+    expect(since.days).toMatchObject([{ day: "2026-09-01", runs: 2, live: 2, estimatedSpendUsd: 0, unpricedRuns: 2 }]);
 
     const bad = await computeStats(cwd, { since: "last tuesday", nowMs: NOW });
     expect(bad.ok).toBe(false);
@@ -80,16 +80,18 @@ describe("humanish stats", () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     if (!result.ok) throw new Error(result.error.message);
     expect(result.days.map((row) => row.day)).toEqual(["2026-08-31", "2026-09-01"]);
-    expect(result.days[1]).toEqual({ day: "2026-09-01", runs: 4, live: 4, estimatedSpendUsd: 0.325, unpricedRuns: 2 });
+    expect(result.days[1]).toMatchObject({ day: "2026-09-01", runs: 4, live: 4, estimatedSpendUsd: 0.325, unpricedRuns: 2 });
   });
 
   it("reads as a short report, with the unpriced count next to the sum", async () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     const text = formatStatsHuman(result);
     expect(text).toContain("runs: 5 (4 live, 1 dry-run, 1 running)");
-    expect(text).toContain("estimated spend: $0.33 over 3 priced run(s); 2 unpriced (counted, not $0)");
+    expect(text).toContain("known estimated spend: $0.33");
+    expect(text).toContain("analysis: no retained estimate over 0 recorded attempt(s)");
+    expect(text).toContain("analysis history: 5 run(s) missing or uncertain");
     expect(text).toContain("participants: 2/3 recorded goal completions, 2 reported friction");
-    expect(text).toContain("- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; median $0.16 over 2; 2 unpriced");
+    expect(text).toContain("- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced");
   });
 
   it("an empty project is an empty report, not an error", async () => {

@@ -3,30 +3,28 @@
 // agree (mobile/small-mobile/tablet) the value is copied verbatim; where they diverge (desktop
 // baseline) both are kept as distinct named presets (laptop vs external monitor).
 //
-// FIDELITY NOTE (read before trusting "mobile"): on the computer-use / E2B-desktop route, only
-// width/height physically render — the desktop X screen is sized to the preset, so a site's
-// width-based responsive CSS fires (real mobile LAYOUT), but there is NO touch input, the
-// device-scale-factor is not rendered, and the user-agent stays desktop. This is exactly the
-// fidelity the bespoke sims' organic (computer-use) lanes have — they compensate by TELLING the
-// model its device in the prompt, which this harness also does. True touch/DPR/UA emulation
-// needs the deterministic CDP driver (a later actor); `isMobile`/`deviceScaleFactor` are carried
-// here as honest metadata + a prompt signal, not a rendered guarantee on this route.
+// On the computer-use / E2B-desktop route, presets size the physical X screen by default.
+// CSS viewport dimensions are measured independently; browser chrome and the width floor below
+// can make them differ. A mobile preset alone does not apply touch, DPR or a mobile user agent.
+// With execution.desktop.fidelity.mobileEmulation enabled, hosted Chromium mobile lanes apply
+// those overrides through a held CDP session, including later tabs, and record page read-back.
+// Neither a preset nor browser emulation establishes physical-device or touch fidelity.
 //
 // ONE MORE ROUTE CONSTRAINT: Chrome won't render a window narrower than ~500 CSS px, so the RENDERED
 // screen width is floored to MIN_DESKTOP_RENDER_WIDTH in resolveLaneDevice — a sub-500 preset (mobile
 // 414, small-mobile 360, narrow-mobile 320) is rendered on a 500-wide screen the window fits exactly
 // (otherwise the 500-wide window overflowed the narrow screen and clipped the page). These preset
-// widths remain the honest device identity (prompt + metadata); rendering the page at the true sub-500
-// CSS viewport regardless of window width is the #221 CDP-device-emulation upgrade.
+// widths remain the requested device identity (prompt + metadata). Opt-in mobile emulation sets
+// the CSS viewport independently of this physical floor; actual read-back remains the evidence.
 
 export interface DevicePreset {
-  /** Requested CSS-pixel screen width on the hosted E2B desktop route. */
+  /** Requested device width; the hosted physical screen may be widened to its minimum. */
   width: number;
-  /** Requested CSS-pixel screen height on the hosted E2B desktop route. */
+  /** Requested device height, used for the hosted physical screen. */
   height: number;
-  /** Whether this models a touch/mobile device (metadata + prompt signal on the CUA route). */
+  /** Mobile identity; enables emulation only when the hosted lane explicitly opts in. */
   isMobile: boolean;
-  /** Device pixel ratio (metadata + prompt signal on the CUA route; rendered only on the CDP route). */
+  /** Requested DPR; applied on hosted mobile lanes only with opt-in CDP emulation. */
   deviceScaleFactor: number;
 }
 

@@ -8,7 +8,7 @@ export function isStudyAnalysisRecordPath(relativePath: string): boolean {
   const parts = relativePath.split("/");
   const leaf = parts.at(-1)!;
   return (parts[0] === "analysis" && ["analysis.json", "correction.json"].includes(leaf))
-    || (parts[0] === "analysis-attempts" && leaf === "receipt.json")
+    || (parts[0] === "analysis-attempts" && ["receipt.json", "start.json"].includes(leaf))
     || (parts[0] === "analysis-automatic" && ["job.json", "cancel.json"].includes(leaf))
     || (["analysis", "analysis-attempts", "analysis-automatic"].includes(parts[0]!) && leaf.startsWith(".humanish-write-"));
 }

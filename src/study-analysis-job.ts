@@ -94,6 +94,21 @@ async function bindJob(prepared: PreparedRunArtifactPaths): Promise<PreparedSele
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
 }
 
+/** Minimal historical accounting, without source validation, execution or liveness inference. */
+export async function readAutomaticStudyAnalysisAccounting(prepared: PreparedRunArtifactPaths): Promise<{
+  attemptId: string; analysisId: string | null; started: boolean; reused: boolean; uncertain: boolean;
+} | "unknown" | undefined> {
+  try {
+    const root = await bindJob(prepared);
+    if (!root) return undefined;
+    const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
+    if (!bytes) return "unknown";
+    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    return { attemptId: record.attemptId, analysisId: record.analysisId, started: record.startedAt !== null,
+      reused: record.reason === "AUTOMATIC_ANALYSIS_REUSED", uncertain: record.state === "unknown" };
+  } catch { return "unknown"; }
+}
+
 /** Read-only projection. A stale timestamp or persisted claim never authorizes execution. */
 export async function readAutomaticStudyAnalysisPrepared(prepared: PreparedRunArtifactPaths, now = Date.now()): Promise<AutomaticStudyAnalysisView | undefined> {
   try {

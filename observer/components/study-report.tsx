@@ -3,7 +3,7 @@ import { ArrowRight, ChevronDown, Info } from "lucide-react";
 import type { ObserverData } from "@/lib/observer-data";
 import { participantLabels } from "@/lib/participant-label";
 import { formatElapsed } from "@/lib/player-model";
-import { basisLabel, reportProblem, resolveReportMoment, type StudyReport as ReportData } from "@/lib/study-report";
+import { basisLabel, reportProblem, resolveReportMoment, representativeReportMoment, type StudyReport as ReportData } from "@/lib/study-report";
 import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
 import { ANALYSIS_ADMISSION_EXCEEDED_DETAIL, automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
 
@@ -33,13 +33,15 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
   return <section className="study-report" aria-label="Study findings">
     {automaticStatus}
     {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}{report.admissionExceeded ? ` ${ANALYSIS_ADMISSION_EXCEEDED_DETAIL}` : ""}</p> : null}
-    {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary>{report.messages.map((message, index) => <p key={index}>{message}</p>)}</details> : null}
+    {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary><ul>{report.messages.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
     <div className="findings-summary"><p>{report.summary}</p><span>Independent analysis · {report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
     {!report.findings.length ? <div className="study-report-empty"><h2>{state === "complete" ? "No findings in the reviewed evidence" : "No findings available"}</h2><p>{state === "complete" ? "This analysis did not identify an issue in its declared coverage. It does not establish that every task or interaction was problem-free." : "The original participant recordings and feedback are still available in Participants."}</p></div> : null}
     <Accordion.Root className="findings-list" value={findingId ? [findingId] : []} multiple={false} onValueChange={(value) => onFinding(typeof value[0] === "string" ? value[0] : "")}>
       {report.findings.map((finding, index) => {
         const moments = finding.moments.map((moment) => ({ ...moment, resolved: resolveReportMoment(data, moment.streamId, moment.eventId) }));
-        const lead = moments.find((moment) => moment.eventId === finding.leadEventId) ?? moments[0]!;
+        const lead = representativeReportMoment(moments, finding.leadEventId)!;
+        const assessment = finding.assessment;
+        const firstLimit = assessment ? assessment.limitations[0] : finding.limitation;
         const disposition = finding.corrections?.at(-1)?.status;
         const basis = (moment: typeof lead) => moment.bases?.map((value) => basisLabel[value]).join(" · ");
         const open = (moment: typeof lead) => { if (moment.resolved) onOpen(moment.streamId, moment.resolved.frameIndex, moment.resolved.eventId, finding.id); };
@@ -56,7 +58,9 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
             <div className="report-detail">
               <div className="finding-interpretation">
                 <p className="report-claim">{finding.summary}</p>
-                <p className="report-scope"><Info size={14} aria-hidden="true" />{finding.limitation}</p>
+                {assessment ? <dl className="report-assessment" aria-label="Finding assessment"><div><dt>Confidence</dt><dd>{assessment.confidence}</dd></div><div><dt>Recovery</dt><dd>{assessment.recovery}</dd></div></dl> : null}
+                {firstLimit ? <p className="report-scope"><Info size={14} aria-hidden="true" /><span>{firstLimit}</span></p> : null}
+                {assessment ? <details className="report-limits"><summary>Exposure{assessment.limitations.length > 1 ? ` and ${assessment.limitations.length - 1} more evidence ${assessment.limitations.length === 2 ? "limit" : "limits"}` : " details"}</summary><p>{assessment.exposureReason}</p>{assessment.limitations.length > 1 ? <ul>{assessment.limitations.slice(1).map((limit, index) => <li key={index}>{limit}</li>)}</ul> : null}</details> : null}
                 {finding.observations?.length ? <details className="report-observations"><summary>Observation details ({finding.observations.length})</summary>{finding.observations.map((observation, index) => <div key={index}><span className="observation-basis">{basisLabel[observation.basis]}</span><p>{observation.claim}</p>{observation.limitation ? <p className="observation-limit">{observation.limitation}</p> : null}</div>)}</details> : null}
               </div>
               <button type="button" className="report-evidence" disabled={!lead.resolved} onClick={() => open(lead)} data-report-evidence={lead.eventId} aria-label={`Open recording: ${labels.get(lead.streamId) ?? lead.streamId} · ${time(lead)}`}>

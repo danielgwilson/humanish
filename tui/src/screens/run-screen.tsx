@@ -246,7 +246,7 @@ function costLine(run: RunIndexEntry, participant: RunParticipant | undefined): 
   const value = run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;
   if (value === undefined) return "cost not recorded";
   if (value === null) return "cost declared absent";
-  return `~$${value.toFixed(2)} estimated`;
+  return `~$${value.toFixed(2)} ${run.estimatedCostUsd === undefined ? "participant model" : "run"} estimate · excludes analysis`;
 }
 
 function clockTime(ms: number): string {

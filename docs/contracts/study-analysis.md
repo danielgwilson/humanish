@@ -118,6 +118,19 @@ offset. Nonvisual events retain event identity without invented frame offsets.
 Scripted captures without recorded timestamps keep null analysis times; any
 uniform playback pacing is an estimate, not an observed duration.
 
+Finding previews select from the finding's cited entries. They prefer a capture
+directly cited as visual evidence, then the number of distinct visual/action
+observations citing it; equal support keeps citation order. Duplicate claims do
+not increase support. This is a display heuristic, not a confidence score or a
+guarantee that the selected capture is the most relevant. Context-only and
+nonvisual evidence retain their basis and original event. All cited moments stay
+available, with exact recording links.
+
+Confidence, recovery and the first full evidence limitation remain visible when
+a finding opens. Exposure and remaining unique limits are one disclosure away;
+observation details retain each original claim and its specific limitation.
+This presentation does not rewrite the saved analysis or reviewer corrections.
+
 ## Durable records
 
 The frozen `humanish.observer-data.v1` schema is unchanged. A companion
@@ -129,6 +142,7 @@ status, usage and validated findings:
 .humanish/runs/<run>/
   analysis/<analysis>/analysis.json
   analysis/<analysis>/corrections/<correction>/correction.json
+  analysis-attempts/<analysis>/start.json  # before transport; outcome initially unknown
   analysis-attempts/<analysis>/receipt.json
   observer/study-analysis.json
   analysis-automatic/job.json  # post-run lifecycle; never a retry instruction
@@ -145,6 +159,24 @@ atomic. Source evidence is not rewritten. Minimal execution receipts retain
 model, budget, status and known usage even if source changes prevent report
 publication. They contain no question, participant text, images, or findings.
 `analyze list --json` includes these receipts.
+
+New requests first claim their execution directory and atomically publish
+`start.json` (`humanish.analysis-execution-start.v1`) before provider transport.
+It contains only the attempt/run IDs, input/config/source digests, prompt version
+and timestamp. The live caller retains a binding to that exact directory and
+publishes the final receipt once. A start without usable final accounting means
+dispatch and spend remain unresolved; it is not proof that a provider charged.
+A cancellation before transport can finalize with `usage.dispatched: false`.
+Admission refusals, missing credentials and rejected dispatch guards do not
+create a potentially paid attempt. Reuse does not create a new start.
+
+`humanish stats` reads all retained execution IDs, including failed, cancelled,
+unpriced and unresolved attempts. Report/receipt copies and automatic reuse
+count once per run and analysis ID. Legacy report usage can contribute without
+a fresh source or valid findings, but the missing execution receipt is labeled.
+This accounting read never approves findings or requests a provider. See
+[study cost statistics](study-costs.md) for the additive JSON contract and
+run-date attribution.
 
 Analysis and execution-history directories each admit 256 entries, including
 interrupted writes; correction history admits 256 entries per analysis. A new

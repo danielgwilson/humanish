@@ -210,6 +210,10 @@ bundles stay byte-stable. Each lane's own estimate also rides its
 from the reserved provider-returned `tokenUsage.costUsd`. See
 [`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.
 
+This bundle subtotal excludes separate study-analysis requests. Use
+`humanish stats` for the complete retained estimate and explicit accounting
+gaps across run costs and analysis attempts. See [study cost statistics](study-costs.md).
+
 `humanish verify` treats cost as ADVISORY on magnitude and FAIL-CLOSED on
 labeling: absence passes, but a claimed dollar figure without its `ratesAsOf`
 date + `source`, or a total that does not match its known lines, fails. Verify

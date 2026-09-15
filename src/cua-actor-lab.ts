@@ -101,7 +101,7 @@ import { assertScreenshotEvidence } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./subject-runtime.js";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
-import { chromeCdpProbeCommand, parseChromeCdpProbeOutput, type ChromeMobileEmulationRequest } from "./chrome-cdp-probe.js";
+import { chromeCdpProbeCommand, parseChromeCdpProbeOutput, type ChromeCdpPagePreference, type ChromeMobileEmulationRequest } from "./chrome-cdp-probe.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { renderTaskPrompt, type LabTask, type TaskFunnel } from "./tasks.js";
@@ -1868,19 +1868,24 @@ export function makeChromeBrowserStateObserver(
  * Read the running browser's actual outer-window bounds and CSS layout viewport through the
  * already-enabled local Chrome DevTools endpoint. The returned values come from `window.*` in
  * the target page; requested E2B resolution is deliberately not an input to this function.
- * `undefined` carries the reason the measurement is missing via `onUnavailable`, so the geometry
- * warning can name the cause (a dead CDP endpoint, no python3) instead of only the symptom.
+ * Missing channels report their reason via `onUnavailable`, so the geometry warning can name
+ * the cause (a dead CDP endpoint, no python3) instead of only the symptom. Returns `undefined`
+ * only when neither channel could be measured.
+ * Outer bounds and CSS dimensions are independent channels: a background page can report zero
+ * outer dimensions while still reporting a CSS viewport. Final captures follow the active tab;
+ * launch captures and emulation attribution keep the pinned target.
  */
 export function makeChromeDesktopGeometryObserver(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
   targetId?: string,
-  onUnavailable?: (reason: string) => void
+  onUnavailable?: (reason: string) => void,
+  prefer: ChromeCdpPagePreference = "pinned"
 ): () => Promise<(Pick<RunDesktopGeometry, "browserWindow" | "viewport"> & { targetId?: string }) | undefined> {
   return async () => {
     const result = await desktop.commands.run(
-      chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer: "pinned", mode: "geometry" }),
+      chromeCdpProbeCommand({ ...endpoint, ...(targetId === undefined ? {} : { targetId }), prefer, mode: "geometry" }),
       { requestTimeoutMs, timeoutMs: 5_000 }
     );
     if (result.exitCode !== undefined && result.exitCode !== 0) {
@@ -1892,13 +1897,17 @@ export function makeChromeDesktopGeometryObserver(
       onUnavailable?.(parsed.unavailable);
       return undefined;
     }
-    if (!isMeasuredRect(parsed.browserWindow) || !isMeasuredViewport(parsed.viewport)) {
+    const browserWindow = isMeasuredRect(parsed.browserWindow) ? { ...parsed.browserWindow, source: "cdp" as const } : undefined;
+    const viewport = isMeasuredViewport(parsed.viewport) ? { ...parsed.viewport, source: "cdp" as const } : undefined;
+    if (browserWindow === undefined && viewport === undefined) {
       onUnavailable?.("the page reported no usable window or viewport dimensions");
       return undefined;
     }
+    if (browserWindow === undefined) onUnavailable?.("the page reported no usable outer-window dimensions");
+    if (viewport === undefined) onUnavailable?.("the page reported no usable CSS viewport dimensions");
     return {
-      browserWindow: { ...parsed.browserWindow, source: "cdp" },
-      viewport: { ...parsed.viewport, source: "cdp" },
+      ...(browserWindow === undefined ? {} : { browserWindow }),
+      ...(viewport === undefined ? {} : { viewport }),
       ...(parsed.targetId === undefined ? {} : { targetId: parsed.targetId })
     };
   };
@@ -2113,6 +2122,8 @@ export async function captureDesktopBrowserGeometry(args: {
   browserFamily: DesktopBrowserFamily;
   launchIdentity?: DesktopBrowserLaunchIdentity;
   browserTargetId?: string;
+  /** Launch captures stay pinned; final captures follow the participant's current page. */
+  pagePreference?: ChromeCdpPagePreference;
   browserWindowId?: string;
   laneId: string;
   /** Runtime-only lane target URL (attributes the CDP page); never persisted by this capture. */
@@ -2191,7 +2202,8 @@ export async function captureDesktopBrowserGeometry(args: {
         args.browserTargetId,
         (reason) => {
           cdpUnavailable = reason;
-        }
+        },
+        args.pagePreference ?? "pinned"
       )().catch((error: unknown) => {
         cdpUnavailable = toErrorMessage(error);
         return undefined;
@@ -3200,6 +3212,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
           targetUrl,
           requestedScreen: spec.resolution,
           requestTimeoutMs: deps.requestTimeoutMs,
+          pagePreference: "active",
           resize: false
         }).catch((error: unknown) => ({
           warnings: [`Final browser geometry measurement failed for lane ${spec.laneId}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`]

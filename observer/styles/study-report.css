@@ -65,11 +65,24 @@
 .report-finding[aria-expanded="true"] > svg { transform: rotate(180deg); }
 .finding-panel { height: var(--accordion-panel-height); overflow: clip; transition: height 180ms ease; }
 .finding-panel[data-starting-style], .finding-panel[data-ending-style] { height: 0; }
+/* The accordion clips during its height transition. Keep all four sides of a
+   focused control's ring inside that clipping boundary. */
+.finding-panel :focus-visible { outline-offset: -2px; }
 .report-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); grid-template-areas: "interpretation evidence" "followup evidence" "moments moments"; grid-template-rows: auto 1fr auto; gap: 18px 24px; padding: 4px 0 20px 36px; }
 .finding-interpretation { grid-area: interpretation; min-width: 0; max-width: 65ch; }
-.report-claim { font-size: 14px; line-height: 1.6; }
+.report-claim { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
 .report-scope { display: flex; align-items: flex-start; gap: 7px; margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .report-scope svg { flex: none; margin-top: 3px; }
+.report-scope > span { min-width: 0; overflow-wrap: anywhere; }
+.report-assessment { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; font-size: 12px; line-height: 1.6; }
+.report-assessment > div { display: flex; gap: 6px; }
+.report-assessment dt { color: var(--muted); }
+.report-assessment dd { margin: 0; color: var(--body-c); text-transform: capitalize; }
+.report-limits { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.report-limits summary { cursor: pointer; }
+.report-limits p { margin-top: 10px; }
+.report-limits ul, .analysis-messages ul { margin-top: 8px; padding-left: 18px; list-style: disc; }
+.report-limits li, .analysis-messages li { margin-top: 6px; }
 .report-detail h3 { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 .finding-followup { grid-area: followup; }
 .report-next { margin-top: 0; }
@@ -82,7 +95,7 @@
 .report-evidence-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; font-size: 11px; }
 .report-evidence-heading > span:last-child { font: 11px var(--mono); color: var(--muted); }
 .report-evidence img { display: block; object-fit: contain; width: 100%; height: auto; max-height: 320px; background: var(--mineral); }
-.report-evidence-caption { display: flex; flex-direction: column; gap: 8px; padding: 9px 10px; font-size: 12px; line-height: 1.5; }
+.report-evidence-caption { display: flex; flex-direction: column; gap: 8px; padding: 9px 10px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .report-evidence-caption strong { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--accent-ink); }
 .report-moments { grid-area: moments; display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 3px 12px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
 .report-moments h3 { margin: 0; padding-top: 10px; }
@@ -90,7 +103,10 @@
 .report-moments button { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 12px; }
 .report-moments button > span { font: 11px var(--mono); color: var(--muted); }
 .report-moments button strong { font-weight: 500; }
-.report-moments button:hover strong { color: var(--accent-ink); }
+.report-moments button:focus-visible strong { color: var(--accent-ink); }
+@media (hover: hover) {
+  .report-moments button:hover strong { color: var(--accent-ink); }
+}
 .report-moments > p { grid-column: 2; font-size: 11px; color: var(--muted); }
 .report-method { margin-top: 18px; font-size: 12px; line-height: 1.6; }
 .report-method p { margin-top: 12px; max-width: 80ch; }

@@ -5,7 +5,7 @@ import { StudyReport as StudyReportView } from "../components/study-report";
 import firstRun from "../../tests/golden/observer-data/first-run.json";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { formatHash, parseHash } from "../lib/route";
-import { reportFindingId, reportHash, reportProblem, resolveReportMoment, type StudyReport } from "../lib/study-report";
+import { reportFindingId, reportHash, reportProblem, resolveReportMoment, representativeReportMoment, type StudyReport } from "../lib/study-report";
 
 const base = firstRun as unknown as ObserverData;
 const stream = { ...base.streams[0], id: "participant", actor: { items: [
@@ -17,6 +17,31 @@ const data = { ...base, streams: [stream] };
 const report: StudyReport = { id: "review-1", runId: data.run.runId, summary: "A task was blocked.", scope: "1 participant", methodology: [], outcomes: [{ streamId: stream.id, label: "Blocked" }], findings: [{ id: "F1", title: "Task blocked", impact: "Blocked", summary: "A control did not respond.", scope: "1 of 1", limitation: "One attempt", nextStep: "Check the control", priorityReason: "Task impact", account: "I stopped", accountSource: "Closing account", moments: [{ streamId: stream.id, eventId: "click", label: "Attempt", note: "Recorded action" }] }] };
 
 describe("study report evidence navigation", () => {
+  it("prefers a directly observed capture cited across observations, without using the latest frame", () => {
+    const moments = [
+      { streamId: stream.id, eventId: "first", bases: ["visual" as const], observationCount: 1 },
+      { streamId: stream.id, eventId: "click", bases: ["visual" as const], observationCount: 8 },
+      { streamId: stream.id, eventId: "second", bases: ["visual" as const, "action" as const], observationCount: 2 },
+    ].map(moment => ({ ...moment, resolved: resolveReportMoment(data, moment.streamId, moment.eventId) }));
+    expect(representativeReportMoment(moments)?.eventId).toBe("second");
+    expect(representativeReportMoment(moments, "first")?.eventId).toBe("first");
+    // Equal support retains source order; time is not a relevance signal.
+    moments[2]!.observationCount = 1;
+    expect(representativeReportMoment(moments)?.eventId).toBe("first");
+    moments[0]!.resolved = null;
+    expect(representativeReportMoment(moments)?.eventId).toBe("second");
+  });
+  it("does not promote contextual screenshots into visual evidence", () => {
+    const moments = [
+      { streamId: stream.id, eventId: "click", bases: ["participant_statement" as const], observationCount: 1 },
+      { streamId: stream.id, eventId: "second", bases: ["inference" as const], observationCount: 10 },
+    ].map(moment => ({ ...moment, resolved: resolveReportMoment(data, moment.streamId, moment.eventId) }));
+    expect(representativeReportMoment(moments)?.eventId).toBe("click");
+    moments[0]!.resolved = null;
+    expect(representativeReportMoment(moments)?.eventId).toBe("second");
+    moments[1]!.resolved = null;
+    expect(representativeReportMoment(moments)?.eventId).toBe("click");
+  });
   it("shows qualified exclusions without inserting them into the ranked findings", () => {
     const value: StudyReport = { ...report, concernReviews: [{ claim: "The participant explored another option.", basis: "action",
       limitation: "No interruption was established.", disposition: "context", findingId: null, reason: "This was reversible exploration.",
