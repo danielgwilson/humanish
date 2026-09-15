@@ -279,6 +279,8 @@ export interface OssMetaLabResult {
   dryRun: boolean;
   error?: {
     code:
+      | "HUMANISH_LAB_ANALYSIS_INVALID"
+      | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_INVALID_OSS_COUNT"
       | "HUMANISH_INVALID_OSS_REPO"

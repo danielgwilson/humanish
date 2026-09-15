@@ -33,6 +33,8 @@
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
@@ -179,6 +181,7 @@ const DEFAULT_MISSION =
   "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
 
 export interface RunConcurrentSharedWorldLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
   /** Which manifest produced this run (#455); threaded into the status record + bundle. */
   lab?: RunLabProvenance;
   cwd: string;
@@ -195,6 +198,7 @@ export interface RunConcurrentSharedWorldLabOptions {
 }
 
 export type ConcurrentSharedWorldLabErrorCode =
+  | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED"
   | "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
@@ -439,7 +443,7 @@ export interface ConcurrentSharedWorldRoleResult {
   error?: { code: ConcurrentSharedWorldLabErrorCode; message: string };
 }
 
-export interface ConcurrentSharedWorldLabResult {
+export interface ConcurrentSharedWorldLabResult extends AutomaticAnalysisResult {
   schema: typeof CONCURRENT_SHARED_WORLD_LAB_SCHEMA;
   ok: boolean;
   cwd: string;
@@ -714,7 +718,9 @@ function observerResultForConcurrentArtifacts(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
-  return withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
+  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const result = await withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
 }
 
 async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
@@ -747,6 +753,8 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     error: { code, message }
   });
 
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return fail("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
 
@@ -1840,7 +1848,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     return { code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED", message: `Concurrent shared-world run did not run coherently: ${passed}/${roles.length} actor(s) reached a terminal, engaged passed session.` };
   })();
 
-  return {
+  return markFinalizedStudyResult({
     schema: CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
     ok,
     cwd,
@@ -1861,7 +1869,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     observer,
     warnings: [...warnings, ...adapterWarnings, ...observer.warnings],
     ...(errorResult === undefined ? {} : { error: errorResult })
-  };
+  }, runPaths);
 }
 
 /** Max windows live at the same instant (sweep over start/end points). The honest simultaneity

@@ -1,3 +1,4 @@
+import { automaticAnalysisBoundary } from "./helpers/automatic-analysis-boundary.js";
 import { PNG } from "pngjs";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -633,12 +634,16 @@ describe("sequential shared-world model-spend caps (#766)", () => {
 describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () => {
   it.each([true, false])("preserves distinct role assignments for mission-only studies (dryRun %s)", async (dryRun) => {
     const config = sharedWorldConfig();
+    config.review = { analysis: { maxCostUsd: 3 } };
+    const analyze = automaticAnalysisBoundary();
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
     const { hooks } = baseHooks({ worldVersion: 0 });
     const seen: string[] = [];
     const runSession = hooks.runSession!;
     hooks.runSession = (options) => { seen.push(options.instructions); return runSession(options); };
-    const result = await runSharedWorldLab({ cwd, config, dryRun, hooks });
+    const result = await runSharedWorldLab({ cwd, config, dryRun, hooks, automaticAnalysis: { run: analyze } });
+    expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
+    expect(result.automaticAnalysis?.reason).toBe(dryRun ? "analysis_dry_run" : "synthetic_no_provider");
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.streams.map((stream) => stream.assignment)).toEqual([
       { mission: "Use the shared app with [REDACTED_SECRET].", focus: "Create a note." },

@@ -4,12 +4,20 @@ import type { ObserverData } from "@/lib/observer-data";
 import { participantLabels } from "@/lib/participant-label";
 import { formatElapsed } from "@/lib/player-model";
 import { basisLabel, reportProblem, resolveReportMoment, type StudyReport as ReportData } from "@/lib/study-report";
+import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
+import { ANALYSIS_ADMISSION_EXCEEDED_DETAIL, automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
 
-export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
-  data: ObserverData; report: ReportData; findingId: string;
+export function StudyReport({ data, report, automatic, snapshot = false, now = Date.now(), findingId, onFinding, onOpen }: {
+  data: ObserverData; report: ReportData | undefined; automatic?: AutomaticStudyAnalysisView; snapshot?: boolean; now?: number; findingId: string;
   onFinding: (id: string) => void;
   onOpen: (streamId: string, frame: number | null, eventId: string | undefined, findingId: string) => void;
 }) {
+  const automaticState = automatic ? automaticAnalysisNotice(automatic, snapshot, now).state : undefined;
+  const sameAnalysis = !!report && automatic?.analysisId === report.id && automaticState === report.state;
+  const automaticStatus = automatic && !sameAnalysis ? <AutomaticAnalysisStatus automatic={automatic} snapshot={snapshot} now={now}
+    previousAnalysis={!!report && ["complete", "partial", "stale"].includes(report.state ?? "complete") && automatic.analysisId !== report.id}
+    resultAvailable={!!report} /> : null;
+  if (!report) return <section className="study-report" aria-label="Study findings">{automaticStatus}</section>;
   const problem = reportProblem(data, report);
   const labels = participantLabels(data.streams);
   if (problem || (findingId && !["invalid", "failed", "cancelled"].includes(report.state ?? "") && !report.findings.some((item) => item.id === findingId))) {
@@ -22,7 +30,8 @@ export function StudyReport({ data, report, findingId, onFinding, onOpen }: {
     : state === "cancelled" ? "Analysis was cancelled. Participant evidence remains available."
     : state === "invalid" ? "Analysis is unavailable. Participant evidence remains available." : null;
   return <section className="study-report" aria-label="Study findings">
-    {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}</p> : null}
+    {automaticStatus}
+    {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}{report.admissionExceeded ? ` ${ANALYSIS_ADMISSION_EXCEEDED_DETAIL}` : ""}</p> : null}
     {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary>{report.messages.map((message, index) => <p key={index}>{message}</p>)}</details> : null}
     <div className="findings-summary"><p>{report.summary}</p><span>Independent analysis · {report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
     {!report.findings.length ? <div className="study-report-empty"><h2>{state === "complete" ? "No findings in the reviewed evidence" : "No findings available"}</h2><p>{state === "complete" ? "This analysis did not identify an issue in its declared coverage. It does not establish that every task or interaction was problem-free." : "The original participant recordings and feedback are still available in Participants."}</p></div> : null}

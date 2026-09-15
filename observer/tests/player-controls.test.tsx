@@ -6,6 +6,7 @@ import firstRun from "../../tests/golden/observer-data/first-run.json";
 import { Player } from "../components/player";
 import { buildPlayerModel, type PlayerModel } from "../lib/player-model";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
+import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 
 const data = firstRun as unknown as ObserverData;
 let root: Root;
@@ -60,6 +61,23 @@ describe("player review controls", () => {
     await click("details");
     expect(container.querySelector(".assignment-missing")?.textContent).toBe("Assigned task not recorded for this participant.");
     expect(container.querySelector(".assignment-missing")?.textContent).not.toContain(data.run.scenario.goal);
+  });
+  it("keeps a retained scripted goal visible above playback with its original provenance", async () => {
+    delete stream.assignment;
+    stream.actor = { ...fixtures.fixture().streams[0]!.actor!, lane: "scripted-browser" };
+    stream.ui = { ...stream.ui!, intent: "Save a fictional note <script>as text</script>" };
+    await render({ initialFrame: 0 });
+    const assignment = container.querySelector(".viewer > .participant-assignment")!;
+    expect(assignment.textContent).toContain(stream.ui.intent);
+    expect(assignment.textContent).toContain("Recorded scripted goal");
+    expect(assignment.querySelector("script")).toBeNull();
+    expect(container.querySelector(".assignment-missing")).toBeNull();
+    await click("Hide inspector");
+    expect(container.querySelector(".viewer > .participant-assignment")).toBe(assignment);
+    stream.assignment = { mission: "Explicit assignment takes precedence." };
+    await render({ initialFrame: 0 });
+    expect(container.querySelector(".participant-assignment")?.textContent).toContain("Explicit assignment takes precedence.");
+    expect(container.querySelector(".participant-assignment")?.textContent).not.toContain("Recorded scripted goal");
   });
   function intervalEntries() {
     // The two-click shape was captured in a retained drawDB run: two distinct

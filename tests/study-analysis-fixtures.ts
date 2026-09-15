@@ -46,6 +46,7 @@ export function syntheticArtifact(input = syntheticInput(), id = "analysis-1"): 
   return { schema: "humanish.study-analysis.v1", id, runId: input.runId,
     status: input.coverage.complete ? "complete" : "partial", createdAt: "2026-09-01T00:01:00.000Z", completedAt: "2026-09-01T00:02:00.000Z",
     sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest, configDigest: hashStudyAnalysisValue(config),
+    ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
     config, promptVersion: "synthetic-v1", provider: "openai",
     usage: { inputTokens: 100, outputTokens: 50, estimatedCostUsd: null, cachedInputTokens: null, cacheWriteInputTokens: null,
       usageComplete: true, dispatched: true, ratesAsOf: null, estimatedAdmissionUsd: null },

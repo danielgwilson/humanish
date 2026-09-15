@@ -6,7 +6,8 @@ import { createStudyAnalysisProvider } from "./study-analysis-provider.js";
 import { hashStudyAnalysisValue, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-4";
-const SUPPORTED_MODELS = new Set(["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze(["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+const SUPPORTED_MODELS = new Set(SUPPORTED_STUDY_ANALYSIS_MODELS);
 const IMAGE_DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -130,18 +131,27 @@ export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config
     inputTokenAllowance, estimatedCostUsd, ratesAsOf: rate.asOf };
 }
 
-/** Explicitly invoked by an operator; rendering or opening an Observer never calls this. */
+export type StudyAnalysisDispatchContext = Pick<StudyAnalysisArtifact,
+  "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion">;
+
+/** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
   apiKey: string;
   signal?: AbortSignal;
   onProgress?: (progress: StudyAnalysisProgress) => void;
   fetch?: typeof fetch;
+  /** Internal orchestration: bind a permanent automatic claim before any provider call. */
+  analysisId?: string;
+  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
 }): Promise<StudyAnalysisArtifact> {
   // Callers retain their own object references. Snapshot once so a display callback or later
   // caller mutation cannot alter the admitted prompt, citations, or stored provenance mid-run.
   input = structuredClone(input);
   config = structuredClone(config);
   const createdAt = new Date().toISOString();
+  if (options.analysisId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(options.analysisId)) {
+    throw new Error("ANALYSIS_ID_INVALID");
+  }
   validateStudyAnalysisInputMetadata(input);
   const admission = estimateStudyAnalysisAdmission(input, config);
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
@@ -151,8 +161,9 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     throw new Error(admission.error.toUpperCase());
   }
   const artifact: StudyAnalysisArtifact = {
-    schema: STUDY_ANALYSIS_SCHEMA, id: `analysis-${randomUUID()}`, runId: input.runId, status: "failed",
+    schema: STUDY_ANALYSIS_SCHEMA, id: options.analysisId ?? `analysis-${randomUUID()}`, runId: input.runId, status: "failed",
     createdAt, completedAt: createdAt, sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,
+    ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
     configDigest: hashStudyAnalysisValue(config), config: structuredClone(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
     provider: "openai", participants: structuredClone(input.participants), coverage: structuredClone(input.coverage), evidence: structuredClone(input.evidence),
     usage: { inputTokens: null, outputTokens: null, cachedInputTokens: null, cacheWriteInputTokens: null,
@@ -183,6 +194,15 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     return finish();
   }
   progress("admitted");
+  // Unlike display progress, this awaited guard owns authorization/durability.
+  // A failed guard must prevent transport, so its error is deliberately not swallowed.
+  await options.beforeDispatch?.({ id: artifact.id, runId: artifact.runId, sourceRunSha256: artifact.sourceRunSha256,
+    inputDigest: artifact.inputDigest, configDigest: artifact.configDigest, promptVersion: artifact.promptVersion });
+  if (options.signal?.aborted) {
+    artifact.status = "cancelled";
+    artifact.error = "analysis_cancelled";
+    return finish();
+  }
   progress("requesting");
   const provider = createStudyAnalysisProvider({ apiKey: options.apiKey, ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }) });
   const response = await provider({ model: config.model, instructions: instructions(config), evidence: evidenceText(input),

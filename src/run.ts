@@ -1331,6 +1331,8 @@ export interface RunResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_ANALYSIS_INVALID"
+      | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED"
       | "HUMANISH_APP_URL_OPTION_CONFLICT"

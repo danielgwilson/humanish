@@ -1,3 +1,4 @@
+import { automaticAnalysisBoundary } from "./helpers/automatic-analysis-boundary.js";
 import { CommanderError } from "commander";
 import { createServer, type Server } from "node:http";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
@@ -352,7 +353,12 @@ describe("runScriptedBrowserLab", () => {
       const hooks: ScriptedBrowserLabHooks = {
         launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" })
       };
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 2, mode: "live" }), { cwd, scriptedHooks: hooks });
+      const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
+      config.review = { analysis: { maxCostUsd: 3 } };
+      const analyze = automaticAnalysisBoundary();
+      const outcome = await runLab(config, { cwd, scriptedHooks: hooks, automaticAnalysis: { run: analyze } });
+      expect(analyze).toHaveBeenCalledOnce();
+      expect(outcome.result).toMatchObject({ automaticAnalysis: { reason: "synthetic_no_provider" } });
       expect(outcome.backend).toBe("scripted");
       if (outcome.backend !== "scripted") return;
       const result = outcome.result;

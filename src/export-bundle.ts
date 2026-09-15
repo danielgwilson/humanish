@@ -59,6 +59,7 @@ function jsonBytes(value: unknown): Buffer {
 }
 
 function omittedReason(relative: string): string | undefined {
+  if (relative.startsWith("analysis-automatic/") && isStudyAnalysisRecordPath(relative)) return "automatic execution intent and liveness do not transfer to a derivative";
   if (isStudyAnalysisRecordPath(relative)) return "analysis records bind original evidence hashes; reanalyze the derivative";
   if (relative.startsWith(".analysis-lock/")) return "local analysis execution lock";
   return OMITTED.get(relative)

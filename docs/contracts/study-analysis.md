@@ -65,6 +65,15 @@ omissions and unreadable or invalid capture files make declared coverage
 incomplete. Coverage records file availability and selection; it does not
 certify visual legibility, correct interpretation, or exhaustive issue discovery.
 
+New packets declare `captureVersion: 2`, bound into their input digest. They
+include captures attached to `screenshot` and scripted `ui_action` events,
+preserving the original action IDs and evidence basis. Error notices that refer
+to an earlier capture retain that context without creating another frame.
+Scripted lanes use their recorded `ui.intent` goal when no participant assignment
+exists. Missing assignments and declared captures without supported trace
+references are explicit omissions. Artifacts without `captureVersion` continue
+to validate against the original selection rules.
+
 The standard review covers session summary, apparent intent, observed outcome,
 friction, dead ends, recovery, and participant feedback. Findings are ordered by
 observed task impact, replication among exposed participants, and recovery.
@@ -80,6 +89,8 @@ is correct or every consequential issue was found.
 
 Elapsed replay time starts at the first retained capture. It is not a video
 offset. Nonvisual events retain event identity without invented frame offsets.
+Scripted captures without recorded timestamps keep null analysis times; any
+uniform playback pacing is an estimate, not an observed duration.
 
 ## Durable records
 
@@ -94,7 +105,14 @@ status, usage and validated findings:
   analysis/<analysis>/corrections/<correction>/correction.json
   analysis-attempts/<analysis>/receipt.json
   observer/study-analysis.json
+  analysis-automatic/job.json  # opt-in run lifecycle; never a retry instruction
 ```
+
+The optional automatic job is separate from the immutable analysis. Its view
+binds terminal state to the exact execution receipt and report. A stale or
+unverifiable job remains unknown; reading or exporting it never dispatches.
+Automatic job metadata is omitted from shared derivatives. See
+[automatic analysis](../product/automatic-analysis.md).
 
 Version and correction directories are claimed exclusively; publication is
 atomic. Source evidence is not rewritten. Minimal execution receipts retain

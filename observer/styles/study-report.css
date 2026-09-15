@@ -133,6 +133,8 @@
   .finding-panel, .report-finding > svg { transition: none; }
 }
 .analysis-notice { border-left: 2px solid var(--accent); padding: 8px 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.6; }
+.analysis-status-detail { margin-top: 4px; color: var(--muted); }
+.analysis-messages code { overflow-wrap: anywhere; }
 .analysis-messages { margin-bottom: 14px; font-size: 12px; line-height: 1.6; color: var(--muted); }
 .analysis-messages p { margin-top: 8px; }
 .study-report > .study-report-empty { padding: 14px 0; }

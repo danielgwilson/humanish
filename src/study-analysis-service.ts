@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, rmdir } from "node:fs/promises";
+import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { renderObserver } from "./observer.js";
 import { containsSensitive } from "./redaction.js";
@@ -8,7 +8,7 @@ import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "
 import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
 import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
-  type StudyAnalysisAdmission, type StudyAnalysisProgress } from "./study-analysis-engine.js";
+  type StudyAnalysisAdmission, type StudyAnalysisProgress, type StudyAnalysisDispatchContext } from "./study-analysis-engine.js";
 import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { STUDY_ANALYSIS_CORRECTION_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig,
@@ -41,6 +41,22 @@ export interface AnalyzeDeps {
   onProgress?: (progress: StudyAnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
   fetch?: typeof fetch;
+  /** Internal producer pin: use this original run identity without resolving a replacement. */
+  expectedRun?: PreparedRunArtifactPaths;
+  /** Internal post-run orchestration; never populated from an Observer request. */
+  analysisId?: string;
+  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+}
+
+/** A producer pin is authority for one physical project and exact run ID only. */
+export async function resolveStudyAnalysisRun(cwd: string, run: string, expectedRun?: PreparedRunArtifactPaths): Promise<PreparedRunArtifactPaths | null> {
+  if (expectedRun === undefined) return resolveRunPath(cwd, run);
+  const physicalCwd = path.dirname(path.dirname(expectedRun.physicalRunsRoot));
+  const selectedCwd = await realpath(cwd).catch(() => null);
+  if (selectedCwd !== physicalCwd || run !== path.basename(expectedRun.physicalRunRoot)) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
+  try { await validatePreparedRunRootIdentity(expectedRun); }
+  catch { throw new Error("ANALYSIS_SOURCE_CHANGED"); }
+  return expectedRun;
 }
 
 const messages: Record<string, string> = {
@@ -89,7 +105,8 @@ export async function withStudyAnalysisLock<T>(prepared: PreparedRunArtifactPath
   }
 }
 
-async function completedSource(cwd: string, prepared: PreparedRunArtifactPaths): Promise<Buffer> {
+/** Internal completion gate shared with the opt-in post-run owner. */
+export async function readCompletedStudyAnalysisSource(cwd: string, prepared: PreparedRunArtifactPaths): Promise<Buffer> {
   const bytes = await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes);
   if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   const verified = await verifyRunPrepared(cwd, path.basename(prepared.physicalRunRoot), prepared);
@@ -120,17 +137,18 @@ async function completedSource(cwd: string, prepared: PreparedRunArtifactPaths):
 }
 
 export async function analyzeStudy(cwdInput: string, run: string, options: AnalyzeOptions, deps: AnalyzeDeps = {}): Promise<AnalyzeResult> {
-  const cwd = path.resolve(cwdInput);
+  let cwd = path.resolve(cwdInput);
   const dryRun = options.dryRun === true;
   const config = structuredClone(options.config);
   if (!Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000) return fail(run, dryRun, "ANALYSIS_CONFIG_INVALID");
   if (config.question !== null && containsSensitive(config.question)) return fail(run, dryRun, "ANALYSIS_QUESTION_UNSAFE");
   try {
-    const prepared = await resolveRunPath(cwd, run);
+    const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
+    if (deps.expectedRun !== undefined) cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
     const execute = async (): Promise<AnalyzeResult> => {
       if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
-      const bytes = await completedSource(cwd, prepared);
+      const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
       const input = await captureStudyEvidence(prepared, bytes);
       if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
       const admission = estimateStudyAnalysisAdmission(input, config);
@@ -144,9 +162,12 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
         const prior = (await listStudyAnalyses(prepared)).find((entry) => entry.state === "ready"
           && entry.analysis?.inputDigest === input.inputDigest && entry.analysis.configDigest === hashStudyAnalysisValue(config)
           && entry.analysis.promptVersion === STUDY_ANALYSIS_PROMPT_VERSION)?.analysis;
-        if (prior) return { ...base, ok: prior.error === null, reused: true, analysisId: prior.id, status: prior.status, usage: prior.usage,
-          ...(prior.error === null ? {} : { error: { code: prior.error, message: "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent." } }),
-          artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json") };
+        if (prior) {
+          await validatePreparedRunRootIdentity(prepared);
+          return { ...base, ok: prior.error === null, reused: true, analysisId: prior.id, status: prior.status, usage: prior.usage,
+            ...(prior.error === null ? {} : { error: { code: prior.error, message: "The saved analysis exceeded its admission estimate. Findings and usage are retained; no new request was sent." } }),
+            artifactPath: path.join(prepared.relativeRunRoot, "analysis", prior.id, "analysis.json") };
+        }
       }
       // An unreadable inventory is not evidence of an absent prior result.
       // Check readable history capacity before any new paid attempt.
@@ -154,6 +175,8 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
       const apiKey = deps.apiKey ?? process.env.OPENAI_API_KEY ?? "";
       if (!apiKey.trim()) return { ...fail(input.runId, false, "ANALYSIS_API_KEY_MISSING"), admission };
       const analysis = await runStudyAnalysis(input, config, { apiKey,
+        ...(deps.analysisId === undefined ? {} : { analysisId: deps.analysisId }),
+        ...(deps.beforeDispatch === undefined ? {} : { beforeDispatch: deps.beforeDispatch }),
         ...(deps.signal === undefined ? {} : { signal: deps.signal }),
         ...(deps.onProgress === undefined ? {} : { onProgress: deps.onProgress }),
         ...(deps.fetch === undefined ? {} : { fetch: deps.fetch }) });
@@ -171,7 +194,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
             : "Storage changed or became unavailable after the attempt. Usage is retained in this response; no durable receipt could be written." } };
       }
       try {
-        const rendered = await renderObserver(cwd, input.runId, { open: false });
+        const rendered = await renderObserver(cwd, input.runId, { open: false, expectedRun: prepared });
         if (!rendered.ok) result.warnings.push("Analysis was saved, but Observer could not be refreshed. Run humanish observe again.");
       } catch { result.warnings.push("Analysis was saved, but Observer could not be refreshed. Run humanish observe again."); }
       return result;
@@ -207,7 +230,7 @@ export async function correctStudyAnalysis(cwd: string, run: string, options: {
       status: options.status, reason: options.reason, replacementClaim: options.replacementClaim ?? null
     };
     await appendStudyAnalysisCorrection(prepared, correction);
-    await renderObserver(cwd, run, { open: false }).catch(() => null);
+    await renderObserver(cwd, path.basename(prepared.physicalRunRoot), { open: false, expectedRun: prepared }).catch(() => null);
     return correction;
   });
 }

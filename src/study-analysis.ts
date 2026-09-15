@@ -1,5 +1,6 @@
 import type { ActorStatus, ActorCompletionReason, ActorStopCause, ParticipantDeclaredOutcome } from "./actor-contract.js";
 import type { CuaGoalSource } from "./actor-goal-source.js";
+import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
@@ -49,6 +50,8 @@ export interface StudyAnalysisInput {
   runId: string;
   sourceRunSha256: string;
   inputDigest: string;
+  /** Absent selects the original capture mapping for historical artifact validation. */
+  captureVersion?: 2;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
   evidence: AnalysisEvidence[];
@@ -120,6 +123,7 @@ export interface StudyAnalysisArtifact {
   completedAt: string;
   sourceRunSha256: string;
   inputDigest: string;
+  captureVersion?: 2;
   configDigest: string;
   config: StudyAnalysisConfig;
   promptVersion: string;
@@ -149,4 +153,6 @@ export interface LoadedStudyAnalysis {
   analysis: StudyAnalysisArtifact | null;
   corrections: StudyAnalysisCorrection[];
   warnings: string[];
+  /** Independent post-run execution metadata; never changes evidence sharing grades. */
+  automatic?: AutomaticStudyAnalysisView;
 }

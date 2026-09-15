@@ -489,6 +489,7 @@ describe("runCuaActorLab", () => {
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 16;
+    config.review = { analysis: { maxCostUsd: 3 } };
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
     const wire = JSON.parse(await readFile(new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url), "utf8"));
@@ -498,9 +499,20 @@ describe("runCuaActorLab", () => {
       requests += 1;
       return { ok: true, status: 200, text: async () => JSON.stringify(wire), json: async () => wire };
     });
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
+    const analyze = vi.fn(async (analysisCwd: string, runId: string) => {
+      expect(killed).toHaveLength(1);
+      const runRoot = path.join(analysisCwd, ".humanish", "runs", runId);
+      const status = JSON.parse(await readFile(path.join(runRoot, "status.json"), "utf8"));
+      const source = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8"));
+      expect(status.state).toBe("finished");
+      expect(source.streams[0].actor.status).toBe("incomplete");
+      return { state: "failed" as const, reason: "analysis_validation_failed" };
+    });
+    const result = await runCuaActorLab({ cwd, config, dryRun: false, automaticAnalysis: { run: analyze }, hooks: {
       env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" }, loadDesktopModule: async () => module
     } }).finally(() => vi.unstubAllGlobals());
+    expect(analyze).toHaveBeenCalledOnce();
+    expect(result.automaticAnalysis).toEqual({ state: "failed", reason: "analysis_validation_failed" });
     expect(created).toHaveLength(1);
     expect(killed).toHaveLength(1);
     expect(requests).toBe(1);

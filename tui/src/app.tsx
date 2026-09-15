@@ -153,7 +153,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
 
   const screen = currentScreen(nav);
   const selected = selectedIndex(nav);
-  const rowCount = countRows(screen, data);
+  const rowCount = countRows(screen, data, detail);
 
   useEffect(() => {
     screenRef.current = screen;
@@ -170,7 +170,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
     if (identity === undefined) return;
     const next = indexOfIdentity(screen, data, identity);
     if (next >= 0 && next !== selected) {
-      dispatch({ type: "select", index: next, total: countRows(screen, data) });
+      dispatch({ type: "select", index: next, total: countRows(screen, data, detail) });
     }
     // `selected` is deliberately absent: this reacts to DATA changing, not to the operator moving.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -257,19 +257,19 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
    * indistinguishable from one that is broken.
    */
   const act = useCallback(
-    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim" | "stop"): Promise<void> => {
-      if (action === "stop") {
+    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim" | "stop" | "cancel-analysis"): Promise<void> => {
+      if (action === "stop" || action === "cancel-analysis") {
         // Armed like a live start, and for the same reason: it ends work that has already been paid
         // for, and a single keystroke should not be able to do that by accident.
         if (stopArmedAt === undefined) {
           setStopArmedAt(Date.now());
-          setActionNote("stop this run? ⏎ again to confirm · esc cancel");
+          setActionNote(action === "cancel-analysis" ? "cancel analysis? ⏎ again to confirm · esc keep analyzing" : "stop this run? ⏎ again to confirm · esc cancel");
           return;
         }
         if (Date.now() - stopArmedAt < LIVE_CONFIRM_MIN_MS) return;
         setStopArmedAt(undefined);
-        setActionNote("stopping…");
-        const result = await options.capabilities.stopRun(options.cwd, run.runId);
+        setActionNote(action === "cancel-analysis" ? "cancelling analysis…" : "stopping…");
+        const result = await options.capabilities.stopRun(options.cwd, run.runId, action === "cancel-analysis" ? "analysis" : "run");
         setActionNote(result.message);
         return;
       }
@@ -455,16 +455,24 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
     return () => clearInterval(timer);
   }, [frozenTick]);
 
-  // Who is in each LIVE run, so the labs list can name them. Only live runs — reading detail for
-  // the whole list would open every bundle, which is exactly what the index exists to avoid.
-  const liveRunIds = (data?.rows ?? []).flatMap((row) => row.liveRuns.map((run) => run.runId)).join(",");
+  // Live participants plus the latest run of the OPEN lab, so its post-run analysis stays visible.
+  // Never open all historical bundles merely to populate a list.
+  const watchedLab = screen.name === "lab" ? data?.rows.find(row => row.key === screen.labKey) : undefined;
+  const watchedLatestId = watchedLab === undefined ? undefined : data?.runsByLab.get(watchedLab.labId)?.[0]?.runId;
+  const liveRunIds = [...new Set([
+    ...(data?.rows ?? []).flatMap(row => row.liveRuns.map(run => run.runId)),
+    ...(watchedLatestId === undefined ? [] : [watchedLatestId])
+  ])].join(",");
   useEffect(() => {
     if (liveRunIds === "") {
       setLiveDetails(new Map());
       return;
     }
     let cancelled = false;
-    void (async () => {
+    let reading = false;
+    const read = async (): Promise<void> => {
+      if (reading) return;
+      reading = true;
       const ids = liveRunIds.split(",");
       const entries = await Promise.all(
         ids.map(async (runId): Promise<[string, RunDetail] | null> => {
@@ -473,11 +481,16 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
         })
       );
       if (!cancelled) setLiveDetails(new Map(entries.filter((entry): entry is [string, RunDetail] => entry !== null)));
-    })();
+      reading = false;
+    };
+    void read();
+    const timer = setInterval(() => void read(), REFRESH_MS);
+    timer.unref?.();
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
-  }, [liveRunIds, options, tick]);
+  }, [liveRunIds, options]);
 
   // What the open lab IS. Includes the key probe, which is why it is read per lab rather than for
   // the whole list.
@@ -673,7 +686,7 @@ function itemsForLab(data: ProjectData, labKey: string): { row?: LabRow; items: 
   return { row, items: labItems(data.runsByLab.get(row.labId) ?? [], row.declared) };
 }
 
-function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined): number {
+function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined, detail?: RunDetail | null): number {
   if (data === undefined) return 0;
   switch (screen.name) {
     case "labs":
@@ -683,6 +696,10 @@ function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData |
       return liveRunsOf(data).length;
     case "lab":
       return itemsForLab(data, screen.labKey).items.length;
+    case "run": {
+      const run = data.runsById.get(screen.runId);
+      return run === undefined ? 0 : runActions(run, detail).length;
+    }
     default:
       return 0;
   }
@@ -812,7 +829,7 @@ function renderScreen(args: {
         row={row}
         summary={summary}
         runs={data.runsByLab.get(row.labId) ?? []}
-        liveDetail={liveDetails.get(row.liveRuns[0]?.runId ?? "")}
+        liveDetail={liveDetails.get(row.liveRuns[0]?.runId ?? data.runsByLab.get(row.labId)?.[0]?.runId ?? "")}
         selected={selected}
         columns={columns}
         viewport={viewport}

@@ -3,6 +3,7 @@ import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";
+import { parseAutomaticAnalysis } from "./automatic-analysis";
 
 export type { LoadedStudyAnalysis } from "../../src/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
@@ -37,6 +38,12 @@ const correction = (v: unknown): v is StudyAnalysisCorrection => object(v) && v.
 /** Browser admission protects rendering; the producer owns filesystem/hash verification.
  * Do not reclassify a stale report as current just because its shape is readable. */
 export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
+  const selected = parseSelectedAnalysis(value, data);
+  const automatic = parseAutomaticAnalysis(object(value) ? value.automatic : undefined);
+  return automatic ? { ...selected, automatic } : selected;
+}
+
+function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyAnalysis {
   if (!object(value) || !enumeration(value.state, ["none", "ready", "stale", "invalid"])
     || !list(value.warnings, text) || !list(value.corrections, correction)) return invalid();
   if (value.analysis === null) return value.state === "none" || value.state === "invalid"
@@ -44,6 +51,7 @@ export function parseStudyAnalysis(value: unknown, data: ObserverData): LoadedSt
   if (value.state === "none") return invalid();
   const a = value.analysis;
   if (!object(a) || a.schema !== STUDY_ANALYSIS_SCHEMA || !id(a.id) || a.runId !== data.run.runId
+    || !(a.captureVersion === undefined || a.captureVersion === 2)
     || !enumeration(a.status, ["complete", "partial", "failed", "cancelled"])
     || !strings(a, ["createdAt", "completedAt", "promptVersion"]) || a.provider !== "openai"
     || ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) || !nullableText(a.error)
@@ -140,6 +148,7 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
   const evidence = new Map(a?.evidence.map((e) => [e.id, e]) ?? []);
   const state = loaded.state === "ready" || (loaded.state === "invalid" && (a?.status === "failed" || a?.status === "cancelled")) ? a?.status ?? "invalid" : loaded.state;
   return { id: a?.id ?? "unavailable", runId: data.run.runId, state,
+    admissionExceeded: a?.error === "analysis_admission_estimate_exceeded",
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
     messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
     findings: result?.findings.map((f) => {

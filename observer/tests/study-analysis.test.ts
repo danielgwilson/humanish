@@ -12,6 +12,14 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
+  it("admits legacy and current capture versions while rejecting unknown future mappings", () => {
+    const saved = fixture();
+    expect(parseStudyAnalysis(saved, data).state).toBe("ready");
+    saved.analysis!.captureVersion = 2;
+    expect(parseStudyAnalysis(saved, data).state).toBe("ready");
+    Object.assign(saved.analysis!, { captureVersion: 3 });
+    expect(parseStudyAnalysis(saved, data)).toMatchObject({ state: "invalid", analysis: null });
+  });
   it("projects distinct denominators, quoted feedback and exact source references", () => {
     const loaded = parseStudyAnalysis(fixture(), data);
     expect(loaded.state).toBe("ready");

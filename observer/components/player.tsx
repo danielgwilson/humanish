@@ -14,6 +14,7 @@ import { completionLabel } from "@/lib/signal";
 import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
+import { recordedParticipantAssignment } from "../lib/participant-assignment";
 import { ParticipantAnalysis } from "./participant-analysis";
 import { ParticipantFeedback } from "./participant-feedback";
 import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
@@ -293,7 +294,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <button type="button" className="tbtn" aria-label={preferences.inspector ? "Hide inspector" : "Show inspector"} aria-expanded={preferences.inspector}
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
-      {stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
+      {recordedParticipantAssignment(stream) ? <ParticipantAssignment stream={stream} /> : null}
       {selectedRow || state.eventId ? <div className="player-entry-context" role="group" aria-label="Selected evidence">
         {selectedRow ? <>
           <span className="entry-label">{selectedRow.kind === "reasoning" ? "Reported thinking" : isActionRow(selectedRow) ? "Recorded action" : isWaitRow(selectedRow) ? "Recorded wait" : "Recorded entry"}
@@ -425,7 +426,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         </Tabs.Panel>
         <Tabs.Panel value="details" className="ipanel">
             {analysisReview ? <ParticipantAnalysis data={data} review={analysisReview} /> : null}
-            {!stream.assignment ? <ParticipantAssignment stream={stream} /> : null}
+            {!recordedParticipantAssignment(stream) ? <ParticipantAssignment stream={stream} /> : null}
             <div className="kv">
               <span className="k">Persona</span>
               <span className="v">{participantLabels(data.streams).get(stream.id) ?? stream.label}</span>

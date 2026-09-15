@@ -1,3 +1,4 @@
+import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
@@ -3113,6 +3114,7 @@ async function runCuaBackend(args: {
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
+      automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       // Watch mode opens the served Observer below (or prints the phone target under --expose)
@@ -3212,7 +3214,7 @@ async function runCuaBackend(args: {
     };
   }
   writeResult(args.command, args.io, output, formatCuaLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (server && (result.observer?.ok || attachedObserver)) {
     const activeServer = server as ObserverServer;
@@ -3259,6 +3261,7 @@ async function runScriptedBackend(args: {
   });
 
   const outcome = await runLab(args.config, {
+    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     // Watch mode opens the served Observer below instead of the static render.
@@ -3271,7 +3274,7 @@ async function runScriptedBackend(args: {
   }
   const result = outcome.result;
   writeResult(args.command, args.io, result, formatScriptedLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   // Watch mode serves the freshly rendered Observer (and opens it unless told not to).
   if (args.mode === "watch" && result.ok && !wantsMachine) {
@@ -3307,6 +3310,7 @@ async function runTerminalBackend(args: {
   });
 
   const outcome = await runLab(args.config, {
+    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: args.mode === "watch" ? false : shouldOpen,
@@ -3319,7 +3323,7 @@ async function runTerminalBackend(args: {
   }
   const result = outcome.result;
   writeResult(args.command, args.io, result, formatTerminalLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (args.mode === "watch" && result.ok && !wantsMachine) {
     await renderAndMaybeFollowObserver({
@@ -3352,6 +3356,7 @@ async function runSharedWorldBackend(args: {
   });
 
   const outcome = await runLab(args.config, {
+    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
     cwd: args.options.cwd,
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     open: args.mode === "watch" ? false : shouldOpen,
@@ -3364,7 +3369,7 @@ async function runSharedWorldBackend(args: {
   }
   const result = outcome.result;
   writeResult(args.command, args.io, result, formatSharedWorldLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (args.mode === "watch" && result.ok && !wantsMachine) {
     await renderAndMaybeFollowObserver({
@@ -3447,6 +3452,7 @@ async function runConcurrentSharedWorldBackend(args: {
   let outcome: Awaited<ReturnType<typeof runLab>>;
   try {
     outcome = await runLab(args.config, {
+      automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
       cwd: args.options.cwd,
       ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
       open: wantsFollow ? false : shouldOpen,
@@ -3492,7 +3498,7 @@ async function runConcurrentSharedWorldBackend(args: {
     };
   }
   writeResult(args.command, args.io, output, formatConcurrentSharedWorldLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
+  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (server && output.observer?.ok) {
     await followObserver(args.io, output.observer, server);
@@ -3913,10 +3919,15 @@ function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverRes
 // funnel every real command uses, without duplicating its stdout-vs-formatHuman
 // branching. Not re-exported from src/index.ts; this stays an internal seam.
 export function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
+  const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
-    io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+    io.writeOut(`${JSON.stringify(output, null, 2)}\n`);
   } else {
-    io.writeOut(formatHuman(result));
+    io.writeOut(formatHuman(output));
+    if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
+      const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
+      if (analysis) io.writeOut(`analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`);
+    }
   }
   markInvocationEnvelopeWritten(command);
   // Every backend's result passes through here, so this is where a study's facts get read for
@@ -4471,4 +4482,26 @@ function wantsJson(command: Command): boolean {
   }
 
   return false;
+}
+
+/** Listeners exist only while post-run analysis is active; actor signal behavior is unchanged. */
+export function cliAutomaticAnalysisHooks(io: Pick<CliIo, "writeErr">): AutomaticAnalysisHooks {
+  const controller = new AbortController();
+  return {
+    deps: { signal: controller.signal },
+    onStart: () => {
+      const cancel = (): void => { controller.abort(); };
+      const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+      io.writeErr("Participants finished; preparing analysis…\n");
+      for (const signal of signals) process.on(signal, cancel);
+      return () => { for (const signal of signals) process.off(signal, cancel); };
+    }
+  };
+}
+
+/** Preserve the run's own result while making requested post-processing failures machine-visible. */
+export function automaticAnalysisEnvelope<T>(result: T): T {
+  if (result === null || typeof result !== "object" || !("automaticAnalysis" in result) || !("ok" in result)) return result;
+  const run = result as T & AutomaticAnalysisResult & { ok: boolean };
+  return { ...run, runOk: run.ok, ok: run.ok && automaticAnalysisSucceeded(run) };
 }

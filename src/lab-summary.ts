@@ -7,6 +7,7 @@
 // Every field is optional and omitted when the manifest does not declare it. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
@@ -21,6 +22,7 @@ export interface LabCaps {
 }
 
 export interface LabSummary {
+  analysis?: { model: string; maxCostUsd: number };
   schema: typeof LAB_SUMMARY_SCHEMA;
   labId: string;
   title?: string;
@@ -133,10 +135,12 @@ export async function readLabSummary(
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
+  const analysis = resolveAutomaticAnalysis((config.review as { analysis?: unknown } | undefined)?.analysis);
   const subject = subjectOf(config);
   const participants = participantsOf(config);
 
   return {
+    ...(analysis.ok && analysis.config ? { analysis: { model: analysis.config.model, maxCostUsd: analysis.config.maxCostUsd } } : {}),
     schema: LAB_SUMMARY_SCHEMA,
     labId: String(config.id ?? lab),
     ...(typeof config.title === "string" ? { title: config.title } : {}),
