@@ -912,7 +912,7 @@ export function buildScriptedLabBundle(args: {
       type: "scripted-lab.spend",
       message: args.subject
         ? "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
-        : "$0 provider spend by construction (no model and no sandbox in the loop); scenario.mode: live gates real browser actuation against the declared app, not cost."
+        : "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
     }
   ];
 

@@ -323,12 +323,13 @@ describe("runScriptedBrowserLab", () => {
     }
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.scenario.sourceDigest).toBe(digestText(scenarioText));
-    // The UNPINNED subject declaration + the $0 spend declaration are explicit events.
+    // Subject provenance and the participant/analysis spending boundary are explicit events.
     const subjectEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.subject.declared");
     expect(subjectEvent?.message).toContain("UNPINNED");
     expect(subjectEvent?.message).toContain("scenario digest");
     const spendEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend");
-    expect(spendEvent?.message).toContain("$0 provider spend by construction");
+    expect(spendEvent?.message).toContain("Scripted participant steps make no model requests");
+    expect(spendEvent?.message).toContain("post-run analysis has a separate budget unless disabled");
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
