@@ -57,6 +57,9 @@ const productBlock = "  product:\n    name: humanish\n";
 if (!fixture.includes(productBlock)) {
   fail("first-contact.yaml has changed shape — this gate rewrites its product block and cannot any more.");
 }
+if (!/^review:\s*\n\s+analysis: false\s*$/m.test(fixture)) {
+  fail("first-contact.yaml must explicitly disable automatic analysis to preserve this gate’s zero-spend product contract.");
+}
 let lab = fixture
   .replace("id: first-contact", `id: ${LAB_ID}`)
   .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")

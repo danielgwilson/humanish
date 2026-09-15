@@ -25,6 +25,7 @@ export function syntheticResult(input = syntheticInput()): StudyAnalysisResult {
   const firstEvidence = input.evidence.find((entry) => entry.streamId === first)!;
   return {
     summary: "The participant encountered an obstacle.",
+    concernReviews: [],
     participants: input.participants.map((participant) => ({ streamId: participant.streamId,
       summary: "The participant attempted the assigned task.", intent: "Create an item.", outcome: "blocked",
       outcomeReason: "The retained evidence shows an obstacle.",

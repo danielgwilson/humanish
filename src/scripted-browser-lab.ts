@@ -6,8 +6,8 @@
 // actor's behavior — no built-in fallback on the lab route, unlike `run --app-url`), composes
 // the per-surface sessions, persists the evidence bundle, and renders the Observer.
 //
-// Spend posture: no model/provider-token spend BY MECHANISM — nothing on this code path can
-// construct a provider client, and every projected trace records tokenUsage zeros. Local
+// Spend posture: scripted participant steps make no model requests, and their traces record
+// tokenUsage zeros. Post-run analysis has a separate model budget unless explicitly disabled. Local
 // app-url runs also spend no sandbox minutes; live provisioned clone runs can spend E2B
 // sandbox minutes to clone/serve the synthetic subject. `scenario.mode: live` is still
 // required because the gate's justification here is ACTUATION: a live scripted run drives a
@@ -215,7 +215,8 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runScriptedBrowserLabInScope(options));
-  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
+    options.config.review?.analysis === undefined ? "default" : "explicit");
 }
 
 async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
@@ -910,8 +911,8 @@ export function buildScriptedLabBundle(args: {
       level: "info",
       type: "scripted-lab.spend",
       message: args.subject
-        ? "No model spend by construction; live provisioned scripted runs may spend E2B sandbox minutes to clone/serve the synthetic subject, then drive deterministic browser steps."
-        : "$0 provider spend by construction (no model and no sandbox in the loop); scenario.mode: live gates real browser actuation against the declared app, not cost."
+        ? "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+        : "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
     }
   ];
 

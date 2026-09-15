@@ -50,7 +50,9 @@ npx humanish observe --run latest --open
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
 `try-live` clones and studies drawDB, not your project. Its **$2 cap covers
-estimated model spend**; hosted desktop time is additional. Caps are checked
+estimated participant model spend**. Post-run analysis defaults to a separate
+**$3 admission estimate limit**; set `review.analysis: false` to disable it.
+Hosted desktop time is additional. Participant caps are checked
 between turns and are not provider billing ceilings. Allow a few minutes for
 the app to build and the participant to work. See [budgets and privacy](https://humanish.dev/docs/budgets-and-privacy).
 
@@ -104,18 +106,20 @@ beside Participants in Observer, with evidence links and separate participant
 feedback. See the [analysis contract](docs/contracts/study-analysis.md) for
 coverage limits, estimated cost controls, corrections and sharing behavior.
 
-To generate findings automatically after each live run of a lab, add:
+Supported live studies generate findings automatically after participants finish,
+using a separate $3 admission estimate limit with `gpt-6-astra` and high reasoning.
+This is additional to participant execution costs, and is not a hard provider
+billing cap. To disable the extra request:
 
 ```yaml
 review:
-  analysis:
-    maxCostUsd: 3
+  analysis: false
 ```
 
-This is a separate analysis budget, in addition to participant execution costs.
 `humanish run <lab>`, `humanish lab run <lab>`, `humanish watch <lab>`, and live
-starts in the TUI all honor it. Dry runs skip analysis. The TUI and Observer show
-its progress after participants finish; opening either view never spends money.
+starts in the TUI share this default. Dry runs and unsupported routes dispatch
+nothing. Without `OPENAI_API_KEY`, default analysis is skipped and a successful
+recording stays successful. Opening the TUI or Observer never starts a request.
 See [automatic analysis](docs/product/automatic-analysis.md) for configuration,
 cancellation, and failure behavior.
 

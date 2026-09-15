@@ -34,9 +34,12 @@ certify (see the conformance suite).
    terminal) is only ever pointed at a URL the harness itself issued or validated under a
    declared policy (loopback entry, provisioned subject, declared external target). Never an
    arbitrary URL from unvalidated input.
-3. **Live spend is explicit.** No configuration default, omission, or fallback may cause
-   provider or sandbox spend. Spend requires an affirmative declaration (`scenario.mode:
-   live`, an env opt-in gate for spend-bearing tests).
+3. **Live spend requires an explicit live invocation.** No omission or fallback may
+   turn a dry run, preview, reader or unsupported route into provider or sandbox
+   spend. An explicitly live supported study includes the disclosed default
+   post-run analysis budget unless `review.analysis: false` disables it. Analysis
+   has a separate admission estimate limit, not a provider billing cap or part of
+   the actor budget. Spend-bearing tests retain their explicit env gates.
 4. **Evidence verifies fail-closed.** A run bundle that cannot pass verification (schema,
    redaction status, artifact presence, public-safety scan) is a failed run, even when the
    session "worked." The gate applies to the harness's own error reports.
@@ -82,6 +85,7 @@ silently drifting from one is not.
 | Default | Why it is the default | Legitimate override |
 |---|---|---|
 | Dry-run | Spend safety (invariant 3 sets the floor; dry-run keeps the floor far away) | `scenario.mode: live` |
+| Post-run analysis on supported live studies | Findings accompany the recording; a separate $3 admission estimate limit is visible before execution | `review.analysis: false` disables it; an explicit mapping sets another analysis budget. Dry-run and unsupported routes never dispatch; missing default credentials produce a recorded skip |
 | Per-lane worlds | Isolation, attribution, reproducibility | `subject.topology: shared-world` — N seats against ONE provisioned, mutable plane for scenarios that ARE about interaction between roles (#164). `execution.concurrency: 1` (an explicit choice) = SEQUENTIAL turns (one sandbox); higher = CONCURRENT — and since #350 an omitted concurrency fills to the seat count, so every declared seat runs live at once by default (one getHost-exposed subject sandbox + N actor sandboxes driving it at once, synthetic-subject only). The bundle declares the weaker `attributionClass: shared-world` + a verify-enforced `attributionLimits` ceiling (the concurrent set drops `sequential-only` and adds `best-effort-causal-attribution` etc.), so the looser per-role attribution is honest, not hidden. |
 | External key placement | Smallest blast radius: when the keyed process (e.g. a computer-use provider loop) runs outside the sandbox, its key never enters | In-sandbox placement when the keyed process runs inside (an agent harness under test); declared per actor type, with a spend budget |
 | Loopback entry URLs | Public-safety: never drive third-party sites unbidden | `policies.allowPublicTargets` for an owner-declared deployment/preview (a Vercel preview of your own app). Multi-lane public/preview fan-out needs explicit `actors[0].lanes[].target` for every lane, so the adapter-owned topology is declared rather than inferred. Provisioned clone subjects always serve in-sandbox on loopback |

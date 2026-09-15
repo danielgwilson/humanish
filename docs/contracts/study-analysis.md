@@ -1,8 +1,11 @@
 # Study analysis
 
-Study analysis is an optional interpretation of retained participant evidence.
+Study analysis is an independent interpretation of retained participant evidence.
 It is separate from the participant's account, recorded outcome, and the run's
 deterministic review verdict. Opening an Observer never starts a provider request.
+Supported live runs request analysis on completion by default, with a separate
+$3 admission estimate limit. Set `review.analysis: false` to disable that request;
+see [automatic analysis](../product/automatic-analysis.md).
 
 ## Invocation
 
@@ -59,8 +62,15 @@ stopped, an operator can remove the empty lock directory and retry.
 
 The packet currently admits up to 16 participants, 800 evidence items, 40 PNG
 captures, 160 KiB of text and 20 MiB of images. Individual source files, image
-dimensions and result sizes have separate limits. Selection follows retained
-source order; it is not a statistically representative sample. Selection
+dimensions and result sizes have separate limits. Count and text budgets are
+distributed across included participants, with unused capacity from short
+sessions available to longer ones. Capture selection prioritizes session endings
+and beginnings, context around recorded failures, and spread across each whole
+session. Failure priority uses structured source status, not application-specific
+keywords or image interpretation. Unflagged visual errors may still be omitted.
+Bounded reads and the total image byte limit can reduce coverage further.
+Selected entries retain their original source order, frame and event identities;
+this is not a statistically representative sample. Selection
 omissions and unreadable or invalid capture files make declared coverage
 incomplete. Coverage records file availability and selection; it does not
 certify visual legibility, correct interpretation, or exhaustive issue discovery.
@@ -72,13 +82,29 @@ to an earlier capture retain that context without creating another frame.
 Scripted lanes use their recorded `ui.intent` goal when no participant assignment
 exists. Missing assignments and declared captures without supported trace
 references are explicit omissions. Artifacts without `captureVersion` continue
-to validate against the original selection rules.
+to validate against the original capture mapping; previously saved selections
+are not recomputed or rewritten.
 
 The standard review covers session summary, apparent intent, observed outcome,
 friction, dead ends, recovery, and participant feedback. Findings are ordered by
 observed task impact, replication among exposed participants, and recovery.
 Impact and confidence remain separate. There is no numeric frustration or
 universal priority score.
+
+The standard review also accounts for material participant concerns before
+ranking findings. Reported uncertainty can be useful even when the interface is
+correct or study setup may explain it. Claims distinguish that experience from
+an established product defect, preserve consequential recoveries, and check
+participant accounts against the actual assignment and captured state.
+
+New results include `concernReviews`: evidence-linked observations with a
+`finding`, `context`, or `unsupported` disposition and a concise reason. A finding
+disposition references an existing local finding ID; other dispositions use null.
+The Observer's **Concerns considered** disclosure exposes these decisions and
+their original evidence. There is no required finding count or inventory of every
+thought. Older reports may omit this field and remain readable. The disclosure
+is model-generated assessment, not an independent completeness audit or a human
+reviewer annotation.
 
 Every observation cites packet-local evidence IDs. The model cannot choose a
 filesystem path or fetch another resource. Validation checks participant
@@ -105,7 +131,7 @@ status, usage and validated findings:
   analysis/<analysis>/corrections/<correction>/correction.json
   analysis-attempts/<analysis>/receipt.json
   observer/study-analysis.json
-  analysis-automatic/job.json  # opt-in run lifecycle; never a retry instruction
+  analysis-automatic/job.json  # post-run lifecycle; never a retry instruction
 ```
 
 The optional automatic job is separate from the immutable analysis. Its view

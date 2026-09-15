@@ -1,0 +1,5 @@
+{"type":"item.completed","item":{"id":"synthetic-message","type":"agent_message","text":"I will inspect the local draft."}}
+{"type":"item.started","item":{"id":"synthetic-command","type":"command_execution","command":"node --version","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"synthetic-command","type":"command_execution","command":"node --version","aggregated_output":"v24.0.0\n","exit_code":0,"status":"completed"}}
+{"type":"item.started","item":{"id":"synthetic-search","type":"web_search","query":"synthetic CLI help","action":{"type":"other"}}}
+{"type":"item.started","item":{"id":"synthetic-file","type":"file_change","changes":[{"path":"synthetic-draft.txt","kind":"add"}],"status":"in_progress"}}

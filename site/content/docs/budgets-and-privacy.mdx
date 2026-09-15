@@ -26,6 +26,18 @@ execution:
 
 The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task.
 
+Supported live runs also request post-run analysis by default. This sends selected
+retained text and captures to OpenAI, using `OPENAI_API_KEY`, with a separate $3
+admission estimate limit. It is additional to participant budgets and desktop
+time, and is not a provider billing cap. Preflight and live-start output disclose
+it. Set `review.analysis: false` to disable the request, or configure
+`review.analysis.maxCostUsd` to choose another limit. A missing default analysis
+key records a skip while preserving a successful recording. Dry-run and keyless
+preview routes make no analysis request.
+
+Analysis usage is stored separately from participant costs. Inspect it with
+`humanish analyze list --run latest --json`; unknown usage remains unknown.
+
 ```bash
 npx humanish stats --lab try-live --json
 ```

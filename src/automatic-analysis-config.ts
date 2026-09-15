@@ -2,7 +2,7 @@ import { SUPPORTED_STUDY_ANALYSIS_MODELS } from "./study-analysis-engine.js";
 import { containsSensitive } from "./redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
-/** A separate, explicitly priced review after a live participant study. */
+/** A separately budgeted review after a live participant study. */
 export interface LabAnalysis {
   maxCostUsd: number;
   model?: string;
@@ -18,10 +18,11 @@ const FIELDS = new Set(["maxCostUsd", "model", "question", "timeoutMs", "maxOutp
 export function resolveAutomaticAnalysis(raw: unknown):
   | { ok: true; config: StudyAnalysisConfig | undefined }
   | { ok: false; message: string } {
-  if (raw === undefined) return { ok: true, config: undefined };
+  if (raw === false) return { ok: true, config: undefined };
+  if (raw === undefined) raw = { maxCostUsd: 3 };
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)
     || Object.keys(raw).some(key => !FIELDS.has(key))) {
-    return { ok: false, message: "review.analysis must be a mapping containing only maxCostUsd, model, question, timeoutMs and maxOutputTokens." };
+    return { ok: false, message: "review.analysis must be false or a mapping containing only maxCostUsd, model, question, timeoutMs and maxOutputTokens." };
   }
   const value = raw as Record<string, unknown>;
   const { maxCostUsd } = value;
@@ -40,4 +41,22 @@ export function resolveAutomaticAnalysis(raw: unknown):
     return { ok: false, message: "review.analysis.question contains sensitive text and cannot be sent for analysis." };
   }
   return { ok: true, config: { model, maxCostUsd, timeoutMs, maxOutputTokens, question: question as string | null } };
+}
+
+export interface AutomaticAnalysisBudget {
+  model: string;
+  maxCostUsd: number;
+  trigger: "default" | "explicit";
+}
+
+/** Metadata only: resolving the future live-run budget never reads keys or dispatches. */
+export function automaticAnalysisBudget(raw: unknown, backend: string): AutomaticAnalysisBudget | undefined {
+  if (!["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"].includes(backend)) return undefined;
+  const resolved = resolveAutomaticAnalysis(raw);
+  return resolved.ok && resolved.config ? { model: resolved.config.model, maxCostUsd: resolved.config.maxCostUsd,
+    trigger: raw === undefined ? "default" : "explicit" } : undefined;
+}
+
+export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
+  return `After live runs: ${budget.trigger} analysis · ${budget.model} · separate $${budget.maxCostUsd} admission estimate limit (not a provider billing cap). Set review.analysis: false to disable.`;
 }

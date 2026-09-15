@@ -14,7 +14,7 @@ import { syntheticArtifact } from "./study-analysis-fixtures.js";
 const marker = "sk-" + "syntheticvalue1234567890abcdef";
 
 describe("analysis sharing through a warmed serving cache", () => {
-  it("denies raw derived records and rechecks the exact companion payload", async () => {
+  it.each(["summary", "excluded concern"])("denies unsafe %s text in raw records and the exact companion payload", async (field) => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analysis-sharing-"));
     let server: Server | undefined;
     try {
@@ -26,7 +26,9 @@ describe("analysis sharing through a warmed serving cache", () => {
       expect((await verifyRun(cwd, "synthetic-study")).shareSafety.status).toBe("share_ready");
       expect(await admission.admit("synthetic-study")).toBe(true);
       const artifact = syntheticArtifact(input);
-      artifact.result!.summary = marker;
+      if (field === "summary") artifact.result!.summary = marker;
+      else artifact.result!.concernReviews = [{ claim: "A reported concern was not established.", basis: "inference",
+        evidenceIds: [input.evidence[0]!.id], limitation: "Synthetic fixture.", disposition: "unsupported", findingId: null, reason: marker }];
       await writeStudyAnalysisExecutionReceipt(prepared, artifact);
       await writeStudyAnalysis(prepared, artifact);
       // Atomic writer files are private even during publication. Older ordinary

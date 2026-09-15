@@ -17,6 +17,19 @@ const data = { ...base, streams: [stream] };
 const report: StudyReport = { id: "review-1", runId: data.run.runId, summary: "A task was blocked.", scope: "1 participant", methodology: [], outcomes: [{ streamId: stream.id, label: "Blocked" }], findings: [{ id: "F1", title: "Task blocked", impact: "Blocked", summary: "A control did not respond.", scope: "1 of 1", limitation: "One attempt", nextStep: "Check the control", priorityReason: "Task impact", account: "I stopped", accountSource: "Closing account", moments: [{ streamId: stream.id, eventId: "click", label: "Attempt", note: "Recorded action" }] }] };
 
 describe("study report evidence navigation", () => {
+  it("shows qualified exclusions without inserting them into the ranked findings", () => {
+    const value: StudyReport = { ...report, concernReviews: [{ claim: "The participant explored another option.", basis: "action",
+      limitation: "No interruption was established.", disposition: "context", findingId: null, reason: "This was reversible exploration.",
+      moments: [{ streamId: stream.id, eventId: "click" }] }] };
+    const html = renderToStaticMarkup(createElement(StudyReportView, {
+      data, report: value, findingId: "", concernsOpen: true, onFinding: () => undefined, onOpen: () => undefined
+    }));
+    expect(html).toContain("Concerns considered (1)");
+    expect(html).toContain("Context only");
+    expect(html).toContain("This was reversible exploration.");
+    expect(html).toContain("Open concern evidence:");
+    expect(html.match(/data-finding-row=/g)).toHaveLength(1);
+  });
   it.each(["click", "first"])("qualifies an inherited preview for %s independently of the observation basis", (eventId) => {
     const value = structuredClone(report);
     value.findings[0]!.moments[0]!.eventId = eventId;

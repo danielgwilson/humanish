@@ -38,8 +38,10 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const report = useMemo(() => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined), [suppliedReport, analysis, data]);
   const hasFindingsView = !!report || !!analysis.automatic;
   const [reportRoute, setReportRoute] = useState(() => reportFindingId(window.location.hash));
+  const [concernsOpen, setConcernsOpen] = useState(false);
   const reportIds = useRef<string[]>([]); reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
-  const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", reportIds.current);
+  const hasConcerns = useRef(false); hasConcerns.current = report?.concernReviews !== undefined;
+  const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", reportIds.current, hasConcerns.current);
   const [source, setSource] = useState<RecordingSource>(readSource);
   const reportActive = hasFindingsView && reportRoute !== null;
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
@@ -78,7 +80,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const selected = streams.find((s) => s.id === route.laneId) ?? null;
   // The viewport and explicit preference own the shell, never the selected view.
   const libraryAsDrawer = phone;
-  const findingsView = reportActive || (!!selected && !!report && source.kind === "finding");
+  const findingsView = reportActive || (!!selected && !!report && (source.kind === "finding" || source.kind === "concerns"));
   const contentRef = useRef<HTMLElement>(null);
 
   const scrollPositions = useRef(new Map<string, number>());
@@ -102,6 +104,9 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     if (source.kind === "finding") {
       openReport(source.findingId);
       focus(() => [...document.querySelectorAll<HTMLButtonElement>("[data-finding]")].find((button) => button.dataset.finding === source.findingId));
+    } else if (source.kind === "concerns") {
+      setConcernsOpen(true); openReport();
+      focus(() => document.querySelector<HTMLElement>(".report-concerns > summary"));
     } else if (source.kind === "comparison") {
       pushHash(source.hash); setComparison(true); setCompareIds(routeCompareIds()); setRoute(parseHash(""));
       focus(() => contentRef.current);
@@ -189,7 +194,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const participantContent = <>
     {selected || comparison ? <h2 className="sr-only">{selected ? `${labels.get(selected.id)} recording` : "Compare participants"}</h2> : null}
     {selected || (!comparison && compareIds.length > 0) ? <div className="study-context-actions">
-      {selected ? <button className="recording-return" type="button" data-return-kind={source.kind} aria-label={source.kind === "finding" ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}` : source.kind === "comparison" ? "Back to comparison" : "Back to participants"} onClick={returnToSource}>← {source.kind === "finding" ? report?.findings.find((finding) => finding.id === source.findingId)?.title ?? "Back to finding" : source.kind === "comparison" ? "Back to comparison" : "Back to participants"}</button> : null}
+      {selected ? <button className="recording-return" type="button" data-return-kind={source.kind} aria-label={source.kind === "finding" ? `Back to finding: ${report?.findings.find((finding) => finding.id === source.findingId)?.title ?? source.findingId}` : source.kind === "concerns" ? "Back to concerns considered" : source.kind === "comparison" ? "Back to comparison" : "Back to participants"} onClick={returnToSource}>← {source.kind === "finding" ? report?.findings.find((finding) => finding.id === source.findingId)?.title ?? "Back to finding" : source.kind === "concerns" ? "Back to concerns considered" : source.kind === "comparison" ? "Back to comparison" : "Back to participants"}</button> : null}
       {selected ? <ParticipantPager data={data} selected={selected} onStep={stepParticipant} /> : null}
       {selectedReview && selected ? <span className="report-outcome-context">Analyzed outcome: <strong>{selectedReview.label}</strong></span> : null}
       {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
@@ -219,8 +224,14 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
         {needsAttention || monitoring ? <RunStatus data={data} connection={connection} now={now} onRetry={retry} actions={monitoring ? <button type="button" className="review-tool" onClick={() => setMonitoring(false)}>Exit monitor</button> : null} /> : null}
         <main id="observer-content" ref={contentRef} tabIndex={-1} className={selected && model ? "content player-host" : "content"}
           onScroll={(event) => scrollPositions.current.set(contentView, event.currentTarget.scrollTop)}>
-          {reportActive ? <StudyReport data={data} report={report} {...(analysis.automatic ? { automatic: analysis.automatic } : {})} snapshot={snapshot} now={now} findingId={reportRoute ?? ""} onFinding={openReport}
-            onOpen={(id, frame, eventId, findingId) => openParticipant(id, frame, eventId, { runId: data.run.runId, kind: "finding", findingId })} /> : participantContent}
+          {reportActive ? <StudyReport data={data} report={report} {...(analysis.automatic ? { automatic: analysis.automatic } : {})} snapshot={snapshot} now={now} findingId={reportRoute ?? ""} onFinding={id => {
+            openReport(id);
+            if (id) focus(() => {
+              const target = [...document.querySelectorAll<HTMLButtonElement>("[data-finding]")].find(button => button.dataset.finding === id);
+              target?.scrollIntoView({ block: "nearest" }); return target;
+            });
+          }} concernsOpen={concernsOpen} onConcernsOpen={setConcernsOpen}
+            onOpen={(id, frame, eventId, findingId) => openParticipant(id, frame, eventId, findingId ? { runId: data.run.runId, kind: "finding", findingId } : { runId: data.run.runId, kind: "concerns" })} /> : participantContent}
         </main>
       </div>
     </div>

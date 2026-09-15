@@ -67,6 +67,7 @@ describe.skipIf(!LIVE)("scripted-browser-lab (LIVE, actuation-gated; $0 by mecha
       subject: { source: "app-url", appUrl },
       actors: [{ type: "scripted-browser", persona: "synthetic-new-user", count: 2 }],
       scenario: { ref: "scripted-first-run", mode: "live" },
+      review: { analysis: false }, // This actuation gate promises zero model requests.
       execution: { target: "local", timeoutMs: 60_000 }
     });
     if (!parsed.ok) throw new Error(parsed.error.message);

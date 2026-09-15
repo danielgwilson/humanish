@@ -69,7 +69,8 @@ describe("versioned scripted capture evidence", () => {
     const source = await save(), input = await captureStudyEvidence(prepared, source, { captures: 2 });
     expect(input.coverage).toMatchObject({ captureCount: 2, complete: false });
     expect(input.evidence.slice(0, 4).map((entry) => entry.frame)).toEqual([0, 1, 2, 3]);
-    expect(input.evidence[3]!.capture).toBeNull();
+    expect(input.evidence[1]!.capture).toBeNull();
+    expect(input.evidence[3]!.capture?.eventId).toBe("action-3");
     expect(input.coverage.omissions).toContain("Some captures were omitted by the capture count limit.");
     await writeStudyAnalysis(prepared, syntheticArtifact(input));
     expect((await loadStudyAnalysis(prepared)).state).toBe("ready");

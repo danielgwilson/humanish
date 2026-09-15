@@ -1,12 +1,63 @@
 import { describe, expect, it } from "vitest";
 import {
-  checkAnalysisResult, digestStudyAnalysisInput, hashStudyAnalysisValue, studyAnalysisResultJsonSchema,
+  checkAnalysisResult, digestStudyAnalysisInput, hashStudyAnalysisValue, studyAnalysisResultJsonSchema, studyAnalysisResponseSchema,
   validateAnalysisResult, validateStudyAnalysisArtifact, validateStudyAnalysisCorrection,
   validateStudyAnalysisInputMetadata, validateStudyAnalysisExecutionReceipt
 } from "../src/study-analysis-validation.js";
 import { syntheticArtifact, syntheticInput, syntheticResult } from "./study-analysis-fixtures.js";
 
 describe("study analysis validation", () => {
+  it("preserves legacy artifacts but requires a concern accounting in new responses", () => {
+    const legacy = syntheticArtifact();
+    delete legacy.result!.concernReviews;
+    legacy.promptVersion = "study-evidence-4";
+    expect(validateStudyAnalysisArtifact(legacy)).toEqual(legacy);
+    expect(studyAnalysisResponseSchema.safeParse(legacy.result).success).toBe(false);
+    legacy.promptVersion = "study-evidence-5";
+    expect(() => validateStudyAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
+    legacy.promptVersion = "study-evidence-6";
+    expect(() => validateStudyAnalysisArtifact(legacy)).toThrow("ANALYSIS_RESULT_SCHEMA_INVALID");
+    legacy.result!.concernReviews = [];
+    expect(validateStudyAnalysisArtifact(legacy)).toEqual(legacy);
+  });
+  it("allows finding concern reviews to cite an exposed participant's counterexample", () => {
+    const input = syntheticInput();
+    input.participants.push({ ...input.participants[0]!, streamId: "participant-b", label: "Participant B" });
+    input.coverage.includedStreamIds.push("participant-b");
+    input.evidence.push({ ...input.evidence[1]!, id: "e000003", streamId: "participant-b", text: "I could create the item." });
+    input.coverage.evidenceCount++; input.inputDigest = digestStudyAnalysisInput(input);
+    const result = syntheticResult(input);
+    result.concernReviews = [{ claim: "A second exposed participant reported completing the task.", basis: "participant_statement",
+      evidenceIds: ["e000003"], limitation: "Reported completion alone does not verify the result.", disposition: "finding",
+      findingId: result.findings[0]!.id, reason: "The second account limits claims that the obstacle affected everyone exposed." }];
+    expect(checkAnalysisResult(input, result).ok).toBe(true);
+    result.findings[0]!.exposedStreamIds = ["participant-a"];
+    expect(checkAnalysisResult(input, result)).toMatchObject({ ok: false, errors: ["ANALYSIS_CONCERN_FINDING_INVALID"] });
+  });
+  it("keeps evidence-linked exclusions separate from ranked findings", () => {
+    const result = syntheticResult(), input = syntheticInput();
+    result.concernReviews = [{ claim: "The participant reported a problem.", basis: "participant_statement", evidenceIds: ["e000002"],
+      limitation: "This account alone does not prove a defect.", disposition: "context", findingId: null,
+      reason: "No independent result was retained for this reported concern." }];
+    expect(validateAnalysisResult(input, result)).toEqual(result);
+    result.concernReviews[0]!.findingId = "missing";
+    expect(checkAnalysisResult(input, result)).toMatchObject({ ok: false, errors: ["ANALYSIS_CONCERN_FINDING_INVALID"] });
+    result.concernReviews[0]!.disposition = "finding";
+    expect(checkAnalysisResult(input, result).ok).toBe(false);
+    result.concernReviews[0]!.findingId = result.findings[0]!.id;
+    expect(checkAnalysisResult(input, result).ok).toBe(true);
+  });
+  it.each([
+    { basis: "visual", evidenceIds: ["e000002"], error: "ANALYSIS_VISUAL_WITHOUT_CAPTURE" },
+    { basis: "participant_statement", evidenceIds: ["e000001"], error: "ANALYSIS_STATEMENT_SOURCE_INVALID" },
+    { basis: "action", evidenceIds: ["e000002"], error: "ANALYSIS_ACTION_SOURCE_INVALID" },
+    { basis: "inference", evidenceIds: ["unselected"], error: "ANALYSIS_OBSERVATION_REFERENCE_INVALID" }
+  ] as const)("rejects invalid $basis concern evidence", ({ basis, evidenceIds, error }) => {
+    const result = syntheticResult();
+    result.concernReviews = [{ claim: "A proposed concern.", basis, evidenceIds: [...evidenceIds], limitation: "Limited evidence.",
+      disposition: "unsupported", findingId: null, reason: "Not established." }];
+    expect(checkAnalysisResult(syntheticInput(), result)).toMatchObject({ ok: false, errors: [error] });
+  });
   it("accepts bounded results and exports a strict provider JSON schema", () => {
     const input = syntheticInput();
     expect(validateAnalysisResult(input, syntheticResult(input))).toEqual(syntheticResult(input));

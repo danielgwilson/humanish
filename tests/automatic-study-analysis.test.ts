@@ -48,6 +48,25 @@ describe("opted-in automatic analysis ownership", () => {
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
     return { wire, fetch: vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire))) };
   }
+  it.each(["default", "explicit"] as const)("keeps setup-only evidence request-free for %s eligibility", async trigger => {
+    // The retained synthetic source has run events and no participant trace.
+    // Explicit diagnosis remains available, but a default run must not spend on setup alone.
+    const h = await transport();
+    const outcome = await runAutomaticStudyAnalysis(cwd, runId, config,
+      { apiKey: "synthetic-key", fetch: h.fetch, defaultRequest: trigger === "default" });
+    if (trigger === "default") {
+      expect(outcome).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE" });
+      expect(h.fetch).not.toHaveBeenCalled();
+      expect(await listStudyAnalysisExecutions(prepared)).toEqual({ receipts: [], warnings: [] });
+    } else {
+      expect(outcome.state).toBe("partial");
+      expect(h.fetch).toHaveBeenCalledTimes(1);
+    }
+    expect(await readAutomaticStudyAnalysis(cwd, runId)).toMatchObject({ state: outcome.state, reason: outcome.reason });
+    expect(await runAutomaticStudyAnalysis(cwd, runId, config, { apiKey: "synthetic-key", fetch: h.fetch, defaultRequest: true }))
+      .toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_ALREADY_REQUESTED" });
+    expect(await readFile(path.join(root, "run.json"))).toEqual(original);
+  });
   async function claimed() {
     return (await claimAutomaticStudyAnalysis(prepared, { configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION }))!;
   }
@@ -121,7 +140,11 @@ describe("opted-in automatic analysis ownership", () => {
     for (const [file, before] of snapshots) expect(await readFile(path.join(root, file))).toEqual(before);
     expect(await readFile(path.join(root, "run.json"))).toEqual(original);
     expect(h.fetch).toHaveBeenCalledTimes(1);
-  });
+    // This fault-injection case copies the complete rendered recording and
+    // performs multiple verified refreshes. Shared CI disks can exceed the
+    // default 5s test allowance; the assertions still require one request and
+    // unchanged replacement bytes. This is not a latency assertion.
+  }, 15_000);
 
   it("identifies an admission overrun in the stored job and static Observer without losing valid findings", async () => {
     const h = await transport();

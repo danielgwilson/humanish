@@ -4,10 +4,11 @@
 // itself — what it drives, who is in it, which model, and what it is allowed to spend — which is
 // what a stakeholder reads on the screen where they decide whether to press Start.
 //
-// Every field is optional and omitted when the manifest does not declare it. A cap that is not
+// Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { selectLabBackend } from "./lab-engine.js";
+import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
@@ -135,12 +136,13 @@ export async function readLabSummary(
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
-  const analysis = resolveAutomaticAnalysis((config.review as { analysis?: unknown } | undefined)?.analysis);
+  const backend = selectLabBackend(inspected.config);
+  const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, backend);
   const subject = subjectOf(config);
   const participants = participantsOf(config);
 
   return {
-    ...(analysis.ok && analysis.config ? { analysis: { model: analysis.config.model, maxCostUsd: analysis.config.maxCostUsd } } : {}),
+    ...(analysis ? { analysis } : {}),
     schema: LAB_SUMMARY_SCHEMA,
     labId: String(config.id ?? lab),
     ...(typeof config.title === "string" ? { title: config.title } : {}),

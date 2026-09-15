@@ -7,6 +7,12 @@ afterEach(() => window.history.replaceState(null, "", "/"));
 describe("recording return navigation", () => {
   const finding = { runId: "study", kind: "finding" as const, findingId: "F1" };
   const fallback = { runId: "study", kind: "participants" as const };
+  it("preserves a concern evidence return only while that study has a concern review", () => {
+    const concerns = { runId: "study", kind: "concerns" as const };
+    expect(recordingSource(recordingState(concerns), "study", [], true)).toEqual(concerns);
+    expect(recordingSource(recordingState(concerns), "study")).toEqual(fallback);
+    expect(recordingSource(recordingState({ ...concerns, runId: "other" }), "study", [], true)).toEqual(fallback);
+  });
   it("uses Participants for copied links, foreign studies, and removed findings", () => {
     expect(recordingSource(null, "study", ["F1"])).toEqual(fallback);
     expect(recordingSource(recordingState({ ...finding, runId: "other" }), "study", ["F1"])).toEqual(fallback);

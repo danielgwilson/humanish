@@ -43,7 +43,16 @@ export async function readBoundedStudyFile(
   relativePath: string,
   maxBytes: number
 ): Promise<Buffer | null> {
-  if (!isStudyEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1) return null;
+  const result = await readBoundedStudyFileResult(root, relativePath, maxBytes);
+  return result.state === "read" ? result.bytes : null;
+}
+
+type BoundedStudyFileResult = { state: "read"; bytes: Buffer } | { state: "limit"; size: bigint } | { state: "unavailable" };
+const unavailable = { state: "unavailable" } as const;
+
+/** Size refusals are distinguished only after the same contained regular-file checks. */
+async function readBoundedStudyFileResult(root: PreparedOutputRoot, relativePath: string, maxBytes: number): Promise<BoundedStudyFileResult> {
+  if (!isStudyEvidencePath(relativePath) || !Number.isSafeInteger(maxBytes) || maxBytes < 1) return unavailable;
   const validateRoot = async (): Promise<string> => {
     if ("physicalRunRoot" in root) {
       await validatePreparedRunRootIdentity(root);
@@ -55,7 +64,7 @@ export async function readBoundedStudyFile(
   try {
     const physicalRoot = await validateRoot();
     const candidate = path.join(physicalRoot, relativePath);
-    if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return null;
+    if (!isPathInside(physicalRoot, candidate) || candidate === physicalRoot) return unavailable;
     const validateParents = async (): Promise<void> => {
       let current = physicalRoot;
       for (const segment of relativePath.split("/").slice(0, -1)) {
@@ -66,14 +75,23 @@ export async function readBoundedStudyFile(
     };
     await validateParents();
     const before = await lstat(candidate, { bigint: true });
-    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n || before.size > BigInt(maxBytes)) return null;
-    if (await realpath(candidate) !== candidate) return null;
+    if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) return unavailable;
+    if (await realpath(candidate) !== candidate) return unavailable;
+    if (before.size > BigInt(maxBytes)) {
+      if (await validateRoot() !== physicalRoot) return unavailable;
+      await validateParents();
+      const final = await lstat(candidate, { bigint: true });
+      if (!final.isFile() || final.isSymbolicLink() || final.nlink !== 1n || final.dev !== before.dev
+        || final.ino !== before.ino || final.size !== before.size || final.mtimeNs !== before.mtimeNs
+        || final.ctimeNs !== before.ctimeNs) return unavailable;
+      return { state: "limit", size: before.size };
+    }
     // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
     const handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     try {
       const opened = await handle.stat({ bigint: true });
       if (!opened.isFile() || opened.nlink !== 1n || opened.dev !== before.dev || opened.ino !== before.ino
-        || opened.size !== before.size || opened.mtimeNs !== before.mtimeNs) return null;
+        || opened.size !== before.size || opened.mtimeNs !== before.mtimeNs) return unavailable;
       const chunks: Buffer[] = [];
       let total = 0;
       while (total <= maxBytes) {
@@ -81,23 +99,23 @@ export async function readBoundedStudyFile(
         const { bytesRead } = await handle.read(chunk, 0, chunk.length, null);
         if (bytesRead === 0) break;
         total += bytesRead;
-        if (total > maxBytes) return null;
+        if (total > maxBytes) return unavailable;
         chunks.push(chunk.subarray(0, bytesRead));
       }
       const after = await handle.stat({ bigint: true });
       if (after.size !== before.size || after.mtimeNs !== before.mtimeNs || after.ctimeNs !== before.ctimeNs
-        || after.nlink !== 1n || total !== Number(before.size)) return null;
-      if (await validateRoot() !== physicalRoot) return null;
+        || after.nlink !== 1n || total !== Number(before.size)) return unavailable;
+      if (await validateRoot() !== physicalRoot) return unavailable;
       await validateParents();
       const final = await lstat(candidate, { bigint: true });
       if (!final.isFile() || final.isSymbolicLink() || final.dev !== before.dev || final.ino !== before.ino
-        || final.nlink !== 1n || final.size !== before.size || final.mtimeNs !== before.mtimeNs) return null;
-      return Buffer.concat(chunks, total);
+        || final.nlink !== 1n || final.size !== before.size || final.mtimeNs !== before.mtimeNs) return unavailable;
+      return { state: "read", bytes: Buffer.concat(chunks, total) };
     } finally {
       await handle.close();
     }
   } catch {
-    return null;
+    return unavailable;
   }
 }
 
@@ -235,6 +253,7 @@ interface SourceEntry {
   frame: number | null;
   capturePath: string | null;
   captureDeclared: boolean;
+  failed: boolean;
 }
 function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2): SourceEntry[] {
   const items = itemsFor(stream);
@@ -257,7 +276,8 @@ function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2)
       quoteEligible: ["message", "reasoning"].includes(item.kind) && typeof item.text === "string",
       at, elapsedMs: delta !== null && delta >= 0 ? delta : null,
       frame: captures.length > 0 ? Math.max(0, frame) : null, capturePath,
-      captureDeclared: item.kind === "screenshot" || (captureVersion === 2 && item.kind === "ui_action" && item.screenshotRef !== undefined) });
+      captureDeclared: item.kind === "screenshot" || (captureVersion === 2 && item.kind === "ui_action" && item.screenshotRef !== undefined),
+      failed: ["failed", "blocked", "timed_out"].includes(item.status ?? "") });
   }
   const runEventIds = new Set<string>();
   for (const event of bundle.events.filter((entry) => entry.streamId === stream.id
@@ -265,9 +285,75 @@ function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2)
     if (runEventIds.has(event.id)) throw new Error("ANALYSIS_SOURCE_EVENT_DUPLICATE");
     runEventIds.add(event.id);
     entries.push({ eventId: event.id, kind: `run_event:${event.type}`, text: event.message,
-      quoteEligible: false, at: stamp(event.at), elapsedMs: null, frame: null, capturePath: null, captureDeclared: false });
+      quoteEligible: false, at: stamp(event.at), elapsedMs: null, frame: null, capturePath: null, captureDeclared: false, failed: event.level === "error" });
   }
   return entries;
+}
+
+/** Max-min allocation; stable ID order breaks a remainder tie by at most one slot. */
+function fairShares(budget: number, capacities: number[]): number[] {
+  const shares = capacities.map(() => 0);
+  let active = capacities.map((capacity, index) => ({ capacity, index })).filter(({ capacity }) => capacity > 0);
+  while (budget > 0 && active.length > 0) {
+    const share = Math.max(1, Math.floor(budget / active.length));
+    for (const { capacity, index } of active) {
+      const granted = Math.min(capacity - shares[index]!, share, budget);
+      shares[index]! += granted;
+      budget -= granted;
+    }
+    active = active.filter(({ capacity, index }) => shares[index]! < capacity);
+  }
+  return shares;
+}
+
+/** End, start, then successively bisect the whole interval; no prefix sampling. */
+function spreadOrder<T>(entries: T[]): T[] {
+  if (entries.length < 2) return entries;
+  const result = [entries.at(-1)!, entries[0]!];
+  const ranges: Array<[number, number]> = [[0, entries.length - 1]];
+  for (let cursor = 0; cursor < ranges.length; cursor++) {
+    const [left, right] = ranges[cursor]!;
+    if (right - left < 2) continue;
+    const middle = Math.floor((left + right) / 2);
+    result.push(entries[middle]!);
+    ranges.push([left, middle], [middle, right]);
+  }
+  return result;
+}
+
+function sourceOrder(entries: SourceEntry[], capturesOnly: boolean): SourceEntry[] {
+  const candidates = capturesOnly ? entries.filter((entry) => entry.capturePath !== null) : entries;
+  const ordered = new Set<SourceEntry>();
+  const admit = (entry: SourceEntry | undefined): void => {
+    if (entry && (!capturesOnly || entry.capturePath !== null)) ordered.add(entry);
+  };
+  // Actor endings precede appended run bookkeeping when text slots are scarce.
+  if (!capturesOnly) admit(entries.findLast((entry) => !entry.kind.startsWith("run_event:")));
+  admit(candidates.at(-1));
+  admit(candidates[0]);
+  const afterCapture: Array<SourceEntry | undefined> = [];
+  let nextCapture: SourceEntry | undefined;
+  for (let index = entries.length - 1; index >= 0; index--) {
+    const entry = entries[index]!;
+    afterCapture[index] = nextCapture;
+    if (entry.capturePath !== null) nextCapture = entry;
+  }
+  let beforeCapture: SourceEntry | undefined;
+  const failureContext: SourceEntry[] = [];
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index]!;
+    if (entry.failed) {
+      for (const context of [entry, afterCapture[index], beforeCapture, entries[index + 1]]) {
+        if (context) failureContext.push(context);
+      }
+    }
+    if (entry.capturePath !== null) beforeCapture = entry;
+  }
+  // Explicit failure status/level is source metadata, not a keyword diagnosis.
+  // Spread among failures as well: many early failures cannot hide the last one.
+  for (const entry of spreadOrder(failureContext)) admit(entry);
+  for (const entry of spreadOrder(candidates)) admit(entry);
+  return [...ordered];
 }
 
 /** Select once from retained source. Models receive no filesystem or network resolver. */
@@ -307,37 +393,128 @@ export async function captureStudyEvidence(
     return participant;
   });
   if (textBytes > limits.textBytes) throw new Error("ANALYSIS_PARTICIPANT_CONTEXT_TOO_LARGE");
-  for (const stream of selected) {
-    if (!stream.actor) omissions.add("Some participants have no normalized recorded trace.");
-    if (hasUnmappedCaptures(stream)) omissions.add("Some declared captures have no normalized trace reference.");
-    for (const source of sourceEntries(bundle, stream, captureVersion)) {
-      if (evidence.length >= limits.evidence || textBytes >= limits.textBytes) {
-        omissions.add("Some evidence was omitted by the packet size limit.");
+  // Tie-breaking uses stable participant IDs, not the order of streams in a bundle.
+  // The emitted packet still preserves participant and source event order.
+  const lanes = selected.map((stream) => ({ stream, entries: sourceEntries(bundle, stream, captureVersion),
+    captures: new Map<SourceEntry, Buffer>(), admitted: new Set<SourceEntry>(), captureCursor: 0, attempts: 0, readBytes: 0, imageBytes: 0,
+    reservationBlocked: false }))
+    .sort((a, b) => a.stream.id < b.stream.id ? -1 : a.stream.id > b.stream.id ? 1 : 0);
+  const evidenceShares = fairShares(limits.evidence, lanes.map((lane) => lane.entries.length));
+  const captureOrders = lanes.map((lane) => sourceOrder(lane.entries, true));
+  const captureShares = fairShares(limits.captures, lanes.map((_, index) => Math.min(evidenceShares[index]!, captureOrders[index]!.length)));
+  const attemptShares = captureShares.map((share) => 2 * share);
+  const readShares = fairShares(2 * limits.totalImageBytes, attemptShares.map((share) => share * limits.imageBytes));
+  const imageShares = fairShares(limits.totalImageBytes, captureShares.map((share) => share * limits.imageBytes));
+  let captureCount = 0;
+  let attemptedReads = 0;
+  let returnedImageBytes = 0;
+  let reserved = true;
+  // Missing/invalid files cannot turn selection into an exhaustive file scan.
+  // At most 2 * captures bounded reads, each at most imageBytes; successfully
+  // returned bytes (including invalid PNGs) also stop at 2 * totalImageBytes.
+  const maxAttempts = 2 * limits.captures;
+  while (attemptedReads < maxAttempts && captureCount < limits.captures
+    && imageBytes < limits.totalImageBytes && returnedImageBytes < 2 * limits.totalImageBytes) {
+    let attempted = false;
+    for (const [index, lane] of lanes.entries()) {
+      if (lane.captures.size >= captureShares[index]! || lane.attempts >= attemptShares[index]!
+        || lane.captureCursor >= captureOrders[index]!.length || attemptedReads >= maxAttempts
+        || (reserved && lane.reservationBlocked)) continue;
+      if (imageBytes >= limits.totalImageBytes || returnedImageBytes >= 2 * limits.totalImageBytes) break;
+      const readAllowance = reserved ? readShares[index]! - lane.readBytes : 2 * limits.totalImageBytes - returnedImageBytes;
+      const imageAllowance = reserved ? imageShares[index]! - lane.imageBytes : limits.totalImageBytes - imageBytes;
+      const allowance = Math.min(limits.imageBytes, limits.totalImageBytes - imageBytes, imageAllowance, readAllowance);
+      if (allowance <= 0) {
+        lane.reservationBlocked = true;
         continue;
       }
-      const text = boundedText(source.text, Math.min(16000, limits.textBytes - textBytes));
-      if (text !== source.text) omissions.add("Some evidence text was truncated by the packet size limit.");
-      textBytes += Buffer.byteLength(text);
-      const id = `e${String(evidence.length + 1).padStart(6, "0")}`;
-      let capture: AnalysisEvidence["capture"] = null;
-      if (source.capturePath !== null) {
-        if (images.length >= limits.captures) omissions.add("Some captures were omitted by the capture count limit.");
-        else {
-          const bytes = await readBoundedStudyFile(prepared, source.capturePath, limits.imageBytes);
-          if (bytes === null || screenshotEvidenceError(source.capturePath, bytes) !== null) {
-            omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
-          } else if (imageBytes + bytes.length > limits.totalImageBytes) {
-            omissions.add("Some captures were omitted by the image byte limit.");
-          } else {
-            imageBytes += bytes.length;
-            capture = { eventId: source.eventId, path: source.capturePath, sha256: sha256(bytes), mimeType: "image/png" };
-            images.push({ evidenceId: id, dataUrl: `data:image/png;base64,${bytes.toString("base64")}` });
-          }
-        }
-      } else if (source.captureDeclared) {
-        omissions.add("Some screenshot references were absent or nonlocal.");
+      attempted = true;
+      lane.attempts++; attemptedReads++;
+      const source = captureOrders[index]![lane.captureCursor]!;
+      const result = await readBoundedStudyFileResult(prepared, source.capturePath!, allowance);
+      if (result.state === "limit" && result.size <= BigInt(limits.imageBytes)
+        && result.size <= BigInt(limits.totalImageBytes - imageBytes) && reserved) {
+        // This participant's reservation is too small, not its evidence unsafe.
+        // Preserve the candidate for the shared pool after all reserved passes.
+        lane.reservationBlocked = true;
+        continue;
       }
-      evidence.push({ id, streamId: stream.id, eventId: source.eventId, kind: source.kind, text,
+      lane.captureCursor++;
+      if (result.state === "limit" && result.size <= BigInt(limits.imageBytes)) {
+        omissions.add(result.size > BigInt(limits.totalImageBytes - imageBytes)
+          ? "Some captures were omitted by the image byte limit."
+          : "Some captures were omitted by the bounded read budget.");
+        continue;
+      }
+      const bytes = result.state === "read" ? result.bytes : null;
+      returnedImageBytes += bytes?.length ?? 0;
+      lane.readBytes += bytes?.length ?? 0;
+      if (bytes === null || screenshotEvidenceError(source.capturePath!, bytes) !== null) {
+        omissions.add("Some captures were missing, unsafe, oversized, or invalid PNG evidence.");
+        continue;
+      }
+      imageBytes += bytes.length;
+      lane.imageBytes += bytes.length;
+      captureCount++;
+      lane.captures.set(source, bytes);
+    }
+    if (!attempted) {
+      // Release unused read/admission reservations after every reserved pass.
+      // Zero-share lanes can now compete for reclaimed slots, with two attempts.
+      reserved = false;
+      attemptShares.forEach((share, index) => { if (share === 0 && evidenceShares[index]! > 0) attemptShares[index] = 2; });
+      const extra = fairShares(limits.captures - captureCount, lanes.map((lane, index) =>
+        lane.attempts < attemptShares[index]! ? Math.min(evidenceShares[index]! - lane.captures.size,
+          captureOrders[index]!.length - lane.captureCursor, attemptShares[index]! - lane.attempts) : 0));
+      if (!extra.some((share) => share > 0) || imageBytes >= limits.totalImageBytes
+        || returnedImageBytes >= 2 * limits.totalImageBytes || attemptedReads >= maxAttempts) break;
+      extra.forEach((share, index) => { captureShares[index]! = lanes[index]!.captures.size + share; });
+    }
+  }
+  for (const [index, lane] of lanes.entries()) {
+    if (!lane.stream.actor) omissions.add("Some participants have no normalized recorded trace.");
+    if (hasUnmappedCaptures(lane.stream)) omissions.add("Some declared captures have no normalized trace reference.");
+    for (const source of lane.captures.keys()) lane.admitted.add(source);
+    for (const source of sourceOrder(lane.entries, false)) {
+      if (lane.admitted.size >= evidenceShares[index]!) break;
+      lane.admitted.add(source);
+    }
+    if (lane.admitted.size < lane.entries.length) omissions.add("Some evidence was omitted by the packet size limit.");
+    if (lane.entries.some((entry) => entry.capturePath !== null && !lane.captures.has(entry))) {
+      const pending = lane.captureCursor < captureOrders[index]!.length;
+      if (pending && captureCount >= limits.captures) omissions.add("Some captures were omitted by the capture count limit.");
+      if (pending && imageBytes >= limits.totalImageBytes) omissions.add("Some captures were omitted by the image byte limit.");
+      if (pending && returnedImageBytes >= 2 * limits.totalImageBytes) omissions.add("Some captures were omitted by the bounded read budget.");
+      if (pending && captureCount < limits.captures
+        && (attemptedReads >= maxAttempts || lane.attempts >= attemptShares[index]!)) {
+        omissions.add("Some captures were omitted by the bounded file-attempt limit.");
+      }
+      omissions.add("Captures were sampled across participants and session boundaries; omitted moments may contain other issues.");
+    }
+    if (lane.entries.some((entry) => entry.captureDeclared && entry.capturePath === null)) {
+      omissions.add("Some screenshot references were absent or nonlocal.");
+    }
+  }
+  const textShares = fairShares(limits.textBytes - textBytes, lanes.map((lane) =>
+    [...lane.admitted].reduce((total, entry) => total + Math.min(16000, Buffer.byteLength(entry.text)), 0)));
+  const textByEntry = new Map<SourceEntry, string>();
+  for (const [index, lane] of lanes.entries()) {
+    const entries = [...lane.admitted];
+    const shares = fairShares(textShares[index]!, entries.map((entry) => Math.min(16000, Buffer.byteLength(entry.text))));
+    for (const [entryIndex, entry] of entries.entries()) {
+      const text = boundedText(entry.text, shares[entryIndex]!);
+      if (text !== entry.text) omissions.add("Some evidence text was truncated by the packet size limit.");
+      textByEntry.set(entry, text);
+    }
+  }
+  for (const stream of selected) {
+    const lane = lanes.find((candidate) => candidate.stream === stream)!;
+    for (const source of lane.entries.filter((entry) => lane.admitted.has(entry))) {
+      const id = `e${String(evidence.length + 1).padStart(6, "0")}`;
+      const bytes = lane.captures.get(source);
+      const capture = bytes ? { eventId: source.eventId, path: source.capturePath!, sha256: sha256(bytes), mimeType: "image/png" as const } : null;
+      if (bytes) images.push({ evidenceId: id, dataUrl: `data:image/png;base64,${bytes.toString("base64")}` });
+      evidence.push({ id, streamId: stream.id, eventId: source.eventId, kind: source.kind, text: textByEntry.get(source)!,
         quoteEligible: source.quoteEligible, at: source.at, elapsedMs: source.elapsedMs, frame: source.frame, capture });
     }
   }

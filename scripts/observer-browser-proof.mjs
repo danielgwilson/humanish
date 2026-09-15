@@ -999,6 +999,42 @@ try {
     record.checks = { shell: before, bothPriorityRowsVisible: true, exactReference: expected.eventId, evidenceWidth };
     await snap("source-aware-recording");
   });
+  for (const phone of [false, true]) await runCase(`analysis-concerns-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {
+    analysis = analysisFixture(data);
+    const f = analysis.analysis.result.findings[0];
+    analysis.analysis.result.concernReviews = [
+      { ...f.observations[0], disposition: "finding", findingId: f.id, reason: "Included because the recorded action affected the assigned task." },
+      { ...f.observations[0], claim: "The participant explored another option and returned.", disposition: "context", findingId: null,
+        limitation: "This controlled example establishes navigation behavior only.", reason: "The detour was recovered; no separate product obstacle is established." }
+    ];
+  } }, async ({ page, record, snap }) => {
+    const expected = analysis.analysis.evidence.find(e => e.id === analysis.analysis.result.concernReviews[1].evidenceIds[0]);
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    const count = await page.locator("[data-finding-row]").count();
+    const summary = page.locator(".report-concerns > summary");
+    await summary.focus(); await page.keyboard.press("Enter");
+    await page.locator(".report-concerns[open]").waitFor();
+    await page.getByText("Context only", { exact: true }).waitFor();
+    assert.equal(await page.locator("[data-finding-row]").count(), count, "Excluded concern became a ranked finding");
+    await snap("concerns-and-exclusion");
+    const button = page.locator(".concern-review").nth(1).getByRole("button", { name: /^Open concern evidence:/ });
+    if (phone) assert((await button.boundingBox()).height >= 44);
+    await button.click(); await page.locator(".player").waitFor();
+    assert.equal(new URL(page.url()).hash, `#/lane/${expected.streamId}/f/${expected.frame + 1}/e/${expected.eventId}`);
+    assert.equal(await page.getByRole("link", { name: /^Findings/ }).getAttribute("aria-current"), "page");
+    await page.reload(); await page.getByRole("button", { name: "Back to concerns considered", exact: true }).waitFor();
+    await snap("concern-exact-evidence");
+    await page.getByRole("button", { name: "Back to concerns considered", exact: true }).click();
+    await page.locator(".report-concerns[open]").waitFor();
+    await until(async () => summary.evaluate(el => el === document.activeElement), "Concern return lost keyboard focus");
+    await page.getByRole("button", { name: "Included in F1", exact: true }).click();
+    await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
+    await until(async () => page.locator('[data-finding="F1"]').evaluate(el => el === document.activeElement), "Included finding lost keyboard focus");
+    assert((await page.locator('[data-finding="F1"]').boundingBox()).y < (phone ? 844 : 1000));
+    record.checks = { rankedFindingsUnchanged: count, exactReference: expected.eventId, reloadReturn: "concerns", keyboardFocusRestored: true };
+    await snap("concern-return-and-finding");
+  });
+
   await runCase("analysis-attribution", { prepare() {
     analysis = analysisFixture(data);
     const finding = analysis.analysis.result.findings[0];

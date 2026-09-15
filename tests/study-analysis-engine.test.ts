@@ -25,6 +25,7 @@ function input(): StudyAnalysisInput {
 }
 function result(): StudyAnalysisResult {
   return { summary: "The participant reported a saving blocker; the recording has no visual confirmation.",
+    concernReviews: [],
     participants: [{ streamId: "participant-1", summary: "Attempted to save a task and reported being blocked.", intent: "Save a task.", outcome: "blocked",
       outcomeReason: "The participant reported being unable to save; the actor's ending is not visual confirmation.", evidenceIds: ["e000001"],
       feedback: [{ evidenceId: "e000001", text: "I could not save the task." }], limitations: ["No captured visual state."] }],
@@ -41,6 +42,14 @@ function transport(output: unknown = result()) {
 }
 
 describe("bounded study analysis engine", () => {
+  it("retains paid usage when a response omits the required concern review", async () => {
+    const answer = result(); delete answer.concernReviews;
+    const h = transport(answer);
+    const artifact = await runStudyAnalysis(input(), config, { apiKey: "synthetic-key", fetch: h.fetchFn });
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed",
+      usage: { dispatched: true, usageComplete: true } });
+    expect(h.fetchFn).toHaveBeenCalledTimes(1);
+  });
   it.each(["gpt-5.6-sol", "gpt-6-astra"])("validates and accounts for %s without changing the participant's recorded outcome", async (model) => {
     const selectedConfig = { ...config, model };
     const packet = input();
@@ -91,7 +100,7 @@ describe("bounded study analysis engine", () => {
     const sent = JSON.parse(body.input[0].content[0].text);
     expect(sent.participants).toEqual(packet.participants);
     expect(artifact.participants).toEqual(packet.participants);
-    expect(artifact.promptVersion).toBe("study-evidence-4");
+    expect(artifact.promptVersion).toBe("study-evidence-5");
     expect(body.instructions).toContain("inputsObserved=false means the task was never measured");
     expect(body.instructions).toContain("Null fields are unavailable information");
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);

@@ -19,3 +19,7 @@ scenario:
 execution:
   target: local # optional; absent defaults to local on this route
   timeoutMs: 300000 # journey wall-clock budget per surface (zero model cost; sandbox-seconds are pennies)
+
+# This demo promises zero model requests, including after the recording finishes.
+review:
+  analysis: false

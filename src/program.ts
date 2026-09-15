@@ -1,3 +1,4 @@
+import { automaticAnalysisBudget, formatAutomaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -1212,7 +1213,7 @@ function analysisSelection<T extends { cwd: string; run: string }>(options: T, c
 function registerAnalyzeCommand(parent: Command, io: CliIo): void {
   const analyze = parent.command("analyze")
     .enablePositionalOptions()
-    .description("Analyze retained participant evidence into versioned findings. Explicit opt-in: sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
+    .description("Analyze retained participant evidence into versioned findings. This request sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
     .summary("Generate evidence-linked study findings.")
     .option("--run <id>", "Completed run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -2898,6 +2899,11 @@ async function runLabCommand(args: {
     args.io.writeErr(`warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`);
   }
 
+  const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
+  if (analysisBudget && resolveLabDryRun(config, args.options.dryRun, true) === false) {
+    args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
+  }
+
   switch (backend) {
     case "synthetic":
       await runSyntheticBackend({ ...args, config, labProvenance: lab });
@@ -4105,6 +4111,7 @@ function formatLabPreflightHuman(result: LabPreflightResult): string {
     `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
     ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
     `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
+    ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
     ...(result.sandbox.created
       ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
       : []),

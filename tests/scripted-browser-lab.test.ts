@@ -323,12 +323,13 @@ describe("runScriptedBrowserLab", () => {
     }
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.scenario.sourceDigest).toBe(digestText(scenarioText));
-    // The UNPINNED subject declaration + the $0 spend declaration are explicit events.
+    // Subject provenance and the participant/analysis spending boundary are explicit events.
     const subjectEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.subject.declared");
     expect(subjectEvent?.message).toContain("UNPINNED");
     expect(subjectEvent?.message).toContain("scenario digest");
     const spendEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend");
-    expect(spendEvent?.message).toContain("$0 provider spend by construction");
+    expect(spendEvent?.message).toContain("Scripted participant steps make no model requests");
+    expect(spendEvent?.message).toContain("post-run analysis has a separate budget unless disabled");
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
@@ -347,18 +348,19 @@ describe("runScriptedBrowserLab", () => {
     expect(bundle.simulations.map((sim: { id: string }) => sim.id)).toEqual(["scripted-desktop"]);
   });
 
-  it("live (with a fake browser): the registry actor drives the REAL step engine per surface, fills stream.actor, and verifies", async () => {
+  it.each(["default", "disabled"])("live (with a fake browser): the real step engine verifies with analysis %s", async analysisMode => {
     await writeCommittedScenario(cwd);
     await withHttpServer(async (appUrl) => {
       const hooks: ScriptedBrowserLabHooks = {
         launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" })
       };
       const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
-      config.review = { analysis: { maxCostUsd: 3 } };
+      if (analysisMode === "disabled") config.review = { analysis: false };
       const analyze = automaticAnalysisBoundary();
       const outcome = await runLab(config, { cwd, scriptedHooks: hooks, automaticAnalysis: { run: analyze } });
-      expect(analyze).toHaveBeenCalledOnce();
-      expect(outcome.result).toMatchObject({ automaticAnalysis: { reason: "synthetic_no_provider" } });
+      expect(analyze).toHaveBeenCalledTimes(analysisMode === "disabled" ? 0 : 1);
+      if (analysisMode === "disabled") expect(outcome.result).not.toHaveProperty("automaticAnalysis");
+      else expect(outcome.result).toMatchObject({ automaticAnalysisTrigger: "default", automaticAnalysis: { reason: "synthetic_no_provider" } });
       expect(outcome.backend).toBe("scripted");
       if (outcome.backend !== "scripted") return;
       const result = outcome.result;

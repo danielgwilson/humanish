@@ -73,3 +73,8 @@ npx tsc --allowJs --checkJs --noEmit --strict --skipLibCheck --types node --targ
 See the [state-driven executor guide](../../state-driven-executor.md) for progress
 projection limits, runtime-only state, unpinned local-app provenance, and the
 fail-closed guards on this route.
+
+The example explicitly sets `review: { analysis: false }` to keep post-run
+analysis free of provider requests too. Supported live recordings otherwise
+use the separate default analysis budget; a deterministic participant provider
+does not replace the analysis provider.

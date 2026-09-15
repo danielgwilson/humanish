@@ -12,6 +12,32 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
+  it("projects evidence-linked exclusions and preserves absence in older reports", () => {
+    expect(projectStudyAnalysis(parseStudyAnalysis(fixture(), data), data)?.concernReviews).toBeUndefined();
+    const saved = fixture(), f = saved.analysis!.result!.findings[0]!;
+    saved.analysis!.result!.concernReviews = [{ ...f.observations[0]!, disposition: "context", findingId: null,
+      reason: "The recorded exploration was not a separate task obstacle." }];
+    const projected = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    expect(projected.concernReviews?.[0]).toMatchObject({ disposition: "context", findingId: null,
+      moments: [{ streamId: "lane-1", eventId: "lane-1-action-2" }] });
+    expect(projected.findings).toHaveLength(2);
+    saved.analysis!.result!.concernReviews[0]!.findingId = "F1";
+    expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+    saved.analysis!.result!.concernReviews[0]!.disposition = "finding";
+    expect(parseStudyAnalysis(saved, data).state).toBe("ready");
+    saved.analysis!.result!.concernReviews[0]!.evidenceIds = ["missing"];
+    expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+  });
+  it("rejects invalid visual and statement bases in an excluded concern", () => {
+    const saved = fixture(), f = saved.analysis!.result!.findings[0]!;
+    const entry = saved.analysis!.evidence.find(e => e.kind === "ui_action")!;
+    entry.capture = null;
+    saved.analysis!.result!.concernReviews = [{ ...f.observations[0]!, disposition: "unsupported", findingId: null,
+      evidenceIds: [entry.id], reason: "No visual result was retained for this action.", basis: "visual" }];
+    expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+    saved.analysis!.result!.concernReviews[0]!.basis = "participant_statement";
+    expect(parseStudyAnalysis(saved, data).state).toBe("invalid");
+  });
   it("admits legacy and current capture versions while rejecting unknown future mappings", () => {
     const saved = fixture();
     expect(parseStudyAnalysis(saved, data).state).toBe("ready");

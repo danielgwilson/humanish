@@ -103,7 +103,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         )}
       </Box>
       {summary?.analysis === undefined ? null : (
-        <Text wrap="wrap">After live runs: analysis · {summary.analysis.model} · separate ${summary.analysis.maxCostUsd} estimate limit</Text>
+        <Text wrap="wrap">After live runs: analysis · {summary.analysis.model} · separate ${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap</Text>
       )}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
@@ -141,7 +141,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           {props.confirming === "live" ? (
             <Box marginTop={1}>
               <Text color={PALETTE.warn}>
-                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? ` + analysis ($${summary.analysis.maxCostUsd} estimate limit)` : ""} · ⏎ confirm · esc cancel
+                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)` : ""} · ⏎ confirm · esc cancel
               </Text>
             </Box>
           ) : null}

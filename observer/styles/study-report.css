@@ -94,6 +94,17 @@
 .report-moments > p { grid-column: 2; font-size: 11px; color: var(--muted); }
 .report-method { margin-top: 18px; font-size: 12px; line-height: 1.6; }
 .report-method p { margin-top: 12px; max-width: 80ch; }
+.report-concerns { margin-top: 18px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.report-concerns > summary { cursor: pointer; color: var(--muted); }
+.concern-intro { margin: 12px 0; color: var(--muted); }
+.concern-review { padding: 14px 0; border-top: 1px solid var(--line-soft); }
+.concern-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-bottom: 4px; }
+.concern-disposition { color: var(--muted); font-size: 11px; }
+.concern-claim { font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+.concern-review > p { max-width: 85ch; }
+.concern-evidence { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 6px; }
+.concern-heading button, .concern-evidence button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; color: var(--accent-ink); text-align: left; }
+.concern-evidence button:disabled { color: var(--muted); cursor: default; }
 .study-report-empty { padding: 24px; }
 .study-report-empty h2 { font-size: 16px; margin-bottom: 8px; }
 @container observer-content (max-width: 880px) {
@@ -127,6 +138,7 @@
   .study-context-actions .pager-word { display: none; }
   .recording-return { min-height: 36px; }
   .report-moments button { min-height: 44px; }
+  .concern-heading button, .concern-evidence button { min-height: 44px; }
   .report-finding { min-height: 88px; }
 }
 @media (prefers-reduced-motion: reduce) {
