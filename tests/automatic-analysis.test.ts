@@ -1,0 +1,185 @@
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import { resolveAutomaticAnalysis } from "../src/automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, automaticAnalysisSucceeded } from "../src/automatic-analysis-completion.js";
+import { automaticAnalysisEnvelope, cliAutomaticAnalysisHooks, createProgram } from "../src/program.js";
+import { runLab } from "../src/lab-engine.js";
+import { runCuaActorLab } from "../src/cua-actor-lab.js";
+import { runSharedWorldLab } from "../src/shared-world-lab.js";
+import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
+import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
+import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
+import { stopRun } from "../src/tui-actions.js";
+import * as automaticJobs from "../src/automatic-study-analysis.js";
+import type { AutomaticStudyAnalysisOutcome } from "../src/study-analysis-job.js";
+
+const fixtures = JSON.parse(await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8")) as Array<{ name: string; config: LabConfig; backend: string }>;
+const supported = new Set(["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"]);
+const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
+if (!resolved.ok || !resolved.config) throw new Error("invalid synthetic test config");
+const config = resolved.config;
+
+describe("automatic analysis admission and producer boundary", () => {
+  let cwd: string;
+  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-auto-")); });
+  afterEach(async () => { vi.restoreAllMocks(); await rm(cwd, { recursive: true, force: true }); });
+
+  it("defaults match manual analysis and missing config has no effect", () => {
+    expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 300000, maxOutputTokens: 16384 });
+    expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: undefined });
+  });
+  it.each([null, false, {}, { maxCostUsd: 0 }, { maxCostUsd: Infinity }, { maxCostUsd: 1001 },
+    { maxCostUsd: 2, model: "unsupported" }, { maxCostUsd: 2, timeoutMs: 0 }, { maxCostUsd: 2, timeoutMs: 1.5 },
+    { maxCostUsd: 2, maxOutputTokens: 32769 }, { maxCostUsd: 2, question: null }, { maxCostUsd: 2, question: "x".repeat(4001) },
+    { maxCostUsd: 2, enabled: true }, { maxCostUsd: 2, maxCost: 1 }])("rejects malformed settings %j", raw => {
+    expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
+  });
+  it.each(fixtures)("parses opt-in only on eligible producer routes: $name", ({ config: base, backend }) => {
+    const parsed = parseLabConfig({ ...base, review: { analysis: { maxCostUsd: 5 } } });
+    expect(parsed.ok, JSON.stringify(parsed)).toBe(supported.has(backend));
+    if (parsed.ok) expect(parsed.config.review?.analysis).toEqual({ maxCostUsd: 5 });
+  });
+  it.each(fixtures.filter(row => !supported.has(row.backend)))("fails direct unsupported $name before filesystem effects", async ({ config: base }) => {
+    const outcome = await runLab({ ...base, review: { analysis: { maxCostUsd: 5 } } }, { cwd: path.join(cwd, "absent"), dryRun: false });
+    expect(outcome.result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_UNSUPPORTED");
+    expect(await readdir(cwd)).toEqual([]);
+  });
+  it.each([runCuaActorLab, runScriptedBrowserLab, runTerminalProductLab, runSharedWorldLab, runConcurrentSharedWorld])("validates direct producer config before hooks", async runner => {
+    const base = fixtures.find(row => row.backend === "cua")!.config;
+    const forbidden = vi.fn(async () => { throw new Error("forbidden hook"); });
+    const result = await runner({ cwd: path.join(cwd, "absent"), config: { ...base, review: { analysis: { maxCostUsd: 0 } } }, dryRun: false,
+      hooks: { env: {}, loadDesktopModule: forbidden, runSession: forbidden, buildExecutor: forbidden, buildProvider: forbidden, renderObserverFn: forbidden } });
+    expect(result.error?.code).toBe("HUMANISH_LAB_ANALYSIS_INVALID");
+    expect(forbidden).not.toHaveBeenCalled();
+    await expect(access(path.join(cwd, "absent"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+  it.each(["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"])("runLab %s dry-run skips post-run spend exactly once", async backend => {
+    const base = fixtures.find(row => row.backend === backend)!.config;
+    const run = vi.fn(); const onStart = vi.fn();
+    const output = await runLab({ ...base, review: { analysis: { maxCostUsd: 5 } } },
+      { cwd, dryRun: true, open: false, automaticAnalysis: { run, onStart } });
+    expect(output.backend).toBe(backend);
+    expect(output.result).toMatchObject({ automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" } });
+    expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
+  });
+  it("dry-run never invokes the analysis lifecycle or provider", async () => {
+    const run = vi.fn(); const onStart = vi.fn();
+    const result = await completeAutomaticAnalysis({ cwd, runId: "dry", dryRun: true, ok: true }, config, { run, onStart });
+    expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_dry_run" });
+    expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
+    expect(automaticAnalysisSucceeded(result)).toBe(true);
+  });
+  it("keeps a failed participant result while reviewing its finalized recording exactly once", async () => {
+    const run = vi.fn(async () => ({ state: "failed", reason: "analysis_validation_failed" }) as AutomaticStudyAnalysisOutcome);
+    const cleanup = vi.fn(); const onStart = vi.fn(() => cleanup);
+    const original = markFinalizedStudyResult({ cwd, runId: "exact-recording", dryRun: false, ok: false, session: { status: "incomplete" } }, cwd);
+    const result = await completeAutomaticAnalysis(original, config, { run, onStart });
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, undefined);
+    expect(result.session).toEqual(original.session); expect(result.ok).toBe(false);
+    expect(onStart).toHaveBeenCalledOnce(); expect(cleanup).toHaveBeenCalledOnce();
+    expect(original).not.toHaveProperty("automaticAnalysis");
+  });
+  it("uses the finalized physical project, not a later-retargeted cwd alias", async () => {
+    const run = vi.fn(async () => ({ state: "failed", reason: "synthetic" }) as AutomaticStudyAnalysisOutcome);
+    const original = markFinalizedStudyResult({ cwd: "/synthetic/retargeted-alias", runId: "recording", dryRun: false }, cwd);
+    await completeAutomaticAnalysis(original, config, { run });
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, undefined);
+  });
+  it("an early producer refusal cannot spend on an existing supplied run ID", async () => {
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    const prior = await runCuaActorLab({ cwd, config: base, dryRun: true, runId: "prior-recording", open: false });
+    expect(prior.runId).toBe("prior-recording");
+    const before = await readFile(path.join(cwd, ".humanish", "runs", "prior-recording", "run.json"));
+    const run = vi.fn(); const onStart = vi.fn();
+    const refused = await runCuaActorLab({ cwd, config: { ...base, actors: [{ type: "unsupported" }], review: { analysis: { maxCostUsd: 5 } } },
+      dryRun: false, runId: "prior-recording", automaticAnalysis: { run, onStart } });
+    expect(refused.ok).toBe(false); expect(refused.automaticAnalysis?.state).toBe("skipped");
+    expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
+    expect(await readFile(path.join(cwd, ".humanish", "runs", "prior-recording", "run.json"))).toEqual(before);
+    await expect(access(path.join(cwd, ".humanish", "runs", "prior-recording", "analysis-automatic"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+  it("never analyzes an older caller-named recording when the producer refused before completion", async () => {
+    const run = vi.fn(); const onStart = vi.fn();
+    const result = await completeAutomaticAnalysis({ cwd, runId: "older-recording", dryRun: false, ok: false }, config, { run, onStart });
+    expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_source_unavailable" });
+    expect(run).not.toHaveBeenCalled(); expect(onStart).not.toHaveBeenCalled();
+  });
+  it("retains the run after an analysis exception without exposing exception text", async () => {
+    const cleanup = vi.fn();
+    const result = await completeAutomaticAnalysis(markFinalizedStudyResult({ cwd, runId: "retained", dryRun: false, ok: true }, cwd), config,
+      { run: async () => { throw new Error("private provider response"); }, onStart: () => cleanup });
+    expect(result.ok).toBe(true); expect(result.automaticAnalysis?.state).toBe("failed");
+    expect(JSON.stringify(result)).not.toContain("private provider"); expect(cleanup).toHaveBeenCalledOnce();
+    expect(automaticAnalysisEnvelope(result)).toMatchObject({ ok: false, runOk: true });
+  });
+  it("partial status cannot turn an analysis error into CLI success", () => {
+    expect(automaticAnalysisSucceeded({ automaticAnalysis: { state: "partial", reason: "analysis_admission_estimate_exceeded" } })).toBe(false);
+  });
+  it.each([{ prefix: ["run"] }, { prefix: ["lab", "run"] }, { prefix: ["watch"] }])("CLI entry $prefix reports dry-run skip without starting analysis", async ({ prefix }) => {
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
+    await writeFile(path.join(cwd, "humanish", "labs", "review.yaml"), JSON.stringify({ ...base, review: { analysis: { maxCostUsd: 5 } } }));
+    let stdout = ""; let stderr = ""; let exit = 0;
+    const program = createProgram({ writeOut: value => { stdout += value; }, writeErr: value => { stderr += value; }, setExitCode: value => { exit = value; } });
+    await program.parseAsync(["node", "humanish", ...prefix, "review", "--cwd", cwd, "--dry-run", "--no-open", "--json"]);
+    const result = JSON.parse(stdout);
+    expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_dry_run" });
+    expect(result.ok).toBe(result.runOk);
+    expect(exit).toBe(result.ok ? 0 : 2);
+    expect(stderr).not.toContain("analyzing the recording");
+  });
+  it("TUI cancellation of finished source only writes the safe marker, never signals a PID", async () => {
+    const base = fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config;
+    const prior = await runCuaActorLab({ cwd, config: base, dryRun: true, runId: "finished-source", open: false });
+    const cancel = vi.spyOn(automaticJobs, "requestAutomaticStudyAnalysisCancellation").mockResolvedValue({ requested: true, reason: null });
+    const kill = vi.spyOn(process, "kill");
+    const result = await stopRun(cwd, prior.runId);
+    expect(result.ok).toBe(true); expect(result.message).toContain("analysis");
+    expect(cancel).toHaveBeenCalledExactlyOnceWith(cwd, prior.runId); expect(kill).not.toHaveBeenCalled();
+  });
+  it.each(["SIGTERM", "SIGINT"] as const)("%s during the real producer retains default termination and never starts analysis", async signal => {
+    const script = `
+      import { runLab } from ${JSON.stringify(new URL("../src/lab-engine.ts", import.meta.url).href)};
+      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../src/program.ts", import.meta.url).href)};
+      const config = ${JSON.stringify(fixtures.find(row => row.name === "cua-openai-computer-use-app-url")!.config)};
+      config.review = { analysis: { maxCostUsd: 5 } };
+      const timer = setInterval(() => {}, 1000);
+      const automaticAnalysis = cliAutomaticAnalysisHooks({ writeErr: text => process.stderr.write(text) });
+      automaticAnalysis.run = async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; };
+      await runLab(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, automaticAnalysis,
+        cuaHooks: { env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+          loadDesktopModule: async () => { process.stdout.write("ACTOR_READY\\n"); await new Promise(() => {}); } } });
+      clearInterval(timer);
+    `;
+    const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "-e", script], { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once("exit", (code, signal) => resolve({ code, signal })));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("producer did not reach actor setup")), 15000);
+        child.stdout.on("data", chunk => { output += String(chunk); if (output.includes("ACTOR_READY")) { clearTimeout(timer); resolve(); } });
+        child.once("error", error => { clearTimeout(timer); reject(error); });
+        child.once("exit", () => { clearTimeout(timer); reject(new Error("producer exited before actor setup")); });
+      });
+      child.kill(signal);
+      expect((await exited).signal).toBe(signal);
+      expect(output).not.toContain("UNEXPECTED_ANALYSIS");
+    } finally { if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); }
+  }, 20000);
+  it("installs cancellation handlers only for the analysis phase and removes them afterward", () => {
+    const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
+    const counts = signals.map(signal => process.listenerCount(signal));
+    const hooks = cliAutomaticAnalysisHooks({ writeErr: vi.fn() });
+    expect(signals.map(signal => process.listenerCount(signal))).toEqual(counts);
+    const cleanup = hooks.onStart!();
+    expect(signals.map(signal => process.listenerCount(signal))).toEqual(counts.map(n => n + 1));
+    process.emit("SIGTERM");
+    expect(hooks.deps?.signal?.aborted).toBe(true);
+    if (cleanup) cleanup();
+    expect(signals.map(signal => process.listenerCount(signal))).toEqual(counts);
+  });
+});

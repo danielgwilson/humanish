@@ -13,9 +13,12 @@ import { color } from "../text-props.js";
  * What a run card can DO. Only actions that actually work appear — `Share…` waits for the export
  * contract (#471) rather than shipping as a control that fails.
  */
-export type RunAction = "observer" | "again" | "reclaim" | "stop";
+export type RunAction = "observer" | "again" | "reclaim" | "stop" | "cancel-analysis";
 
 export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefined): RunAction[] {
+  if (["queued", "running"].includes(detail?.automaticAnalysis?.state ?? "")) {
+    return detail?.observerPath === undefined ? ["cancel-analysis"] : ["observer", "cancel-analysis"];
+  }
   if (run.liveness === "interrupted") {
     // An interrupted run may have left sandboxes running, and that costs money until something
     // stops them. Reclaim leads; the evidence it did capture is still worth opening.
@@ -36,6 +39,8 @@ export function actionLabel(action: RunAction): string {
       return "Run again";
     case "stop":
       return "Stop this run";
+    case "cancel-analysis":
+      return "Cancel analysis";
     default:
       return "Reclaim — stop sandboxes, keep evidence";
   }
@@ -89,6 +94,13 @@ export function RunScreen({
         <InterruptedFacts run={run} detail={detail} participant={participant} now={now} columns={columns} />
       ) : (
         <FinishedFacts run={run} participant={participant} columns={columns} />
+      )}
+
+      {detail?.automaticAnalysis === undefined ? null : (
+        <Box marginTop={1} flexDirection="column">
+          <Text>Analysis: {detail.automaticAnalysis.state}</Text>
+          {detail.automaticAnalysis.reason === null ? null : <Text dimColor wrap="wrap">{detail.automaticAnalysis.reason}</Text>}
+        </Box>
       )}
 
       {actions.length === 0 ? null : (

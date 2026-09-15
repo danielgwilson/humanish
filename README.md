@@ -104,6 +104,21 @@ beside Participants in Observer, with evidence links and separate participant
 feedback. See the [analysis contract](docs/contracts/study-analysis.md) for
 coverage limits, estimated cost controls, corrections and sharing behavior.
 
+To generate findings automatically after each live run of a lab, add:
+
+```yaml
+review:
+  analysis:
+    maxCostUsd: 3
+```
+
+This is a separate analysis budget, in addition to participant execution costs.
+`humanish run <lab>`, `humanish lab run <lab>`, `humanish watch <lab>`, and live
+starts in the TUI all honor it. Dry runs skip analysis. The TUI and Observer show
+its progress after participants finish; opening either view never spends money.
+See [automatic analysis](docs/product/automatic-analysis.md) for configuration,
+cancellation, and failure behavior.
+
 ## Public-Safety Boundary
 
 Humanish is designed for public repositories and public issue queues. The

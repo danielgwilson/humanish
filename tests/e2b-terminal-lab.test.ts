@@ -1,3 +1,4 @@
+import { automaticAnalysisBoundary } from "./helpers/automatic-analysis-boundary.js";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -265,9 +266,14 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     ["Xvfb", true], ["startxfce4", true], ["Xvfb", false]
   ] as const)("keeps guarded %s startup failure verifiable after cleanup resolves %s", async (phase, killResult) => {
     const probe = guardedStartupFailure(phase, killResult);
-    const result = await runTerminalProductLab({ cwd, config: liveConfig(), dryRun: false, open: false, hooks: {
+    const config = liveConfig();
+    config.review = { analysis: { maxCostUsd: 3 } };
+    const analyze = automaticAnalysisBoundary();
+    const result = await runTerminalProductLab({ cwd, config, dryRun: false, open: false, automaticAnalysis: { run: analyze }, hooks: {
       env: baseEnv(), loadModule: async () => probe.module
     } });
+    expect(analyze).toHaveBeenCalledOnce();
+    expect(result.automaticAnalysis?.reason).toBe("synthetic_no_provider");
     expect(result.ok).toBe(false);
     expect(result.session?.completionReason).toBe("harness_error");
     expect(result.error).toMatchObject({ code: "HUMANISH_TERMINAL_LAB_FAILED" });

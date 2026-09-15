@@ -37,6 +37,8 @@
 //      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
@@ -207,6 +209,7 @@ export interface TerminalProductLabHooks {
 }
 
 export interface RunTerminalProductLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
   /** Which manifest produced this run (#455); threaded into the status record + bundle. */
   lab?: RunLabProvenance;
   cwd: string;
@@ -226,7 +229,7 @@ export interface RunTerminalProductLabOptions {
   scorerProvenance?: RunScorerProvenance;
 }
 
-export interface TerminalProductLabResult {
+export interface TerminalProductLabResult extends AutomaticAnalysisResult {
   schema: typeof TERMINAL_PRODUCT_LAB_SCHEMA;
   /** True when the bundle verified AND (dry-run, or the live session reached a terminal verdict
    *  without a harness error + cleanup was proven). The agent's pass/fail is evidence, not the
@@ -273,6 +276,7 @@ export interface TerminalProductLabResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_TERMINAL_LAB_FAILED"
       | "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED"
@@ -296,7 +300,9 @@ export interface TerminalProductLabResult {
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runTerminalProductLab(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
-  return withRunStatusScope(() => runTerminalProductLabInScope(options));
+  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const result = await withRunStatusScope(() => runTerminalProductLabInScope(options));
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
 }
 
 async function runTerminalProductLabInScope(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
@@ -328,6 +334,8 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // Resolve the actor through the registry — the parse layer already validated this, but the
   // engine fails closed rather than trusting a config that arrived through another door
   // (runTerminalProductLab is itself exported npm surface).
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  if (!analysis.ok) return failed("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return failed("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
 
@@ -1606,7 +1614,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
   const ok = observer.ok && completionReason !== "harness_error" && cleanupProven && declaredScorerFailure === undefined;
 
-  return {
+  return markFinalizedStudyResult({
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok,
     cwd,
@@ -1651,7 +1659,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
               : declaredScorerFailure ?? sessionError ?? observer.error?.message ?? sessionReason
           }
         })
-  };
+  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
 }
 
 /**

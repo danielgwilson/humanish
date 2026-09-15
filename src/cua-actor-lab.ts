@@ -21,6 +21,8 @@
 //   conformant humanish.actor-trace.v1 projection, whose `redaction.screenshots` records the
 //   run's actual mode ("raw" | "blurred" | "n/a") — every label downstream derives from it.
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
@@ -414,6 +416,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
 }
 
 export interface RunCuaActorLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
   cwd: string;
   config: LabConfig;
   /** Which manifest produced this run (#455); threaded into the run's status record + bundle. */
@@ -533,6 +536,7 @@ export interface CuaLaneSummary {
 }
 
 export type CuaActorLabErrorCode =
+  | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_CUA_LAB_FAILED"
   | "HUMANISH_CUA_LAB_KEYS_MISSING"
@@ -601,7 +605,7 @@ export type CuaSubjectProvenanceArg =
       state: RunSubjectProvenance["state"];
     };
 
-export interface CuaActorLabResult {
+export interface CuaActorLabResult extends AutomaticAnalysisResult {
   schema: typeof CUA_ACTOR_LAB_SCHEMA;
   /** True when the Observer verified the bundle, all live lanes passed credibility checks
    * (or this is a dry-run), and no declared adapter/scorer verdict failed. */
@@ -3696,14 +3700,17 @@ function subjectProvenanceArg(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
-  const tasksReason = taskProtocolValidationReason(options.config, true);
+  const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const tasksReason = analysisReason.ok ? taskProtocolValidationReason(options.config, true) : analysisReason.message;
   if (tasksReason) return {
     schema: CUA_ACTOR_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
     actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
     runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "", lanes: [], warnings: [],
-    error: { code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason }
+    error: { code: analysisReason.ok ? "HUMANISH_LAB_TASKS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID", message: tasksReason }
   };
-  return withRunStatusScope(() => runCuaActorLabInScope(options));
+  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
 }
 
 async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
@@ -4591,7 +4598,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     };
   })();
 
-  return {
+  return markFinalizedStudyResult({
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok,
     cwd,
@@ -4623,7 +4630,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     observer,
     warnings,
     ...(errorResult === undefined ? {} : { error: errorResult })
-  };
+  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
 }
 
 /** Aggregate lane counts for the result projection. */

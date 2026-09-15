@@ -21,6 +21,8 @@
 // (composed into its persona context) — physical per-role screen geometry is the concurrent
 // topology's job. Each role records its measured browser viewport separately from that screen.
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
@@ -218,6 +220,7 @@ export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
 }
 
 export interface RunSharedWorldLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
   /** Which manifest produced this run (#455); threaded into the status record + bundle. */
   lab?: RunLabProvenance;
   cwd: string;
@@ -233,6 +236,7 @@ export interface RunSharedWorldLabOptions {
 }
 
 export type SharedWorldLabErrorCode =
+  | "HUMANISH_LAB_ANALYSIS_INVALID"
   | "HUMANISH_LAB_TASKS_UNSUPPORTED"
   | "HUMANISH_SHARED_WORLD_LAB_FAILED"
   | "HUMANISH_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED"
@@ -261,7 +265,7 @@ export interface SharedWorldRoleResult {
   error?: { code: SharedWorldLabErrorCode; message: string };
 }
 
-export interface SharedWorldLabResult {
+export interface SharedWorldLabResult extends AutomaticAnalysisResult {
   schema: typeof SHARED_WORLD_LAB_SCHEMA;
   /** True when the bundle verified AND (dry-run, or every role reached a terminal, engaged
    * verdict without a harness error). The roles' pass/fail is evidence, not the lab's exit code. */
@@ -593,7 +597,9 @@ function buildRoleSpecs(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Promise<SharedWorldLabResult> {
-  return withRunStatusScope(() => runSharedWorldLabInScope(options));
+  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const result = await withRunStatusScope(() => runSharedWorldLabInScope(options));
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
 }
 
 async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Promise<SharedWorldLabResult> {
@@ -622,6 +628,8 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
 
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return fail("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
 
@@ -1311,7 +1319,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     };
   })();
 
-  return {
+  return markFinalizedStudyResult({
     schema: SHARED_WORLD_LAB_SCHEMA,
     ok,
     cwd,
@@ -1328,7 +1336,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     observer,
     warnings: allWarnings,
     ...(errorResult === undefined ? {} : { error: errorResult })
-  };
+  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
 }
 
 /** Project the shared-world run into a humanish.run-bundle.v1 with the sharedWorld evidence block. */

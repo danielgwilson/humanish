@@ -1,3 +1,4 @@
+import { resolveAutomaticAnalysis, type LabAnalysis } from "./automatic-analysis-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
 // HONEST SCOPE (read before trusting field names): the engine routes by
@@ -732,6 +733,8 @@ export interface LabPolicies {
 }
 
 export interface LabReview {
+  /** Opt-in analysis of each finalized live recording; independently bounded provider spend. */
+  analysis?: LabAnalysis;
   /** FORWARD-DECLARED (PR #2). */
   scoring?: string;
   /** FORWARD-DECLARED (PR #2). */
@@ -1225,6 +1228,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return invalid(tasksReason);
 
+  const analysisReason = automaticAnalysisRouteReason(config);
+  if (analysisReason) return invalid(analysisReason);
   return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
 }
 
@@ -3122,12 +3127,15 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
 function parseReview(raw: unknown): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`review` must be a mapping.");
-  const knownKeys = new Set(["scoring", "milestones", "vocabulary", "scorer"]);
+  const knownKeys = new Set(["scoring", "milestones", "vocabulary", "scorer", "analysis"]);
   const unknownKeys = Object.keys(raw).filter((key) => !knownKeys.has(key));
   if (unknownKeys.length > 0) {
-    return invalid(`Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer.`);
+    return invalid(`Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer, analysis.`);
   }
+  const analysis = resolveAutomaticAnalysis(raw.analysis);
+  if (!analysis.ok) return invalid(analysis.message);
   const review: LabReview = {};
+  if (raw.analysis !== undefined) review.analysis = { ...(raw.analysis as LabAnalysis) };
   const scoring = str(raw.scoring);
   if (scoring) review.scoring = scoring;
   const milestones = str(raw.milestones);
@@ -3355,4 +3363,13 @@ function nonNegNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   }
   return undefined;
+}
+
+/** Analysis requires a live recording producer, including supported dry-run previews. */
+export function automaticAnalysisRouteReason(config: LabConfig): string | undefined {
+  if (config.review?.analysis === undefined) return undefined;
+  if (routesToComputerUse(config) || routesToScriptedBrowser(config) || routesToTerminalProduct(config)
+    || routesToSharedWorld(config) || routesToConcurrentSharedWorld(config)
+    || ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(config.subject.source)) return undefined;
+  return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; synthetic, smoke and meta routes do not produce eligible live recordings.";
 }

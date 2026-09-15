@@ -20,6 +20,8 @@
 // digest instead. Provisioned clone runs persist structured commit/env-name/state provenance
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
+import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
@@ -133,6 +135,7 @@ export interface ScriptedBrowserLabHooks {
 }
 
 export interface RunScriptedBrowserLabOptions {
+  automaticAnalysis?: AutomaticAnalysisHooks;
   /** Which manifest produced this run (#455); threaded into the status record + bundle. */
   lab?: RunLabProvenance;
   cwd: string;
@@ -152,7 +155,7 @@ export interface ScriptedBrowserLabSession {
   screenshots: number;
 }
 
-export interface ScriptedBrowserLabResult {
+export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
   schema: typeof SCRIPTED_BROWSER_LAB_SCHEMA;
   /** True when the bundle verified AND (dry-run, or every session reached a terminal verdict
    * without a harness error). The subject failing the script is successful EVIDENCE, not a lab
@@ -180,6 +183,7 @@ export interface ScriptedBrowserLabResult {
   warnings: string[];
   error?: {
     code:
+      | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
       | "HUMANISH_SCRIPTED_LAB_FAILED"
       | "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED"
@@ -201,14 +205,17 @@ export interface ScriptedBrowserLabResult {
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
-  const tasksReason = taskProtocolValidationReason(options.config, false);
+  const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const tasksReason = analysisReason.ok ? taskProtocolValidationReason(options.config, false) : analysisReason.message;
   if (tasksReason) return {
     schema: SCRIPTED_BROWSER_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
     actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
     runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? "", sessions: [], warnings: [],
-    error: { code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason }
+    error: { code: analysisReason.ok ? "HUMANISH_LAB_TASKS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID", message: tasksReason }
   };
-  return withRunStatusScope(() => runScriptedBrowserLabInScope(options));
+  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const result = await withRunStatusScope(() => runScriptedBrowserLabInScope(options));
+  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis);
 }
 
 async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
@@ -571,7 +578,7 @@ async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOption
     && sessionError === undefined
     && (dryRun || (sessionResults.length === surfaces.length && !harnessError));
 
-  return {
+  return markFinalizedStudyResult({
     schema: SCRIPTED_BROWSER_LAB_SCHEMA,
     ok,
     cwd,
@@ -611,7 +618,7 @@ async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOption
                 : observer.error?.message ?? "Observer failed for the scripted lab run.")
           }
         })
-  };
+  }, path.dirname(path.dirname(runPaths.physicalRunsRoot)));
 }
 
 interface ResolvedScriptedScenario {

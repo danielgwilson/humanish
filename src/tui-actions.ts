@@ -1,3 +1,4 @@
+import { requestAutomaticStudyAnalysisCancellation } from "./automatic-study-analysis.js";
 // The two things a run card can DO (#455 rev 8).
 //
 // The mock's run screen is an outcome CARD with actions, not a field list, and an action that does
@@ -139,6 +140,8 @@ export async function stopRun(cwd: string, runId: string): Promise<TuiActionResu
     return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run's status record is unreadable" };
   }
   if (record.state === "finished") {
+    const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
+    if (analysis.requested) return { schema: TUI_ACTION_SCHEMA, ok: true, message: "asked analysis to cancel; the participant recording is already finished" };
     return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run already finished" };
   }
 

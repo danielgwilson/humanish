@@ -80,7 +80,9 @@ export interface OssLabResult {
   completedAt: string;
   cwd: string;
   error?: {
-    code: "HUMANISH_INVALID_OSS_REPO" | "HUMANISH_INVALID_OSS_LIMIT" | "HUMANISH_LAB_TASKS_UNSUPPORTED";
+    code: "HUMANISH_INVALID_OSS_REPO" | "HUMANISH_INVALID_OSS_LIMIT" | "HUMANISH_LAB_ANALYSIS_INVALID"
+    | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
+    | "HUMANISH_LAB_TASKS_UNSUPPORTED";
     message: string;
   };
   reportJsonPath?: string;

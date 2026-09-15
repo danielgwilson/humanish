@@ -49,7 +49,7 @@ export interface LabScreenProps {
   row: LabRow;
   summary: LabSummary | null | undefined;
   runs: RunIndexEntry[];
-  /** Detail for the live run, so it can lead with its participant. */
+  /** Detail for the live or latest run, including post-run analysis. */
   liveDetail: RunDetail | null | undefined;
   selected: number;
   columns: number;
@@ -102,6 +102,9 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           <Text {...color(summary.keysReady ? PALETTE.ok : PALETTE.warn)}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
         )}
       </Box>
+      {summary?.analysis === undefined ? null : (
+        <Text wrap="wrap">After live runs: analysis · {summary.analysis.model} · separate ${summary.analysis.maxCostUsd} estimate limit</Text>
+      )}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
         // in a shell they sourced, a password manager, another project — and what they need is the
@@ -138,7 +141,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           {props.confirming === "live" ? (
             <Box marginTop={1}>
               <Text color={PALETTE.warn}>
-                {"  "}start a live run? {expectationLine(props.row.liveExpectation)} · ⏎ confirm · esc cancel
+                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? ` + analysis ($${summary.analysis.maxCostUsd} estimate limit)` : ""} · ⏎ confirm · esc cancel
               </Text>
             </Box>
           ) : null}
@@ -157,6 +160,9 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
 
       <Box marginTop={1} flexDirection="column">
         <Text dimColor>Runs</Text>
+        {props.liveDetail?.automaticAnalysis === undefined ? null : (
+          <Text>Latest analysis: {props.liveDetail.automaticAnalysis.state} · open run for details</Text>
+        )}
         {runs.length === 0 ? (
           <Text dimColor>  none yet</Text>
         ) : (

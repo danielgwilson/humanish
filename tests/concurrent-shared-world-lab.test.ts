@@ -1,3 +1,4 @@
+import { automaticAnalysisBoundary } from "./helpers/automatic-analysis-boundary.js";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -315,10 +316,14 @@ afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
 describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
   it.each([true, false])("preserves each role's authored focus (dryRun %s)", async (dryRun) => {
     const config = concurrentConfig();
+    config.review = { analysis: { maxCostUsd: 3 } };
+    const analyze = automaticAnalysisBoundary();
     config.actors[0]!.lanes!.forEach((lane, i) => { lane.instruction = `Review section ${i + 1}.`; });
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
     const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks });
+    const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks, automaticAnalysis: { run: analyze } });
+    expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
+    expect(result.automaticAnalysis?.reason).toBe(dryRun ? "analysis_dry_run" : "synthetic_no_provider");
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
     expect(bundle.streams.map((stream) => stream.assignment)).toEqual([1, 2, 3].map((i) => ({
       mission: "Use the shared app with [REDACTED_SECRET].", focus: `Review section ${i}.`
