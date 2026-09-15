@@ -103,7 +103,10 @@
 .report-moments button { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 12px; }
 .report-moments button > span { font: 11px var(--mono); color: var(--muted); }
 .report-moments button strong { font-weight: 500; }
-.report-moments button:hover strong { color: var(--accent-ink); }
+.report-moments button:focus-visible strong { color: var(--accent-ink); }
+@media (hover: hover) {
+  .report-moments button:hover strong { color: var(--accent-ink); }
+}
 .report-moments > p { grid-column: 2; font-size: 11px; color: var(--muted); }
 .report-method { margin-top: 18px; font-size: 12px; line-height: 1.6; }
 .report-method p { margin-top: 12px; max-width: 80ch; }

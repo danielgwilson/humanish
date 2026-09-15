@@ -196,6 +196,21 @@ async function assertClearGridScreens(page) {
   return screens;
 }
 async function displayedFrame(page) { return page.locator(".stage-box img").first().getAttribute("src"); }
+async function readyCapture(locator, expectedSource) {
+  await locator.waitFor();
+  return locator.evaluate(async (element, source) => {
+    if (!element.getAttribute('src')?.endsWith(source)) throw new Error('Capture source changed before decoding');
+    await element.decode();
+    if (!element.complete || !element.naturalWidth || !element.naturalHeight) throw new Error('Capture did not decode');
+    // Async image decoding can finish after the route and dimensions are ready.
+    // Let the browser paint the decoded capture before retaining visual proof.
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    const bounds = element.getBoundingClientRect(), css = getComputedStyle(element);
+    if (!element.isConnected || !element.getAttribute('src')?.endsWith(source)) throw new Error('Capture changed before painting');
+    if (bounds.width <= 0 || bounds.height <= 0 || css.visibility !== 'visible' || Number(css.opacity) !== 1) throw new Error('Decoded capture is not visible');
+    return { source: element.getAttribute('src'), natural: [element.naturalWidth, element.naturalHeight], bounds: bounds.toJSON(), complete: element.complete };
+  }, expectedSource);
+}
 async function openLane(page, index = 1) {
   await page.goto(`${origin}/observer/index.html#/lane/lane-${index}`);
   await page.locator(".player").waitFor();
@@ -1058,23 +1073,43 @@ try {
     await page.locator('.report-observations > summary').click();
     await settled();
     await preview.scrollIntoViewIfNeeded();
+    await readyCapture(preview.locator('img'), 'portrait-3.png');
     await snap('representative-capture-and-open-recording');
     const evidenceList = page.locator('.report-moments');
     await evidenceList.scrollIntoViewIfNeeded();
+    const hoverCapability = await page.evaluate(() => matchMedia('(hover: hover)').matches);
+    assert.equal(hoverCapability, !phone, 'Review fixture has unexpected hover capability');
+    if (phone) {
+      const row = evidenceList.locator('[data-report-moment="lane-1-action-2"]');
+      const rect = await row.boundingBox(); await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      const rowColors = () => evidenceList.evaluate(element => ({
+        hovered: element.querySelector('[data-report-moment="lane-1-action-2"]').matches(':hover'),
+        pointer: getComputedStyle(element.querySelector('[data-report-moment="lane-1-action-2"] strong')).color,
+        other: getComputedStyle(element.querySelector('[data-report-moment="lane-1-frame-1"] strong')).color,
+      }));
+      const colors = await rowColors(); assert(colors.hovered, 'Touch hover regression did not reach the target row');
+      assert.equal(colors.pointer, colors.other, 'Touch-only device retains misleading hover-only row color');
+      const formerHover = await page.addStyleTag({ content: '.report-moments button:hover strong { color: var(--accent-ink) !important; }' });
+      const negative = await rowColors(); assert.notEqual(negative.pointer, negative.other, 'Touch hover guard accepted the former unconditional color');
+      await formerHover.evaluate(element => element.remove());
+    }
+    await page.mouse.move(0, 0);
     await snap('all-cited-moments');
     await preview.click(); await page.locator('.player').waitFor();
     assert.equal(new URL(page.url()).hash, '#/lane/lane-1/f/3');
     assert((await displayedFrame(page)).endsWith('portrait-3.png'));
     await page.locator('.content').evaluate(element => { element.scrollTop = 0; });
+    const recordingCapture = await readyCapture(page.locator('.stage-box img').first(), 'portrait-3.png');
     await snap('exact-recording-before-return');
     await page.getByRole('button', { name: /^Back to finding:/ }).click();
     await page.locator('[data-finding="F1"][aria-expanded="true"]').waitFor();
     await until(async () => trigger.evaluate(element => document.activeElement === element), 'Finding return lost keyboard focus');
     record.checks = { representativeCapture: 'lane-1-frame-3', latestCaptureExcluded: true, duplicateSupportExcluded: true,
-      visibleUncertainty: true, allLimitsRetained: true, originalObservations: 8, exactMoment: '#/lane/lane-1/f/3', keyboardDisclosure: true, width, contentBounds, focus };
+      visibleUncertainty: true, allLimitsRetained: true, originalObservations: 8, exactMoment: '#/lane/lane-1/f/3', keyboardDisclosure: true, width, contentBounds, focus, recordingCapture, hoverCapability };
     await snap('return-restores-finding-focus');
     await evidenceList.scrollIntoViewIfNeeded();
     assert.equal(await evidenceList.locator('[aria-current="true"]').getAttribute('data-report-moment'), 'lane-1-frame-3');
+    await page.mouse.move(0, 0);
     await snap('returned-finding-cited-moment');
   });
   for (const phone of [false, true]) await runCase(`analysis-concerns-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {

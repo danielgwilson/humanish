@@ -52,6 +52,10 @@ caption and evidence list fit inside its clipping boundary. Separate phone
 screenshots show complete caveats, the recording action, all cited moments,
 the exact recording and the return to the finding. The focus-ring check measures
 all clipping ancestors and must reject the former outward outline on phone.
+Recording proof requires the expected image source, successful decoding, visible
+dimensions and two animation frames before capture. Phone evidence rows must not
+retain desktop hover color; injecting the former unconditional hover style must
+fail that check. Keyboard focus remains indicated separately.
 
 Four scrubber cases cover desktop/phone at 1×/2× pixel density. Each measures
 start, middle and end in light and dark themes: 24 rendered states. The check
