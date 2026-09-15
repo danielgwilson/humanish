@@ -148,6 +148,7 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
   const evidence = new Map(a?.evidence.map((e) => [e.id, e]) ?? []);
   const state = loaded.state === "ready" || (loaded.state === "invalid" && (a?.status === "failed" || a?.status === "cancelled")) ? a?.status ?? "invalid" : loaded.state;
   return { id: a?.id ?? "unavailable", runId: data.run.runId, state,
+    admissionExceeded: a?.error === "analysis_admission_estimate_exceeded",
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
     messages: [...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])],
     findings: result?.findings.map((f) => {

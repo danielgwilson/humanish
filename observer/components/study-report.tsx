@@ -5,7 +5,7 @@ import { participantLabels } from "@/lib/participant-label";
 import { formatElapsed } from "@/lib/player-model";
 import { basisLabel, reportProblem, resolveReportMoment, type StudyReport as ReportData } from "@/lib/study-report";
 import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
-import { automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
+import { ANALYSIS_ADMISSION_EXCEEDED_DETAIL, automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
 
 export function StudyReport({ data, report, automatic, snapshot = false, now = Date.now(), findingId, onFinding, onOpen }: {
   data: ObserverData; report: ReportData | undefined; automatic?: AutomaticStudyAnalysisView; snapshot?: boolean; now?: number; findingId: string;
@@ -31,7 +31,7 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
     : state === "invalid" ? "Analysis is unavailable. Participant evidence remains available." : null;
   return <section className="study-report" aria-label="Study findings">
     {automaticStatus}
-    {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}</p> : null}
+    {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}{report.admissionExceeded ? ` ${ANALYSIS_ADMISSION_EXCEEDED_DETAIL}` : ""}</p> : null}
     {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary>{report.messages.map((message, index) => <p key={index}>{message}</p>)}</details> : null}
     <div className="findings-summary"><p>{report.summary}</p><span>Independent analysis · {report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
     {!report.findings.length ? <div className="study-report-empty"><h2>{state === "complete" ? "No findings in the reviewed evidence" : "No findings available"}</h2><p>{state === "complete" ? "This analysis did not identify an issue in its declared coverage. It does not establish that every task or interaction was problem-free." : "The original participant recordings and feedback are still available in Participants."}</p></div> : null}

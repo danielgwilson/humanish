@@ -45,7 +45,8 @@ describe("independent automatic analysis metadata", () => {
   });
   it.each([
     ["AUTOMATIC_ANALYSIS_KEY_MISSING", "Set OPENAI_API_KEY", "humanish analyze"],
-    ["AUTOMATIC_ANALYSIS_ADMISSION_REFUSED", "admission estimate", "higher --max-cost"],
+    ["AUTOMATIC_ANALYSIS_ADMISSION_REFUSED", "Check the CLI admission details", "higher --max-cost"],
+    ["AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED", "Reported usage exceeded", "Findings and known usage were retained"],
     ["AUTOMATIC_ANALYSIS_BUSY", "Another analysis request", "analysis history"],
     ["AUTOMATIC_ANALYSIS_CANCELLED", "This request has ended", "remain available"],
     ["AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN", "analysis history and usage", "explicit request"],

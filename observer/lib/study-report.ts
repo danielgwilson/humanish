@@ -8,6 +8,7 @@ export interface StudyReport {
   runId: string;
   state?: "complete" | "partial" | "failed" | "cancelled" | "stale" | "invalid";
   messages?: string[];
+  admissionExceeded?: boolean;
   summary: string;
   scope: string;
   findings: StudyFinding[];
