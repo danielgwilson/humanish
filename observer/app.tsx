@@ -12,6 +12,7 @@ import { StudyReport } from "./components/study-report";
 import { reportFindingId, reportHash, resolveReportMoment, type StudyReport as ReportData } from "./lib/study-report";
 import "./styles/study-report.css";
 import { StudyGrid } from "./components/study-grid";
+import type { GridReviewState } from "./components/study-playback";
 import { ParticipantPager, Topbar } from "./components/topbar";
 import { GridOptions, type GridFilters } from "./components/grid-options";
 import { ShareStatus } from "./components/study-details";
@@ -56,6 +57,12 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const [savedMoments, setSavedMoments, momentsStored] = usePreference("moments", [] as SavedMoment[], isMoments);
   const [savedMessage, setSavedMessage] = useState("");
   const [playerView, setPlayerView] = useState<(PlayerView & { streamId: string }) | null>(null);
+  // The grid unmounts during individual review. Retain its clock and page without
+  // rerendering the entire shell on each playback tick; returning always pauses.
+  const gridReview = useRef<{ runId: string; state: GridReviewState } | null>(null);
+  const rememberGridReview = useCallback((state: GridReviewState) => {
+    if (data) gridReview.current = { runId: data.run.runId, state };
+  }, [data?.run.runId]);
   const [monitoring, setMonitoring] = useState(false);
   const [now, setNow] = useState(Date.now);
   const automaticNotice = analysis.automatic ? automaticAnalysisNotice(analysis.automatic, snapshot, now) : undefined;
@@ -201,7 +208,8 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     </div> : null}
     {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={(id, frame) => openParticipant(id, frame, undefined, { runId: data.run.runId, kind: "comparison", hash: comparisonLocation.current || window.location.hash })} onLocationChange={rememberComparison} />
           : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
-            : <StudyGrid tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
+            : <StudyGrid key={data.run.runId} initialReview={gridReview.current?.runId === data.run.runId ? gridReview.current.state : undefined} onReviewChange={rememberGridReview}
+                tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
                 gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
   </>;
   const needsAttention = connection.state === "retrying" || data.runtime?.state === "unknown" || data.runtime?.state === "interrupted";

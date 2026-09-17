@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { isServedOrigin, liveEmbedUrl } from "@/lib/live";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isActiveStream, isServedOrigin, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { GridDensity } from "@/lib/preferences";
 import { participantLabels } from "@/lib/participant-label";
 import { ParticipantCard } from "./participant-card";
+import { buildGridRecording, clampGridTime, gridMoment } from "@/lib/grid-recording";
+import { StudyPlayback, type GridReviewState } from "./study-playback";
+import "@/styles/study-playback.css";
 
 export function buildTally(data: ObserverData): string {
   const parts = [data.run.participantsLine ?? `${data.summary.streams} participant${data.summary.streams === 1 ? "" : "s"}`];
@@ -19,15 +22,49 @@ export function buildTally(data: ObserverData): string {
 }
 
 const PAGE_SIZE = 36;
-export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinnedIds = [], compareIds = [], onPin, onCompare, now, updating = true, reviewOutcomes, tools }: {
+export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinnedIds = [], compareIds = [], onPin, onCompare, now, updating = true, reviewOutcomes, tools, initialReview, onReviewChange }: {
   tools?: ReactNode;
   reviewOutcomes?: { streamId: string; label: string }[] | undefined;
-  data: ObserverData; streams: ObserverStream[]; onOpen: (id: string) => void;
+  data: ObserverData; streams: ObserverStream[]; onOpen: (id: string, frame?: number | null) => void;
+  initialReview?: GridReviewState | undefined; onReviewChange?: ((state: GridReviewState) => void) | undefined;
   density?: GridDensity; pinnedIds?: string[]; compareIds?: string[];
   onPin?: (id: string) => void; onCompare?: (id: string) => void; now?: number; updating?: boolean;
 }) {
   const labels = participantLabels(data.streams);
-  const [page, setPage] = useState(0);
+  const [review, setReview] = useState<GridReviewState>(() => initialReview ?? { atMs: null, reviewing: false, speed: 1, page: 0 });
+  const [playing, setPlaying] = useState(false);
+  const recording = useMemo(() => buildGridRecording(data.streams), [data.streams]);
+  const recordingRef = useRef(recording); recordingRef.current = recording;
+  const atMs = clampGridTime(recording, review.atMs ?? recording.endMs ?? 0);
+  const page = review.page;
+  const setPage = (page: number) => setReview((previous) => ({ ...previous, page }));
+  const canFollow = updating && isServedOrigin(window.location.protocol) && data.streams.some(isActiveStream);
+  useEffect(() => { onReviewChange?.(review); }, [review, onReviewChange]);
+  useEffect(() => {
+    if (!playing) return;
+    let previous = performance.now();
+    const timer = window.setInterval(() => {
+      const current = performance.now(); const delta = (current - previous) * review.speed; previous = current;
+      setReview((value) => ({ ...value, atMs: clampGridTime(recordingRef.current, (value.atMs ?? recordingRef.current.startMs ?? 0) + delta) }));
+    }, 100);
+    const hide = () => { if (document.hidden) setPlaying(false); };
+    document.addEventListener("visibilitychange", hide);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", hide); };
+  }, [playing, review.speed]);
+  useEffect(() => { if (playing && (atMs === null || atMs >= (recording.endMs ?? 0))) setPlaying(false); }, [playing, atMs, recording.endMs]);
+  const seek = (at: number) => { setPlaying(false); setReview((value) => ({ ...value, reviewing: true, atMs: clampGridTime(recording, at) })); };
+  const togglePlay = () => {
+    if (playing) { setPlaying(false); return; }
+    const { startMs, endMs } = recording;
+    if (startMs === null || endMs === null || startMs === endMs) return;
+    setReview((value) => ({ ...value, reviewing: true, atMs: !value.reviewing || atMs === null || atMs >= endMs ? startMs : atMs }));
+    setPlaying(true);
+  };
+  const open = (id: string) => {
+    setPlaying(false); onReviewChange?.(review);
+    const moment = review.reviewing && atMs !== null ? gridMoment(recording, id, atMs) : null;
+    onOpen(id, moment?.kind === "capture" ? moment.frame.index : null);
+  };
   const [priorityId, setPriorityId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const grid = useRef<HTMLDivElement>(null);
@@ -53,15 +90,19 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
     return () => observer.disconnect();
     // The ids are the structural dependency; poll snapshots do not reconnect streams.
   }, [shownKey]);
-  const liveThumbIds = new Set(updating && isServedOrigin(window.location.protocol)
+  const liveThumbIds = new Set(!review.reviewing && updating && isServedOrigin(window.location.protocol)
     ? [...visibleIds].sort((a, b) => Number(b === priorityId) - Number(a === priorityId)).filter((id) => shown.some((s) => s.id === id && liveEmbedUrl(s) !== null)).slice(0, 4) : []);
   return <section aria-label="Study grid"><h2 className="sr-only">Study participants</h2>
     <div className="grid-summary"><p className="countline">{reviewOutcomes ? `Analyzed outcomes: ${[...new Set(reviewOutcomes.map((outcome) => outcome.label))].map((label) => `${reviewOutcomes.filter((outcome) => outcome.label === label).length}/${data.streams.length} ${label}`).join(" · ")}` : buildTally(data)}</p>{tools}</div>
+    <StudyPlayback recording={recording} atMs={atMs} reviewing={review.reviewing} playing={playing} speed={review.speed} canFollow={canFollow}
+      onToggle={togglePlay} onSeek={seek} onSpeed={(speed) => setReview((value) => ({ ...value, speed }))}
+      onLatest={() => { setPlaying(false); setReview((value) => ({ ...value, reviewing: false, atMs: null })); }} />
     {streams.length === 0 ? <p className="countline">No participants match the current filters.</p>
       : <div className={`gallery density-${density}`} ref={grid}
         onPointerOver={(event) => { const id = (event.target as Element).closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
         onFocusCapture={(event) => { const id = event.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
-      >{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} name={labels.get(stream.id) ?? stream.label} onOpen={onOpen}
+      >{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} name={labels.get(stream.id) ?? stream.label} onOpen={open}
+        replay={review.reviewing ? gridMoment(recording, stream.id, atMs ?? Number.NaN) : undefined}
         reviewOutcome={reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label} updating={updating} liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} comparisonFull={compareIds.length >= 3} onPin={onPin} onCompare={onCompare} now={now} />)}</div>}
     {pageCount > 1 ? <nav className="grid-pages" aria-label="Participant pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
       <span>Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, streams.length)} of {streams.length} participants</span>
