@@ -88,7 +88,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     await mount(<Sidebar data={finished} history={{ latestRunId: data.run.runId, runs: [{ runId: data.run.runId, status: "running", runtimeState: "running", href: "", mode: "live", streamCount: 4 }] }} onRuns={() => {}} />);
     expect(container.querySelector(".dot.active")).toBeNull();
     expect(container.querySelector(".run-entry small")?.textContent).not.toContain("Running");
-    await click(container.querySelector('input[type="checkbox"]') as Element);
+    await click(container.querySelector('[role="checkbox"]') as Element);
     expect(container.textContent).toContain("No matching studies.");
   });
 
@@ -598,21 +598,21 @@ describe("study shell continuity", () => {
   it("keeps the same library and its local state while switching study views", async () => {
     await mount(<App data={data} report={emptyReport} />);
     const sidebar = container.querySelector(".side");
-    const checkbox = sidebar!.querySelector<HTMLInputElement>('[type="checkbox"]')!;
+    const checkbox = sidebar!.querySelector<HTMLElement>('[role="checkbox"]')!;
     await click(checkbox);
     const links = container.querySelectorAll<HTMLAnchorElement>('.study-views a');
     links[1]!.focus();
     await click(links[1]!);
     expect(container.querySelector(".study-report-empty")).not.toBeNull();
     expect(container.querySelector(".side")).toBe(sidebar);
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(links[1]);
     expect(links[1]!.getAttribute("aria-current")).toBe("page");
     expect(links[1]!.getAttribute("href")).toBe("#/report");
     await click(links[0]!);
     expect(container.querySelector(".side")).toBe(sidebar);
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.getAttribute("aria-checked")).toBe("true");
   });
 
   it("uses the same persistent desktop collapse control from Report and Participants", async () => {

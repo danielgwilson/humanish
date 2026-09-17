@@ -1,3 +1,4 @@
+import { Select } from "./ui/select";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { historyRunHref } from "@/lib/artifact-href";
 import { comparisonFrame, frameTimes } from "@/lib/comparison";
@@ -76,9 +77,9 @@ export function Comparison({ data, streams, history, onBack, onOpen, onLocationC
   const overlaps = valid.length > 1 && Math.max(...valid.map((p) => p.times?.[0] ?? Infinity)) <= Math.min(...valid.map((p) => p.times?.at(-1) ?? -Infinity));
   return <section className="comparison" aria-label="Compare participants">
     <div className="compare-toolbar"><button type="button" className="review-tool" onClick={onBack}>Back to participants</button>
-      <label>Align by <select aria-label="Comparison clock" value={clock} onChange={(e) => { setClock(e.target.value as typeof clock); setTime(null); setPlaying(false); }}><option value="shared">Capture time</option><option value="elapsed">Elapsed time</option></select></label>
-      {history && history.runs.length > 1 ? <label>Compare another run <select aria-label="Comparison run" disabled={!otherAllowed && !otherId} aria-describedby={!otherAllowed ? "compare-limit" : undefined} value={otherId} onChange={(e) => { setOtherId(e.target.value); setOtherLane(""); setClock("elapsed"); setTime(null); }}><option value="">This study only</option>{history.runs.filter((r) => r.runId !== data.run.runId).map((r) => <option key={r.runId} value={r.runId}>{r.runId}</option>)}</select></label> : null}
-      {other ? <label>Participant <select aria-label="Other run participant" value={otherLane || other.streams[0]?.id || ""} onChange={(e) => setOtherLane(e.target.value)}>{other.streams.map((s) => <option key={s.id} value={s.id}>{participantLabels(other.streams).get(s.id) ?? s.label}</option>)}</select></label> : null}
+      <label>Align by <Select label="Comparison clock" value={clock} onValueChange={(value) => { setClock(value as typeof clock); setTime(null); setPlaying(false); }} options={[{ value: "shared", label: "Capture time" }, { value: "elapsed", label: "Elapsed time" }]} /></label>
+      {history && history.runs.length > 1 ? <label>Compare another run <Select label="Comparison run" disabled={!otherAllowed && !otherId} describedBy={!otherAllowed ? "compare-limit" : undefined} value={otherId} onValueChange={(value) => { setOtherId(value); setOtherLane(""); setClock("elapsed"); setTime(null); }} options={[{ value: "", label: "This study only" }, ...history.runs.filter((r) => r.runId !== data.run.runId).map((r) => ({ value: r.runId, label: r.runId }))]} /></label> : null}
+      {other ? <label>Participant <Select label="Other run participant" value={otherLane || other.streams[0]?.id || ""} onValueChange={setOtherLane} options={other.streams.map((stream) => ({ value: stream.id, label: participantLabels(other.streams).get(stream.id) ?? stream.label }))} /></label> : null}
     </div>
     {!otherAllowed && history && history.runs.length > 1 ? <p id="compare-limit">Comparison holds up to three participants. Return to participants and remove one to add another run.</p> : null}
     <p className="compare-note">{clock === "shared" ? "Aligned to recorded capture timestamps. Clocks may differ; each screen shows its capture age." : "Aligned from each participant’s first capture. This compares progress, not simultaneous events."}</p>

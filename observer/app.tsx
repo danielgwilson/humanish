@@ -7,6 +7,7 @@ import { Player } from "./components/player";
 import { RunStatus } from "./components/run-status";
 import { SavedMoments } from "./components/saved-moments";
 import { Sidebar, type StudyLibrary } from "./components/sidebar";
+import { Select } from "./components/ui/select";
 import { Drawer } from "./components/ui/drawer";
 import { StudyReport } from "./components/study-report";
 import { reportFindingId, reportHash, resolveReportMoment, type StudyReport as ReportData } from "./lib/study-report";
@@ -150,7 +151,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest("input,select,textarea,[contenteditable=true],[role=dialog],[role=menu]")) return;
+      if (target?.closest("input,select,textarea,[contenteditable=true],[role=dialog],[role=menu],[role=combobox],[role=listbox]")) return;
       if (event.key === "Escape" && !document.fullscreenElement) {
         if (monitoring) setMonitoring(false);
         else if (selected) returnToSource();
@@ -265,7 +266,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
             : <StudyGrid key={data.run.runId} recording={studyPlayback.recording} atMs={studyPlayback.atMs} reviewing={studyPlayback.reviewing}
                 page={gridPage.runId === data.run.runId ? gridPage.page : 0} onPageChange={(page) => setGridPage({ runId: data.run.runId, page })}
                 tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
-                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={(id) => openParticipant(id, null, undefined, undefined, studyPlayback.reviewing ? "replay" : null, true)} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
+                gridControl={<label className="tool"><span className="o-label">Preview size</span><Select label="Preview size" value={density} onValueChange={(value) => { if (isDensity(value)) setDensity(value); }} options={[{ value: "compact", label: "Compact" }, { value: "comfortable", label: "Comfortable" }, { value: "large", label: "Large" }]} /></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={(id) => openParticipant(id, null, undefined, undefined, studyPlayback.reviewing ? "replay" : null, true)} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
   </>;
   const needsAttention = connection.state === "retrying" || data.runtime?.state === "unknown" || data.runtime?.state === "interrupted";
   const studyLabel = library?.entries.find((entry) => entry.runId === data.run.runId)?.title;

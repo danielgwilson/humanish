@@ -3,6 +3,7 @@ import { Tooltip } from "@base-ui-components/react/tooltip";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Select } from "../components/ui/select";
 import { Popover } from "../components/ui/popover";
 
 let container: HTMLDivElement;
@@ -13,7 +14,7 @@ let originalFullscreen: PropertyDescriptor | undefined;
 async function render(open = true) {
   await act(async () => {
     root.render(<Tooltip.Provider><div className="main"><Popover label="Playback options" triggerClassName="tbtn" trigger="Options" open={open}>
-      <label>Speed<select aria-label="Study playback speed" defaultValue="1"><option value="1">1×</option><option value="2">2×</option></select></label>
+      <label>Speed<Select label="Study playback speed" value="1" options={[{ value: "1", label: "1×" }, { value: "2", label: "2×" }]} onValueChange={() => {}} /></label>
     </Popover></div></Tooltip.Provider>);
   });
 }
@@ -53,7 +54,7 @@ describe("Popover portals remain inside native fullscreen", () => {
     await changeFullscreen(main);
     expect(popup()).not.toBeNull();
     expect(main.contains(popup())).toBe(true);
-    const speed = popup()!.querySelector<HTMLSelectElement>('select[aria-label="Study playback speed"]')!;
+    const speed = popup()!.querySelector<HTMLButtonElement>('[role="combobox"][aria-label="Study playback speed"]')!;
     await act(async () => { speed.focus(); });
     expect(document.activeElement).toBe(speed);
 

@@ -16,7 +16,7 @@
 .status-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--ghost); }
 .status-dot.active, .side .dot.active { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-wash); }
 .compare-toolbar label { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); min-width: 0; }
-.compare-toolbar select { padding: 7px 8px; max-width: 230px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font: inherit; }
+.compare-toolbar .observer-select { max-width: 230px; }
 .library-search { border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); padding: 7px 10px; min-width: 0; font: inherit; }
 .review-tool, .grid-pages button { border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; min-height: 32px; font-size: 11px; color: var(--body-c); background: var(--panel); }
 .review-tool:hover, .grid-pages button:hover { background: var(--accent-wash); color: var(--ink); }
@@ -51,7 +51,6 @@ button:disabled { opacity: .45; cursor: default; }
 .card-retry { font-size: 11px; color: var(--accent-ink); text-decoration: underline; padding: 6px 10px; min-height: 32px; }
 .observer-popover-positioner { z-index: 50; }
 .pop-panel { max-height: min(620px, 85dvh); overflow-y: auto; }
-.pop-panel .tool select { max-width: 180px; }
 .grid-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px 24px; color: var(--muted); font-size: 11px; }
 .library-search { display: block; width: calc(100% - 16px); margin: 4px 8px 8px; }
 .library-running { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); padding: 2px 10px 12px; }
@@ -97,11 +96,11 @@ button:disabled { opacity: .45; cursor: default; }
   .run-status { padding: 10px 12px; gap: 5px; }
   .run-status-main { gap: 6px; }
   .run-status-main > span:not(.status-dot):not(.chip) { flex-basis: 100%; padding-left: 13px; }
-  .compare-toolbar select, .review-tool, .grid-pages button { min-height: 36px; }
+  .review-tool, .grid-pages button { min-height: 36px; }
   .gallery, .gallery.density-large, .gallery.density-compact { padding: 12px; }
   .comparison { padding: 12px; }
   .compare-toolbar label { flex-wrap: wrap; }
-  .compare-toolbar select { max-width: 100%; }
+  .compare-toolbar .observer-select { max-width: 100%; }
   .compare-grid { grid-template-columns: minmax(0, 1fr); }
   .compare-stage { height: clamp(200px, 30vh, 240px); }
   .card-icon { width: 32px; height: 32px; }

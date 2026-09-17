@@ -28,6 +28,8 @@
     {"id": "image-retry", "goal": "Missing and corrupt image requests recover through a real retry"},
     {"id": "zoom-fullscreen", "goal": "Native size, zoom and browser fullscreen preserve evidence and keep playback-option portals operable"},
     {"id": "native-permission-denial", "goal": "Browser-enforced fullscreen and clipboard denial retain useful fallbacks"},
+    {"id": "rich-controls-desktop", "goal": "Token-styled selects and checkboxes preserve filtering, typeahead, nested Escape/focus, preferences and recording keyboard isolation"},
+    {"id": "rich-controls-phone", "goal": "Use nested rich selects at 390px with 44px options, no overflow, persisted filters and keyboard-operable checkboxes"},
     {"id": "grid-control-semantics", "goal": "Stable Details icons, explicit comparison limits, and keyboard tooltip dismissal"},
     {"id": "grid-touch-controls", "goal": "Real touch emulation uses 44px targets and labeled actions outside screenshots"},
     {"id": "grid-live-surfaces", "goal": "Live portrait previews have no card gutters or labels covering captured pixels"},

@@ -27,8 +27,14 @@ async function key(value: string, target: EventTarget = window) {
 }
 function counter() { return container.querySelector(".counter")?.textContent; }
 async function filterActivity(value: string) {
-  const select = container.querySelector<HTMLSelectElement>('[aria-label="Filter activity"]')!;
-  await act(async () => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  const select = container.querySelector<HTMLButtonElement>('[aria-label="Filter activity"]')!;
+  await act(async () => { select.click(); });
+  const option = document.querySelector<HTMLElement>(`.observer-select-option[data-value="${value}"]`)!;
+  await act(async () => {
+    const pointer = new MouseEvent("pointerdown", { bubbles: true });
+    Object.defineProperty(pointer, "pointerType", { value: "touch" });
+    option.dispatchEvent(pointer); option.click();
+  });
 }
 function appendFrame() {
   model = { ...model, frames: [...model.frames, { index: model.frames.length, itemId: `frame-${model.frames.length}`, title: "Later capture", href: `../screenshots/later-${model.frames.length}.png`, atMs: 30_000 }] };

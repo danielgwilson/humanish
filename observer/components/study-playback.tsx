@@ -2,6 +2,7 @@ import type { GridRecording } from "@/lib/grid-recording";
 import { formatElapsed } from "@/lib/player-model";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
+import { Select } from "./ui/select";
 import { Popover } from "./ui/popover";
 import "@/styles/study-playback.css";
 
@@ -39,9 +40,8 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
       </div>
       <Popover triggerClassName="tbtn study-playback-options" label="Playback options" trigger={<ReviewIcon name="options" />}>
         <div className="study-playback-settings">
-          <label className="study-playback-speed"><span>Speed</span><select aria-label="Study playback speed" value={speed} onChange={(event) => onSpeed(Number(event.target.value))}>
-            {[.5, 1, 2, 4, 8].map((value) => <option key={value} value={value}>{value}×</option>)}
-          </select></label>
+          <label className="study-playback-speed"><span>Speed</span><Select label="Study playback speed" value={String(speed)} onValueChange={(value) => onSpeed(Number(value))}
+            options={[.5, 1, 2, 4, 8].map((value) => ({ value: String(value), label: `${value}×` }))} /></label>
           <button type="button" className="review-tool study-playback-latest" disabled={!reviewing} onClick={onLatest}>{canFollow ? "Follow live" : "Latest captures"}</button>
           <p className="study-playback-note">{timed ? <>{reviewing ? "Study capture time" : "Latest previews"} · {timed} of {recording.lanes.size} participants with capture timestamps. Screens hold until the next capture.</>
             : "Capture timing unavailable. Open a participant to review their recorded evidence."}</p>

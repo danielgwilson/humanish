@@ -2,6 +2,7 @@ import { useState } from "react";
 import { historyRunHref } from "@/lib/artifact-href";
 import type { HistoryIndex } from "@/lib/live";
 import type { ObserverData } from "@/lib/observer-data";
+import { Checkbox } from "./ui/checkbox";
 import { ThemeToggle } from "./theme-toggle";
 
 /** Optional in-memory study navigation for a collection of saved Observer artifacts. */
@@ -27,7 +28,7 @@ export function Sidebar({ data, history, onRuns, updating = true, library }: {
     <nav aria-label="Run library"><div className="grp">
       <span className="o-label">Studies <span className="library-count">{allRuns.length}</span></span>
       {allRuns.length > 1 ? <input className="library-search" aria-label="Find a run" placeholder="Find a study…" type="search" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(30); }} /> : null}
-      {!library && updating ? <label className="library-running"><input type="checkbox" checked={onlyRunning} onChange={(e) => { setOnlyRunning(e.target.checked); setLimit(30); }} /> Running only</label> : null}
+      {!library && updating ? <label className="library-running"><Checkbox label="Running only" checked={onlyRunning} onCheckedChange={(checked) => { setOnlyRunning(checked); setLimit(30); }} /> Running only</label> : null}
       {matches.slice(0, limit).map((run) => {
         const href = historyRunHref(run.runId);
         const entry = library?.entries.find((item) => item.runId === run.runId);
