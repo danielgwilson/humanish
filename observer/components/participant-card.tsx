@@ -50,7 +50,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
   const captureLabel = replay?.kind === "capture" ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
     : replay?.kind === "before-first" ? "No capture yet" : replay?.kind === "timing-unavailable" ? "Capture timing unavailable" : "No captured screens";
-  const fromStart = replay && replay.kind !== "capture" && ["before-first", "timing-unavailable"].includes(replay.kind);
+  const fromStart = replay?.kind === "timing-unavailable";
   const openLabel = fromStart ? `Open recording from start for ${name}` : `Open participant ${name}`;
   return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id} aria-label={name} data-compared={compared || undefined}
     style={{ "--preview-ratio": viewport ? viewport.width / viewport.height : 1.6 } as CSSProperties}>
