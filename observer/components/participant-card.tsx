@@ -66,20 +66,22 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
       </div>
     </div>
     <div className="card-caption">
+      {pinned ? <span className="card-pin" role="img" aria-label="Pinned participant" title="Pinned participant"><ReviewIcon name="pin" /></span> : null}
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
         {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
-          : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analyzed outcome: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
+          : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analysis: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
         <div className="card-details">
           <h3 className="participant-detail-name">{name}</h3>
           <ParticipantAssignment stream={stream} />
           <div className="card-detail-actions">
-            {onPin ? <button type="button" className="review-tool" aria-pressed={pinned} aria-label={`Pin participant ${name}`} onClick={() => onPin(stream.id)}><ReviewIcon name="pin" />Pin</button> : null}
+            {onPin ? <button type="button" className="review-tool" aria-pressed={pinned} aria-label={`${pinned ? "Pinned" : "Pin"} participant ${name}`} onClick={() => onPin(stream.id)}><ReviewIcon name="pin" />{pinned ? "Pinned" : "Pin"}</button> : null}
             {onCompare ? <button type="button" className="review-tool" aria-pressed={compared} aria-label={`Compare participant ${name}`} disabled={!compared && comparisonFull} onClick={() => onCompare(stream.id)}><ReviewIcon name={compared ? "check" : "compare"} />Compare</button> : null}
             {comparisonFull ? <p>Comparison limit: 3 participants. Remove one to choose another.</p> : null}
           </div>
           <dl><dt>Participant</dt><dd>{label}</dd><dt>Persona</dt><dd>{stream.sim.personaId}</dd>
+            {reviewOutcome ? <><dt>Analyzed outcome</dt><dd>{reviewOutcome}</dd></> : null}
             <dt>{replay ? "Run status" : "Status"}</dt><dd>{statusLabel}</dd><dt>Preview</dt><dd>{replay ? captureLabel : previewLabel ?? "Recorded"}{liveThumb && liveUrl ? " · read-only; connection health is managed by the provider" : ""}</dd>
             <dt>Screen</dt><dd>{viewport ? `${viewport.width} × ${viewport.height} · ` : ""}{stream.kindLabel}</dd>
             {stream.actor ? <><dt>Duration</dt><dd>{formatDuration(stream.actor.durationMs)}</dd></> : null}

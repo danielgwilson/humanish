@@ -47,9 +47,25 @@
 
 /* Findings use the same pane gutter and object scale as participant evidence. */
 .study-report { padding: 18px 24px 28px; }
-.findings-summary { margin-bottom: 18px; }
-.findings-summary p { font-size: 14px; line-height: 1.5; margin-bottom: 5px; }
-.findings-summary > span { font-size: 12px; color: var(--muted); }
+.report-overview { margin-bottom: 18px; }
+.report-overview-title { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 16px; flex-wrap: wrap; }
+.report-overview-title h2 { margin: 0; font-size: 20px; line-height: 1.3; font-weight: 600; }
+.report-overview-title > span { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.report-overview-facts { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 16px 0 8px; }
+.report-overview-facts > div { display: flex; gap: 8px; align-items: baseline; }
+.report-overview-facts dt { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.report-overview-facts dd { margin: 0; font: 500 14px/1.5 var(--mono); color: var(--ink); }
+.report-overview-scope { margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
+.report-overview-disclosures { display: flex; flex-wrap: wrap; gap: 0 24px; }
+.report-overview-disclosures > details { min-width: 0; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.report-overview-disclosures > details > summary { min-height: 36px; align-content: center; cursor: pointer; }
+.report-overview-disclosures > details[open] { width: 100%; }
+.findings-summary { max-width: 70ch; margin: 8px 0 16px; }
+.findings-summary p { font-size: 15px; line-height: 1.6; color: var(--body-c); overflow-wrap: anywhere; }
+.report-analysis-body { max-width: 85ch; padding: 8px 0 16px; overflow-wrap: anywhere; }
+.report-analysis-body > p { font-size: 13px; line-height: 1.6; }
+.report-analysis-body section { margin-top: 16px; }
+.report-analysis-body h3 { font-size: 12px; font-weight: 600; color: var(--body-c); margin-bottom: 8px; }
 .finding-row { border-top: 1px solid var(--line); }
 .finding-row:last-child { border-bottom: 1px solid var(--line); }
 .finding-heading { margin: 0; }
@@ -149,6 +165,12 @@
   .study-viewbar { padding: 0 16px; gap: 10px; }
   .study-views { gap: 20px; }
   .study-report { padding: 16px; }
+  .report-overview-title h2 { font-size: 18px; }
+  .report-overview-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 14px 0 6px; }
+  .report-overview-facts > div { flex-direction: column; gap: 1px; }
+  .report-overview-facts dd { font-size: 16px; }
+  .report-overview-disclosures { gap: 0 16px; }
+  .report-overview-disclosures > details > summary { min-height: 44px; }
   .grid-summary { padding: 12px 16px 0; }
   .study-context-actions { padding: 6px 12px; gap: 6px 16px; }
   .study-context-actions .pager-word { display: none; }

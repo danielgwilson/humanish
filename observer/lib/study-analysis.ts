@@ -4,6 +4,7 @@ import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";
 import { parseAutomaticAnalysis } from "./automatic-analysis";
+import { buildPlayerModel } from "./player-model";
 
 export type { LoadedStudyAnalysis } from "../../src/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
@@ -162,6 +163,17 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
   return { id: a?.id ?? "unavailable", runId: data.run.runId, state,
     admissionExceeded: a?.error === "analysis_admission_estimate_exceeded",
     summary: result?.summary ?? "", scope: a ? `${a.coverage.includedStreamIds.length} of ${data.streams.length} participants included` : "",
+    ...(a && result ? { overview: {
+      includedParticipants: a.coverage.includedStreamIds.length,
+      // A changed recording is not the denominator of an older analysis.
+      totalParticipants: loaded.state === "ready" ? data.streams.length : null,
+      sampledCaptures: a.coverage.captureCount,
+      totalCaptures: loaded.state === "ready" ? data.streams.reduce((count, stream) => count + (buildPlayerModel(stream)?.frames.length ?? 0), 0) : null,
+      outcomes: loaded.state === "ready" ? ["completed", "blocked", "abandoned", "interrupted", "unknown"].flatMap(outcome => {
+        const count = result.participants.filter(participant => participant.outcome === outcome).length;
+        return count ? [{ label: outcomeLabel(outcome), count }] : [];
+      }) : [],
+    } } : {}),
     messages: [...new Set([...loaded.warnings, ...(a?.coverage.omissions ?? []), ...(result?.limitations ?? [])])],
     findings: result?.findings.map((f) => {
       const cited = new Set(f.observations.flatMap((o) => o.evidenceIds));

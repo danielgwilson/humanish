@@ -1,3 +1,5 @@
+import { Select } from "./ui/select";
+import { Checkbox } from "./ui/checkbox";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
 import { Tabs } from "@base-ui-components/react/tabs";
@@ -223,7 +225,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const target = event.target;
-      if (target instanceof Element && target.closest('input, textarea, select, button, a, summary, [contenteditable]:not([contenteditable="false"]), [role="dialog"], [role="menu"], [role="slider"], [role="tab"]')) return;
+      if (target instanceof Element && target.closest('input, textarea, select, button, a, summary, [contenteditable]:not([contenteditable="false"]), [role="dialog"], [role="menu"], [role="slider"], [role="tab"], [role="combobox"], [role="listbox"], [role="checkbox"]')) return;
       if (event.key === " ") { event.preventDefault(); togglePlay(); }
       if (event.key === "ArrowLeft") { event.preventDefault(); seek(Math.max(0, frame - 1)); }
       if (event.key === "ArrowRight") { event.preventDefault(); seek(frame + 1); }
@@ -395,12 +397,11 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
           <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
           <IconButton className="tbtn" label="Fullscreen" onClick={() => { void toggleFullscreen(); }}><ReviewIcon name="fullscreen" /></IconButton>
-        </> : <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>}
+        </> : <label><Checkbox label="Skip waits" checked={preferences.skipWaits} onCheckedChange={(checked) => setPreferences((value) => ({ ...value, skipWaits: checked }))} /> Skip waits</label>}
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
         <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next flagged frame</button>
-        <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
-          <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
-        </select></label>
+        <label className="zoom-control">View <Select label="Image zoom" value={String(zoom)} disabled={live !== null} onValueChange={(value) => setZoom(value === "fit" || value === "actual" ? value : Number(value))}
+          options={[{ value: "fit", label: "Fit" }, { value: "actual", label: "Actual size" }, { value: "0.5", label: "50%" }, { value: "1.5", label: "150%" }, { value: "2", label: "200%" }, { value: "3", label: "300%" }]} /></label>
         <button type="button" className="tbtn" disabled={!current || (!!eventId && !selectedRow)} onClick={() => { void copyMoment(); }}>Copy moment link</button>
         {current ? <a className="tbtn" href={current.href} target="_blank" rel="noopener noreferrer" download>Original frame</a> : null}
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
@@ -438,10 +439,9 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       <Tabs.Root className="inspector" style={{ width: preferences.width }} value={tab} onValueChange={(value) => setTab(value as Tab)}>
         <Tabs.List className="itabs" aria-label="Participant inspector">{(["actions", "details", "report"] as const).map((name) => <Tabs.Tab key={name} value={name}>{name === "report" ? "Feedback" : name}</Tabs.Tab>)}</Tabs.List>
         <Tabs.Panel value="actions" className="action-panel">
-          <div className="feed-controls"><label>Show <select aria-label="Filter activity" value={filter} onChange={(event) => { setFilter(event.target.value as FeedFilter); setFeedPage(null); }}>
-            <option value="all">All evidence</option><option value="actions">Actions</option><option value="thoughts">Reported thinking</option><option value="findings">Warnings & findings</option>
-          </select></label><label><input type="checkbox" checked={groupWaits} onChange={(event) => setGroupWaits(event.target.checked)} /> Group waits</label>
-            {filter === "all" ? <label><input type="checkbox" checked={showThoughts} onChange={(event) => setShowThoughts(event.target.checked)} /> Thinking</label> : null}</div>
+          <div className="feed-controls"><label>Show <Select label="Filter activity" value={filter} onValueChange={(value) => { setFilter(value as FeedFilter); setFeedPage(null); }}
+            options={[{ value: "all", label: "All evidence" }, { value: "actions", label: "Actions" }, { value: "thoughts", label: "Reported thinking" }, { value: "findings", label: "Warnings & findings" }]} /></label><label><Checkbox label="Group waits" checked={groupWaits} onCheckedChange={setGroupWaits} /> Group waits</label>
+            {filter === "all" ? <label><Checkbox label="Thinking" checked={showThoughts} onCheckedChange={setShowThoughts} /> Thinking</label> : null}</div>
           <div className="ipanel acts" ref={feedRef}>
             {groups.length === 0 && !(filter === "findings" && runNotices.length > 0) ? <p className="feed-empty">No recorded entries match this filter.</p> : null}
             {feedWindow.start > 0 ? <button type="button" className="tbtn feed-page" onClick={() => setFeedPage(Math.max(0, feedWindow.start - Math.floor(FEED_LIMIT / 2)))}>Earlier entries</button> : null}

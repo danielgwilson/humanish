@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import type { ObserverData } from "@/lib/observer-data";
+import { Select } from "./ui/select";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
 
@@ -34,22 +35,13 @@ export function GridOptions({ data, filters, onFilters, gridControl, onMonitor }
     >
       <label className="tool">
         <span className="o-label">Status</span>
-        <select value={filters.status} onChange={(e) => onFilters({ ...filters, status: e.target.value })}>
-          <option value="">All</option>
-          <option value="__active">Running / preparing</option>
-          {statuses.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+        <Select label="Participant status" value={filters.status} onValueChange={(status) => onFilters({ ...filters, status })}
+          options={[{ value: "", label: "All" }, { value: "__active", label: "Running / preparing" }, ...statuses.map((status) => ({ value: status, label: status }))]} />
       </label>
       <label className="tool">
         <span className="o-label">Kind</span>
-        <select value={filters.kind} onChange={(e) => onFilters({ ...filters, kind: e.target.value })}>
-          <option value="">All</option>
-          {kinds.map((k) => (
-            <option key={k} value={k}>{k}</option>
-          ))}
-        </select>
+        <Select label="Participant kind" value={filters.kind} onValueChange={(kind) => onFilters({ ...filters, kind })}
+          options={[{ value: "", label: "All" }, ...kinds.map((kind) => ({ value: kind, label: kind }))]} />
       </label>
       <span className="searchbox">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>

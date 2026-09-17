@@ -11,6 +11,13 @@ export interface StudyReport {
   admissionExceeded?: boolean;
   summary: string;
   scope: string;
+  overview?: {
+    includedParticipants: number;
+    totalParticipants: number | null;
+    sampledCaptures: number;
+    totalCaptures: number | null;
+    outcomes: { label: string; count: number }[];
+  };
   findings: StudyFinding[];
   outcomes: { streamId: string; label: string }[];
   participants?: ParticipantAnalysis[];

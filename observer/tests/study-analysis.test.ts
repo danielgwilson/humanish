@@ -12,6 +12,33 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
+  it("projects overview counts from structured coverage and judgments, not summary prose or actor success", () => {
+    const saved = fixture();
+    saved.analysis!.result!.summary = "All participants completed everything. This prose must not set the counts.";
+    saved.analysis!.result!.participants[1]!.outcome = "interrupted";
+    saved.analysis!.result!.participants[2]!.outcome = "unknown";
+    const before = JSON.stringify(saved);
+    const report = projectStudyAnalysis(parseStudyAnalysis(saved, data), data)!;
+    expect(report.overview).toEqual({ includedParticipants: 3, totalParticipants: 3,
+      sampledCaptures: 12, totalCaptures: 12,
+      outcomes: [{ label: "Blocked", count: 1 }, { label: "Interrupted", count: 1 }, { label: "Unknown", count: 1 }] });
+    expect(JSON.stringify(saved)).toBe(before);
+  });
+  it("does not give stale analyses current denominators or current outcome counts", () => {
+    const saved = fixture(); saved.state = "stale";
+    const changed = structuredClone(data); changed.streams.pop();
+    const report = projectStudyAnalysis(parseStudyAnalysis(saved, changed), changed)!;
+    expect(report.overview).toMatchObject({ includedParticipants: 3, totalParticipants: null,
+      sampledCaptures: 12, totalCaptures: null, outcomes: [] });
+  });
+  it("counts recorded scripted captures but not repeated contextual screenshot references", () => {
+    const saved = fixture(), changed = structuredClone(data);
+    const items = changed.streams[0]!.actor!.items!;
+    items.push({ id: "scripted-capture", lifecycle: "completed", kind: "ui_action", title: "Captured action", screenshotRef: { path: "screenshots/scripted.png", redaction: "none" } },
+      { id: "context-notice", lifecycle: "completed", kind: "reasoning", title: "Context", screenshotRef: { path: "screenshots/scripted.png", redaction: "none" } });
+    const report = projectStudyAnalysis(saved, changed)!;
+    expect(report.overview).toMatchObject({ sampledCaptures: 12, totalCaptures: 13 });
+  });
   it("keeps source interpretations intact while selecting a directly supported preview and separating caveats", () => {
     const saved = fixtures.reviewPolishFixture(data);
     const before = JSON.stringify(saved);

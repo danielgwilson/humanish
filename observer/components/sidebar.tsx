@@ -2,6 +2,7 @@ import { useState } from "react";
 import { historyRunHref } from "@/lib/artifact-href";
 import type { HistoryIndex } from "@/lib/live";
 import type { ObserverData } from "@/lib/observer-data";
+import { Checkbox } from "./ui/checkbox";
 import { ThemeToggle } from "./theme-toggle";
 
 /** Optional in-memory study navigation for a collection of saved Observer artifacts. */
@@ -10,8 +11,8 @@ export interface StudyLibrary {
   onSelect: (runId: string) => void;
 }
 
-export function Sidebar({ data, history, onRuns, updating = true, library }: {
-  data: ObserverData; history: HistoryIndex | null; onRuns: () => void; updating?: boolean; library?: StudyLibrary;
+export function Sidebar({ data, history, onRuns, updating = true, library, collapsed = false }: {
+  data: ObserverData; history: HistoryIndex | null; onRuns: () => void; updating?: boolean; library?: StudyLibrary; collapsed?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [onlyRunning, setOnlyRunning] = useState(false);
@@ -23,11 +24,11 @@ export function Sidebar({ data, history, onRuns, updating = true, library }: {
   const titleFor = (run: HistoryIndex["runs"][number]) => library?.entries.find((entry) => entry.runId === run.runId)?.title
     ?? (run.runId === data.run.runId ? data.run.scenario.title : Number.isFinite(Date.parse(run.createdAt ?? "")) ? new Date(run.createdAt!).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : run.runId);
   const matches = allRuns.filter((run) => (!onlyRunning || isRunning(run)) && `${titleFor(run)} ${run.runId}`.toLowerCase().includes(query.toLowerCase()));
-  return <aside className="side" aria-label="Study library">
+  return <aside className="side" aria-label="Study library" data-collapsed={collapsed || undefined} aria-hidden={collapsed || undefined} inert={collapsed || undefined}>
     <nav aria-label="Run library"><div className="grp">
       <span className="o-label">Studies <span className="library-count">{allRuns.length}</span></span>
       {allRuns.length > 1 ? <input className="library-search" aria-label="Find a run" placeholder="Find a study…" type="search" value={query} onChange={(e) => { setQuery(e.target.value); setLimit(30); }} /> : null}
-      {!library && updating ? <label className="library-running"><input type="checkbox" checked={onlyRunning} onChange={(e) => { setOnlyRunning(e.target.checked); setLimit(30); }} /> Running only</label> : null}
+      {!library && updating ? <label className="library-running"><Checkbox label="Running only" checked={onlyRunning} onCheckedChange={(checked) => { setOnlyRunning(checked); setLimit(30); }} /> Running only</label> : null}
       {matches.slice(0, limit).map((run) => {
         const href = historyRunHref(run.runId);
         const entry = library?.entries.find((item) => item.runId === run.runId);

@@ -215,9 +215,16 @@ async function readyCapture(locator, expectedSource) {
 }
 const studySlider = (page) => page.getByRole("slider", { name: "Seek study recording", exact: true });
 const studyCard = (page, id) => page.locator(`.card[data-stream-id="${id}"]`);
+async function chooseSelect(page, label, value) {
+  const trigger = page.getByRole("combobox", { name: label, exact: true });
+  await trigger.click();
+  const option = page.getByRole("listbox", { name: label, exact: true }).locator(`[role="option"][data-value="${value}"]`);
+  await option.click();
+  await page.getByRole("listbox", { name: label, exact: true }).waitFor({ state: "hidden" });
+}
 async function setStudySpeed(page, value) {
   await page.getByRole("button", { name: "Playback options", exact: true }).click();
-  await page.getByLabel("Study playback speed", { exact: true }).selectOption(String(value));
+  await chooseSelect(page, "Study playback speed", String(value));
   await page.getByRole("button", { name: "Close playback options", exact: true }).click();
 }
 async function followStudy(page) {
@@ -437,9 +444,7 @@ try {
         record.checks.rows = [];
         for (const [density, expectedHeight] of [["compact", 200], ["comfortable", 280], ["large", 360]]) {
           await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
-          await page.getByLabel("Preview size").selectOption(density);
-          // selectOption does not move focus from the auto-focused close icon.
-          // Escape can dismiss that icon's tooltip first, leaving the menu open.
+          await chooseSelect(page, "Preview size", density);
           await page.getByRole("button", { name: "Close view options", exact: true }).click();
           await page.locator(".pop-panel").waitFor({ state: "hidden" });
           const images = await inspectImages(page.locator(".thumb .keyframe"));
@@ -453,7 +458,7 @@ try {
           record.checks.rows.push({ density, sizes });
         }
         await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
-        await page.getByLabel("Preview size").selectOption("comfortable");
+        await chooseSelect(page, "Preview size", "comfortable");
         await page.getByLabel("Search participants").fill("Avery");
         await page.keyboard.press("Escape");
         await until(async () => await page.locator(".card").count() === 1, "Portrait-only filter did not settle");
@@ -915,10 +920,10 @@ try {
   await runCase("zoom-fullscreen", {}, async ({ page, record, snap }) => {
     await openLane(page); await page.locator('.stage-box[data-image-state="ready"]').waitFor();
     const zoom = page.getByLabel("Image zoom");
-    await zoom.selectOption("actual");
+    await chooseSelect(page, "Image zoom", "actual");
     record.checks.actual = await page.locator(".stage-box img").evaluate((img) => ({ width: img.getBoundingClientRect().width, natural: img.naturalWidth }));
     assert(Math.abs(record.checks.actual.width - record.checks.actual.natural) <= 2, "Actual size is not native pixel size");
-    await zoom.selectOption("2");
+    await chooseSelect(page, "Image zoom", "2");
     record.checks.double = await page.locator(".stage-box img").evaluate((img) => ({ width: img.getBoundingClientRect().width, natural: img.naturalWidth }));
     assert(Math.abs(record.checks.double.width - 2 * record.checks.double.natural) <= 2, "200% zoom did not scale the recording");
     record.checks.pin = await page.locator(".stage-box").evaluate((stage) => {
@@ -928,7 +933,7 @@ try {
     assert(record.checks.pin.actual.every((value, index) => Math.abs(value - record.checks.pin.expected[index]) < 3), "Click marker detached from screenshot coordinates under zoom");
     record.checks.width = await pageWidth(page);
     assert(record.checks.width.page <= record.checks.width.viewport + 1, "Zoom overflow escaped the evidence stage");
-    await snap("zoomed-evidence"); await zoom.selectOption("fit");
+    await snap("zoomed-evidence"); await chooseSelect(page, "Image zoom", "fit");
     await page.getByRole("button", { name: "Fullscreen", exact: true }).click();
     await until(() => page.evaluate(() => document.fullscreenElement !== null), "Native fullscreen never opened");
     assertFullFrames(await inspectImages(page.locator(".stage-box img"))); await snap("native-fullscreen");
@@ -943,8 +948,14 @@ try {
     });
     assert(record.checks.fullscreenOptions.inFullscreen, "Playback options portal is outside the fullscreen element");
     assert(record.checks.fullscreenOptions.visible && record.checks.fullscreenOptions.bounds.width > 0 && record.checks.fullscreenOptions.bounds.height > 0);
-    await page.getByLabel("Study playback speed", { exact: true }).selectOption("2");
-    assert.equal(await page.getByLabel("Study playback speed", { exact: true }).inputValue(), "2");
+    await page.getByRole("combobox", { name: "Study playback speed", exact: true }).click();
+    const speedMenu = page.getByRole("listbox", { name: "Study playback speed", exact: true }); await speedMenu.waitFor();
+    assert(await speedMenu.evaluate((element) => !!document.fullscreenElement?.contains(element)), "Nested speed menu escaped native fullscreen");
+    await snap("fullscreen-speed-dropdown");
+    await page.keyboard.press("Escape"); await speedMenu.waitFor({ state: "hidden" });
+    assert(await options.isVisible(), "Escape closed fullscreen playback options with their nested dropdown");
+    await chooseSelect(page, "Study playback speed", "2");
+    assert.equal(await page.getByRole("combobox", { name: "Study playback speed", exact: true }).innerText(), "2×");
     await snap("fullscreen-playback-options");
     await page.getByRole("button", { name: "Latest captures", exact: true }).click();
     const closeOptions = page.getByRole("button", { name: "Close playback options", exact: true });
@@ -973,6 +984,88 @@ try {
     assert(record.checks.manualLink.endsWith("#/lane/lane-1/f/2"), "Clipboard fallback does not identify visible frame");
     assert(!record.checks.manualLink.includes("/desktop/"), "Moment link leaked live desktop URL");
     await snap("clipboard-manual-fallback");
+  });
+  for (const phone of [false, true]) await runCase(`rich-controls-${phone ? "phone" : "desktop"}`, { phone, touch: phone, laneCount: 18, prepare() {
+    data.streams[1].statusLabel = "Review requested";
+    data.streams[2].statusLabel = "Waiting for a synthetic follow-up with a deliberately long description";
+    data.streams.slice(3).forEach((stream, index) => { stream.statusLabel = `Synthetic state ${index + 4}`; });
+  } }, async ({ page, record, snap }) => {
+    await page.goto(`${origin}/observer/index.html`);
+    const trigger = page.getByRole("button", { name: "View and filter participants", exact: true });
+    await trigger.click();
+    const panel = page.locator('.pop-panel[aria-label="View and filter participants"]');
+    const status = page.getByRole("combobox", { name: "Participant status", exact: true });
+    await status.focus(); await page.keyboard.press("Enter");
+    const menu = page.getByRole("listbox", { name: "Participant status", exact: true });
+    await menu.waitFor();
+    await page.keyboard.press("r"); await page.keyboard.press("Enter");
+    await menu.waitFor({ state: "hidden" });
+    assert.equal(await status.innerText(), "Running / preparing", "Typeahead/Enter did not select the matching status");
+    assert.equal(await page.locator(".card").count(), 0, "Rich status control did not filter participants");
+    assert(await panel.isVisible(), "Selecting an option dismissed the containing view panel");
+    await status.click(); await menu.waitFor();
+    record.checks.menu = await menu.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { bounds: box.toJSON(), viewport: [innerWidth, innerHeight], optionHeights: [...element.querySelectorAll('[role="option"]')].map((item) => item.getBoundingClientRect().height) };
+    });
+    assert(record.checks.menu.bounds.left >= 0 && record.checks.menu.bounds.right <= record.checks.menu.viewport[0], "Options overflow the viewport");
+    assert(record.checks.menu.bounds.top >= 0 && record.checks.menu.bounds.bottom <= record.checks.menu.viewport[1], "Options are clipped above or below the viewport");
+    if (phone) assert(record.checks.menu.optionHeights.every((height) => height >= 44), "Phone select options miss the 44px target");
+    await snap("status-dropdown");
+    await page.keyboard.press("Escape"); await menu.waitFor({ state: "hidden" });
+    assert(await panel.isVisible(), "First Escape dismissed the parent instead of only the dropdown");
+    assert(await status.evaluate((element) => element === document.activeElement), "Escape did not restore focus to the select trigger");
+    await page.keyboard.press("Escape"); await panel.waitFor({ state: "hidden" });
+    assert(await trigger.evaluate((element) => element === document.activeElement), "Second Escape did not restore focus to view options");
+    await trigger.click(); await status.click(); await menu.waitFor();
+    // Base UI transfers initial option focus on an animation frame. Visibility
+    // alone can precede it; End belongs to the focused list, not its trigger.
+    await until(async () => menu.evaluate((element) => element.contains(document.activeElement)), "Dropdown did not acquire keyboard focus");
+    await page.keyboard.press("End");
+    const last = menu.getByRole("option", { name: "Synthetic state 18", exact: true });
+    await until(async () => last.evaluate((element) => element.hasAttribute("data-highlighted")), "End did not highlight the last option");
+    record.checks.scrolling = await last.evaluate((element) => {
+      const list = element.closest('[role="listbox"]'), item = element.getBoundingClientRect(), bounds = list.getBoundingClientRect();
+      return { scrollTop: list.scrollTop, item: item.toJSON(), list: bounds.toJSON() };
+    });
+    assert(record.checks.scrolling.scrollTop > 0 && record.checks.scrolling.item.top >= record.checks.scrolling.list.top - 1 && record.checks.scrolling.item.bottom <= record.checks.scrolling.list.bottom + 1, "Keyboard selected option is hidden in the long menu");
+    await snap("scrolled-dropdown"); await page.keyboard.press("Enter");
+    assert.equal(await page.locator(".card").count(), 1, "Long menu selection did not update the filter");
+    await chooseSelect(page, "Participant status", "");
+    if (phone) {
+      await page.getByRole("combobox", { name: "Participant kind", exact: true }).tap();
+      await page.getByRole("listbox", { name: "Participant kind", exact: true }).getByRole("option", { name: "Browser", exact: true }).tap();
+      await page.getByRole("listbox", { name: "Participant kind", exact: true }).waitFor({ state: "hidden" });
+    } else await chooseSelect(page, "Participant kind", "Browser");
+    assert.equal(await page.locator(".card").count(), 18, "Rich kind control changed the matching participants");
+    assert.equal(await page.locator(".filter-count").innerText(), "1");
+    await chooseSelect(page, "Preview size", "compact");
+    await page.getByRole("button", { name: "Close view options", exact: true }).click();
+    await page.reload(); await trigger.click();
+    assert.equal(await page.getByRole("combobox", { name: "Preview size", exact: true }).innerText(), "Compact", "Rich preview control lost persisted selection");
+    assert.equal(await page.getByRole("combobox", { name: "Participant kind", exact: true }).innerText(), "Browser");
+    await snap("persisted-controls");
+    await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+    await page.getByRole("button", { name: "Close view options", exact: true }).click();
+    await openLane(page);
+    await chooseSelect(page, "Filter activity", "thoughts");
+    const thinking = page.getByRole("combobox", { name: "Filter activity", exact: true });
+    await thinking.focus(); await page.keyboard.press("Enter");
+    const frameBefore = await displayedFrame(page);
+    await page.keyboard.press("ArrowRight"); await page.keyboard.press("Escape");
+    assert.equal(await displayedFrame(page), frameBefore, "Dropdown navigation leaked into recording playback");
+    assert.equal(await page.locator(".player").count(), 1, "Dropdown Escape navigated away from the recording");
+    const waits = page.getByRole("checkbox", { name: "Group waits", exact: true });
+    await waits.focus(); const before = await waits.isChecked(); await page.keyboard.press("Space");
+    assert.equal(await waits.isChecked(), !before, "Custom checkbox does not support Space");
+    assert.equal(await page.getByRole("button", { name: "Pause study", exact: true }).count(), 0, "Checkbox Space started playback");
+    record.checks.visibleNativeControls = await page.locator('select, input[type="checkbox"]').evaluateAll((nodes) => nodes.filter((element) => {
+      const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+      return !element.hidden && element.getAttribute("aria-hidden") !== "true" && style.visibility !== "hidden" && style.display !== "none" && box.width > 1 && box.height > 1;
+    }).length);
+    assert.equal(record.checks.visibleNativeControls, 0, "Raw native select/checkbox remained visible");
+    record.checks.width = await pageWidth(page); assert(record.checks.width.page <= record.checks.width.viewport + 1);
+    await snap("rich-player-controls");
   });
   await runCase("grid-control-semantics", { laneCount: 4, prepare: () => {
     data.streams[0].timeline.push({ id: "setup-recovery", at: new Date(START).toISOString(), type: "warning", level: "warn", message: "Synthetic browser bounds were corrected before participant entry." });
@@ -1020,17 +1113,18 @@ try {
     const details = page.getByRole("button", { name: /^Participant details:/ }).first();
     const target = await details.boundingBox(); assert(target.width >= 44 && target.height >= 44, "Touch target is smaller than 44px");
     await details.tap();
-    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin participant/ });
+    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin(?:ned)? participant/ });
     await pin.tap();
     assert.equal(await pin.getAttribute("aria-pressed"), "true");
-    assert.equal((await pin.innerText()).trim(), "Pin", "Visible and accessible toggle labels disagree");
+    assert.equal((await pin.innerText()).trim(), "Pinned", "Selected pin has no visible state");
+    assert((await pin.getAttribute("aria-label")).startsWith("Pinned participant"), "Accessible pin name omits the visible state");
     await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).tap();
     const close = page.getByRole("button", { name: "Close participant details", exact: true });
     const closeTarget = await close.boundingBox(); assert(closeTarget.width >= 44 && closeTarget.height >= 44);
     await snap("touch-labeled-actions"); await close.tap();
     await page.locator(".pop-panel").waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "View and filter participants", exact: true }).tap();
-    await page.getByLabel("Preview size").selectOption("compact");
+    await chooseSelect(page, "Preview size", "compact");
     await page.getByRole("button", { name: "Close view options", exact: true }).tap();
     record.checks.compactScreens = await assertClearGridScreens(page);
     const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
@@ -1042,7 +1136,7 @@ try {
     assert.equal(await page.locator(".card-outcome").getByText("Live", { exact: true }).count(), 4);
     await snap("live-labels-outside-screens");
     await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
-    await page.getByLabel("Preview size").selectOption("compact");
+    await chooseSelect(page, "Preview size", "compact");
     await page.getByRole("button", { name: "Close view options", exact: true }).click();
     record.checks.compactScreens = await assertClearGridScreens(page);
     await page.getByRole("button", { name: /^Participant details:/ }).first().click();
@@ -1051,12 +1145,12 @@ try {
   });
   await runCase("view-preferences", {}, async ({ page, record, snap }) => {
     await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
-    await page.getByLabel("Preview size").selectOption("compact");
+    await chooseSelect(page, "Preview size", "compact");
     await page.getByRole("searchbox", { name: "Search participants", exact: true }).fill("participant 2");
     await until(async () => await page.locator(".card").count() === 1, "Search did not filter participants");
     await page.reload();
     await page.getByRole("button", { name: "View and filter participants", exact: true }).click();
-    assert.equal(await page.getByLabel("Preview size").inputValue(), "compact");
+    assert.equal(await page.getByRole("combobox", { name: "Preview size", exact: true }).innerText(), "Compact");
     assert.equal(await page.getByRole("searchbox", { name: "Search participants", exact: true }).inputValue(), "participant 2");
     assert.equal(await page.locator(".card").count(), 1); await snap("preserved-size-and-search");
     await page.getByRole("searchbox", { name: "Search participants", exact: true }).fill("no-matching-synthetic-person");
@@ -1230,16 +1324,16 @@ try {
     await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).click();
     await page.getByRole("button", { name: "Close participant details", exact: true }).click();
     await page.getByRole("button", { name: /^Compare selected/ }).click();
-    const select = page.getByLabel("Comparison run"); await select.waitFor(); await select.selectOption("synthetic-other-study");
+    const select = page.getByLabel("Comparison run"); await select.waitFor(); await chooseSelect(page, "Comparison run", "synthetic-other-study");
     await page.getByText("Other run loaded as recorded evidence.", { exact: true }).waitFor();
-    assert.equal(await page.getByLabel("Comparison clock").inputValue(), "elapsed");
+    assert.equal(await page.getByRole("combobox", { name: "Comparison clock", exact: true }).innerText(), "Elapsed time");
     await page.getByText(/progress, not simultaneous events/).waitFor();
     const other = page.locator(".compare-participant").last();
     await other.locator("img").waitFor();
     record.checks.otherFrame = await other.locator("img").getAttribute("src");
     assert(record.checks.otherFrame.includes("/_humanish/runs/synthetic-other-study/screenshots/"));
     await snap("elapsed-cross-run-review");
-    await page.getByLabel("Comparison clock").selectOption("shared");
+    await chooseSelect(page, "Comparison clock", "shared");
     await page.getByText(/These recordings do not overlap/).waitFor();
     assert.equal(await other.locator("img").count(), 0, "Nonoverlapping future recording was shown as current"); await snap("nonoverlapping-clock");
   });
@@ -1249,8 +1343,8 @@ try {
   } }, async ({ page, record, snap }) => {
     await page.goto(`${origin}/observer/index.html#/compare?lane=lane-1&lane=lane-2`);
     await page.getByText("No capture timestamps", { exact: true }).waitFor();
-    await page.getByLabel("Comparison clock").selectOption("elapsed");
-    await page.getByText(/estimated timing/).waitFor(); record.checks.mode = await page.getByLabel("Comparison clock").inputValue();
+    await chooseSelect(page, "Comparison clock", "elapsed");
+    await page.getByText(/estimated timing/).waitFor(); record.checks.mode = await page.getByRole("combobox", { name: "Comparison clock", exact: true }).innerText();
     await snap("explicit-estimated-clock");
     const stamps = [7, 28, 21];
     data.streams[1].actor.items.filter((item) => item.kind === "screenshot").forEach((item, index) => { item.at = new Date(START + stamps[index] * 1000).toISOString(); });
@@ -1288,18 +1382,18 @@ try {
     assert((await displayedFrame(page)).endsWith("portrait-1.png"));
     assert(page.url().includes("/e/lane-1-action-1"));
     await page.getByRole("button", { name: "Next flagged frame", exact: true }).click();
-    await page.getByLabel("Filter activity").selectOption("findings");
+    await chooseSelect(page, "Filter activity", "findings");
     await page.locator(".acts").getByText(/SYNTHETIC EXPLICIT FINDING/).waitFor(); await snap("recorded-finding-filter");
-    await page.getByLabel("Filter activity").selectOption("thoughts"); await page.locator(".acts").getByText("SYNTHETIC THOUGHT FOR REVIEW", { exact: true }).first().waitFor();
-    await page.getByLabel("Filter activity").selectOption("all");
+    await chooseSelect(page, "Filter activity", "thoughts"); await page.locator(".acts").getByText("SYNTHETIC THOUGHT FOR REVIEW", { exact: true }).first().waitFor();
+    await chooseSelect(page, "Filter activity", "all");
     await page.locator(".acts").getByText(/12 recorded waits/).waitFor();
-    await page.getByLabel("Group waits", { exact: true }).uncheck();
+    await page.getByRole("checkbox", { name: "Group waits", exact: true }).uncheck();
     assert(await page.locator(".acts").getByText(/Synthetic wait/).count() === 12, "Ungrouping lost original waits");
-    await page.getByLabel("Skip waits", { exact: true }).check();
+    await page.getByRole("checkbox", { name: "Skip waits", exact: true }).check();
     await page.getByRole("button", { name: "Playback speed", exact: true }).click();
     await page.getByRole("button", { name: "Hide inspector", exact: true }).click(); assert.equal(await page.locator(".inspector").count(), 0);
     await page.reload(); assert.equal(await page.locator(".inspector").count(), 0);
-    assert(await page.getByLabel("Skip waits", { exact: true }).isChecked());
+    assert(await page.getByRole("checkbox", { name: "Skip waits", exact: true }).isChecked());
     await page.getByRole("button", { name: "Show inspector", exact: true }).click();
     record.checks.speed = await page.getByRole("button", { name: "Playback speed", exact: true }).innerText(); assert.equal(record.checks.speed, "2×"); await snap("persisted-review-preferences");
     const downloading = page.waitForEvent("download"); await page.getByRole("link", { name: "Original frame", exact: true }).click();
@@ -1438,6 +1532,59 @@ try {
     record.checks.iframe = await page.locator(".stage-live iframe").evaluate((frame) => ({ sandbox: frame.getAttribute("sandbox"), tabIndex: frame.tabIndex, allow: frame.getAttribute("allow") }));
     assert.equal(record.checks.iframe.tabIndex, -1); assert(!/clipboard/.test(record.checks.iframe.allow ?? ""));
     await snap("isolated-desktop");
+  });
+  for (const phone of [false, true]) await runCase(`analysis-overview-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {
+    analysis = analysisFixture(data, { status: "partial", count: 5 });
+    analysis.analysis.result.summary = "The original long narrative remains available with its qualifications. ".repeat(16);
+    analysis.automatic = { state: "failed", analysisId: "separate-failed-attempt", reason: "AUTOMATIC_ANALYSIS_FAILED", updatedAt: new Date(START).toISOString() };
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    const overview = page.locator('.report-overview'); await overview.waitFor();
+    assert((await overview.locator('.report-overview-title [role="status"]').innerText()).includes('Report available · limitations'));
+    const firstY = (await page.locator('.report-finding').first().boundingBox()).y;
+    assert(firstY <= (phone ? 360 : 280), 'Report prelude pushed the first finding below its compact budget');
+    assert.equal(await page.locator('.report-summary').getAttribute('open'), null);
+    assert.equal(await page.locator('.report-analysis-details').getAttribute('open'), null);
+    assert.equal(await page.locator('[data-automatic-analysis-state="failed"]').isVisible(), false, 'Attempt failure impersonates the selected report status');
+    const facts = await overview.locator('dt').allTextContents();
+    assert(facts.includes('Participants included') && facts.includes('Captures sampled'));
+    assert(facts.includes('Completed (analysis)') && facts.includes('Blocked (analysis)'));
+    await snap('compact-findings-overview');
+    const summary = page.locator('.report-summary > summary'); await summary.focus(); await page.keyboard.press('Enter');
+    await page.locator('.report-summary[open]').waitFor();
+    const animated = await page.locator('.report-summary').evaluate(async element => {
+      await new Promise(requestAnimationFrame);
+      const animations = element.getAnimations({ subtree: true });
+      for (const animation of animations) { animation.pause(); animation.currentTime = 40; }
+      return animations.length;
+    });
+    if (animated) {
+      const rowClickable = () => page.locator('.report-finding').first().evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(rect.left + 60, rect.top + 24));
+      });
+      assert(await rowClickable(), 'Expanding summary paints over or intercepts the next finding');
+      await snap('opening-summary-contained');
+      const broken = await page.addStyleTag({ content: '.report-summary::details-content { overflow: visible !important; }' });
+      assert.equal(await rowClickable(), false, 'Motion overlap guard accepted uncontained prose');
+      await broken.evaluate(element => element.remove());
+      await page.locator('.report-summary').evaluate(element => element.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+    }
+    await until(async () => (await page.locator('.findings-summary p').innerText()) === analysis.analysis.result.summary.trim(), 'Expanded summary failed to expose the complete original text');
+    await snap('original-summary-expanded');
+    await summary.press('Space'); await page.locator('.report-summary:not([open])').waitFor();
+    const details = page.locator('.report-analysis-details > summary'); await details.focus(); await page.keyboard.press('Enter');
+    await page.locator('[data-automatic-analysis-state="failed"]').waitFor();
+    const history = await page.locator('.report-analysis-body').innerText();
+    assert(history.includes('The displayed report is from a separate analysis.'));
+    assert(history.includes(analysis.analysis.result.limitations[0]));
+    assert(history.includes('Synthetic renderer fixture'));
+    await snap('coverage-and-attempt-history');
+    await details.press('Space'); await page.locator('.report-analysis-details:not([open])').waitFor();
+    await page.evaluate(() => document.documentElement.dataset.theme = 'dark');
+    await snap('compact-overview-dark');
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
+    record.checks = { firstFindingY: firstY, fullSummaryRetained: true, separateAttemptHistory: true, keyboardDisclosures: true, motionOverlapGuard: animated > 0, facts, width };
   });
   for (const phone of [false, true]) await runCase(`analysis-ready-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() { analysis = analysisFixture(data); } }, async ({ page, record, snap, context }) => {
     const shell = () => page.locator(".observer-shell > .topbar, .frame > .side, .frame > .main, .study-viewbar").evaluateAll((nodes) => nodes.map((node) => {
