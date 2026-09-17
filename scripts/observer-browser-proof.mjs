@@ -1018,6 +1018,9 @@ try {
     await page.keyboard.press("Escape"); await panel.waitFor({ state: "hidden" });
     assert(await trigger.evaluate((element) => element === document.activeElement), "Second Escape did not restore focus to view options");
     await trigger.click(); await status.click(); await menu.waitFor();
+    // Base UI transfers initial option focus on an animation frame. Visibility
+    // alone can precede it; End belongs to the focused list, not its trigger.
+    await until(async () => menu.evaluate((element) => element.contains(document.activeElement)), "Dropdown did not acquire keyboard focus");
     await page.keyboard.press("End");
     const last = menu.getByRole("option", { name: "Synthetic state 18", exact: true });
     await until(async () => last.evaluate((element) => element.hasAttribute("data-highlighted")), "End did not highlight the last option");
