@@ -570,8 +570,13 @@ try {
     record.checks.priorCaptureCaptions = captions; await snap("different-capture-ages");
     await seekStudy(page, 28_000); await readyStudyCard(page, "lane-2", "landscape-3.png");
     const after = await studyCard(page, "lane-2").locator(".card-capture-time").innerText();
-    assert.match(after, /last|past|ended/i, "A held final capture was presented as contemporaneous coverage");
-    record.checks.afterEnd = after; await snap("held-last-capture");
+    assert.equal(after, "3s ago", "A held final capture lost its visible age");
+    await studyCard(page, "lane-2").getByRole("button", { name: /^Participant details:/ }).click();
+    const heldDetails = page.locator(".card-details");
+    await heldDetails.getByText("Last capture · 00:03 before cursor", { exact: true }).waitFor();
+    record.checks.afterEnd = { caption: after, details: await heldDetails.innerText() };
+    await snap("held-last-capture-details"); await page.keyboard.press("Escape");
+    await heldDetails.waitFor({ state: "hidden" });
     // A dataset with no trustworthy capture timestamp cannot invent playback.
     for (const stream of data.streams) for (const item of stream.liveActor.items) delete item.at;
     await page.reload();
