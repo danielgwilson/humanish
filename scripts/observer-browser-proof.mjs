@@ -1110,10 +1110,11 @@ try {
     const details = page.getByRole("button", { name: /^Participant details:/ }).first();
     const target = await details.boundingBox(); assert(target.width >= 44 && target.height >= 44, "Touch target is smaller than 44px");
     await details.tap();
-    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin participant/ });
+    const pin = page.locator(".pop-panel").getByRole("button", { name: /^Pin(?:ned)? participant/ });
     await pin.tap();
     assert.equal(await pin.getAttribute("aria-pressed"), "true");
-    assert.equal((await pin.innerText()).trim(), "Pin", "Visible and accessible toggle labels disagree");
+    assert.equal((await pin.innerText()).trim(), "Pinned", "Selected pin has no visible state");
+    assert((await pin.getAttribute("aria-label")).startsWith("Pinned participant"), "Accessible pin name omits the visible state");
     await page.locator(".pop-panel").getByRole("button", { name: /^Compare participant/ }).tap();
     const close = page.getByRole("button", { name: "Close participant details", exact: true });
     const closeTarget = await close.boundingBox(); assert(closeTarget.width >= 44 && closeTarget.height >= 44);

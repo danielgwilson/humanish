@@ -97,7 +97,7 @@ try {
       await second.getByLabel("Pinned participant", { exact: true }).waitFor(); await snap("visible-pin");
       await page.reload(); await second.getByLabel("Pinned participant", { exact: true }).waitFor();
       await second.getByRole("button", { name: /^Participant details:/ }).click();
-      const pin = page.getByRole("button", { name: "Pin participant Synthetic participant 2", exact: true });
+      const pin = page.getByRole("button", { name: "Pinned participant Synthetic participant 2", exact: true });
       assert.equal(await pin.getAttribute("aria-pressed"), "true"); assert.equal((await pin.textContent()).trim(), "Pinned");
       await pin.click(); await page.getByRole("button", { name: "Close participant details", exact: true }).click();
       assert.equal(await page.getByLabel("Pinned participant", { exact: true }).count(), 0);

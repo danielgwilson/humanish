@@ -76,7 +76,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
           <h3 className="participant-detail-name">{name}</h3>
           <ParticipantAssignment stream={stream} />
           <div className="card-detail-actions">
-            {onPin ? <button type="button" className="review-tool" aria-pressed={pinned} aria-label={`Pin participant ${name}`} onClick={() => onPin(stream.id)}><ReviewIcon name="pin" />{pinned ? "Pinned" : "Pin"}</button> : null}
+            {onPin ? <button type="button" className="review-tool" aria-pressed={pinned} aria-label={`${pinned ? "Pinned" : "Pin"} participant ${name}`} onClick={() => onPin(stream.id)}><ReviewIcon name="pin" />{pinned ? "Pinned" : "Pin"}</button> : null}
             {onCompare ? <button type="button" className="review-tool" aria-pressed={compared} aria-label={`Compare participant ${name}`} disabled={!compared && comparisonFull} onClick={() => onCompare(stream.id)}><ReviewIcon name={compared ? "check" : "compare"} />Compare</button> : null}
             {comparisonFull ? <p>Comparison limit: 3 participants. Remove one to choose another.</p> : null}
           </div>
