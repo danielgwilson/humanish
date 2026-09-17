@@ -10,6 +10,9 @@
 .study-playback-latest { white-space: nowrap; min-height: 36px; }
 .study-playback-note { color: var(--muted); font: 11px/1.5 var(--sans); margin: 4px 0 0; overflow-wrap: anywhere; }
 .card-capture-time { flex: none; max-width: 100%; line-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px var(--mono); color: var(--muted); }
+.card-capture-time:has(.card-capture-age) { display: flex; gap: 3px; }
+.card-capture-age { flex: none; }
+.card-capture-description { overflow: hidden; text-overflow: ellipsis; }
 @container observer-content (max-width: 880px) {
   .study-playback { margin: 10px 16px 0; }
   .study-playback-controls { flex-wrap: wrap; gap: 4px 8px; }

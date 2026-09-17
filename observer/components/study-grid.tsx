@@ -35,7 +35,11 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
   const [playing, setPlaying] = useState(false);
   const recording = useMemo(() => buildGridRecording(data.streams), [data.streams]);
   const recordingRef = useRef(recording); recordingRef.current = recording;
-  const atMs = clampGridTime(recording, review.atMs ?? recording.endMs ?? 0);
+  // A refreshed bundle can remove captures. Preserve an explicitly reviewed
+  // instant rather than silently moving it to a later available image.
+  const atMs = review.reviewing && review.atMs !== null && Number.isFinite(review.atMs)
+    ? review.atMs : clampGridTime(recording, review.atMs ?? recording.endMs ?? 0);
+  const cursorUnavailable = review.reviewing && atMs !== null && (recording.startMs === null || recording.endMs === null || atMs < recording.startMs || atMs > recording.endMs);
   const page = review.page;
   const setPage = (page: number) => setReview((previous) => ({ ...previous, page }));
   const canFollow = updating && isServedOrigin(window.location.protocol) && data.streams.some(isActiveStream);
@@ -45,25 +49,29 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
     let previous = performance.now();
     const timer = window.setInterval(() => {
       const current = performance.now(); const delta = (current - previous) * review.speed; previous = current;
-      setReview((value) => ({ ...value, atMs: clampGridTime(recordingRef.current, (value.atMs ?? recordingRef.current.startMs ?? 0) + delta) }));
+      setReview((value) => {
+        const currentRecording = recordingRef.current;
+        if (value.atMs !== null && (currentRecording.startMs === null || currentRecording.endMs === null || value.atMs < currentRecording.startMs || value.atMs > currentRecording.endMs)) return value;
+        return { ...value, atMs: clampGridTime(currentRecording, (value.atMs ?? currentRecording.startMs ?? 0) + delta) };
+      });
     }, 100);
     const hide = () => { if (document.hidden) setPlaying(false); };
     document.addEventListener("visibilitychange", hide);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", hide); };
   }, [playing, review.speed]);
-  useEffect(() => { if (playing && (atMs === null || atMs >= (recording.endMs ?? 0))) setPlaying(false); }, [playing, atMs, recording.endMs]);
+  useEffect(() => { if (playing && (cursorUnavailable || atMs === null || atMs >= (recording.endMs ?? 0))) setPlaying(false); }, [playing, atMs, recording.endMs, cursorUnavailable]);
   const seek = (at: number) => { setPlaying(false); setReview((value) => ({ ...value, reviewing: true, atMs: clampGridTime(recording, at) })); };
   const togglePlay = () => {
     if (playing) { setPlaying(false); return; }
     const { startMs, endMs } = recording;
-    if (startMs === null || endMs === null || startMs === endMs) return;
+    if (cursorUnavailable || startMs === null || endMs === null || startMs === endMs) return;
     setReview((value) => ({ ...value, reviewing: true, atMs: !value.reviewing || atMs === null || atMs >= endMs ? startMs : atMs }));
     setPlaying(true);
   };
   const open = (id: string) => {
     setPlaying(false); onReviewChange?.(review);
     const moment = review.reviewing && atMs !== null ? gridMoment(recording, id, atMs) : null;
-    onOpen(id, moment?.kind === "capture" ? moment.frame.index : null);
+    onOpen(id, moment?.kind === "capture" ? moment.frame.index : review.reviewing && recording.lanes.get(id)?.model ? 0 : null);
   };
   const [priorityId, setPriorityId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);

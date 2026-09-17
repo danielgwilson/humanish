@@ -16,18 +16,19 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
 }) {
   const start = recording.startMs ?? 0;
   const duration = Math.max(0, (recording.endMs ?? start) - start);
-  const elapsed = Math.max(0, (atMs ?? start) - start);
+  const unavailable = reviewing && atMs !== null && (recording.startMs === null || recording.endMs === null || atMs < recording.startMs || atMs > recording.endMs);
+  const elapsed = Math.max(0, Math.min(duration, (atMs ?? start) - start));
   const timed = [...recording.lanes.values()].filter((lane) => lane.times?.length).length;
   return <div className="study-playback" role="group" aria-label="Study playback">
     <div className="study-playback-controls">
       <IconButton className="tbtn" label={playing ? "Pause study" : "Play study"} hint={playing ? "Pause study recording" : "Play all recorded participants"}
-        disabled={duration <= 0} onClick={onToggle}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
-      <span className="study-playback-time">{reviewing ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
+        disabled={duration <= 0 || unavailable} onClick={onToggle}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
+      <span className="study-playback-time">{reviewing && !unavailable ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
       <div className="scrubwrap">
         <div className="scrub-track" aria-hidden="true"><div className="scrub-played" style={{ width: `${duration ? elapsed / duration * 100 : 0}%` }} /></div>
         <input className="scrub" type="range" aria-label="Seek study recording" min={0} max={Math.max(1, duration)} step={1}
           value={elapsed} disabled={duration <= 0}
-          aria-valuetext={reviewing ? `${formatElapsed(elapsed)} of ${formatElapsed(duration)}, recorded capture time` : `Latest previews. Recording duration ${formatElapsed(duration)}`}
+          aria-valuetext={unavailable ? "Selected time is outside the available recording. Seek to choose a new time." : reviewing ? `${formatElapsed(elapsed)} of ${formatElapsed(duration)}, recorded capture time` : `Latest previews. Recording duration ${formatElapsed(duration)}`}
           onChange={(event) => onSeek(start + Number(event.target.value))}
           onKeyDown={(event) => {
             if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -46,6 +47,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
       </select></label>
       <button type="button" className="review-tool study-playback-latest" disabled={!reviewing} onClick={onLatest}>{canFollow ? "Follow live" : "Latest captures"}</button>
     </div>
+    {unavailable ? <p className="study-playback-note" role="status">The recording changed. The selected time is outside the available captures. Seek or return to latest previews to continue.</p> : null}
     <p className="study-playback-note">{timed ? <>{reviewing ? "Recorded capture time" : "Latest previews"} · {timed} of {recording.lanes.size} participants with capture timestamps. Screens hold until the next capture.</>
       : "Capture timing unavailable. Open a participant to review their recorded evidence."}</p>
   </div>;

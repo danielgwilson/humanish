@@ -50,6 +50,8 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
   const captureLabel = replay?.kind === "capture" ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
     : replay?.kind === "before-first" ? "No capture yet" : replay?.kind === "timing-unavailable" ? "Capture timing unavailable" : "No captured screens";
+  const fromStart = replay && replay.kind !== "capture" && ["before-first", "timing-unavailable"].includes(replay.kind);
+  const openLabel = fromStart ? `Open recording from start for ${name}` : `Open participant ${name}`;
   return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id} aria-label={name} data-compared={compared || undefined}
     style={{ "--preview-ratio": viewport ? viewport.width / viewport.height : 1.6 } as CSSProperties}>
     <div className="card-preview">
@@ -60,12 +62,12 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
             onError={() => setFailedImage(keyframe)} />
             : !replay && stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
               : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : replay ? captureLabel : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
-        <button type="button" className="open-overlay" aria-label={`Open participant ${name}`} onClick={() => onOpen(stream.id)} />
+        <button type="button" className="open-overlay" aria-label={openLabel} onClick={() => onOpen(stream.id)} />
       </div>
     </div>
     <div className="card-caption">
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        {replay ? <span className="card-capture-time" title={captureLabel}>{captureLabel}</span>
+        {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <><span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span><span className="card-capture-description">{replay.coverage === "after-last" ? " · last capture" : ""}</span></> : captureLabel}</span>
           : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analyzed outcome: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
