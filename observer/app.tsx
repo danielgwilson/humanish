@@ -99,8 +99,8 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     const afterPaint = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(callback, 0));
     afterPaint(() => find()?.focus({ preventScroll: true }));
   };
-  const openParticipant = (id: string | null, frame: number | null = null, eventId?: string, origin: RecordingSource = { runId: data?.run.runId ?? "", kind: "participants" }) => {
-    setReportRoute(null); pushHash(formatHash(id, frame, null, eventId), id ? recordingState(origin) : null); setSource(origin);
+  const openParticipant = (id: string | null, frame: number | null = null, eventId?: string, origin: RecordingSource = { runId: data?.run.runId ?? "", kind: "participants" }, mode: "replay" | null = null) => {
+    setReportRoute(null); pushHash(formatHash(id, frame, mode, eventId), id ? recordingState(origin) : null); setSource(origin);
     setRoute(parseHash(window.location.hash)); setComparison(false); setSavedMessage("");
     setNavigationRevision((value) => value + 1);
     if (id) focus(() => contentRef.current);
@@ -210,7 +210,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
           : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
             : <StudyGrid key={data.run.runId} initialReview={gridReview.current?.runId === data.run.runId ? gridReview.current.state : undefined} onReviewChange={rememberGridReview}
                 tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
-                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={openParticipant} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
+                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={(id, frame, mode) => openParticipant(id, frame, undefined, undefined, mode)} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
   </>;
   const needsAttention = connection.state === "retrying" || data.runtime?.state === "unknown" || data.runtime?.state === "interrupted";
   const studyLabel = library?.entries.find((entry) => entry.runId === data.run.runId)?.title;

@@ -5,19 +5,20 @@
 // frame n, 1-based to match the transport counter ("3 / 30"). Screenshot-free
 // evidence uses "#/lane/<streamId>/e/<eventId>" without inventing a frame. Anything else — an
 // empty hash, an unknown lane, garbage — resolves to the grid, never an error.
+// Explicit "/live" and "/replay" routes retain intent before any frame exists.
 
 export interface HashRoute {
   laneId: string | null;
   /** 0-based frame index, converted from the 1-based hash form. */
   frame: number | null;
-  /** Explicit following intent; legacy frame links remain unchanged. */
+  /** Explicit playback intent, including an empty recording. */
   mode?: "live" | "replay";
   /** Optional recorded trace entry within the addressed capture interval. */
   eventId?: string;
 }
 
 const ENTRY_ROUTE = /^#\/lane\/([^/]+)\/e\/([^/]+)$/;
-const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live)|\/f\/(\d+)(?:\/e\/([^/]+))?)?$/;
+const LANE_ROUTE = /^#\/lane\/([^/]+)(?:\/(live|replay)|\/f\/(\d+)(?:\/e\/([^/]+))?)?$/;
 
 export function parseHash(hash: string): HashRoute {
   const entry = ENTRY_ROUTE.exec(hash);
@@ -32,7 +33,7 @@ export function parseHash(hash: string): HashRoute {
   if (!match || match[1] === undefined) return { laneId: null, frame: null };
   let laneId: string;
   try { laneId = decodeURIComponent(match[1]); } catch { return { laneId: null, frame: null }; }
-  if (match[2] === "live") return { laneId, frame: null, mode: "live" };
+  if (match[2] === "live" || match[2] === "replay") return { laneId, frame: null, mode: match[2] };
   if (match[3] === undefined) return { laneId, frame: null };
   const oneBased = Number(match[3]);
   const frame = Number.isSafeInteger(oneBased) && oneBased >= 1 ? oneBased - 1 : null;
@@ -52,7 +53,7 @@ export function formatHash(laneId: string | null, frame: number | null, mode?: "
   if (mode === "live") return `${base}/live`;
   let entry = "";
   try { if (eventId && eventId.length <= 256) entry = `/e/${encodeURIComponent(eventId)}`; } catch { /* Keep the usable capture address. */ }
-  return frame === null ? `${base}${entry}` : `${base}/f/${frame + 1}${entry}`;
+  return frame === null ? `${base}${entry || (mode === "replay" ? "/replay" : "")}` : `${base}/f/${frame + 1}${entry}`;
 }
 
 /** Write the hash without growing history (frame scrubs); no-op when unchanged. */

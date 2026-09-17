@@ -25,7 +25,7 @@ const PAGE_SIZE = 36;
 export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinnedIds = [], compareIds = [], onPin, onCompare, now, updating = true, reviewOutcomes, tools, initialReview, onReviewChange }: {
   tools?: ReactNode;
   reviewOutcomes?: { streamId: string; label: string }[] | undefined;
-  data: ObserverData; streams: ObserverStream[]; onOpen: (id: string, frame?: number | null) => void;
+  data: ObserverData; streams: ObserverStream[]; onOpen: (id: string, frame?: number | null, mode?: "replay") => void;
   initialReview?: GridReviewState | undefined; onReviewChange?: ((state: GridReviewState) => void) | undefined;
   density?: GridDensity; pinnedIds?: string[]; compareIds?: string[];
   onPin?: (id: string) => void; onCompare?: (id: string) => void; now?: number; updating?: boolean;
@@ -71,7 +71,11 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
   const open = (id: string) => {
     setPlaying(false); onReviewChange?.(review);
     const moment = review.reviewing && atMs !== null ? gridMoment(recording, id, atMs) : null;
-    onOpen(id, moment?.kind === "capture" ? moment.frame.index : review.reviewing && recording.lanes.get(id)?.model ? 0 : null);
+    const frame = moment?.kind === "capture" ? moment.frame.index : review.reviewing && recording.lanes.get(id)?.model ? 0 : null;
+    // An empty recorded lane still carries replay intent. A null frame alone
+    // would make a running participant follow its live desktop instead.
+    if (review.reviewing && frame === null) onOpen(id, null, "replay");
+    else onOpen(id, frame);
   };
   const [priorityId, setPriorityId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
