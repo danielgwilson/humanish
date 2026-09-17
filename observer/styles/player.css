@@ -79,6 +79,7 @@
 .evidence-player .run-notice-message { white-space: pre-wrap; margin-top: 4px; }
 .evidence-player .run-notices-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding-top: 8px; }
 .evidence-player .viewer:fullscreen { height: 100dvh; width: 100vw; background: var(--mineral); display: flex; }
+.main:fullscreen { height: 100dvh; width: 100vw; background: var(--mineral); display: flex; flex-direction: column; }
 @container observer-content (max-width: 880px) {
   .evidence-player .player-heading { padding: 8px 10px; gap: 8px; flex-wrap: wrap; }
   .evidence-player .player-mode { flex-basis: 180px; }

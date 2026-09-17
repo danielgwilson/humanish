@@ -8,6 +8,7 @@ import { liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import { boundedWindow, formatElapsed, frameAtElapsedMs, frameElapsedMs, frameHoldMs, groupPlayerRows, isActionRow, isFindingRow, isWaitRow, rowElapsedMs, type PlayerModel, type PlayerRow } from "@/lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback, type PlayerView } from "@/lib/player-state";
+import type { StudyPlayerControl } from "@/lib/use-study-playback";
 import { formatHash, parseHash, replaceHash } from "@/lib/route";
 import { participantLabels } from "@/lib/participant-label";
 import { completionLabel } from "@/lib/signal";
@@ -53,17 +54,20 @@ export function renderThoughtText(text: string): (string | { bold: string })[] {
   return parts;
 }
 
-export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange, recordedActorStatus, analysisReview }: {
+export function Player({ data, stream, model, initialFrame = null, initialMode = null, initialEventId = null, navigationRevision = 0, updating = true, onViewChange, recordedActorStatus, analysisReview, studyPlayback }: {
   data: ObserverData; stream: ObserverStream; model: PlayerModel; initialFrame?: number | null; initialMode?: "live" | "replay" | null;
   initialEventId?: string | null;
   recordedActorStatus?: string | undefined;
   analysisReview?: AnalysisReview | undefined;
+  /** Shared study clock owns playback; this view only projects its participant. */
+  studyPlayback?: StudyPlayerControl | undefined;
   /** An explicit in-app navigation may repeat the original address after local seeking. */
   navigationRevision?: number;
   /** Source capability, not the most recent poll result; transient failures stay updating. */
   updating?: boolean;
   onViewChange?: (view: PlayerView) => void;
 }) {
+  const controlled = studyPlayback !== undefined;
   const preparing = stream.status === "queued" || stream.status === "preparing";
   const active = updating && (stream.status === "running" || preparing);
   const lifecycle = preparing ? "Preparing" : "Running";
@@ -75,7 +79,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const [previousUpdating, setPreviousUpdating] = useState(updating);
   if (previousUpdating !== updating) {
     setPreviousUpdating(updating);
-    if (!updating && state.mode === "live") setState(seekPlayback(model, playbackIndex(state, model)));
+    if (!controlled && !updating && state.mode === "live") setState(seekPlayback(model, playbackIndex(state, model)));
   }
   // A URL navigation is a new instruction even in the same participant. Adjust before
   // commit so a stale frame cannot overwrite the incoming address in a later effect.
@@ -83,7 +87,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const [previousAddress, setPreviousAddress] = useState(address);
   if (address !== previousAddress) {
     setPreviousAddress(address);
-    setState(sourcePlayback(initialFrame, initialMode, initialEventId));
+    if (!controlled) setState(sourcePlayback(initialFrame, initialMode, initialEventId));
   }
   const [preferences, setPreferences] = useState(readPreferences);
   const [zoom, setZoom] = useState<Zoom>("fit");
@@ -102,19 +106,23 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const feedRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<{ x: number; width: number } | null>(null);
   const frames = model.frames;
-  const frame = playbackIndex(state, model);
+  const controlledFrameId = studyPlayback?.moment.kind === "capture" ? studyPlayback.moment.frame.itemId : null;
+  const frame = studyPlayback
+    ? !studyPlayback.unavailableFrame && controlledFrameId !== null ? frames.findIndex((candidate) => candidate.itemId === controlledFrameId) : -1
+    : playbackIndex(state, model);
   const current = frame >= 0 ? frames[frame] : undefined;
-  const selectedRow = state.eventId ? model.rows.find((row) => row.id === state.eventId && !row.isFrame && row.frameIndex === frame) : undefined;
-  const following = state.mode === "live";
+  const eventId = studyPlayback ? studyPlayback.eventId : state.eventId;
+  const selectedRow = eventId ? model.rows.find((row) => row.id === eventId && !row.isFrame && row.frameIndex === frame) : undefined;
+  const following = studyPlayback ? !studyPlayback.reviewing && active : state.mode === "live";
   const live = following && active ? liveEmbedUrl(stream) : null;
-  const playing = state.playing;
+  const playing = studyPlayback ? studyPlayback.playing : state.playing;
   const viewMode: PlayerView["mode"] = following && active ? "live" : "replay";
   const selectedFrame = current?.index ?? null;
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   useEffect(() => {
-    onViewChangeRef.current?.({ frame: selectedFrame, mode: viewMode, playing, ...(state.eventId ? { eventId: state.eventId } : {}) });
-  }, [selectedFrame, viewMode, playing, state.eventId]);
+    onViewChangeRef.current?.({ frame: selectedFrame, mode: viewMode, playing, ...(eventId ? { eventId } : {}) });
+  }, [selectedFrame, viewMode, playing, eventId]);
   const actor = stream.actor;
   const viewport = stream.viewport;
   // Computer-use actions use desktop pixels, not the browser CSS layout viewport.
@@ -125,7 +133,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const notableEnd = endingLabel !== undefined;
   const elapsed = frameElapsedMs(model, Math.max(0, frame));
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
-  const timing = model.paced === "recorded" ? "recorded pace" : "avg-paced";
+  const timing = controlled ? "study capture time" : model.paced === "recorded" ? "recorded pace" : "avg-paced";
   const hold = frameHoldMs(model, Math.max(0, frame));
   const rowIndex = useMemo(() => {
     const pins = new Map<number, typeof model.rows>();
@@ -145,24 +153,38 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     if (notableEnd && frames.length > 0) findings.add(frames.length - 1);
     return { pins, actions: [...actions], findings: [...findings], waits, thoughtCount, actionCount };
   }, [model, notableEnd, frames.length]);
-  const currentPins = state.eventId ? selectedRow?.coord ? [selectedRow] : [] : rowIndex.pins.get(frame) ?? [];
-  const skipDuration = preferences.skipWaits && rowIndex.waits.has(frame) && !rowIndex.actions.includes(frame) ? Math.max(0, hold - 1000) : 0;
+  const studyCursor = studyPlayback?.moment.kind === "capture" && current?.atMs !== undefined ? current.atMs + studyPlayback.moment.ageMs : null;
+  const intervalPins = rowIndex.pins.get(frame) ?? [];
+  const currentPins = eventId ? selectedRow?.coord ? [selectedRow] : []
+    : controlled ? intervalPins.filter((row) => studyCursor !== null && row.atMs !== undefined && row.atMs <= studyCursor) : intervalPins;
+  const skipDuration = !controlled && preferences.skipWaits && rowIndex.waits.has(frame) && !rowIndex.actions.includes(frame) ? Math.max(0, hold - 1000) : 0;
   const seek = useCallback((index: number) => {
-    setState(seekPlayback(model, index));
+    if (studyPlayback) {
+      if (!model.frames.length) return;
+      studyPlayback.onSeekFrame(Math.max(0, Math.min(model.frames.length - 1, index)));
+    } else setState(seekPlayback(model, index));
     setFeedPage(null);
     setNotice(null);
-  }, [model]);
+  }, [model, studyPlayback]);
   const seekEntry = useCallback((row: PlayerRow) => {
-    setState(seekPlayback(model, row.frameIndex, false, row.isFrame ? undefined : row.id));
+    if (studyPlayback) {
+      if (!model.frames.length) return;
+      studyPlayback.onSeekFrame(Math.max(0, Math.min(model.frames.length - 1, row.frameIndex)), row.isFrame ? undefined : row.id);
+    } else setState(seekPlayback(model, row.frameIndex, false, row.isFrame ? undefined : row.id));
     setFeedPage(null);
     setNotice(null);
-  }, [model]);
+  }, [model, studyPlayback]);
   const togglePlay = useCallback(() => {
+    if (studyPlayback) { studyPlayback.onToggle(); return; }
     if (frames.length === 0) return;
     if (playing) setState(seekPlayback(model, Math.max(0, frame)));
     else setState(seekPlayback(model, frame >= frames.length - 1 || frame < 0 ? 0 : frame, true));
-  }, [model, frames.length, frame, playing]);
-  const jumpToLive = () => { setState(openPlayback(model, active, null, "live")); setFeedPage(null); };
+  }, [model, frames.length, frame, playing, studyPlayback]);
+  const jumpToLive = () => {
+    if (studyPlayback) studyPlayback.onLive();
+    else setState(openPlayback(model, active, null, "live"));
+    setFeedPage(null);
+  };
 
   useEffect(() => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(preferences)); } catch { /* storage can be disabled in an offline artifact */ } }, [preferences]);
   useEffect(() => {
@@ -171,6 +193,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     return () => clearInterval(timer);
   }, [active]);
   useEffect(() => {
+    if (controlled) return;
     const navigate = () => {
       const route = parseHash(window.location.hash);
       if (route.laneId !== stream.id) return;
@@ -180,21 +203,22 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     window.addEventListener("hashchange", navigate);
     window.addEventListener("popstate", navigate);
     return () => { window.removeEventListener("hashchange", navigate); window.removeEventListener("popstate", navigate); };
-  }, [sourcePlayback, stream.id]);
+  }, [sourcePlayback, stream.id, controlled]);
   useEffect(() => {
     // Keep following intent in the address, including before the first capture.
     if (following && active) replaceHash(formatHash(stream.id, null, "live"));
-    else if (current) replaceHash(formatHash(stream.id, current.index, null, state.eventId));
-  }, [following, active, playing, current, stream.id, state.eventId]);
+    else if (current) replaceHash(formatHash(stream.id, current.index, null, eventId));
+    else if (controlled && !studyPlayback?.unavailableFrame) replaceHash(formatHash(stream.id, null, "replay"));
+  }, [following, active, playing, current, stream.id, eventId, controlled, studyPlayback?.unavailableFrame]);
   const nextFrameId = frames[frame + 1]?.itemId ?? null;
   useEffect(() => {
-    if (!playing || frame < 0) return;
+    if (controlled || !playing || frame < 0) return;
     if (nextFrameId === null) { setState((value) => ({ ...value, playing: false })); return; }
     // An unchanged evidence poll must not reset a seven-second capture interval every
     // five seconds. Depend on the actual transition, never the snapshot object identity.
     const timer = setTimeout(() => setState({ mode: "replay", frameId: nextFrameId, requestedFrame: frame + 1, playing: true }), Math.max(120, (hold - skipDuration) / preferences.speed));
     return () => clearTimeout(timer);
-  }, [playing, frame, nextFrameId, hold, skipDuration, preferences.speed]);
+  }, [playing, frame, nextFrameId, hold, skipDuration, preferences.speed, controlled]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -254,8 +278,13 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
-      else if (viewerRef.current?.requestFullscreen) await viewerRef.current.requestFullscreen();
-      else throw new Error("unavailable");
+      else {
+        // The study dock is a sibling of the player content, so fullscreen must
+        // include their common shell rather than strand playback controls.
+        const target = controlled ? viewerRef.current?.closest<HTMLElement>(".main") ?? viewerRef.current : viewerRef.current;
+        if (target?.requestFullscreen) await target.requestFullscreen();
+        else throw new Error("unavailable");
+      }
       setNotice(null);
     } catch { setNotice("Fullscreen is unavailable in this browser or was declined. The player remains usable here."); }
   };
@@ -275,8 +304,14 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const markerLeft = (index: number) => `${duration > 0 ? 100 * frameElapsedMs(model, index) / duration : 0}%`;
   const captureAge = current?.atMs !== undefined ? Math.max(0, now - current.atMs) : null;
   const modeLabel = !updating ? recordedActorStatus ? `Actor record: ${recordedActorStatus}` : `Participant status: ${stream.statusLabel || stream.status}` : active
-    ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
+    ? live ? `${lifecycle} · Live desktop` : following ? `${lifecycle} · Latest capture` : controlled ? `${lifecycle} · Study replay` : `${lifecycle} · Replay at ${formatElapsed(elapsed)}`
     : `${stream.status === "failed" || stream.status === "blocked" || stream.status === "timed_out" ? "Stopped" : "Finished"} · Recording`;
+  const emptyText = studyPlayback?.unavailableFrame ? "This addressed frame is unavailable in the current recording. Choose another moment below."
+    : studyPlayback?.reviewing && studyPlayback.moment.kind === "before-first" ? "No capture had been recorded for this participant at the study cursor."
+      : studyPlayback?.reviewing && studyPlayback.moment.kind === "timing-unavailable" ? "Capture timing is unavailable for this participant at the study cursor."
+        : studyPlayback?.reviewing && studyPlayback.moment.kind === "no-captures" ? "This participant has no captured screen at the study cursor."
+          : frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
+            : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot.";
 
   return <div className="player evidence-player" data-inspector={preferences.inspector ? "open" : "closed"}>
     <div className="viewer" ref={viewerRef}>
@@ -295,7 +330,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           onClick={() => setPreferences((value) => ({ ...value, inspector: !value.inspector }))}>Inspector {preferences.inspector ? "−" : "+"}</button>
       </div>
       {recordedParticipantAssignment(stream) ? <ParticipantAssignment stream={stream} /> : null}
-      {selectedRow || state.eventId ? <div className="player-entry-context" role="group" aria-label="Selected evidence">
+      {selectedRow || eventId ? <div className="player-entry-context" role="group" aria-label="Selected evidence">
         {selectedRow ? <>
           <span className="entry-label">{selectedRow.kind === "reasoning" ? "Reported thinking" : isActionRow(selectedRow) ? "Recorded action" : isWaitRow(selectedRow) ? "Recorded wait" : "Recorded entry"}
             {selectedRow.atMs !== undefined ? ` · ${model.paced === "recorded" ? formatElapsed(rowElapsedMs(model, selectedRow)) : new Date(selectedRow.atMs).toISOString()}` : " · Time unavailable"}
@@ -308,13 +343,12 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
                 : ` · ${formatDuration(Math.abs(selectedRow.atMs - current.atMs))} ${selectedRow.atMs > current.atMs ? "before" : "after"} entry`
               : " · associated by trace order"}</span>
           <button type="button" className="tbtn" onClick={() => seek(frame)}>Show capture interval</button>
-        </> : state.eventId ? <span>The selected entry is unavailable in this capture interval. Choose an entry from the activity list.</span>
+        </> : eventId ? <span>The selected entry is unavailable in this capture interval. Choose an entry from the activity list.</span>
           : <span>{live ? "Live desktop · select recorded activity to inspect an entry." : `${currentPins.length ? `${currentPins.length} recorded ${currentPins.length === 1 ? "pin" : "pins"} in this capture interval. ` : ""}Select an activity entry to inspect its time and location.`}</span>}
       </div> : null}
       <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
-        emptyText={frames.length > 0 ? "This addressed frame is unavailable in the current recording. Choose another moment below."
-          : !updating ? "This saved snapshot contains no recorded screenshots. It cannot show current participant activity." : active ? preparing ? "The participant is preparing. Waiting for its first recorded frame." : "Waiting for the first recorded frame. The participant is still running." : "This participant ended without a recorded screenshot."} />
-      <div className="transport">
+        emptyText={emptyText} />
+      {!controlled ? <div className="transport">
         <IconButton className="tbtn" label={playing ? "Pause" : "Play"} hint={playing ? "Pause playback" : "Play recording"} onClick={togglePlay} disabled={frames.length === 0}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
         <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
         <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
@@ -354,20 +388,26 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
         <button type="button" className="tbtn speed" aria-label="Playback speed" onClick={() => setPreferences((value) => ({ ...value, speed: SPEEDS[(SPEEDS.indexOf(value.speed as 1) + 1) % SPEEDS.length] ?? 1 }))}>{preferences.speed}×</button>
         <IconButton className="tbtn" label="Fullscreen" onClick={() => { void toggleFullscreen(); }}><ReviewIcon name="fullscreen" /></IconButton>
-      </div>
+      </div> : null}
       <div className="player-review-tools">
-        <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>
+        {controlled ? <>
+          <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
+          <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
+          <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
+          <IconButton className="tbtn" label="Fullscreen" onClick={() => { void toggleFullscreen(); }}><ReviewIcon name="fullscreen" /></IconButton>
+        </> : <label><input type="checkbox" checked={preferences.skipWaits} onChange={(event) => setPreferences((value) => ({ ...value, skipWaits: event.target.checked }))} /> Skip waits</label>}
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
         <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next flagged frame</button>
         <label className="zoom-control">View <select aria-label="Image zoom" value={String(zoom)} disabled={live !== null} onChange={(event) => setZoom(event.target.value === "fit" || event.target.value === "actual" ? event.target.value : Number(event.target.value))}>
           <option value="fit">Fit</option><option value="actual">Actual size</option><option value="0.5">50%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option>
         </select></label>
-        <button type="button" className="tbtn" disabled={!current || (!!state.eventId && !selectedRow)} onClick={() => { void copyMoment(); }}>Copy moment link</button>
+        <button type="button" className="tbtn" disabled={!current || (!!eventId && !selectedRow)} onClick={() => { void copyMoment(); }}>Copy moment link</button>
         {current ? <a className="tbtn" href={current.href} target="_blank" rel="noopener noreferrer" download>Original frame</a> : null}
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
       <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
+        {studyPlayback?.reviewing && current && studyPlayback.moment.kind === "capture" ? <span>{studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} · {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.</span> : null}
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}
@@ -410,7 +450,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
               const text = row.text || row.title;
               const attrs = { "data-entry-id": row.id, ...(row.isFrame ? { "data-frame-row": row.frameIndex } : {}),
                 ...(selectedRow ? groupSelected(row, last) ? { "data-on": "", "data-selected": "", "aria-current": "true" as const } : {}
-                  : !state.eventId && row.frameIndex <= frame && last.frameIndex >= frame ? { "data-on": "" } : {}) };
+                  : !eventId && row.frameIndex <= frame && last.frameIndex >= frame ? { "data-on": "" } : {}) };
               return row.kind === "reasoning" ? <details className="thought-detail" key={row.id}>
                 <summary className="arow thought" {...attrs} title="Reported thinking — the participant's own narration, not ground truth" onClick={() => seekEntry(row)}>
                   <span className="tc">{stamp}</span><span className="atext">{renderThoughtText(text).map((part, index) => typeof part === "string" ? part : <strong key={index}>{part.bold}</strong>)}</span>
