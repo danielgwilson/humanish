@@ -67,7 +67,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
     </div>
     <div className="card-caption">
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <><span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span><span className="card-capture-description">{replay.coverage === "after-last" ? " · last capture" : ""}</span></> : captureLabel}</span>
+        {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
           : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analyzed outcome: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
