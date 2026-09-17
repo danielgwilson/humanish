@@ -94,6 +94,7 @@ jobs:
           name: observer-browser-proof
           path: |
             .humanish/observer-browser-proof/
+            .humanish/observer-chrome-proof/
             .humanish/review/observer-iframe-proof.json
           retention-days: 14
           include-hidden-files: true
