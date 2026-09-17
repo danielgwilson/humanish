@@ -10,6 +10,7 @@ checked in the built Observer. Passing one does not imply the other passed.
 | Icon buttons and tooltips | `components/ui/icon-button.tsx`, Base UI Tooltip | Accessible names, stable icon geometry, focus/dismissal and touch targets in grid cases |
 | Popovers and study utilities | `components/ui/popover.tsx`, Base UI Popover | Details, filter, saved-moment and library journeys exercise dismissal, persistence and ordinary buttons |
 | Selects and checkboxes | `components/ui/select.tsx` / `checkbox.tsx`, Base UI | Shared token styling, selected indicators, nested Escape/focus, typeahead, long-menu scrolling, phone tap targets and fullscreen portal placement |
+| Theme, pin state and chrome motion | `theme-toggle.tsx`, `participant-card.tsx`, `chrome-polish.css` | Single theme glyph, theme/pin persistence, full-image fit at phone widths, inert collapsed library, playback continuity and reduced-motion transitions |
 | Phone study library | `components/ui/drawer.tsx`, Base UI Dialog | Phone library journey checks open/close, usable evidence after dismissal and no page overflow |
 | Study navigation | Semantic links in `app.tsx`; study identity remains in `Topbar` | Findings and ordinary review cases check stable outer geometry, active branch, exact return source and reload |
 | Finding disclosure | Base UI Accordion in `study-report.tsx`; native caveat disclosures | Collapsed ranked list, keyboard expansion, directly cited representative captures, exact evidence links, visible uncertainty, full caveats, bounded previews, empty/error/stale states and long content |
@@ -32,6 +33,7 @@ Run the ordinary build and tests, then the declared browser ledger:
 pnpm --filter humanish-observer build
 pnpm --filter humanish-observer test
 pnpm observer:browser:proof
+pnpm observer:chrome:proof
 ```
 
 The browser command retains screenshots, pixel/DOM measurements, network
