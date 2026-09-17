@@ -1374,6 +1374,25 @@ try {
     record.checks.hash = new URL(page.url()).hash; assert(record.checks.hash.endsWith("/f/999")); await snap("unavailable-addressed-moment");
     await page.goto(`${origin}/observer/index.html#/lane/%E0%A4%A`);
     await page.getByRole("region", { name: "Study grid" }).waitFor(); await snap("malformed-route-recovery");
+    data = fixture({ running: true, live: true, origin });
+    record.checks.coldActiveAddresses = [];
+    for (const frame of [999, 2]) {
+      // Cold direct entry must never briefly connect to a running desktop while
+      // the explicit recording address is being projected into shared state.
+      await page.goto("about:blank"); const requestStart = requests.length;
+      await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/${frame}`);
+      if (frame === 999) {
+        await page.getByText(/addressed frame is unavailable/).waitFor();
+        assert.equal(await page.locator(".stage-box img").count(), 0);
+      } else await readyCapture(page.locator(".stage-box img").first(), "portrait-2.png");
+      await wait(200);
+      assert(new URL(page.url()).hash.endsWith(`/f/${frame}`), "Active direct entry replaced the explicitly addressed frame");
+      assert.equal(await page.locator("iframe").count(), 0, "An active explicit recording opened a live desktop");
+      const desktopRequests = requests.slice(requestStart).filter((request) => request.path.startsWith("/desktop/"));
+      assert.equal(desktopRequests.length, 0, "Active direct entry briefly requested a live desktop before settling");
+      record.checks.coldActiveAddresses.push({ frame, desktopRequests: 0, exactAddressRetained: true });
+      await snap(`active-direct-frame-${frame}`);
+    }
   });
   await runCase("offline-recording", {}, async ({ page, directory, record, snap }) => {
     const offline = structuredClone(data);
