@@ -162,4 +162,74 @@ describe("One study playback clock across views", () => {
     expect(playerImage()).toBe("../screenshots/active-1.png");
     expect(scrub().value).toBe("9000");
   });
+
+  it("keeps an untimed exact frame local through timestamp recovery until deliberate navigation", async () => {
+    window.history.replaceState(null, "", "#/lane/old/f/2");
+    await render(study([lane("old", [null, null, null]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/old-1.png");
+    expect(container.querySelector('[aria-label="Study playback"]')).toBeNull();
+
+    await render(study([lane("old", [0, 3000, 9000]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/old-1.png");
+    expect(window.location.hash).toBe("#/lane/old/f/2");
+    expect(container.querySelector('[aria-label="Study playback"]')).toBeNull();
+
+    await act(async () => {
+      window.history.replaceState(null, "", "#/lane/old/f/2");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(scrub().value).toBe("3000");
+    expect(playerImage()).toBe("../screenshots/old-1.png");
+  });
+
+  it("keeps a shared clock when refreshed participant timing disappears rather than revealing stale local state", async () => {
+    await render(study([lane("early", [0, 3000, 9000]), lane("other", [0, 12_000])]));
+    await seek(4500);
+    await click('[data-stream-id="early"] .open-overlay');
+    expect(playerImage()).toBe("../screenshots/early-1.png");
+
+    await render(study([lane("early", [null, null, null]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBeUndefined();
+    expect(container.querySelector(".evidence-empty")?.textContent).toContain("Capture timing is unavailable");
+    expect(scrub().value).toBe("4500");
+    expect(container.querySelector('[aria-label="Seek recording time"]')).toBeNull();
+
+    await render(study([lane("early", [0, 3000, 9000]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/early-1.png");
+    expect(scrub().value).toBe("4500");
+  });
+
+  it("retains an explicitly addressed frame if its timestamp disappears without inventing capture age", async () => {
+    window.history.replaceState(null, "", "#/lane/early/f/2");
+    await render(study([lane("early", [0, 3000, 9000]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/early-1.png");
+    await render(study([lane("early", [null, null, null]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/early-1.png");
+    expect(scrub().value).toBe("3000");
+    expect(window.location.hash).toBe("#/lane/early/f/2");
+    expect(container.querySelector(".player-evidence-note")?.textContent).toContain("Capture time unavailable");
+    expect(container.querySelector(".player-evidence-note")?.textContent).not.toContain("before study cursor");
+  });
+
+  it("does not replace an unavailable incoming frame address with the initial latest projection", async () => {
+    window.history.replaceState(null, "", "#/lane/early/f/999");
+    await render();
+    expect(playerImage()).toBeUndefined();
+    expect(container.querySelector(".evidence-empty")?.textContent).toContain("addressed frame is unavailable");
+    expect(window.location.hash).toBe("#/lane/early/f/999");
+  });
+
+  it("applies an addressed frame when a queued lane receives its first recording", async () => {
+    window.history.replaceState(null, "", "#/lane/queued/f/2");
+    const queued = lane("queued", []);
+    queued.kind = "browser";
+    queued.status = "queued";
+    delete queued.embed;
+    await render(study([queued, lane("other", [0, 12_000])]));
+    expect(playerImage()).toBeUndefined();
+    await render(study([lane("queued", [0, 3000, 9000]), lane("other", [0, 12_000])]));
+    expect(playerImage()).toBe("../screenshots/queued-1.png");
+    expect(scrub().value).toBe("3000");
+    expect(window.location.hash).toBe("#/lane/queued/f/2");
+  });
 });

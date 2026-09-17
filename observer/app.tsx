@@ -161,22 +161,37 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   }, [selected, comparison, monitoring, source]);
   const model = useMemo(() => selected && !(route.eventId && route.frame === null) ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected, route.eventId, route.frame]);
   const selectedLane = selected ? studyPlayback.recording.lanes.get(selected.id) : undefined;
-  const sharedPlayer = !!selected && !!model && source.kind === "participants" && (selectedLane?.times !== null || !selectedLane?.model);
+  // A poll may add or remove timestamps. Only deliberate navigation changes
+  // clock ownership; switching mid-review would expose another clock's state.
+  const navigationKey = `${data?.run.runId ?? ""}:${navigationRevision}`;
+  const ownershipKey = JSON.stringify([navigationKey, selected?.id ?? null, source.kind]);
+  const eligiblePlayer = !!selected && !!model && source.kind === "participants";
+  const [playerOwnership, setPlayerOwnership] = useState<{ key: string; shared: boolean } | null>(null);
+  const ownership = playerOwnership?.key === ownershipKey ? playerOwnership
+    : { key: ownershipKey, shared: selectedLane?.times !== null || !selectedLane?.model };
+  if (eligiblePlayer && playerOwnership !== ownership) setPlayerOwnership(ownership);
+  const sharedPlayer = eligiblePlayer && ownership.shared;
   const appliedNavigation = useRef("");
+  const navigationPending = sharedPlayer && appliedNavigation.current !== navigationKey && !(preservePlayback && studyPlayback.reviewing);
+  const sharedControl = selected && sharedPlayer ? studyPlayback.playerControl(selected.id) : undefined;
+  // Child passive effects can run before the layout-effect state update below
+  // commits. Never let that initial latest projection overwrite an incoming
+  // exact address, especially an unavailable frame the caller needs to inspect.
+  const playerControl = sharedControl && navigationPending
+    ? { ...sharedControl, moment: { kind: "no-captures" as const }, unavailableFrame: true } : sharedControl;
   useLayoutEffect(() => {
     if (!data) return;
-    const key = `${data.run.runId}:${navigationRevision}`;
-    if (appliedNavigation.current === key) return;
+    if (appliedNavigation.current === navigationKey) return;
     if (!selected) return;
-    appliedNavigation.current = key;
     if (!sharedPlayer) return;
+    appliedNavigation.current = navigationKey;
     if (preservePlayback && studyPlayback.reviewing) return;
     if (route.mode === "live" && connection.state !== "offline") studyPlayback.latest();
     else if (route.frame !== null) studyPlayback.selectFrame(selected.id, route.frame, route.eventId);
     else if (route.mode !== "replay" && connection.state !== "offline" && isActiveStream(selected)) studyPlayback.latest();
     else if (model?.frames.length) studyPlayback.selectFrame(selected.id, route.mode === "live" ? model.frames.length - 1 : 0, route.eventId);
     else studyPlayback.seek(studyPlayback.recording.startMs ?? Number.NaN);
-  }, [data?.run.runId, navigationRevision, selected, sharedPlayer, preservePlayback, route, model, connection.state, studyPlayback]);
+  }, [data?.run.runId, navigationKey, selected, sharedPlayer, preservePlayback, route, model, connection.state, studyPlayback]);
   useEffect(() => {
     if (reportActive || comparison || (selected && !sharedPlayer)) studyPlayback.pause();
   }, [reportActive, comparison, selected, sharedPlayer, studyPlayback.pause]);
@@ -246,7 +261,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
       {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
     </div> : null}
     {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={(id, frame) => openParticipant(id, frame, undefined, { runId: data.run.runId, kind: "comparison", hash: comparisonLocation.current || window.location.hash })} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} {...(sharedPlayer ? { studyPlayback: studyPlayback.playerControl(selected.id) } : {})} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
+          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} {...(playerControl ? { studyPlayback: playerControl } : {})} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
             : <StudyGrid key={data.run.runId} recording={studyPlayback.recording} atMs={studyPlayback.atMs} reviewing={studyPlayback.reviewing}
                 page={gridPage.runId === data.run.runId ? gridPage.page : 0} onPageChange={(page) => setGridPage({ runId: data.run.runId, page })}
                 tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
