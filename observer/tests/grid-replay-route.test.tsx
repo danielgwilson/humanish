@@ -105,7 +105,7 @@ describe("Explicit replay without an invented frame", () => {
     expect(container.querySelector(".evidence-stage iframe")).toBeNull();
     expect(container.querySelector(".evidence-stage img")).toBeNull();
     expect(container.querySelector('[aria-label="Jump to live"]')).not.toBeNull();
-    expect(container.querySelector<HTMLButtonElement>('[aria-label="Play"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLButtonElement>('[aria-label="Play study"]')?.disabled).toBe(false);
 
     await act(async () => { root.unmount(); });
     root = createRoot(container);
@@ -120,13 +120,17 @@ describe("Explicit replay without an invented frame", () => {
     window.history.replaceState(null, "", "#/lane/awaiting-capture/replay");
     await render(snapshot());
     await render(snapshot([1000]));
+    expect(container.querySelector(".evidence-stage img")).toBeNull();
+    expect(window.location.hash).toBe("#/lane/awaiting-capture/replay");
+    const scrub = container.querySelector('[aria-label="Seek study recording"]')!;
+    await act(async () => { scrub.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); });
     expect(container.querySelector(".evidence-stage img")?.getAttribute("src")).toBe("../screenshots/capture-1000.png");
     expect(window.location.hash).toBe("#/lane/awaiting-capture/f/1");
 
     await render(snapshot([1000, 10_000]));
     expect(container.querySelector(".evidence-stage img")?.getAttribute("src")).toBe("../screenshots/capture-1000.png");
     expect(container.querySelector(".evidence-stage iframe")).toBeNull();
-    expect(container.querySelector('[aria-label="Pause"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Pause study"]')).toBeNull();
     expect(container.querySelector('[aria-label="Jump to live"]')).not.toBeNull();
 
     await click('[aria-label="Jump to live"]');
