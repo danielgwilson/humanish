@@ -115,6 +115,9 @@ CDP-generated Escape key, reproduced independently on a minimal two-button
 HTML page. The harness records whether Escape exited, checks frame keyboard
 controls while fullscreen, and verifies the product's native exit button.
 Physical browser-chrome Escape behavior remains an explicit environment limit.
+Fullscreen also opens the real Playback options popup, verifies that its portal
+is inside the fullscreen element, changes speed and returns to the latest capture
+before exiting; a visible dock with an inaccessible popup does not pass.
 
 Geometry checks use decoded image dimensions, computed object fitting, and
 clipping ancestors; screenshots contain distinct colored markers at all four

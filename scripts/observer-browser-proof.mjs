@@ -915,6 +915,25 @@ try {
     assertFullFrames(await inspectImages(page.locator(".stage-box img"))); await snap("native-fullscreen");
     await page.locator(".stage").click({ position: { x: 8, y: 8 } }); await page.keyboard.press("ArrowRight");
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
+    await page.getByRole("button", { name: "Playback options", exact: true }).click();
+    const options = page.locator('.pop-panel[aria-label="Playback options"]'); await options.waitFor();
+    record.checks.fullscreenOptions = await options.evaluate((panel) => {
+      const box = panel.getBoundingClientRect();
+      return { inFullscreen: !!document.fullscreenElement?.contains(panel), bounds: box.toJSON(),
+        visible: getComputedStyle(panel).visibility === "visible", viewport: [innerWidth, innerHeight] };
+    });
+    assert(record.checks.fullscreenOptions.inFullscreen, "Playback options portal is outside the fullscreen element");
+    assert(record.checks.fullscreenOptions.visible && record.checks.fullscreenOptions.bounds.width > 0 && record.checks.fullscreenOptions.bounds.height > 0);
+    await page.getByLabel("Study playback speed", { exact: true }).selectOption("2");
+    assert.equal(await page.getByLabel("Study playback speed", { exact: true }).inputValue(), "2");
+    await snap("fullscreen-playback-options");
+    await page.getByRole("button", { name: "Latest captures", exact: true }).click();
+    const closeOptions = page.getByRole("button", { name: "Close playback options", exact: true });
+    if (await closeOptions.isVisible()) await closeOptions.click();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-4.png");
+    assert(await page.evaluate(() => document.fullscreenElement !== null), "Changing playback options unexpectedly exited fullscreen");
+    record.checks.fullscreenOptions.speedChanged = true; record.checks.fullscreenOptions.latestCapture = "portrait-4.png";
+    await snap("fullscreen-latest-capture");
     await page.keyboard.press("Escape");
     record.checks.syntheticEscapeExitedFullscreen = await page.evaluate(() => document.fullscreenElement === null);
     // CDP-generated Escape does not trigger browser fullscreen exit in current

@@ -26,7 +26,7 @@
     {"id": "stream-capacity", "goal": "Large grids bound desktop connections and allocate visible later lanes"},
     {"id": "large-trace", "goal": "Long traces bound the DOM while keeping final evidence reachable"},
     {"id": "image-retry", "goal": "Missing and corrupt image requests recover through a real retry"},
-    {"id": "zoom-fullscreen", "goal": "Native size, zoom and browser fullscreen preserve usable evidence"},
+    {"id": "zoom-fullscreen", "goal": "Native size, zoom and browser fullscreen preserve evidence and keep playback-option portals operable"},
     {"id": "native-permission-denial", "goal": "Browser-enforced fullscreen and clipboard denial retain useful fallbacks"},
     {"id": "grid-control-semantics", "goal": "Stable Details icons, explicit comparison limits, and keyboard tooltip dismissal"},
     {"id": "grid-touch-controls", "goal": "Real touch emulation uses 44px targets and labeled actions outside screenshots"},
