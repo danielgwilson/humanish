@@ -219,6 +219,19 @@ describe("One study playback clock across views", () => {
     expect(window.location.hash).toBe("#/lane/early/f/999");
   });
 
+  it("does not follow an active desktop while resolving an unavailable replay address", async () => {
+    const active = lane("active", [0, 9000]);
+    active.status = "running"; active.statusLabel = "Running";
+    active.embed = { kind: "iframe", title: "Active desktop", url: "https://desktop.example.test/" };
+    feed.updating = true;
+    window.history.replaceState(null, "", "#/lane/active/f/999");
+    await render(study([active]));
+    expect(playerImage()).toBeUndefined();
+    expect(container.querySelector(".evidence-stage iframe")).toBeNull();
+    expect(container.querySelector(".evidence-empty")?.textContent).toContain("addressed frame is unavailable");
+    expect(window.location.hash).toBe("#/lane/active/f/999");
+  });
+
   it("applies an addressed frame when a queued lane receives its first recording", async () => {
     window.history.replaceState(null, "", "#/lane/queued/f/2");
     const queued = lane("queued", []);

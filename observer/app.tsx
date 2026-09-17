@@ -178,7 +178,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   // commits. Never let that initial latest projection overwrite an incoming
   // exact address, especially an unavailable frame the caller needs to inspect.
   const playerControl = sharedControl && navigationPending
-    ? { ...sharedControl, moment: { kind: "no-captures" as const }, unavailableFrame: true } : sharedControl;
+    ? { ...sharedControl, reviewing: true, moment: { kind: "no-captures" as const }, unavailableFrame: true } : sharedControl;
   useLayoutEffect(() => {
     if (!data) return;
     if (appliedNavigation.current === navigationKey) return;
