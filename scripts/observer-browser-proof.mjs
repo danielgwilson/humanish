@@ -198,6 +198,8 @@ async function assertClearGridScreens(page) {
 async function displayedFrame(page) { return page.locator(".stage-box img").first().getAttribute("src"); }
 async function readyCapture(locator, expectedSource) {
   await locator.waitFor();
+  await until(async () => locator.evaluate((element, source) => element.getAttribute("src")?.endsWith(source)
+    && element.complete && element.naturalWidth > 0 && element.naturalHeight > 0, expectedSource), "Expected capture did not finish loading before decode");
   return locator.evaluate(async (element, source) => {
     if (!element.getAttribute('src')?.endsWith(source)) throw new Error('Capture source changed before decoding');
     await element.decode();
