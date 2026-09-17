@@ -5,7 +5,7 @@ recordings and a controlled local HTTP snapshot endpoint. It covers cropping,
 phone overflow, live/replay navigation, polling failure and recovery, stream
 allocation, long recordings, saved moments, comparison clocks, zoom, native
 permission failures, keyboard navigation, local storage and offline rendering.
-The finite ledger contains 60 local Chromium cases. It does not substitute for actual provider
+The finite ledger contains 64 local Chromium cases. It does not substitute for actual provider
 connection/cleanup, CLI/TUI attachment, or export integration acceptance.
 
 ```bash
@@ -37,7 +37,7 @@ node scripts/observer-browser-proof.mjs --artifact observer/dist/index.html --ca
 `scripts/observer-browser-coverage.json` is the declared coverage ledger. Every
 local case must produce one result; errors fail the command while retaining
 evidence. `localCasesPass` describes only the selected cases and
-`localCoverageComplete` requires all 60 cases to pass in the same invocation.
+`localCoverageComplete` requires all 64 cases to pass in the same invocation.
 `coverageComplete` remains false while the manifest lists externally required acceptance.
 Do not describe a local green report as complete Observer release acceptance.
 
@@ -66,9 +66,10 @@ release every desktop iframe while replaying, preserve a paused cursor as eviden
 grows and restore the existing four-connection bound only after explicit follow.
 Rendered text-range measurements require capture ages to fit narrow portrait card
 captions and reject deliberately clipped ages; phone captures also show the
-complete lower card. Before-first and untimed active lanes open their recording
-explicitly at the first frame without attaching a live desktop, then return to
-the same paused shared cursor. An actual HTTP 404 for the selected replay capture
+complete lower card. Before-first and screenshot-free active lanes keep the shared clock and show
+explicit coverage gaps; untimed lanes pause the shared clock and use local
+recording controls. None silently attaches a live desktop, and returning retains
+the shared cursor. An actual HTTP 404 for the selected replay capture
 must expose Retry; recovery restores that exact capture without moving the cursor
 or substituting a different screenshot.
 Filtering, pinning and pagination must not change the full-study clock; opening a
@@ -76,6 +77,15 @@ card must use its exact visible capture, and both return controls must restore t
 paused cursor and participant page. These are controlled renderer projections,
 not provider reconnection or participant-behavior proof. Exact captures are decoded
 and allowed to paint before visual evidence is retained.
+
+Four added cases require one global clock across grid and timed participant
+review, exact duplicate-timestamp/event addresses, and the retained untimed local
+player. Desktop and 390px touch proof seeks halfway, opens a participant without
+rounding the clock, seeks one-third and returns to that same time. Ordinary
+navigation preserves playing state; browser Back retains the latest shared seek.
+The dock must remain one compact row at the visible bottom while evidence scrolls,
+reserve space rather than cover the evidence, and leave the last card reachable.
+Untimed phone recordings retain the former adjacent local-control geometry check.
 
 Four scrubber cases cover desktop/phone at 1×/2× pixel density. Each measures
 start, middle and end in light and dark themes: 24 rendered states. The check

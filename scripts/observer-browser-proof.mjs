@@ -213,6 +213,35 @@ async function readyCapture(locator, expectedSource) {
 }
 const studySlider = (page) => page.getByRole("slider", { name: "Seek study recording", exact: true });
 const studyCard = (page, id) => page.locator(`.card[data-stream-id="${id}"]`);
+async function setStudySpeed(page, value) {
+  await page.getByRole("button", { name: "Playback options", exact: true }).click();
+  await page.getByLabel("Study playback speed", { exact: true }).selectOption(String(value));
+  await page.getByRole("button", { name: "Close playback options", exact: true }).click();
+}
+async function followStudy(page) {
+  await page.getByRole("button", { name: "Playback options", exact: true }).click();
+  await page.getByRole("button", { name: /^(Follow live|Latest captures)$/ }).click();
+  const close = page.getByRole("button", { name: "Close playback options", exact: true });
+  if (await close.isVisible()) await close.click();
+}
+async function studyDockGeometry(page, phone) {
+  const geometry = await page.locator(".study-playback").evaluate((dock) => {
+    const bounds = dock.getBoundingClientRect(), content = document.querySelector("main.content").getBoundingClientRect();
+    const controls = [...dock.querySelectorAll('button, input[type="range"]')].filter((el) => el.getBoundingClientRect().width > 0)
+      .map((el) => ({ label: el.getAttribute("aria-label"), bounds: el.getBoundingClientRect().toJSON() }));
+    return { bounds: bounds.toJSON(), content: content.toJSON(), controls, viewport: { width: innerWidth, height: innerHeight }, pageWidth: document.documentElement.scrollWidth };
+  });
+  assert(geometry.bounds.height <= 72, "The persistent study transport consumes more than one compact row");
+  assert(geometry.bounds.bottom <= geometry.viewport.height + 1 && geometry.bounds.bottom >= geometry.viewport.height - 24,
+    "Study transport is not attached to the visible bottom of the app");
+  assert(geometry.bounds.left >= -1 && geometry.bounds.right <= geometry.viewport.width + 1 && geometry.pageWidth <= geometry.viewport.width + 1,
+    "Study transport causes horizontal overflow");
+  assert(geometry.content.bottom <= geometry.bounds.top + 1, "Persistent transport overlays the evidence scroll area");
+  const centers = geometry.controls.map(({ bounds }) => bounds.top + bounds.height / 2);
+  assert(Math.max(...centers) - Math.min(...centers) <= 2, "Study transport controls wrapped into multiple rows");
+  if (phone) for (const { bounds } of geometry.controls) assert(bounds.height >= 44, "A study transport control is smaller than a 44px touch target");
+  return geometry;
+}
 async function seekStudy(page, milliseconds) {
   // Set the native range through its ordinary input/change events for exact
   // fixture instants. Separate checks exercise actual keyboard and touch input.
@@ -293,7 +322,7 @@ async function runCase(id, options, action) {
   page.on("pageerror", (error) => errors.push(error.message));
   const record = { id, status: "running", startedAt: new Date().toISOString(), checks: {}, screenshots: [] };
   async function snap(label) {
-    if (id.startsWith("grid-playback-")) await page.evaluate(async () => {
+    if (id.startsWith("grid-playback-") || id.startsWith("global-playback-")) await page.evaluate(async () => {
       // Retain painted evidence, including after native seek events. Offscreen
       // lazy images do not need to load merely to photograph this viewport.
       const visible = [...document.images].filter((image) => {
@@ -429,16 +458,13 @@ try {
         for (const shape of ["portrait", "landscape"]) {
           if (shape === "landscape") await page.getByRole("button", { name: "Next participant", exact: true }).click();
           await page.locator('.stage-box[data-image-state="ready"]').waitFor();
-          await until(async () => {
-            const image = await page.locator(".stage-box").boundingBox();
-            const transport = await page.locator(".transport").boundingBox();
-            return image && transport && transport.y - image.y - image.height <= 14;
-          }, `${shape} fit recording leaves empty space before phone controls`);
+          const dock = await studyDockGeometry(page, true);
+          await page.locator(".stage-box").scrollIntoViewIfNeeded();
           const image = await page.locator(".stage-box").boundingBox();
-          const transport = await page.locator(".transport").boundingBox();
-          record.checks.frameToTransport.push({ shape, image, transport, gap: transport.y - image.y - image.height });
+          assert(image.y + image.height <= dock.bounds.top + 1, `${shape} fitted capture is covered by the persistent transport`);
+          record.checks.frameToTransport.push({ shape, image, transport: dock.bounds });
           assertFullFrames(await inspectImages(page.locator(".stage-box img")));
-          await snap(`${shape}-frame-adjacent-controls`);
+          await snap(`${shape}-frame-above-persistent-controls`);
         }
       }
     });
@@ -455,7 +481,7 @@ try {
     assert.equal(Number(await slider.getAttribute("max")), 6500, "Study clock does not span all capture timestamps");
     await readyStudyCard(page, "lane-1", "portrait-4.png");
     await readyStudyCard(page, "lane-2", "landscape-4.png");
-    await page.getByLabel("Study playback speed", { exact: true }).selectOption("4");
+    await setStudySpeed(page, 4);
     const play = page.getByRole("button", { name: "Play study", exact: true });
     if (phone) {
       const bounds = await play.boundingBox();
@@ -537,20 +563,25 @@ try {
     assert.match(await studyCard(page, "lane-4").innerText(), /no (?:recorded )?(?:captures|screenshots)|no captured screens|no visual|unavailable/i);
     await readyStudyCard(page, "lane-1", "portrait-1.png"); await snap("before-and-unknown-coverage");
     record.checks.unalignedRecordingOpen = [];
-    for (const [id, image] of [["lane-2", "landscape-1.png"], ["lane-3", "portrait-1.png"]]) {
-      await studyCard(page, id).getByRole("button", { name: /^Open recording from start for / }).click();
-      await page.locator(".player").waitFor();
-      assert.match(page.url(), new RegExp(`#/lane/${id}/f/1(?:/|$|\\?)`), "A card outside known coverage did not open the recording's first frame");
-      await readyCapture(page.locator(".stage-box img").first(), image);
-      assert.equal(await page.locator(".player iframe").count(), 0, "Opening a coverage gap silently connected to the live desktop");
-      await snap(`${id}-explicit-recording-start`);
+    for (const id of ["lane-2", "lane-3", "lane-4"]) {
+      await studyCard(page, id).locator(".open-overlay").click();
+      await page.getByRole("button", { name: "Back to participants", exact: true }).waitFor();
+      if (id === "lane-3") {
+        assert.equal(await studySlider(page).count(), 0, "An untimed recording advertised a known shared capture clock");
+        await readyCapture(page.locator(".stage-box img").first(), "portrait-1.png");
+      } else {
+        assert.equal(await studySlider(page).inputValue(), "2000", "Opening a coverage gap moved the study clock");
+        assert.equal(await page.locator(".stage-box img").count(), 0, "Opening a coverage gap borrowed a future capture");
+      }
+      assert.equal(await page.locator("iframe").count(), 0, "Opening a coverage gap silently connected to the live desktop");
+      await snap(`${id}-honest-recording-coverage`);
       await page.getByRole("button", { name: "Back to participants", exact: true }).click();
       await studySlider(page).waitFor();
       assert.equal(await studySlider(page).inputValue(), "2000", "Returning from an unaligned lane changed the shared cursor");
       await page.getByRole("button", { name: "Play study", exact: true }).waitFor();
       assert.equal(await page.locator(".thumb iframe").count(), 0);
       assert.equal(await studyCard(page, id).locator("img.keyframe").count(), 0, "Returning fabricated shared-time coverage");
-      record.checks.unalignedRecordingOpen.push({ id, frame: 0, returnedCursor: 2000, liveConnection: false });
+      record.checks.unalignedRecordingOpen.push({ id, localUntimedRecording: id === "lane-3", returnedCursor: 2000, liveConnection: false });
     }
     imageModes.set("/screenshots/portrait-2.png", "missing");
     await seekStudy(page, 12_000);
@@ -599,7 +630,7 @@ try {
     assert.equal(requests.slice(requestBoundary).filter((entry) => entry.path.startsWith("/desktop/")).length, 0);
     record.checks.pausedGrowth = { cursor, oldDuration: max, newDuration: Number(await studySlider(page).getAttribute("max")) };
     await page.locator(".study-playback").scrollIntoViewIfNeeded(); await snap("live-evidence-grows-while-paused");
-    await page.getByRole("button", { name: /^(Follow live|Latest captures)$/ }).click();
+    await followStudy(page);
     await until(async () => await page.locator(".thumb-live").count() > 0, "Explicit follow did not restore visible live previews");
     assert(await page.locator(".thumb-live").count() <= 4, "Follow live exceeded the existing connection limit");
     record.checks.followConnections = await page.locator(".thumb-live").count(); await snap("explicit-follow-restores-streams");
@@ -651,6 +682,109 @@ try {
     await page.locator(".study-playback").scrollIntoViewIfNeeded(); await snap("paused-grid-cursor-and-pin-restored");
     record.checks.navigation = { extent: Number(duration), cursor: 14_000, exactFrame: 2, sourcePageRestored: true, browserBackRestored: true };
   });
+  for (const phone of [false, true]) await runCase(`global-playback-${phone ? "phone" : "desktop"}`, {
+    phone, touch: phone, laneCount: 8, prepare() {
+      setCaptureTimes(data.streams[0], [0, 7000, 14_000, 21_000]);
+      setCaptureTimes(data.streams[1], [0, 10_000, 20_000, 30_000]);
+    },
+  }, async ({ page, record, snap }) => {
+    record.checks.initialDock = await studyDockGeometry(page, phone);
+    await page.locator(".card").last().scrollIntoViewIfNeeded();
+    record.checks.scrolledDock = await studyDockGeometry(page, phone);
+    assert(Math.abs(record.checks.initialDock.bounds.top - record.checks.scrolledDock.bounds.top) <= 1, "Scrolling evidence moved the persistent dock");
+    const lastCaption = await page.locator(".card-caption").last().boundingBox();
+    assert(lastCaption.y + lastCaption.height <= record.checks.scrolledDock.bounds.top + 1, "The last participant caption is hidden behind the dock");
+    await snap("last-evidence-reachable-above-dock");
+    await seekStudy(page, 15_000);
+    await readyStudyCard(page, "lane-1", "portrait-3.png");
+    await readyStudyCard(page, "lane-2", "landscape-2.png");
+    await studyCard(page, "lane-1").locator(".open-overlay").click();
+    await page.locator(".player").waitFor();
+    assert.equal(await studySlider(page).inputValue(), "15000", "Opening a participant rounded the global clock to its previous screenshot");
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-3.png");
+    assert.equal(await page.getByRole("slider", { name: "Seek recording time", exact: true }).count(), 0, "A timed participant has a second independent playback clock");
+    record.checks.participantDock = await studyDockGeometry(page, phone);
+    await snap("halfway-open-retains-study-time");
+    await seekStudy(page, 10_000);
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-2.png");
+    await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+    await studySlider(page).waitFor();
+    assert.equal(await studySlider(page).inputValue(), "10000", "Returning restored an obsolete grid cursor instead of the participant's shared seek");
+    await readyStudyCard(page, "lane-1", "portrait-2.png");
+    await readyStudyCard(page, "lane-2", "landscape-2.png");
+    record.checks.sharedSeek = { initialMs: 15_000, participantSeekMs: 10_000, returnedMs: 10_000 };
+    await snap("one-third-across-whole-grid");
+    await setStudySpeed(page, 1);
+    await page.getByRole("button", { name: "Play study", exact: true }).click();
+    await until(async () => Number(await studySlider(page).inputValue()) > 10_100, "Global playback did not advance");
+    const beforeOpen = Number(await studySlider(page).inputValue());
+    await studyCard(page, "lane-1").locator(".open-overlay").click();
+    await page.locator(".player").waitFor();
+    await page.getByRole("button", { name: "Pause study", exact: true }).waitFor();
+    await until(async () => Number(await studySlider(page).inputValue()) > beforeOpen + 200, "Opening a participant paused or restarted the study clock");
+    const beforeReturn = Number(await studySlider(page).inputValue());
+    await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+    await page.getByRole("button", { name: "Pause study", exact: true }).waitFor();
+    await until(async () => Number(await studySlider(page).inputValue()) > beforeReturn + 200, "Returning to the grid paused or restarted the study clock");
+    await page.getByRole("button", { name: "Pause study", exact: true }).click();
+    const afterReturn = Number(await studySlider(page).inputValue());
+    assert(afterReturn >= beforeReturn && afterReturn < 20_000, "Ordinary navigation jumped to a different part of the study");
+    record.checks.playingNavigation = { beforeOpen, beforeReturn, afterReturn };
+    await snap("playing-state-survives-navigation");
+    // Browser Back also restores the current shared time, not an old frame URL.
+    await seekStudy(page, 15_000);
+    await studyCard(page, "lane-1").locator(".open-overlay").click();
+    await page.locator(".player").waitFor(); await seekStudy(page, 10_000);
+    await page.goBack(); await studySlider(page).waitFor();
+    await page.getByRole("region", { name: "Study grid" }).waitFor();
+    assert.equal(await studySlider(page).inputValue(), "10000", "Browser Back discarded the participant's shared seek");
+    record.checks.browserBack = { returnedMs: 10_000 };
+    await readyStudyCard(page, "lane-1", "portrait-2.png");
+    record.checks.finalDock = await studyDockGeometry(page, phone);
+    await snap("browser-back-keeps-global-time");
+  });
+  await runCase("local-playback-untimed-phone", { phone: true, touch: true, laneCount: 2, prepare() {
+    for (const stream of data.streams) for (const item of stream.actor.items) if (item.screenshotRef) delete item.at;
+  } }, async ({ page, record, snap }) => {
+    await openLane(page);
+    assert.equal(await studySlider(page).count(), 0, "Untimed evidence advertised known shared timing");
+    record.checks.frameToTransport = [];
+    for (const shape of ["portrait", "landscape"]) {
+      if (shape === "landscape") await page.getByRole("button", { name: "Next participant", exact: true }).click();
+      await readyCapture(page.locator(".stage-box img").first(), `${shape}-1.png`);
+      await until(async () => {
+        const image = await page.locator(".stage-box").boundingBox(), transport = await page.locator(".transport").boundingBox();
+        return image && transport && transport.y - image.y - image.height <= 14;
+      }, `${shape} local fit recording leaves empty space before phone controls`);
+      const image = await page.locator(".stage-box").boundingBox(), transport = await page.locator(".transport").boundingBox();
+      record.checks.frameToTransport.push({ shape, image, transport, gap: transport.y - image.y - image.height });
+      assertFullFrames(await inspectImages(page.locator(".stage-box img")));
+      assertScrubberAligned(await scrubberPixels(page));
+      await snap(`${shape}-local-frame-adjacent-controls`);
+    }
+  });
+  await runCase("global-playback-exact-address", { laneCount: 2, prepare() {
+    setCaptureTimes(data.streams[0], [0, 7000, 7000, 21_000]);
+    setCaptureTimes(data.streams[1], [0, 7000, 14_000, 21_000]);
+  } }, async ({ page, record, snap }) => {
+    await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2`);
+    await page.locator(".player").waitFor();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-2.png");
+    assert.equal(await studySlider(page).inputValue(), "7000");
+    await wait(250); assert((await displayedFrame(page)).endsWith("portrait-2.png"), "Shared time replaced an explicitly addressed duplicate-timestamp capture");
+    await page.reload(); await page.locator(".player").waitFor();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-2.png");
+    await snap("explicit-duplicate-capture-survives-reload");
+    await page.goto(`${origin}/observer/index.html#/lane/lane-1/f/2/e/lane-1-action-2`);
+    await page.locator(".player").waitFor();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-2.png");
+    assert.match(page.url(), /\/f\/2\/e\/lane-1-action-2$/, "An exact entry address lost its event identity");
+    record.checks.explicitAddress = { frame: 1, eventId: "lane-1-action-2", sharedMs: Number(await studySlider(page).inputValue()) };
+    await snap("exact-event-keeps-addressed-capture");
+    await seekStudy(page, 8000); await readyCapture(page.locator(".stage-box img").first(), "portrait-3.png");
+    assert(!page.url().includes("/e/"), "A new shared seek retained an unrelated explicit entry selection");
+    record.checks.explicitOverrideReleasedOnSeek = true;
+  });
   await runCase("live-arrow", { running: true, live: true }, async ({ page, record, snap }) => {
     await openLane(page); await page.locator(".stage-live iframe").waitFor(); await snap("desktop-before-seek");
     await page.keyboard.press("ArrowLeft");
@@ -687,10 +821,10 @@ try {
   });
   await runCase("playing-refresh", {}, async ({ page, record, snap }) => {
     await openLane(page);
-    await page.getByRole("button", { name: "Playback speed", exact: true }).click();
-    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await setStudySpeed(page, 2);
+    await page.getByRole("button", { name: "Play study", exact: true }).click();
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
-    assert.equal(await page.getByRole("button", { name: "Pause", exact: true }).count(), 1, "Playback stopped before the reload check");
+    assert.equal(await page.getByRole("button", { name: "Pause study", exact: true }).count(), 1, "Playback stopped before the reload check");
     record.checks.before = await displayedFrame(page);
     assert(page.url().endsWith("/f/2"), "Playing frame was missing from the address");
     await page.reload();
@@ -1090,7 +1224,7 @@ try {
     await page.getByRole("dialog", { name: "Study library", exact: true }).waitFor(); await snap("phone-library");
     await page.keyboard.press("Escape"); await until(async () => await page.getByRole("dialog").count() === 0, "Escape did not close library drawer");
     await page.getByRole("button", { name: /^Open participant/ }).first().click();
-    const slider = page.getByRole("slider", { name: /Seek recording/ }); await slider.focus(); await slider.press("End");
+    const slider = studySlider(page); await slider.focus(); await slider.press("End");
     await page.locator('.stage-box img[src$="portrait-4.png"]').waitFor(); await slider.press("Home");
     await page.locator('.stage-box img[src$="portrait-1.png"]').waitFor();
     await slider.press("ArrowRight");
@@ -1100,7 +1234,7 @@ try {
     record.checks.focusedScrubberKeys = ["End", "Home", "ArrowRight", "ArrowLeft"];
     const next = page.getByRole("button", { name: "Next frame", exact: true }); await next.focus(); await next.press("Space");
     await page.locator('.stage-box img[src$="portrait-2.png"]').waitFor();
-    assert.equal(await page.getByRole("button", { name: "Pause", exact: true }).count(), 0, "Space on focused button also started playback");
+    assert.equal(await page.getByRole("button", { name: "Pause study", exact: true }).count(), 0, "Space on focused button also started playback");
     record.checks.width = await pageWidth(page); assert(record.checks.width.page <= 391); await snap("keyboard-transport");
     await page.getByRole("button", { name: "Back to participants", exact: true }).click(); await page.getByRole("region", { name: "Study grid" }).waitFor();
   });
@@ -1108,6 +1242,9 @@ try {
     const items = data.streams[0].actor.items;
     items.splice(3, 0, { id: "synthetic-thought", kind: "reasoning", lifecycle: "completed", title: "Reported thinking", text: "SYNTHETIC THOUGHT FOR REVIEW", at: new Date(START + 15_000).toISOString() });
     items.splice(6, 0, { id: "synthetic-finding", kind: "notice", status: "warning", lifecycle: "completed", title: "Synthetic recorded warning", text: "SYNTHETIC EXPLICIT FINDING", at: new Date(START + 22_000).toISOString() });
+    // Local skip-waits and speed preferences remain supported for recordings
+    // whose captures cannot be placed on the shared study clock.
+    for (const item of items) if (item.screenshotRef) delete item.at;
   } }, async ({ page, directory, record, snap }) => {
     await openLane(page); await page.getByRole("button", { name: "Next action", exact: true }).click();
     assert((await displayedFrame(page)).endsWith("portrait-1.png"));
@@ -1230,7 +1367,7 @@ try {
   } }, async ({ page, record, snap }) => {
     await page.getByRole("button", { name: /^Open participant/ }).first().click();
     await page.getByText("SYNTHETIC TERMINAL END", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("slider", { name: /Seek recording/ }).count(), 0, "Screenshot-free lane invented a timeline");
+    assert.equal(await page.getByRole("slider", { name: /Seek (?:study )?recording/ }).count(), 0, "Screenshot-free lane invented a timeline");
     record.checks.evidence = await page.locator(".stub-term").innerText(); await snap("terminal-evidence");
   });
   await runCase("desktop-isolation", { running: true, live: true, prepare: () => { exerciseDesktopIsolation = true; } }, async ({ page, record, snap }) => {
@@ -1504,7 +1641,7 @@ try {
     const preview = page.locator(".report-evidence"); await preview.waitFor(); assert.equal(await preview.locator("img").count(), 0);
     await preview.click(); await page.locator('[data-selected-entry="lane-1-final"]').waitFor();
     assert.equal(new URL(page.url()).hash, "#/lane/lane-1/e/lane-1-final");
-    assert.equal(await page.getByRole("slider", { name: /Seek recording/ }).count(), 0);
+    assert.equal(await page.getByRole("slider", { name: /Seek (?:study )?recording/ }).count(), 0);
     assert((await page.getByLabel("Selected evidence").innerText()).includes("FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE"));
     await page.reload(); await page.locator('[data-selected-entry="lane-1-final"]').waitFor();
     record.checks.exactNonvisualEntry = true; await snap("exact-terminal-entry");
@@ -1514,7 +1651,7 @@ try {
     await openLane(page); const before = pollCount;
     appendFrame(data, 5); await until(async () => pollCount >= before + 2, "Analysis latency stalled the ordinary recording feed", 12_000);
     assert.equal(await page.getByText(/Updates interrupted/).count(), 0);
-    await page.getByRole("slider", { name: "Seek recording time", exact: true }).press("End");
+    await studySlider(page).press("End");
     await until(async () => (await displayedFrame(page))?.endsWith("portrait-5.png"), "Latest evidence failed to arrive while analysis was stalled");
     record.checks = { recordingPollsDuringStall: pollCount - before }; await snap("recording-updates-during-analysis-stall");
   });
@@ -1538,7 +1675,7 @@ try {
   });
   for (const phone of [false, true]) for (const dpr of [1, 2]) await runCase(`scrubber-${phone ? "phone" : "desktop"}-${dpr}x`, { phone, dpr, touch: phone }, async ({ page, record, snap }) => {
     await openLane(page, 2);
-    const slider = page.getByRole("slider", { name: "Seek recording time", exact: true });
+    const slider = studySlider(page);
     record.checks.paintedStates = [];
     for (const theme of ["light", "dark"]) {
       await page.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
@@ -1546,28 +1683,30 @@ try {
         await slider.press(position === "start" ? "Home" : "End");
         if (position === "middle") await slider.press("ArrowLeft");
         await page.evaluate(() => document.activeElement?.blur());
-        const measurement = await scrubberPixels(page); assertScrubberAligned(measurement);
+        const measurement = await scrubberPixels(page, "Seek study recording"); assertScrubberAligned(measurement);
         record.checks.paintedStates.push({ theme, position, ...measurement });
       }
       await snap(`${theme}-aligned`);
     }
     await slider.press("ArrowLeft");
-    const broken = await page.addStyleTag({ content: `.evidence-player .scrubwrap { height:26px !important } .evidence-player .scrub { height:${phone ? 44 : 36}px !important } .scrub-track { top:11px !important; transform:none !important; left:0 !important; right:0 !important }` });
-    const negative = await scrubberPixels(page); let rejected = false;
+    const broken = await page.addStyleTag({ content: `.study-playback .scrubwrap { height:26px !important } .study-playback .scrub { height:${phone ? 44 : 36}px !important } .scrub-track { top:11px !important; transform:none !important; left:0 !important; right:0 !important }` });
+    const negative = await scrubberPixels(page, "Seek study recording"); let rejected = false;
     try { assertScrubberAligned(negative); } catch { rejected = true; }
     assert(rejected, "Paint guard accepted the known broken thumb/track geometry");
     record.checks.knownBrokenControl = { rejected, measurement: negative }; await snap("known-broken-control");
-    await broken.evaluate((element) => element.remove()); assertScrubberAligned(await scrubberPixels(page));
+    await broken.evaluate((element) => element.remove()); assertScrubberAligned(await scrubberPixels(page, "Seek study recording"));
     await slider.press("Home"); await slider.press("ArrowRight"); assert.equal(await slider.inputValue(), "7000");
     const bounds = await slider.boundingBox();
     if (phone) { assert(bounds.height >= 44); await slider.tap({ position: { x: bounds.width * .8, y: bounds.height / 2 } }); }
     else await slider.click({ position: { x: bounds.width * .8, y: bounds.height / 2 } });
-    assert.equal(await slider.inputValue(), "14000", "Pointer seeking did not select the prior retained capture");
+    const preciseCursor = Number(await slider.inputValue());
+    assert(preciseCursor > 14000 && preciseCursor < 21000, "Pointer seeking did not retain a precise study time between captures");
+    await readyCapture(page.locator(".stage-box img").first(), "landscape-3.png");
     await slider.focus(); assert.equal(await slider.evaluate((element) => getComputedStyle(element).outlineStyle), "solid");
     record.checks.pointerAndKeyboard = true; await snap("restored-interactive-control");
     data = fixture({ frames: 1, origin }); await page.reload(); await slider.waitFor();
     assert(await slider.isDisabled(), "One retained capture must not offer a seekable timeline");
-    assertScrubberAligned(await scrubberPixels(page)); record.checks.disabledSingleCapture = true;
+    assertScrubberAligned(await scrubberPixels(page, "Seek study recording")); record.checks.disabledSingleCapture = true;
     await snap("disabled-single-capture");
   });
 } finally {
