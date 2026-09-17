@@ -327,9 +327,26 @@ async function runCase(id, options, action) {
       // lazy images do not need to load merely to photograph this viewport.
       const visible = [...document.images].filter((image) => {
         const box = image.getBoundingClientRect();
-        return box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight && box.right > 0 && box.left < innerWidth;
+        let left = Math.max(0, box.left), right = Math.min(innerWidth, box.right), top = Math.max(0, box.top), bottom = Math.min(innerHeight, box.bottom);
+        for (let parent = image.parentElement; parent; parent = parent.parentElement) {
+          const css = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+          if (["hidden", "clip", "auto", "scroll"].includes(css.overflowX)) { left = Math.max(left, bounds.left); right = Math.min(right, bounds.right); }
+          if (["hidden", "clip", "auto", "scroll"].includes(css.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
+        }
+        return right > left && bottom > top;
       });
-      await Promise.all(visible.map((image) => image.decode()));
+      await Promise.all(visible.map(async (image) => {
+        // A newly visible lazy image may not have begun loading at the end of
+        // scrollIntoView. decode() alone can reject before its load event.
+        if (!image.complete || !image.naturalWidth) await new Promise((resolve, reject) => {
+          const clear = () => { clearTimeout(timer); image.removeEventListener("load", loaded); image.removeEventListener("error", failed); };
+          const loaded = () => { clear(); resolve(); }, failed = () => { clear(); reject(new Error("Visible proof capture failed to load")); };
+          const timer = setTimeout(() => { clear(); reject(new Error("Visible proof capture did not finish loading")); }, 8000);
+          image.addEventListener("load", loaded, { once: true }); image.addEventListener("error", failed, { once: true });
+          if (image.complete && image.naturalWidth) loaded();
+        });
+        await image.decode();
+      }));
       await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
     });
     const name = `${record.screenshots.length + 1}-${label}.png`;
@@ -1320,6 +1337,9 @@ try {
     record.checks.savedEntries = entries;
     await page.getByRole("button", { name: "Show capture interval", exact: true }).click();
     assert(!page.url().includes("/e/"));
+    assert.equal(await page.locator(".pins .spin").count(), 1, "Shared playback exposed an action that had not occurred at its cursor");
+    await seekStudy(page, 1000);
+    assert.equal(await displayedFrame(page), captured, "Seeking within the capture interval replaced its screenshot");
     assert.equal(await page.locator(".pins .spin").count(), 2);
     const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
     record.checks = { ...record.checks, captured, eventId: "second-click", width };
