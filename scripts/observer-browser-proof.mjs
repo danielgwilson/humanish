@@ -500,10 +500,10 @@ try {
   } }, async ({ page, record, snap }) => {
     await seekStudy(page, 2000);
     assert.equal(await studyCard(page, "lane-2").locator("img.keyframe").count(), 0, "A later participant borrowed a future capture");
-    assert.match(await studyCard(page, "lane-2").innerText(), /before|not started|outside recorded coverage/i);
+    assert.match(await studyCard(page, "lane-2").innerText(), /before|not started|outside recorded coverage|no capture yet/i);
     for (const id of ["lane-3", "lane-4"]) assert.equal(await studyCard(page, id).locator("img.keyframe").count(), 0, `${id} fabricated a shared-time image`);
     assert.match(await studyCard(page, "lane-3").innerText(), /unknown|unavailable|not recorded/i);
-    assert.match(await studyCard(page, "lane-4").innerText(), /no (?:recorded )?(?:captures|screenshots)|no visual|unavailable/i);
+    assert.match(await studyCard(page, "lane-4").innerText(), /no (?:recorded )?(?:captures|screenshots)|no captured screens|no visual|unavailable/i);
     await readyStudyCard(page, "lane-1", "portrait-1.png"); await snap("before-and-unknown-coverage");
     await seekStudy(page, 12_000);
     await readyStudyCard(page, "lane-1", "portrait-2.png");
