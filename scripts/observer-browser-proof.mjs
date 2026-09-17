@@ -1548,7 +1548,25 @@ try {
     await snap('compact-findings-overview');
     const summary = page.locator('.report-summary > summary'); await summary.focus(); await page.keyboard.press('Enter');
     await page.locator('.report-summary[open]').waitFor();
-    assert.equal(await page.locator('.findings-summary p').innerText(), analysis.analysis.result.summary.trim());
+    const animated = await page.locator('.report-summary').evaluate(async element => {
+      await new Promise(requestAnimationFrame);
+      const animations = element.getAnimations({ subtree: true });
+      for (const animation of animations) { animation.pause(); animation.currentTime = 40; }
+      return animations.length;
+    });
+    if (animated) {
+      const rowClickable = () => page.locator('.report-finding').first().evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(rect.left + 60, rect.top + 24));
+      });
+      assert(await rowClickable(), 'Expanding summary paints over or intercepts the next finding');
+      await snap('opening-summary-contained');
+      const broken = await page.addStyleTag({ content: '.report-summary::details-content { overflow: visible !important; }' });
+      assert.equal(await rowClickable(), false, 'Motion overlap guard accepted uncontained prose');
+      await broken.evaluate(element => element.remove());
+      await page.locator('.report-summary').evaluate(element => element.getAnimations({ subtree: true }).forEach(animation => animation.finish()));
+    }
+    await until(async () => (await page.locator('.findings-summary p').innerText()) === analysis.analysis.result.summary.trim(), 'Expanded summary failed to expose the complete original text');
     await snap('original-summary-expanded');
     await summary.press('Space'); await page.locator('.report-summary:not([open])').waitFor();
     const details = page.locator('.report-analysis-details > summary'); await details.focus(); await page.keyboard.press('Enter');
@@ -1562,7 +1580,7 @@ try {
     await page.evaluate(() => document.documentElement.dataset.theme = 'dark');
     await snap('compact-overview-dark');
     const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
-    record.checks = { firstFindingY: firstY, fullSummaryRetained: true, separateAttemptHistory: true, keyboardDisclosures: true, facts, width };
+    record.checks = { firstFindingY: firstY, fullSummaryRetained: true, separateAttemptHistory: true, keyboardDisclosures: true, motionOverlapGuard: animated > 0, facts, width };
   });
   for (const phone of [false, true]) await runCase(`analysis-ready-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() { analysis = analysisFixture(data); } }, async ({ page, record, snap, context }) => {
     const shell = () => page.locator(".observer-shell > .topbar, .frame > .side, .frame > .main, .study-viewbar").evaluateAll((nodes) => nodes.map((node) => {

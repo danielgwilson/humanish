@@ -34,12 +34,15 @@
 }
 
 /* Progressive enhancement: unsupported browsers retain ordinary disclosures.
-   No fixed content height, and no overflow clipping of focused descendants. */
+   Clip transitioning prose so it cannot paint over or intercept the next row.
+   The clip margin preserves descendant focus outlines at the settled edges. */
 @supports (interpolate-size: allow-keywords) and (content-visibility: hidden) {
   .report-overview-disclosures details { interpolate-size: allow-keywords; }
   .report-overview-disclosures details::details-content {
     block-size: 0;
     opacity: 0;
+    overflow: clip;
+    overflow-clip-margin: 4px;
     transition: block-size 180ms ease, opacity 140ms ease, content-visibility 180ms allow-discrete;
   }
   .report-overview-disclosures details[open]::details-content { block-size: auto; opacity: 1; }
