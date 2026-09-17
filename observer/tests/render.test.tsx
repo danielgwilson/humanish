@@ -104,7 +104,7 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     expect(container.querySelector(".side")).not.toBeNull();
     const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
     await click(toggle);
-    expect(container.querySelector(".side")).toBeNull();
+    expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     expect(window.localStorage.getItem("humanish-sidebar")).toBe("closed");
     await click(toggle);
     expect(container.querySelector(".side")).not.toBeNull();
@@ -216,7 +216,7 @@ describe("observer scaffold rendering the first-run golden", () => {
 
   it("register toggle writes data-theme and persists the explicit choice", async () => {
     await mount(<App data={data} />);
-    const toggle = container.querySelector('button[aria-label="Toggle theme"]');
+    const toggle = container.querySelector('button[aria-label="Switch to dark theme"]');
     expect(toggle).not.toBeNull();
     await click(toggle as Element);
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
@@ -619,7 +619,7 @@ describe("study shell continuity", () => {
     localStorage.setItem("humanish-sidebar", "closed");
     await mount(<App data={data} report={emptyReport} snapshot />);
     await click(container.querySelector('.study-views a:last-child')!);
-    expect(container.querySelector(".side")).toBeNull();
+    expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     await click(container.querySelector('[aria-label="Toggle run library"]')!);
     expect(localStorage.getItem("humanish-sidebar")).toBe("open");
     expect(container.querySelector(".side")).not.toBeNull();
@@ -628,7 +628,7 @@ describe("study shell continuity", () => {
     expect(container.querySelector(".side")).not.toBeNull();
     await click(container.querySelector('[aria-label="Toggle run library"]')!);
     await click(container.querySelector('.study-views a:last-child')!);
-    expect(container.querySelector(".side")).toBeNull();
+    expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     expect(localStorage.getItem("humanish-sidebar")).toBe("closed");
   });
 

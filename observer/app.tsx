@@ -275,7 +275,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     <Topbar data={data} onLibrary={toggleLibrary} sideOpen={libraryAsDrawer ? drawerOpen : sideOpen} reviewControl={savedControl}
       {...(studyLabel ? { studyLabel } : {})} status={<RunStatus data={data} connection={connection} now={now} onRetry={retry} compact />} />
     <div className="frame">
-      {!phone && sideOpen && !monitoring ? <Sidebar data={data} history={history} onRuns={toGrid} updating={connection.state !== "offline"} {...(library ? { library } : {})} /> : null}
+      {!phone && !monitoring ? <Sidebar collapsed={!sideOpen} data={data} history={history} onRuns={toGrid} updating={connection.state !== "offline"} {...(library ? { library } : {})} /> : null}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} label="Study library"><Sidebar data={data} history={history} onRuns={() => { toGrid(); setDrawerOpen(false); }} updating={connection.state !== "offline"} {...(library ? { library: { ...library, onSelect: (id: string) => { library.onSelect(id); setDrawerOpen(false); } } } : {})} /></Drawer>
       <div className="main">
         <section className="study-viewbar" aria-label="Study navigation">

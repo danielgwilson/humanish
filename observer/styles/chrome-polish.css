@@ -1,0 +1,51 @@
+/* Keep captures whole, including padding in the source recording. The preview
+   follows the fitted width instead of keeping an empty fixed-height frame. */
+.gallery .card { align-self: flex-start; max-width: 100%; }
+.card .card-preview { height: auto; }
+.card .thumb { width: 100%; }
+.card-pin { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; margin-right: 2px; color: var(--accent-ink); }
+.card-pin svg { width: 13px; height: 13px; fill: var(--accent-wash); }
+.card.pinned { border-color: var(--accent-dim); }
+.card .reviewed-outcome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The desktop library remains mounted, so collapsing it preserves its search
+   and animates available content width. Inert removes hidden controls from both
+   pointer and keyboard interaction as soon as the close starts. */
+.observer-shell > .frame > .side {
+  --study-library-width: 224px;
+  width: var(--study-library-width);
+  margin-inline-start: 0;
+  opacity: 1;
+  visibility: visible;
+  transition: margin-inline-start 200ms ease, opacity 160ms ease, visibility 200ms;
+}
+.observer-shell > .frame > .side[data-collapsed] {
+  margin-inline-start: calc(-1 * var(--study-library-width));
+  opacity: 0;
+  visibility: hidden;
+}
+.drawer-pop { transition: transform 200ms ease; }
+.drawer-pop .side nav { flex: 1; }
+.drawer-pop[data-starting-style], .drawer-pop[data-ending-style] { transform: translateX(-100%); }
+.drawer-backdrop { transition: opacity 200ms ease; }
+.drawer-backdrop[data-starting-style], .drawer-backdrop[data-ending-style] { opacity: 0; }
+.icon-button, .review-tool, .side .item, .study-views a, .card-icon {
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+/* Progressive enhancement: unsupported browsers retain ordinary disclosures.
+   No fixed content height, and no overflow clipping of focused descendants. */
+@supports (interpolate-size: allow-keywords) and (content-visibility: hidden) {
+  .report-overview-disclosures details { interpolate-size: allow-keywords; }
+  .report-overview-disclosures details::details-content {
+    block-size: 0;
+    opacity: 0;
+    transition: block-size 180ms ease, opacity 140ms ease, content-visibility 180ms allow-discrete;
+  }
+  .report-overview-disclosures details[open]::details-content { block-size: auto; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .observer-shell > .frame > .side, .drawer-pop, .drawer-backdrop,
+  .icon-button, .review-tool, .side .item, .study-views a, .card-icon,
+  .report-overview-disclosures details::details-content { transition: none; }
+}

@@ -65,7 +65,7 @@ describe("automatic analysis within the existing study shell", () => {
     remote.automatic = job("running");
     await mount();
     expect(container.querySelector(".countline")?.textContent).toContain("Analyzed outcomes:");
-    expect(container.querySelector(".card-outcome")?.textContent).toBe("Analyzed outcome: Unknown");
+    expect(container.querySelector(".card-outcome")?.textContent).toBe("Analysis: Unknown");
     await click(".open-overlay");
     expect(container.querySelector(".report-outcome-context")?.textContent).toBe("Analyzed outcome: Unknown");
     await click('.study-views a[href="#/report"]');
