@@ -5,6 +5,7 @@ import { participantLabels } from "@/lib/participant-label";
 import { formatElapsed } from "@/lib/player-model";
 import { basisLabel, reportProblem, resolveReportMoment, representativeReportMoment, type StudyReport as ReportData } from "@/lib/study-report";
 import { AutomaticAnalysisStatus } from "./automatic-analysis-status";
+import { StudyReportOverview } from "./study-report-overview";
 import { ANALYSIS_ADMISSION_EXCEEDED_DETAIL, automaticAnalysisNotice, type AutomaticStudyAnalysisView } from "@/lib/automatic-analysis";
 
 export function StudyReport({ data, report, automatic, snapshot = false, now = Date.now(), findingId, onFinding, onOpen, concernsOpen, onConcernsOpen }: {
@@ -16,7 +17,7 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
   const automaticState = automatic ? automaticAnalysisNotice(automatic, snapshot, now).state : undefined;
   const sameAnalysis = !!report && automatic?.analysisId === report.id && automaticState === report.state;
   const automaticStatus = automatic && !sameAnalysis ? <AutomaticAnalysisStatus automatic={automatic} snapshot={snapshot} now={now}
-    previousAnalysis={!!report && ["complete", "partial", "stale"].includes(report.state ?? "complete") && automatic.analysisId !== report.id}
+    separateAnalysis={!!report && ["complete", "partial", "stale"].includes(report.state ?? "complete") && automatic.analysisId !== report.id}
     resultAvailable={!!report} /> : null;
   if (!report) return <section className="study-report" aria-label="Study findings">{automaticStatus}</section>;
   const problem = reportProblem(data, report);
@@ -25,16 +26,20 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
     return <section className="study-report-empty" role="alert"><h2>Findings unavailable</h2><p>{problem ?? "This finding could not be found."}</p></section>;
   }
   const state = report.state ?? "complete";
+  const usable = ["complete", "partial", "stale"].includes(state);
+  // Pending/unknown execution still needs attention. Terminal attempt history
+  // must not impersonate the status of a separate, readable report.
+  const history = usable && automaticState !== "queued" && automaticState !== "running" && automaticState !== "unknown" ? automaticStatus : null;
   const notice = state === "stale" ? "Evidence has changed since this analysis. Review these findings against the current recording or generate a new analysis."
-    : state === "partial" ? "Analysis finished with limitations."
+    : state === "partial" ? null
     : state === "failed" ? "Analysis failed. Participant evidence remains available."
     : state === "cancelled" ? "Analysis was cancelled. Participant evidence remains available."
     : state === "invalid" ? "Analysis is unavailable. Participant evidence remains available." : null;
   return <section className="study-report" aria-label="Study findings">
-    {automaticStatus}
-    {notice ? <p className="analysis-notice" role="status" data-analysis-state={state}>{notice}{report.admissionExceeded ? ` ${ANALYSIS_ADMISSION_EXCEEDED_DETAIL}` : ""}</p> : null}
-    {report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary><ul>{report.messages.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
-    <div className="findings-summary"><p>{report.summary}</p><span>Independent analysis · {report.scope} · {report.findings.length} {report.findings.length === 1 ? "finding" : "findings"}</span></div>
+    {history ? null : automaticStatus}
+    {notice ? <p className="analysis-notice" role="status" {...(usable ? {} : { "data-analysis-state": state })}>{notice}</p> : null}
+    {report.admissionExceeded ? <p className="analysis-notice" role="status" data-analysis-admission-exceeded>{ANALYSIS_ADMISSION_EXCEEDED_DETAIL}</p> : null}
+    {usable ? <StudyReportOverview report={report} history={history} /> : report.messages?.length ? <details className="analysis-messages"><summary>Analysis notes ({report.messages.length})</summary><ul>{report.messages.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
     {!report.findings.length ? <div className="study-report-empty"><h2>{state === "complete" ? "No findings in the reviewed evidence" : "No findings available"}</h2><p>{state === "complete" ? "This analysis did not identify an issue in its declared coverage. It does not establish that every task or interaction was problem-free." : "The original participant recordings and feedback are still available in Participants."}</p></div> : null}
     <Accordion.Root className="findings-list" value={findingId ? [findingId] : []} multiple={false} onValueChange={(value) => onFinding(typeof value[0] === "string" ? value[0] : "")}>
       {report.findings.map((finding, index) => {
@@ -99,6 +104,6 @@ export function StudyReport({ data, report, automatic, snapshot = false, now = D
         })}</div>
       </section>)}
     </details> : null}
-    <details className="report-method"><summary>About this analysis</summary>{report.methodology.map((text, index) => <p key={index}>{text}</p>)}</details>
+    {!usable && report.methodology.length ? <details className="report-method"><summary>About this analysis</summary>{report.methodology.map((text, index) => <p key={index}>{text}</p>)}</details> : null}
   </section>;
 }

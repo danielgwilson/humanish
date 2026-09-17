@@ -1439,6 +1439,41 @@ try {
     assert.equal(record.checks.iframe.tabIndex, -1); assert(!/clipboard/.test(record.checks.iframe.allow ?? ""));
     await snap("isolated-desktop");
   });
+  for (const phone of [false, true]) await runCase(`analysis-overview-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() {
+    analysis = analysisFixture(data, { status: "partial", count: 5 });
+    analysis.analysis.result.summary = "The original long narrative remains available with its qualifications. ".repeat(16);
+    analysis.automatic = { state: "failed", analysisId: "separate-failed-attempt", reason: "AUTOMATIC_ANALYSIS_FAILED", updatedAt: new Date(START).toISOString() };
+  } }, async ({ page, record, snap }) => {
+    await page.getByRole("link", { name: /^Findings/ }).click();
+    const overview = page.locator('.report-overview'); await overview.waitFor();
+    assert((await overview.locator('.report-overview-title [role="status"]').innerText()).includes('Report available · limitations'));
+    const firstY = (await page.locator('.report-finding').first().boundingBox()).y;
+    assert(firstY <= (phone ? 360 : 280), 'Report prelude pushed the first finding below its compact budget');
+    assert.equal(await page.locator('.report-summary').getAttribute('open'), null);
+    assert.equal(await page.locator('.report-analysis-details').getAttribute('open'), null);
+    assert.equal(await page.locator('[data-automatic-analysis-state="failed"]').isVisible(), false, 'Attempt failure impersonates the selected report status');
+    const facts = await overview.locator('dt').allTextContents();
+    assert(facts.includes('Participants included') && facts.includes('Captures sampled'));
+    assert(facts.includes('Completed (analysis)') && facts.includes('Blocked (analysis)'));
+    await snap('compact-findings-overview');
+    const summary = page.locator('.report-summary > summary'); await summary.focus(); await page.keyboard.press('Enter');
+    await page.locator('.report-summary[open]').waitFor();
+    assert.equal(await page.locator('.findings-summary p').innerText(), analysis.analysis.result.summary.trim());
+    await snap('original-summary-expanded');
+    await summary.press('Space'); await page.locator('.report-summary:not([open])').waitFor();
+    const details = page.locator('.report-analysis-details > summary'); await details.focus(); await page.keyboard.press('Enter');
+    await page.locator('[data-automatic-analysis-state="failed"]').waitFor();
+    const history = await page.locator('.report-analysis-body').innerText();
+    assert(history.includes('The displayed report is from a separate analysis.'));
+    assert(history.includes(analysis.analysis.result.limitations[0]));
+    assert(history.includes('Synthetic renderer fixture'));
+    await snap('coverage-and-attempt-history');
+    await details.press('Space'); await page.locator('.report-analysis-details:not([open])').waitFor();
+    await page.evaluate(() => document.documentElement.dataset.theme = 'dark');
+    await snap('compact-overview-dark');
+    const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
+    record.checks = { firstFindingY: firstY, fullSummaryRetained: true, separateAttemptHistory: true, keyboardDisclosures: true, facts, width };
+  });
   for (const phone of [false, true]) await runCase(`analysis-ready-${phone ? "phone" : "desktop"}`, { phone, touch: phone, prepare() { analysis = analysisFixture(data); } }, async ({ page, record, snap, context }) => {
     const shell = () => page.locator(".observer-shell > .topbar, .frame > .side, .frame > .main, .study-viewbar").evaluateAll((nodes) => nodes.map((node) => {
       const rect = node.getBoundingClientRect(); return { role: node.className, x: rect.x, y: rect.y, width: rect.width, height: rect.height };

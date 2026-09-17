@@ -51,6 +51,8 @@
     {"id": "event-context-desktop", "goal": "Select, link, save and recall distinct actions within one screenshot interval"},
     {"id": "event-context-phone", "goal": "Touch review keeps event identity and timing distinct at 390px"},
     {"id": "participant-assignment", "goal": "Show lane-specific authored assignment and explicitly unrecorded older assignments"},
+    {"id": "analysis-overview-desktop", "goal": "Keep findings above the fold with truthful overview counts and keyboard access to original summary, coverage and separate failed-attempt history"},
+    {"id": "analysis-overview-phone", "goal": "Keep the compact findings overview readable at 390px with full disclosure content and no horizontal overflow"},
     {"id": "analysis-ready-desktop", "goal": "Review ranked findings and return from exact evidence without changing the desktop shell"},
     {"id": "analysis-ready-phone", "goal": "Review findings and keep source-aware evidence navigation usable at 390px"},
     {"id": "analysis-review-polish-desktop", "goal": "Prefer a directly supported capture, retain visible uncertainty and expose complete deduplicated caveats by keyboard"},

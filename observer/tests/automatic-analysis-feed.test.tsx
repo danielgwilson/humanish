@@ -74,8 +74,10 @@ describe("automatic analysis within the existing study shell", () => {
   it("keeps previous findings visible after a new automatic failure", async () => {
     remote = fixtures.analysisFixture(data); remote.automatic = { ...job("failed"), reason: "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" };
     await mount(); await click('.study-views a[href="#/report"]');
-    expect(container.textContent).toContain("Analysis failed.");
-    expect(container.textContent).toContain("A previously saved analysis is shown below.");
+    expect(container.querySelector(".report-overview-title")?.textContent).toContain("Report available");
+    expect(container.querySelector(".report-analysis-details")?.hasAttribute("open")).toBe(false);
+    expect(container.querySelector(".report-analysis-details")?.textContent).toContain("Analysis failed.");
+    expect(container.textContent).toContain("The displayed report is from a separate analysis.");
     expect(container.textContent).toContain("Analysis was refused before dispatch.");
     expect(container.textContent).toContain("higher --max-cost");
     expect(container.querySelectorAll("[data-finding]")).toHaveLength(2);
@@ -117,7 +119,7 @@ describe("automatic analysis within the existing study shell", () => {
     const selected = fixtures.analysisFixture(data, { status: "partial" });
     const report = projectStudyAnalysis(parseStudyAnalysis(selected, data), data)!;
     await mount(<StudyReport data={data} report={report} automatic={{ ...job("partial"), analysisId: report.id }} findingId="" onFinding={() => {}} onOpen={() => {}} />);
-    expect(container.textContent?.match(/Analysis finished with limitations\./g)).toHaveLength(1);
+    expect(container.textContent?.match(/Report available · limitations/g)).toHaveLength(1);
     expect(container.querySelectorAll("[data-finding]")).toHaveLength(2);
   });
   it.each(["AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED", "AUTOMATIC_ANALYSIS_REUSED"])("retains the specific over-admission limitation under %s", async (reason) => {
@@ -125,8 +127,8 @@ describe("automatic analysis within the existing study shell", () => {
     selected.analysis!.error = "analysis_admission_estimate_exceeded";
     const report = projectStudyAnalysis(parseStudyAnalysis(selected, data), data)!;
     await mount(<StudyReport data={data} report={report} automatic={{ ...job("partial"), analysisId: report.id, reason }} findingId="" onFinding={() => {}} onOpen={() => {}} />);
-    expect(container.textContent?.match(/Analysis finished with limitations\./g)).toHaveLength(1);
-    expect(container.querySelector('[data-analysis-state="partial"]')?.textContent).toContain("Reported usage exceeded an admission estimate or configured limit.");
+    expect(container.textContent?.match(/Report available · limitations/g)).toHaveLength(1);
+    expect(container.querySelector('[data-analysis-admission-exceeded]')?.textContent).toContain("Reported usage exceeded an admission estimate or configured limit.");
     expect(container.querySelectorAll("[data-finding]")).toHaveLength(2);
   });
 });

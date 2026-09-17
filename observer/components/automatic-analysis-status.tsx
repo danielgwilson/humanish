@@ -1,7 +1,7 @@
 import { automaticAnalysisNotice, parseAutomaticAnalysis, type AutomaticStudyAnalysisView } from "../lib/automatic-analysis";
 
-export function AutomaticAnalysisStatus({ automatic, snapshot, now, previousAnalysis = false, resultAvailable = false }: {
-  automatic: AutomaticStudyAnalysisView; snapshot: boolean; now: number; previousAnalysis?: boolean; resultAvailable?: boolean;
+export function AutomaticAnalysisStatus({ automatic, snapshot, now, separateAnalysis = false, resultAvailable = false }: {
+  automatic: AutomaticStudyAnalysisView; snapshot: boolean; now: number; separateAnalysis?: boolean; resultAvailable?: boolean;
 }) {
   const notice = automaticAnalysisNotice(automatic, snapshot, now);
   const reason = parseAutomaticAnalysis(automatic)?.reason;
@@ -10,7 +10,7 @@ export function AutomaticAnalysisStatus({ automatic, snapshot, now, previousAnal
       <p>{notice.message}</p>
       <p className="analysis-status-detail">{!resultAvailable && (notice.state === "complete" || notice.state === "partial")
         ? "The analysis result is not available in this view. Participant evidence remains available." : notice.detail}</p>
-      {previousAnalysis ? <p className="analysis-status-detail">A previously saved analysis is shown below.</p> : null}
+      {separateAnalysis ? <p className="analysis-status-detail">The displayed report is from a separate analysis.</p> : null}
     </div>
     {reason ? <details className="analysis-messages"><summary>Analysis details</summary><p>Reason: <code>{reason}</code></p></details> : null}
   </>;
