@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-15. Release baseline: `0.91.1`.
+Status date: 2026-09-17. Release baseline: `0.92.0`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.91.1-study-review-polish.md).
+in the [release notes](../release/0.92.0-grid-playback.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.91.1`)
+## Current Program Truth (source `0.92.0`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ substitute for it.
 | Subjects | `this-repo`, `clone`, `app-url`, `local-app`, `terminal-product`, `desktop-cli`, `local-tree` | `this-repo` is dry-run-only; `local-app` needs a caller-supplied executor/provider |
 | Task protocol | Hidden criteria and per-task outcomes on supported per-lane CUA paths, including local-agent and desktop-cli | Shared-world, terminal-product, scripted and synthetic routes reject `tasks` before execution |
 | Shared state | Sequential and concurrent single-origin shared-world studies with retained evidence | Multi-origin implementation remains gated; concurrent state change does not establish per-action causation |
-| Observer | Live/recorded views, participant assignments, action-specific links, saved moments, zoom, comparison and phone-width review | Sparse captures cannot prove every action's effect; visual comparison alone is not a controlled experiment |
+| Observer | Live/recorded views, whole-grid playback, participant assignments, action-specific links, saved moments, zoom, comparison and phone-width review | Sparse captures cannot prove every action's effect; visual comparison alone is not a controlled experiment |
 | Review and feedback | Verification grades, feedback drafts, portable HTML, redacted bundle derivatives and computer-use completion-source labels | Sharing requires the appropriate grade; participant reports and condition matches still need task adjudication |
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links | Model interpretation needs review; bounded selection and source truncation limit coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving and run library | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |

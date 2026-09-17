@@ -33,7 +33,7 @@ async function render(data: ObserverData) {
 }
 
 const image = () => container.querySelector<HTMLImageElement>(".card .keyframe");
-const caption = () => container.querySelector(".card-capture-time")?.textContent;
+const caption = () => container.querySelector(".card-capture-time")?.getAttribute("title");
 const play = () => container.querySelector<HTMLButtonElement>('[aria-label="Play study"]');
 
 beforeEach(() => {
@@ -68,6 +68,7 @@ describe("Paused whole-grid review survives same-run snapshot replacement", () =
 
     expect(image()?.getAttribute("src")).toBe("../screenshots/capture-1000.png");
     expect(caption()).toBe("Last capture · 00:04 before cursor");
+    expect(container.querySelector(".card-capture-age")?.textContent).toBe("4s ago");
     expect(play()?.disabled).toBe(true);
     expect(container.querySelector('[aria-label="Seek study recording"]')?.getAttribute("aria-valuetext")).toMatch(/outside.*available/i);
   });
