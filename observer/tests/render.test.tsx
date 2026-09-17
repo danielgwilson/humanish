@@ -165,7 +165,7 @@ describe("portable snapshot feed mode", () => {
     expect(document.querySelector(".card-details")?.textContent).toContain("Captured while running");
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector("iframe")).toBeNull();
-    expect(container.textContent).toContain("This saved snapshot contains no recorded screenshots");
+    expect(container.textContent).toContain("This participant has no captured screen at the study cursor.");
     expect(container.textContent).toContain("Participant status: Running");
   });
 

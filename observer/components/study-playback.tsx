@@ -2,13 +2,8 @@ import type { GridRecording } from "@/lib/grid-recording";
 import { formatElapsed } from "@/lib/player-model";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
-
-export interface GridReviewState {
-  atMs: number | null;
-  reviewing: boolean;
-  speed: number;
-  page: number;
-}
+import { Popover } from "./ui/popover";
+import "@/styles/study-playback.css";
 
 export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canFollow, onToggle, onSeek, onSpeed, onLatest }: {
   recording: GridRecording; atMs: number | null; reviewing: boolean; playing: boolean; speed: number; canFollow: boolean;
@@ -23,7 +18,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
     <div className="study-playback-controls">
       <IconButton className="tbtn" label={playing ? "Pause study" : "Play study"} hint={playing ? "Pause study recording" : "Play all recorded participants"}
         disabled={duration <= 0 || unavailable} onClick={onToggle}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
-      <span className="study-playback-time">{reviewing && !unavailable ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
+      <span className="study-playback-time" title="Study recording time"><span>Study </span>{reviewing && !unavailable ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
       <div className="scrubwrap">
         <div className="scrub-track" aria-hidden="true"><div className="scrub-played" style={{ width: `${duration ? elapsed / duration * 100 : 0}%` }} /></div>
         <input className="scrub" type="range" aria-label="Seek study recording" min={0} max={Math.max(1, duration)} step={1}
@@ -42,13 +37,18 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
             event.preventDefault(); onSeek(next);
           }} />
       </div>
-      <label className="study-playback-speed"><span className="sr-only">Study playback speed</span><select aria-label="Study playback speed" value={speed} onChange={(event) => onSpeed(Number(event.target.value))}>
-        {[.5, 1, 2, 4, 8].map((value) => <option key={value} value={value}>{value}×</option>)}
-      </select></label>
-      <button type="button" className="review-tool study-playback-latest" disabled={!reviewing} onClick={onLatest}>{canFollow ? "Follow live" : "Latest captures"}</button>
+      <Popover triggerClassName="tbtn study-playback-options" label="Playback options" trigger={<ReviewIcon name="options" />}>
+        <div className="study-playback-settings">
+          <label className="study-playback-speed"><span>Speed</span><select aria-label="Study playback speed" value={speed} onChange={(event) => onSpeed(Number(event.target.value))}>
+            {[.5, 1, 2, 4, 8].map((value) => <option key={value} value={value}>{value}×</option>)}
+          </select></label>
+          <button type="button" className="review-tool study-playback-latest" disabled={!reviewing} onClick={onLatest}>{canFollow ? "Follow live" : "Latest captures"}</button>
+          <p className="study-playback-note">{timed ? <>{reviewing ? "Study capture time" : "Latest previews"} · {timed} of {recording.lanes.size} participants with capture timestamps. Screens hold until the next capture.</>
+            : "Capture timing unavailable. Open a participant to review their recorded evidence."}</p>
+        </div>
+      </Popover>
     </div>
-    {unavailable ? <p className="study-playback-note" role="status">The recording changed. The selected time is outside the available captures. Seek or return to latest previews to continue.</p> : null}
-    <p className="study-playback-note">{timed ? <>{reviewing ? "Recorded capture time" : "Latest previews"} · {timed} of {recording.lanes.size} participants with capture timestamps. Screens hold until the next capture.</>
-      : "Capture timing unavailable. Open a participant to review their recorded evidence."}</p>
+    {unavailable ? <p className="study-playback-warning" role="status">Selected time is no longer covered. Seek to choose another moment.</p> : null}
+    {!timed ? <span className="sr-only" role="status">Capture timing unavailable. Open a participant to review their recorded evidence.</span> : null}
   </div>;
 }

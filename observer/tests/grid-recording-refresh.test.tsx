@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
-import { Tooltip } from "@base-ui-components/react/tooltip";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import live from "../../tests/golden/observer-data/live.json";
-import { StudyGrid } from "../components/study-grid";
+import { App } from "../app";
 import type { ObserverData } from "../lib/observer-data";
 
+const feed = vi.hoisted(() => ({ data: null as ObserverData | null }));
+vi.mock("../lib/use-observer-feed", async () => {
+  const { NO_ANALYSIS } = await import("../lib/study-analysis");
+  return { useObserverFeed: () => ({ data: feed.data, analysis: NO_ANALYSIS, history: null,
+    connection: { state: "offline" }, retry: () => undefined }) };
+});
+
 const origin = Date.parse("2026-09-01T10:00:00.000Z");
-const selected = origin + 5000;
+let positioned = false;
 let container: HTMLDivElement;
 let root: Root;
 
@@ -26,17 +32,33 @@ function snapshot(offsets: number[]): ObserverData {
 }
 
 async function render(data: ObserverData) {
-  await act(async () => {
-    root.render(<Tooltip.Provider><StudyGrid data={data} streams={data.streams} onOpen={() => undefined} updating={false}
-      initialReview={{ atMs: selected, reviewing: true, speed: 1, page: 0 }} /></Tooltip.Provider>);
-  });
+  feed.data = data;
+  await act(async () => { root.render(<App data={data} snapshot />); });
+  if (!positioned) {
+    const scrub = container.querySelector<HTMLInputElement>('[aria-label="Seek study recording"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(scrub, "5000");
+      scrub.dispatchEvent(new Event("input", { bubbles: true }));
+      scrub.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    positioned = true;
+  }
 }
 
 const image = () => container.querySelector<HTMLImageElement>(".card .keyframe");
 const caption = () => container.querySelector(".card-capture-time")?.getAttribute("title");
 const play = () => container.querySelector<HTMLButtonElement>('[aria-label="Play study"]');
 
+beforeAll(() => {
+  Element.prototype.scrollIntoView = () => undefined;
+  window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null,
+    addEventListener: () => undefined, removeEventListener: () => undefined,
+    addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false
+  })) as unknown as typeof window.matchMedia;
+});
+
 beforeEach(() => {
+  positioned = false;
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -46,6 +68,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => { root.unmount(); });
   container.remove();
+  localStorage.clear();
+  window.history.replaceState(null, "", window.location.pathname);
 });
 
 describe("Paused whole-grid review survives same-run snapshot replacement", () => {

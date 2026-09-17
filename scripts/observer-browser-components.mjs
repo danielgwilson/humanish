@@ -16,10 +16,12 @@ export async function scrubberPixels(page, label = "Seek recording time") {
     const color = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
     const min = Number(range.min), max = Number(range.max), value = Number(range.value);
     const fraction = max > min ? (value - min) / (max - min) : 0;
+    let opacity = 1;
+    for (let ancestor = range; ancestor; ancestor = ancestor.parentElement) opacity *= Number(getComputedStyle(ancestor).opacity);
     return { wrapper: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       track: { x: t.x, y: t.y, width: t.width, height: t.height },
       range: { x: r.x, y: r.y, width: r.width, height: r.height },
-      expectedX: t.x + fraction * t.width, fraction, color,
+      expectedX: t.x + fraction * t.width, fraction, color, opacity,
       thumbSize: parseFloat(getComputedStyle(element).getPropertyValue("--scrub-thumb-size")) };
   });
   const png = PNG.sync.read(await wrapper.screenshot({ animations: "disabled" }));
@@ -29,10 +31,15 @@ export async function scrubberPixels(page, label = "Seek recording time") {
   const sy = png.height / (Math.ceil(geometry.wrapper.y + geometry.wrapper.height) - clipY);
   const expectedX = (geometry.expectedX - clipX) * sx;
   const radius = geometry.thumbSize * sx / 2;
+  // Disabled controls intentionally dim their wrapper. The screenshot contains
+  // the composited thumb, not its unblended CSS accent. Sample the wrapper's
+  // empty upper edge (away from the centered track/thumb) for the actual paper.
+  const backgroundOffset = (Math.min(1, png.height - 1) * png.width + Math.floor(png.width / 2)) * 4;
+  const paintedColor = geometry.color.map((color, index) => color * geometry.opacity + png.data[backgroundOffset + index] * (1 - geometry.opacity));
   const matches = (x, y) => {
     if (x < 0 || y < 0 || x >= png.width || y >= png.height) return false;
     const offset = (y * png.width + x) * 4;
-    return geometry.color.every((v, n) => Math.abs(png.data[offset + n] - v) <= 3);
+    return paintedColor.every((v, n) => Math.abs(png.data[offset + n] - v) <= 3);
   };
   const runs = []; let run;
   for (let y = 0; y < png.height; y += 1) {

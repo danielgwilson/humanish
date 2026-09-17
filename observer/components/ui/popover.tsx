@@ -1,7 +1,16 @@
 import { Popover as BasePopover } from "@base-ui-components/react/popover";
 import { IconButton } from "./icon-button";
 import { ReviewIcon } from "../review-icon";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+
+function subscribeFullscreen(listener: () => void) {
+  document.addEventListener("fullscreenchange", listener);
+  return () => document.removeEventListener("fullscreenchange", listener);
+}
+
+function fullscreenContainer() {
+  return document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : null;
+}
 
 // Second Base UI primitive (D6): an anchored panel with outside-press and Escape
 // dismissal, focus handling, and portal stacking supplied by Base UI. Styling is
@@ -25,12 +34,15 @@ export function Popover({
   onOpenChange?: (open: boolean) => void;
   title?: string;
 }) {
+  // Native fullscreen hides nodes outside its subtree, including body portals.
+  // Follow entry/exit while open so the popup stays reachable with its trigger.
+  const fullscreen = useSyncExternalStore(subscribeFullscreen, fullscreenContainer, () => null);
   return (
     <BasePopover.Root {...(open === undefined ? {} : { open })} {...(onOpenChange ? { onOpenChange } : {})}>
       <BasePopover.Trigger render={<IconButton label={label} hint={title} className={triggerClassName}>{trigger}</IconButton>}>
         {trigger}
       </BasePopover.Trigger>
-      <BasePopover.Portal>
+      <BasePopover.Portal {...(fullscreen ? { container: fullscreen } : {})}>
         <BasePopover.Positioner className="observer-popover-positioner" sideOffset={8} align="end">
           <BasePopover.Popup className="pop-panel" aria-label={label}>
             <div className="popover-heading"><BasePopover.Title>{title}</BasePopover.Title>

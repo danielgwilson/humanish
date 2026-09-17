@@ -12,7 +12,8 @@ import { StudyReport } from "./components/study-report";
 import { reportFindingId, reportHash, resolveReportMoment, type StudyReport as ReportData } from "./lib/study-report";
 import "./styles/study-report.css";
 import { StudyGrid } from "./components/study-grid";
-import type { GridReviewState } from "./components/study-playback";
+import { StudyPlayback } from "./components/study-playback";
+import "./styles/study-playback.css";
 import { ParticipantPager, Topbar } from "./components/topbar";
 import { GridOptions, type GridFilters } from "./components/grid-options";
 import { ShareStatus } from "./components/study-details";
@@ -28,6 +29,7 @@ import { savedEntryLabels } from "./lib/saved-entry-labels";
 import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
+import { useStudyPlayback } from "./lib/use-study-playback";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object" && ["status", "kind", "query"].every((k) => typeof (v as Record<string, unknown>)[k] === "string" && ((v as Record<string, string>)[k]?.length ?? 0) < 256);
@@ -36,17 +38,19 @@ const routeCompareIds = () => new URLSearchParams(window.location.hash.split("?"
 
 export function App({ data: initialData, snapshot = false, report: suppliedReport, library, analysis: initialAnalysis }: { data: ObserverData | null; snapshot?: boolean; report?: ReportData; library?: StudyLibrary; analysis?: LoadedStudyAnalysis }) {
   const { data, history, connection, retry, analysis } = useObserverFeed(initialData, snapshot, initialAnalysis);
+  const currentRunId = useRef(data?.run.runId ?? ""); currentRunId.current = data?.run.runId ?? "";
   const report = useMemo(() => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined), [suppliedReport, analysis, data]);
   const hasFindingsView = !!report || !!analysis.automatic;
   const [reportRoute, setReportRoute] = useState(() => reportFindingId(window.location.hash));
   const [concernsOpen, setConcernsOpen] = useState(false);
   const reportIds = useRef<string[]>([]); reportIds.current = report?.findings.map((finding) => finding.id) ?? [];
   const hasConcerns = useRef(false); hasConcerns.current = report?.concernReviews !== undefined;
-  const readSource = () => recordingSource(window.history.state, initialData?.run.runId ?? "", reportIds.current, hasConcerns.current);
+  const readSource = () => recordingSource(window.history.state, currentRunId.current, reportIds.current, hasConcerns.current);
   const [source, setSource] = useState<RecordingSource>(readSource);
   const reportActive = hasFindingsView && reportRoute !== null;
   const [route, setRoute] = useState(() => parseHash(window.location.hash));
   const [navigationRevision, setNavigationRevision] = useState(0);
+  const [preservePlayback, setPreservePlayback] = useState(false);
   const [comparison, setComparison] = useState(compareRoute);
   const [compareIds, setCompareIds] = useState<string[]>(routeCompareIds);
   const comparisonLocation = useRef(compareRoute() ? window.location.hash : "");
@@ -57,12 +61,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const [savedMoments, setSavedMoments, momentsStored] = usePreference("moments", [] as SavedMoment[], isMoments);
   const [savedMessage, setSavedMessage] = useState("");
   const [playerView, setPlayerView] = useState<(PlayerView & { streamId: string }) | null>(null);
-  // The grid unmounts during individual review. Retain its clock and page without
-  // rerendering the entire shell on each playback tick; returning always pauses.
-  const gridReview = useRef<{ runId: string; state: GridReviewState } | null>(null);
-  const rememberGridReview = useCallback((state: GridReviewState) => {
-    if (data) gridReview.current = { runId: data.run.runId, state };
-  }, [data?.run.runId]);
+  const [gridPage, setGridPage] = useState({ runId: data?.run.runId ?? "", page: 0 });
   const [monitoring, setMonitoring] = useState(false);
   const [now, setNow] = useState(Date.now);
   const automaticNotice = analysis.automatic ? automaticAnalysisNotice(analysis.automatic, snapshot, now) : undefined;
@@ -78,11 +77,20 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     return () => { clearInterval(timer); media?.removeEventListener("change", resize); };
   }, []);
   useEffect(() => {
-    const navigate = () => { const finding = reportFindingId(window.location.hash); setReportRoute(finding); setSource(readSource()); setRoute(parseHash(window.location.hash)); setComparison(compareRoute()); if (compareRoute()) setCompareIds(routeCompareIds()); };
+    const navigate = () => {
+      const finding = reportFindingId(window.location.hash);
+      setReportRoute(finding); setSource(readSource()); setRoute(parseHash(window.location.hash)); setComparison(compareRoute());
+      if (compareRoute()) setCompareIds(routeCompareIds());
+      // Internal participant history changes the view of the running clock. A
+      // copied/reloaded or externally changed evidence address is a fresh seek.
+      setPreservePlayback(window.history.state?.humanishStudyNavigation === currentRunId.current);
+      setNavigationRevision((value) => value + 1);
+    };
     window.addEventListener("hashchange", navigate); window.addEventListener("popstate", navigate);
     return () => { window.removeEventListener("hashchange", navigate); window.removeEventListener("popstate", navigate); };
   }, []);
   const streams = data?.streams ?? [];
+  const studyPlayback = useStudyPlayback(data?.run.runId ?? "", streams);
   const entryLabels = useMemo(() => savedEntryLabels(streams), [streams]);
   const selected = streams.find((s) => s.id === route.laneId) ?? null;
   // The viewport and explicit preference own the shell, never the selected view.
@@ -99,13 +107,15 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     const afterPaint = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(callback, 0));
     afterPaint(() => find()?.focus({ preventScroll: true }));
   };
-  const openParticipant = (id: string | null, frame: number | null = null, eventId?: string, origin: RecordingSource = { runId: data?.run.runId ?? "", kind: "participants" }, mode: "replay" | null = null) => {
-    setReportRoute(null); pushHash(formatHash(id, frame, mode, eventId), id ? recordingState(origin) : null); setSource(origin);
+  const openParticipant = (id: string | null, frame: number | null = null, eventId?: string, origin: RecordingSource = { runId: data?.run.runId ?? "", kind: "participants" }, mode: "replay" | null = null, preserve = false) => {
+    const navigationState = { ...(id ? recordingState(origin) : {}), ...(preserve ? { humanishStudyNavigation: data?.run.runId } : {}) };
+    setReportRoute(null); pushHash(formatHash(id, frame, mode, eventId), navigationState); setSource(origin);
     setRoute(parseHash(window.location.hash)); setComparison(false); setSavedMessage("");
+    setPreservePlayback(preserve);
     setNavigationRevision((value) => value + 1);
     if (id) focus(() => contentRef.current);
   };
-  const toGrid = () => openParticipant(null);
+  const toGrid = () => openParticipant(null, null, undefined, undefined, null, true);
   const openReport = (id = "") => { pushHash(reportHash(id)); setReportRoute(id); setRoute(parseHash("")); setComparison(false); setMonitoring(false); };
   const returnToSource = () => {
     if (source.kind === "finding") {
@@ -134,7 +144,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     if (!next) return;
     const cited = source.kind === "finding" ? report?.findings.find((finding) => finding.id === source.findingId)?.moments.filter((moment) => moment.streamId === next.id) : undefined;
     const moment = data ? cited?.map((entry) => resolveReportMoment(data, next.id, entry.eventId)).find(Boolean) : undefined;
-    openParticipant(next.id, moment?.frameIndex ?? null, moment?.eventId, source);
+    openParticipant(next.id, moment?.frameIndex ?? null, moment?.eventId, source, studyPlayback.reviewing ? "replay" : null, source.kind === "participants");
   };
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
@@ -150,6 +160,50 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
   }, [selected, comparison, monitoring, source]);
   const model = useMemo(() => selected && !(route.eventId && route.frame === null) ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected, route.eventId, route.frame]);
+  const selectedLane = selected ? studyPlayback.recording.lanes.get(selected.id) : undefined;
+  // A poll may add or remove timestamps. Only deliberate navigation changes
+  // clock ownership; switching mid-review would expose another clock's state.
+  const navigationKey = `${data?.run.runId ?? ""}:${navigationRevision}`;
+  const ownershipKey = JSON.stringify([navigationKey, selected?.id ?? null, source.kind]);
+  const eligiblePlayer = !!selected && !!model && source.kind === "participants";
+  const [playerOwnership, setPlayerOwnership] = useState<{ key: string; shared: boolean } | null>(null);
+  const ownership = playerOwnership?.key === ownershipKey ? playerOwnership
+    : { key: ownershipKey, shared: selectedLane?.times !== null || !selectedLane?.model };
+  if (eligiblePlayer && playerOwnership !== ownership) setPlayerOwnership(ownership);
+  const sharedPlayer = eligiblePlayer && ownership.shared;
+  const appliedNavigation = useRef("");
+  const navigationPending = sharedPlayer && appliedNavigation.current !== navigationKey && !(preservePlayback && studyPlayback.reviewing);
+  const sharedControl = selected && sharedPlayer ? studyPlayback.playerControl(selected.id) : undefined;
+  // Child passive effects can run before the layout-effect state update below
+  // commits. Never let that initial latest projection overwrite an incoming
+  // exact address, especially an unavailable frame the caller needs to inspect.
+  const playerControl = sharedControl && navigationPending
+    ? { ...sharedControl, reviewing: true, moment: { kind: "no-captures" as const }, unavailableFrame: true } : sharedControl;
+  useLayoutEffect(() => {
+    if (!data) return;
+    if (appliedNavigation.current === navigationKey) return;
+    if (!selected) return;
+    if (!sharedPlayer) return;
+    appliedNavigation.current = navigationKey;
+    if (preservePlayback && studyPlayback.reviewing) return;
+    if (route.mode === "live" && connection.state !== "offline") studyPlayback.latest();
+    else if (route.frame !== null) studyPlayback.selectFrame(selected.id, route.frame, route.eventId);
+    else if (route.mode !== "replay" && connection.state !== "offline" && isActiveStream(selected)) studyPlayback.latest();
+    else if (model?.frames.length) studyPlayback.selectFrame(selected.id, route.mode === "live" ? model.frames.length - 1 : 0, route.eventId);
+    else studyPlayback.seek(studyPlayback.recording.startMs ?? Number.NaN);
+  }, [data?.run.runId, navigationKey, selected, sharedPlayer, preservePlayback, route, model, connection.state, studyPlayback]);
+  useEffect(() => {
+    if (reportActive || comparison || (selected && !sharedPlayer)) studyPlayback.pause();
+  }, [reportActive, comparison, selected, sharedPlayer, studyPlayback.pause]);
+  const previousUpdating = useRef(connection.state !== "offline");
+  useEffect(() => {
+    const updating = connection.state !== "offline";
+    if (previousUpdating.current && !updating && selected && sharedPlayer && !studyPlayback.reviewing) {
+      if (model?.frames.length) studyPlayback.selectFrame(selected.id, model.frames.length - 1);
+      else studyPlayback.seek(studyPlayback.atMs ?? Number.NaN);
+    }
+    previousUpdating.current = updating;
+  }, [connection.state, selected, sharedPlayer, model, studyPlayback]);
   const viewChanged = useCallback((view: PlayerView) => { if (selected) setPlayerView({ ...view, streamId: selected.id }); }, [selected?.id]);
   if (!data) return <EmptyState />;
   const selectedReview = report?.outcomes.find((outcome) => outcome.streamId === selected?.id);
@@ -207,10 +261,11 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
       {!selected && !comparison && compareIds.length ? <span className="compare-selection"><button type="button" className="review-tool" onClick={openComparison}>Compare selected ({compareIds.length}/3)</button>{compareIds.length === 3 ? <span role="status">Comparison limit: 3 participants. Remove one to choose another.</span> : null}</span> : null}
     </div> : null}
     {comparison ? <Comparison data={data} streams={streams.filter((s) => compareIds.includes(s.id))} history={history} onBack={toGrid} onOpen={(id, frame) => openParticipant(id, frame, undefined, { runId: data.run.runId, kind: "comparison", hash: comparisonLocation.current || window.location.hash })} onLocationChange={rememberComparison} />
-          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
-            : <StudyGrid key={data.run.runId} initialReview={gridReview.current?.runId === data.run.runId ? gridReview.current.state : undefined} onReviewChange={rememberGridReview}
+          : selected ? model ? <Player key={selected.id} recordedActorStatus={selectedReview ? selected.actor?.status : undefined} analysisReview={selectedAnalysis} data={data} stream={selected} model={model} initialFrame={route.frame} initialMode={route.mode ?? null} initialEventId={route.eventId ?? null} navigationRevision={navigationRevision} updating={connection.state !== "offline"} onViewChange={viewChanged} {...(playerControl ? { studyPlayback: playerControl } : {})} /> : <ParticipantStub key={selected.id} data={data} stream={selected} analysisReview={selectedAnalysis} selectedEventId={route.eventId} updating={connection.state !== "offline"} />
+            : <StudyGrid key={data.run.runId} recording={studyPlayback.recording} atMs={studyPlayback.atMs} reviewing={studyPlayback.reviewing}
+                page={gridPage.runId === data.run.runId ? gridPage.page : 0} onPageChange={(page) => setGridPage({ runId: data.run.runId, page })}
                 tools={<GridOptions data={data} filters={filters} onFilters={setFilters} onMonitor={() => setMonitoring(true)}
-                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={(id, frame, mode) => openParticipant(id, frame, undefined, undefined, mode)} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
+                gridControl={<label className="tool"><span className="o-label">Preview size</span><select aria-label="Preview size" value={density} onChange={(e) => { if (isDensity(e.target.value)) setDensity(e.target.value); }}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>} />} data={data} reviewOutcomes={report?.outcomes.length ? report.outcomes : undefined} streams={visible} onOpen={(id) => openParticipant(id, null, undefined, undefined, studyPlayback.reviewing ? "replay" : null, true)} density={density} pinnedIds={pinnedByRun} compareIds={compareIds} onPin={togglePin} onCompare={toggleCompare} now={now} updating={connection.state !== "offline"} />}
   </>;
   const needsAttention = connection.state === "retrying" || data.runtime?.state === "unknown" || data.runtime?.state === "interrupted";
   const studyLabel = library?.entries.find((entry) => entry.runId === data.run.runId)?.title;
@@ -241,6 +296,10 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
           }} concernsOpen={concernsOpen} onConcernsOpen={setConcernsOpen}
             onOpen={(id, frame, eventId, findingId) => openParticipant(id, frame, eventId, findingId ? { runId: data.run.runId, kind: "finding", findingId } : { runId: data.run.runId, kind: "concerns" })} /> : participantContent}
         </main>
+        {!reportActive && !comparison && (!selected || sharedPlayer) ? <StudyPlayback recording={studyPlayback.recording} atMs={studyPlayback.atMs}
+          reviewing={studyPlayback.reviewing} playing={studyPlayback.playing} speed={studyPlayback.speed}
+          canFollow={connection.state !== "offline" && isServedOrigin(window.location.protocol) && streams.some(isActiveStream)}
+          onToggle={studyPlayback.toggle} onSeek={studyPlayback.seek} onSpeed={studyPlayback.setSpeed} onLatest={studyPlayback.latest} /> : null}
       </div>
     </div>
   </div></Tooltip.Provider>;
