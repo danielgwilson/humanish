@@ -3,10 +3,10 @@ import { PNG } from "pngjs";
 
 /** Measure the native range thumb's actual painted pixels against the visible
  * timeline. CSS values alone cannot catch a browser's native-control geometry. */
-export async function scrubberPixels(page) {
-  const control = page.getByRole("slider", { name: "Seek recording time", exact: true });
+export async function scrubberPixels(page, label = "Seek recording time") {
+  const control = page.getByRole("slider", { name: label, exact: true });
   await control.scrollIntoViewIfNeeded();
-  const wrapper = page.locator(".scrubwrap");
+  const wrapper = control.locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' scrubwrap ')][1]");
   const geometry = await wrapper.evaluate((element) => {
     const range = element.querySelector("input"), track = element.querySelector(".scrub-track");
     const rect = element.getBoundingClientRect(), r = range.getBoundingClientRect(), t = track.getBoundingClientRect();
