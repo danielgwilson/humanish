@@ -4,6 +4,11 @@
   "cases": [
     {"id": "grid-desktop", "goal": "See every portrait and landscape corner in the desktop grid"},
     {"id": "grid-phone", "goal": "See complete mixed screens and contain long names at 390px"},
+    {"id": "grid-playback-desktop", "goal": "Play multiple participant captures on one clock; seek by keyboard/pointer and measure painted study scrubber alignment"},
+    {"id": "grid-playback-phone", "goal": "Play the whole study at 390px with real touch emulation, complete captures, readable capture ages and aligned accessible transport"},
+    {"id": "grid-playback-coverage", "goal": "Keep capture coverage explicit; open active unaligned lanes at the recorded start and retry an actual missing selected image without moving time"},
+    {"id": "grid-playback-live-growth", "goal": "Disable all desktop iframes in replay, retain the paused cursor as evidence grows and restore bounded connections only on explicit follow"},
+    {"id": "grid-playback-navigation", "goal": "Keep the full-study clock across filtering, paging and pinning; open exact captures and restore the paused source page on both return paths"},
     {"id": "player-desktop", "goal": "Open a participant and inspect uncropped stage and filmstrip"},
     {"id": "player-phone", "goal": "Inspect the player and transport without horizontal page overflow"},
     {"id": "live-arrow", "goal": "Arrow seek leaves the desktop and shows the addressed recording"},

@@ -2,6 +2,8 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { formatDuration, keyframeHref, traceItems } from "@/lib/artifact-href";
 import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSandbox, liveEmbedUrl } from "@/lib/live";
 import type { ObserverStream } from "@/lib/observer-data";
+import type { GridMoment } from "@/lib/grid-recording";
+import { formatElapsed } from "@/lib/player-model";
 import { completionLabel, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
@@ -12,17 +14,18 @@ function terminalLines(plain: string): TerminalLine[] {
   return plain.split("\n").filter(Boolean).slice(-6).map((text) => text.startsWith("$ ") ? { kind: "cmd", text } : { kind: "dim", text });
 }
 
-export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true, reviewOutcome }: {
+export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true, reviewOutcome, replay }: {
+  replay?: GridMoment | undefined;
   reviewOutcome?: string | undefined;
   stream: ObserverStream; name: string; onOpen: (id: string) => void; liveThumb?: boolean;
   pinned?: boolean; compared?: boolean; comparisonFull?: boolean; onPin?: ((id: string) => void) | undefined; onCompare?: ((id: string) => void) | undefined; now?: number | undefined; updating?: boolean;
 }) {
-  const keyframe = keyframeHref(stream);
+  const keyframe = replay ? replay.kind === "capture" ? replay.frame.href : null : keyframeHref(stream);
   const signal = signalFor(stream);
-  const canUpdate = updating && isServedOrigin(window.location.protocol);
+  const canUpdate = !replay && updating && isServedOrigin(window.location.protocol);
   const liveUrl = canUpdate ? liveEmbedUrl(stream) : null;
   const active = canUpdate && isActiveStream(stream);
-  const statusLabel = !canUpdate && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
+  const statusLabel = !replay && !canUpdate && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
   const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
@@ -45,22 +48,27 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const failed = keyframe !== null && keyframe === failedImage;
   const sourceLabel = liveThumb && liveUrl ? "Live" : active ? "Capture" : !canUpdate && isActiveStream(stream) ? "Snapshot" : null;
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
+  const captureLabel = replay?.kind === "capture" ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
+    : replay?.kind === "before-first" ? "No capture yet" : replay?.kind === "timing-unavailable" ? "Capture timing unavailable" : "No captured screens";
+  const fromStart = replay && replay.kind !== "capture" && ["before-first", "timing-unavailable"].includes(replay.kind);
+  const openLabel = fromStart ? `Open recording from start for ${name}` : `Open participant ${name}`;
   return <article className={`panel card${pinned ? " pinned" : ""}`} data-stream-id={stream.id} aria-label={name} data-compared={compared || undefined}
     style={{ "--preview-ratio": viewport ? viewport.width / viewport.height : 1.6 } as CSSProperties}>
     <div className="card-preview">
       <div className="thumb" style={{ aspectRatio: viewport ? `${viewport.width} / ${viewport.height}` : "16 / 10" }}>
         {liveThumb && liveUrl ? <iframe sandbox={liveEmbedSandbox(stream)} className="thumb-live" src={liveUrl} title={`Live thumb — ${name}`} referrerPolicy="no-referrer" aria-hidden="true" tabIndex={-1} />
-          : keyframe && !failed ? <img className="keyframe" src={keyframe} alt={`Recorded screen from ${name}`} loading="lazy"
+          : keyframe && !failed ? <img key={replay?.kind === "capture" ? replay.frame.itemId : keyframe} className="keyframe" src={keyframe} alt={`Recorded screen from ${name}`} loading="lazy"
             onLoad={(event) => { const i = event.currentTarget; if (i.naturalWidth && i.naturalHeight) setDimensions({ width: i.naturalWidth, height: i.naturalHeight }); }}
             onError={() => setFailedImage(keyframe)} />
-            : stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
-              : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
-        <button type="button" className="open-overlay" aria-label={`Open participant ${name}`} onClick={() => onOpen(stream.id)} />
+            : !replay && stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
+              : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : replay ? captureLabel : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
+        <button type="button" className="open-overlay" aria-label={openLabel} onClick={() => onOpen(stream.id)} />
       </div>
     </div>
     <div className="card-caption">
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analyzed outcome: ${reviewOutcome}` : sourceLabel ?? outcome}</span>
+        {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
+          : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analyzed outcome: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
         <div className="card-details">
@@ -72,11 +80,11 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
             {comparisonFull ? <p>Comparison limit: 3 participants. Remove one to choose another.</p> : null}
           </div>
           <dl><dt>Participant</dt><dd>{label}</dd><dt>Persona</dt><dd>{stream.sim.personaId}</dd>
-            <dt>Status</dt><dd>{statusLabel}</dd><dt>Preview</dt><dd>{previewLabel ?? "Recorded"}{liveThumb && liveUrl ? " · read-only; connection health is managed by the provider" : ""}</dd>
+            <dt>{replay ? "Run status" : "Status"}</dt><dd>{statusLabel}</dd><dt>Preview</dt><dd>{replay ? captureLabel : previewLabel ?? "Recorded"}{liveThumb && liveUrl ? " · read-only; connection health is managed by the provider" : ""}</dd>
             <dt>Screen</dt><dd>{viewport ? `${viewport.width} × ${viewport.height} · ` : ""}{stream.kindLabel}</dd>
             {stream.actor ? <><dt>Duration</dt><dd>{formatDuration(stream.actor.durationMs)}</dd></> : null}
           </dl>
-          <p><span className="sig-label">{thought?.text ? "Reported thinking" : signal.label}</span><br />{thought?.text ?? signal.text}</p>
+          <p><span className="sig-label">{replay ? "Whole-recording summary" : thought?.text ? "Reported thinking" : signal.label}</span><br />{thought?.text ?? signal.text}</p>
           {warnings.length ? <section className="card-warnings" aria-label="Participant notices"><h3>{warnings.length} recorded {warnings.length === 1 ? "notice" : "notices"}</h3><ul>{warnings.map((event) => <li key={event.id}>{event.message}</li>)}</ul></section> : null}
           <button type="button" className="review-tool" onClick={() => onOpen(stream.id)}>Open participant</button>
         </div>

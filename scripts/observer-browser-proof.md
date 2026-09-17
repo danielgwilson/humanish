@@ -5,7 +5,7 @@ recordings and a controlled local HTTP snapshot endpoint. It covers cropping,
 phone overflow, live/replay navigation, polling failure and recovery, stream
 allocation, long recordings, saved moments, comparison clocks, zoom, native
 permission failures, keyboard navigation, local storage and offline rendering.
-The finite ledger contains 55 local Chromium cases. It does not substitute for actual provider
+The finite ledger contains 60 local Chromium cases. It does not substitute for actual provider
 connection/cleanup, CLI/TUI attachment, or export integration acceptance.
 
 ```bash
@@ -37,7 +37,7 @@ node scripts/observer-browser-proof.mjs --artifact observer/dist/index.html --ca
 `scripts/observer-browser-coverage.json` is the declared coverage ledger. Every
 local case must produce one result; errors fail the command while retaining
 evidence. `localCasesPass` describes only the selected cases and
-`localCoverageComplete` requires all 55 cases to pass in the same invocation.
+`localCoverageComplete` requires all 60 cases to pass in the same invocation.
 `coverageComplete` remains false while the manifest lists externally required acceptance.
 Do not describe a local green report as complete Observer release acceptance.
 
@@ -56,6 +56,26 @@ Recording proof requires the expected image source, successful decoding, visible
 dimensions and two animation frames before capture. Phone evidence rows must not
 retain desktop hover color; injecting the former unconditional hover style must
 fail that check. Keyboard focus remains indicated separately.
+
+Five whole-study playback cases exercise two moving participants on a shared
+capture clock, native keyboard and pointer/touch seeking, capture age, late starts,
+held final captures, missing timestamps and screenshot-free lanes. Desktop and
+390px touch cases measure the study scrubber's painted thumb at start, middle and
+end in both themes and reject a deliberately displaced track. Live fixtures must
+release every desktop iframe while replaying, preserve a paused cursor as evidence
+grows and restore the existing four-connection bound only after explicit follow.
+Rendered text-range measurements require capture ages to fit narrow portrait card
+captions and reject deliberately clipped ages; phone captures also show the
+complete lower card. Before-first and untimed active lanes open their recording
+explicitly at the first frame without attaching a live desktop, then return to
+the same paused shared cursor. An actual HTTP 404 for the selected replay capture
+must expose Retry; recovery restores that exact capture without moving the cursor
+or substituting a different screenshot.
+Filtering, pinning and pagination must not change the full-study clock; opening a
+card must use its exact visible capture, and both return controls must restore the
+paused cursor and participant page. These are controlled renderer projections,
+not provider reconnection or participant-behavior proof. Exact captures are decoded
+and allowed to paint before visual evidence is retained.
 
 Four scrubber cases cover desktop/phone at 1×/2× pixel density. Each measures
 start, middle and end in light and dark themes: 24 rendered states. The check
