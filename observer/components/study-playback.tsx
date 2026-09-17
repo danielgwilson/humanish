@@ -18,7 +18,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
     <div className="study-playback-controls">
       <IconButton className="tbtn" label={playing ? "Pause study" : "Play study"} hint={playing ? "Pause study recording" : "Play all recorded participants"}
         disabled={duration <= 0 || unavailable} onClick={onToggle}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
-      <span className="study-playback-time" title="Study recording time">{reviewing && !unavailable ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
+      <span className="study-playback-time" title="Study recording time"><span>Study </span>{reviewing && !unavailable ? formatElapsed(elapsed) : "—"}<span> / {formatElapsed(duration)}</span></span>
       <div className="scrubwrap">
         <div className="scrub-track" aria-hidden="true"><div className="scrub-played" style={{ width: `${duration ? elapsed / duration * 100 : 0}%` }} /></div>
         <input className="scrub" type="range" aria-label="Seek study recording" min={0} max={Math.max(1, duration)} step={1}
