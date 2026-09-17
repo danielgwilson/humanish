@@ -232,6 +232,30 @@ async function readyStudyCard(page, id, source) {
   await image.scrollIntoViewIfNeeded();
   return readyCapture(image, source);
 }
+async function inspectCaptureAges(page) {
+  const measurements = await page.locator(".card-capture-age").evaluateAll((elements) => elements.map((element) => {
+    const range = document.createRange(); range.selectNodeContents(element);
+    const text = range.getBoundingClientRect(), box = element.getBoundingClientRect();
+    const caption = element.closest(".card-caption").getBoundingClientRect();
+    const identity = element.closest(".card-identity").getBoundingClientRect();
+    const clippingAncestors = [];
+    for (let parent = element.parentElement; parent && !parent.matches(".card"); parent = parent.parentElement) {
+      const css = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+      if ((["hidden", "clip"].includes(css.overflowX) && (text.left < bounds.left - 1 || text.right > bounds.right + 1))
+        || (["hidden", "clip"].includes(css.overflowY) && (text.top < bounds.top - 1 || text.bottom > bounds.bottom + 1))) clippingAncestors.push(parent.className);
+    }
+    return { text: element.textContent, paintedText: text.toJSON(), box: box.toJSON(), caption: caption.toJSON(), identity: identity.toJSON(),
+      clippingAncestors, hidden: getComputedStyle(element).visibility !== "visible" || Number(getComputedStyle(element).opacity) !== 1 };
+  }));
+  assert(measurements.length > 0, "Capture age is not separately readable");
+  for (const value of measurements) {
+    assert(value.paintedText.width > 0 && value.paintedText.height > 0 && !value.hidden, "Capture age is not visibly rendered");
+    for (const bounds of [value.box, value.caption, value.identity]) assert(value.paintedText.left >= bounds.left - 1 && value.paintedText.right <= bounds.right + 1
+      && value.paintedText.top >= bounds.top - 1 && value.paintedText.bottom <= bounds.bottom + 1, `Capture age is clipped: ${JSON.stringify(value)}`);
+    assert.deepEqual(value.clippingAncestors, [], "An ancestor clips the visible capture age");
+  }
+  return measurements;
+}
 function setCaptureTimes(stream, offsets) {
   const trace = stream.actor ?? stream.liveActor;
   trace.items.filter((item) => item.kind === "screenshot").forEach((item, index) => {
@@ -458,7 +482,14 @@ try {
     await seekStudy(page, 3000);
     record.checks.sharedCaptures = [await readyStudyCard(page, "lane-1", "portrait-2.png"), await readyStudyCard(page, "lane-2", "landscape-2.png")];
     assertFullFrames(await inspectImages(page.locator(".card img.keyframe")));
+    record.checks.readableCaptureAges = await inspectCaptureAges(page);
+    if (phone) { await studyCard(page, "lane-2").scrollIntoViewIfNeeded(); await snap("complete-second-card-and-age"); }
     await page.locator(".study-playback").scrollIntoViewIfNeeded(); await snap("two-participants-at-shared-time");
+    const clippedAge = await page.addStyleTag({ content: ".card-capture-age { width:8px !important; max-width:8px !important; overflow:hidden !important }" });
+    let clippedAgeRejected = false; try { await inspectCaptureAges(page); } catch { clippedAgeRejected = true; }
+    assert(clippedAgeRejected, "Capture-age guard accepted deliberately clipped text");
+    record.checks.clippedAgeRejected = clippedAgeRejected;
+    await clippedAge.evaluate((element) => element.remove()); await inspectCaptureAges(page);
     record.checks.paintedStates = [];
     for (const theme of ["light", "dark"]) {
       await page.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
@@ -492,11 +523,11 @@ try {
     record.checks.width = await pageWidth(page); assert(record.checks.width.page <= record.checks.width.viewport + 1);
     await snap("restored-study-transport");
   });
-  await runCase("grid-playback-coverage", { frames: 3, laneCount: 4, prepare() {
+  await runCase("grid-playback-coverage", { frames: 3, laneCount: 4, running: true, live: true, prepare() {
     setCaptureTimes(data.streams[0], [0, 10_000, 30_000]);
     setCaptureTimes(data.streams[1], [5000, 15_000, 25_000]);
-    for (const item of data.streams[2].actor.items) delete item.at;
-    data.streams[3].actor.items = data.streams[3].actor.items.filter((item) => !item.screenshotRef);
+    for (const item of data.streams[2].liveActor.items) delete item.at;
+    data.streams[3].liveActor.items = data.streams[3].liveActor.items.filter((item) => !item.screenshotRef);
   } }, async ({ page, record, snap }) => {
     await seekStudy(page, 2000);
     assert.equal(await studyCard(page, "lane-2").locator("img.keyframe").count(), 0, "A later participant borrowed a future capture");
@@ -505,8 +536,34 @@ try {
     assert.match(await studyCard(page, "lane-3").innerText(), /unknown|unavailable|not recorded/i);
     assert.match(await studyCard(page, "lane-4").innerText(), /no (?:recorded )?(?:captures|screenshots)|no captured screens|no visual|unavailable/i);
     await readyStudyCard(page, "lane-1", "portrait-1.png"); await snap("before-and-unknown-coverage");
+    record.checks.unalignedRecordingOpen = [];
+    for (const [id, image] of [["lane-2", "landscape-1.png"], ["lane-3", "portrait-1.png"]]) {
+      await studyCard(page, id).getByRole("button", { name: /^Open recording from start for / }).click();
+      await page.locator(".player").waitFor();
+      assert.match(page.url(), new RegExp(`#/lane/${id}/f/1(?:/|$|\\?)`), "A card outside known coverage did not open the recording's first frame");
+      await readyCapture(page.locator(".stage-box img").first(), image);
+      assert.equal(await page.locator(".player iframe").count(), 0, "Opening a coverage gap silently connected to the live desktop");
+      await snap(`${id}-explicit-recording-start`);
+      await page.getByRole("button", { name: "Back to participants", exact: true }).click();
+      await studySlider(page).waitFor();
+      assert.equal(await studySlider(page).inputValue(), "2000", "Returning from an unaligned lane changed the shared cursor");
+      await page.getByRole("button", { name: "Play study", exact: true }).waitFor();
+      assert.equal(await page.locator(".thumb iframe").count(), 0);
+      assert.equal(await studyCard(page, id).locator("img.keyframe").count(), 0, "Returning fabricated shared-time coverage");
+      record.checks.unalignedRecordingOpen.push({ id, frame: 0, returnedCursor: 2000, liveConnection: false });
+    }
+    imageModes.set("/screenshots/portrait-2.png", "missing");
     await seekStudy(page, 12_000);
+    await studyCard(page, "lane-1").getByText("Frame unavailable", { exact: true }).waitFor();
+    const failedRequest = requests.findLast((entry) => entry.path === "/screenshots/portrait-2.png" && entry.status === 404);
+    assert(failedRequest, "Missing replay frame did not issue a real failed HTTP request");
+    assert.equal(await studyCard(page, "lane-1").locator("img.keyframe").count(), 0, "Missing replay capture silently fell back to another image");
+    await snap("selected-replay-frame-missing"); imageModes.delete("/screenshots/portrait-2.png");
+    await studyCard(page, "lane-1").getByRole("button", { name: "Retry frame", exact: true }).click();
     await readyStudyCard(page, "lane-1", "portrait-2.png");
+    assert.equal(await studySlider(page).inputValue(), "12000", "Retry changed the selected study moment");
+    assert.equal(await page.locator(".thumb iframe").count(), 0, "Retry silently entered live mode");
+    record.checks.imageRetry = { actual404: true, restored: "portrait-2.png", cursor: 12_000 };
     await readyStudyCard(page, "lane-2", "landscape-1.png");
     const captions = await page.locator('.card[data-stream-id="lane-1"] .card-capture-time, .card[data-stream-id="lane-2"] .card-capture-time').allTextContents();
     assert.equal(captions.length, 2); assert.match(captions[0], /0:02|2s|2 s/); assert.match(captions[1], /0:07|7s|7 s/);
@@ -516,7 +573,7 @@ try {
     assert.match(after, /last|past|ended/i, "A held final capture was presented as contemporaneous coverage");
     record.checks.afterEnd = after; await snap("held-last-capture");
     // A dataset with no trustworthy capture timestamp cannot invent playback.
-    for (const stream of data.streams) for (const item of stream.actor.items) delete item.at;
+    for (const stream of data.streams) for (const item of stream.liveActor.items) delete item.at;
     await page.reload();
     assert(await studySlider(page).isDisabled(), "Unstamped evidence offered a fabricated seekable study clock");
     assert(await page.getByRole("button", { name: "Play study", exact: true }).isDisabled());

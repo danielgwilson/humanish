@@ -64,6 +64,13 @@ held final captures, missing timestamps and screenshot-free lanes. Desktop and
 end in both themes and reject a deliberately displaced track. Live fixtures must
 release every desktop iframe while replaying, preserve a paused cursor as evidence
 grows and restore the existing four-connection bound only after explicit follow.
+Rendered text-range measurements require capture ages to fit narrow portrait card
+captions and reject deliberately clipped ages; phone captures also show the
+complete lower card. Before-first and untimed active lanes open their recording
+explicitly at the first frame without attaching a live desktop, then return to
+the same paused shared cursor. An actual HTTP 404 for the selected replay capture
+must expose Retry; recovery restores that exact capture without moving the cursor
+or substituting a different screenshot.
 Filtering, pinning and pagination must not change the full-study clock; opening a
 card must use its exact visible capture, and both return controls must restore the
 paused cursor and participant page. These are controlled renderer projections,
