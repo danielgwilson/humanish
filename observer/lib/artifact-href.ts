@@ -1,4 +1,5 @@
 import type { ObserverStream } from "./observer-data";
+import { exportScreenshotHref } from "./export-assets";
 
 // Relative artifact hrefs resolve from observer/index.html, which sits one level under
 // the run root — the same containment rule the legacy client applies: run-root-relative
@@ -43,6 +44,7 @@ export function historyRunHref(runId: string): string | null {
  * export. Keep this separate from artifact links: SVG, HTML and arbitrary schemes
  * must never become navigable content through the screenshot exception. */
 export function screenshotHref(screenshotPath: string): string | null {
+  if (screenshotPath.startsWith("humanish-asset:")) return exportScreenshotHref(screenshotPath);
   if (/^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(screenshotPath)) {
     return screenshotPath;
   }
