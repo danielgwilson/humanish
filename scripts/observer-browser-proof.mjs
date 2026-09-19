@@ -180,17 +180,54 @@ async function pageWidth(page) {
 }
 async function assertClearGridScreens(page) {
   const screens = await page.locator(".card").evaluateAll((cards) => cards.map((card) => {
+    const cardBox = card.getBoundingClientRect(), cardCss = getComputedStyle(card);
     const area = card.querySelector(".card-preview").getBoundingClientRect();
     const screen = card.querySelector(".thumb").getBoundingClientRect();
-    const caption = card.querySelector(".card-caption").getBoundingClientRect();
+    const captionNode = card.querySelector(".card-caption"), caption = captionNode.getBoundingClientRect();
+    const contentWidth = cardBox.width - ["borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight"].reduce((sum, key) => sum + parseFloat(cardCss[key]), 0);
+    const narrow = captionNode.hasAttribute("data-direct-pin") && contentWidth <= 190;
+    const text = (selector) => {
+      const element = captionNode.querySelector(selector), range = document.createRange(); range.selectNodeContents(element);
+      const css = getComputedStyle(element);
+      return { value: element.textContent, box: element.getBoundingClientRect().toJSON(), painted: range.getBoundingClientRect().toJSON(),
+        visible: css.visibility === "visible" && Number(css.opacity) === 1 };
+    };
+    const controls = [...captionNode.querySelectorAll(".card-pin-toggle, .card-details-trigger")].map((element) => ({
+      label: element.getAttribute("aria-label"), box: element.getBoundingClientRect().toJSON(),
+    }));
     return { gutter: Math.abs(area.width - screen.width), left: Math.abs(area.left - screen.left),
-      captionBelow: caption.top >= area.bottom - 1, captionHeight: caption.height,
+      contentWidth, narrow, captionLimit: narrow ? 78 : 44, caption: caption.toJSON(),
+      captionBelow: caption.top >= area.bottom - 1, captionHeight: caption.height, footer: cardBox.height - area.height,
+      name: text(".card-name"), metadata: text(".card-outcome, .card-capture-time"), controls,
+      touch: matchMedia("(hover: none), (pointer: coarse)").matches,
       badgesOrControlsInScreen: card.querySelectorAll(".card-preview .th-pill, .card-preview .th-connection, .card-preview .icon-button").length };
   }));
   assert(screens.length > 0);
   for (const screen of screens) {
     assert(screen.gutter < 1 && screen.left < 1, "The card adds horizontal padding beside the captured screen");
-    assert(screen.captionBelow && screen.captionHeight <= 44, "Caption covers the screen or expanded the card footer");
+    // Only the approved <=190px direct-pin layout has three caption rows.
+    // All wider cards retain the one-row 44px caption and original preview.
+    assert(screen.captionBelow && screen.captionHeight <= screen.captionLimit && screen.footer <= screen.captionLimit + 2,
+      `Caption covers the screen or exceeds its ${screen.captionLimit}px limit: ${JSON.stringify(screen)}`);
+    const inside = (box) => box.width > 0 && box.height > 0 && box.left >= screen.caption.left - 1 && box.right <= screen.caption.right + 1
+      && box.top >= screen.caption.top - 1 && box.bottom <= screen.caption.bottom + 1;
+    const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+    for (const text of [screen.name, screen.metadata]) {
+      assert(text.visible && text.value.trim() && inside(text.box), "Participant text is hidden or outside its caption");
+      assert(text.painted.width > 0 && text.painted.height > 0 && text.painted.top >= text.box.top - 1 && text.painted.bottom <= text.box.bottom + 1,
+        "Participant text is vertically clipped");
+    }
+    assert(screen.name.box.height <= 21 && screen.metadata.box.height <= 15 && screen.name.box.bottom <= screen.metadata.box.top + 1,
+      "Participant name or metadata wraps or overlaps");
+    // Long labels may ellipsize, but metadata must use the available text row.
+    assert(screen.metadata.box.width >= Math.min(screen.metadata.painted.width, screen.name.box.width) - 1, "Participant metadata is unnecessarily clipped");
+    if (screen.narrow) for (const text of [screen.name, screen.metadata]) assert(Math.abs(text.box.width - screen.caption.width) <= 1, "Narrow participant text lost its full-width row");
+    for (const control of screen.controls) {
+      assert(inside(control.box), "A caption control is outside the card");
+      assert(!overlaps(control.box, screen.name.box) && !overlaps(control.box, screen.metadata.box), "A caption control overlaps participant text");
+      if (screen.touch) assert(control.box.width >= 44 && control.box.height >= 44, "A caption control misses its 44px touch target");
+    }
+    for (let index = 1; index < screen.controls.length; index += 1) assert(!overlaps(screen.controls[index - 1].box, screen.controls[index].box), "Caption controls overlap each other");
     assert.equal(screen.badgesOrControlsInScreen, 0, "UI chrome covers captured pixels");
   }
   return screens;
@@ -278,20 +315,24 @@ async function inspectCaptureAges(page) {
     const range = document.createRange(); range.selectNodeContents(element);
     const text = range.getBoundingClientRect(), box = element.getBoundingClientRect();
     const caption = element.closest(".card-caption").getBoundingClientRect();
-    const identity = element.closest(".card-identity").getBoundingClientRect();
+    const identityNode = element.closest(".card-identity"), identityDisplay = getComputedStyle(identityNode).display;
+    // display:contents has no CSS box. The age, its metadata row and the caption
+    // still have real boxes, and their painted text must remain unclipped.
+    const identity = identityDisplay === "contents" ? null : identityNode.getBoundingClientRect().toJSON();
     const clippingAncestors = [];
     for (let parent = element.parentElement; parent && !parent.matches(".card"); parent = parent.parentElement) {
       const css = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+      if (css.display === "contents") continue;
       if ((["hidden", "clip"].includes(css.overflowX) && (text.left < bounds.left - 1 || text.right > bounds.right + 1))
         || (["hidden", "clip"].includes(css.overflowY) && (text.top < bounds.top - 1 || text.bottom > bounds.bottom + 1))) clippingAncestors.push(parent.className);
     }
-    return { text: element.textContent, paintedText: text.toJSON(), box: box.toJSON(), caption: caption.toJSON(), identity: identity.toJSON(),
+    return { text: element.textContent, paintedText: text.toJSON(), box: box.toJSON(), caption: caption.toJSON(), identity, identityDisplay,
       clippingAncestors, hidden: getComputedStyle(element).visibility !== "visible" || Number(getComputedStyle(element).opacity) !== 1 };
   }));
   assert(measurements.length > 0, "Capture age is not separately readable");
   for (const value of measurements) {
     assert(value.paintedText.width > 0 && value.paintedText.height > 0 && !value.hidden, "Capture age is not visibly rendered");
-    for (const bounds of [value.box, value.caption, value.identity]) assert(value.paintedText.left >= bounds.left - 1 && value.paintedText.right <= bounds.right + 1
+    for (const bounds of [value.box, value.caption, value.identity].filter(Boolean)) assert(value.paintedText.left >= bounds.left - 1 && value.paintedText.right <= bounds.right + 1
       && value.paintedText.top >= bounds.top - 1 && value.paintedText.bottom <= bounds.bottom + 1, `Capture age is clipped: ${JSON.stringify(value)}`);
     assert.deepEqual(value.clippingAncestors, [], "An ancestor clips the visible capture age");
   }
@@ -417,11 +458,19 @@ try {
       record.checks.width = await pageWidth(page); await snap("complete-screens");
       assertFullFrames(record.checks.geometry);
       assert(record.checks.width.page <= record.checks.width.viewport + 1, "Grid page overflows horizontally");
-      record.checks.cardChrome = await page.locator(".card").evaluateAll((cards) => cards.map((card) => ({
-        footer: card.getBoundingClientRect().height - card.querySelector(".card-preview").getBoundingClientRect().height,
-        outcomeHeight: card.querySelector(".card-outcome").getBoundingClientRect().height,
-      })));
-      assert(record.checks.cardChrome.every((card) => card.footer <= 46 && card.outcomeHeight < 20), "Card footer grew or its outcome wrapped");
+      record.checks.cardChrome = await assertClearGridScreens(page);
+      record.checks.expandedCaptionRejected = [];
+      for (const narrow of [true, false]) {
+        const index = record.checks.cardChrome.findIndex((card) => card.narrow === narrow);
+        assert(index >= 0, "Caption proof needs both narrow and wide cards");
+        const caption = page.locator(".card").nth(index).locator(".card-caption");
+        await caption.evaluate((element, height) => { element.style.height = `${height}px`; }, narrow ? 90 : 78);
+        let rejected = false; try { await assertClearGridScreens(page); } catch { rejected = true; }
+        await caption.evaluate((element) => element.style.removeProperty("height"));
+        assert(rejected, `${narrow ? "Narrow" : "Wide"} caption guard accepted an expanded footer`);
+        record.checks.expandedCaptionRejected.push({ narrow, rejected });
+      }
+      await assertClearGridScreens(page);
       assert.equal(await page.getByLabel("Preview size").count(), 0, "View controls consume default grid space");
       const first = page.locator(".card").first(); await first.hover();
       await first.getByRole("button", { name: /^Participant details:/ }).click();
