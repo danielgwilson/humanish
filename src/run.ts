@@ -4971,11 +4971,20 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
       ok: true,
       message: "target directory exists"
     },
-    {
-      name: "package.json",
-      ok: await safeCheck(async () => await readImplicitProjectFile(projectRoot, "package.json") !== null),
-      message: "package.json is present and safe to read"
-    },
+    await (async () => {
+      try {
+        const contents = await readImplicitProjectFile(projectRoot, "package.json");
+        return {
+          name: "package.json",
+          ok: true,
+          message: contents === null
+            ? "package.json is absent; it is optional for Humanish, so npm-script integration is skipped"
+            : "package.json is present and safe to read"
+        };
+      } catch {
+        return { name: "package.json", ok: false, message: "package.json could not be safely read" };
+      }
+    })(),
     {
       name: "humanish source",
       ok: await safeCheck(() => implicitProjectDirectoryExists(projectRoot, "humanish")),
