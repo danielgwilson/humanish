@@ -57,7 +57,8 @@ import {
 import { probeKeySources } from "./key-resolution.js";
 import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
 import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui-contract.js";
-import { detectLocalAgents, localAgentDoctorMessage } from "./local-agent-cli.js";
+import { detectLocalAgents, localAgentDoctorMessage, type DetectLocalAgentsOptions } from "./local-agent-cli.js";
+import { labSetupChecks } from "./doctor-lab.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,
@@ -4926,7 +4927,7 @@ async function installedDesktopSdkVersion(): Promise<string | undefined> {
   }
 }
 
-export async function doctor(cwdInput: string): Promise<DoctorResult> {
+export async function doctor(cwdInput: string, options: { lab?: string; env?: NodeJS.ProcessEnv; localAgents?: DetectLocalAgentsOptions } = {}): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
   const cwdOk = await validateCwd(cwd).then((error) => error === null).catch(() => false);
   if (!cwdOk) {
@@ -4959,7 +4960,12 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
       return false;
     }
   };
-  const checks = [
+  const env = options.env ?? process.env;
+  const agents = await detectLocalAgents({ ...options.localAgents, env });
+  const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"], { cwd, env });
+  const setup = options.lab ? await labSetupChecks({ cwd, lab: options.lab, env, agents,
+    keyPresent: name => probes.some(probe => probe.name === name && probe.source !== null) }) : undefined;
+  const checks: DoctorResult["checks"] = [
     {
       name: "target cwd",
       ok: true,
@@ -4997,9 +5003,10 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
       const advisory = desktopSdkAdvisory(version);
       return {
         name: "e2b desktop sdk",
-        ok: present,
+        ok: present || setup?.desktop === false,
         message: present
-          ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; live desktop lanes can launch${advisory === undefined ? "" : `. ${advisory}`}`
+          ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
+          : setup?.desktop === false ? "optional peer @e2b/desktop is absent; not required by the selected route"
           : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
       };
     })(),
@@ -5033,32 +5040,29 @@ export async function doctor(cwdInput: string): Promise<DoctorResult> {
     // "go make an API key" is where most people trying humanish stop, and a developer very often
     // already has one of these signed in.
     ...await (async () => {
-      const found = await detectLocalAgents();
-      return [{ name: "local agents", ok: true, message: localAgentDoctorMessage(found) }];
+      return [{ name: "local agents", ok: true, message: localAgentDoctorMessage(agents) }];
     })(),
     // Provider-key discovery (#436): which source supplies each live-run key, through the same
     // chain a live command resolves (env/--env-file, project overlay, vendor stores, the
     // humanish user store). Values never appear; sources and fill commands do.
     ...await (async () => {
-      const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN"], {
-        cwd,
-        env: process.env
-      });
       return probes.map((probe) => {
         const present = probe.source !== null;
         // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
-        const required = probe.name !== "GH_TOKEN";
+        const required = setup ? setup.keys.includes(probe.name) : probe.name === "E2B_API_KEY"
+          || probe.name === "OPENAI_API_KEY" && !agents.some(agent => agent.authStatus === "authenticated");
         return {
           name: `key ${probe.name}`,
           ok: present || !required,
           message: present
-            ? `supplied by ${probe.source}`
+            ? `supplied by ${probe.source}; presence only, validity not tested`
             : required
               ? `missing from every source — ${probe.hint}`
-              : `missing (needed only for private clone subjects) — ${probe.hint}`
+              : `not required for ${setup ? "the selected participant route" : "every route"}; ${probe.hint}`
         };
       });
-    })()
+    })(),
+    ...(setup?.checks ?? [{ name: "setup route", ok: true, message: "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness." }])
   ];
 
   return {

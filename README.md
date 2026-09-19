@@ -36,19 +36,34 @@ npx humanish init --yes
 Humanish so the CLI can resolve it; a one-shot `npx humanish@latest` can miss the
 peer. The keyless preview needs only `humanish`.
 
-**Run a live study.** Set the desktop and model keys with hidden prompts, then
+Choose how the participant runs:
+
+| Route | Participant authentication | Desktop | Automatic findings |
+| --- | --- | --- | --- |
+| `first-run` preview | None; synthetic evidence only | None | No model analysis |
+| `openai-computer-use` | `OPENAI_API_KEY` | `E2B_API_KEY` + desktop SDK | Separate OpenAI request |
+| [`local-agent`](https://humanish.dev/docs/local-agents) | Codex or Claude Code's own login | `E2B_API_KEY` + desktop SDK | Still needs `OPENAI_API_KEY`; skipped without it |
+
+A Codex ChatGPT login can power a `local-agent` participant. It does not
+authenticate Humanish's OpenAI API requests. Choose the actor explicitly in
+your lab; installing Codex does not change an `openai-computer-use` lab.
+
+**Run a live study with the API route.** Set the desktop and model keys with hidden prompts, then
 send one synthetic participant into the included drawDB study:
 
 ```bash
 npx humanish keys set e2b
 npx humanish keys set openai
-npx humanish doctor
+npx humanish doctor --lab try-live
 npx humanish lab preflight try-live
 npx humanish run try-live
 npx humanish observe --run latest --open
 ```
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work.
+`doctor --lab` checks the selected route's local setup without launching a
+desktop or making a model request. It reports key presence, not remote key
+validity, model access, or quota. `lab preflight` checks manifest metadata by default.
 `try-live` clones and studies drawDB, not your project. Its **$2 cap covers
 estimated participant model spend**. Post-run analysis defaults to a separate
 **$3 admission estimate limit**; set `review.analysis: false` to disable it.
@@ -175,7 +190,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 | Command | Purpose |
 | --- | --- |
 | `humanish init --yes` | Scaffold study source and ignored runtime state. |
-| `humanish doctor --json` | Check setup without exposing key values. |
+| `humanish doctor --lab <lab> --json` | Check the selected route's setup without exposing key values or spending. |
 | `humanish lab list --json` | List available labs. |
 | `humanish lab inspect <lab> --json` | Read a lab before running it. |
 | `humanish lab preflight <lab> --json` | Check configuration and route warnings. |

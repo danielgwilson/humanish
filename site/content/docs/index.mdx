@@ -23,15 +23,25 @@ npx humanish init --yes
 
 ## Connect a desktop and a model
 
-A live run uses E2B for the desktop and OpenAI for the default participant. Set your keys with the hidden prompts:
+A live run needs both a desktop and a participant model. Automatic findings use a separate analysis request:
+
+| Route | Participant model | Desktop | Automatic findings |
+| --- | --- | --- | --- |
+| `openai-computer-use` | OpenAI API with `OPENAI_API_KEY` | `E2B_API_KEY` and `@e2b/desktop` | OpenAI API, separate budget |
+| [`local-agent`](/docs/local-agents) | Your signed-in Codex or Claude Code | `E2B_API_KEY` and `@e2b/desktop` | Still needs `OPENAI_API_KEY`; skipped without it |
+| `first-run` preview | None; synthetic evidence only | None | None |
+
+Codex's ChatGPT login and an OpenAI API key are separate authentication paths. A local login only applies when the lab chooses `type: local-agent`; it does not authorize the default API participant or analysis.
+
+For the default API route, set your keys with the hidden prompts:
 
 ```bash
 npx humanish keys set e2b
 npx humanish keys set openai
-npx humanish doctor
+npx humanish doctor --lab try-live
 ```
 
-Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work. `doctor` reports what it found without printing values. See [budgets and privacy](/docs/budgets-and-privacy) for storage, costs, and using a signed-in local coding agent.
+Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work. If you use a local env file, pass the same `--env-file <path>` to `doctor` and `run`. `doctor --lab` checks the selected route without creating a desktop or making a model request. It reports key presence and CLI-reported login status without printing credentials or account details; remote key validity, model access and quota remain untested. See [budgets and privacy](/docs/budgets-and-privacy) for storage and costs.
 
 ## Run a live study
 
@@ -47,7 +57,7 @@ Allow a few minutes for the app to build and the participant to work. The lab se
 
 For context, three fresh installs measured on September 1, 2026 completed this study in 108–111 seconds at about $0.16 per run. Those are [dated observations](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md), not a promise about your next run.
 
-`preflight` checks configuration by default. It does not prove the app will build or complete a task. A participant who gets stuck can still produce the most useful result: a concrete place to investigate.
+`preflight` checks configuration metadata by default; it does not check credentials, installed dependencies or target reachability. Use `doctor --lab` for local setup. Neither check proves the app will build or complete a task. A participant who gets stuck can still produce the most useful result: a concrete place to investigate.
 
 ## Read the result
 

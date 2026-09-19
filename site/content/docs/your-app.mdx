@@ -43,6 +43,8 @@ defaults:
 
 This sends one participant into your deployed app. For a second observation, reset the test data or use a separate test account, then run the lab again. Keep both run IDs so the first result is not lost behind `latest`.
 
+This example uses `OPENAI_API_KEY` for the participant and `E2B_API_KEY` for the desktop. To use your Codex or Claude Code login for the participant, replace the actor with the [local-agent fragment](/docs/local-agents). Automatic findings still require an OpenAI API key and are skipped without it.
+
 A single public URL is limited to one participant per independent-world run. A simultaneous multi-user study needs the explicit shared-world route. To give multiple newcomers separate copies of the app, use the clone route below.
 
 The `$4` participant-model budget and `$2` per-participant backstop are checked for each run; budgets do not carry across separate invocations. E2B desktop time is additional. Supported live studies also run analysis on completion by default, with a separate `$3` analysis budget. See [budget limits](/docs/budgets-and-privacy#set-a-study-budget) for caps and opt-outs.
@@ -51,11 +53,14 @@ Keep the mission in the participant's language. “Create a project and find it 
 
 ## Check, then run
 
-Inspecting the lab checks its configuration without creating a hosted desktop or calling a model:
+Inspect the lab, then check the selected route's local setup. These commands create no desktop and make no model request:
 
 ```bash
 npx humanish lab inspect .humanish/labs/your-app.yaml
+npx humanish doctor --lab .humanish/labs/your-app.yaml
 ```
+
+`doctor` distinguishes the participant's authentication from desktop access and post-run analysis. It does not validate provider credentials remotely or confirm model access and quota. When using `--env-file <path>`, pass it to both `doctor` and the run command.
 
 Next, check whether a hosted desktop can reach the preview. This requires `E2B_API_KEY`, creates one E2B desktop and incurs desktop time. It makes no model calls and shuts down the probe desktop afterwards:
 

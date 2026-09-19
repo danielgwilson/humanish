@@ -37,7 +37,7 @@ export interface LocalAgentDescriptor {
   bin: string;
   /** For humans: "Codex (ChatGPT plan)". */
   label: string;
-  /** Where its credentials live, so `doctor` can say "signed in" without reading the file. */
+  /** Legacy file location; existence is a hint, never an authentication verdict. */
   credentialPath: string;
 }
 
@@ -369,10 +369,11 @@ export interface DetectedLocalAgent extends LocalAgentDescriptor {
   binPath: string;
   /**
    * Whether a credential file exists for it. EXISTENCE ONLY — never read, never parsed, never
-   * reported beyond this boolean. "signed in somewhere" is all doctor needs to say, and it is all
-   * we are entitled to know.
+   * reported beyond this boolean. Keyring storage may have no file at all.
    */
   credentialsPresent: boolean;
+  /** CLI-reported local status, not a provider request or account-validity test. */
+  authStatus: "authenticated" | "unauthenticated" | "unknown";
 }
 
 export interface DetectLocalAgentsOptions {
@@ -381,6 +382,47 @@ export interface DetectLocalAgentsOptions {
   /** Injected for tests: does this path exist? */
   exists?: (file: string) => Promise<boolean>;
   home?: string;
+  env?: NodeJS.ProcessEnv;
+  /** Status output is classified in memory and never returned or persisted. */
+  authProbe?: (bin: string, args: readonly string[], env: NodeJS.ProcessEnv) => Promise<SpawnResult>;
+}
+
+/** No shell, prompts or model request. Bound time and output even for a broken CLI. */
+async function authProbe(bin: string, args: readonly string[], env: NodeJS.ProcessEnv): Promise<SpawnResult> {
+  return await new Promise((resolve) => {
+    const child = spawn(bin, [...args], { cwd: tmpdir(), env, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "", stderr = "", bytes = 0, settled = false;
+    const finish = (result: SpawnResult) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); resolve(result);
+    };
+    const stop = () => {
+      child.kill("SIGKILL"); child.stdout.destroy(); child.stderr.destroy();
+      finish({ code: null, stdout: "", stderr: "" });
+    };
+    const timer = setTimeout(stop, 5_000);
+    child.stdout.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > 64 * 1024) stop(); else stdout += chunk.toString("utf8"); });
+    child.stderr.on("data", (chunk: Buffer) => { bytes += chunk.length; if (bytes > 64 * 1024) stop(); else stderr += chunk.toString("utf8"); });
+    child.on("error", () => finish({ code: null, stdout: "", stderr: "" }));
+    child.on("close", code => finish({ code, stdout, stderr }));
+  });
+}
+
+function classifyAuth(agent: LocalAgentId, result: SpawnResult): DetectedLocalAgent["authStatus"] {
+  if (agent === "codex") {
+    const text = `${result.stdout}\n${result.stderr}`;
+    if (result.code === 0 && /^Logged in\b/m.test(text)) return "authenticated";
+    if (result.code === 1 && /^Not logged in\s*$/m.test(text)) return "unauthenticated";
+  } else {
+    try {
+      const value: unknown = JSON.parse(result.stdout);
+      if (value && typeof value === "object" && "loggedIn" in value) {
+        if (value.loggedIn === true && result.code === 0) return "authenticated";
+        if (value.loggedIn === false && result.code === 1) return "unauthenticated";
+      }
+    } catch { /* Old CLI, invalid config or unsupported status command: unknown. */ }
+  }
+  return "unknown";
 }
 
 /**
@@ -392,14 +434,15 @@ export interface DetectLocalAgentsOptions {
  * it just needs a key.
  */
 export async function detectLocalAgents(options: DetectLocalAgentsOptions = {}): Promise<DetectedLocalAgent[]> {
-  const home = options.home ?? process.env.HOME ?? "";
+  const env = options.env ?? process.env;
+  const home = options.home ?? env.HOME ?? "";
   const which = options.which ?? (async (bin: string) => {
-    const found = await defaultSpawn("sh", ["-lc", `command -v ${bin} 2>/dev/null || true`], {
-      cwd: home || ".",
-      timeoutMs: 10_000
-    });
-    const resolved = found.stdout.trim().split("\n")[0]?.trim();
-    return resolved !== undefined && resolved.length > 0 ? resolved : undefined;
+    const { access, constants } = await import("node:fs/promises");
+    for (const directory of (env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+      const candidate = path.resolve(directory, bin);
+      if (await access(candidate, constants.X_OK).then(() => true).catch(() => false)) return candidate;
+    }
+    return undefined;
   });
   const exists = options.exists ?? (async (file: string) => {
     const { access } = await import("node:fs/promises");
@@ -410,10 +453,16 @@ export async function detectLocalAgents(options: DetectLocalAgentsOptions = {}):
   for (const descriptor of LOCAL_AGENTS) {
     const binPath = await which(descriptor.bin);
     if (binPath === undefined) continue;
+    const file = descriptor.id === "codex" && env.CODEX_HOME
+      ? path.join(env.CODEX_HOME, "auth.json") : descriptor.id === "claude" && env.CLAUDE_CONFIG_DIR
+        ? path.join(env.CLAUDE_CONFIG_DIR, ".credentials.json") : path.join(home, descriptor.credentialPath);
+    const status = await (options.authProbe ?? authProbe)(binPath, descriptor.id === "codex" ? ["login", "status"] : ["auth", "status"], env)
+      .then(result => classifyAuth(descriptor.id, result)).catch(() => "unknown" as const);
     found.push({
       ...descriptor,
       binPath,
-      credentialsPresent: home.length > 0 && (await exists(path.join(home, descriptor.credentialPath)))
+      credentialsPresent: (await exists(file).catch(() => false)),
+      authStatus: status
     });
   }
   return found;
@@ -422,13 +471,11 @@ export async function detectLocalAgents(options: DetectLocalAgentsOptions = {}):
 /** One line for `doctor`, in the register the other rows use. */
 export function localAgentDoctorMessage(found: readonly DetectedLocalAgent[]): string {
   if (found.length === 0) {
-    return "no local coding agent found — a live run needs a provider API key (`humanish keys set openai`)";
+    return "no local coding agent found — openai-computer-use needs OPENAI_API_KEY; local-agent needs Codex or Claude Code installed and authenticated. Hosted desktops also need E2B_API_KEY.";
   }
-  const ready = found.filter((agent) => agent.credentialsPresent);
-  if (ready.length === 0) {
-    const names = found.map((agent) => agent.label).join(", ");
-    return `${names} installed but not signed in — sign in, or use a provider API key`;
-  }
-  const names = ready.map((agent) => agent.label).join(", ");
-  return `${names} signed in — a live run can use ${ready.length === 1 ? "it" : "one"} instead of a provider API key (actors[0].type: local-agent)`;
+  return found.map(agent => agent.authStatus === "authenticated"
+    ? `${agent.label} reports authenticated — actors[0].type: local-agent can use it instead of a provider API key; account access and limits are untested`
+    : agent.authStatus === "unauthenticated" ? `${agent.label} reports not signed in — run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``
+      : `${agent.label} installed; authentication status could not be checked — run \`${agent.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed`).join(". ")
+    + ". Local-agent still needs E2B_API_KEY; post-run analysis separately needs OPENAI_API_KEY.";
 }

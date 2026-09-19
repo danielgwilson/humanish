@@ -69,7 +69,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   if (!env.hasE2bKey) {
     steps.push({
       command: "humanish keys set e2b",
-      why: "a live study needs a sandbox to run in; this is the only credential it always needs"
+      why: "the starter live study needs an E2B desktop; its participant also needs an API key or an authenticated local coding agent"
     });
     return steps;
   }
@@ -91,13 +91,14 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
       command,
       why: `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}`
         + (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)")
+        + (!env.hasProviderKey ? "; automatic findings analysis is skipped without OPENAI_API_KEY" : "")
     });
     return steps;
   }
 
   steps.push({
     command: "humanish keys set openai",
-    why: "a live study needs a model to think with — or sign in to Codex or Claude Code and humanish will use that instead"
+    why: "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the lab to actors[0].type: local-agent"
   });
   return steps;
 }
@@ -131,10 +132,10 @@ export function agentsSection(): string {
     "This project uses humanish: synthetic participants use the product and leave evidence.",
     "",
     "```bash",
-    "humanish doctor            # what is configured, and what a live run still needs",
+    "humanish doctor --lab try-live  # requirements for the selected participant and analysis",
     "humanish lab list --json   # the studies in this project",
     "humanish run first-run     # evidence preview only: no browser, model, keys, or spend",
-    "humanish run try-live      # a REAL study against a demo app (needs E2B_API_KEY)",
+    "humanish run try-live      # demo app study: E2B plus the selected participant's authentication",
     "humanish verify --run latest --json   # is the evidence share-safe",
     "```",
     "",

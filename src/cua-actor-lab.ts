@@ -4013,10 +4013,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       // where most people trying humanish stop.
       const suggestion = missingKeys.includes("OPENAI_API_KEY")
         ? await (async () => {
-            const ready = (await detectLocalAgents()).filter((agent) => agent.credentialsPresent);
+            const ready = (await detectLocalAgents({ env })).filter((agent) => agent.authStatus === "authenticated");
             return ready.length === 0
               ? ""
-              : ` You have ${ready.map((agent) => agent.label).join(" and ")} signed in on this machine`
+              : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine`
                 + ` — set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
           })()
         : "";
@@ -4029,7 +4029,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (localAgentRoute) {
       // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
       // machine is paid for is the same information delivered at the worst possible moment.
-      const available = await detectLocalAgents();
+      const available = await detectLocalAgents({ env });
       const chosen = available.find((agent) => agent.id === preferredLocalAgent);
       if (chosen === undefined) {
         return fail(
@@ -4039,11 +4039,12 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
           descriptor.id
         );
       }
-      if (!chosen.credentialsPresent) {
+      if (chosen.authStatus !== "authenticated") {
         return fail(
           "HUMANISH_CUA_LAB_KEYS_MISSING",
-          `${chosen.label} is installed but not signed in — run \`${chosen.bin}\` once to log in. `
-            + "humanish never reads its credentials; it only checks that the file exists.",
+          chosen.authStatus === "unauthenticated"
+            ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
+            : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
           descriptor.id
         );
       }

@@ -619,9 +619,12 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
     .description("Explain project readiness and missing Humanish setup.")
     .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--lab <lab>", "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.")
+    .option("--env-file <path>", "Load a local env file for these setup checks without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean }, command) => {
-      const result = await doctor(options.cwd);
+    .action(async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {
+      if (options.envFile && !await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      const result = await doctor(options.cwd, options.lab ? { lab: options.lab } : {});
       writeResult(command, io, result, formatDoctorHuman);
       // Behavioral change: was exit 1, every other structured command uses 2.
       io.setExitCode(result.ok ? 0 : 2);
@@ -2377,7 +2380,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("preflight")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Check a lab manifest and optional target reachability before actor/model spend.")
+    .description("Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.")
     .option("--cwd <path>", "Target project directory.", ".")
     .addOption(new Option("--reachability <mode>", "Reachability mode.").choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"]).default("metadata"))
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))

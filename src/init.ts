@@ -274,18 +274,16 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
 }
 
 /**
- * What to tell the operator (or the agent acting for them) to do next. Credential PRESENCE only —
- * no value is read, and the local-agent check asks whether a credential file exists, never what is
- * in it.
+ * What to tell the operator next. Local CLI status is classified without returning
+ * its output or reading its credential file; provider keys are checked for presence.
  */
 async function resolveFirstRunGuidance(env: NodeJS.ProcessEnv): Promise<string[]> {
   return firstRunGuidance(await firstRunEnvironment(env));
 }
 
-/** Credential PRESENCE only. No value is read, and the local-agent check asks whether a file
- *  exists, never what is in it. */
+/** Local authentication status is not a fresh provider/account-validity test. */
 async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvironment> {
-  const agents = await detectLocalAgents().catch(() => []);
+  const agents = await detectLocalAgents({ env }).catch(() => []);
   let hasDesktopSdk = false;
   try {
     // Resolution from the PROJECT, not from wherever humanish itself lives.
@@ -302,7 +300,7 @@ async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvi
     hasDesktopSdk,
     hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
     hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
-    localAgents: agents.filter((agent) => agent.credentialsPresent).map((agent) => agent.label)
+    localAgents: agents.filter((agent) => agent.authStatus === "authenticated").map((agent) => agent.label)
   };
 }
 
