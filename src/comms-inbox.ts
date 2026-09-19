@@ -213,6 +213,7 @@ function renderEmailImages(html: string, message: CommsMessage, originMap: Origi
 const PAGE_CSS =
   "body{font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;background:#fff;margin:0}" +
   "a{color:#0645ad}" +
+  ".bar,.hdr{overflow-wrap:anywhere}" +
   ".bar{padding:10px 20px;background:#f4f4f4;border-bottom:1px solid #ccc;font-size:14px}" +
   ".hdr{padding:16px 20px;border-bottom:3px solid #111}" +
   ".hdr div{margin:2px 0}.hdr b{display:inline-block;min-width:72px;color:#444;font-weight:600}" +

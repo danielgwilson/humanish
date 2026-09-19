@@ -23,6 +23,9 @@ const ports: number[] = [];
 while (ports.length < 3) { const port = await freePort(); if (!ports.includes(port)) ports.push(port); }
 const [port, inboxPort, smtpPort] = ports;
 const base = `http://127.0.0.1:${inboxPort}`;
+const longAddress = "fictional.participant.with.a.long.but.valid.name@example.test";
+const longSender = "fictional.sender.with.another.long.but.valid.name@example.test";
+const longSubject = "FictionalInvitationWithALongUnbrokenSubjectThatMustRemainReadableOnAPhone";
 const deliveriesPath = path.join(output, "deliveries.ndjson");
 const surfaceDir = path.join(output, "surface");
 const catchPath = path.join(output, "catch.py");
@@ -64,7 +67,8 @@ m.get_payload()[1].add_related(base64.b64decode('${bytes.toString("base64")}'),m
 with smtplib.SMTP('127.0.0.1',int(sys.argv[1])) as s:s.send_message(m)
 `, String(smtpPort)]);
   assert((await fetch(`http://127.0.0.1:${port}/emails`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from: "sender@example.test", to: ["grace@example.test"], subject: "Grace private update", html: "<h1>Grace private update</h1><p>Grace-only code: 918273.</p>" }) })).ok);
-  await renderInboxSurfaceLocally({ deliveriesPath, surfaceDir, recipients: ["ada@example.test", "grace@example.test", "empty@example.test"] });
+  assert((await fetch(`http://127.0.0.1:${port}/emails`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from: longSender, to: [longAddress], subject: longSubject, html: "<p>Fictional long-header message.</p>" }) })).ok);
+  await renderInboxSurfaceLocally({ deliveriesPath, surfaceDir, recipients: ["ada@example.test", "grace@example.test", "empty@example.test", longAddress] });
   proof.readOnlyDrainStatus = (await fetch(`${base}/deliveries`, { headers: { authorization: "Bearer proof-drain-token" } })).status;
   proof.privateDrainWithoutToken = (await fetch(`http://127.0.0.1:${port}/deliveries`)).status;
   const adaScope = scope("ada@example.test"), graceScope = scope("grace@example.test");
@@ -105,6 +109,16 @@ with smtplib.SMTP('127.0.0.1',int(sys.argv[1])) as s:s.send_message(m)
       assert(new URL(page.url()).pathname.startsWith(adaScope + "/"));
       await page.getByRole("link", { name: /Inbox/ }).click();
       assert.equal(new URL(page.url()).pathname, adaScope);
+      if (phone) {
+        await page.goto(base + scope(longAddress));
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Long inbox identity overflows phone");
+        await page.screenshot({ path: path.join(output, "phone-long-inbox.png"), fullPage: true });
+        await page.getByRole("link", { name: longSubject, exact: true }).click();
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Long message headers overflow phone");
+        assert((await page.locator(".hdr").innerText()).includes(longSender));
+        await page.screenshot({ path: path.join(output, "phone-long-message.png"), fullPage: true });
+        proof.longPhoneHeadersFit = true;
+      }
     }
     await context.close();
   }
