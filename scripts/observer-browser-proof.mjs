@@ -853,12 +853,14 @@ try {
     await openLane(page);
     await page.getByRole("button", { name: "Previous frame", exact: true }).click();
     await page.getByRole("button", { name: "Next frame", exact: true }).click();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-4.png");
     record.checks.before = await displayedFrame(page); await snap("paused-newest");
     const before = pollCount; appendFrame(data);
-    await until(() => pollCount > before, "No snapshot poll after append"); await wait(400);
+    await until(() => pollCount > before, "No snapshot poll after append");
+    await until(async () => Number(await studySlider(page).getAttribute("max")) === 28_000, "Appended capture was not committed to the shared timeline");
     record.checks.after = await displayedFrame(page); record.checks.controls = (await stateProof(page)).controls;
     assert.equal(record.checks.after, record.checks.before, "Paused last frame advanced with incoming evidence");
-    assert(record.checks.controls.some((control) => Number(control.max) > 3), "New timeline was not received");
+    assert.equal(Number(await studySlider(page).inputValue()), 21_000, "Appended evidence moved the paused study cursor");
     await snap("paused-after-growth");
   });
   await runCase("same-lane-route", {}, async ({ page, record, snap }) => {
@@ -1119,10 +1121,13 @@ try {
     await openLane(page);
     const next = page.getByRole("button", { name: "Next frame", exact: true });
     await next.focus(); await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
-    await page.locator(".observer-tooltip").getByText("Next frame", { exact: true }).waitFor();
+    const nextHint = page.locator(".observer-tooltip").filter({ hasText: /^Next frame$/ });
+    await nextHint.waitFor();
     const route = page.url(), before = await displayedFrame(page);
     await page.keyboard.press("Escape");
-    await page.locator(".observer-tooltip").waitFor({ state: "hidden" });
+    // A previously focused control's tooltip can still be animating closed.
+    // Verify the current hint without assuming closing portals are unique.
+    await nextHint.waitFor({ state: "hidden" });
     assert.equal(page.url(), route, "Dismissing a tooltip navigated away from the player");
     assert.equal(await displayedFrame(page), before, "Dismissing a tooltip changed the frame");
     assert(await next.evaluate((button) => button === document.activeElement), "Tooltip dismissal lost focus");
