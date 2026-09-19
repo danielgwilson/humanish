@@ -7,6 +7,7 @@ import { formatElapsed } from "@/lib/player-model";
 import { useDecodedImage } from "@/lib/use-decoded-image";
 import { completionLabel, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
+import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
 import { ParticipantAssignment } from "./participant-assignment";
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
@@ -70,12 +71,16 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
       </div>
     </div>
     {pending ? <p className="capture-loading" role="status">Loading selected capture…{capture.decoded ? " Previous capture shown." : ""}</p> : null}
-    <div className="card-caption">
-      {pinned ? <span className="card-pin" role="img" aria-label="Pinned participant" title="Pinned participant"><ReviewIcon name="pin" /></span> : null}
+    <div className="card-caption" data-direct-pin={onPin ? "" : undefined}>
+      {pinned && !onPin ? <span className="card-pin" role="img" aria-label="Pinned participant" title="Pinned participant"><ReviewIcon name="pin" /></span> : null}
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
         {replay ? <span className="card-capture-time" title={pending ? `Loading the selected capture.${capture.decoded ? " The previous capture remains visible." : ""}` : captureLabel}>{pending ? "Loading capture…" : replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
           : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analysis: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
+      {onPin ? <IconButton className="card-icon card-pin-toggle" label={`${pinned ? "Unpin" : "Pin"} participant ${name} ${pinned ? "from" : "to"} top`}
+        hint={pinned ? "Unpin participant from the top of the grid" : "Pin participant to the top of the grid"} aria-pressed={pinned} onClick={() => onPin(stream.id)}>
+        {pinned ? <span className="card-pin" role="img" aria-label="Pinned participant"><ReviewIcon name="pin" /></span> : <ReviewIcon name="pin" />}
+      </IconButton> : null}
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
         <div className="card-details">
           <h3 className="participant-detail-name">{name}</h3>

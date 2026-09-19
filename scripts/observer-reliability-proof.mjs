@@ -126,28 +126,35 @@ try {
                     assert(new Set(record.checks[name].map(v => `${v.width}/${v.height}`)).size === 1, `${name} changed same-raster geometry`);
             }
             await page.getByRole('button', { name: 'Back to participants', exact: true }).click();
+            const hasDirectPin = await page.locator('.card-pin-toggle').count() > 0;
             for (const reduced of [false, true]) {
                 await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
                 const card = page.locator('[data-stream-id="lane-2"]');
-                await card.getByRole('button', { name: /^Participant details:/ }).click();
-                const pin = page.getByRole('button', { name: /^Pin(?:ned)? participant Synthetic participant 2$/ });
+                if (!hasDirectPin) await card.getByRole('button', { name: /Participant details/ }).click();
+                const pin = hasDirectPin ? card.locator('.card-pin-toggle') : page.getByRole('button', { name: /^Pin(?:ned)? participant Synthetic participant 2$/ });
                 await pin.focus();
                 await page.screenshot({ path: path.join(output, `${record.id}-pin-${reduced ? 'reduced' : 'motion'}-before.png`) });
-                const movingPromise = pin.evaluate(async (button) => {
+                await pin.evaluate((button) => {
+                    window.__pinMovement = (async () => {
                     const grid = document.querySelector('.gallery'), scroll = document.querySelector('.content').scrollTop;
                     const cards = [...grid.querySelectorAll('.card')];
                     const values = [];
-                    button.click();
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("Pin did not activate from the keyboard")), 5000);
+                        button.addEventListener('click', () => { clearTimeout(timeout); resolve(); }, { once: true });
+                    });
                     const start = performance.now();
                     while (performance.now() - start < 350) {
                         await new Promise(requestAnimationFrame);
                         values.push({ t: performance.now() - start, scroll: document.querySelector('.content').scrollTop, cards: cards.map(card => ({ id: card.dataset.streamId, transform: getComputedStyle(card).transform, rect: card.getBoundingClientRect().toJSON(), sameNode: card.isConnected })) });
                     }
                     return { beforeScroll: scroll, values, focusRetained: document.activeElement === button, first: grid.firstElementChild.dataset.streamId };
+                    })();
                 });
+                await pin.press('Space');
                 await page.waitForTimeout(80);
                 await page.screenshot({ path: path.join(output, `${record.id}-pin-${reduced ? 'reduced' : 'motion'}-during.png`) });
-                const movement = await movingPromise;
+                const movement = await page.evaluate(() => window.__pinMovement);
                 record.checks[reduced ? 'pinReduced' : 'pinMotion'] = movement;
                 if (!baseline) {
                     assert.equal(movement.first, reduced ? 'lane-1' : 'lane-2');
@@ -156,7 +163,30 @@ try {
                     const moving = new Set(movement.values.flatMap(v => v.cards.filter(c => c.transform !== 'none').map(c => c.id)));
                     assert(reduced ? moving.size === 0 : moving.size >= 2, 'Selected and displaced participants did not respect motion preference');
                 }
-                await page.getByRole('button', { name: 'Close participant details', exact: true }).click();
+                if (!hasDirectPin) await page.getByRole('button', { name: 'Close participant details', exact: true }).click();
+            }
+            record.checks.directPin = [];
+            for (const density of hasDirectPin ? ['Compact', 'Comfortable', 'Large'] : []) {
+                await page.getByRole('button', { name: 'View and filter participants', exact: true }).click();
+                await page.getByRole('combobox', { name: 'Preview size', exact: true }).click();
+                await page.getByRole('option', { name: density, exact: true }).click();
+                await page.getByRole('button', { name: 'Close view options', exact: true }).click();
+                const dimensions = await page.locator('.card').evaluateAll(cards => cards.map(card => {
+                    const pin = card.querySelector('.card-pin-toggle').getBoundingClientRect();
+                    const details = card.querySelector('.card-details-trigger').getBoundingClientRect();
+                    const name = card.querySelector('.card-name').getBoundingClientRect();
+                    const caption = card.querySelector('.card-caption').getBoundingClientRect();
+                    const outcome = card.querySelector('.card-capture-time,.card-outcome').getBoundingClientRect();
+                    return { width: card.getBoundingClientRect().width, pin: pin.toJSON(), details: details.toJSON(), name: name.toJSON(), caption: caption.toJSON(), outcome: outcome.toJSON(), scrollWidth: card.scrollWidth, clientWidth: card.clientWidth };
+                }));
+                for (const card of dimensions) {
+                    assert(card.scrollWidth <= card.clientWidth + 1, 'Card controls overflow the capture width');
+                    assert(card.pin.right <= card.caption.right && card.details.right <= card.caption.right, 'A direct control is clipped');
+                    assert(card.name.width > 40 && card.outcome.width > 0 && (card.width > 192 || card.outcome.width >= card.width - 18), 'Direct controls hide participant identity or capture status');
+                    if (phone) assert(card.pin.width >= 44 && card.pin.height >= 44 && card.details.width >= 44 && card.details.height >= 44, 'Phone direct controls need 44px targets');
+                }
+                record.checks.directPin.push({ density, dimensions });
+                await page.screenshot({ path: path.join(output, `${record.id}-direct-pin-${density.toLowerCase()}.png`) });
             }
             if (axeSource) {
                 record.checks.accessibility = [];

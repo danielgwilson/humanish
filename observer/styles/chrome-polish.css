@@ -7,6 +7,22 @@
 .card-pin svg { width: 13px; height: 13px; fill: var(--accent-wash); }
 .card.pinned { border-color: var(--accent-dim); }
 .card .reviewed-outcome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card { container: participant-card / inline-size; }
+.card-pin-toggle .card-pin { margin: 0; }
+@media (hover: none), (pointer: coarse) {
+  .card-pin-toggle { min-width: 44px; min-height: 44px; }
+}
+/* Narrow portrait cards retain a readable name above the two direct controls.
+   This changes only the caption; original capture pixels keep their geometry. */
+@container participant-card (max-width: 190px) {
+  .card-caption[data-direct-pin] { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 20px 14px 44px; height: 78px; padding: 0; gap: 0; }
+  .card-caption[data-direct-pin] .card-identity { display: contents; }
+  .card-caption[data-direct-pin] .card-name { grid-column: 1 / -1; grid-row: 1; padding-inline: 8px; }
+  .card-caption[data-direct-pin] :is(.card-outcome, .card-capture-time) { grid-column: 1 / -1; grid-row: 2; min-width: 0; max-width: 100%; padding-inline: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-caption[data-direct-pin] .card-pin-toggle { grid-column: 1; grid-row: 3; justify-self: center; }
+  .card-caption[data-direct-pin] .card-details-trigger { grid-column: 2; grid-row: 3; justify-self: center; }
+  .card:has(.card-caption[data-direct-pin]) .capture-loading { bottom: 78px; }
+}
 
 /* The desktop library remains mounted, so collapsing it preserves its search
    and animates available content width. Inert removes hidden controls from both

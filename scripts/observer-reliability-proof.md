@@ -16,7 +16,10 @@ The assertions cover:
 - The prior decoded DOM image remains visible until the selected image decodes.
 - Same-size captures retain their geometry throughout loading.
 - A late response cannot replace the selected capture.
-- Pinning moves the selected and displaced cards while keeping their DOM nodes,
+- Direct card pin controls expose their pressed state without opening details.
+  Narrow portrait captions retain a full-width metadata row; phone pin and info
+  controls have 44 px touch targets at compact, comfortable and large densities.
+- Keyboard pinning moves the selected and displaced cards while keeping their DOM nodes,
   keyboard focus and scroll position. Reduced motion disables the movement.
 
 Each run retains mid-transition screenshots, animation-frame measurements and
