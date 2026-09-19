@@ -1460,8 +1460,15 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
   return Array.from({ length: count }, (_, index) => `lane-${String(index + 1).padStart(2, "0")}`);
 }
 
-/** Declared capture devices must be implemented by the selected execution route. */
-export function desktopMediaValidationReason(config: LabConfig): string | undefined {
+/**
+ * Declared capture devices must be implemented by the selected execution route.
+ * Unsupported backends pass false when called directly, where the declared
+ * topology may not identify the backend that is actually executing.
+ */
+export function desktopMediaValidationReason(
+  config: LabConfig,
+  supportsMedia = routesToComputerUse(config)
+): string | undefined {
   const media = config.execution?.desktop?.media;
   if (media === undefined) return undefined;
   if (media.microphone !== undefined) {
@@ -1470,7 +1477,7 @@ export function desktopMediaValidationReason(config: LabConfig): string | undefi
   if (config.subject.topology === "shared-world") {
     return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser lanes or remove the declaration.";
   }
-  if (!routesToComputerUse(config) || config.subject.source === "desktop-cli" || config.subject.source === "local-app") {
+  if (!supportsMedia || config.subject.source === "desktop-cli" || config.subject.source === "local-app") {
     return "execution.desktop.media is supported only on hosted computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route.";
   }
   if (config.execution?.desktop?.browser === "firefox") {

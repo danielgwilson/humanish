@@ -629,7 +629,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
 
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
-  const mediaReason = desktopMediaValidationReason(config);
+  const mediaReason = desktopMediaValidationReason(config, false);
   if (mediaReason) return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", mediaReason);
 
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);

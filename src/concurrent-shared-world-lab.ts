@@ -754,7 +754,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     error: { code, message }
   });
 
-  const mediaReason = desktopMediaValidationReason(config);
+  const mediaReason = desktopMediaValidationReason(config, false);
   if (mediaReason) return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", mediaReason);
 
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
