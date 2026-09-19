@@ -39,7 +39,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
@@ -336,6 +336,9 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // Resolve the actor through the registry — the parse layer already validated this, but the
   // engine fails closed rather than trusting a config that arrived through another door
   // (runTerminalProductLab is itself exported npm surface).
+  const mediaReason = desktopMediaValidationReason(config);
+  if (mediaReason) return failed("HUMANISH_TERMINAL_LAB_SUBJECT_INVALID", mediaReason);
+
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return failed("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);

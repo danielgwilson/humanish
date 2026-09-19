@@ -35,7 +35,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -753,6 +753,9 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     warnings: [],
     error: { code, message }
   });
+
+  const mediaReason = desktopMediaValidationReason(config);
+  if (mediaReason) return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", mediaReason);
 
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);

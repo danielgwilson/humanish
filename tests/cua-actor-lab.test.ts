@@ -1046,6 +1046,22 @@ describe("runCuaActorLab", () => {
     });
   });
 
+  it("rejects a direct-library microphone source before desktop or model dispatch", async () => {
+    const config = cuaConfig();
+    config.execution = { ...config.execution, desktop: { template: "synthetic-audio-template", media: { microphone: { source: "./room.wav" } } } };
+    let desktopLoads = 0, modelCalls = 0;
+    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
+      env: {},
+      loadDesktopModule: async () => { desktopLoads++; throw new Error("must not load desktop"); },
+      runSession: async () => { modelCalls++; throw new Error("must not call model"); }
+    } });
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("microphone.source injection is unsupported");
+    expect(result.runId).toBe("not-created");
+    expect(desktopLoads).toBe(0);
+    expect(modelCalls).toBe(0);
+  });
+
   it("policies.mediaPermission: granted adds the auto-accept flag and the bundle says so", async () => {
     const { sandbox, commands } = cameraSandbox(0);
     const outcome = await runCameraLane(sandbox, { mediaPermission: "granted" });

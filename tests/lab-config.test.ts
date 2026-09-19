@@ -421,7 +421,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       ["camera source with the wrong extension", { media: { camera: { source: "./cam.mp4" } } }, "camera.source"],
       ["camera without a source", { media: { camera: {} } }, "camera.source"],
       ["media with neither device", { media: {} }, "neither"],
-      ["a microphone on the stock image", { media: { microphone: { source: "./room.wav" } } }, "no audio stack"]
+      ["a microphone on the stock image", { media: { microphone: { source: "./room.wav" } } }, "injection is unsupported"]
     ])("rejects %s before any spend", (_label, desktop, needle) => {
       const result = parseLabConfig({
         ...validCua,
@@ -432,12 +432,13 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain(needle);
     });
 
-    it("accepts a microphone once a custom desktop template is declared", () => {
+    it("rejects unimplemented microphone file injection even with a custom desktop template", () => {
       const result = parseLabConfig({
         ...validCua,
         execution: { ...(validCua.execution as Record<string, unknown>), desktop: { template: "adopter-desktop-with-audio", media: { microphone: { source: "./room.wav" } } } }
       });
-      expect(result.ok).toBe(true);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.message).toContain("including on custom templates");
     });
 
     it("rejects an unknown mediaPermission", () => {

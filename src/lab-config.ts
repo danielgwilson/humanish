@@ -580,9 +580,8 @@ export interface LabExecutionDesktop {
  * A participant with a camera (#509): a property of the ENVIRONMENT, like the screen preset and
  * the browser, never support for any conferencing product. `camera.source: synthetic` generates
  * a test pattern in the sandbox with the image's own ffmpeg; a `.y4m` path on the host is
- * uploaded instead. A microphone needs an image with an audio stack (`execution.desktop.template`);
- * the stock desktop has none, so a declared microphone without a template is refused at parse
- * time, before any spend.
+ * uploaded instead. Microphone source-file injection is not implemented and is rejected before
+ * spend, including on custom templates. A template's own audio capabilities are separate.
  */
 export interface LabDesktopMedia {
   camera?: { source: string };
@@ -939,6 +938,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const commsResult = parseComms(raw.comms);
   if (!commsResult.ok) return commsResult;
   if (commsResult.value) config.comms = commsResult.value;
+
+  const mediaReason = desktopMediaValidationReason(config);
+  if (mediaReason) return invalid(mediaReason);
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);
@@ -1456,6 +1458,25 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
   }
   const count = Math.max(1, actor?.count ?? 1);
   return Array.from({ length: count }, (_, index) => `lane-${String(index + 1).padStart(2, "0")}`);
+}
+
+/** Declared capture devices must be implemented by the selected execution route. */
+export function desktopMediaValidationReason(config: LabConfig): string | undefined {
+  const media = config.execution?.desktop?.media;
+  if (media === undefined) return undefined;
+  if (media.microphone !== undefined) {
+    return "execution.desktop.media.microphone.source injection is unsupported, including on custom templates. Humanish cannot deliver the declared microphone file; remove this declaration.";
+  }
+  if (config.subject.topology === "shared-world") {
+    return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser lanes or remove the declaration.";
+  }
+  if (!routesToComputerUse(config) || config.subject.source === "desktop-cli" || config.subject.source === "local-app") {
+    return "execution.desktop.media is supported only on hosted computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route.";
+  }
+  if (config.execution?.desktop?.browser === "firefox") {
+    return "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium.";
+  }
+  return undefined;
 }
 
 export function routesToComputerUse(config: LabConfig): boolean {
@@ -3040,14 +3061,7 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
       media.camera = { source };
     }
     if (raw.media.microphone !== undefined) {
-      const source = isRecord(raw.media.microphone) ? str(raw.media.microphone.source) : undefined;
-      if (source === undefined) {
-        return invalid("`execution.desktop.media.microphone.source` must be a non-empty path when set.");
-      }
-      if (desktop.template === undefined) {
-        return invalid("`execution.desktop.media.microphone` needs `execution.desktop.template`: the stock desktop image has no audio stack, so Chrome enumerates no microphone and the participant would report a limitation of the instrument as a finding (#509).");
-      }
-      media.microphone = { source };
+      return invalid("`execution.desktop.media.microphone.source` injection is unsupported, including on custom templates. Humanish cannot deliver the declared microphone file; remove this declaration. A custom template's own audio devices are a separate capability.");
     }
     if (media.camera === undefined && media.microphone === undefined) {
       return invalid("`execution.desktop.media` declares neither `camera` nor `microphone`.");

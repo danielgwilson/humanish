@@ -23,7 +23,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
@@ -237,6 +237,9 @@ export async function prepareDesktopMedia(
   requestTimeoutMs: number,
   readHostFile: (absolutePath: string) => Promise<Buffer> = (absolutePath) => readFile(absolutePath)
 ): Promise<DesktopMediaEvidence> {
+  if (media.microphone !== undefined) {
+    throw new Error("execution.desktop.media.microphone.source injection is unsupported; the declared microphone file cannot be delivered, including on custom templates.");
+  }
   const flags: string[] = [];
   let camera: DesktopMediaEvidence["camera"];
   if (media.camera !== undefined) {
@@ -3801,12 +3804,17 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     return fail("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
+  const mediaReason = desktopMediaValidationReason(config);
+  if (mediaReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", mediaReason, descriptor.id);
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", outputLimitReason, descriptor.id);
   if (actor?.maxOutputTokens !== undefined && (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)) {
     return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.", descriptor.id);
   }
   const inProcessRoute = hooks.buildExecutor !== undefined;
+  if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
+    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.", descriptor.id);
+  }
   const localAppSubject = config.subject.source === "local-app";
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
