@@ -52,7 +52,7 @@ also separate from synthetic renderer proof. Their absence must stay visible
 in the proof manifest rather than becoming a general release-quality claim.
 
 The reliability supplement accepts `--artifact <html>` and `--baseline` to retain
-before/failure measurements. `--axe <axe.min.js>` adds grid, player and report
-audits in both themes and widths, including computed text contrast and explicit
-incomplete checks. The source of the external audit script must be retained with
-local proof; it is never bundled into the Observer artifact.
+before/failure measurements. Its pinned axe development dependency audits grid,
+player and report states in both themes and widths by default, including computed
+text contrast and explicit incomplete checks. `--axe <axe.min.js>` selects a local
+audit build for investigation; axe is never bundled into the Observer artifact.

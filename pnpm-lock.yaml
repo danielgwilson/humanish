@@ -39,6 +39,9 @@ importers:
       '@types/pngjs':
         specifier: ^6.0.5
         version: 6.0.5
+      axe-core:
+        specifier: 4.13.0
+        version: 4.13.0
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
@@ -2160,6 +2163,10 @@ packages:
   auto-bind@5.0.1:
     resolution: {integrity: sha512-ooviqdwwgfIfNmDwo94wlshcdzfO64XV0Cg6oDsDYBJfITDz1EngD2z7DkbvCWn+XIMsIqW27sEVF6qcpJrRcg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -6193,6 +6200,8 @@ snapshots:
   atomically@1.7.0: {}
 
   auto-bind@5.0.1: {}
+
+  axe-core@4.13.0: {}
 
   bail@2.0.2: {}
 

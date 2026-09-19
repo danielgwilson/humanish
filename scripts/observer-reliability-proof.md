@@ -42,9 +42,10 @@ images nor their source timestamps are rewritten.
 
 ## Accessibility supplement
 
-`--axe <axe.min.js>` additionally audits the grid, player and findings in both
-themes at both widths. Retain the audit script's version/source with the local
-receipt; it is not bundled into the Observer.
+The default proof also runs the pinned `axe-core` development dependency against
+the grid, player and findings in both themes at both widths. It runs in the
+Observer CI job; axe is not bundled into the Observer. `--axe <axe.min.js>` can
+select a different local audit build for investigation.
 
 The 2026-09-19 audit found no automated violations in those twelve states.
 The 249 sampled text contrast checks per theme had minimum ratios of 4.61:1

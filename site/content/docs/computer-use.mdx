@@ -230,6 +230,13 @@ the run bundle; the trace stores only the matched rule id and primitive names. B
 and text observation requires a Chrome/Chromium CDP session in the desktop. For deterministic
 browser-observed stops, set `execution.desktop.browser: chrome` or `chromium`.
 
+These are distinct binary requests, not interchangeable aliases. Use `chrome`
+with the stock desktop used by the camera example; choose `chromium` only when
+your template supplies that binary. The default tries available browsers, with
+Chrome first. `doctor` checks local configuration and credentials; the remote
+binary is checked after desktop provisioning. An unavailable explicit browser
+ends setup before participant dispatch.
+
 ## Closing reports after an automatic stop
 
 **From Humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports

@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-17. Release baseline: `0.93.1`.
+Status date: 2026-09-19. Release baseline: `0.94.0`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.93.1-observer-review-controls.md).
+in the [release notes](../release/0.94.0-reliability.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.93.1`)
+## Current Program Truth (source `0.94.0`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -101,8 +101,8 @@ substitute for it.
 | Review and feedback | Verification grades, feedback drafts, portable HTML, redacted bundle derivatives and computer-use completion-source labels | Sharing requires the appropriate grade; participant reports and condition matches still need task adjudication |
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links | Model interpretation needs review; bounded selection and source truncation limit coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving and run library | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
-| Off-app communication | In-sandbox email/SMS catch and digest-only thread evidence | This does not establish real-provider delivery |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed | Physical-device and touch fidelity remain unproven; unsupported microphone declarations are rejected |
+| Off-app communication | Recipient-scoped synthetic inboxes, supported inline raster images, in-sandbox email/SMS catch and digest-only thread evidence | Scope prevents accidental cross-recipient browsing; it is not tenant authentication or real-provider delivery |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; a synthetic video-only call with separate hosted peers is proven | Audio, TURN, provider-specific rooms, physical-device and touch fidelity remain unproven; unsupported media declarations are rejected |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)

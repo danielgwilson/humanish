@@ -95,7 +95,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish lab`: List, inspect, and run Humanish lab manifests.
 - `humanish lab list`: List committed and ignored Humanish lab manifests.
 - `humanish lab inspect`: Inspect a Humanish lab manifest without running it.
-- `humanish lab preflight`: Check a lab manifest and optional target reachability before actor/model spend.
+- `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.
 - `humanish lab cleanup`: Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.
 - `humanish lab run`: Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.
 - `humanish lab oss`: Alias: run the bundled OSS meta-lab dry-run contract.
