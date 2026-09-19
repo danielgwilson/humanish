@@ -2,6 +2,9 @@ import { SUPPORTED_STUDY_ANALYSIS_MODELS } from "./study-analysis-engine.js";
 import { containsSensitive } from "./redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
+export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
+export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 32_768;
+
 /** A separately budgeted review after a live participant study. */
 export interface LabAnalysis {
   maxCostUsd: number;
@@ -28,8 +31,8 @@ export function resolveAutomaticAnalysis(raw: unknown):
   const { maxCostUsd } = value;
   const model = value.model === undefined ? "gpt-6-astra" : value.model;
   const question = value.question === undefined ? null : value.question;
-  const timeoutMs = value.timeoutMs === undefined ? 300_000 : value.timeoutMs;
-  const maxOutputTokens = value.maxOutputTokens === undefined ? 16_384 : value.maxOutputTokens;
+  const timeoutMs = value.timeoutMs === undefined ? DEFAULT_ANALYSIS_TIMEOUT_MS : value.timeoutMs;
+  const maxOutputTokens = value.maxOutputTokens === undefined ? DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS : value.maxOutputTokens;
   if (typeof maxCostUsd !== "number" || !Number.isFinite(maxCostUsd) || maxCostUsd <= 0 || maxCostUsd > 1000
     || typeof model !== "string" || !MODELS.has(model)
     || typeof timeoutMs !== "number" || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 600_000

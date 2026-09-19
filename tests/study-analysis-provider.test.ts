@@ -66,6 +66,22 @@ describe("study analysis provider boundary", () => {
     expect(JSON.stringify(result)).not.toContain("synthetic-private-payload");
   });
 
+  it.each([
+    ["UND_ERR_HEADERS_TIMEOUT", "provider_headers_timeout"],
+    ["UND_ERR_BODY_TIMEOUT", "provider_body_timeout"],
+    ["UND_ERR_CONNECT_TIMEOUT", "provider_connect_timeout"],
+    ["ECONNRESET", "provider_connection_reset"],
+    ["ENOTFOUND", "provider_dns_error"],
+    ["synthetic-private-code", "provider_network_error"]
+  ])("retains only the safe transport classification for %s", async (code, expected) => {
+    const cause = Object.assign(new Error("synthetic-private-payload"), { code });
+    const fetchFn = vi.fn<typeof fetch>(async () => { throw new TypeError("synthetic-private-url", { cause }); });
+    const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
+    expect(result).toMatchObject({ usage: null, dispatched: true, errorCode: expected });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(result)).not.toContain("synthetic-private");
+  });
+
   it("honors cancellation before dispatch", async () => {
     const fetchFn = vi.fn<typeof fetch>();
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({ ...request, signal: AbortSignal.abort() });

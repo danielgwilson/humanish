@@ -1,4 +1,4 @@
-import { automaticAnalysisBudget, formatAutomaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { automaticAnalysisBudget, formatAutomaticAnalysisBudget, DEFAULT_ANALYSIS_TIMEOUT_MS, DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS } from "./automatic-analysis-config.js";
 import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -1220,8 +1220,8 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--max-cost <usd>", "Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap.")
     .option("--model <id>", "Supported vision analysis model; analysis uses high reasoning effort.", "gpt-6-astra")
     .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
-    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", "300000")
-    .option("--max-output-tokens <n>", "Bound response tokens, including reasoning, from 256 to 32768.", "16384")
+    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", String(DEFAULT_ANALYSIS_TIMEOUT_MS))
+    .option("--max-output-tokens <n>", "Bound response tokens, including reasoning, from 256 to 32768.", String(DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS))
     .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
     .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
     .option("--json", JSON_OPTION_DESCRIPTION)

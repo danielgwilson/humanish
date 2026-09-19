@@ -1,3 +1,5 @@
+import { Agent, type Dispatcher } from "undici";
+
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
 export interface StudyAnalysisProviderRequest {
   model: string;
@@ -25,6 +27,8 @@ export interface StudyAnalysisProviderResult {
   /** Dispatch does not imply a known charge. A failed request can still have consumed tokens. */
   dispatched: boolean;
   errorCode: "invalid_request" | "provider_http_error" | "provider_network_error" | "invalid_response"
+    | "provider_headers_timeout" | "provider_body_timeout" | "provider_connect_timeout"
+    | "provider_connection_reset" | "provider_dns_error"
     | "response_too_large" | "output_incomplete" | "refusal" | "cancelled" | "timeout" | null;
   httpStatus?: number;
 }
@@ -36,6 +40,31 @@ const INPUT_IMAGE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value)
   ? value as Record<string, unknown> : {};
 const count = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1e12;
+
+/** Node's fetch has a separate response-header deadline. The caller's wall-clock
+ * deadline must govern this one request, including uploads and body reads, without
+ * changing transport behavior for other requests in the process. */
+class AnalysisAgent extends Agent {
+  override dispatch(options: Dispatcher.DispatchOptions, handler: Dispatcher.DispatchHandlers): boolean {
+    return super.dispatch({ ...options, headersTimeout: 0, bodyTimeout: 0 }, handler);
+  }
+}
+
+/** Persist only a closed vocabulary, never an exception's prose, URL or headers. */
+function networkErrorCode(error: unknown): StudyAnalysisProviderResult["errorCode"] {
+  const codes: Record<string, StudyAnalysisProviderResult["errorCode"]> = {
+    UND_ERR_HEADERS_TIMEOUT: "provider_headers_timeout", UND_ERR_BODY_TIMEOUT: "provider_body_timeout",
+    UND_ERR_CONNECT_TIMEOUT: "provider_connect_timeout", ECONNRESET: "provider_connection_reset",
+    UND_ERR_SOCKET: "provider_connection_reset", ENOTFOUND: "provider_dns_error", EAI_AGAIN: "provider_dns_error"
+  };
+  let current = error;
+  for (let depth = 0; depth < 4; depth += 1) {
+    const value = record(current);
+    if (typeof value.code === "string" && Object.hasOwn(codes, value.code)) return codes[value.code]!;
+    current = value.cause;
+  }
+  return "provider_network_error";
+}
 
 function usageOf(raw: unknown): StudyAnalysisTokenUsage | null {
   const usage = record(record(raw).usage);
@@ -118,13 +147,17 @@ export function createStudyAnalysisProvider(options: {
     const onAbort = (): void => controller.abort();
     request.signal?.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, request.timeoutMs);
+    const dispatcher = new AnalysisAgent();
     try {
       if (request.signal?.aborted) return failure("cancelled", false, "cancelled");
       dispatched = true;
       const response = await fetchFn("https://api.openai.com/v1/responses", {
         method: "POST", redirect: "error", signal: controller.signal,
-        headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" }, body
-      });
+        headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" }, body,
+        dispatcher
+      // Node accepts a custom dispatcher; its bundled Undici declarations may be
+      // older than this compatible dispatcher (browser RequestInit omits it).
+      } as unknown as RequestInit);
       if (!response.ok) {
         // Never read provider error prose: it may echo evidence or credentials.
         await response.body?.cancel();
@@ -154,12 +187,13 @@ export function createStudyAnalysisProvider(options: {
       } catch {
         return failure("invalid_response", true);
       }
-    } catch {
+    } catch (error) {
       if (controller.signal.aborted) return failure(timedOut ? "timeout" : "cancelled", dispatched, timedOut ? "timed_out" : "cancelled");
-      return failure("provider_network_error", dispatched);
+      return failure(networkErrorCode(error), dispatched);
     } finally {
       clearTimeout(timer);
       request.signal?.removeEventListener("abort", onAbort);
+      await dispatcher.destroy().catch(() => undefined);
     }
   };
 }

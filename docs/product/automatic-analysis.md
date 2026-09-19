@@ -4,7 +4,7 @@ Supported live studies automatically request analysis after each recording finis
 separate from participant feedback and the recorded study verdict.
 
 The default is `gpt-6-astra` with high reasoning effort, a separate $3 admission
-estimate limit, a 300-second timeout and 16,384 output tokens. To customize it:
+estimate limit, a 600-second timeout and 32,768 output tokens. To customize it:
 
 ```yaml
 review:
@@ -12,8 +12,8 @@ review:
     maxCostUsd: 3
     # Optional; these values match manual analysis defaults.
     model: gpt-6-astra
-    timeoutMs: 300000
-    maxOutputTokens: 16384
+    timeoutMs: 600000
+    maxOutputTokens: 32768
     # question: Where did participants need to recover?
 ```
 
@@ -21,6 +21,11 @@ Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
 mapping requires `maxCostUsd`. This limits an admission estimate, not the
 provider's final bill, and is separate from participant spending limits. Analysis
+can decline a large study before dispatch when its conservative estimate exceeds
+that limit. Use `analyze --dry-run --max-cost <usd>` on retained evidence to inspect
+the estimate before deliberately choosing a larger budget. The output allowance
+includes reasoning as well as the report; exhausting it does not produce a usable
+report and never starts an automatic retry. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.
 Analysis runs in the Humanish runner using its credentials. This setting adds no
 credential channel to the target application; each participant backend retains

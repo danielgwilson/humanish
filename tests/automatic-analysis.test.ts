@@ -37,7 +37,7 @@ describe("automatic analysis admission and producer boundary", () => {
   afterEach(async () => { vi.restoreAllMocks(); await rm(cwd, { recursive: true, force: true }); });
 
   it("defaults use a separate three-dollar admission budget and false opts out", () => {
-    expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 300000, maxOutputTokens: 16384 });
+    expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 600000, maxOutputTokens: 32768 });
     expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: { ...config, maxCostUsd: 3 } });
     expect(resolveAutomaticAnalysis(false)).toEqual({ ok: true, config: undefined });
   });
