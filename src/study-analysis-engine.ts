@@ -48,6 +48,7 @@ export interface StudyAnalysisAdmission {
   allowed: boolean;
   error: string | null;
   inputTokenAllowance: number;
+  outputTokenAllowance: number;
   estimatedCostUsd: number | null;
   ratesAsOf: string | null;
 }
@@ -111,7 +112,7 @@ function inputError(input: StudyAnalysisInput): string | null {
  */
 export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisAdmission {
   const denied = (error: string): StudyAnalysisAdmission =>
-    ({ allowed: false, error, inputTokenAllowance: 0, estimatedCostUsd: null, ratesAsOf: null });
+    ({ allowed: false, error, inputTokenAllowance: 0, outputTokenAllowance: 0, estimatedCostUsd: null, ratesAsOf: null });
   if (!SUPPORTED_MODELS.has(config.model) || !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
     || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 600_000
     || !Number.isSafeInteger(config.maxOutputTokens) || config.maxOutputTokens < 256 || config.maxOutputTokens > 32_768
@@ -134,7 +135,16 @@ export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config
   const estimatedCostUsd = Math.ceil(estimate * 1e6) / 1e6;
   if (!Number.isFinite(estimatedCostUsd)) return denied("analysis_rate_unknown");
   return { allowed: estimatedCostUsd <= config.maxCostUsd, error: estimatedCostUsd <= config.maxCostUsd ? null : "analysis_budget_exceeded",
-    inputTokenAllowance, estimatedCostUsd, ratesAsOf: rate.asOf };
+    inputTokenAllowance, outputTokenAllowance: config.maxOutputTokens, estimatedCostUsd, ratesAsOf: rate.asOf };
+}
+
+/** Only for an omitted output limit. Preserve the established allowance when
+ * more reasoning/report space would refuse a study its declared budget admits.
+ * This is one pre-dispatch choice, never a fallback request or a budget increase. */
+export function preferLargerStudyAnalysisOutput(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisConfig {
+  if (config.maxOutputTokens !== 16_384) return config;
+  const expanded = { ...config, maxOutputTokens: 32_768 };
+  return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
 
 export type StudyAnalysisDispatchContext = Pick<StudyAnalysisArtifact,

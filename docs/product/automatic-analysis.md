@@ -4,16 +4,19 @@ Supported live studies automatically request analysis after each recording finis
 separate from participant feedback and the recorded study verdict.
 
 The default is `gpt-6-astra` with high reasoning effort, a separate $3 admission
-estimate limit, a 600-second timeout and 32,768 output tokens. To customize it:
+estimate limit and a 600-second timeout. When no output limit is specified,
+Humanish selects 32,768 tokens if the exact input's admission estimate fits that
+budget; otherwise it keeps the established 16,384-token allowance. This preserves
+previously admitted studies without increasing their spending limit. To customize it:
 
 ```yaml
 review:
   analysis:
     maxCostUsd: 3
-    # Optional; these values match manual analysis defaults.
+    # Optional overrides. Omit maxOutputTokens for budget-aware selection.
     model: gpt-6-astra
     timeoutMs: 600000
-    maxOutputTokens: 32768
+    # maxOutputTokens: 32768
     # question: Where did participants need to recover?
 ```
 
@@ -23,7 +26,8 @@ mapping requires `maxCostUsd`. This limits an admission estimate, not the
 provider's final bill, and is separate from participant spending limits. Analysis
 can decline a large study before dispatch when its conservative estimate exceeds
 that limit. Use `analyze --dry-run --max-cost <usd>` on retained evidence to inspect
-the estimate before deliberately choosing a larger budget. The output allowance
+the estimate and selected token allowance before deliberately choosing a larger budget. Explicit
+`maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance
 includes reasoning as well as the report; exhausting it does not produce a usable
 report and never starts an automatic retry. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`.

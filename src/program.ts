@@ -1224,25 +1224,26 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--model <id>", "Supported vision analysis model; analysis uses high reasoning effort.", "gpt-6-astra")
     .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
     .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", String(DEFAULT_ANALYSIS_TIMEOUT_MS))
-    .option("--max-output-tokens <n>", "Bound response tokens, including reasoning, from 256 to 32768.", String(DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS))
+    .option("--max-output-tokens <n>", "Exact response-token limit including reasoning, 256–32768. Omit to use 32768 when admission permits, otherwise 16384.")
     .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
     .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; run: string; maxCost?: string; model: string; question?: string;
-      timeoutMs: string; maxOutputTokens: string; dryRun?: boolean; rerun?: boolean }, command) => {
+      timeoutMs: string; maxOutputTokens?: string; dryRun?: boolean; rerun?: boolean }, command) => {
       const controller = new AbortController();
       const cancel = (): void => controller.abort();
       process.once("SIGINT", cancel);
       try {
         const result = await analyzeStudy(options.cwd, options.run, {
           config: { model: options.model, maxCostUsd: Number(options.maxCost), question: options.question ?? null,
-            timeoutMs: Number(options.timeoutMs), maxOutputTokens: Number(options.maxOutputTokens) },
+            timeoutMs: Number(options.timeoutMs), maxOutputTokens: options.maxOutputTokens === undefined ? DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS : Number(options.maxOutputTokens) },
+          preferLargerOutput: options.maxOutputTokens === undefined,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.rerun === undefined ? {} : { rerun: options.rerun })
         }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
           `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
         writeResult(command, io, result, (value) => {
-          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}. No request sent.\n`;
+          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
           const lines: string[] = [];
           if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
           if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);

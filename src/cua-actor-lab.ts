@@ -3726,7 +3726,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit");
+    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
 }
 
 async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {

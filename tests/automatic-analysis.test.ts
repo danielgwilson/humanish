@@ -37,8 +37,9 @@ describe("automatic analysis admission and producer boundary", () => {
   afterEach(async () => { vi.restoreAllMocks(); await rm(cwd, { recursive: true, force: true }); });
 
   it("defaults use a separate three-dollar admission budget and false opts out", () => {
-    expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 600000, maxOutputTokens: 32768 });
-    expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: { ...config, maxCostUsd: 3 } });
+    expect(config).toEqual({ model: "gpt-6-astra", maxCostUsd: 5, question: null, timeoutMs: 600000, maxOutputTokens: 16384 });
+    expect(resolveAutomaticAnalysis(undefined)).toEqual({ ok: true, config: { ...config, maxCostUsd: 3 }, preferLargerOutput: true });
+    expect(resolveAutomaticAnalysis({ maxCostUsd: 3, maxOutputTokens: 16384 })).not.toHaveProperty("preferLargerOutput");
     expect(resolveAutomaticAnalysis(false)).toEqual({ ok: true, config: undefined });
   });
   it.each([null, true, {}, { maxCostUsd: 0 }, { maxCostUsd: Infinity }, { maxCostUsd: 1001 },
@@ -150,7 +151,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const prepared = await prepareRunArtifactPaths(cwd, "exact-recording");
     const original = markFinalizedStudyResult({ cwd, runId: "exact-recording", dryRun: false, ok: false, session: { status: "incomplete" } }, prepared);
     const result = await completeAutomaticAnalysis(original, config, { run, onStart });
-    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, { expectedRun: prepared });
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, { expectedRun: prepared, preferLargerOutput: false });
     expect(result.session).toEqual(original.session); expect(result.ok).toBe(false);
     expect(onStart).toHaveBeenCalledOnce(); expect(cleanup).toHaveBeenCalledOnce();
     expect(original).not.toHaveProperty("automaticAnalysis");
@@ -161,7 +162,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const original = markFinalizedStudyResult({ cwd: "/synthetic/retargeted-alias", runId: "recording", dryRun: false }, prepared);
     const unrelated = await prepareRunArtifactPaths(cwd, "unrelated-recording");
     await completeAutomaticAnalysis(original, config, { run, deps: { expectedRun: unrelated } });
-    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, { expectedRun: prepared });
+    expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, { expectedRun: prepared, preferLargerOutput: false });
   });
   it("rejects a replacement recording after final publication instead of rebinding before dispatch", async () => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });

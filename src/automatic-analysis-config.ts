@@ -3,7 +3,7 @@ import { containsSensitive } from "./redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
-export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 32_768;
+export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 
 /** A separately budgeted review after a live participant study. */
 export interface LabAnalysis {
@@ -19,7 +19,7 @@ const FIELDS = new Set(["maxCostUsd", "model", "question", "timeoutMs", "maxOutp
 
 /** Called for parsed manifests AND direct library configs, before participant execution. */
 export function resolveAutomaticAnalysis(raw: unknown):
-  | { ok: true; config: StudyAnalysisConfig | undefined }
+  | { ok: true; config: StudyAnalysisConfig | undefined; preferLargerOutput?: boolean }
   | { ok: false; message: string } {
   if (raw === false) return { ok: true, config: undefined };
   if (raw === undefined) raw = { maxCostUsd: 3 };
@@ -43,7 +43,8 @@ export function resolveAutomaticAnalysis(raw: unknown):
   if (question !== null && containsSensitive(question as string)) {
     return { ok: false, message: "review.analysis.question contains sensitive text and cannot be sent for analysis." };
   }
-  return { ok: true, config: { model, maxCostUsd, timeoutMs, maxOutputTokens, question: question as string | null } };
+  return { ok: true, config: { model, maxCostUsd, timeoutMs, maxOutputTokens, question: question as string | null },
+    ...(value.maxOutputTokens === undefined ? { preferLargerOutput: true } : {}) };
 }
 
 export interface AutomaticAnalysisBudget {

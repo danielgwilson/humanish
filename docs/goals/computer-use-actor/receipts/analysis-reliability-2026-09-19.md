@@ -12,12 +12,16 @@ Neither attempt was overwritten or silently retried.
 
 The candidate uses one request-scoped Undici dispatcher. Humanish's abort signal
 bounds the entire request; no process-global dispatcher is changed. The default
-timeout is 600 seconds and output allowance is 32,768 tokens, including reasoning.
+timeout is 600 seconds. An omitted output limit expands from 16,384 to 32,768
+tokens, including reasoning, only if admission fits the declared budget. Explicit
+limits are honored exactly. A cold review caught that always using 32,768 would
+refuse a previously admitted three-participant recording at its $3 ceiling;
+the final selection policy preserves its 16,384-token allowance and admission.
 The default model and separate $3 admission budget are unchanged. A larger study
 can still be declined by admission until the operator explicitly raises its limit.
 
 One deliberately admitted candidate request used the default model, instructions,
-timeout and output allowance, with an explicit $15 admission ceiling. It sent the
+timeout and larger output allowance, with an explicit $15 admission ceiling. It sent the
 same selected evidence: 800 entries and 40 captures. It completed in 292.695
 seconds, passed structural and evidence-reference validation, and returned twelve
 participant reviews, six findings and thirteen concern reviews. Reported usage was

@@ -7,7 +7,7 @@ import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared } from "./run.
 import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "./run-paths.js";
 import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
 import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
-import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
+import { estimateStudyAnalysisAdmission, preferLargerStudyAnalysisOutput, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION,
   type StudyAnalysisAdmission, type StudyAnalysisProgress, type StudyAnalysisDispatchContext } from "./study-analysis-engine.js";
 import { appendStudyAnalysisCorrection, assertStudyAnalysisPublicationCapacity, beginStudyAnalysisExecution, listStudyAnalyses, loadStudyAnalysis, writeStudyAnalysis, writeStudyAnalysisExecutionReceipt } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
@@ -19,6 +19,8 @@ export interface AnalyzeOptions {
   config: StudyAnalysisConfig;
   dryRun?: boolean;
   rerun?: boolean;
+  /** Internal/default policy; explicit token limits are always used exactly. */
+  preferLargerOutput?: boolean;
 }
 export interface AnalyzeResult {
   schema: typeof ANALYZE_RESULT_SCHEMA;
@@ -139,7 +141,7 @@ export async function readCompletedStudyAnalysisSource(cwd: string, prepared: Pr
 export async function analyzeStudy(cwdInput: string, run: string, options: AnalyzeOptions, deps: AnalyzeDeps = {}): Promise<AnalyzeResult> {
   let cwd = path.resolve(cwdInput);
   const dryRun = options.dryRun === true;
-  const config = structuredClone(options.config);
+  let config = structuredClone(options.config);
   if (!Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000) return fail(run, dryRun, "ANALYSIS_CONFIG_INVALID");
   if (config.question !== null && containsSensitive(config.question)) return fail(run, dryRun, "ANALYSIS_QUESTION_UNSAFE");
   try {
@@ -151,6 +153,7 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
       const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
       const input = await captureStudyEvidence(prepared, bytes);
       if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
+      if (options.preferLargerOutput) config = preferLargerStudyAnalysisOutput(input, config);
       const admission = estimateStudyAnalysisAdmission(input, config);
       const base = { schema: ANALYZE_RESULT_SCHEMA as typeof ANALYZE_RESULT_SCHEMA, run: input.runId, dryRun, reused: false, admission, warnings: [] as string[] };
       if (!admission.allowed) return { ...base, ok: false,

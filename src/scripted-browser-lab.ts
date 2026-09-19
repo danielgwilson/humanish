@@ -216,7 +216,7 @@ export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOption
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runScriptedBrowserLabInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit");
+    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
 }
 
 async function runScriptedBrowserLabInScope(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
