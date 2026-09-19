@@ -2,7 +2,8 @@ import path from "node:path";
 import { renderObserver } from "./observer.js";
 import { resolveRunPath, type RunBundle } from "./run.js";
 import { analyzeStudy, readCompletedStudyAnalysisSource, resolveStudyAnalysisRun, type AnalyzeDeps, type AnalyzeResult } from "./study-analysis-service.js";
-import { STUDY_ANALYSIS_PROMPT_VERSION } from "./study-analysis-engine.js";
+import { preferLargerStudyAnalysisOutput, STUDY_ANALYSIS_PROMPT_VERSION } from "./study-analysis-engine.js";
+import { captureStudyEvidence } from "./study-analysis-evidence.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { claimAutomaticStudyAnalysis, readAutomaticStudyAnalysisPrepared, requestAutomaticStudyAnalysisCancellationPrepared,
   type AutomaticStudyAnalysisView, type AutomaticStudyAnalysisOutcome, type AutomaticStudyAnalysisCancellation,
@@ -14,6 +15,8 @@ export type { AutomaticStudyAnalysisView, AutomaticStudyAnalysisOutcome, Automat
 export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
   /** A missing default key records a skip before admission, preserving a successful recording. */
   defaultRequest?: boolean;
+  /** Expand an omitted output limit only within the existing admission budget. */
+  preferLargerOutput?: boolean;
 };
 
 const exactId = (runId: string): boolean => runId !== "latest" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(runId);
@@ -72,15 +75,20 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
   let participantEvidence = false;
+  let config = structuredClone(configInput);
   // Do not consume a future run's one claim while a producer is still writing it.
   try {
     const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
     const bundle = JSON.parse(bytes.toString("utf8")) as RunBundle;
     if (bundle.streams.some(stream => stream.actor?.stopCause === "harness_aborted")) return skipped("AUTOMATIC_ANALYSIS_ACTOR_CANCELLED");
     participantEvidence = hasParticipantEvidence(bundle);
+    // Bind the permanent job claim to the actual configuration before dispatch.
+    // Missing-key/no-evidence skips don't need to read captured image bytes.
+    if (deps.preferLargerOutput && (!deps.defaultRequest || participantEvidence) && (deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()) {
+      config = preferLargerStudyAnalysisOutput(await captureStudyEvidence(prepared, bytes), config);
+    }
   }
   catch { return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"); }
-  const config = structuredClone(configInput);
   let job: AutomaticStudyAnalysisJob;
   try {
     const claimed = await claimAutomaticStudyAnalysis(prepared, { configDigest: hashStudyAnalysisValue(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION });

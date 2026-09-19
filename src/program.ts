@@ -1,4 +1,4 @@
-import { automaticAnalysisBudget, formatAutomaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { automaticAnalysisBudget, formatAutomaticAnalysisBudget, DEFAULT_ANALYSIS_TIMEOUT_MS, DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS } from "./automatic-analysis-config.js";
 import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -619,9 +619,12 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
     .description("Explain project readiness and missing Humanish setup.")
     .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--lab <lab>", "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.")
+    .option("--env-file <path>", "Load a local env file for these setup checks without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean }, command) => {
-      const result = await doctor(options.cwd);
+    .action(async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {
+      if (options.envFile && !await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      const result = await doctor(options.cwd, options.lab ? { lab: options.lab } : {});
       writeResult(command, io, result, formatDoctorHuman);
       // Behavioral change: was exit 1, every other structured command uses 2.
       io.setExitCode(result.ok ? 0 : 2);
@@ -1220,26 +1223,27 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .option("--max-cost <usd>", "Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap.")
     .option("--model <id>", "Supported vision analysis model; analysis uses high reasoning effort.", "gpt-6-astra")
     .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
-    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", "300000")
-    .option("--max-output-tokens <n>", "Bound response tokens, including reasoning, from 256 to 32768.", "16384")
+    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", String(DEFAULT_ANALYSIS_TIMEOUT_MS))
+    .option("--max-output-tokens <n>", "Exact response-token limit including reasoning, 256–32768. Omit to use 32768 when admission permits, otherwise 16384.")
     .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
     .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; run: string; maxCost?: string; model: string; question?: string;
-      timeoutMs: string; maxOutputTokens: string; dryRun?: boolean; rerun?: boolean }, command) => {
+      timeoutMs: string; maxOutputTokens?: string; dryRun?: boolean; rerun?: boolean }, command) => {
       const controller = new AbortController();
       const cancel = (): void => controller.abort();
       process.once("SIGINT", cancel);
       try {
         const result = await analyzeStudy(options.cwd, options.run, {
           config: { model: options.model, maxCostUsd: Number(options.maxCost), question: options.question ?? null,
-            timeoutMs: Number(options.timeoutMs), maxOutputTokens: Number(options.maxOutputTokens) },
+            timeoutMs: Number(options.timeoutMs), maxOutputTokens: options.maxOutputTokens === undefined ? DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS : Number(options.maxOutputTokens) },
+          preferLargerOutput: options.maxOutputTokens === undefined,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.rerun === undefined ? {} : { rerun: options.rerun })
         }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
           `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
         writeResult(command, io, result, (value) => {
-          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}. No request sent.\n`;
+          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
           const lines: string[] = [];
           if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
           if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);
@@ -2377,7 +2381,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("preflight")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Check a lab manifest and optional target reachability before actor/model spend.")
+    .description("Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.")
     .option("--cwd <path>", "Target project directory.", ".")
     .addOption(new Option("--reachability <mode>", "Reachability mode.").choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"]).default("metadata"))
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))

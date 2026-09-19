@@ -180,17 +180,54 @@ async function pageWidth(page) {
 }
 async function assertClearGridScreens(page) {
   const screens = await page.locator(".card").evaluateAll((cards) => cards.map((card) => {
+    const cardBox = card.getBoundingClientRect(), cardCss = getComputedStyle(card);
     const area = card.querySelector(".card-preview").getBoundingClientRect();
     const screen = card.querySelector(".thumb").getBoundingClientRect();
-    const caption = card.querySelector(".card-caption").getBoundingClientRect();
+    const captionNode = card.querySelector(".card-caption"), caption = captionNode.getBoundingClientRect();
+    const contentWidth = cardBox.width - ["borderLeftWidth", "borderRightWidth", "paddingLeft", "paddingRight"].reduce((sum, key) => sum + parseFloat(cardCss[key]), 0);
+    const narrow = captionNode.hasAttribute("data-direct-pin") && contentWidth <= 190;
+    const text = (selector) => {
+      const element = captionNode.querySelector(selector), range = document.createRange(); range.selectNodeContents(element);
+      const css = getComputedStyle(element);
+      return { value: element.textContent, box: element.getBoundingClientRect().toJSON(), painted: range.getBoundingClientRect().toJSON(),
+        visible: css.visibility === "visible" && Number(css.opacity) === 1 };
+    };
+    const controls = [...captionNode.querySelectorAll(".card-pin-toggle, .card-details-trigger")].map((element) => ({
+      label: element.getAttribute("aria-label"), box: element.getBoundingClientRect().toJSON(),
+    }));
     return { gutter: Math.abs(area.width - screen.width), left: Math.abs(area.left - screen.left),
-      captionBelow: caption.top >= area.bottom - 1, captionHeight: caption.height,
+      contentWidth, narrow, captionLimit: narrow ? 78 : 44, caption: caption.toJSON(),
+      captionBelow: caption.top >= area.bottom - 1, captionHeight: caption.height, footer: cardBox.height - area.height,
+      name: text(".card-name"), metadata: text(".card-outcome, .card-capture-time"), controls,
+      touch: matchMedia("(hover: none), (pointer: coarse)").matches,
       badgesOrControlsInScreen: card.querySelectorAll(".card-preview .th-pill, .card-preview .th-connection, .card-preview .icon-button").length };
   }));
   assert(screens.length > 0);
   for (const screen of screens) {
     assert(screen.gutter < 1 && screen.left < 1, "The card adds horizontal padding beside the captured screen");
-    assert(screen.captionBelow && screen.captionHeight <= 44, "Caption covers the screen or expanded the card footer");
+    // Only the approved <=190px direct-pin layout has three caption rows.
+    // All wider cards retain the one-row 44px caption and original preview.
+    assert(screen.captionBelow && screen.captionHeight <= screen.captionLimit && screen.footer <= screen.captionLimit + 2,
+      `Caption covers the screen or exceeds its ${screen.captionLimit}px limit: ${JSON.stringify(screen)}`);
+    const inside = (box) => box.width > 0 && box.height > 0 && box.left >= screen.caption.left - 1 && box.right <= screen.caption.right + 1
+      && box.top >= screen.caption.top - 1 && box.bottom <= screen.caption.bottom + 1;
+    const overlaps = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+    for (const text of [screen.name, screen.metadata]) {
+      assert(text.visible && text.value.trim() && inside(text.box), "Participant text is hidden or outside its caption");
+      assert(text.painted.width > 0 && text.painted.height > 0 && text.painted.top >= text.box.top - 1 && text.painted.bottom <= text.box.bottom + 1,
+        "Participant text is vertically clipped");
+    }
+    assert(screen.name.box.height <= 21 && screen.metadata.box.height <= 15 && screen.name.box.bottom <= screen.metadata.box.top + 1,
+      "Participant name or metadata wraps or overlaps");
+    // Long labels may ellipsize, but metadata must use the available text row.
+    assert(screen.metadata.box.width >= Math.min(screen.metadata.painted.width, screen.name.box.width) - 1, "Participant metadata is unnecessarily clipped");
+    if (screen.narrow) for (const text of [screen.name, screen.metadata]) assert(Math.abs(text.box.width - screen.caption.width) <= 1, "Narrow participant text lost its full-width row");
+    for (const control of screen.controls) {
+      assert(inside(control.box), "A caption control is outside the card");
+      assert(!overlaps(control.box, screen.name.box) && !overlaps(control.box, screen.metadata.box), "A caption control overlaps participant text");
+      if (screen.touch) assert(control.box.width >= 44 && control.box.height >= 44, "A caption control misses its 44px touch target");
+    }
+    for (let index = 1; index < screen.controls.length; index += 1) assert(!overlaps(screen.controls[index - 1].box, screen.controls[index].box), "Caption controls overlap each other");
     assert.equal(screen.badgesOrControlsInScreen, 0, "UI chrome covers captured pixels");
   }
   return screens;
@@ -265,9 +302,12 @@ async function seekStudy(page, milliseconds) {
   await page.getByRole("button", { name: "Play study", exact: true }).waitFor();
 }
 async function readyStudyCard(page, id, source) {
-  const image = studyCard(page, id).locator("img.keyframe");
+  const card = studyCard(page, id);
+  // A retained decoded image stays mounted while an offscreen replacement is
+  // lazy. Bring the card into view before waiting for that replacement to load.
+  await card.scrollIntoViewIfNeeded();
+  const image = card.locator("img.keyframe");
   await until(async () => (await image.getAttribute("src"))?.endsWith(source), `${id} did not show ${source}`);
-  await image.scrollIntoViewIfNeeded();
   return readyCapture(image, source);
 }
 async function inspectCaptureAges(page) {
@@ -275,20 +315,24 @@ async function inspectCaptureAges(page) {
     const range = document.createRange(); range.selectNodeContents(element);
     const text = range.getBoundingClientRect(), box = element.getBoundingClientRect();
     const caption = element.closest(".card-caption").getBoundingClientRect();
-    const identity = element.closest(".card-identity").getBoundingClientRect();
+    const identityNode = element.closest(".card-identity"), identityDisplay = getComputedStyle(identityNode).display;
+    // display:contents has no CSS box. The age, its metadata row and the caption
+    // still have real boxes, and their painted text must remain unclipped.
+    const identity = identityDisplay === "contents" ? null : identityNode.getBoundingClientRect().toJSON();
     const clippingAncestors = [];
     for (let parent = element.parentElement; parent && !parent.matches(".card"); parent = parent.parentElement) {
       const css = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+      if (css.display === "contents") continue;
       if ((["hidden", "clip"].includes(css.overflowX) && (text.left < bounds.left - 1 || text.right > bounds.right + 1))
         || (["hidden", "clip"].includes(css.overflowY) && (text.top < bounds.top - 1 || text.bottom > bounds.bottom + 1))) clippingAncestors.push(parent.className);
     }
-    return { text: element.textContent, paintedText: text.toJSON(), box: box.toJSON(), caption: caption.toJSON(), identity: identity.toJSON(),
+    return { text: element.textContent, paintedText: text.toJSON(), box: box.toJSON(), caption: caption.toJSON(), identity, identityDisplay,
       clippingAncestors, hidden: getComputedStyle(element).visibility !== "visible" || Number(getComputedStyle(element).opacity) !== 1 };
   }));
   assert(measurements.length > 0, "Capture age is not separately readable");
   for (const value of measurements) {
     assert(value.paintedText.width > 0 && value.paintedText.height > 0 && !value.hidden, "Capture age is not visibly rendered");
-    for (const bounds of [value.box, value.caption, value.identity]) assert(value.paintedText.left >= bounds.left - 1 && value.paintedText.right <= bounds.right + 1
+    for (const bounds of [value.box, value.caption, value.identity].filter(Boolean)) assert(value.paintedText.left >= bounds.left - 1 && value.paintedText.right <= bounds.right + 1
       && value.paintedText.top >= bounds.top - 1 && value.paintedText.bottom <= bounds.bottom + 1, `Capture age is clipped: ${JSON.stringify(value)}`);
     assert.deepEqual(value.clippingAncestors, [], "An ancestor clips the visible capture age");
   }
@@ -335,6 +379,7 @@ async function runCase(id, options, action) {
       // Retain painted evidence, including after native seek events. Offscreen
       // lazy images do not need to load merely to photograph this viewport.
       const visible = [...document.images].filter((image) => {
+        if (getComputedStyle(image).visibility === "hidden") return false;
         const box = image.getBoundingClientRect();
         let left = Math.max(0, box.left), right = Math.min(innerWidth, box.right), top = Math.max(0, box.top), bottom = Math.min(innerHeight, box.bottom);
         for (let parent = image.parentElement; parent; parent = parent.parentElement) {
@@ -413,11 +458,19 @@ try {
       record.checks.width = await pageWidth(page); await snap("complete-screens");
       assertFullFrames(record.checks.geometry);
       assert(record.checks.width.page <= record.checks.width.viewport + 1, "Grid page overflows horizontally");
-      record.checks.cardChrome = await page.locator(".card").evaluateAll((cards) => cards.map((card) => ({
-        footer: card.getBoundingClientRect().height - card.querySelector(".card-preview").getBoundingClientRect().height,
-        outcomeHeight: card.querySelector(".card-outcome").getBoundingClientRect().height,
-      })));
-      assert(record.checks.cardChrome.every((card) => card.footer <= 46 && card.outcomeHeight < 20), "Card footer grew or its outcome wrapped");
+      record.checks.cardChrome = await assertClearGridScreens(page);
+      record.checks.expandedCaptionRejected = [];
+      for (const narrow of [true, false]) {
+        const index = record.checks.cardChrome.findIndex((card) => card.narrow === narrow);
+        assert(index >= 0, "Caption proof needs both narrow and wide cards");
+        const caption = page.locator(".card").nth(index).locator(".card-caption");
+        await caption.evaluate((element, height) => { element.style.height = `${height}px`; }, narrow ? 90 : 78);
+        let rejected = false; try { await assertClearGridScreens(page); } catch { rejected = true; }
+        await caption.evaluate((element) => element.style.removeProperty("height"));
+        assert(rejected, `${narrow ? "Narrow" : "Wide"} caption guard accepted an expanded footer`);
+        record.checks.expandedCaptionRejected.push({ narrow, rejected });
+      }
+      await assertClearGridScreens(page);
       assert.equal(await page.getByLabel("Preview size").count(), 0, "View controls consume default grid space");
       const first = page.locator(".card").first(); await first.hover();
       await first.getByRole("button", { name: /^Participant details:/ }).click();
@@ -506,6 +559,22 @@ try {
     await readyStudyCard(page, "lane-1", "portrait-4.png");
     await readyStudyCard(page, "lane-2", "landscape-4.png");
     await setStudySpeed(page, 4);
+    // Observe the committed Play transition before the shared clock advances.
+    // The old decoded raster may remain visible until the requested one loads;
+    // inspecting img.src immediately after clicking races that deliberate handoff.
+    const playbackStart = await page.evaluateHandle(() => {
+      const receipt = { firstCommit: null, disconnect: () => observer.disconnect() };
+      const observer = new MutationObserver(() => {
+        if (!document.querySelector('button[aria-label="Pause study"]')) return;
+        receipt.firstCommit = {
+          offsetMs: Number(document.querySelector('input[aria-label="Seek study recording"]').value),
+          requestedSources: [...document.querySelectorAll(".card img.keyframe")].map((image) => image.getAttribute("data-requested-src")),
+        };
+        observer.disconnect();
+      });
+      observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+      return receipt;
+    });
     const play = page.getByRole("button", { name: "Play study", exact: true });
     if (phone) {
       const bounds = await play.boundingBox();
@@ -513,9 +582,12 @@ try {
       await play.tap();
     } else await play.click();
     await page.getByRole("button", { name: "Pause study", exact: true }).waitFor();
-    const startSources = await page.locator(".card img.keyframe").evaluateAll((elements) => elements.map((element) => element.getAttribute("src")));
-    assert.equal(startSources.length, 2);
-    assert(startSources.every((source) => source.endsWith("-1.png")), "Play from latest previews did not begin at the first capture time");
+    await until(() => playbackStart.evaluate((receipt) => receipt.firstCommit !== null), "Play did not commit a shared playback state");
+    record.checks.playbackStart = await playbackStart.evaluate((receipt) => receipt.firstCommit);
+    await playbackStart.evaluate((receipt) => receipt.disconnect()); await playbackStart.dispose();
+    assert.equal(record.checks.playbackStart.offsetMs, 0, "Play from latest previews did not begin at the first capture time");
+    assert.equal(record.checks.playbackStart.requestedSources.length, 2);
+    assert(record.checks.playbackStart.requestedSources.every((source) => source?.endsWith("-1.png")), "Play did not request the first capture for both participants");
     await until(async () => {
       const sources = await page.locator(".card img.keyframe").evaluateAll((elements) => elements.map((element) => element.getAttribute("src")));
       return sources.length === 2 && sources.every((source) => /-(?:2|3)\.png$/.test(source));
@@ -529,6 +601,8 @@ try {
     await play.waitFor();
     assert.equal(await page.locator(".thumb iframe").count(), 0, "Playback end unexpectedly entered live mode");
     record.checks.stoppedAtEnd = true;
+    await seekStudy(page, 0);
+    record.checks.firstCaptures = [await readyStudyCard(page, "lane-1", "portrait-1.png"), await readyStudyCard(page, "lane-2", "landscape-1.png")];
     await seekStudy(page, 3000);
     record.checks.sharedCaptures = [await readyStudyCard(page, "lane-1", "portrait-2.png"), await readyStudyCard(page, "lane-2", "landscape-2.png")];
     assertFullFrames(await inspectImages(page.locator(".card img.keyframe")));
@@ -828,12 +902,14 @@ try {
     await openLane(page);
     await page.getByRole("button", { name: "Previous frame", exact: true }).click();
     await page.getByRole("button", { name: "Next frame", exact: true }).click();
+    await readyCapture(page.locator(".stage-box img").first(), "portrait-4.png");
     record.checks.before = await displayedFrame(page); await snap("paused-newest");
     const before = pollCount; appendFrame(data);
-    await until(() => pollCount > before, "No snapshot poll after append"); await wait(400);
+    await until(() => pollCount > before, "No snapshot poll after append");
+    await until(async () => Number(await studySlider(page).getAttribute("max")) === 28_000, "Appended capture was not committed to the shared timeline");
     record.checks.after = await displayedFrame(page); record.checks.controls = (await stateProof(page)).controls;
     assert.equal(record.checks.after, record.checks.before, "Paused last frame advanced with incoming evidence");
-    assert(record.checks.controls.some((control) => Number(control.max) > 3), "New timeline was not received");
+    assert.equal(Number(await studySlider(page).inputValue()), 21_000, "Appended evidence moved the paused study cursor");
     await snap("paused-after-growth");
   });
   await runCase("same-lane-route", {}, async ({ page, record, snap }) => {
@@ -1094,10 +1170,13 @@ try {
     await openLane(page);
     const next = page.getByRole("button", { name: "Next frame", exact: true });
     await next.focus(); await page.keyboard.press("Tab"); await page.keyboard.press("Shift+Tab");
-    await page.locator(".observer-tooltip").getByText("Next frame", { exact: true }).waitFor();
+    const nextHint = page.locator(".observer-tooltip").filter({ hasText: /^Next frame$/ });
+    await nextHint.waitFor();
     const route = page.url(), before = await displayedFrame(page);
     await page.keyboard.press("Escape");
-    await page.locator(".observer-tooltip").waitFor({ state: "hidden" });
+    // A previously focused control's tooltip can still be animating closed.
+    // Verify the current hint without assuming closing portals are unique.
+    await nextHint.waitFor({ state: "hidden" });
     assert.equal(page.url(), route, "Dismissing a tooltip navigated away from the player");
     assert.equal(await displayedFrame(page), before, "Dismissing a tooltip changed the frame");
     assert(await next.evaluate((button) => button === document.activeElement), "Tooltip dismissal lost focus");

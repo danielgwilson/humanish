@@ -3,7 +3,7 @@
 // A run is a directory. Sharing it meant a tunnel (`serve --expose`) or a hand-zipped bundle,
 // neither of which is "send one thing". The Observer is already a single-file artifact with the
 // run's data inlined; what keeps it from travelling is the screenshots it references by path.
-// Export inlines those as data URIs and writes ONE .html that opens from a mail attachment.
+// Export embeds each unique raster once and writes ONE .html that opens offline.
 //
 // Share safety is the point, not a step: export runs verify inside the flow and refuses a bundle
 // that is not share_ready. A local_only bundle (raw screenshots) exports only with an explicit
@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { renderObserver, renderObserverHtml } from "./observer.js";
+import { renderObserver, renderObserverHtml, type ObserverExportAssets } from "./observer.js";
 import { buildObserverData, type ObserverData } from "./observer-data.js";
 import { resolveRunPath, verifyRun, type RunBundle, type VerifyResult } from "./run.js";
 import { exportRedactedBundle } from "./export-bundle.js";
@@ -24,6 +24,8 @@ import { readBoundedStudyFile, STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvide
 export const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */
 export const DEFAULT_EXPORT_MAX_BYTES = 25 * 1024 * 1024;
+// The portable browser loader applies the same per-raster allocation bound.
+const MAX_PORTABLE_IMAGE_BYTES = 64 * 1024 * 1024;
 
 const OBSERVER_DATA_SLOT = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/;
 const IMAGE_MIME: Record<string, string> = {
@@ -157,7 +159,7 @@ export async function exportRun(
     return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput, shareSafety: verified.shareSafety, error: { code: "HUMANISH_EXPORT_NO_OBSERVER", message: `Run ${runId}'s Observer carries no inline data slot; rebuild the run's Observer first.` } };
   }
 
-  // Every string in the data that names an image file inside the run becomes a data URI. Paths are
+  // Every string in the data that names an image file inside the run becomes an asset reference. Paths are
   // run-root-relative in the data; a path that resolves outside the run is left alone, never read.
   const analysis = await loadStudyAnalysis(runPaths);
   let data: unknown = JSON.parse(slot[1]!);
@@ -170,35 +172,47 @@ export async function exportRun(
     }
     data = buildObserverData(JSON.parse(source.toString("utf8")) as RunBundle);
   }
-  const cache = new Map<string, string | null>();
+  const cache = new Map<string, Promise<string>>();
+  const assets: ObserverExportAssets = {};
   const analysisCaptures = new Map(analysis.state === "ready" ? analysis.analysis?.evidence.flatMap((item) =>
     item.capture ? [[item.capture.path, item.capture.sha256] as const] : []) ?? [] : []);
   let embedded = 0;
   let imageBytes = 0;
-  const inline = async (value: string): Promise<string> => {
-    const ext = path.extname(value).toLowerCase();
-    const mime = IMAGE_MIME[ext];
-    if (mime === undefined || value.startsWith("data:") || /^[a-z]+:\/\//i.test(value)) return value;
-    const cached = cache.get(value);
-    if (cached !== undefined) return cached ?? value;
+  let oversizedImage = false;
+  const readImage = async (value: string, mime: string): Promise<string> => {
     const candidates = [path.resolve(runRoot, value), path.resolve(runRoot, "observer", value)];
     for (const candidate of candidates) {
       if (!(await isInside(runRoot, candidate))) continue;
       const bytes = await readBoundedStudyFile(runPaths, path.relative(runRoot, candidate), options.maxBytes ?? DEFAULT_EXPORT_MAX_BYTES);
       if (bytes === null) continue;
+      if (bytes.byteLength > MAX_PORTABLE_IMAGE_BYTES) {
+        oversizedImage = true;
+        throw new Error("PORTABLE_IMAGE_TOO_LARGE");
+      }
       const expectedHash = analysisCaptures.get(path.relative(runRoot, candidate).split(path.sep).join("/"));
-      if (expectedHash && createHash("sha256").update(bytes).digest("hex") !== expectedHash) {
+      const hash = createHash("sha256").update(bytes).digest("hex");
+      if (expectedHash && hash !== expectedHash) {
         throw new Error("ANALYSIS_EXPORT_CAPTURE_CHANGED");
       }
-      imageBytes += bytes.byteLength;
-      embedded += 1;
-      const uri = `data:${mime};base64,${bytes.toString("base64")}`;
-      cache.set(value, uri);
-      return uri;
+      if (!assets[hash]) {
+        imageBytes += bytes.byteLength;
+        embedded += 1;
+        assets[hash] = { mime, base64: bytes.toString("base64") };
+      }
+      return `humanish-asset:${hash}`;
     }
-    cache.set(value, null);
     warnings.push(`image not found inside the run, left as a path: ${value}`);
     return value;
+  };
+  const inline = (value: string): Promise<string> => {
+    const mime = IMAGE_MIME[path.extname(value).toLowerCase()];
+    if (mime === undefined || value.startsWith("data:") || /^[a-z]+:\/\//i.test(value)) return Promise.resolve(value);
+    const cached = cache.get(value);
+    if (cached) return cached;
+    // Memoize the in-flight read, too: parallel frame arrays often name the same image.
+    const pending = readImage(value, mime);
+    cache.set(value, pending);
+    return pending;
   };
   const walk = async (node: unknown): Promise<unknown> => {
     if (typeof node === "string") return inline(node);
@@ -213,6 +227,8 @@ export async function exportRun(
   let inlined: Record<string, unknown>;
   try { inlined = await walk(data) as Record<string, unknown>; }
   catch {
+    if (oversizedImage) return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput,
+      error: { code: "HUMANISH_EXPORT_TOO_LARGE", message: "A captured image exceeds the portable viewer's 64 MiB per-image limit. Export the evidence bundle instead." } };
     return { schema: EXPORT_SCHEMA, ok: false, cwd, run: runInput,
       error: { code: "HUMANISH_EXPORT_VERIFY_FAILED", message: "Captured evidence changed while assembling the export." } };
   }
@@ -264,7 +280,7 @@ export async function exportRun(
       verifiedAt: new Date().toISOString(), reasons: verified.shareSafety.reasons.map((reason) => reason.code) };
   }
   warnings.push(...analysis.warnings);
-  let output = renderObserverHtml(inlined as unknown as ObserverData, { snapshot: true, analysis });
+  let output = renderObserverHtml(inlined as unknown as ObserverData, { snapshot: true, analysis, assets });
   const watermarked = !shareReady;
   if (watermarked) {
     const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code));

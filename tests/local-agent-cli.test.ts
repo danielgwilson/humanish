@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import type { CuaObservation } from "../src/computer-use.js";
 import {
@@ -182,8 +185,12 @@ describe("telling the operator what they already have", () => {
   const detect = (present: string[], creds: string[]) =>
     detectLocalAgents({
       home: "/home/dev",
+      env: {},
       which: async (bin) => (present.includes(bin) ? `/usr/bin/${bin}` : undefined),
-      exists: async (file) => creds.some((c) => file.endsWith(c))
+      exists: async (file) => creds.some((c) => file.endsWith(c)),
+      authProbe: async (bin) => bin.endsWith("codex")
+        ? { code: creds.length ? 0 : 1, stdout: "", stderr: creds.length ? "Logged in using ChatGPT" : "Not logged in" }
+        : { code: creds.length ? 0 : 1, stdout: JSON.stringify({ loggedIn: creds.length > 0 }), stderr: "" }
     });
 
   it("finds an installed, signed-in agent and says a run can use it", async () => {
@@ -196,13 +203,72 @@ describe("telling the operator what they already have", () => {
     const signedOut = await detect(["claude"], []);
     expect(localAgentDoctorMessage(signedOut)).toContain("not signed in");
     const none = await detect([], []);
-    expect(localAgentDoctorMessage(none)).toContain("needs a provider API key");
+    expect(localAgentDoctorMessage(none)).toContain("needs OPENAI_API_KEY");
   });
 
-  it("only ever checks that a credential file EXISTS", async () => {
-    // humanish must never read these. The boolean is the entire entitlement.
+  it("does not expose credentials or status output", async () => {
     const found = await detect(["codex"], [".codex/auth.json"]);
     expect(found[0]?.credentialsPresent).toBe(true);
     expect(Object.keys(found[0] ?? {})).not.toContain("token");
   });
+
+  it("accepts a CLI-reported keyring login without a credential file", async () => {
+    const found = await detectLocalAgents({ home: "/home/dev", env: {}, which: async bin => bin === "codex" ? "/usr/bin/codex" : undefined,
+      exists: async () => false, authProbe: async () => ({ code: 0, stdout: "", stderr: "Logged in using ChatGPT\nprivate-account-marker" }) });
+    expect(found[0]).toMatchObject({ credentialsPresent: false, authStatus: "authenticated" });
+    expect(JSON.stringify(found)).not.toContain("private-account-marker");
+  });
+
+  it("does not infer authentication from a stale file or a failed status check", async () => {
+    for (const [result, expected] of [
+      [{ code: 1, stdout: "", stderr: "Not logged in" }, "unauthenticated"],
+      [{ code: 1, stdout: "", stderr: "unreadable configuration private-account-marker" }, "unknown"],
+      [{ code: null, stdout: "", stderr: "" }, "unknown"],
+      [{ code: 0, stdout: "unsupported-format private-account-marker", stderr: "" }, "unknown"]
+    ] as const) {
+      const found = await detectLocalAgents({ home: "/home/dev", env: {}, which: async bin => bin === "codex" ? "/usr/bin/codex" : undefined,
+        exists: async () => true, authProbe: async () => result });
+      expect(found[0]).toMatchObject({ credentialsPresent: true, authStatus: expected });
+      expect(JSON.stringify(found) + localAgentDoctorMessage(found)).not.toContain("private-account-marker");
+    }
+  });
+
+  it("honors CODEX_HOME while keeping status output private", async () => {
+    const checked: string[] = [];
+    const env = { CODEX_HOME: "/custom/codex" };
+    const found = await detectLocalAgents({ home: "/home/dev", env, which: async bin => bin === "codex" ? "/usr/bin/codex" : undefined,
+      exists: async file => { checked.push(file); return true; }, authProbe: async (_bin, args, actualEnv) => {
+        expect(args).toEqual(["login", "status"]); expect(actualEnv).toBe(env);
+        return { code: 0, stdout: "", stderr: "Logged in using an API key - private-account-marker" };
+      } });
+    expect(checked).toEqual(["/custom/codex/auth.json"]);
+    expect(found[0]?.authStatus).toBe("authenticated");
+    expect(JSON.stringify(found)).not.toContain("private-account-marker");
+  });
+
+  it("keeps an unreadable credential hint separate from CLI-reported authentication", async () => {
+    const found = await detectLocalAgents({ env: {}, which: async bin => bin === "claude" ? "/synthetic/claude" : undefined,
+      exists: async () => { throw new Error("unreadable"); }, authProbe: async () => ({ code: 0, stdout: JSON.stringify({ loggedIn: true }), stderr: "" }) });
+    expect(found[0]).toMatchObject({ credentialsPresent: false, authStatus: "authenticated" });
+  });
+
+  it("bounds real subprocess status checks and drops excessive output", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "humanish-login-probe-"));
+    const binary = path.join(directory, "codex");
+    try {
+      for (const body of [
+        `if (process.argv.slice(2).join(' ') !== 'login status') process.exit(99); process.stderr.write('Logged in using ChatGPT\\nprivate-account-marker');`,
+        `process.stdout.write('private-account-marker'.repeat(10000));`,
+        `setInterval(() => {}, 1000);`
+      ]) {
+        await writeFile(binary, `#!${process.execPath}\n${body}\n`);
+        await chmod(binary, 0o700);
+        const before = Date.now();
+        const found = await detectLocalAgents({ env: { PATH: directory }, exists: async () => false });
+        expect(found[0]?.authStatus).toBe(body.includes("Logged in") ? "authenticated" : "unknown");
+        expect(Date.now() - before).toBeLessThan(6500);
+        expect(JSON.stringify(found)).not.toContain("private-account-marker");
+      }
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }, 10000);
 });

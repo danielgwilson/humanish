@@ -1,6 +1,6 @@
 {
   "name": "humanish",
-  "version": "0.93.1",
+  "version": "0.94.0",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [
@@ -80,7 +80,8 @@
     "docs:check": "tsx scripts/generate-cli-docs.ts --check",
     "observer:browser:proof": "node scripts/observer-browser-proof.mjs",
     "observer:iframe:proof": "node scripts/observer-iframe-proof.mjs",
-    "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs"
+    "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs",
+    "observer:reliability:proof": "node scripts/observer-reliability-proof.mjs"
   },
   "repository": {
     "type": "git",
@@ -94,6 +95,7 @@
     "commander": "^14.0.3",
     "playwright-core": "^1.60.0",
     "pngjs": "^7.0.0",
+    "undici": "^6.28.1",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
@@ -114,6 +116,7 @@
     "@e2b/desktop": "^2.4.0",
     "@types/node": "^20.19.41",
     "@types/pngjs": "^6.0.5",
+    "axe-core": "4.13.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { estimateStudyAnalysisAdmission, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION } from "../src/study-analysis-engine.js";
+import { estimateStudyAnalysisAdmission, preferLargerStudyAnalysisOutput, runStudyAnalysis, STUDY_ANALYSIS_PROMPT_VERSION } from "../src/study-analysis-engine.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput, StudyAnalysisResult } from "../src/study-analysis.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue, validateStudyAnalysisArtifact } from "../src/study-analysis-validation.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
@@ -42,6 +42,21 @@ function transport(output: unknown = result()) {
 }
 
 describe("bounded study analysis engine", () => {
+  it("expands default output space only when the original budget admits it", () => {
+    const packet = input();
+    const base = { ...config, model: "gpt-6-astra", maxCostUsd: 3, maxOutputTokens: 16384 };
+    expect(preferLargerStudyAnalysisOutput(packet, base)).toEqual({ ...base, maxOutputTokens: 32768 });
+    const small = estimateStudyAnalysisAdmission(packet, base).estimatedCostUsd!;
+    const large = estimateStudyAnalysisAdmission(packet, { ...base, maxOutputTokens: 32768 }).estimatedCostUsd!;
+    const between = { ...base, maxCostUsd: (small + large) / 2 };
+    expect(estimateStudyAnalysisAdmission(packet, between).allowed).toBe(true);
+    expect(estimateStudyAnalysisAdmission(packet, { ...between, maxOutputTokens: 32768 }).allowed).toBe(false);
+    expect(preferLargerStudyAnalysisOutput(packet, between)).toEqual(between);
+    const denied = { ...base, maxCostUsd: 0.000001 };
+    expect(preferLargerStudyAnalysisOutput(packet, denied)).toEqual(denied);
+    expect(estimateStudyAnalysisAdmission(packet, denied).allowed).toBe(false);
+    expect(preferLargerStudyAnalysisOutput(packet, { ...base, maxOutputTokens: -1 }).maxOutputTokens).toBe(-1);
+  });
   it("retains paid usage when a response omits the required concern review", async () => {
     const answer = result(); delete answer.concernReviews;
     const h = transport(answer);

@@ -5,14 +5,14 @@ description: Run a synthetic participant through your signed-in Codex or Claude 
 
 Finish the [installation](/docs#install) first, including the `@e2b/desktop` peer.
 
-A live study normally needs a model provider API key. If you already have a coding
-agent signed in (Codex on a ChatGPT plan, Claude Code on a Max plan), humanish
-can use it as the participant's brain instead, and then the only credential it
-needs is `E2B_API_KEY`.
+A live study normally uses the OpenAI API for its participant. Humanish can
+instead use a signed-in Codex or Claude Code CLI as the participant's brain.
+The hosted desktop still needs `E2B_API_KEY` and `@e2b/desktop`.
 
-```bash
-npx humanish doctor
-```
+Automatic findings are separate: they use the OpenAI API and require
+`OPENAI_API_KEY`, even with a local-agent participant. Without that key the
+participant can run, but automatic analysis is skipped. To opt out deliberately,
+set `review.analysis: false`.
 
 Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment.
 Keep a finite `execution.timeoutMs`; API-model dollar caps do not bound your
@@ -28,14 +28,35 @@ actors:
 ```
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
-separate optional model selection passed to that CLI. Before launching a desktop, Humanish checks that the chosen CLI is installed
-and its expected credential file is present; that is not a fresh authentication test.
+separate optional model selection passed to that CLI. Humanish does not change
+an `openai-computer-use` lab merely because you have Codex installed.
+
+Check the CLI's sign-in state, then the lab's setup:
+
+```bash
+codex login status                 # or: claude auth status
+npx humanish doctor --lab .humanish/labs/your-app.yaml
+```
+
+If signed out, use `codex login` or `claude auth login`. Before launching a
+desktop, Humanish asks the selected CLI for its local authentication status.
+An unavailable or unrecognized status fails before desktop creation and asks
+you to check or update the CLI; it is not reported as a confirmed sign-out.
+This checks local status, not remote account validity, model access or quota.
+
+[Codex supports ChatGPT sign-in or API-key authentication](https://learn.chatgpt.com/docs/auth).
+Those have separate usage and billing. ChatGPT sign-in does not supply an
+OpenAI API key to Humanish's default participant or analysis. Claude Code uses
+its own [authentication commands](https://code.claude.com/docs/en/cli-reference).
 
 ## Where execution happens
 
 Humanish's [local-agent discovery](https://github.com/danielgwilson/humanish/blob/main/src/local-agent-cli.ts)
-checks credential-file existence without reading its contents. The authenticated
-coding CLI still runs on your host and uses its own sign-in state.
+uses each CLI's status command; a credential-file hint is not treated as proof
+of authentication. This supports Codex's `CODEX_HOME` and keyring-backed login
+without assuming an `auth.json` file must exist. Status output is classified
+in memory; Humanish does not include account identifiers or raw status output
+in the result. The coding CLI runs on your host and uses its own sign-in state.
 
 Humanish starts it in a scratch directory with read-only restrictions for Codex
 or `--allowedTools Read` for Claude Code, and supplies a screenshot for each

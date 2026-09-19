@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -15,6 +16,8 @@ import { tallyParticipantOutcomes, type RunBundle } from "../src/run.js";
 import { writeFixtureRun } from "./helpers/run-fixtures.js";
 
 const PNG = syntheticPng1x1();
+const PNG_HASH = createHash("sha256").update(PNG).digest("hex");
+const PNG_ASSETS = { [PNG_HASH]: { mime: "image/png", base64: PNG.toString("base64") } };
 const RUN = "r-export";
 
 function verified(status: VerifyResult["shareSafety"]["status"], ok = true): () => Promise<VerifyResult> {
@@ -63,7 +66,8 @@ describe("humanish export", () => {
     expect(result.embeddedImages).toBe(1);
     expect(result.watermarked).toBe(false);
     const html = await readFile(path.join(cwd, result.path), "utf8");
-    expect(html).toContain(`data:image/png;base64,${PNG.toString("base64")}`);
+    expect(html).toContain(`humanish-asset:${PNG_HASH}`);
+    expect(html).toContain(`data-mime="image/png">${PNG.toString("base64")}</script>`);
     // The missing frame keeps its path and is named in a warning, never invented.
     expect(html).toContain("screenshots/lane-01/missing.png");
     expect(result.warnings.some((w) => w.includes("missing.png"))).toBe(true);
@@ -87,11 +91,28 @@ describe("humanish export", () => {
     const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
     expect(slot).not.toBeNull();
     const data = JSON.parse(slot![1]!) as ObserverData;
-    expect(exported).toBe(renderObserverHtml(data, { snapshot: true }));
+    expect(exported).toBe(renderObserverHtml(data, { snapshot: true, assets: PNG_ASSETS }));
     expect(renderObserverHtml(data)).not.toContain('<meta name="humanish-observer-mode"');
     expect(exported).not.toContain("OBSOLETE_RENDERER_SENTINEL");
-    expect(exported).toContain(`data:image/png;base64,${PNG.toString("base64")}`);
+    expect(exported).toContain(`data-mime="image/png">${PNG.toString("base64")}</script>`);
     expect(await readFile(index, "utf8")).toBe(oldHtml);
+  });
+
+  it("embeds repeated captures and distinct paths with identical bytes only once", async () => {
+    await writeFile(path.join(runDir, "screenshots", "lane-01", "turn-02.png"), PNG);
+    const data = { run: { runId: RUN }, streams: [{ frames: Array.from({ length: 80 }, (_, index) => ({
+      href: `screenshots/lane-01/turn-0${index % 2 + 1}.png`
+    })) }] };
+    await writeFile(path.join(runDir, "observer", "index.html"), `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`);
+    const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
+    if (!result.ok) throw new Error(result.error.message);
+    const html = await readFile(path.join(cwd, result.path), "utf8");
+    expect(result.embeddedImages).toBe(1);
+    expect(html.split(PNG.toString("base64")).length - 1).toBe(1);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html)!;
+    const frames = JSON.parse(slot[1]!).streams[0].frames;
+    expect(frames).toHaveLength(80);
+    expect(new Set(frames.map((frame: { href: string }) => frame.href))).toEqual(new Set([`humanish-asset:${PNG_HASH}`]));
   });
 
   it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {

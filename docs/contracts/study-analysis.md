@@ -31,7 +31,17 @@ admission. It bounds a conservative estimate, not an exact provider bill.
 estimate retains valid findings and usage but returns a partial result and a
 nonzero command exit, including when that version is reused.
 
-The defaults allow five minutes and 16,384 output tokens, including reasoning.
+The default deadline is ten minutes. With no explicit output-token limit, analysis
+uses 32,768 tokens if admission fits the declared budget, or retains the prior
+16,384-token allowance otherwise. Explicit limits are never adjusted. Selection
+happens before dispatch; `admission.outputTokenAllowance` exposes it in dry-run,
+and the saved configuration, digest and automatic job bind the selected allowance.
+This selection never increases the spending limit or starts a retry.
+The configured wall-clock deadline covers the entire request, including waiting
+for response headers and reading the body. A request-scoped dispatcher prevents
+Node's separate fetch timeout from cutting a longer configured deadline short;
+it does not change other network requests in the process. Transport failures
+retain only an allowlisted cause code, never provider exception text or URLs.
 The analysis checks the assigned requirements against the retained end state;
 an unverified essential result remains unknown even if the participant reported
 success. Findings keep reported concerns and observed recovery distinct across

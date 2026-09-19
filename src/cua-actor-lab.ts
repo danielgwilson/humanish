@@ -23,7 +23,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { readFile, realpath, rm } from "node:fs/promises";
@@ -72,7 +72,7 @@ import {
 } from "./e2b-detached.js";
 import { DEFAULT_SANDBOX_CATCH_PORT, collectCommsThread, collectExternalCommsThread, deployCommsCatch, externalCatchHealthy, externalInboxUrl, refreshInboxSurface, writeInboxSurface, type DeployedCommsCatch } from "./comms-sandbox-catch.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
-import { buildOriginMap } from "./comms-inbox.js";
+import { buildOriginMap, recipientInboxUrl } from "./comms-inbox.js";
 import type { CommsAddress } from "./comms-types.js";
 import {
   DEFAULT_DEVICE_PRESET,
@@ -237,6 +237,9 @@ export async function prepareDesktopMedia(
   requestTimeoutMs: number,
   readHostFile: (absolutePath: string) => Promise<Buffer> = (absolutePath) => readFile(absolutePath)
 ): Promise<DesktopMediaEvidence> {
+  if (media.microphone !== undefined) {
+    throw new Error("execution.desktop.media.microphone.source injection is unsupported; the declared microphone file cannot be delivered, including on custom templates.");
+  }
   const flags: string[] = [];
   let camera: DesktopMediaEvidence["camera"];
   if (media.camera !== undefined) {
@@ -786,16 +789,18 @@ export function composeLaneInstructions(args: {
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
 export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string): CuaLaneSpec {
+  // No assigned identity means no participant inbox; never fall back to the shared operator view.
+  if (!address?.trim()) return spec;
   // The address is half the handoff (#351): the drain matches captured mail against the DECLARED
   // address, so an actor that invents its own at signup gets an inbox that stays empty forever.
   // Telling it which address to use is what makes the funnel deterministic end to end. The
   // wait-steering sentence exists because a mid-flow model treats "we emailed you" as a blocker
   // and ends its session — the exact give-up class a live run documented — unless told the wait
   // is expected and the inbox is the next step.
-  const identity = address === undefined ? "" : ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
+  const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
   return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} When the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${inboxUrl} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there. Waiting for an email is normal, not a blocker — do not end your session while waiting; open the inbox and refresh it until the email appears.`
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} When the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${recipientInboxUrl(inboxUrl, address)} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there. Waiting for an email is normal, not a blocker — do not end your session while waiting; open the inbox and refresh it until the email appears.`
   };
 }
 
@@ -3724,7 +3729,7 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit");
+    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
 }
 
 async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
@@ -3799,12 +3804,17 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     return fail("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
+  const mediaReason = desktopMediaValidationReason(config);
+  if (mediaReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", mediaReason, descriptor.id);
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", outputLimitReason, descriptor.id);
   if (actor?.maxOutputTokens !== undefined && (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)) {
     return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.", descriptor.id);
   }
   const inProcessRoute = hooks.buildExecutor !== undefined;
+  if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
+    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.", descriptor.id);
+  }
   const localAppSubject = config.subject.source === "local-app";
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
   // so it cannot host a catch — the OPERATOR runs one, and humanish still does every other part
@@ -4013,10 +4023,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       // where most people trying humanish stop.
       const suggestion = missingKeys.includes("OPENAI_API_KEY")
         ? await (async () => {
-            const ready = (await detectLocalAgents()).filter((agent) => agent.credentialsPresent);
+            const ready = (await detectLocalAgents({ env })).filter((agent) => agent.authStatus === "authenticated");
             return ready.length === 0
               ? ""
-              : ` You have ${ready.map((agent) => agent.label).join(" and ")} signed in on this machine`
+              : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine`
                 + ` — set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
           })()
         : "";
@@ -4029,7 +4039,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (localAgentRoute) {
       // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
       // machine is paid for is the same information delivered at the worst possible moment.
-      const available = await detectLocalAgents();
+      const available = await detectLocalAgents({ env });
       const chosen = available.find((agent) => agent.id === preferredLocalAgent);
       if (chosen === undefined) {
         return fail(
@@ -4039,11 +4049,12 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
           descriptor.id
         );
       }
-      if (!chosen.credentialsPresent) {
+      if (chosen.authStatus !== "authenticated") {
         return fail(
           "HUMANISH_CUA_LAB_KEYS_MISSING",
-          `${chosen.label} is installed but not signed in — run \`${chosen.bin}\` once to log in. `
-            + "humanish never reads its credentials; it only checks that the file exists.",
+          chosen.authStatus === "unauthenticated"
+            ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
+            : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
           descriptor.id
         );
       }
@@ -4079,7 +4090,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (externalCommsConfig && !(await externalCatchHealthy(externalCommsConfig))) {
       return fail(
         "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
-        "comms.email.external.catchBaseUrl is not reachable as a humanish comms catch (GET /health must return the humanish-comms-catch service marker). Start it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
+        "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
         descriptor.id
       );
     }

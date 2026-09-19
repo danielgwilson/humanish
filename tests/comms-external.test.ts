@@ -167,3 +167,25 @@ describe("comms.email.external config (#328)", () => {
     expect(provisioned.warnings.join("\n")).toContain("comms.email.external");
   });
 });
+
+describe("external inbox capability admission", () => {
+  const current = { ok: true, service: "humanish-comms-catch", capabilities: ["recipient-inbox-v1"] };
+  it.each([
+    { ok: true, service: "humanish-comms-catch" },
+    { ...current, capabilities: "recipient-inbox-v1" },
+    { ...current, service: "something-humanish-comms-catch" },
+    { ...current, ok: false },
+    null,
+    "humanish-comms-catch recipient-inbox-v1"
+  ])("refuses old or malformed health without accepting a substring", async (body) => {
+    expect(await externalCatchHealthy({ catchBaseUrl: "https://catch.example.test" }, { fetchFn: async () => Response.json(body) })).toBe(false);
+  });
+  it("requires both the capture and separately declared inbox listener to support scopes", async () => {
+    const targets: string[] = [];
+    const external = { catchBaseUrl: "https://catch.example.test", inboxBaseUrl: "https://inbox.example.test" };
+    expect(await externalCatchHealthy(external, { fetchFn: async (input) => { targets.push(String(input)); return Response.json(current); } })).toBe(true);
+    expect(targets.sort()).toEqual(["https://catch.example.test/health", "https://inbox.example.test/health"]);
+    expect(await externalCatchHealthy(external, { fetchFn: async (input) => Response.json(String(input).includes("inbox.example") ? { ok: true, service: "humanish-comms-catch" } : current) })).toBe(false);
+    expect(await externalCatchHealthy(external, { fetchFn: async () => new Response("not JSON") })).toBe(false);
+  });
+});

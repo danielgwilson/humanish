@@ -89,7 +89,7 @@ class BaseHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         if path == "/health":
-            self._json(200, {"ok": True, "service": "humanish-comms-catch"})
+            self._json(200, {"ok": True, "service": "humanish-comms-catch", "capabilities": ["recipient-inbox-v1", "captured-inline-images-v1"]})
             return
         if path == "/":
             # A persona that trims the /inbox path lands here. It used to get the health JSON and read
@@ -136,6 +136,18 @@ class BaseHandler(BaseHTTPRequestHandler):
                 except Exception:
                     data = None
             if data is None:
+                import re
+                if re.fullmatch(r"/(api/)?inbox/for/[a-f0-9]{64}/?", rel):
+                    if rel.startswith("/api/"):
+                        self._json(200, [])
+                        return
+                    self.send_response(200)
+                    self.send_header("content-type", "text/html; charset=utf-8")
+                    self.send_header("content-security-policy", CSP)
+                    self.send_header("cache-control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(b"<!doctype html><html lang='en'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Your inbox</title><main><h1>Your inbox</h1><p>No messages yet.</p></main></html>")
+                    return
                 # A JSON route answers in JSON; only the HTML route answers in HTML.
                 if rel.startswith("/api/"):
                     self._json(404, {"error": "message not found"})
@@ -144,10 +156,18 @@ class BaseHandler(BaseHTTPRequestHandler):
                 self.send_header("content-type", "text/html; charset=utf-8")
                 self.send_header("content-security-policy", CSP)
                 self.end_headers()
-                self.wfile.write(b"<!doctype html><title>Mailbox</title><p>message not found</p><p><a href='/inbox'>Back to the inbox</a></p>")
+                scope = re.match(r"^/inbox/for/[a-f0-9]{64}(?:/|$)", rel)
+                back = scope.group(0).rstrip("/") if scope else (None if rel.startswith("/inbox/for") else "/inbox")
+                body = "<!doctype html><title>Mailbox</title><p>message not found</p>"
+                if back:
+                    body += "<p><a href='" + back + "'>Back to the inbox</a></p>"
+                self.wfile.write(body.encode("utf-8"))
                 return
             is_api = rel.startswith("/api/")
             self.send_response(200)
+            self.send_header("cache-control", "no-store")
+            self.send_header("referrer-policy", "no-referrer")
+            self.send_header("x-content-type-options", "nosniff")
             self.send_header("content-type", "application/json; charset=utf-8" if is_api else "text/html; charset=utf-8")
             if not is_api:
                 self.send_header("content-security-policy", CSP)
@@ -186,6 +206,12 @@ class CaptureHandler(BaseHandler):
 
 
 class ReadOnlyHandler(BaseHandler):
+    def do_GET(self):
+        if self.path.split("?")[0] == "/deliveries":
+            self._json(404, {"error": "not found"})
+            return
+        super().do_GET()
+
     def do_POST(self):
         self.send_response(405)
         self.end_headers()
@@ -260,13 +286,29 @@ def smtp_session(conn):
                 subject = str(parsed.get("subject") or "")
                 html_part = parsed.get_body(preferencelist=("html", "plain"))
                 body = html_part.get_content() if html_part is not None else ""
+                import base64
+                inline_images = []
+                image_bytes = 0
+                for part in parsed.walk():
+                    cid = str(part.get("Content-ID") or "").strip().strip("<>")
+                    content_type = part.get_content_type()
+                    if not cid or len(cid) > 256 or content_type not in ("image/png", "image/jpeg", "image/gif", "image/webp"):
+                        continue
+                    payload = part.get_payload(decode=True) or b""
+                    if not payload or len(payload) > 1024 * 1024:
+                        continue
+                    image_bytes += len(payload)
+                    if len(inline_images) >= 12 or image_bytes > 2 * 1024 * 1024:
+                        break
+                    inline_images.append({"contentId": cid, "contentType": content_type, "base64": base64.b64encode(payload).decode("ascii")})
             except Exception:
                 subject = ""
                 body = raw.decode("utf-8", "replace")
+                inline_images = []
             record = {
                 "t": int(time.time() * 1000),
                 "path": "/emails",
-                "body": json.dumps({"from": sender, "to": rcpts, "subject": subject, "html": body})
+                "body": json.dumps({"from": sender, "to": rcpts, "subject": subject, "html": body, "inlineImages": inline_images})
             }
             # Same append convention as the HTTP capture path: one line, opened in append mode.
             with open(OUT_FILE, "a", encoding="utf-8") as handle:
@@ -581,7 +623,8 @@ export async function routeCapturedSends(
         from: normalized.from,
         to: normalized.to,
         ...(normalized.subject === undefined ? {} : { subject: normalized.subject }),
-        body: normalized.body
+        body: normalized.body,
+        ...(normalized.inlineImages ? { inlineImages: normalized.inlineImages } : {})
       });
       delivered += messages.length;
     }
@@ -670,12 +713,16 @@ export async function externalCatchHealthy(
 ): Promise<boolean> {
   const fetchFn = options.fetchFn ?? fetch;
   try {
-    const response = await fetchFn(`${baseOf(external.catchBaseUrl)}/health`, {
-      signal: AbortSignal.timeout(options.timeoutMs ?? 15_000)
-    });
-    if (!response.ok) return false;
-    const body = await response.text();
-    return body.includes("humanish-comms-catch");
+    const bases = new Set([external.catchBaseUrl, external.inboxBaseUrl ?? external.catchBaseUrl].map(baseOf));
+    const health = await Promise.all([...bases].map(async (base) => {
+      const response = await fetchFn(`${base}/health`, { signal: AbortSignal.timeout(options.timeoutMs ?? 15_000) });
+      if (!response.ok) return false;
+      const body: unknown = await response.json();
+      if (!body || typeof body !== "object") return false;
+      const value = body as Record<string, unknown>;
+      return value.ok === true && value.service === "humanish-comms-catch" && Array.isArray(value.capabilities) && value.capabilities.includes("recipient-inbox-v1");
+    }));
+    return health.every(Boolean);
   } catch {
     return false;
   }
@@ -807,6 +854,7 @@ export async function refreshInboxSurface(args: {
   const messages = await inboxMessagesFrom(sends, args.recipients);
   if (messages.length === 0) return { count: sends.length, rendered: false };
   await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
+    recipients: args.recipients.map((recipient) => recipient.address),
     ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
     ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs })
   });

@@ -573,7 +573,18 @@ function newestSourceMtime(dir: string): number {
   return newest;
 }
 
-function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: LoadedStudyAnalysis): string {
+/** Portable files store each exact raster once, outside the run-data JSON. */
+export type ObserverExportAssets = Record<string, { mime: string; base64: string }>;
+
+function renderExportAssets(assets: ObserverExportAssets): string {
+  return Object.entries(assets).map(([hash, image]) => {
+    if (!/^[a-f0-9]{64}$/.test(hash) || !/^image\/(png|jpeg|gif|webp)$/.test(image.mime)
+      || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.base64)) throw new Error("Invalid portable raster");
+    return `<script id="humanish-image-${hash}" type="application/octet-stream" data-mime="${image.mime}">${image.base64}</script>`;
+  }).join("");
+}
+
+function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: LoadedStudyAnalysis, assets: ObserverExportAssets): string {
   const artifact = loadObserverArtifact();
   // A renderer-owned boot marker, outside the untrusted run-data contract. Only
   // portable HTML exports opt out of a live feed; ordinary served pages still poll.
@@ -581,11 +592,12 @@ function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: 
     .replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
     .replace(/<script id="study-analysis" type="application\/json">[\s\S]*?<\/script>/,
       () => `<script id="study-analysis" type="application/json">${escapeJsonScript(analysis)}</script>`)
+    .replace("</body>", () => `${renderExportAssets(assets)}</body>`)
     .replace(/<title>[^<]*<\/title>/, () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
 }
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
-export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean; analysis?: LoadedStudyAnalysis } = {}): string {
+export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean; analysis?: LoadedStudyAnalysis; assets?: ObserverExportAssets } = {}): string {
   let analysis = options.analysis ?? { state: "none", analysis: null, corrections: [], warnings: [] };
   // A portable snapshot cannot claim that a writer on another machine is still active.
   if (options.snapshot === true && analysis.automatic && ["queued", "running"].includes(analysis.automatic.state)) {
@@ -600,7 +612,7 @@ export function renderObserverHtml(data: ObserverData, options: { snapshot?: boo
       reasons: [...new Set([...(share?.reasons ?? []), "ANALYSIS_UNVERIFIED"])]
     } } };
   }
-  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true, projectShareCheckedAnalysis(analysis));
+  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true, projectShareCheckedAnalysis(analysis), options.assets ?? {});
 }
 
 /** Analysis cannot grant filesystem authority or make an otherwise readable recording disappear. */

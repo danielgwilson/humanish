@@ -13,6 +13,7 @@ import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
 import { syntheticArtifact, syntheticResult } from "./study-analysis-fixtures.js";
 import { computeStats } from "../src/stats.js";
+import { runAutomaticStudyAnalysis, readAutomaticStudyAnalysis } from "../src/automatic-study-analysis.js";
 
 const config: StudyAnalysisConfig = { model: "gpt-5.6-sol", question: null, maxCostUsd: 5, timeoutMs: 1000, maxOutputTokens: 8192 };
 // Real captured wire envelope; only the synthetic analysis answer is replaced.
@@ -56,6 +57,32 @@ describe("ordinary study analysis flow", () => {
     expect(await readdir(runRoot)).not.toContain("analysis");
     expect(await readdir(runRoot)).not.toContain(".analysis-lock");
     expect(await readFile(path.join(runRoot, "run.json"))).toEqual(original);
+  });
+
+  it("discloses the chosen default allowance in dry-run while preserving explicit limits", async () => {
+    const fetch = await transport();
+    const baseline = { ...config, maxOutputTokens: 16384 };
+    expect(await analyzeStudy(cwd, "analysis-flow", { config: baseline, dryRun: true, preferLargerOutput: true }, { fetch }))
+      .toMatchObject({ ok: true, admission: { outputTokenAllowance: 32768 } });
+    expect(await analyzeStudy(cwd, "analysis-flow", { config: baseline, dryRun: true }, { fetch }))
+      .toMatchObject({ ok: true, admission: { outputTokenAllowance: 16384 } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("binds an expanded automatic allowance to the job, one dispatch and immutable artifacts", async () => {
+    const fetch = await transport();
+    const outcome = await runAutomaticStudyAnalysis(cwd, "analysis-flow", { ...config, maxOutputTokens: 16384 },
+      { apiKey: "synthetic-key", fetch, preferLargerOutput: true });
+    expect(outcome.result).toMatchObject({ ok: true, admission: { outputTokenAllowance: 32768 } });
+    expect(JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)).max_output_tokens).toBe(32768);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const saved = await showStudyAnalysis(cwd, "analysis-flow");
+    expect(saved.analysis?.config.maxOutputTokens).toBe(32768);
+    expect(await readAutomaticStudyAnalysis(cwd, "analysis-flow")).toMatchObject({ state: outcome.state });
+    const repeated = await runAutomaticStudyAnalysis(cwd, "analysis-flow", { ...config, maxOutputTokens: 16384 },
+      { apiKey: "synthetic-key", fetch, preferLargerOutput: true });
+    expect(repeated.reason).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("uses real admission, engine, storage and render paths; reopening does not dispatch again", async () => {

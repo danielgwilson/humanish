@@ -115,7 +115,7 @@ describe("redacted bundle export", () => {
     if (!html.ok) return;
     const exported = await readFile(path.join(shared, html.path), "utf8");
     expect(exported).not.toContain(png.toString("base64"));
-    expect(exported).toContain("data:image/png;base64,");
+    expect(exported).toContain('type="application/octet-stream" data-mime="image/png"');
     const receipt = JSON.parse(await readFile(path.join(derivativeDir, "derivation.json"), "utf8"));
     expect(receipt.sourceRunId).toBe(RUN);
     expect(receipt.files.find((entry: { path: string }) => entry.path === "screenshots/frame.png")).toMatchObject({ action: "blurred", sourceSha256: sha(png) });

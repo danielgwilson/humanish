@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Camera room</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f4f1;color:#1d2527;font:18px system-ui,sans-serif}main{max-width:1100px;margin:40px auto;padding:28px}h1{font-size:34px;letter-spacing:-1px;margin:0 0 8px}p{color:#4b585a;line-height:1.5}button{background:#244cde;color:white;border:0;border-radius:10px;padding:14px 22px;font:600 18px system-ui;cursor:pointer}button:disabled{background:#aab0b8;cursor:default}button:focus-visible{outline:3px solid #244cde;outline-offset:4px}.videos{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:24px 0}section{background:white;border:1px solid #d8dfe1;border-radius:14px;overflow:hidden}video{width:100%;height:280px;object-fit:contain;background:#172026;display:block}h2{font-size:17px;margin:14px 18px}.actions{display:flex;gap:12px}#status{font-size:23px;font-weight:650;color:#1d2527}#error{color:#8e2020}#leave{background:#603b35}#ended{background:white;padding:30px;border-radius:14px}small{display:block;color:#536264;margin-top:20px}
+</style>
+<main><h1>Camera room</h1><p id="intro">Check your camera, then join the other participant. This room uses video only; no microphone is requested.</p>
+<div id="room"><div class="videos"><section><h2>Your camera</h2><video id="local" autoplay muted playsinline></video></section><section><h2>Other participant</h2><video id="remote" autoplay muted playsinline></video></section></div>
+<p id="status" aria-live="polite">Ready for a camera check</p><p id="error" role="alert"></p>
+<div class="actions"><button id="enable">Turn on camera</button><button id="join" disabled>Join room</button><button id="leave" hidden>Leave room</button></div></div>
+<div id="ended" hidden><h2>You left the room</h2><p>Your camera is off. The other participant has been notified.</p></div>
+<small>Synthetic camera exercise. No account, payment or personal data is needed.</small></main>
+<script>
+const role = new URLSearchParams(location.search).get('role') === 'peer' ? 'peer' : 'participant';
+const base = location.pathname, $ = id => document.getElementById(id);
+let pc, stream, offset = 0, ended = false, joined = false, connectedAt = null, offered = false;
+let remoteFrames = 0, previousHash = '', changedFrames = 0;
+const pendingCandidates = [], canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 48;
+const painter = canvas.getContext('2d', {willReadFrequently: true});
+const post = (kind, data) => fetch(base + kind, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({role, ...data})});
+const event = (name, details={}) => post('event', {name, atMs:Date.now(), ...details});
+const signal = message => post('signal', {message});
+const fail = error => { $('error').textContent = `${error.name}: ${error.message}`; event('error', {kind:error.name}); };
+async function permission() { try { return (await navigator.permissions.query({name:'camera'})).state; } catch { return 'unavailable'; } }
+function drawFrame() {
+  remoteFrames++;
+  try {
+    painter.drawImage($('remote'),0,0,64,48);
+    const pixels=painter.getImageData(0,0,64,48).data;
+    let hash=2166136261; for(let i=0;i<pixels.length;i+=8) hash=Math.imul(hash^pixels[i],16777619);
+    if(String(hash)!==previousHash) changedFrames++;
+    previousHash=String(hash);
+  } catch {}
+  $('remote').requestVideoFrameCallback(drawFrame);
+}
+$('remote').requestVideoFrameCallback(drawFrame);
+async function connect() {
+  joined = true; await event('join-clicked');
+  $('join').hidden=true; $('enable').hidden=true; $('leave').hidden=false;
+  $('status').textContent='Joining the room…';
+  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  for(const track of stream.getTracks()) pc.addTrack(track,stream);
+  pc.onicecandidate = e => { if(e.candidate) signal({candidate:e.candidate.toJSON()}); };
+  pc.ontrack = e => { $('remote').srcObject = e.streams[0]; event('remote-track', {kind:e.track.kind}); };
+  pc.onconnectionstatechange = () => {
+    event('connection-state', {state:pc.connectionState});
+    if(pc.connectionState==='connected' && connectedAt===null) connectedAt=Date.now();
+    if(pc.connectionState==='failed') $('status').textContent='The call could not connect';
+  };
+  await signal({joined:true});
+}
+async function accept(message) {
+  if(message.left){$('status').textContent='The other participant left'; await event('remote-left'); return;}
+  if(message.joined && role==='peer' && !offered){
+    offered=true; await pc.setLocalDescription(await pc.createOffer()); await signal({description:pc.localDescription});
+  }
+  if(message.description){
+    await pc.setRemoteDescription(message.description);
+    while(pendingCandidates.length) await pc.addIceCandidate(pendingCandidates.shift());
+    if(message.description.type==='offer'){ await pc.setLocalDescription(await pc.createAnswer()); await signal({description:pc.localDescription}); }
+  }
+  if(message.candidate){if(pc.remoteDescription) await pc.addIceCandidate(message.candidate); else pendingCandidates.push(message.candidate);}
+}
+async function poll() {
+  if(ended)return;
+  if(joined){try {const value=await (await fetch(`${base}signal?role=${role}&after=${offset}`)).json();
+    for(const message of value.messages) await accept(message);offset=value.offset;
+  }catch(error){fail(error);}}
+  setTimeout(poll,300);
+}
+async function sample() {
+  if(ended)return;
+  if(pc){
+    const values={atMs:Date.now(),state:pc.connectionState,remoteFrames,changedFrames,videoWidth:$('remote').videoWidth,videoHeight:$('remote').videoHeight};
+    const reports=await pc.getStats();
+    for(const item of reports.values()){
+      if(item.type==='inbound-rtp' && item.kind==='video'){values.framesDecoded=item.framesDecoded??0;values.bytesReceived=item.bytesReceived??0;values.packetsLost=item.packetsLost??0;}
+      if(item.type==='outbound-rtp' && item.kind==='video'){values.framesSent=item.framesSent??0;values.bytesSent=item.bytesSent??0;}
+      if(item.type==='candidate-pair' && item.nominated && item.state==='succeeded'){
+        const local=reports.get(item.localCandidateId), remote=reports.get(item.remoteCandidateId);
+        values.ice={localType:local?.candidateType,remoteType:remote?.candidateType,protocol:local?.protocol};
+      }
+    }
+    await post('sample',values);
+    if(connectedAt!==null && pc.connectionState==='connected') $('status').textContent=`Connected · ${Math.floor((Date.now()-connectedAt)/1000)} seconds`;
+  }
+  setTimeout(sample,1000);
+}
+$('enable').onclick=async()=>{
+  $('error').textContent='';await event('camera-request',{permission:await permission()});
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});$('local').srcObject=stream;
+    $('join').disabled=false;$('enable').disabled=true;$('status').textContent='Camera ready — join when you are ready';
+    await event('camera-ready',{permission:await permission(),videoTracks:stream.getVideoTracks().length,audioTracks:stream.getAudioTracks().length});
+  }catch(error){fail(error);$('status').textContent='Camera unavailable — you have not joined';await event('camera-unavailable',{kind:error.name,permission:await permission()});}
+};
+$('join').onclick=()=>connect().catch(fail);
+$('leave').onclick=async()=>{
+  await event('leave-clicked');await signal({left:true});ended=true;pc?.close();stream?.getTracks().forEach(t=>t.stop());
+  $('room').hidden=true;$('ended').hidden=false;await event('left',{liveTracks:stream?.getTracks().filter(t=>t.readyState==='live').length??0});
+};
+(async()=>{
+  await event('page-open',{permission:await permission()});
+  if(role==='peer'){
+    $('intro').textContent='Independent counterpart. Sending an animated synthetic feed and receiving the participant camera.';
+    const source=document.createElement('canvas');source.width=640;source.height=480;const ctx=source.getContext('2d');let tick=0;
+    setInterval(()=>{tick++;ctx.fillStyle=`hsl(${tick*3%360},65%,32%)`;ctx.fillRect(0,0,640,480);ctx.fillStyle='white';ctx.font='bold 42px system-ui';ctx.fillText('OTHER PARTICIPANT',45,180);ctx.fillText(`Frame ${tick}`,130,265);ctx.fillRect(tick*7%590,350,50,50);},100);
+    stream=source.captureStream(10);$('local').srcObject=stream;await connect();
+  }
+  poll();sample();
+})().catch(fail);
+</script></html>

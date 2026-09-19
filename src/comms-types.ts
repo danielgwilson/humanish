@@ -20,6 +20,9 @@ export interface CommsAddress {
   digest: string;
 }
 
+/** Runtime-only captured raster attachment. Bytes never enter digest-only evidence. */
+export interface CommsInlineImage { contentId: string; contentType: string; base64: string; }
+
 /** A message that arrived to (or was sent from) an inbox. Body/links/codes are runtime-only. */
 export interface CommsMessage {
   id: string;
@@ -31,6 +34,7 @@ export interface CommsMessage {
   subject?: string;
   /** Runtime-only for real; local-only for fake (never a share path without redaction — #108). */
   body: string;
+  inlineImages?: CommsInlineImage[];
   /** Actionable links extracted from the body (magic-link / invite / reset). Runtime-only. */
   links: string[];
   /** OTP-shaped tokens extracted from the body. Runtime-only; literal-scrub targets. */
@@ -45,6 +49,7 @@ export interface OutboundMessage {
   to: CommsAddress[];
   subject?: string;
   body: string;
+  inlineImages?: CommsInlineImage[];
 }
 
 /** A raw inbound from an INGRESS (the vendor-neutral email catch, an SMTP sink, …): recipients are
@@ -54,6 +59,7 @@ export interface InboundRaw {
   to: string[];
   subject?: string;
   body: string;
+  inlineImages?: CommsInlineImage[];
 }
 
 /**

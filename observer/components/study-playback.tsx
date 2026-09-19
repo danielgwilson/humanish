@@ -15,7 +15,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
   const unavailable = reviewing && atMs !== null && (recording.startMs === null || recording.endMs === null || atMs < recording.startMs || atMs > recording.endMs);
   const elapsed = Math.max(0, Math.min(duration, (atMs ?? start) - start));
   const timed = [...recording.lanes.values()].filter((lane) => lane.times?.length).length;
-  return <div className="study-playback" role="group" aria-label="Study playback">
+  return <div className="study-playback" role="region" aria-label="Study playback">
     <div className="study-playback-controls">
       <IconButton className="tbtn" label={playing ? "Pause study" : "Play study"} hint={playing ? "Pause study recording" : "Play all recorded participants"}
         disabled={duration <= 0 || unavailable} onClick={onToggle}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>

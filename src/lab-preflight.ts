@@ -181,7 +181,7 @@ export async function runLabPreflight(options: RunLabPreflightOptions): Promise<
   switch (reachability) {
     case "metadata":
       return finalize(ctx, {
-        check: { name: "reachability", ok: true, message: "metadata-only; no network, sandbox, or model calls" }
+        check: { name: "reachability", ok: true, message: "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --lab <lab> for setup checks." }
       });
     case "public-preview":
       return await runPublicPreviewPreflight(ctx);

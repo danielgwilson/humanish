@@ -12,6 +12,7 @@ import type {
   CommsChannel,
   CommsChannelKind,
   CommsMessage,
+  CommsInlineImage,
   InboundRaw,
   OutboundMessage
 } from "./comms-types.js";
@@ -114,14 +115,14 @@ export class FakeInbox implements CommsChannel {
   async provision(actorId: string): Promise<CommsAddress> {
     const existing = this.byActor.get(actorId);
     if (existing) return existing;
-    const value = this.channel === "sms" ? smsAddressFor(actorId) : `${sanitizeLocalPart(actorId)}@${this.domain}`;
-    // Address collision guard: two distinct actor ids can sanitize to the same local part. Reuse the
-    // existing inbox rather than resetting its queue (which would drop already-delivered mail). Both
-    // actors then share it — a fake-world edge; declare distinct addresses to avoid it.
-    const prior = this.byValue.get(value.toLowerCase());
-    if (prior) {
-      this.byActor.set(actorId, prior);
-      return prior;
+    let value = this.channel === "sms" ? smsAddressFor(actorId) : `${sanitizeLocalPart(actorId)}@${this.domain}`;
+    // Minted identities must stay distinct. Explicit duplicate addresses below
+    // are the intentional shared-mailbox path.
+    if (this.byValue.has(value.toLowerCase())) {
+      if (this.channel === "sms") throw new Error("Generated inbox identity collision; declare distinct addresses");
+      let attempt = 0;
+      do { value = `${sanitizeLocalPart(actorId)}-${digestText(`${actorId}:${attempt++}`, 16)}@${this.domain}`; }
+      while (this.byValue.has(value.toLowerCase()));
     }
     const address: CommsAddress = { channel: this.channel, actorId, value, digest: digestText(value, 16) };
     this.byActor.set(actorId, address);
@@ -133,7 +134,7 @@ export class FakeInbox implements CommsChannel {
   /**
    * Provision an inbox for `actorId` at an EXPLICIT address (a lab-declared recipient), so the
    * app-under-test's send to that literal address resolves in `deliverRaw` (which drops recipients
-   * with no provisioned inbox). Same value-collision guard as `provision`; if `actorId` already held
+   * with no provisioned inbox). Declaring the same address intentionally shares its inbox; if `actorId` already held
    * a different auto-generated address, the declared address supersedes it (the lab's declaration
    * wins). Idempotent: re-declaring the same address returns the existing inbox without clearing it.
    */
@@ -152,7 +153,7 @@ export class FakeInbox implements CommsChannel {
     return address;
   }
 
-  private route(from: string, to: CommsAddress[], subject: string | undefined, body: string): CommsMessage {
+  private route(from: string, to: CommsAddress[], subject: string | undefined, body: string, inlineImages?: CommsInlineImage[]): CommsMessage {
     const at = this.clock();
     const message: CommsMessage = {
       id: `comms-${(this.counter += 1).toString().padStart(4, "0")}`,
@@ -161,6 +162,7 @@ export class FakeInbox implements CommsChannel {
       to,
       ...(subject === undefined ? {} : { subject }),
       body,
+      ...(inlineImages?.length ? { inlineImages } : {}),
       links: extractLinks(body),
       codes: extractOtpCodes(body),
       sentAt: at,
@@ -174,7 +176,7 @@ export class FakeInbox implements CommsChannel {
   }
 
   async send(message: OutboundMessage): Promise<CommsMessage> {
-    return this.route(message.from.value, message.to, message.subject, message.body);
+    return this.route(message.from.value, message.to, message.subject, message.body, message.inlineImages);
   }
 
   async deliverRaw(inbound: InboundRaw): Promise<CommsMessage[]> {
@@ -182,7 +184,7 @@ export class FakeInbox implements CommsChannel {
       .map((raw) => this.byValue.get(String(raw).trim().toLowerCase()))
       .filter((address): address is CommsAddress => address !== undefined);
     if (to.length === 0) return []; // no provisioned inbox matched → nothing to deliver to
-    return [this.route(inbound.from, to, inbound.subject, inbound.body)];
+    return [this.route(inbound.from, to, inbound.subject, inbound.body, inbound.inlineImages)];
   }
 
   async poll(address: CommsAddress, since = 0): Promise<CommsMessage[]> {

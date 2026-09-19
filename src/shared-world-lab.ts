@@ -23,7 +23,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -600,7 +600,7 @@ export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Prom
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runSharedWorldLabInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit");
+    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
 }
 
 async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Promise<SharedWorldLabResult> {
@@ -629,6 +629,9 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
 
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
+  const mediaReason = desktopMediaValidationReason(config, false);
+  if (mediaReason) return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", mediaReason);
+
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);

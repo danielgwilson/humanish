@@ -14,7 +14,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { renderInboxSurfaceLocally } from "../src/comms-catch-host.js";
-import { withFreePort } from "./helpers/free-port.js";
+import { freePort, withFreePort } from "./helpers/free-port.js";
+import { inboxRecipientScope } from "../src/comms-inbox.js";
 import {
   SANDBOX_CATCH_SCRIPT,
   capturedRecipientAddresses,
@@ -162,6 +163,29 @@ describe("renderInboxSurfaceLocally (the adopter-hosted plane)", () => {
     expect(list).toContain("For Ada");
     expect(list).not.toContain("For Grace");
   });
+
+  it("removes old generated recipient/message routes when reusing a directory with a different roster", async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-roster-"));
+    const surfaceDir = path.join(dir, "surface");
+    const deliveriesPath = path.join(dir, "deliveries.ndjson");
+    await writeFile(deliveriesPath, [sendLine(["ada@example.test"], "For Ada", VERIFY_HTML), sendLine(["grace@example.test"], "For Grace", VERIFY_HTML)].join("\n") + "\n");
+    await renderInboxSurfaceLocally({ deliveriesPath, surfaceDir });
+    const manifestPath = path.join(surfaceDir, ".inbox-files.json");
+    const before: string[] = JSON.parse(await readFile(manifestPath, "utf8"));
+    const unrelated = path.join(dir, "keep.txt");
+    await writeFile(unrelated, "keep me");
+    // A corrupt/untrusted manifest cannot turn generated-file cleanup into arbitrary deletion.
+    await writeFile(manifestPath, JSON.stringify([...before, "../keep.txt", unrelated]));
+    await renderInboxSurfaceLocally({ deliveriesPath, surfaceDir, recipients: ["ada@example.test"] });
+    const removed = before.filter((route) => route.includes(inboxRecipientScope("grace@example.test")) || route.includes("comms-0002"));
+    expect(removed.length).toBeGreaterThan(5);
+    for (const route of removed) await expect(readFile(path.join(surfaceDir, route))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(unrelated, "utf8")).toBe("keep me");
+    // Truncating the captured log also removes old latest/message aliases.
+    await writeFile(deliveriesPath, "");
+    await renderInboxSurfaceLocally({ deliveriesPath, surfaceDir, recipients: ["ada@example.test"] });
+    for (const route of before.filter((route) => /comms-|latest/.test(route))) await expect(readFile(path.join(surfaceDir, route))).rejects.toMatchObject({ code: "ENOENT" });
+  });
 });
 
 describe("catch script: persona-facing routes (#380)", () => {
@@ -187,8 +211,10 @@ describe("catch script: persona-facing routes (#380)", () => {
     // Resolved before the closure: `dir` is nullable at this scope and TypeScript cannot narrow it
     // through an async callback.
     const deliveriesPath = path.join(dir, "deliveries.ndjson");
+    const inboxPort = await freePort();
     const port = await withFreePort(async (candidate) => {
-      child = spawn("python3", [scriptPath, String(candidate), deliveriesPath, surfaceDir], {
+      if (candidate === inboxPort) return false;
+      child = spawn("python3", [scriptPath, String(candidate), deliveriesPath, surfaceDir, String(inboxPort), "synthetic-test-token"], {
         stdio: "ignore"
       });
       // Sleep on EVERY failed attempt, not only on a thrown one: a non-ok response used to retry
@@ -207,8 +233,8 @@ describe("catch script: persona-facing routes (#380)", () => {
 
     const base = `http://127.0.0.1:${port}`;
 
-    // /health is what BOTH readiness probes assert on, so its shape must not move.
-    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, service: "humanish-comms-catch" });
+    // Retain the service marker and advertise the participant route contract.
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, service: "humanish-comms-catch", capabilities: ["recipient-inbox-v1", "captured-inline-images-v1"] });
 
     // GET / used to return that same health JSON, which personas who trimmed the /inbox path read as
     // breakage. It now points them where they meant to go.
@@ -222,5 +248,18 @@ describe("catch script: persona-facing routes (#380)", () => {
     expect(missingApi.status).toBe(404);
     expect(missingApi.headers.get("content-type")).toContain("application/json");
     expect(await missingApi.json()).toEqual({ error: "message not found" });
+
+    const scoped = `/inbox/for/${inboxRecipientScope("ada@example.test")}`;
+    const missingMessage = await fetch(`${base}${scoped}/comms-9999`);
+    expect(missingMessage.status).toBe(404);
+    const missingBody = await missingMessage.text();
+    expect(missingBody).toContain(`href='${scoped}'`);
+    expect(missingBody).not.toContain("href='/inbox'");
+    expect(await (await fetch(`${base}/inbox/for/bad/comms-0001`)).text()).not.toContain("href='/inbox'");
+    expect(await (await fetch(`${base}/api${scoped}`)).json()).toEqual([]);
+    expect((await fetch(`${base}/api${scoped}/latest`)).status).toBe(404);
+    expect((await fetch(`${base}/deliveries`)).status).toBe(401);
+    expect((await fetch(`http://127.0.0.1:${inboxPort}/deliveries`, { headers: { authorization: "Bearer synthetic-test-token" } })).status).toBe(404);
+    expect((await fetch(`http://127.0.0.1:${inboxPort}/emails`, { method: "POST", body: "{}" })).status).toBe(405);
   });
 });

@@ -35,7 +35,7 @@
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-import { taskProtocolValidationReason } from "./lab-config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -721,7 +721,7 @@ export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorld
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit");
+    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
 }
 
 async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
@@ -753,6 +753,9 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     warnings: [],
     error: { code, message }
   });
+
+  const mediaReason = desktopMediaValidationReason(config, false);
+  if (mediaReason) return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", mediaReason);
 
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
@@ -914,7 +917,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     if (!dryRun && !(await externalCatchHealthy(externalComms))) {
       return fail(
         "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
-        `comms.email.external.catchBaseUrl is not reachable as a humanish comms catch (GET /health must return the humanish-comms-catch service marker). Start it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`
+        `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`
       );
     }
   }

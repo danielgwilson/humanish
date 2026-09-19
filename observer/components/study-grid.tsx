@@ -5,6 +5,7 @@ import type { GridDensity } from "@/lib/preferences";
 import { participantLabels } from "@/lib/participant-label";
 import { ParticipantCard } from "./participant-card";
 import { gridMoment, type GridRecording } from "@/lib/grid-recording";
+import { usePinReorder } from "@/lib/use-pin-reorder";
 
 export function buildTally(data: ObserverData): string {
   const parts = [data.run.participantsLine ?? `${data.summary.streams} participant${data.summary.streams === 1 ? "" : "s"}`];
@@ -39,6 +40,7 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
   const ordered = [...streams].sort((a, b) => Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)));
   const shown = ordered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
   const shownKey = JSON.stringify(shown.map((s) => s.id));
+  const pinWithMotion = usePinReorder(grid, JSON.stringify([shownKey, pinnedIds]), onPin);
   useEffect(() => {
     const cards = grid.current?.querySelectorAll<HTMLElement>("[data-stream-id] .thumb");
     if (!cards) return;
@@ -65,7 +67,7 @@ export function StudyGrid({ data, streams, onOpen, density = "comfortable", pinn
         onFocusCapture={(event) => { const id = event.target.closest<HTMLElement>("[data-stream-id]")?.dataset.streamId; if (id) setPriorityId(id); }}
       >{shown.map((stream) => <ParticipantCard key={stream.id} stream={stream} name={labels.get(stream.id) ?? stream.label} onOpen={onOpen}
         replay={reviewing ? gridMoment(recording, stream.id, atMs ?? Number.NaN) : undefined}
-        reviewOutcome={reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label} updating={updating} liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} comparisonFull={compareIds.length >= 3} onPin={onPin} onCompare={onCompare} now={now} />)}</div>}
+        reviewOutcome={reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label} updating={updating} liveThumb={liveThumbIds.has(stream.id)} pinned={pinnedIds.includes(stream.id)} compared={compareIds.includes(stream.id)} comparisonFull={compareIds.length >= 3} onPin={pinWithMotion} onCompare={onCompare} now={now} />)}</div>}
     {pageCount > 1 ? <nav className="grid-pages" aria-label="Participant pages"><button type="button" disabled={currentPage === 0} onClick={() => onPageChange(currentPage - 1)}>Previous page</button>
       <span>Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, streams.length)} of {streams.length} participants</span>
       <button type="button" disabled={currentPage === pageCount - 1} onClick={() => onPageChange(currentPage + 1)}>Next page</button></nav> : null}

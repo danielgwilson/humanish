@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.93.1` (2026-09-17). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
+Package/source version in this tree: `0.94.0` (2026-09-19). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until
@@ -46,6 +46,11 @@ flows.
 If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
+
+The [0.94.0 release note](../release/0.94.0-reliability.md) describes analysis
+request deadlines and budget-aware output, smaller portable recordings,
+recipient-scoped synthetic inboxes, route-aware setup checks, decoded capture
+transitions, pin movement, and explicit camera-support boundaries.
 
 The [0.93.1 release note](../release/0.93.1-observer-review-controls.md) describes
 a compact findings overview, separate analysis-attempt details, styled Observer

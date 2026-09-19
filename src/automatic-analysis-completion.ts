@@ -29,7 +29,7 @@ export function markFinalizedStudyResult<T extends object>(result: T, prepared: 
 /** One post-completion boundary shared by all live recording producers. */
 export async function completeAutomaticAnalysis<T extends {
   cwd: string; runId: string; dryRun: boolean;
-}>(result: T, config: StudyAnalysisConfig | undefined, hooks?: AutomaticAnalysisHooks, trigger: "default" | "explicit" = "explicit"): Promise<T & AutomaticAnalysisResult> {
+}>(result: T, config: StudyAnalysisConfig | undefined, hooks?: AutomaticAnalysisHooks, trigger: "default" | "explicit" = "explicit", preferLargerOutput = false): Promise<T & AutomaticAnalysisResult> {
   if (config === undefined) return result;
   const origin = trigger === "default" ? { automaticAnalysisTrigger: trigger } : {};
   if (result.dryRun) return { ...result, ...origin, automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" } };
@@ -46,7 +46,7 @@ export async function completeAutomaticAnalysis<T extends {
     catch { return { ...result, ...origin, automaticAnalysis: { state: "failed", reason: "analysis_source_changed" } }; }
     const sourceCwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
     const automaticAnalysis = await (hooks?.run ?? runAutomaticStudyAnalysis)(sourceCwd, result.runId, config,
-      { ...hooks?.deps, ...(trigger === "default" ? { defaultRequest: true } : {}), expectedRun: prepared });
+      { ...hooks?.deps, preferLargerOutput, ...(trigger === "default" ? { defaultRequest: true } : {}), expectedRun: prepared });
     return { ...result, ...origin, automaticAnalysis };
   } catch {
     // Preserve the producer result. Never put a hook exception or provider response in the envelope.

@@ -17,7 +17,7 @@
 // a co-located catcher must use a runtime the environment guarantees). This command writes the
 // same script and runs it in the foreground until interrupted.
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -86,14 +86,31 @@ export async function renderInboxSurfaceLocally(args: {
     address
   }));
   const messages = await inboxMessagesFrom(sends, recipients);
-  const files = buildInboxSurface(messages);
+  const files = buildInboxSurface(messages, { recipients: addresses });
+  // A reused catch directory can change recipients or truncate its delivery log. Remove ONLY files
+  // recorded as generated routes, so old recipient/message URLs cannot survive that change.
+  const manifestPath = path.join(args.surfaceDir, ".inbox-files.json");
+  let previous: unknown = [];
+  try { previous = JSON.parse(await readFile(manifestPath, "utf8")); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  const generatedPath = /^(?:api\/)?inbox\/(?:for\/[a-f0-9]{64}\/)?(?:index|(?:comms-[0-9]+|latest)(?:\/index|\/synth)?)$/;
+  const oldPaths = Array.isArray(previous) ? previous.filter((value): value is string => typeof value === "string" && generatedPath.test(value)) : [];
+  const currentPaths = new Set(files.map((file) => file.path));
   const dirs = new Set<string>([args.surfaceDir]);
   for (const file of files) {
     const slash = file.path.lastIndexOf("/");
     if (slash > 0) dirs.add(path.join(args.surfaceDir, file.path.slice(0, slash)));
   }
   for (const dir of dirs) await mkdir(dir, { recursive: true });
+  const saveManifest = async (paths: string[]): Promise<void> => {
+    await writeFile(manifestPath + ".next", JSON.stringify(paths), "utf8");
+    await rename(manifestPath + ".next", manifestPath);
+  };
+  // Record the union first: a partial write is retryable and its new files remain tracked.
+  await saveManifest([...new Set([...oldPaths, ...currentPaths])]);
+  for (const obsolete of oldPaths) if (!currentPaths.has(obsolete)) await rm(path.join(args.surfaceDir, obsolete), { force: true });
   for (const file of files) await writeFile(path.join(args.surfaceDir, file.path), file.body, "utf8");
+  await saveManifest([...currentPaths]);
   return { sends: sends.length, messages: messages.length, files: files.length };
 }
 
@@ -136,7 +153,8 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
         ? []
         : [`  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; expose THIS to personas)`]),
       `  POST /emails        <- point your app's email-API base URL here`,
-      `  GET  /inbox         <- the persona opens this${inboxPort === undefined ? " (loopback only without --inbox-port)" : ""}`,
+      `  GET  /inbox         <- shared operator inbox${inboxPort === undefined ? " (loopback only without --inbox-port)" : ""}`,
+      `  GET  /inbox/for/... <- assigned participant inbox (linked by the lab)`,
       `  GET  /deliveries    <- humanish drains this${options.token ? " (bearer token required)" : ""}`,
       `  GET  /health        <- readiness marker humanish probes before a run`,
       ``,
@@ -159,12 +177,15 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
     // Keep the inbox current while the catch runs. Failures are swallowed on purpose: a transient
     // render error must never take down a server that is still capturing mail correctly, and the
     // next tick rebuilds from scratch anyway.
+    let rendering = false;
     const renderTimer = setInterval(() => {
+      if (rendering) return;
+      rendering = true;
       void renderInboxSurfaceLocally({
         deliveriesPath,
         surfaceDir,
         ...(options.recipients === undefined ? {} : { recipients: options.recipients })
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => { rendering = false; });
     }, options.renderIntervalMs ?? DEFAULT_RENDER_INTERVAL_MS);
     renderTimer.unref?.();
     const stopRendering = (): void => clearInterval(renderTimer);

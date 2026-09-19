@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { PlayerFrame, PlayerRow } from "@/lib/player-model";
+import { useDecodedImage } from "@/lib/use-decoded-image";
 
 export type Zoom = "fit" | "actual" | number;
 export interface Size { width: number; height: number }
@@ -96,7 +97,7 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
       {live ? <div className="stage-live" style={liveSize}>
         <iframe key={streamRevision} sandbox={sandbox} src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />
 
-      </div> : frame ? <RecordedImage key={frame.href} frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} onDimensions={recordDimensions} />
+      </div> : frame ? <RecordedImage frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} onDimensions={recordDimensions} />
         : <p className="evidence-empty" role="status">{emptyText}</p>}
     </div>
   </div>;
@@ -105,29 +106,21 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
 function RecordedImage({ frame, count, viewport, available, zoom, pins, onDimensions }: {
   frame: PlayerFrame; count: number; viewport: Size | undefined; available: Size; zoom: Zoom; pins: PlayerRow[]; onDimensions: (size: Size) => void;
 }) {
-  const [natural, setNatural] = useState<Size | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [attempt, setAttempt] = useState(0);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const { decoded, slots, status, loaded, errored, retry } = useDecodedImage(frame.href);
   // Raster dimensions are authoritative; viewport is only a stable loading fallback.
-  const dimensions = natural ?? viewport ?? { width: 1280, height: 800 };
+  const dimensions = decoded ?? viewport ?? { width: 1280, height: 800 };
   const size = fittedSize(dimensions, available, zoom);
-  const loaded = (image: HTMLImageElement) => {
-    if (image.naturalWidth <= 0 || image.naturalHeight <= 0) { setStatus("error"); return; }
-    const size = { width: image.naturalWidth, height: image.naturalHeight };
-    setNatural(size);
-    onDimensions(size);
-    setStatus("ready");
-  };
   useEffect(() => {
-    const image = imgRef.current;
-    if (image?.complete && image.naturalWidth > 0) loaded(image);
-  }, [attempt]);
-  return <div className="stage-box evidence-image" style={size} data-image-state={status} aria-busy={status === "loading"}>
-    <img key={attempt} ref={imgRef} src={frame.href} alt={`Frame ${frame.index + 1} of ${count} — ${frame.title}`}
-      decoding="async" draggable={false} onLoad={(event) => loaded(event.currentTarget)} onError={() => setStatus("error")} />
+    if (decoded) onDimensions(decoded);
+  }, [decoded, onDimensions]);
+  return <div className="stage-box evidence-image" style={size} data-image-state={status} data-retained-image={decoded && status === "loading" ? "" : undefined} aria-busy={status === "loading"}>
+    {slots.map((slot) => <img key={slot.key} src={slot.href} className={slot.pending ? "capture-pending" : undefined} data-requested-src={frame.href}
+      alt={slot.pending ? "" : status !== "ready" && decoded ? "Previous capture while the selected frame is unavailable" : `Frame ${frame.index + 1} of ${count} — ${frame.title}`}
+      aria-hidden={slot.pending || undefined} decoding="async" draggable={false}
+      onLoad={(event) => { void loaded(event.currentTarget, slot.key); }} onError={() => errored(slot.key)} />)}
     {status !== "ready" ? <div className="evidence-message" role="status">
-      {status === "loading" ? "Loading recorded frame…" : <>This recorded image could not be loaded.<button type="button" className="tbtn" onClick={() => { setStatus("loading"); setAttempt((value) => value + 1); }}>Retry image</button></>}
+      {status === "loading" ? "Loading recorded frame…" : <>This recorded image could not be loaded.<button type="button" className="tbtn" onClick={retry}>Retry image</button></>}
+      {decoded && status === "loading" ? <span>Previous capture shown.</span> : null}
     </div> : null}
     {/* The pins stay mounted while loading for stable geometry, but are not displayed
         until the selected raster is ready. A previous image can never masquerade as it. */}
