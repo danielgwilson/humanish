@@ -68,3 +68,26 @@ This establishes a synthetic video-only Chromium call on one direct UDP path.
 It does not establish audio, TURN, reconnect, a specific conferencing provider,
 or physical-device behavior. The intermittent default-size geometry failure
 remains a separate reliability concern.
+
+## Humanish reviewing Humanish
+
+An actual participant reviewed a synthetic Observer recording in hosted Chrome:
+finding, cited moment, shared grid playback, seeking and returning to a saved
+moment. `review.analysis` was omitted. After the participant finished, automatic
+analysis completed without an operator command; all 73 retained entries and 17
+captures were included. Its 32,768-token output allowance was admitted at
+$2.780138 under the unchanged default $3 estimate limit. Reported analysis use
+was 36,501 input and 5,679 output tokens, estimated at $0.740205.
+
+The participant reported completion but had used **Save current moment** when
+asked to pin a participant. Independent analysis preserved that distinction
+and reported the pin-discovery concern with evidence. A completion marker alone
+would have missed it. This study exercised the Observer before the direct-card
+pin refinement; it does not establish the usability of every final control.
+
+An earlier attempt requested an explicit `chromium` binary absent from the
+stock desktop. Setup stopped before participant dispatch and default analysis
+correctly skipped the empty recording. One deliberate attempt with `chrome`
+then ran the study. Both attempts are retained; the binary distinction is now
+documented. Known study/analysis estimates including the failed setup total
+$1.024099. Both owned desktops reported successful cleanup.
