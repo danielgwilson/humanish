@@ -193,8 +193,82 @@ describe("comms-inbox: renderInboxList", () => {
   it("lists each message with an escaped subject linking to its id", async () => {
     const messages = await captured();
     const html = renderInboxList(messages);
-    expect(html).toContain("<table>");
+    expect(html).toContain('<table class="inbox-list">');
     expect(html).toContain("Confirm your email");
     expect(html).toContain(`/inbox/${messages[0]!.id}`);
+  });
+});
+
+describe("recipient-scoped inbox files", () => {
+  it("keeps list, message, latest, synthesized and JSON routes in the assigned address scope", async () => {
+    const { inboxRecipientScope } = await import("../src/comms-inbox.js");
+    const bus = new FakeInbox({ now: () => 123 });
+    const ada = await bus.provisionAddress("ada", "ada@example.test");
+    const grace = await bus.provisionAddress("grace", "grace@example.test");
+    await bus.deliverRaw({ from: "sender@example.test", to: [ada.value], subject: "Ada only", body: "Ada code 192837" });
+    await bus.deliverRaw({ from: "sender@example.test", to: [grace.value], subject: "Grace only", body: "Grace code 918273" });
+    const messages = [...await bus.poll(ada), ...await bus.poll(grace)];
+    const files = buildInboxSurface(messages, { recipients: ["empty@example.test"] });
+    const scope = `inbox/for/${inboxRecipientScope(ada.value)}`;
+    const scoped = files.filter((file) => file.path.startsWith(scope + "/") || file.path.startsWith("api/" + scope + "/"));
+    expect(scoped).toHaveLength(8);
+    for (const file of scoped) {
+      expect(file.body).not.toContain("Grace only");
+      expect(file.body).not.toContain("918273");
+      expect(file.body).not.toContain('href="/inbox"');
+      expect(file.body).not.toContain('href="/inbox/comms-');
+    }
+    expect(files.some((file) => file.path === `${scope}/comms-0002/index`)).toBe(false);
+    expect(files.find((file) => file.path === `${scope}/latest/index`)!.body).toContain("Ada only");
+    expect(files.find((file) => file.path === "inbox/index")!.body).toContain("Shared operator inbox");
+    expect(files.find((file) => file.path === `api/inbox/for/${inboxRecipientScope("empty@example.test")}/index`)!.body).toBe("[]");
+    expect(inboxRecipientScope(" ADA@example.test ")).toBe(inboxRecipientScope(ada.value));
+    expect(() => buildInboxSurface(messages, { recipient: "" })).toThrow("must not be empty");
+    expect(() => buildInboxSurface([{ ...messages[0]!, id: "../other" }])).toThrow("Invalid inbox message identity");
+  });
+
+  it("never merges accidentally colliding generated addresses, but explicit shared addresses share mail", async () => {
+    const bus = new FakeInbox({ now: () => 123 });
+    const first = await bus.provision("same actor");
+    const second = await bus.provision("same-actor");
+    expect(first.value).not.toBe(second.value);
+    await bus.deliverRaw({ from: "sender@example.test", to: [first.value], body: "First only" });
+    expect(await bus.poll(second)).toEqual([]);
+    const deliberate = await bus.provisionAddress("shared", first.value);
+    expect((await bus.poll(deliberate))[0]!.body).toBe("First only");
+  });
+});
+
+describe("captured email images", () => {
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+  it("renders captured CID/data rasters, preserves HTTP(S) without referrers, and resolves declared relative sources", async () => {
+    const [message] = await captured();
+    const html = renderInboxMessage({ ...message!, body: '<img src="cid:logo%40mail" alt="Logo"><img src="https://images.example.test/remote.png?x=1&amp;y=2"><img src="/logo.png"><img src="data:image/png;base64,' + png + '">', inlineImages: [{ contentId: "logo@mail", contentType: "image/png", base64: png }] }, { originMap: MAP });
+    expect(html.match(/src="data:image\/png;base64,/g)).toHaveLength(2);
+    expect(html).toContain('src="https://images.example.test/remote.png?x=1&amp;y=2"');
+    expect(html).toContain('src="https://3000-abc.e2b.app/logo.png"');
+    expect(html.match(/referrerpolicy="no-referrer"/g)).toHaveLength(4);
+    expect(html).not.toContain("Image unavailable:");
+  });
+
+  it("labels missing CID, unresolved relative and malicious/invalid images without an unsafe fallback", async () => {
+    const [message] = await captured();
+    const svg = Buffer.from('<svg onload="alert(1)"></svg>').toString("base64");
+    const html = renderInboxMessage({ ...message!, body: '<img src="cid:missing" alt="Brand"><img src="/logo.png"><img src="jav&#97;script:alert(1)"><img src="data:image/svg+xml;base64,' + svg + '"><img src="cid:bad">', inlineImages: [{ contentId: "bad", contentType: "image/png", base64: Buffer.from("not image bytes").toString("base64") }] });
+    expect(html.match(/class="email-image-unavailable"/g)).toHaveLength(5);
+    expect(html).not.toContain('<img src=');
+    expect(html).not.toContain(svg);
+    expect(html).toContain("relative URL without a declared app origin");
+  });
+
+  it("keeps image bytes out of persisted comms evidence and bounds attachment metadata", async () => {
+    const { capturedInlineImages, inlineImageData, MAX_INLINE_IMAGE_BYTES } = await import("../src/comms-images.js");
+    const { buildCommsThreadArtifact } = await import("../src/comms-evidence.js");
+    const [message] = await captured();
+    const image = { contentId: "logo", contentType: "image/png", base64: png };
+    expect(capturedInlineImages([image, { ...image, base64: "bad" }, { ...image, contentType: "text/html" }])).toEqual([image]);
+    expect(inlineImageData({ ...image, base64: Buffer.alloc(MAX_INLINE_IMAGE_BYTES + 1).toString("base64") })).toBeUndefined();
+    expect(capturedInlineImages(Array.from({ length: 20 }, () => image))).toHaveLength(12);
+    expect(JSON.stringify(buildCommsThreadArtifact([{ ...message!, inlineImages: [image] }]))).not.toContain(png);
   });
 });

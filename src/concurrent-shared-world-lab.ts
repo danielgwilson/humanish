@@ -914,7 +914,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     if (!dryRun && !(await externalCatchHealthy(externalComms))) {
       return fail(
         "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
-        `comms.email.external.catchBaseUrl is not reachable as a humanish comms catch (GET /health must return the humanish-comms-catch service marker). Start it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`
+        `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`
       );
     }
   }

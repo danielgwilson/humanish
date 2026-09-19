@@ -1,6 +1,7 @@
 import { DEVICE_PRESETS } from "../src/device-presets.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { createServer } from "node:http";
 import { symlinkSync, unlinkSync } from "node:fs";
 import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -41,6 +42,7 @@ import type {
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms-sandbox-catch.js";
+import { recipientInboxUrl } from "../src/comms-inbox.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { renderObserver, serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
@@ -4875,6 +4877,39 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
     await rm(cwd, { force: true, recursive: true });
   });
 
+  it("refuses an older catch before allocating a desktop or starting a participant", async () => {
+    const server = createServer((_request, response) => {
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ ok: true, service: "humanish-comms-catch" }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const port = (server.address() as { port: number }).port;
+      const parsed = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA, id: "older-external-catch",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
+        actors: [{ type: "openai-computer-use", mission: "Sign up." }],
+        execution: { target: "e2b-desktop" }, scenario: { mode: "live" }
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      const loadDesktopModule = vi.fn(async () => { throw new Error("Desktop allocation must not start"); });
+      const runSession = vi.fn(async () => { throw new Error("Participant must not start"); });
+      const outcome = await runLab(parsed.config, { cwd, cuaHooks: {
+        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" }, loadDesktopModule, runSession
+      } });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      expect(outcome.result.ok).toBe(false);
+      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE");
+      expect(outcome.result.error?.message).toContain("restart");
+      expect(outcome.result.error?.message).toContain("recipient-inbox-v1");
+      expect(loadDesktopModule).not.toHaveBeenCalled();
+      expect(runSession).not.toHaveBeenCalled();
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it("tells each persona its inbox, drains the adopter catch once, and writes digest-only evidence", async () => {
     // The REAL python catch as a subprocess — the same bytes an adopter runs via `humanish comms
     // catch` — so the health probe, the token guard, and the drain contract are proven against the
@@ -4943,8 +4978,10 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
       // Every persona was told ITS OWN filled address and the adopter's inbox URL (#380: this
       // route previously ignored the whole block).
       expect(seenInstructions).toHaveLength(2);
-      expect(seenInstructions.some((text) => text.includes(`${baseUrl}/inbox`) && text.includes("lane-01@example.test"))).toBe(true);
-      expect(seenInstructions.some((text) => text.includes(`${baseUrl}/inbox`) && text.includes("lane-02@example.test"))).toBe(true);
+      for (const address of ["lane-01@example.test", "lane-02@example.test"]) {
+        const scopedUrl = recipientInboxUrl(`${baseUrl}/inbox`, address);
+        expect(seenInstructions.filter((text) => text.includes(scopedUrl) && text.includes(address))).toHaveLength(1);
+      }
 
       // The drain ran once at run level, matched the captured send, and wrote the digest-only
       // artifact — no raw address, subject, or link may appear in it.

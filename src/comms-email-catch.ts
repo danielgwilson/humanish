@@ -12,7 +12,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import type { CommsChannel, InboundRaw } from "./comms-types.js";
+import { capturedInlineImages } from "./comms-images.js";
+import type { CommsChannel, CommsInlineImage, InboundRaw } from "./comms-types.js";
 
 /** One send, normalized across providers. `body` is html-preferred, else text. */
 export interface NormalizedSend {
@@ -20,6 +21,7 @@ export interface NormalizedSend {
   to: string[];
   subject?: string;
   body: string;
+  inlineImages?: CommsInlineImage[];
 }
 
 /**
@@ -94,7 +96,8 @@ export const genericEmailProfile: EmailSendProfile = {
       const subject = optStr(rec.subject ?? rec.Subject);
       const bodyValue = str(rec.html ?? rec.HtmlBody ?? rec.text ?? rec.TextBody);
       if (to.length === 0 && from === "" && bodyValue === "") continue;
-      out.push({ from, to, ...(subject === undefined ? {} : { subject }), body: bodyValue });
+      const inlineImages = capturedInlineImages(rec.inlineImages);
+      out.push({ from, to, ...(subject === undefined ? {} : { subject }), body: bodyValue, ...(inlineImages.length ? { inlineImages } : {}) });
     }
     return out;
   }
@@ -226,7 +229,8 @@ export async function startEmailCatchServer(
         from: send.from,
         to: send.to,
         ...(send.subject === undefined ? {} : { subject: send.subject }),
-        body: send.body
+        body: send.body,
+        ...(send.inlineImages ? { inlineImages: send.inlineImages } : {})
       };
       await channel.deliverRaw(inbound);
       idCounter += 1;
