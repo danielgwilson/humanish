@@ -265,9 +265,12 @@ async function seekStudy(page, milliseconds) {
   await page.getByRole("button", { name: "Play study", exact: true }).waitFor();
 }
 async function readyStudyCard(page, id, source) {
-  const image = studyCard(page, id).locator("img.keyframe");
+  const card = studyCard(page, id);
+  // A retained decoded image stays mounted while an offscreen replacement is
+  // lazy. Bring the card into view before waiting for that replacement to load.
+  await card.scrollIntoViewIfNeeded();
+  const image = card.locator("img.keyframe");
   await until(async () => (await image.getAttribute("src"))?.endsWith(source), `${id} did not show ${source}`);
-  await image.scrollIntoViewIfNeeded();
   return readyCapture(image, source);
 }
 async function inspectCaptureAges(page) {
@@ -507,6 +510,22 @@ try {
     await readyStudyCard(page, "lane-1", "portrait-4.png");
     await readyStudyCard(page, "lane-2", "landscape-4.png");
     await setStudySpeed(page, 4);
+    // Observe the committed Play transition before the shared clock advances.
+    // The old decoded raster may remain visible until the requested one loads;
+    // inspecting img.src immediately after clicking races that deliberate handoff.
+    const playbackStart = await page.evaluateHandle(() => {
+      const receipt = { firstCommit: null, disconnect: () => observer.disconnect() };
+      const observer = new MutationObserver(() => {
+        if (!document.querySelector('button[aria-label="Pause study"]')) return;
+        receipt.firstCommit = {
+          offsetMs: Number(document.querySelector('input[aria-label="Seek study recording"]').value),
+          requestedSources: [...document.querySelectorAll(".card img.keyframe")].map((image) => image.getAttribute("data-requested-src")),
+        };
+        observer.disconnect();
+      });
+      observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+      return receipt;
+    });
     const play = page.getByRole("button", { name: "Play study", exact: true });
     if (phone) {
       const bounds = await play.boundingBox();
@@ -514,9 +533,12 @@ try {
       await play.tap();
     } else await play.click();
     await page.getByRole("button", { name: "Pause study", exact: true }).waitFor();
-    const startSources = await page.locator(".card img.keyframe").evaluateAll((elements) => elements.map((element) => element.getAttribute("src")));
-    assert.equal(startSources.length, 2);
-    assert(startSources.every((source) => source.endsWith("-1.png")), "Play from latest previews did not begin at the first capture time");
+    await until(() => playbackStart.evaluate((receipt) => receipt.firstCommit !== null), "Play did not commit a shared playback state");
+    record.checks.playbackStart = await playbackStart.evaluate((receipt) => receipt.firstCommit);
+    await playbackStart.evaluate((receipt) => receipt.disconnect()); await playbackStart.dispose();
+    assert.equal(record.checks.playbackStart.offsetMs, 0, "Play from latest previews did not begin at the first capture time");
+    assert.equal(record.checks.playbackStart.requestedSources.length, 2);
+    assert(record.checks.playbackStart.requestedSources.every((source) => source?.endsWith("-1.png")), "Play did not request the first capture for both participants");
     await until(async () => {
       const sources = await page.locator(".card img.keyframe").evaluateAll((elements) => elements.map((element) => element.getAttribute("src")));
       return sources.length === 2 && sources.every((source) => /-(?:2|3)\.png$/.test(source));
@@ -530,6 +552,8 @@ try {
     await play.waitFor();
     assert.equal(await page.locator(".thumb iframe").count(), 0, "Playback end unexpectedly entered live mode");
     record.checks.stoppedAtEnd = true;
+    await seekStudy(page, 0);
+    record.checks.firstCaptures = [await readyStudyCard(page, "lane-1", "portrait-1.png"), await readyStudyCard(page, "lane-2", "landscape-1.png")];
     await seekStudy(page, 3000);
     record.checks.sharedCaptures = [await readyStudyCard(page, "lane-1", "portrait-2.png"), await readyStudyCard(page, "lane-2", "landscape-2.png")];
     assertFullFrames(await inspectImages(page.locator(".card img.keyframe")));
