@@ -13,6 +13,13 @@ is checked through bounded CLI status commands; raw auth output is neither
 printed nor retained. These checks establish local readiness diagnostics,
 not remote account validity or quota.
 
+A fresh packaged-consumer check exposed a false prerequisite: `init` accepted a
+project without `package.json`, while `doctor` rejected it. The diagnostic now
+treats absence as optional npm integration. Forty-five focused tests cover the
+real keyless init-to-doctor path and safe-file behavior, including rejection of
+symlinks, dangling links, hardlinks, directories, FIFOs and unreadable files.
+The containment reader is unchanged.
+
 ## Synthetic inbox
 
 Real SMTP delivery, loopback HTTP and desktop/phone Chromium checks covered
@@ -91,3 +98,19 @@ correctly skipped the empty recording. One deliberate attempt with `chrome`
 then ran the study. Both attempts are retained; the binary distinction is now
 documented. Known study/analysis estimates including the failed setup total
 $1.024099. Both owned desktops reported successful cleanup.
+
+A focused follow-up on the revised pin control observed the chosen card moving
+to the first position with its pressed state set, opening that participant's
+recording, and returning to the grid with both order and pin state preserved.
+The participant discovered the control without location hints or intervention;
+passive DOM observations independently establish those transitions. Seven
+captures were retained, verification passed, the desktop was reclaimed, and
+analysis was explicitly disabled for this bounded confirmation. Estimated cost
+was $0.097062.
+
+The follow-up's synthetic HTML injection omitted an offline bootstrap marker,
+causing an update notice. That fixture defect is retained and qualifies the
+study: it proves the observed pin-and-return behavior, not the whole offline
+shell. Producer-generated portable exports have separate offline browser proof.
+The participant still reported initial icon/playback uncertainty; this single
+synthetic confirmation is not a claim of universal discoverability.
