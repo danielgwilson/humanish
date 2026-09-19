@@ -335,6 +335,7 @@ async function runCase(id, options, action) {
       // Retain painted evidence, including after native seek events. Offscreen
       // lazy images do not need to load merely to photograph this viewport.
       const visible = [...document.images].filter((image) => {
+        if (getComputedStyle(image).visibility === "hidden") return false;
         const box = image.getBoundingClientRect();
         let left = Math.max(0, box.left), right = Math.min(innerWidth, box.right), top = Math.max(0, box.top), bottom = Math.min(innerHeight, box.bottom);
         for (let parent = image.parentElement; parent; parent = parent.parentElement) {

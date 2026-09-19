@@ -11,6 +11,7 @@ checked in the built Observer. Passing one does not imply the other passed.
 | Popovers and study utilities | `components/ui/popover.tsx`, Base UI Popover | Details, filter, saved-moment and library journeys exercise dismissal, persistence and ordinary buttons |
 | Selects and checkboxes | `components/ui/select.tsx` / `checkbox.tsx`, Base UI | Shared token styling, selected indicators, nested Escape/focus, typeahead, long-menu scrolling, phone tap targets and fullscreen portal placement |
 | Theme, pin state and chrome motion | `theme-toggle.tsx`, `participant-card.tsx`, `chrome-polish.css` | Single theme glyph, theme/pin persistence, full-image fit at phone widths, inert collapsed library, playback continuity and reduced-motion transitions |
+| Capture loading and pin movement | `use-decoded-image.ts`, `use-pin-reorder.ts` | Slow and out-of-order capture loads retain explicitly labeled prior pixels until the requested DOM image has decoded; selected/displaced cards animate with stable keys, focus, scroll and reduced motion |
 | Phone study library | `components/ui/drawer.tsx`, Base UI Dialog | Phone library journey checks open/close, usable evidence after dismissal and no page overflow |
 | Study navigation | Semantic links in `app.tsx`; study identity remains in `Topbar` | Findings and ordinary review cases check stable outer geometry, active branch, exact return source and reload |
 | Finding disclosure | Base UI Accordion in `study-report.tsx`; native caveat disclosures | Collapsed ranked list, keyboard expansion, directly cited representative captures, exact evidence links, visible uncertainty, full caveats, bounded previews, empty/error/stale states and long content |
@@ -34,6 +35,7 @@ pnpm --filter humanish-observer build
 pnpm --filter humanish-observer test
 pnpm observer:browser:proof
 pnpm observer:chrome:proof
+node scripts/observer-reliability-proof.mjs
 ```
 
 The browser command retains screenshots, pixel/DOM measurements, network
@@ -48,3 +50,9 @@ devices and assistive-technology certification remain separate acceptance work.
 Provider operation, real CLI/TUI entrypoints, exports and analysis quality are
 also separate from synthetic renderer proof. Their absence must stay visible
 in the proof manifest rather than becoming a general release-quality claim.
+
+The reliability supplement accepts `--artifact <html>` and `--baseline` to retain
+before/failure measurements. `--axe <axe.min.js>` adds grid, player and report
+audits in both themes and widths, including computed text contrast and explicit
+incomplete checks. The source of the external audit script must be retained with
+local proof; it is never bundled into the Observer artifact.

@@ -52,3 +52,15 @@
   .icon-button, .review-tool, .side .item, .study-views a, .card-icon,
   .report-overview-disclosures details::details-content { transition: none; }
 }
+
+/* Loading retains original pixels; the notice explicitly distinguishes them
+   from the requested recording moment. Keep this outside capture geometry. */
+.card .capture-loading { position: absolute; inset: auto 0 44px; z-index: 3; pointer-events: none; padding: 4px 6px; background: var(--panel); color: var(--body-c); font: 10px/1.4 var(--sans); }
+.evidence-player .evidence-image[data-retained-image] .evidence-message { inset: auto 0 0; padding: 6px 10px; gap: 3px; font-size: 11px; }
+/* Pending images decode in place; swapping the existing node avoids a second
+   fetch for no-store recordings. They never participate in layout or hit tests. */
+.capture-pending { position: absolute !important; inset: 0; visibility: hidden !important; pointer-events: none; }
+.evidence-player .evidence-image[data-retained-image] > img:not(.capture-pending) { visibility: visible; }
+.gallery { overflow-anchor: none; }
+.capture-unavailable { visibility: hidden; }
+.frame-unavailable { position: absolute; inset: 0; }

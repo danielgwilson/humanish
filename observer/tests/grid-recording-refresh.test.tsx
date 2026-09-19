@@ -43,6 +43,14 @@ async function render(data: ObserverData) {
     });
     positioned = true;
   }
+  // jsdom does not fetch/decode raster images. These clock assertions inspect
+  // the settled image; loading/late responses have their own decode tests.
+  await act(async () => {
+    for (const image of container.querySelectorAll<HTMLImageElement>(".thumb img")) {
+      Object.defineProperties(image, { naturalWidth: { value: 390, configurable: true }, naturalHeight: { value: 844, configurable: true } });
+      image.dispatchEvent(new Event("load"));
+    }
+  });
 }
 
 const image = () => container.querySelector<HTMLImageElement>(".card .keyframe");

@@ -4,6 +4,7 @@ import { ageLabel, frameUpdatedAt, isActiveStream, isServedOrigin, liveEmbedSand
 import type { ObserverStream } from "@/lib/observer-data";
 import type { GridMoment } from "@/lib/grid-recording";
 import { formatElapsed } from "@/lib/player-model";
+import { useDecodedImage } from "@/lib/use-decoded-image";
 import { completionLabel, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
 import { ReviewIcon } from "./review-icon";
@@ -28,7 +29,7 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const statusLabel = !replay && !canUpdate && isActiveStream(stream) ? `Captured while ${stream.status}` : stream.statusLabel;
   const thought = active ? [...traceItems(stream)].reverse().find((item) => item.kind === "reasoning" && item.text) : undefined;
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const capture = useDecodedImage(liveThumb ? null : keyframe);
   useEffect(() => {
     if (!liveThumb || !liveUrl || !keyframe) return;
     // A live iframe hides the poster element. Read its raster dimensions anyway:
@@ -38,14 +39,16 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
     image.src = keyframe;
     return () => { image.onload = null; };
   }, [liveThumb, liveUrl, keyframe]);
-  const viewport = dimensions ?? stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? stream.viewport;
+  const viewport = (liveThumb ? dimensions ?? capture.decoded : capture.decoded ?? dimensions)
+    ?? stream.desktopGeometry?.screen.verified ?? stream.desktopGeometry?.screen.requested ?? stream.viewport;
   const warnings = stream.timeline.filter((event) => event.level === "warn" || event.level === "error");
   const label = stream.laneId ?? stream.label;
   const notable = completionLabel(stream);
   const flagged = !!notable || signal.flagged;
   const outcome = isActiveStream(stream) ? statusLabel : notable ?? (signal.flagged ? signal.label : statusLabel);
   const detailsLabel = `Participant details: ${name}`;
-  const failed = keyframe !== null && keyframe === failedImage;
+  const failed = keyframe !== null && capture.status === "error";
+  const pending = keyframe !== null && capture.status === "loading" && !liveThumb;
   const sourceLabel = liveThumb && liveUrl ? "Live" : active ? "Capture" : !canUpdate && isActiveStream(stream) ? "Snapshot" : null;
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
   const captureLabel = replay?.kind === "capture" ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
@@ -57,18 +60,20 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
     <div className="card-preview">
       <div className="thumb" style={{ aspectRatio: viewport ? `${viewport.width} / ${viewport.height}` : "16 / 10" }}>
         {liveThumb && liveUrl ? <iframe sandbox={liveEmbedSandbox(stream)} className="thumb-live" src={liveUrl} title={`Live thumb — ${name}`} referrerPolicy="no-referrer" aria-hidden="true" tabIndex={-1} />
-          : keyframe && !failed ? <img key={replay?.kind === "capture" ? replay.frame.itemId : keyframe} className="keyframe" src={keyframe} alt={`Recorded screen from ${name}`} loading="lazy"
-            onLoad={(event) => { const i = event.currentTarget; if (i.naturalWidth && i.naturalHeight) setDimensions({ width: i.naturalWidth, height: i.naturalHeight }); }}
-            onError={() => setFailedImage(keyframe)} />
+          : keyframe ? <>{capture.slots.map((slot) => <img key={slot.key} className={slot.pending ? "capture-pending" : failed ? "capture-unavailable" : "keyframe"} src={slot.href} data-requested-src={keyframe}
+            alt={slot.pending ? "" : `${pending && capture.decoded ? "Previous capture" : "Recorded screen"} from ${name}`} aria-hidden={slot.pending || undefined} loading="lazy" decoding="async"
+            onLoad={(event) => { void capture.loaded(event.currentTarget, slot.key); }} onError={() => capture.errored(slot.key)} />)}
+            {failed ? <div className="thumb-ph frame-unavailable"><span className="ph-state">Frame unavailable</span></div> : null}</>
             : !replay && stream.terminalPlain ? <div className="thumb-term"><TerminalCast lines={terminalLines(stream.terminalPlain)} /></div>
               : <div className="thumb-ph"><span className="ph-state">{failed ? "Frame unavailable" : replay ? captureLabel : active ? "Waiting for the first capture…" : "No captured screen"}</span></div>}
         <button type="button" className="open-overlay" aria-label={openLabel} onClick={() => onOpen(stream.id)} />
       </div>
     </div>
+    {pending ? <p className="capture-loading" role="status">Loading selected capture…{capture.decoded ? " Previous capture shown." : ""}</p> : null}
     <div className="card-caption">
       {pinned ? <span className="card-pin" role="img" aria-label="Pinned participant" title="Pinned participant"><ReviewIcon name="pin" /></span> : null}
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        {replay ? <span className="card-capture-time" title={captureLabel}>{replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
+        {replay ? <span className="card-capture-time" title={pending ? `Loading the selected capture.${capture.decoded ? " The previous capture remains visible." : ""}` : captureLabel}>{pending ? "Loading capture…" : replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
           : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analysis: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       <Popover triggerClassName="card-icon card-details-trigger" label={detailsLabel} title="Participant details" trigger={<ReviewIcon name="info" />}>
@@ -92,6 +97,6 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
         </div>
       </Popover>
     </div>
-    {failed ? <button type="button" className="card-retry" onClick={() => setFailedImage(null)}>Retry frame</button> : null}
+    {failed ? <button type="button" className="card-retry" onClick={capture.retry}>Retry frame</button> : null}
   </article>;
 }
