@@ -1,6 +1,6 @@
 ---
 name: humanish
-description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email or SMS an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
+description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
 ---
 
 # Humanish CLI
@@ -203,15 +203,19 @@ npx humanish watch first-run
 npx humanish lab run first-run --json --no-open
 ```
 
-### Off-app email/SMS verification (comms)
+### Off-app email verification (comms)
 
-When a flow is gated behind an email or SMS the app itself SENDS — a signup
+When a flow is gated behind an email the app itself sends — a signup
 verification link, a one-time code, a magic link — add a `comms:` block. The
 harness redirects the app's email-API sends into a catch INSIDE the sandbox (no
 mail leaves the machine), gives the persona a synthetic inbox to open and click
 through, and writes a digest-only `humanish.comms-thread.v1` evidence artifact (no
 raw address/link/code persists). Reach for this whenever a persona must read mail
 the app sent it to finish a step.
+
+Lab configuration supports email capture only. `comms.sms` and unknown channel
+names are rejected. Real mailbox providers and real SMS delivery are not yet
+available through the CLI; a message-bus type does not establish route support.
 
 ```yaml
 comms:
@@ -247,10 +251,15 @@ The app keeps calling its email API normally (Resend/SendGrid-shaped, or a custo
 profile); only the base URL is redirected. Route support: the clone/local-tree
 computer-use route (inbox on the sandbox's own loopback) and the CONCURRENT
 shared-world route (inbox getHost-exposed from the subject sandbox; the default
-since every seat now runs live at once). Declared anywhere else — app-url /
-operator-provided subjects, or a sequential `concurrency: 1` shared world — it is
-warned inert at parse: no catch exists there and no actor hears about an inbox.
-It needs `python3` in the subject sandbox (the stock E2B desktop has it).
+since every seat now runs live at once). SMTP capture is supported on per-lane
+provisioned routes; shared-world SMTP is rejected because it is not wired there.
+For app-url/operator-provided subjects, run `humanish comms catch` on a reachable
+host, point the app's email sends at that catch, and declare
+`comms.email.external.catchBaseUrl` (plus `inboxBaseUrl` if different). A declared
+`authTokenEnv` is an environment variable name, never a credential value.
+Sequential `concurrency: 1` shared-world email remains unwired; do not silently
+change study concurrency to work around that limitation. The in-sandbox catch
+needs `python3` (the stock E2B desktop has it).
 Evidence is digest-only (`humanish.comms-thread.v1` — counts and digests, never
 raw mail); the *readable* proof a persona saw the email is its screenshots of the
 inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and

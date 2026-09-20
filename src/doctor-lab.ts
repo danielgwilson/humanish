@@ -22,12 +22,9 @@ export async function labSetupChecks(args: {
   if (dryRun) return { desktop: false, keys: [], checks };
   const unsupported = unsupportedCliRoute(config, backend);
   if (unsupported) return { desktop: false, keys: [], checks: [...checks, { name: "live route", ok: false, message: unsupported }] };
-  const desktop = backend === "cua" || backend === "terminal" || backend.includes("shared-world")
-    || backend === "scripted" && config.subject.source === "clone";
-  const keys = desktop ? ["E2B_API_KEY"] : [];
+  const { desktop, keys } = labKeyRequirements(config, backend, false, args.keyPresent);
   if (backend === "terminal") {
-    const key = args.keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY";
-    keys.push(key);
+    const key = keys.find(name => name !== "E2B_API_KEY")!;
     checks.push({ name: "terminal model authentication", ok: args.keyPresent(key), message:
       "The in-sandbox Codex runtime needs CODEX_API_KEY or OPENAI_API_KEY. Your host's Codex login is not forwarded; credential placement follows execution.runtimeAuth." });
   } else if (backend === "cua" && config.actors[0]?.type === "local-agent") {
@@ -37,7 +34,7 @@ export async function labSetupChecks(args: {
       agent?.authStatus === "authenticated" ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
         : agent ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
           : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.` });
-  } else if (backend === "cua" || backend.includes("shared-world")) keys.push("OPENAI_API_KEY");
+  }
   if (backend === "scripted") {
     const { resolveBrowserCommand } = await import("./scripted-browser-actor.js");
     checks.push({ name: "scripted browser", ok: !!await resolveBrowserCommand(), message:
@@ -55,6 +52,22 @@ export async function labSetupChecks(args: {
   }
   checks.push({ name: "check scope", ok: true, message: "Local setup only. Provider credentials are not validated, model access/quota and target reachability are untested, and no paid resources were created." });
   return { desktop, keys, checks };
+}
+
+/** Required participant provider keys, shared by doctor and the TUI. Optional analysis is separate. */
+export function labKeyRequirements(
+  config: LabConfig,
+  backend: LabBackend,
+  dryRun: boolean,
+  keyPresent: (name: string) => boolean
+): { desktop: boolean; keys: string[] } {
+  if (dryRun || unsupportedCliRoute(config, backend)) return { desktop: false, keys: [] };
+  const desktop = backend === "cua" || backend === "terminal" || backend.includes("shared-world")
+    || backend === "scripted" && config.subject.source === "clone";
+  const keys = desktop ? ["E2B_API_KEY"] : [];
+  if (backend === "terminal") keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
+  else if ((backend === "cua" && config.actors[0]?.type !== "local-agent") || backend.includes("shared-world")) keys.push("OPENAI_API_KEY");
+  return { desktop, keys };
 }
 
 function unsupportedCliRoute(config: LabConfig, backend: LabBackend): string | undefined {

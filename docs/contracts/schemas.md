@@ -265,10 +265,13 @@ A lab is a composition over code primitives, not a hardcoded kind:
   `redactScreenshots: true` (blur unimplemented there) and
   `allowPublicTargets: true` fail-closed rather than ignoring them.
 - `comms` (#297; hosted on the clone/local-tree computer-use lanes and the
-  CONCURRENT shared-world getHost plane — warned inert everywhere else,
-  including app-url/operator-provided subjects and the sequential
-  `concurrency: 1` shared world, neither of which has a catch to host): off-app
-  email/SMS the app itself SENDS, made a persona-driven testable surface.
+  concurrent shared-world getHost plane, or connected to an external catch on
+  app-url/operator-provided subjects; unwired on sequential `concurrency: 1`
+  shared worlds): off-app
+  email the app itself sends, made a persona-driven testable surface. Lab
+  configuration rejects `comms.sms` and unknown channel names; message-bus SMS
+  types do not imply a supported SMS execution route. SMTP capture is supported
+  on per-lane provisioned routes and rejected for shared-world studies.
   `comms.email` = `{ kind: fake, injectEnv?, port?, recipients?, linkOrigin?, external? }`.
   `injectEnv` is the ADOPTER-NAMED env var the app reads for its email-API base
   URL (e.g. `RESEND_API_URL`); the harness sets it to an in-sandbox catch (so it
