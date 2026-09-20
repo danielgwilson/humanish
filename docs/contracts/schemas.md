@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.94.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.95.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -312,6 +312,31 @@ A lab is a composition over code primitives, not a hardcoded kind:
   an OTP COUNT — no raw address/link/code persists); the READABLE proof a
   persona saw the email is its screenshots of the inbox page. Requires `python3`
   in the subject sandbox (the stock E2B desktop template has it).
+
+### Communication connection setup
+
+`.humanish/local/comms.yaml` is a project-local, non-secret configuration file:
+
+```yaml
+schema: humanish.comms-connections.v1
+connections:
+  agentmail:
+    provider: agentmail
+    apiKeyEnv: AGENTMAIL_API_KEY
+```
+
+Only AgentMail setup is currently supported. Connection names use lowercase
+letters, digits and hyphens, beginning with a letter, up to 48 characters.
+`apiKeyEnv` names an environment variable; it never contains its value.
+Invalid fields, unsupported providers and unsafe filesystem paths are rejected.
+Adding an existing name with different settings refuses to overwrite it.
+
+`comms connections list --json` returns `humanish.comms-setup.v1`: configured
+profiles and local key presence/source, not provider authentication or delivery.
+`comms providers --json` returns `humanish.comms-providers.v1` with explicit
+setup/receiving availability. The key store accepts `humanish keys set agentmail`.
+Saving a connection neither modifies a lab nor creates a provider resource;
+`comms.email.connection` in a study remains unsupported and is rejected.
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
 `humanish.oss-lab-result.v1`, `humanish.oss-meta-lab-result.v1`,
