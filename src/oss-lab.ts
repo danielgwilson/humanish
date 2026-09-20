@@ -82,7 +82,8 @@ export interface OssLabResult {
   error?: {
     code: "HUMANISH_INVALID_OSS_REPO" | "HUMANISH_INVALID_OSS_LIMIT" | "HUMANISH_LAB_ANALYSIS_INVALID"
     | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
-    | "HUMANISH_LAB_TASKS_UNSUPPORTED";
+    | "HUMANISH_LAB_COMMS_UNSUPPORTED"
+      | "HUMANISH_LAB_TASKS_UNSUPPORTED";
     message: string;
   };
   reportJsonPath?: string;

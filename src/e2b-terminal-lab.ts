@@ -333,6 +333,10 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     error: { code, message }
   });
 
+  if (String(config.comms?.email?.kind) === "real") {
+    return failed("HUMANISH_TERMINAL_LAB_SUBJECT_INVALID", "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study.");
+  }
+
   // Resolve the actor through the registry — the parse layer already validated this, but the
   // engine fails closed rather than trusting a config that arrived through another door
   // (runTerminalProductLab is itself exported npm surface).

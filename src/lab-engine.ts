@@ -183,11 +183,16 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
   const backend = selectLabBackend(config);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
+  const receivingReason = String(config.comms?.email?.kind) === "real"
+    ? "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study."
+    : undefined;
   const tasksReason = analysisReason ?? taskProtocolValidationReason(config);
-  if (tasksReason && (backend === "synthetic" || backend === "smoke" || backend === "meta")) {
+  const admissionReason = receivingReason ?? tasksReason;
+  if (admissionReason && (backend === "synthetic" || backend === "smoke" || backend === "meta")) {
     const cwd = path.resolve(options.cwd);
-    const code = analysisReason ? (analysis.ok ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID") : "HUMANISH_LAB_TASKS_UNSUPPORTED";
-    const error = { code, message: tasksReason } as const;
+    const code = receivingReason ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
+      : analysisReason ? (analysis.ok ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID") : "HUMANISH_LAB_TASKS_UNSUPPORTED";
+    const error = { code, message: admissionReason } as const;
     if (backend === "synthetic") return { backend, result: {
       schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error
     } };
