@@ -12,12 +12,13 @@ import { PALETTE } from "../palette.js";
  * at the bottom of every screen still carries the keys that matter THERE; this carries all of them,
  * including the ones a legend has no room to explain.
  */
-export function HelpScreen({ columns }: { columns: number }): React.ReactElement {
+export function HelpScreen({ columns, connections }: { columns: number; connections?: boolean }): React.ReactElement {
   const rows: [string, string][] = [
     ["↑ ↓  ·  k j", "move the cursor"],
     ["⏎  ·  →", "open what the cursor is on, or run the action it names"],
     ["esc  ·  ←", "back — and it cancels an armed confirmation first"],
     ["g  ·  G", "jump to the top, jump to the bottom"],
+    ...(connections ? [["c", "connections and provider key setup"] as [string, string]] : []),
     ["?", "these keys"],
     ["q", "quit — a run you started keeps going without this window"]
   ];

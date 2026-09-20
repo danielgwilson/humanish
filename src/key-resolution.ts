@@ -36,7 +36,8 @@ export const KNOWN_PROVIDER_KEYS = [
   "E2B_API_KEY",
   "GH_TOKEN",
   "GITHUB_TOKEN",
-  "CODEX_API_KEY"
+  "CODEX_API_KEY",
+  "AGENTMAIL_API_KEY"
 ] as const;
 const PROVIDER_KEY_SET = new Set<string>(KNOWN_PROVIDER_KEYS);
 
@@ -45,7 +46,8 @@ export const KEY_VENDOR_ALIASES: Record<string, string> = {
   openai: "OPENAI_API_KEY",
   e2b: "E2B_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
-  github: "GH_TOKEN"
+  github: "GH_TOKEN",
+  agentmail: "AGENTMAIL_API_KEY"
 };
 
 export interface ResolvedKeyFill {
@@ -325,8 +327,8 @@ export function setUserKey(
   deps: KeyResolutionDeps = {}
 ): { path: string } {
   const trimmed = value.trim();
-  if (trimmed.length === 0 || /\r|\n/.test(trimmed)) {
-    throw new Error("The key value must be a single non-empty line.");
+  if (trimmed.length === 0 || /[\u0000-\u001f\u007f]/.test(trimmed)) {
+    throw new Error("The key value must be a single non-empty line without control characters.");
   }
   if (!ENV_NAME.test(name)) {
     throw new Error(`Not a valid env name: ${name}`);

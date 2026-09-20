@@ -85,6 +85,10 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish stats`: Roll up cost, outcomes, and durations across runs.
 - `humanish export`: Export Observer HTML or a redacted bundle workspace.
 - `humanish comms`: Off-app comms surfaces.
+- `humanish comms providers`: List installed communication provider capabilities. No network requests.
+- `humanish comms connections`: Manage project-local non-secret connection profiles. Setup does not enable email receiving.
+- `humanish comms connections list`: Show saved connections and local credential status; does not authenticate with a provider.
+- `humanish comms connections add`: Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.
 - `humanish comms catch`: Run the adopter-hosted email catch.
 - `humanish reclaim`: Reclaim an interrupted run's sandboxes by recorded id.
 - `humanish watch`: Run sims, open the observer, keep the shell attached.

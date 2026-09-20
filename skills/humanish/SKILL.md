@@ -36,9 +36,20 @@ Everything it shows has a machine-readable equivalent, which is what you want:
 | browsing runs | `npx humanish runs --json` |
 | starting a run | `npx humanish lab run <lab> --json --no-open` |
 | a run's outcome | `npx humanish review --run <id> --json` |
+| communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
 
 If a human asks you to "open the TUI", tell them the command to type; do not run
 it on their behalf.
+
+For AgentMail credential setup, a human can open `humanish tui`, press `c`,
+and choose **Add API key**. Hidden entry returns to Connections after saving or
+cancelling. The key is stored for that OS user, while the connection profile is
+project-local. Never ask for the key in chat. The CLI alternative is
+`humanish keys set agentmail` (hidden prompt; agents may use `--stdin` from an
+authorized credential source), followed by
+`humanish comms connections add agentmail --json`. Existing env/file precedence
+and `HUMANISH_STRICT_KEYS=1` still apply. Read installed provider capabilities:
+this release supports setup only, not authenticated checks or real email delivery.
 
 ## Setup Workflow
 
@@ -213,9 +224,10 @@ through, and writes a digest-only `humanish.comms-thread.v1` evidence artifact (
 raw address/link/code persists). Reach for this whenever a persona must read mail
 the app sent it to finish a step.
 
-Lab configuration supports email capture only. `comms.sms` and unknown channel
-names are rejected. Real mailbox providers and real SMS delivery are not yet
-available through the CLI; a message-bus type does not establish route support.
+Lab execution supports email capture only. `comms.sms`, saved connection
+selectors and unknown channel names are rejected. AgentMail connection/key
+setup is available separately; it does not enable real receiving yet. Real SMS
+delivery is also unavailable; a message-bus type does not establish route support.
 
 ```yaml
 comms:

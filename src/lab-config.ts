@@ -3214,6 +3214,7 @@ function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | L
 }
 
 function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
+  if (isRecord(raw) && raw.connection !== undefined) return invalid("Saved email connections support setup only; receiving email through a provider in studies is not available yet.");
   if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
   if (raw.kind === "real") {
     return invalid("`comms.email.kind: real` (provider-backed inboxes) is not yet supported — use `fake`.");

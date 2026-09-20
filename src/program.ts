@@ -13,6 +13,8 @@ import { startCodexAppServerUi } from "./codex-app-server-ui.js";
 import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
 import { discoverProviderKeys, listUserKeys, resolveKeyName, setUserKey, unsetUserKey, userKeyStorePath } from "./key-resolution.js";
+import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "./comms-connections.js";
+import { promptSecret } from "./secret-prompt.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import { redactText } from "./redaction.js";
 import {
@@ -637,6 +639,7 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
  * TTY, an old Node, or a missing bundle appear.
  */
 export interface TuiRuntime {
+  promptSecret: typeof promptSecret;
   stdin: NodeJS.ReadStream;
   stdout: NodeJS.WriteStream;
   nodeVersion: string;
@@ -647,6 +650,7 @@ export interface TuiRuntime {
 }
 
 const defaultTuiRuntime: TuiRuntime = {
+  promptSecret,
   stdin: process.stdin,
   stdout: process.stdout,
   env: process.env,
@@ -837,44 +841,79 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
         return;
       }
 
-      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io, env: sessionEnv })) return;
+      const discoveredKeys = new Set<string>();
+      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io, env: sessionEnv,
+        onDiscovered: names => names.forEach(name => discoveredKeys.add(name)) })) return;
+      // Probe stored credentials afresh. Discovery fills must not become permanent env overrides
+      // when a person replaces a stored key during this terminal session.
+      const connectionEnv = (): NodeJS.ProcessEnv => {
+        const env = { ...sessionEnv };
+        for (const name of discoveredKeys) delete env[name];
+        return env;
+      };
       const observerSession = createTuiObserverSession(resolve(options.cwd));
-      let exitCode: number;
+      let exitCode = 0;
+      let connectionNotice: string | undefined;
       try {
-        exitCode = await loaded.startTui({
-          cwd: resolve(options.cwd),
-          version: { cli: CLI_VERSION },
-          capabilities: {
-            // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
-            // run tree each tick is the cost this index exists to avoid.
-            readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-            listLabs: listLabManifests,
-            startRun: launchOptions => launchRun({ ...launchOptions, env: sessionEnv }),
-            readLaunchLog: readLaunchLogTail,
-            readRunDetail,
-            readLabSummary: (target, lab, readOptions) => readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
-            readProjectState,
-            openObserver: (target, observerPath) => observerSession.open(target, observerPath),
-            reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
-            stopRun,
-            initProject: async (target: string) => {
-              const result = await runInit({ cwd: target, yes: true });
-              return result.ok
-                ? {
-                    schema: TUI_ACTION_SCHEMA,
-                    ok: true as const,
-                    message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
-                  }
-                : {
-                    schema: TUI_ACTION_SCHEMA,
-                    ok: false as const,
-                    message: result.error?.message ?? "humanish init could not set this directory up"
-                  };
-            }
-          },
-          stdin,
-          stdout
-        });
+        for (;;) {
+          const outcome = await loaded.startTui({
+            ...(connectionNotice === undefined ? {} : { initialScreen: "connections" as const, connectionNotice }),
+            cwd: resolve(options.cwd),
+            version: { cli: CLI_VERSION },
+            capabilities: {
+              comms: {
+                read: () => readCommsSetup(resolve(options.cwd), connectionEnv()),
+                save: () => saveCommsConnection(resolve(options.cwd))
+              },
+              // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
+              // run tree each tick is the cost this index exists to avoid.
+              readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
+              listLabs: listLabManifests,
+              startRun: launchOptions => launchRun({ ...launchOptions, env: sessionEnv }),
+              readLaunchLog: readLaunchLogTail,
+              readRunDetail,
+              readLabSummary: (target, lab, readOptions) => readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
+              readProjectState,
+              openObserver: (target, observerPath) => observerSession.open(target, observerPath),
+              reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
+              stopRun,
+              initProject: async (target: string) => {
+                const result = await runInit({ cwd: target, yes: true });
+                return result.ok
+                  ? {
+                      schema: TUI_ACTION_SCHEMA,
+                      ok: true as const,
+                      message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
+                    }
+                  : {
+                      schema: TUI_ACTION_SCHEMA,
+                      ok: false as const,
+                      message: result.error?.message ?? "humanish init could not set this directory up"
+                    };
+              }
+            },
+            stdin,
+            stdout
+          });
+          if (typeof outcome === "number") { exitCode = outcome; break; }
+          if (outcome.action !== "agentmail-key") { exitCode = 1; break; }
+          // startTui has unmounted: only the host reads the credential, then remounts the view.
+          const value = await tuiRuntime.promptSecret("AgentMail API key", stdin, stdout);
+          if (value === null) {
+            connectionNotice = "Key entry cancelled. Nothing was changed.";
+            continue;
+          }
+          try {
+            setUserKey("AGENTMAIL_API_KEY", value, sessionEnv);
+            // Refresh only a value filled implicitly by discovery; explicit env/file wins.
+            if (discoveredKeys.has("AGENTMAIL_API_KEY")) delete sessionEnv.AGENTMAIL_API_KEY;
+            const saved = await saveCommsConnection(resolve(options.cwd));
+            connectionNotice = saved.ok ? "Key stored. Project connection saved."
+              : `Key stored for your user. ${saved.message}`;
+          } catch {
+            connectionNotice = "Could not store the key. Use a single non-empty line and check key-store permissions.";
+          }
+        }
       } finally {
         await observerSession.close();
       }
@@ -909,45 +948,14 @@ function formatKeysHuman(result: KeysResult): string {
 }
 
 /** Read one secret line: from a piped stdin when --stdin, else a hidden TTY prompt. */
-async function readSecretValue(useStdin: boolean, promptLabel: string, io: CliIo): Promise<string | null> {
+async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<string | null> {
   if (useStdin || !process.stdin.isTTY) {
     const chunks: Buffer[] = [];
     for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
     const text = Buffer.concat(chunks).toString("utf8").trim();
     return text.length > 0 ? text : null;
   }
-  io.writeErr(`${promptLabel} (input hidden): `);
-  return await new Promise((resolve) => {
-    const stdin = process.stdin;
-    let value = "";
-    stdin.setRawMode?.(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    const onData = (key: string): void => {
-      if (key === "\u0003") {
-        cleanup();
-        resolve(null);
-        return;
-      }
-      if (key === "\r" || key === "\n") {
-        cleanup();
-        io.writeErr("\n");
-        resolve(value.trim().length > 0 ? value.trim() : null);
-        return;
-      }
-      if (key === "\u007f" || key === "\b") {
-        value = value.slice(0, -1);
-        return;
-      }
-      value += key;
-    };
-    const cleanup = (): void => {
-      stdin.off("data", onData);
-      stdin.setRawMode?.(false);
-      stdin.pause();
-    };
-    stdin.on("data", onData);
-  });
+  return promptSecret(promptLabel, process.stdin, process.stderr);
 }
 
 function registerKeysCommand(parent: Command, io: CliIo): void {
@@ -958,7 +966,7 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
 
   keys
     .command("set")
-    .argument("<vendor-or-name>", "A vendor alias (openai, e2b, anthropic, github) or a raw ENV_NAME.")
+    .argument("<vendor-or-name>", "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME.")
     .description("Store one provider key in the user store (0600), prompted with hidden input.")
     .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -968,13 +976,13 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       if (name === null) {
         const result: KeysResult = {
           schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [],
-          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github.`
+          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`
         };
         writeResult(command, io, result, formatKeysHuman);
         io.setExitCode(2);
         return;
       }
-      const value = await readSecretValue(options.stdin === true, `Value for ${name}`, io);
+      const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
       if (value === null) {
         const result: KeysResult = {
           schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [name],
@@ -1390,8 +1398,43 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerCommsCommands(parent: Command, io: CliIo): void {
   const comms = parent
     .command("comms")
-    .description("Off-app comms surfaces (email/SMS the app under test sends).")
+    .description("Email capture and communication connection setup.")
     .summary("Off-app comms surfaces.");
+
+  comms.command("providers")
+    .description("List installed communication provider capabilities. No network requests.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action((_options, command) => {
+      const result = { schema: "humanish.comms-providers.v1", ok: true, providers: COMMS_PROVIDERS };
+      writeResult(command, io, result, () => COMMS_PROVIDERS.map(provider => `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`).join("\n"));
+    });
+
+  const connections = comms.command("connections").description("Manage project-local non-secret connection profiles. Setup does not enable email receiving.");
+  connections.command("list")
+    .description("Show saved connections and local credential status; does not authenticate with a provider.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--env-file <path>", "Load credentials for local status without printing values.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; envFile?: string }, command) => {
+      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      const result = await readCommsSetup(resolve(options.cwd), process.env);
+      writeResult(command, io, result, value => `${value.message}\nAgentMail key: ${value.credential.present ? "present" : "missing"}\n${value.connections.map(connection => `${connection.name}: ${connection.provider} (${connection.apiKeyEnv})\n`).join("")}`);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+  connections.command("add")
+    .argument("[name]", "Project connection name.", "agentmail")
+    .description("Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--provider <id>", "Installed provider id.", "agentmail")
+    .option("--api-key-env <name>", "Environment variable NAME, never its value.", "AGENTMAIL_API_KEY")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (name: string, options: { cwd: string; provider: string; apiKeyEnv: string }, command) => {
+      const result = { schema: "humanish.comms-connection-result.v1", ...(options.provider === "agentmail"
+        ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
+        : { ok: false, message: "Only AgentMail connection setup is currently available." }) };
+      writeResult(command, io, result, value => `${value.message}\n`);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
 
   comms
     .command("catch")
@@ -3839,6 +3882,7 @@ async function applyEnvFileOption(args: {
   envFile?: string | undefined;
   io: CliIo;
   env?: NodeJS.ProcessEnv;
+  onDiscovered?: (names: string[]) => void;
 }): Promise<boolean> {
   const env = args.env ?? process.env;
   if (args.envFile) {
@@ -3857,11 +3901,12 @@ async function applyEnvFileOption(args: {
   // (an explicit --env-file or process env always wins), each fill announced by name and
   // source on stderr, never by value. HUMANISH_STRICT_KEYS=1 restores env-only behavior.
   try {
-    await keyDiscoveryFn({
+    const discovered = await keyDiscoveryFn({
       cwd: args.cwd,
       env,
       announce: (line) => args.io.writeErr(`${line}\n`)
     });
+    args.onDiscovered?.(discovered.map(fill => fill.name));
   } catch {
     // Discovery must never break a command; a rung that fails to read is a miss, not an error.
   }

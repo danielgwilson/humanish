@@ -1,0 +1,19 @@
+human(ish)                        example-app
+‹ connections
+
+AgentMail · hosted email
+Connection: not saved for this project
+Key: missing
+Provider authentication: not checked
+
+❯ Add API key
+  Recheck local setup
+
+Get a key: https://console.agentmail.to
+Key entry is hidden. Saved keys apply to all
+your projects.
+Email receiving in studies is not available
+yet.
+Local capture: lab config · SMS: unavailable
+
+↑↓ move   ⏎ select   esc back   q quit
