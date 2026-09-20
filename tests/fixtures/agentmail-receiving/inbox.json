@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "organization_id": "organization-fixture-1",
+    "pod_id": "organization-fixture-1",
+    "inbox_id": "recipient@example.test",
+    "email": "recipient@example.test",
+    "client_id": "client-fixture-1",
+    "display_name": "synthetic-display_name",
+    "updated_at": "2026-01-01T12:00:00Z",
+    "created_at": "2026-01-01T12:00:00Z"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": 409,
+  "body": {
+    "name": "synthetic-name",
+    "code": "resource_deleting",
+    "message": "synthetic-message",
+    "fix": "synthetic-fix",
+    "docs": "synthetic-docs"
+  }
+}
