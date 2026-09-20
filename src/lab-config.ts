@@ -938,6 +938,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   const commsResult = parseComms(raw.comms);
   if (!commsResult.ok) return commsResult;
   if (commsResult.value) config.comms = commsResult.value;
+  if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
+    return invalid("SMTP capture is not yet wired for shared-world studies. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.");
+  }
 
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return invalid(mediaReason);
@@ -3197,6 +3200,10 @@ function parseDefaults(raw: unknown): LabDefaults | undefined {
 function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
+  const unsupported = Object.keys(raw).filter(key => key !== "email");
+  if (unsupported.length > 0) {
+    return invalid(`Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` capture is currently supported; SMS is not yet available.`);
+  }
   const comms: LabComms = {};
   if (raw.email !== undefined) {
     const email = parseCommsEmail(raw.email);

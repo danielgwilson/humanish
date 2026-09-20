@@ -763,10 +763,14 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
     .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
     .summary("Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.")
     .option("--cwd <path>", "Target project directory.", ".")
+    .option("--env-file <path>", "Load a local env file for this terminal session and its runs without printing values.")
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; force?: boolean; json?: boolean }, command) => {
+    .action(async (options: { cwd: string; envFile?: string; force?: boolean; json?: boolean }, command) => {
       const { stdin, stdout } = tuiRuntime;
+      // Production uses process.env, including SDKs used by existing cleanup actions. Tests inject
+      // an isolated host context. Values stay behind the capability closures, never in view data.
+      const sessionEnv = tuiRuntime.env;
 
       // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
       // it runs, so the TTY check below passes and the surface used to open: a study watched an
@@ -833,6 +837,7 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
         return;
       }
 
+      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io, env: sessionEnv })) return;
       const observerSession = createTuiObserverSession(resolve(options.cwd));
       let exitCode: number;
       try {
@@ -844,10 +849,10 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
             // run tree each tick is the cost this index exists to avoid.
             readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
             listLabs: listLabManifests,
-            startRun: launchRun,
+            startRun: launchOptions => launchRun({ ...launchOptions, env: sessionEnv }),
             readLaunchLog: readLaunchLogTail,
             readRunDetail,
-            readLabSummary,
+            readLabSummary: (target, lab, readOptions) => readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
             readProjectState,
             openObserver: (target, observerPath) => observerSession.open(target, observerPath),
             reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
@@ -3833,14 +3838,18 @@ async function applyEnvFileOption(args: {
   cwd: string;
   envFile?: string | undefined;
   io: CliIo;
+  env?: NodeJS.ProcessEnv;
 }): Promise<boolean> {
+  const env = args.env ?? process.env;
   if (args.envFile) {
-    const result = await loadEnvFile(args.cwd, args.envFile);
+    const stagedEnv = { ...env };
+    const result = await loadEnvFile(args.cwd, args.envFile, stagedEnv);
     if (!result.ok) {
       writeResult(args.command, args.io, result, formatEnvFileHuman);
       args.io.setExitCode(2);
       return false;
     }
+    for (const name of result.loaded) env[name] = stagedEnv[name];
   }
 
   // Provider-key discovery (#436): fill still-missing keys from the documented project
@@ -3850,7 +3859,7 @@ async function applyEnvFileOption(args: {
   try {
     await keyDiscoveryFn({
       cwd: args.cwd,
-      env: process.env,
+      env,
       announce: (line) => args.io.writeErr(`${line}\n`)
     });
   } catch {

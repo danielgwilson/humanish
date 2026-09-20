@@ -154,11 +154,12 @@ Implemented:
   deterministic proof, while concurrent has deterministic and kept live proof;
 - `subject.source: local-tree`, which packages one selected working tree with a
   content pin before using the same provision-and-serve path as clone subjects;
-- an off-app comms funnel for email/SMS-gated flows: a vendor-neutral in-sandbox
+- an off-app comms funnel for email-gated flows: a vendor-neutral in-sandbox
   catch redirects the app's own send API, a persona reads a minimal inbox surface
   and clicks through, and a digest-only `humanish.comms-thread.v1` artifact
   records the thread with no raw address, link, or code — wired into the
-  computer-use and shared-world routes and live-proven on computer-use;
+  computer-use and concurrent shared-world routes and live-proven on computer-use.
+  SMS is not yet a configured execution route;
 - resolved-persona directives that actually shape the actor prompt on the
   terminal-product route (traits are applied and recorded in the actor trace, not
   decorative), reusing the same `persona.ts` compiler as the computer-use lane;

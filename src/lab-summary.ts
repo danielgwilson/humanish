@@ -7,7 +7,8 @@
 // Resolved analysis defaults are shown independently of declared participant caps. A cap that is not
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
-import { selectLabBackend } from "./lab-engine.js";
+import { resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
+import { labKeyRequirements } from "./doctor-lab.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
@@ -44,8 +45,8 @@ export interface LabSummary {
   reasoningEffort?: string;
   caps: LabCaps;
   /**
-   * Whether every key a LIVE run of this lab needs is resolvable right now. `undefined` when not
-   * checked. Names only — a value never leaves the key layer.
+   * Whether the configured route's required keys resolve. Dry runs require none. This checks key
+   * presence, not local CLI authentication or provider validity. Undefined when not checked.
    */
   keysReady?: boolean;
   missingKeys?: string[];
@@ -123,20 +124,23 @@ export async function readLabSummary(
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
   const config = inspected.config as unknown as Record<string, unknown>;
   const actors = config.actors as { model?: string }[] | undefined;
+  const backend = selectLabBackend(inspected.config);
 
   let keysReady: boolean | undefined;
   let missingKeys: string[] | undefined;
   if (options.checkKeys === true) {
-    // Only the keys a live run of THIS lab would need. Names only; no value is read or returned.
-    const needed = ["OPENAI_API_KEY", "E2B_API_KEY"];
-    const probes = await probeKeySources(needed, { cwd, env: options.env ?? process.env }).catch(() => []);
-    const missing = probes.filter((probe) => probe.source === null).map((probe) => probe.name);
-    keysReady = probes.length > 0 && missing.length === 0;
+    const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
+    const subjectKeys = dryRun ? [] : inspected.config.subject.env ?? [];
+    const candidates = ["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY", ...subjectKeys];
+    const probes = dryRun ? [] : await probeKeySources(candidates, { cwd, env: options.env ?? process.env }).catch(() => []);
+    const present = new Set(probes.filter(probe => probe.source !== null).map(probe => probe.name));
+    const required = labKeyRequirements(inspected.config, backend, dryRun, name => present.has(name));
+    const missing = [...new Set([...required.keys, ...subjectKeys])].filter(name => !present.has(name));
+    keysReady = missing.length === 0;
     if (missing.length > 0) missingKeys = missing;
   }
 
   // Computed once: a test-then-use pair reads as though the two calls could differ.
-  const backend = selectLabBackend(inspected.config);
   const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, backend);
   const subject = subjectOf(config);
   const participants = participantsOf(config);

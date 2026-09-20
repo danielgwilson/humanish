@@ -1,9 +1,11 @@
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import * as observer from "../src/observer.js";
+import * as launch from "../src/tui-launch.js";
+import * as summaries from "../src/lab-summary.js";
 import { runDryRun } from "../src/run.js";
 
 import { createProgram, type TuiRuntime } from "../src/program.js";
@@ -28,6 +30,7 @@ async function runCli(args: string[], runtime: Partial<TuiRuntime>): Promise<Cli
     setExitCode: (code) => {
       exitCode = code;
     },
+    keyDiscovery: async () => [],
     tuiRuntime: runtime
   });
   program.exitOverride();
@@ -143,6 +146,44 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
     const runtime = workingRuntime({ loadTui: async () => ({ startTui: async () => 1 }) });
     const result = await runCli(["tui"], runtime);
     expect(result.exitCode).toBe(1);
+  });
+
+  it("uses the env file and inherited precedence for both summary and detached launch without exposing values", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-env-"));
+    const inherited = { OPENAI_API_KEY: "synthetic-inherited-key", CODEX_API_KEY: "", HUMANISH_STRICT_KEYS: "1" };
+    const summary = vi.spyOn(summaries, "readLabSummary").mockResolvedValue(null);
+    const start = vi.spyOn(launch, "launchRun").mockResolvedValue({ ok: false, error: { code: "HUMANISH_LAUNCH_FAILED", message: "fixture: no child launched" } });
+    try {
+      await writeFile(path.join(cwd, "provider.env"), "OPENAI_API_KEY=synthetic-file-model\nE2B_API_KEY=synthetic-file-desktop\nCODEX_API_KEY=synthetic-file-codex\n");
+      const runtime = workingRuntime({ env: inherited, loadTui: async () => ({ startTui: async options => {
+        expect(JSON.stringify(options)).not.toContain("synthetic-file");
+        await options.capabilities.readLabSummary(options.cwd, "preview", { checkKeys: true });
+        await options.capabilities.startRun({ cwd: options.cwd, lab: "preview", mode: "live" });
+        return 0;
+      } }) });
+      const result = await runCli(["tui", "--cwd", cwd, "--env-file", "provider.env"], runtime);
+      expect(result.exitCode).toBe(0);
+      const summaryEnv = summary.mock.calls[0]?.[2]?.env;
+      const launchEnv = start.mock.calls[0]?.[0].env;
+      expect(summaryEnv).toBe(launchEnv);
+      expect(summaryEnv).toMatchObject({ OPENAI_API_KEY: "synthetic-inherited-key", E2B_API_KEY: "synthetic-file-desktop", CODEX_API_KEY: "" });
+      expect(result.stdout + result.stderr).not.toMatch(/synthetic-(?:file|inherited)/);
+    } finally { await rm(cwd, { recursive: true, force: true }); }
+  });
+
+  it("refuses an invalid env file before opening the TUI and does not partially load it", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-invalid-env-"));
+    try {
+      await writeFile(path.join(cwd, "provider.env"), "E2B_API_KEY=synthetic-partial-key\nnot an assignment\n");
+      const env: NodeJS.ProcessEnv = { HUMANISH_STRICT_KEYS: "1" };
+      const runtime = workingRuntime({ env });
+      const result = await runCli(["tui", "--cwd", cwd, "--env-file", "provider.env", "--json"], runtime);
+      expect(result.exitCode).toBe(2);
+      expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_ENV_FILE_INVALID");
+      expect(runtime.seen).toHaveLength(0);
+      expect(env.E2B_API_KEY).toBeUndefined();
+      expect(result.stdout + result.stderr).not.toContain("synthetic-partial-key");
+    } finally { await rm(cwd, { recursive: true, force: true }); }
   });
 });
 
