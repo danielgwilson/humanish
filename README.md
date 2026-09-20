@@ -217,6 +217,14 @@ interactive stdin/stdout, and refuses detected coding-agent sessions even with
 a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).
 
+Press **c** for Connections, then choose **Add API key** to enter an AgentMail
+key with input hidden. Humanish saves the key in its user-level store (shared
+across your projects) and non-secret connection metadata in
+`.humanish/local/comms.yaml`. Ctrl+C cancels entry and returns to the TUI.
+Existing environment or project keys take precedence over the saved key.
+This configures credentials only: provider authentication and real email
+receiving in studies are not available yet. Local email capture is unchanged.
+
 ## Serve the Library
 
 `humanish serve` serves your run library on loopback. The [Observer and terminal guide](https://humanish.dev/docs/review-surfaces#serve-the-run-library)

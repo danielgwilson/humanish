@@ -1,4 +1,4 @@
-import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as observer from "../src/observer.js";
 import * as launch from "../src/tui-launch.js";
 import * as summaries from "../src/lab-summary.js";
+import { setUserKey, userKeyStorePath } from "../src/key-resolution.js";
 import { runDryRun } from "../src/run.js";
 
 import { createProgram, type TuiRuntime } from "../src/program.js";
@@ -183,6 +184,68 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
       expect(runtime.seen).toHaveLength(0);
       expect(env.E2B_API_KEY).toBeUndefined();
       expect(result.stdout + result.stderr).not.toContain("synthetic-partial-key");
+    } finally { await rm(cwd, { recursive: true, force: true }); }
+  });
+
+  it("hands hidden entry to the host, saves outside project config and returns to Connections", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-entry-"));
+    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), E2B_API_KEY: "", GH_TOKEN: "", GITHUB_TOKEN: "" };
+    const canary = "synthetic-hidden-key-canary";
+    let entries = 0;
+    const views: TuiOptions[] = [];
+    try {
+      const result = await runCli(["tui", "--cwd", cwd], workingRuntime({ env,
+        promptSecret: async () => { entries++; return canary; },
+        loadTui: async () => ({ startTui: async options => {
+          views.push(options);
+          if (views.length === 1) return { action: "agentmail-key" };
+          expect(options.initialScreen).toBe("connections");
+          expect(options.connectionNotice).toContain("Key stored");
+          expect(await options.capabilities.comms?.read()).toMatchObject({ ok: true, credential: { present: true, stored: true } });
+          return 0;
+        } })
+      }));
+      expect(result.exitCode).toBe(0);
+      expect(entries).toBe(1);
+      expect(views).toHaveLength(2);
+      expect(JSON.stringify(views) + result.stdout + result.stderr).not.toContain(canary);
+      expect(await readFile(path.join(cwd, ".humanish/local/comms.yaml"), "utf8")).not.toContain(canary);
+      expect(await readFile(userKeyStorePath(env), "utf8")).toContain(canary);
+    } finally { await rm(cwd, { recursive: true, force: true }); }
+  });
+
+  it("preserves explicit env precedence when replacing a stored key", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-replace-"));
+    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), AGENTMAIL_API_KEY: "synthetic-explicit-key", HUMANISH_STRICT_KEYS: "1" };
+    let visits = 0;
+    try {
+      setUserKey("AGENTMAIL_API_KEY", "synthetic-old-key", env);
+      await runCli(["tui", "--cwd", cwd], workingRuntime({ env, promptSecret: async () => "synthetic-new-key",
+        loadTui: async () => ({ startTui: async options => {
+          if (++visits === 1) return { action: "agentmail-key" };
+          expect((await options.capabilities.comms?.read())?.credential).toMatchObject({ present: true, source: "process env", stored: true });
+          return 0;
+        } })
+      }));
+      expect(env.AGENTMAIL_API_KEY).toBe("synthetic-explicit-key");
+      expect(await readFile(userKeyStorePath(env), "utf8")).toContain("synthetic-new-key");
+    } finally { await rm(cwd, { recursive: true, force: true }); }
+  });
+
+  it("returns after cancelled entry without creating a key store or project config", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-cancel-"));
+    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), HUMANISH_STRICT_KEYS: "1" };
+    let visits = 0;
+    try {
+      await runCli(["tui", "--cwd", cwd], workingRuntime({ env, promptSecret: async () => null,
+        loadTui: async () => ({ startTui: async options => {
+          if (++visits === 1) return { action: "agentmail-key" };
+          expect(options.connectionNotice).toContain("cancelled");
+          return 0;
+        } })
+      }));
+      await expect(readFile(userKeyStorePath(env))).rejects.toThrow();
+      await expect(readFile(path.join(cwd, ".humanish/local/comms.yaml"))).rejects.toThrow();
     } finally { await rm(cwd, { recursive: true, force: true }); }
   });
 });

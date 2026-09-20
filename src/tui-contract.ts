@@ -21,6 +21,7 @@ import type { TuiActionResult } from "./tui-actions.js";
 import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
+import type { CommsSetupResult, CommsSetupStatus } from "./comms-connections.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 export interface TuiVersionInfo {
@@ -33,6 +34,11 @@ export interface TuiVersionInfo {
  * one place, and anything absent here is something the TUI simply cannot do.
  */
 export interface TuiCapabilities {
+  /** Optional for older embedders. Credentials are never returned to the view. */
+  comms?: {
+    read(): Promise<CommsSetupStatus>;
+    save(): Promise<CommsSetupResult>;
+  };
   /** Read every run in the project, cheapest source first. */
   readRunIndex(cwd: string, options?: ReadRunIndexOptions): Promise<RunIndexResult>;
   /**
@@ -80,6 +86,9 @@ export interface TuiCapabilities {
 }
 
 export interface TuiOptions {
+  /** Return to setup after the host-owned hidden prompt has finished. */
+  initialScreen?: "connections";
+  connectionNotice?: string;
   /** The project the surface is reading. Already resolved by the CLI. */
   cwd: string;
   version: TuiVersionInfo;
@@ -99,7 +108,8 @@ export interface TuiOptions {
  * Start the surface. Resolves with the process exit code when the operator quits — the TUI owns the
  * screen until then, so the CLI must not write to stdout while this is pending.
  */
-export type StartTui = (options: TuiOptions) => Promise<number>;
+export type TuiHandoff = { action: "agentmail-key" };
+export type StartTui = (options: TuiOptions) => Promise<number | TuiHandoff>;
 
 /** The shape `dist/tui-app.js` exports. Asserted at the load boundary in program.ts. */
 export interface TuiModule {

@@ -1,6 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { HelpScreen } from "./screens/help-screen.js";
+import { ConnectionsScreen } from "./screens/connections-screen.js";
 import { PALETTE } from "./palette.js";
 
 import type { LabListEntry } from "../../src/labs.js";
@@ -29,6 +30,7 @@ interface ProjectData {
 }
 
 export interface AppProps {
+  onKeyEntry?: () => void;
   options: TuiOptions;
   onReady?: () => void;
   /** Frozen in tests so a golden never depends on the wall clock. */
@@ -67,7 +69,7 @@ const LIVE_CONFIRM_MIN_MS = 400;
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
 
-export function App({ options, onReady, now, tick: frozenTick }: AppProps): React.ReactElement {
+export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useTerminalSize();
   const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
@@ -94,6 +96,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   /** When a stop was armed. Ending paid work needs the same two keystrokes starting it does. */
   const [stopArmedAt, setStopArmedAt] = useState<number | undefined>(undefined);
   const [showHelp, setShowHelp] = useState(false);
+  const [showConnections, setShowConnections] = useState(options.initialScreen === "connections");
   /** When the "set up humanish here" action was armed — it writes into the operator's directory. */
   const [initArmedAt, setInitArmedAt] = useState<number | undefined>(undefined);
   /** Advances the spinners. A live row that does not move reads as stale data. */
@@ -315,6 +318,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
   useInput(
     useCallback(
       (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean; escape?: boolean; leftArrow?: boolean; rightArrow?: boolean }) => {
+        if (showConnections) { if (input === "q") exit(); return; }
         if (showHelp) {
           // Any key leaves: a help screen you can get stuck in is worse than none. `q` still quits.
           setShowHelp(false);
@@ -327,6 +331,14 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
         }
         if (input === "q") {
           exit();
+          return;
+        }
+        if (input === "c" && options.capabilities.comms) {
+          setConfirming(undefined);
+          setArmedAt(undefined);
+          setStopArmedAt(undefined);
+          setInitArmedAt(undefined);
+          setShowConnections(true);
           return;
         }
         if (input === "g" || input === "G") {
@@ -407,7 +419,7 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp, initArmedAt, projectState, options]
+      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp, showConnections, initArmedAt, projectState, options]
     )
   );
 
@@ -516,7 +528,10 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
-    if (showHelp) return <HelpScreen columns={contentWidth(size.columns)} />;
+    if (showConnections && options.capabilities.comms) return <ConnectionsScreen
+      capabilities={options.capabilities.comms} columns={contentWidth(size.columns)} notice={options.connectionNotice}
+      onBack={() => setShowConnections(false)} onKeyEntry={() => { onKeyEntry?.(); exit(); }} />;
+    if (showHelp) return <HelpScreen columns={contentWidth(size.columns)} connections={!!options.capabilities.comms} />;
     if (error !== undefined) return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
     return renderScreen({
@@ -524,14 +539,15 @@ export function App({ options, onReady, now, tick: frozenTick }: AppProps): Reac
       confirming, launchError, launchNote, detail, summary, liveDetails, tick,
       initialized: projectState.initialized, actionNote, initArmed: initArmedAt !== undefined
     });
-  }, [showHelp, error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, projectState, actionNote]);
+  }, [showHelp, showConnections, options, onKeyEntry, exit, error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, projectState, actionNote]);
 
   return (
     <Frame
       columns={size.columns}
       context={contextLine(screen, data, options)}
-      breadcrumb={breadcrumbOf(screen, data)}
-      hints={showHelp ? "any key returns   q quit" : keyHints(screen, data, selected, confirming, projectState.initialized)}
+      breadcrumb={showConnections ? "‹ connections" : breadcrumbOf(screen, data)}
+      hints={showConnections ? "↑↓ move   ⏎ select   esc back   q quit" : showHelp ? "any key returns   q quit"
+        : keyHints(screen, data, selected, confirming, projectState.initialized) + (options.capabilities.comms ? "   c connections" : "")}
     >
       {body}
     </Frame>

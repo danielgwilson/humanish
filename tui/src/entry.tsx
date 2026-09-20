@@ -3,7 +3,7 @@
 import { render } from "ink";
 import React from "react";
 
-import type { StartTui, TuiOptions } from "../../src/tui-contract.js";
+import type { StartTui, TuiOptions, TuiHandoff } from "../../src/tui-contract.js";
 import { forTerminal, terminalRendersUnicode } from "../../src/terminal-encoding.js";
 import { App } from "./app.js";
 
@@ -31,14 +31,15 @@ function encodeFor(stdout: TuiOptions["stdout"]): TuiOptions["stdout"] {
   return wrapped;
 }
 
-export const startTui: StartTui = async (options: TuiOptions): Promise<number> => {
+export const startTui: StartTui = async (options: TuiOptions): Promise<number | TuiHandoff> => {
+  let outcome: number | TuiHandoff = 0;
   let ready: () => void = () => {};
   const firstFrame = new Promise<void>((resolve) => {
     ready = resolve;
   });
 
   const stdout = encodeFor(options.stdout);
-  const instance = render(<App options={options} onReady={ready} />, {
+  const instance = render(<App options={options} onReady={ready} onKeyEntry={() => { outcome = { action: "agentmail-key" }; }} />, {
     stdin: options.stdin,
     stdout,
     // Ink's own console patching rewrites stdout behind the app. humanish writes its logs to files
@@ -64,7 +65,9 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number> =
 
   try {
     await instance.waitUntilExit();
-    return 0;
+    instance.clear();
+    instance.cleanup();
+    return outcome;
   } catch (error) {
     // A crash inside the render tree must still leave the terminal usable, and must say what
     // happened rather than exiting silently on a cleared screen.
