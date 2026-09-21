@@ -30,10 +30,10 @@ describe("communication declarations fail explicitly", () => {
     expect(parseLabConfig({ ...base, comms: { email: { injectEnv: "MAIL_API_URL" } } }).ok).toBe(true);
   });
 
-  it("does not mistake a saved connection for a supported email execution route", () => {
+  it("rejects mixing real receiving and local capture", () => {
     const result = parseLabConfig({ ...base, comms: { email: { connection: "agentmail", injectEnv: "MAIL_API_URL" } } });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).toContain("setup only");
+    if (!result.ok) expect(result.error.message).toContain("cannot be mixed");
   });
 
   it.each([undefined, "MAIL_API_URL"])("rejects shared-world SMTP even when HTTP is also declared (%s)", injectEnv => {

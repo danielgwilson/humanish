@@ -1,3 +1,4 @@
+import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms-receiving-evidence.js";
 import { cuaGoalSource } from "./actor-goal-source.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "./image-evidence.js";
@@ -154,7 +155,8 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   if (!object(value) || value.schema !== "humanish.run-bundle.v1"
     || value.runId !== path.basename(prepared.physicalRunRoot)
     || !Array.isArray(value.streams) || value.streams.length > 128 || !Array.isArray(value.events)
-    || value.events.length > 100000) throw new Error("ANALYSIS_SOURCE_INVALID");
+    || value.events.length > 100000
+    || (value.commsReceiving !== undefined && !isCommsReceivingEvidence(value.commsReceiving))) throw new Error("ANALYSIS_SOURCE_INVALID");
   const ids = new Set<string>();
   for (const stream of value.streams) {
     if (!object(stream) || typeof stream.id !== "string" || stream.id.length === 0 || stream.id.length > 256
@@ -265,6 +267,12 @@ function sourceEntries(bundle: RunBundle, stream: RunStream, captureVersion?: 2)
   const firstAt = stamp(captures[0]?.at);
   let frame = -1;
   const entries: SourceEntry[] = [];
+  if (captureVersion === 2 && bundle.commsReceiving) {
+    entries.push({ eventId: `comms-receiving-${stream.id}`, kind: "harness:email_receiving",
+      text: receivingAnalysisContext(bundle.commsReceiving, stream.laneId), quoteEligible: false,
+      at: null, elapsedMs: null, frame: null, capturePath: null, captureDeclared: false,
+      failed: bundle.commsReceiving.limitations.length > 0 || bundle.commsReceiving.participants.some(p => p.limitations.length > 0) });
+  }
   for (const item of items) {
     const capturePath = isCaptureItem(item, captureVersion) && object(item.screenshotRef)
       && typeof item.screenshotRef.path === "string" && isStudyEvidencePath(item.screenshotRef.path)

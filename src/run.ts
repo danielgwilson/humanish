@@ -1,3 +1,5 @@
+import type { CommsReceivingEvidence } from "./comms-receiving-types.js";
+import { isCommsReceivingEvidence } from "./comms-receiving-evidence.js";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
@@ -823,6 +825,8 @@ export interface SharedWorldEvidence {
 }
 
 export interface RunBundle {
+  publication?: { restrictions: ["real-communications"] };
+  commsReceiving?: CommsReceivingEvidence;
   schema: typeof RUN_BUNDLE_SCHEMA;
   runId: string;
   mode: "dry-run" | "live";
@@ -1335,6 +1339,7 @@ export interface RunResult {
       | "HUMANISH_LAB_ANALYSIS_INVALID"
       | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED"
+      | "HUMANISH_LAB_COMMS_UNSUPPORTED"
       | "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED"
       | "HUMANISH_APP_URL_OPTION_CONFLICT"
       | "HUMANISH_BROWSER_APP_CAPTURE_FAILED"
@@ -1381,7 +1386,8 @@ export interface VerifyResult {
         | "VERIFY_FAILED"
         | "PUBLIC_SAFETY_FINDINGS"
         | "ANALYSIS_UNVERIFIED"
-        | "RAW_SCREENSHOTS";
+        | "RAW_SCREENSHOTS"
+        | "REAL_COMMUNICATIONS";
       message: string;
     }>;
   };
@@ -6110,6 +6116,9 @@ function buildShareSafety(args: {
     });
   }
 
+  if (args.bundle.publication !== undefined || args.bundle.commsReceiving !== undefined) {
+    reasons.push({ code: "REAL_COMMUNICATIONS", message: "This study used real email. Message content may appear in recordings, narration or analysis. Local review is supported; screenshot blurring does not make it public-safe." });
+  }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle);
   if (rawStreamIds.length > 0) {
     reasons.push({
@@ -7193,6 +7202,9 @@ function redactSensitiveText(text: string): string {
 function isRunBundle(value: unknown): value is RunBundle {
   return isRecord(value)
     && value.schema === RUN_BUNDLE_SCHEMA
+    && (value.commsReceiving === undefined || isCommsReceivingEvidence(value.commsReceiving))
+    && (value.publication === undefined || (isRecord(value.publication) && Array.isArray(value.publication.restrictions)
+      && value.publication.restrictions.length === 1 && value.publication.restrictions[0] === "real-communications"))
     && typeof value.runId === "string"
     && (value.mode === "dry-run" || value.mode === "live")
     && isPositiveSafeInteger(value.simCount)

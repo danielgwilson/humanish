@@ -1,3 +1,7 @@
+import { withTransientCommsSecrets } from "./run-narration-secrets.js";
+import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
+import type { CommsReceivingRun } from "./comms-receiving.js";
+import { receivingEmailValidationReason } from "./lab-config.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
@@ -718,6 +722,10 @@ function observerResultForConcurrentArtifacts(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runConcurrentSharedWorld(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
+  return withTransientCommsSecrets(() => runConcurrentSharedWorldWithSecrets(options));
+}
+
+async function runConcurrentSharedWorldWithSecrets(options: RunConcurrentSharedWorldLabOptions): Promise<ConcurrentSharedWorldLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
   return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
@@ -806,6 +814,8 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
   // barrier's handoff + convergence proof are testable without a live vision call.
   const readLobbyCode = hooks.readLobbyCodeFromFrame ?? readLobbyCodeFromFrame;
 
+  const receivingReason = receivingEmailValidationReason(config);
+  if (receivingReason) return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", receivingReason, descriptor.id);
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const knownSecretValues = [
@@ -890,7 +900,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
   // sandbox at create (fixed port known up front); the catch is deployed before serve; the drain + digest
   // evidence run at subject teardown, then register run-level in the bundle. NOT available on the
   // external-public plane (the app is an operator-owned deployment the harness never provisions).
-  const commsEmail = planeClass === "provisioned-getHost" ? config.comms?.email : undefined;
+  const commsEmail = planeClass === "provisioned-getHost" && config.comms?.email?.kind === "fake" ? config.comms.email : undefined;
   const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
   // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
   // because the operator points their own app at their own catch.
@@ -905,7 +915,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
   // the previously-inert block into a working one.
   const externalComms = planeClass === "external-public" ? config.comms?.email?.external : undefined;
   const externalCommsEmail = externalComms ? config.comms?.email : undefined;
-  if (config.comms?.email && planeClass === "external-public" && externalComms === undefined) {
+  if (config.comms?.email?.kind === "fake" && planeClass === "external-public" && externalComms === undefined) {
     warnings.push("comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected. Declare `comms.email.external` to host the catch yourself (#328).");
   }
 
@@ -984,6 +994,18 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     }
   }
 
+  let receiving: CommsReceivingRun | undefined;
+  if (!dryRun && config.comms?.email?.kind === "real") {
+    try {
+      receiving = await prepareReceivingRun({ cwd, runId, config, env, participants: actorSpecs.map(spec => spec.laneId), runPaths,
+        registerSecrets: values => { for (const value of values) if (value.length >= 4 && !knownSecretValues.includes(value)) knownSecretValues.push(value); }
+      });
+      commsArtifactPath = "comms/receiving.json";
+    } catch {
+      return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.", descriptor.id);
+    }
+  }
+  try {
   if (!dryRun && planeClass === "provisioned-getHost") {
     if (!serve) {
       // Defense-in-depth: concurrentSharedWorldValidationReason already required serve above.
@@ -1255,6 +1277,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
         redactScreenshots,
         scrubKnownValues,
         runSession,
+        ...(receiving ? { receiving } : {}),
         now,
         hooks: cuaHooks,
         ...(runBudget === undefined ? {} : { runBudget }),
@@ -1392,6 +1415,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
       // Scrub the latched lobby CODE (known once the host resolves it) from ALL narration.
       scrubKnownValues: scrubKnownValuesWithLobbyCode,
       runSession,
+      ...(receiving ? { receiving } : {}),
       now,
       hooks: cuaHooks,
       ...(runBudget === undefined ? {} : { runBudget }),
@@ -1688,6 +1712,11 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     }
   }
 
+  } finally {
+    try { await receiving?.finish(); }
+    catch { warnings.push("Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved."); }
+  }
+
   // Subject provenance: external-public is the operator-declared, operator-owned public deployment
   // (neither provisioned nor seeded); the provisioned path builds clone/local-tree provenance.
   const subject: RunSubjectProvenance = planeClass === "external-public"
@@ -1751,6 +1780,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
     ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
   });
 
+  if (receiving) bundle.commsReceiving = receiving.snapshot();
   await writeConcurrentRunArtifacts(bundle, runPaths);
   // Finalize identity+liveness from the bundle just written. Deliberately here and not inside
   // writeConcurrentRunArtifacts — that writer is shared with the mid-run in-progress flushes, and
@@ -2357,6 +2387,7 @@ export function buildConcurrentSharedWorldBundle(args: {
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
+    ...receivingPublication(args.config, args.dryRun),
     runId: args.runId,
     mode: dryRun ? "dry-run" : "live",
     simCount: actorSpecs.length,

@@ -775,7 +775,24 @@ export interface LabCommsSmtp {
   password?: string;
 }
 
-export interface LabCommsEmail {
+export type LabCommsEmail = LabCommsCaptureEmail | LabCommsReceivingEmail;
+
+export interface LabCommsReceivingEmail {
+  kind: "real";
+  connection: string;
+  /** Additional exact first-hop destinations; automatic remote email assets remain blocked. */
+  allowedOrigins?: string[];
+  linkOrigin?: string;
+  port?: never;
+  injectEnv?: never;
+  smtp?: never;
+  recipients?: never;
+  external?: never;
+}
+
+export interface LabCommsCaptureEmail {
+  connection?: never;
+  allowedOrigins?: never;
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
    *  catch captures the app's sends and nothing leaves the machine. `real` (provider-backed) is not yet
@@ -968,7 +985,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // signal. Omitted recipients are therefore FILLED (one deterministic address per lane); a
   // recipient naming an unknown lane is a hard error listing the real lane ids; declared
   // recipients covering zero lanes are a hard error (a guaranteed-dead funnel).
-  if (config.comms?.email && routesToComputerUse(config)) {
+  const receivingReason = receivingEmailValidationReason(config);
+  if (receivingReason) return invalid(receivingReason);
+  if (config.comms?.email?.kind === "fake" && routesToComputerUse(config)) {
     const laneIds = effectiveComputerUseLaneIds(config);
     const email = config.comms.email;
     if (email.recipients === undefined) {
@@ -1510,6 +1529,21 @@ export function routesToComputerUse(config: LabConfig): boolean {
     && actorResolvesToComputerUse(config.actors[0]?.type);
 }
 
+/** Reused by direct library runners so unsupported receiving never becomes inert configuration. */
+export function receivingEmailValidationReason(config: LabConfig): string | undefined {
+  if (config.comms?.email?.kind !== "real") return undefined;
+  if (!routesToComputerUse(config) || !["app-url", "clone", "local-tree"].includes(config.subject.source)) {
+    return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
+  }
+  if (config.actors.some(actor => actor.type === "local-agent")) {
+    return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
+  }
+  if (config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
+    return "Real email receiving is unsupported for sequential shared-world studies. Use concurrent shared-world or independent participant desktops.";
+  }
+  return undefined;
+}
+
 /** Refuse task declarations that the selected execution path would discard (#737).
  * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
 export function taskProtocolValidationReason(
@@ -1823,7 +1857,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // operator-provided subject there is no such handle, so a declared comms block would silently
   // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
   if (
-    config.comms?.email
+    config.comms?.email?.kind === "fake"
     && config.comms.email.external === undefined
     && config.subject.source !== "clone"
     && config.subject.source !== "local-tree"
@@ -3202,7 +3236,7 @@ function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | L
   if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
   const unsupported = Object.keys(raw).filter(key => key !== "email");
   if (unsupported.length > 0) {
-    return invalid(`Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` capture is currently supported; SMS is not yet available.`);
+    return invalid(`Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` is currently supported; SMS is not yet available.`);
   }
   const comms: LabComms = {};
   if (raw.email !== undefined) {
@@ -3214,10 +3248,36 @@ function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | L
 }
 
 function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
-  if (isRecord(raw) && raw.connection !== undefined) return invalid("Saved email connections support setup only; receiving email through a provider in studies is not available yet.");
   if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
+  if (raw.connection !== undefined) {
+    const unsupported = Object.keys(raw).filter(key => !["connection", "linkOrigin", "allowedOrigins"].includes(key));
+    if (unsupported.length) return invalid("An email connection cannot be mixed with capture settings, kind, recipients, or provider options. Use only connection, optional linkOrigin and allowedOrigins.");
+    if (typeof raw.connection !== "string" || !/^[a-z][a-z0-9-]{0,47}$/.test(raw.connection)) return invalid("`comms.email.connection` must name a saved connection (lowercase letters, digits and hyphens; at most 48 characters).");
+    const value: LabCommsReceivingEmail = { kind: "real", connection: raw.connection };
+    const origin = (input: unknown): string | undefined => {
+      if (typeof input !== "string") return undefined;
+      try {
+        const url = new URL(input);
+        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash ? url.origin : undefined;
+      } catch { return undefined; }
+    };
+    if (raw.linkOrigin !== undefined) {
+      const parsed = origin(raw.linkOrigin);
+      if (!parsed) return invalid("`comms.email.linkOrigin` must be an exact http(s) origin without credentials, query or fragment.");
+      value.linkOrigin = parsed;
+    }
+    if (raw.allowedOrigins !== undefined) {
+      if (!Array.isArray(raw.allowedOrigins) || raw.allowedOrigins.length > 16) return invalid("`comms.email.allowedOrigins` must contain at most 16 exact http(s) origins.");
+      const origins = raw.allowedOrigins.map(origin);
+      if (origins.some(entry => entry === undefined)) return invalid("`comms.email.allowedOrigins` accepts exact http(s) origins without credentials, query or fragment.");
+      value.allowedOrigins = [...new Set(origins as string[])];
+    }
+    return { ok: true, value };
+  }
+  const unknown = Object.keys(raw).filter(key => !["kind", "injectEnv", "port", "smtp", "linkOrigin", "recipients", "external"].includes(key));
+  if (unknown.length) return invalid("Unknown email capture setting. Real inboxes select a saved `comms.email.connection`.");
   if (raw.kind === "real") {
-    return invalid("`comms.email.kind: real` (provider-backed inboxes) is not yet supported — use `fake`.");
+    return invalid("Real inboxes require `comms.email.connection` naming a saved connection; omit kind.");
   }
   if (raw.kind !== undefined && raw.kind !== "fake") {
     return invalid("`comms.email.kind` must be `fake`.");

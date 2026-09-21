@@ -87,7 +87,7 @@ export type { RedactionHooks } from "./redaction.js";
 // origin-rewrite MACHINERY is internal to that route and intentionally NOT re-exported. What IS public:
 // the `CommsChannel` port (implement it for a custom/real provider-backed adapter), its reference
 // in-process adapter (`FakeInbox`), and the digest-only evidence types (to read a `humanish.comms-thread.v1`
-// artifact from a run bundle).
+// artifact from a run bundle). Study receiving adapters and cleanup authority remain internal.
 export type {
   CommsAddress,
   CommsChannel,
@@ -100,6 +100,8 @@ export { FakeInbox } from "./comms-fake-inbox.js";
 export type { FakeInboxOptions } from "./comms-fake-inbox.js";
 export { COMMS_THREAD_SCHEMA } from "./comms-evidence.js";
 export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
+export { COMMS_RECEIVING_SCHEMA } from "./comms-receiving-types.js";
+export type { CommsReceivingEvidence, ReceivingParticipantEvidence } from "./comms-receiving-types.js";
 export {
   DESKTOP_RATE,
   DESKTOP_RESOURCE_RATE,
