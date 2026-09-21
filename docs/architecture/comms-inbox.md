@@ -1,5 +1,9 @@
 # Participant inboxes
 
+This page describes local capture. For fresh hosted inboxes, see
+[real email receiving](real-email-receiving.md); that route has a separate
+parsed renderer, strict remote-asset blocking and private lease lifecycle.
+
 The catch captures application mail without sending it to an external recipient.
 Humanish gives each participant an address and a matching
 `/inbox/for/<address-digest>` URL. The same address scope applies to list, message,
