@@ -316,3 +316,6 @@
 
 html:not(.js) .stage { display: grid; gap: 16px
 }
+
+.fl, .chip, .c-bar, .c-foot, .manifest dt, .plab, .rail-k, .tile-bar .lane-id, .brief-facts dt { font-size: 11px
+}

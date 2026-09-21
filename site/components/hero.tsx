@@ -11,7 +11,7 @@ export default function Hero() {
         {/* Mirror obligation: this lede is the site description. Any edit here
             moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
             llms.txt description block in the same commit. */}
-        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Personas drive your app in a real browser on a hosted sandbox desktop. Runs land in your repo under <code>.humanish/</code>: screenshots, action traces, lifecycle events, estimated cost at dated rates. <code>humanish verify</code> grades the bundle fail-closed.</p>
+        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Personas use your app in a real browser on a hosted sandbox desktop. Each run is written to your repo under <code>.humanish/</code>: screenshots, action traces, lifecycle events, estimated cost at dated rates. <code>humanish verify</code> checks the bundle and fails closed.</p>
         <div className="cta-row rev" style={{ "--d": ".12s" } as React.CSSProperties}>
           <a className="btn btn-primary" href="/docs">Get started</a>
           <a className="btn btn-ghost" href="/docs/todomvc-edit-study">Read the TodoMVC study</a>
@@ -34,9 +34,9 @@ export default function Hero() {
       <div className="hero-art" id="heroArt">
         <HeroCrowd />
         <figure className="hero-tile rev" style={{ "--d": ".3s" } as React.CSSProperties}>
-          <div className="tile-bar"><span className="lane-id"><b>Lane 01 ·</b> diagram-login-flow</span><span className="chip chip-pass">Passed</span></div>
-          <div className="tile-shot"><img src="/study/excalidraw-lane1.jpg" alt="Lane 01 screenshot: Excalidraw canvas with two rectangles labeled Login and Dashboard connected by an arrow" /><CoverCanvas n="01" resolveAfter={1100} /></div>
-          <figcaption className="tile-foot"><span className="fl">Final report</span><span className="fq">{'"Done"'}</span></figcaption>
+          <div className="tile-bar"><span className="lane-id"><b>Participant 01 ·</b> drawDB</span><span className="chip chip-pass">Reached</span></div>
+          <div className="tile-shot"><img src="/runs/try-live/poster.jpg" alt="Participant 01 capture: drawDB in Chrome on the hosted desktop with two tables named customers and orders" /><CoverCanvas n="01" resolveAfter={1100} /></div>
+          <figcaption className="tile-foot"><span className="fl">Closing report</span><span className="fq">{'"The tables appeared to overlap on the canvas."'}</span></figcaption>
         </figure>
       </div>
     </section>

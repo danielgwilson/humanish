@@ -162,3 +162,14 @@
   --font-sans: var(--sans);
   --font-mono: var(--mono);
 }
+
+:root { --dz-body: #c6c1b5; --dz-label: #a6a195
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --dz-body: #c1bcb0; --dz-label: #a39e92
+  }
+}
+
+:root[data-theme="dark"] { --dz-body: #c1bcb0; --dz-label: #a39e92
+}

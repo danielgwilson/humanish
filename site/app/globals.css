@@ -770,3 +770,94 @@ h1 em { font-style: italic; font-weight: 400 }
 @media (prefers-color-scheme: dark) {
   :where(:root:not([data-theme="light"])) .humanish-docs .shiki code span { color: var(--shiki-dark); font-style: var(--shiki-dark-font-style); }
 }
+
+/* ============================================================
+   2026-09-21 homepage refresh (experiment variant option-1).
+   New blocks only; the token system above is unchanged except for the
+   contrast and size floor (two of three synthetic participants who read the
+   2026-09-14 page reported gray dark-band text and very small mono labels).
+   ============================================================ */
+
+/* ---------- nav: GitHub + version ---------- */
+.nav-gh {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--body-c); text-decoration: none;
+  border: 1px solid var(--line); border-radius: 999px; flex: none;
+}
+.nav-gh:hover { color: var(--ink); border-color: var(--ghost) }
+.nav-gh svg { width: 14px; height: 14px }
+@media (max-width: 720px) { .nav-gh span { display: none } .nav-gh { margin-left: auto; padding: 8px } .nav .tbtn { margin-left: 0 } }
+
+/* ---------- contrast + size floor ---------- */
+:root { --dz-body: #c6c1b5; --dz-label: #a6a195 }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dz-body: #c1bcb0; --dz-label: #a39e92 } }
+:root[data-theme="dark"] { --dz-body: #c1bcb0; --dz-label: #a39e92 }
+.fl, .chip, .c-bar, .c-foot, .manifest dt, .plab, .rail-k, .tile-bar .lane-id, .brief-facts dt { font-size: 11px }
+.tcard p { font-size: 14px }
+.tcard p a { color: var(--dz-ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent-dz-dim) }
+.foot-brand p { color: #a39e93 }
+.foot-block .fl { color: #9a958a }
+.provenance p, .provenance .lic { color: #9a958a; font-size: 11.5px }
+.provenance p code { color: #b3aea3 }
+.closer .cmdline { font-size: 13px }
+
+
+/* replay player */
+.rp { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--sh-panel); display: grid }
+.rp-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--label) }
+.rp-title { color: var(--ink); font-weight: 500 }
+.rp-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; min-width: 0 }
+.rp-compact .rp-body { grid-template-columns: minmax(0, 1fr) }
+.rp-stage { position: relative; background: var(--mineral); overflow: hidden }
+.rp-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity .32s ease }
+.rp-stage img.on { opacity: 1 }
+.rp-pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none }
+.rp-pin i { display: block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent); background: rgba(43, 63, 214, .18); box-shadow: 0 0 0 4px rgba(43, 63, 214, .16); animation: pinpulse 1.2s ease-out infinite }
+.rp-pin b { position: absolute; left: 14px; top: -8px; font: 500 10px/1 var(--mono); letter-spacing: .04em; color: #fff; background: var(--accent); padding: 4px 6px; border-radius: 4px; white-space: nowrap }
+@keyframes pinpulse { 0% { box-shadow: 0 0 0 0 rgba(43, 63, 214, .35) } 100% { box-shadow: 0 0 0 10px rgba(43, 63, 214, 0) } }
+.rp-thought { position: absolute; left: 12px; right: 12px; bottom: 12px; margin: 0; padding: 9px 12px; border-radius: 10px; background: rgba(20, 18, 14, .84); color: #f0ede5; font-size: 12.5px; line-height: 1.5; backdrop-filter: blur(6px) }
+.rp-thought .fl { display: block; color: var(--accent-dz); margin-bottom: 3px }
+.rp-actions { list-style: none; margin: 0; padding: 8px 0; border-left: 1px solid var(--line-soft); overflow-y: auto; max-height: 100%; font-family: var(--mono); font-size: 11px; color: var(--muted) }
+.rp-actions li { display: flex; gap: 10px; padding: 5px 12px; border-left: 2px solid transparent; transition: background .18s, color .18s }
+.rp-actions li.past { color: var(--label) }
+.rp-actions li.on { background: var(--accent-wash); color: var(--ink); border-left-color: var(--accent) }
+.rp-actions code { font-size: 11px }
+.rp-t { color: var(--label); flex: none; width: 38px }
+.rp-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line-soft) }
+.rp-bar button { font: 500 12px/1 var(--mono); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--panel) }
+.rp-bar button:hover { border-color: var(--ghost) }
+.rp-track { flex: 1; display: flex; gap: 3px; height: 8px; align-items: center }
+.rp-track i { flex: 1; height: 3px; background: var(--line); border-radius: 2px; cursor: pointer }
+.rp-track i.done { background: var(--accent) }
+.rp-status { font-family: var(--mono); font-size: 11px; color: var(--label); white-space: nowrap }
+@media (max-width: 720px) { .rp-body { grid-template-columns: 1fr } .rp-actions { display: none } .rp-thought { font-size: 12px } }
+.phone-bezel { width: min(100%, 340px); padding: 10px; border-radius: 30px; background: #14120e; box-shadow: var(--sh-tile) }
+.phone-bezel .rp { border-radius: 22px; border: 0 }
+.phone-bezel .rp-head, .phone-bezel .rp-bar { display: none }
+.phone-bezel .rp-stage img { object-fit: cover }
+.phone-bezel .rp-thought { display: none }
+
+/* participants grid */
+.pg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px }
+.pg-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--sh-rail); display: grid; min-width: 0 }
+.pg-card header { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line-soft) }
+.pg-name { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink) }
+.pg-shot { position: relative; background: var(--mineral) }
+.pg-shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity .35s ease }
+.pg-shot img.on { opacity: 1 }
+.pg-card footer { padding: 9px 12px 11px; display: grid; gap: 5px }
+.pg-card footer p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--body-c); min-height: 3.6em }
+.pg-card.done footer p { color: var(--ink) }
+@media (max-width: 900px) { .pg { grid-template-columns: 1fr } .pg-card footer p { min-height: 0 } }
+
+/* ---------- study v3 (option 1) ---------- */
+.study-stage { margin: 0 0 56px }
+.study-open { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 12px 2px 0; font-size: 13.5px; color: var(--body-c) }
+.study-open a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px }
+.study-open code { font-size: .92em }
+.study-h2 { margin-top: 8px }
+.study-axis { margin-top: 8px; padding-top: 56px; border-top: 1px solid var(--line); border-bottom: 0; margin-bottom: 0; padding-bottom: 0 }
+.study-axis .repair-results th[scope="row"] { font-weight: 500 }
+.study-axis .repair-results td { font-size: 24px }
+.tile-foot { align-items: flex-start }
+.tile-foot .fq { white-space: normal; line-height: 1.45 }

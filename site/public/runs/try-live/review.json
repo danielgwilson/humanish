@@ -1,0 +1,17 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "pass",
+  "participants": {
+    "total": 1,
+    "reachedGoal": 1,
+    "abandoned": 0,
+    "ranOut": 0,
+    "blocked": 0,
+    "harnessFailed": 0,
+    "reportedFriction": 1
+  },
+  "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal, 1 reported friction. Recorded summary: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+  "gaps": [
+    "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+  ]
+}

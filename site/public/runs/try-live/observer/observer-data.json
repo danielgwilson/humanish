@@ -1,0 +1,821 @@
+{
+  "schema": "humanish.observer-data.v1",
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-16T16:24:51.612Z",
+  "run": {
+    "runId": "cua-2026-09-16T16-20-26-762Z-c44a6d1d",
+    "mode": "live",
+    "status": "pass",
+    "title": "Your first REAL study — one participant, a real app, a hosted desktop - Computer-use operator (synthetic-new-user)",
+    "createdAt": "2026-09-16T16:20:26.765Z",
+    "simCount": 1,
+    "persona": {
+      "id": "synthetic-new-user",
+      "name": "Computer-use operator (synthetic-new-user)",
+      "source": "lab:try-live",
+      "sourceDigest": "ceb1df9c10f5e47a"
+    },
+    "scenario": {
+      "id": "cua-try-live",
+      "title": "Your first REAL study — one participant, a real app, a hosted desktop",
+      "goal": "Persona: Synthetic New User. A privacy-safe first-time user evaluating the app with realistic but synthetic needs. You have moderate patience: work through some friction, but if you repeatedly fail to make progress toward your goal, stop and report what blocked you. You have moderate technical confidence: use straightforward paths and try one recovery step before giving up. You have the accessibility need \"none_declared\"; treat violations of it as defects and report them. Honor these constraints: Do not use real personal data.; Do not use production accounts.; Treat all credentials as env var names only..\n\nYou are a desktop user (desktop, 1440x950).\n\nYou have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:try-live",
+      "sourceDigest": "ceb1df9c10f5e47a"
+    },
+    "packageName": "humanish",
+    "redaction": {
+      "status": "passed",
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+    },
+    "lifecycle": [
+      {
+        "at": "2026-09-16T16:20:26.765Z",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor local-agent)."
+      }
+    ],
+    "knownGaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ],
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 1
+    },
+    "participantsLine": "1/1 reported reaching the goal, 1 reported friction"
+  },
+  "summary": {
+    "streams": 1,
+    "byKind": {
+      "ui": 0,
+      "browser": 1,
+      "terminal": 0,
+      "tui": 0,
+      "codex-ui": 0,
+      "artifact": 0,
+      "summary": 0
+    },
+    "active": 0,
+    "blocked": 0,
+    "warnings": 1
+  },
+  "laneGroups": [],
+  "cost": {
+    "schema": "humanish.run-cost-summary.v1",
+    "currency": "usd",
+    "estimatedTotalUsd": 0.017759,
+    "ratesAsOf": "2026-09-05",
+    "fullyEstimated": false,
+    "placeholder": false,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "lane-01",
+        "estimatedCostUsd": null,
+        "reason": "no_token_usage",
+        "ratesAsOf": null
+      },
+      {
+        "kind": "desktop-minutes",
+        "laneId": "lane-01",
+        "estimatedCostUsd": 0.017759,
+        "ratesAsOf": "2026-09-05",
+        "source": "e2b.dev/pricing",
+        "desktop": {
+          "minutes": 1.99985,
+          "durationBasis": "host-acquired-to-cleanup",
+          "resources": {
+            "cpuCount": 8,
+            "memoryMiB": 8192
+          },
+          "resourceSource": "e2b.getInfo",
+          "usdPerSecond": 0.000148
+        }
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0
+    },
+    "desktopMinutes": 1.99985,
+    "note": "Estimated 0.017759 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+  },
+  "streams": [
+    {
+      "id": "stream-001",
+      "simId": "sim-001",
+      "laneId": "lane-01",
+      "assignment": {
+        "mission": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated."
+      },
+      "kind": "browser",
+      "label": "CUA browser — try-live",
+      "status": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-09-16T16:20:26.765Z",
+      "embed": {
+        "kind": "screenshot",
+        "url": "screenshots/turn-07.jpg",
+        "title": "CUA desktop (raw)"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 950,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "browserWindow": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 950,
+          "source": "xdotool"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 950,
+          "deviceScaleFactor": 1,
+          "source": "cdp"
+        },
+        "warnings": [
+          "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0)."
+        ]
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+        "state": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "actorStatus": "passed",
+        "screenshotUrl": "screenshots/turn-07.jpg"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "local-agent-codex-app-server",
+        "providerVersion": "codex app-server (local, operator-authenticated)",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "synthetic-new-user",
+          "traitsApplied": [
+            "patience:medium",
+            "skill:medium",
+            "accessibility:none_declared",
+            "constraints:3"
+          ],
+          "promptDigest": "ceb1df9c10f5e47a"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "8 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "2026-09-16T16:21:38.036Z",
+        "completedAt": "2026-09-16T16:22:30.740Z",
+        "durationMs": 52704,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "ids": {
+          "model": "codex app-server (local, operator-authenticated)"
+        },
+        "modelSettings": {
+          "reasoningEffort": "low"
+        },
+        "counts": {
+          "turns": 8,
+          "actions": 14,
+          "materialActions": 14,
+          "screenshots": 8,
+          "reasonings": 8,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:21:38.675Z"
+          },
+          {
+            "id": "reasoning-002",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 1",
+            "text": "The landing page offers a clear way to enter the diagram editor.",
+            "at": "2026-09-16T16:21:42.841Z"
+          },
+          {
+            "id": "ui_action-003",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (373, 570)",
+            "coord": {
+              "x": 373,
+              "y": 570
+            },
+            "at": "2026-09-16T16:21:43.178Z"
+          },
+          {
+            "id": "screenshot-004",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:21:43.724Z"
+          },
+          {
+            "id": "reasoning-005",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 2",
+            "text": "I only need a simple diagram, so Generic seems appropriate. I hesitated because a database choice is required before adding tables.",
+            "at": "2026-09-16T16:21:49.526Z"
+          },
+          {
+            "id": "ui_action-006",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (491, 583)",
+            "coord": {
+              "x": 491,
+              "y": 583
+            },
+            "at": "2026-09-16T16:21:49.855Z"
+          },
+          {
+            "id": "ui_action-007",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (997, 685)",
+            "coord": {
+              "x": 997,
+              "y": 685
+            },
+            "at": "2026-09-16T16:21:50.183Z"
+          },
+          {
+            "id": "screenshot-008",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:21:50.864Z"
+          },
+          {
+            "id": "reasoning-009",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 3",
+            "text": "The Add table button is clearly labeled; I will create the first table.",
+            "at": "2026-09-16T16:21:54.507Z"
+          },
+          {
+            "id": "ui_action-010",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (309, 151)",
+            "coord": {
+              "x": 309,
+              "y": 151
+            },
+            "at": "2026-09-16T16:21:54.840Z"
+          },
+          {
+            "id": "screenshot-011",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-03",
+            "screenshotRef": {
+              "path": "screenshots/turn-03.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:21:55.399Z"
+          },
+          {
+            "id": "reasoning-012",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 4",
+            "text": "The table has an unexpected generated name. I will expand its sidebar entry to look for naming controls.",
+            "at": "2026-09-16T16:21:59.818Z"
+          },
+          {
+            "id": "ui_action-013",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (342, 193)",
+            "coord": {
+              "x": 342,
+              "y": 193
+            },
+            "at": "2026-09-16T16:22:00.146Z"
+          },
+          {
+            "id": "screenshot-014",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-04",
+            "screenshotRef": {
+              "path": "screenshots/turn-04.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:22:00.693Z"
+          },
+          {
+            "id": "reasoning-015",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 5",
+            "text": "The expanded entry exposes a Name field. I will name this table customers and add the second table.",
+            "at": "2026-09-16T16:22:08.933Z"
+          },
+          {
+            "id": "ui_action-016",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (206, 238)",
+            "coord": {
+              "x": 206,
+              "y": 238
+            },
+            "at": "2026-09-16T16:22:09.257Z"
+          },
+          {
+            "id": "ui_action-017",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-09-16T16:22:09.357Z"
+          },
+          {
+            "id": "ui_action-018",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [9 chars]",
+            "at": "2026-09-16T16:22:09.787Z"
+          },
+          {
+            "id": "ui_action-019",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (308, 150)",
+            "coord": {
+              "x": 308,
+              "y": 150
+            },
+            "at": "2026-09-16T16:22:10.153Z"
+          },
+          {
+            "id": "screenshot-020",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-05",
+            "screenshotRef": {
+              "path": "screenshots/turn-05.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:22:10.880Z"
+          },
+          {
+            "id": "reasoning-021",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 6",
+            "text": "Two tables are listed, though they appear to overlap on the canvas. I will expand the second table to rename it.",
+            "at": "2026-09-16T16:22:14.908Z"
+          },
+          {
+            "id": "ui_action-022",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (341, 391)",
+            "coord": {
+              "x": 341,
+              "y": 391
+            },
+            "at": "2026-09-16T16:22:15.230Z"
+          },
+          {
+            "id": "screenshot-023",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-06",
+            "screenshotRef": {
+              "path": "screenshots/turn-06.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:22:15.799Z"
+          },
+          {
+            "id": "reasoning-024",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 7",
+            "text": "I will name the second table orders, a meaningful companion to customers.",
+            "at": "2026-09-16T16:22:23.390Z"
+          },
+          {
+            "id": "ui_action-025",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (208, 290)",
+            "coord": {
+              "x": 208,
+              "y": 290
+            },
+            "at": "2026-09-16T16:22:23.715Z"
+          },
+          {
+            "id": "ui_action-026",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress CTRL+A",
+            "at": "2026-09-16T16:22:23.821Z"
+          },
+          {
+            "id": "ui_action-027",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "type [6 chars]",
+            "at": "2026-09-16T16:22:24.129Z"
+          },
+          {
+            "id": "ui_action-028",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (585, 377)",
+            "coord": {
+              "x": 585,
+              "y": 377
+            },
+            "at": "2026-09-16T16:22:24.458Z"
+          },
+          {
+            "id": "screenshot-029",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-07",
+            "screenshotRef": {
+              "path": "screenshots/turn-07.jpg",
+              "redaction": "none"
+            },
+            "at": "2026-09-16T16:22:24.988Z"
+          },
+          {
+            "id": "reasoning-030",
+            "kind": "reasoning",
+            "lifecycle": "completed",
+            "title": "reasoning turn 8",
+            "text": "The sidebar confirms two tables named customers and orders, and the app shows they were saved. The task is complete.",
+            "at": "2026-09-16T16:22:30.740Z"
+          },
+          {
+            "id": "message-031",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 8",
+            "text": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+            "at": "2026-09-16T16:22:30.740Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 10,
+            "keyboard": 4
+          },
+          "total": 14,
+          "shortcutTotal": 0
+        },
+        "declaredOutcome": "reached",
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "actor trace",
+          "path": "actor.json",
+          "kind": "trace"
+        },
+        {
+          "label": "screenshot 01 (raw)",
+          "path": "screenshots/turn-00-start.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 02 (raw)",
+          "path": "screenshots/turn-01.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 03 (raw)",
+          "path": "screenshots/turn-02.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 04 (raw)",
+          "path": "screenshots/turn-03.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 05 (raw)",
+          "path": "screenshots/turn-04.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 06 (raw)",
+          "path": "screenshots/turn-05.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 07 (raw)",
+          "path": "screenshots/turn-06.jpg",
+          "kind": "screenshot"
+        },
+        {
+          "label": "screenshot 08 (raw)",
+          "path": "screenshots/turn-07.jpg",
+          "kind": "screenshot"
+        }
+      ],
+      "sim": {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "cua-try-live",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "summary": "Computer-use actor (local-agent) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "2026-09-16T16:20:26.765Z",
+        "updatedAt": "2026-09-16T16:20:26.765Z"
+      },
+      "kindLabel": "Browser",
+      "statusLabel": "Reported complete",
+      "terminalPlain": "",
+      "timeline": [
+        {
+          "id": "event-001-subject",
+          "at": "2026-09-16T16:20:26.765Z",
+          "level": "info",
+          "type": "cua-lab.subject.provenance",
+          "message": "Subject cloned from drawdb-io/drawdb@ca7ba9a9a107bffb28adbf3e007138db3701a6aa and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-002-session",
+          "at": "2026-09-16T16:20:26.765Z",
+          "level": "info",
+          "type": "cua-lab.session.goal_satisfied",
+          "message": "passed: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-003-phase-clone",
+          "at": "2026-09-16T16:20:34.736Z",
+          "level": "info",
+          "type": "cua-lab.subject.clone.completed",
+          "message": "subject repository cloned (3462ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-004-phase-runtime",
+          "at": "2026-09-16T16:20:56.709Z",
+          "level": "info",
+          "type": "cua-lab.subject.runtime.completed",
+          "message": "Node runtime ready (21893ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-005-phase-install",
+          "at": "2026-09-16T16:21:12.496Z",
+          "level": "info",
+          "type": "cua-lab.subject.install.completed",
+          "message": "subject dependencies installed (15787ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-006-phase-build",
+          "at": "2026-09-16T16:21:19.365Z",
+          "level": "info",
+          "type": "cua-lab.subject.build.completed",
+          "message": "subject build complete (6705ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-007-phase-ready",
+          "at": "2026-09-16T16:21:21.421Z",
+          "level": "info",
+          "type": "cua-lab.subject.ready.completed",
+          "message": "subject is ready (1664ms)",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        },
+        {
+          "id": "event-008-geometry-warning",
+          "at": "2026-09-16T16:20:26.765Z",
+          "level": "warn",
+          "type": "cua-lab.geometry.warning",
+          "message": "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0).",
+          "simId": "sim-001",
+          "streamId": "stream-001"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000-created",
+      "at": "2026-09-16T16:20:26.765Z",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for try-live (actor local-agent)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "2026-09-16T16:20:26.765Z",
+      "level": "info",
+      "type": "cua-lab.subject.provenance",
+      "message": "Subject cloned from drawdb-io/drawdb@ca7ba9a9a107bffb28adbf3e007138db3701a6aa and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session",
+      "at": "2026-09-16T16:20:26.765Z",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "passed: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-phase-clone",
+      "at": "2026-09-16T16:20:34.736Z",
+      "level": "info",
+      "type": "cua-lab.subject.clone.completed",
+      "message": "subject repository cloned (3462ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-phase-runtime",
+      "at": "2026-09-16T16:20:56.709Z",
+      "level": "info",
+      "type": "cua-lab.subject.runtime.completed",
+      "message": "Node runtime ready (21893ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-005-phase-install",
+      "at": "2026-09-16T16:21:12.496Z",
+      "level": "info",
+      "type": "cua-lab.subject.install.completed",
+      "message": "subject dependencies installed (15787ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-006-phase-build",
+      "at": "2026-09-16T16:21:19.365Z",
+      "level": "info",
+      "type": "cua-lab.subject.build.completed",
+      "message": "subject build complete (6705ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-007-phase-ready",
+      "at": "2026-09-16T16:21:21.421Z",
+      "level": "info",
+      "type": "cua-lab.subject.ready.completed",
+      "message": "subject is ready (1664ms)",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-008-geometry-warning",
+      "at": "2026-09-16T16:20:26.765Z",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "artifactLinks": [
+    {
+      "label": "run bundle",
+      "href": "../run.json",
+      "kind": "bundle"
+    },
+    {
+      "label": "review JSON",
+      "href": "../review.json",
+      "kind": "review"
+    },
+    {
+      "label": "review Markdown",
+      "href": "../review.md",
+      "kind": "review"
+    },
+    {
+      "label": "event log",
+      "href": "../events.ndjson",
+      "kind": "events"
+    },
+    {
+      "label": "observer data",
+      "href": "observer-data.json",
+      "kind": "observer"
+    }
+  ],
+  "publicSafety": {
+    "publishable": false,
+    "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+    "share": {
+      "status": "local_only",
+      "verifiedAt": "2026-09-16T16:24:51.612Z",
+      "reasons": [
+        "RAW_SCREENSHOTS"
+      ]
+    }
+  },
+  "raw": {
+    "bundleSchema": "humanish.run-bundle.v1",
+    "artifactRoot": ".humanish/runs/cua-2026-09-16T16-20-26-762Z-c44a6d1d"
+  }
+}
