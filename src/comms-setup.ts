@@ -74,12 +74,13 @@ export async function configureCommsLab(args: {
     const lab = raw as Record<string, unknown>;
     const existing = lab.comms as { email?: { connection?: string } } | undefined;
     if (existing?.email && existing.email.connection === undefined) return { ...base, message: "This lab uses local capture. Preserve it or make a separate lab before selecting real email." };
-    lab.comms = { ...(existing ?? {}), email: { connection: args.connection } };
+    lab.comms = { ...(existing ?? {}), email: { ...existing?.email, connection: args.connection } };
     const validated = parseLabConfig(lab);
     if (!validated.ok) return { ...base, message: "This lab does not support real email receiving. Use a hosted computer-use app-url, clone or local-tree route; shared-world must be concurrent." };
     const filename = path.basename(source.path).replace(/\.ya?ml$/, "").replace(/-receiving$/, "") + "-receiving.yaml";
     if (!/^[A-Za-z0-9_][A-Za-z0-9._-]{0,110}\.yaml$/.test(filename)) return { ...base, message: "Use a simple lab filename before configuring email." };
     const destination = `.humanish/local/labs/${filename}`;
+    if (rel === destination) return { ...base, message: "This is already the local receiving copy. Select its original lab to configure a separate copy, or edit this manifest directly." };
     let prior: Buffer | null;
     try { prior = await readContainedRegularFile(root, destination); } catch { return { ...base, message: "The local destination could not be read safely." }; }
     const content = stringify(lab);

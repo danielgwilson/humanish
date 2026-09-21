@@ -62,6 +62,28 @@ describe("receiving lab selection", () => {
     expect(await configureCommsLab({ cwd, lab: "signup", connection: "agentmail", apply: true, planToken: plan.planToken! })).toMatchObject({ ok: false, applied: false });
     await expect(readFile(path.join(cwd, plan.path!))).rejects.toThrow();
   });
+  it("preserves existing receiving link policy in the configured copy", async () => {
+    await source();
+    const email = { connection: "agentmail", allowedOrigins: ["https://accounts.example.test"], linkOrigin: "http://127.0.0.1:3000" };
+    const original = stringify({ ...lab, comms: { email } });
+    await writeFile(path.join(cwd, "humanish/labs/signup.yaml"), original);
+    const result = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail", apply: true });
+    expect(result).toMatchObject({ ok: true, applied: true });
+    const selected = await resolveLabManifest(cwd, result.path!);
+    expect(selected.ok && selected.config.comms?.email).toEqual({ kind: "real", ...email });
+    expect(await readFile(path.join(cwd, "humanish/labs/signup.yaml"), "utf8")).toBe(original);
+  });
+  it("never overwrites a selected manifest that is already the receiving destination", async () => {
+    await source();
+    const first = await configureCommsLab({ cwd, lab: "signup", connection: "agentmail", apply: true });
+    const original = await readFile(path.join(cwd, first.path!), "utf8");
+    for (const apply of [false, true]) {
+      const result = await configureCommsLab({ cwd, lab: first.path!, connection: "agentmail", apply });
+      expect(result).toMatchObject({ ok: false, applied: false });
+      expect(result.message).toContain("already the local receiving copy");
+      expect(await readFile(path.join(cwd, first.path!), "utf8")).toBe(original);
+    }
+  });
   it("launches the exact selected local path even with a same-name committed manifest", async () => {
     await source(); await mkdir(path.join(cwd, ".humanish/local/labs"), { recursive: true });
     await writeFile(path.join(cwd, ".humanish/local/labs/signup.yaml"), stringify({ ...lab, comms: { email: { connection: "agentmail" } } }));
