@@ -197,7 +197,7 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
       setArmedAt(undefined);
       setLaunchError(undefined);
       setLaunchNote({ labKey: row.key, text: `starting ${row.name}…` });
-      const result = await options.capabilities.startRun({ cwd: options.cwd, lab: row.name, mode });
+      const result = await options.capabilities.startRun({ cwd: options.cwd, lab: row.name, ...(row.path ? { manifestPath: row.path } : {}), mode });
       if (!result.ok) {
         setLaunchNote(undefined);
         setLaunchError({ labKey: row.key, text: result.error.message });
@@ -299,7 +299,9 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
       }
       // Run again: the SAME lab, in the same mode it ran in, launched the same detached way.
       const labId = run.lab?.id;
-      const row = labId === undefined ? undefined : data?.rows.find((candidate) => candidate.labId === labId);
+      const matching = labId === undefined ? [] : data?.rows.filter(candidate => candidate.labId === labId && candidate.declared) ?? [];
+      if (matching.length > 1) { setActionNote("multiple manifests share this lab id — choose the exact lab from the list to run again"); return; }
+      const row = matching[0];
       if (row === undefined || !row.declared) {
         setActionNote("cannot run this again — its lab has no manifest here any more");
         return;
@@ -308,6 +310,7 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
       const started = await options.capabilities.startRun({
         cwd: options.cwd,
         lab: row.name,
+        ...(row.path ? { manifestPath: row.path } : {}),
         mode: run.mode === "live" ? "live" : "dry-run"
       });
       setActionNote(started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message);
@@ -507,7 +510,8 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
   // What the open lab IS. Includes the key probe, which is why it is read per lab rather than for
   // the whole list.
   const openLabKey = screen.name === "lab" ? screen.labKey : undefined;
-  const openLabName = openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey)?.name;
+  const openLabRow = openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey);
+  const openLabName = openLabRow?.path ?? openLabRow?.name;
   useEffect(() => {
     if (openLabName === undefined) {
       setSummary(undefined);

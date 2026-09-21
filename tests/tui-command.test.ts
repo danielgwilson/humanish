@@ -54,6 +54,7 @@ function workingRuntime(overrides: Partial<TuiRuntime> = {}): Partial<TuiRuntime
     nodeVersion: `v${TUI_MIN_NODE_MAJOR}.0.0`,
     // A plain person's terminal by default. Tests that want an agent session declare it.
     env: {},
+    checkComms: async () => ({ schema: "humanish.comms-check.v1", ok: true, connection: "agentmail", online: true, credentialPresent: true, authenticated: true, ready: null, permissions: "unknown", capacity: "unknown", checkedAt: new Date().toISOString(), code: "authenticated", message: "Authentication passed; fixture transport." }),
     loadTui: async () => module,
     seen,
     ...overrides

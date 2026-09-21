@@ -22,6 +22,8 @@ import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
 import type { CommsSetupResult, CommsSetupStatus } from "./comms-connections.js";
+import type { CommsCheckResult, CommsConfigureResult } from "./comms-setup.js";
+import type { CommsRecoveryEntry } from "./comms-receiving.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 export interface TuiVersionInfo {
@@ -38,6 +40,11 @@ export interface TuiCapabilities {
   comms?: {
     read(): Promise<CommsSetupStatus>;
     save(): Promise<CommsSetupResult>;
+    check?(): Promise<CommsCheckResult>;
+    labs?(): Promise<{ title: string; path: string }[]>;
+    configure?(lab: string, apply: boolean, planToken?: string): Promise<CommsConfigureResult>;
+    recovery?(): Promise<CommsRecoveryEntry[]>;
+    recover?(runId: string, connectionName: string): Promise<{ ok: boolean; message: string }>;
   };
   /** Read every run in the project, cheapest source first. */
   readRunIndex(cwd: string, options?: ReadRunIndexOptions): Promise<RunIndexResult>;

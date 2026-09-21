@@ -17,6 +17,7 @@ import { open } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveLabManifest } from "./labs.js";
 import { prepareManagedHumanishOutputDirectory } from "./selected-output-paths.js";
 
 /**
@@ -39,6 +40,8 @@ export interface LaunchRunOptions {
   cwd: string;
   /** The manifest handle (filename stem), as `humanish lab run` takes it. */
   lab: string;
+  /** Exact selected manifest, avoiding a same-name committed lab shadowing a local copy. */
+  manifestPath?: string;
   mode: "dry-run" | "live";
   /** Injected in tests; defaults to the real spawn. */
   spawn?: typeof spawn;
@@ -92,6 +95,12 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   }
 
   const cwd = path.resolve(options.cwd);
+  let selectedLab = options.lab;
+  if (options.manifestPath !== undefined) {
+    const resolved = await resolveLabManifest(cwd, options.manifestPath);
+    if (!resolved.ok) return { ok: false, error: { code: "HUMANISH_LAUNCH_INVALID_LAB", message: "The selected lab path could not be read safely. Refresh the lab list." } };
+    selectedLab = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
+  }
   const now = options.now ?? (() => new Date());
   const spawnFn = options.spawn ?? spawn;
   const launchedAt = now().toISOString();
@@ -132,7 +141,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     ...(options.mode === "dry-run" ? ["--dry-run"] : []),
     // `--` ends option parsing, so the handle can only ever be read as the positional argument.
     "--",
-    options.lab
+    selectedLab
   ];
 
   const spawnOptions: SpawnOptions = {

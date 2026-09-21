@@ -14,6 +14,9 @@ import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
 import { discoverProviderKeys, listUserKeys, resolveKeyName, setUserKey, unsetUserKey, userKeyStorePath } from "./key-resolution.js";
 import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "./comms-connections.js";
+import { checkCommsConnection, configureCommsLab, type CommsCheckResult } from "./comms-setup.js";
+import { inspectCommsRecovery, recoverCommsReceiving } from "./comms-receiving.js";
+import { resolveReceivingConnection } from "./comms-receiving-runtime.js";
 import { promptSecret } from "./secret-prompt.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import { redactText } from "./redaction.js";
@@ -639,6 +642,7 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
  * TTY, an old Node, or a missing bundle appear.
  */
 export interface TuiRuntime {
+  checkComms: typeof checkCommsConnection;
   promptSecret: typeof promptSecret;
   stdin: NodeJS.ReadStream;
   stdout: NodeJS.WriteStream;
@@ -650,6 +654,7 @@ export interface TuiRuntime {
 }
 
 const defaultTuiRuntime: TuiRuntime = {
+  checkComms: checkCommsConnection,
   promptSecret,
   stdin: process.stdin,
   stdout: process.stdout,
@@ -854,6 +859,7 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
       const observerSession = createTuiObserverSession(resolve(options.cwd));
       let exitCode = 0;
       let connectionNotice: string | undefined;
+      let connectionCheck: CommsCheckResult | undefined;
       try {
         for (;;) {
           const outcome = await loaded.startTui({
@@ -862,8 +868,18 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
             version: { cli: CLI_VERSION },
             capabilities: {
               comms: {
-                read: () => readCommsSetup(resolve(options.cwd), connectionEnv()),
-                save: () => saveCommsConnection(resolve(options.cwd))
+                read: async () => ({ ...await readCommsSetup(resolve(options.cwd), connectionEnv()), ...(connectionCheck ? { authentication: connectionCheck } : {}) }),
+                save: () => saveCommsConnection(resolve(options.cwd)),
+                check: async () => { connectionCheck = await tuiRuntime.checkComms({ cwd: resolve(options.cwd), env: connectionEnv(), online: true }); return connectionCheck; },
+                labs: async () => (await listLabManifests(resolve(options.cwd))).labs.map(lab => ({ title: lab.title ?? lab.id, path: lab.path })),
+                configure: (lab, apply, planToken) => configureCommsLab({ cwd: resolve(options.cwd), lab, connection: "agentmail", apply, ...(planToken ? { planToken } : {}) }),
+                recovery: () => inspectCommsRecovery({ cwd: resolve(options.cwd) }),
+                recover: async (runId, connectionName) => {
+                  try {
+                    const { connection, adapter } = await resolveReceivingConnection(resolve(options.cwd), connectionName, connectionEnv());
+                    return await recoverCommsReceiving({ cwd: resolve(options.cwd), runId, connectionName, apiKeyEnv: connection.apiKeyEnv, adapter });
+                  } catch { return { ok: false, message: "Could not recover email resources. Check the connection and retry." }; }
+                }
               },
               // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
               // run tree each tick is the cost this index exists to avoid.
@@ -910,6 +926,13 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
             const saved = await saveCommsConnection(resolve(options.cwd));
             connectionNotice = saved.ok ? "Key stored. Project connection saved."
               : `Key stored for your user. ${saved.message}`;
+            stdout.write("Checking AgentMail authentication…\n");
+            connectionCheck = await tuiRuntime.checkComms({ cwd: resolve(options.cwd), env: connectionEnv(), online: true });
+            connectionNotice = saved.ok
+              ? connectionCheck.authenticated === true ? "Key stored. Authentication passed."
+                : connectionCheck.authenticated === false ? "Key stored. Authentication rejected; test it for details."
+                  : "Key stored. Authentication unknown; test it to retry."
+              : `${connectionNotice} ${connectionCheck.message}`;
           } catch {
             connectionNotice = "Could not store the key. Use a single non-empty line and check key-store permissions.";
           }
@@ -1398,7 +1421,7 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 function registerCommsCommands(parent: Command, io: CliIo): void {
   const comms = parent
     .command("comms")
-    .description("Email capture and communication connection setup.")
+    .description("Local email capture, real receiving connections, checks and cleanup recovery.")
     .summary("Off-app comms surfaces.");
 
   comms.command("providers")
@@ -1409,7 +1432,7 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
       writeResult(command, io, result, () => COMMS_PROVIDERS.map(provider => `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`).join("\n"));
     });
 
-  const connections = comms.command("connections").description("Manage project-local non-secret connection profiles. Setup does not enable email receiving.");
+  const connections = comms.command("connections").description("Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.");
   connections.command("list")
     .description("Show saved connections and local credential status; does not authenticate with a provider.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1434,6 +1457,68 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
         : { ok: false, message: "Only AgentMail connection setup is currently available." }) };
       writeResult(command, io, result, value => `${value.message}\n`);
       io.setExitCode(result.ok ? 0 : 2);
+    });
+
+  comms.command("check")
+    .description("Check connection and credential presence; --online authenticates without creating inboxes.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--connection <name>", "Saved connection name.", "agentmail")
+    .option("--lab <path>", "Check the connection selected by this exact lab.")
+    .option("--online", "Make a read-only provider authentication request.")
+    .option("--env-file <path>", "Load credentials without printing values.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; connection: string; lab?: string; online?: boolean; envFile?: string }, command) => {
+      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      let connection = options.connection;
+      if (options.lab) {
+        const lab = await resolveLabManifest(options.cwd, options.lab);
+        if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
+          const result = { ok: false, message: "This lab does not select a real email connection." };
+          writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(2); return;
+        }
+        connection = lab.config.comms.email.connection;
+      }
+      const result = await checkCommsConnection({ cwd: resolve(options.cwd), connection, env: process.env, online: options.online === true });
+      writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
+    });
+  comms.command("configure")
+    .description("Preview or save a local receiving-enabled copy of a supported lab. No provider requests.")
+    .requiredOption("--lab <path>", "Exact source lab path or handle.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--connection <name>", "Saved connection name.", "agentmail")
+    .option("--apply", "Save the local copy; original lab remains unchanged.")
+    .option("--plan-token <digest>", "Require the source and destination to match a previous preview.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; lab: string; connection: string; apply?: boolean; planToken?: string }, command) => {
+      const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
+      writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
+    });
+  comms.command("recover")
+    .description("Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.")
+    .option("--cwd <path>", "Target project directory.", ".")
+    .option("--run <id>", "One run to inspect or recover.")
+    .option("--apply", "Recover the selected inactive run and verify mailbox deletion.")
+    .option("--env-file <path>", "Load credentials without printing values.")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (options: { cwd: string; run?: string; apply?: boolean; envFile?: string }, command) => {
+      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      const cwd = resolve(options.cwd);
+      try {
+        const entries = (await inspectCommsRecovery({ cwd })).filter(entry => !options.run || entry.runId === options.run);
+        if (!options.apply) {
+          const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
+          writeResult(command, io, result, value => value.entries.length ? value.entries.map(entry => `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner ? "active owner" : "inactive"}\n`).join("") : "No recoverable email leases in this project.\n");
+          return;
+        }
+        if (!options.run || entries.length !== 1) throw new Error("selection");
+        const entry = entries[0]!;
+        const { connection, adapter } = await resolveReceivingConnection(cwd, entry.connectionName, process.env);
+        const result = { schema: "humanish.comms-recovery-result.v1", ...await recoverCommsReceiving({ cwd, runId: options.run, connectionName: entry.connectionName, apiKeyEnv: connection.apiKeyEnv, adapter }) };
+        writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
+      } catch {
+        const result = { schema: "humanish.comms-recovery-result.v1", ok: false, message: "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible." };
+        writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(2);
+      }
     });
 
   comms
