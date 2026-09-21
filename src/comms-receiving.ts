@@ -8,13 +8,15 @@ import {
   type ReceivingAdapter, type ReceivingContext, type ReceivingLease, type ReceivingParticipantEvidence,
   type ReceivingSurface, type RenderedReceivingInbox
 } from "./comms-receiving-types.js";
+import { capturedInlineImages } from "./comms-images.js";
 
 export type { CommsRecoveryEntry } from "./comms-lease-store.js";
 const POLL_MS = 3_000;
 const REQUEST_MS = 15_000;
 const SURFACE_MS = 8_000;
 const EVIDENCE_MS = 5_000;
-const MAX_MESSAGES = 256;
+// Match the participant renderer's bounded snapshot. Crossing its cap must not poison all later publications.
+const MAX_MESSAGES = 100;
 const MAX_CONTENT_BYTES = 16 * 1024 * 1024;
 const SAFE_PROVIDER_CODES = new Set([
   "agentmail_auth_rejected", "agentmail_rate_limited", "agentmail_unavailable", "agentmail_timeout", "agentmail_cancelled",
@@ -47,6 +49,30 @@ function providerTime(value: string | undefined): string | undefined {
   const time = Date.parse(value);
   return Number.isFinite(time) ? new Date(time).toISOString() : undefined;
 }
+function contentBytes(message: Pick<ParticipantEmail, "from" | "text" | "html" | "subject" | "inlineImages">): number {
+  return Buffer.byteLength(message.from) + Buffer.byteLength(message.text) + Buffer.byteLength(message.html ?? "")
+    + Buffer.byteLength(message.subject ?? "") + message.inlineImages.reduce((sum, image) => sum + Buffer.byteLength(JSON.stringify(image)), 0);
+}
+/** Provider IDs deduplicate observations, not successful hydration. A later fetch may restore missing content. */
+function reconcileMessage(previous: ParticipantEmail, next: ParticipantEmail): ParticipantEmail {
+  const prefer = (oldValue: string | undefined, newValue: string | undefined): string | undefined => {
+    if (!newValue) return oldValue;
+    // Received mail is immutable: a retry may fill/truncate a representation, not revise its meaning.
+    return !oldValue || newValue.length > oldValue.length ? newValue : oldValue;
+  };
+  const images = new Map(previous.inlineImages.map(image => [image.contentId, image]));
+  for (const image of next.inlineImages) if (!images.has(image.contentId)) images.set(image.contentId, image);
+  const html = prefer(previous.html, next.html);
+  const subject = previous.subject || next.subject;
+  const timestamp = previous.providerTimestamp ?? next.providerTimestamp;
+  return { channel: "email", id: previous.id, from: previous.from || next.from,
+    text: prefer(previous.text, next.text) ?? "", ...(html === undefined ? {} : { html }),
+    ...(subject === undefined ? {} : { subject }), ...(timestamp === undefined ? {} : { providerTimestamp: timestamp }),
+    inlineImages: capturedInlineImages([...images.values()]), limitations: next.limitations };
+}
+function visibleContent(message: ParticipantEmail): string {
+  return JSON.stringify([message.from, message.subject, message.text, message.html, message.inlineImages]);
+}
 /** Deadlines bound even a broken injected dependency; cancellation reaches cooperative I/O. */
 function bounded<T>(operation: (context: ReceivingContext) => Promise<T>, timeoutMs: number, signal?: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -63,7 +89,10 @@ function bounded<T>(operation: (context: ReceivingContext) => Promise<T>, timeou
     const timer = setTimeout(() => { controller.abort(); finish(new CommsReceivingError("comms_deadline_exceeded")); }, timeoutMs);
     if (signal?.aborted) { abort(); return; }
     signal?.addEventListener("abort", abort, { once: true });
-    Promise.resolve().then(() => operation({ signal: controller.signal, timeoutMs })).then(value => finish(undefined, value), error => finish(error));
+    // Give cooperative dependencies time to return retained partial results before our hard
+    // cancellation. Equal timers make the earlier host timer discard the adapter's partial batch.
+    const cooperativeTimeout = Math.max(1, timeoutMs - Math.min(500, Math.floor(timeoutMs / 10)));
+    Promise.resolve().then(() => operation({ signal: controller.signal, timeoutMs: cooperativeTimeout })).then(value => finish(undefined, value), error => finish(error));
   });
 }
 
@@ -195,22 +224,31 @@ class ReceivingRun implements CommsReceivingRun {
     return participant.lease.address;
   }
   private remember(participant: Participant, message: ReceivedEmail): void {
-    if (!message.providerMessageId || participant.messages.has(message.providerMessageId)) return;
-    const size = Buffer.byteLength(message.from) + Buffer.byteLength(message.text) + Buffer.byteLength(message.html ?? "")
-      + Buffer.byteLength(message.subject ?? "") + message.inlineImages.reduce((sum, image) => sum + Buffer.byteLength(JSON.stringify(image)), 0);
-    if (participant.messages.size >= MAX_MESSAGES || participant.contentBytes + size > MAX_CONTENT_BYTES) {
+    if (!message.providerMessageId) return;
+    const previous = participant.messages.get(message.providerMessageId);
+    providerCodes(participant.evidence.limitations, message.limitations);
+    const timestamp = providerTime(message.providerTimestamp);
+    if (message.providerTimestamp && !timestamp) addCode(participant.evidence.limitations, "provider_timestamp_invalid");
+    const id = previous?.id ?? `message-${String(participant.messages.size + 1).padStart(6, "0")}`;
+    const { providerMessageId: _privateId, ...content } = message;
+    const current = previous ? reconcileMessage(previous, { ...content, id }) : { ...content, id };
+    const size = contentBytes(current);
+    const previousSize = previous ? contentBytes(previous) : 0;
+    if ((!previous && participant.messages.size >= MAX_MESSAGES) || participant.contentBytes - previousSize + size > MAX_CONTENT_BYTES) {
       addCode(participant.evidence.limitations, "observation_memory_limit");
       return;
     }
-    const id = `message-${String(participant.messages.size + 1).padStart(6, "0")}`;
-    const { providerMessageId: _privateId, ...content } = message;
-    participant.messages.set(message.providerMessageId, structuredClone({ ...content, id }));
-    participant.contentBytes += size;
-    const timestamp = providerTime(message.providerTimestamp);
-    participant.evidence.messages.push({ id, firstObservedAt: now(), ...(timestamp ? { providerTimestamp: timestamp } : {}) });
+    participant.messages.set(message.providerMessageId, structuredClone(current));
+    participant.contentBytes += size - previousSize;
+    if (previous) {
+      const observation = participant.evidence.messages.find(item => item.id === id)!;
+      if (timestamp && observation.providerTimestamp === undefined) observation.providerTimestamp = timestamp;
+      if (observation.publishedAt && visibleContent(previous) !== visibleContent(current)) {
+        // publishedAt is the first publication, not a claim that a subsequently enriched version was seen.
+        addCode(participant.evidence.limitations, "message_content_updated_after_publication");
+      }
+    } else participant.evidence.messages.push({ id, firstObservedAt: now(), ...(timestamp ? { providerTimestamp: timestamp } : {}) });
     participant.evidence.observed = participant.messages.size;
-    providerCodes(participant.evidence.limitations, message.limitations);
-    if (message.providerTimestamp && !timestamp) addCode(participant.evidence.limitations, "provider_timestamp_invalid");
   }
   private async publish(participant: Participant): Promise<boolean> {
     if (!participant.surface || !participant.lease) return false;

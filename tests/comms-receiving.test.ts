@@ -2,6 +2,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAgentMailReceiver } from "../src/comms-agentmail.js";
 import { inspectCommsRecovery, recoverCommsReceiving, startCommsReceiving, type CommsReceivingRun, type StartCommsReceivingOptions } from "../src/comms-receiving.js";
 import type { CommsReceivingEvidence, ReceivedEmail, ReceivingAdapter, ReceivingBatch, ReceivingIdentity, ReceivingLease, ReceivingSurface } from "../src/comms-receiving-types.js";
 
@@ -129,6 +130,57 @@ describe("run-scoped real-email coordination", () => {
     expect(final.participants[0]).toMatchObject({ observed: 1, published: 1, cleanup: "absent" });
     expect(inbox.publish.mock.calls.at(-1)?.[0][0]?.body).toContain(body);
     expect(JSON.stringify(final)).not.toContain("arbitrary-renderer-secret-canary");
+  });
+
+  it("hydrates a previously observed message after a failed content/image retrieval without inventing another observation", async () => {
+    const run = await start({ participants: ["participant-a"] });
+    const inbox = surface();
+    const partial = { ...email("retry", ""), limitations: ["agentmail_content_missing", "agentmail_attachment_unavailable"] };
+    const image = { contentId: "logo", contentType: "image/png", base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6VwAAAABJRU5ErkJggg==" };
+    const hydrated = { ...email("retry", "The complete synthetic message"), html: '<p>The complete synthetic message</p><img src="cid:logo">', inlineImages: [image] };
+    provider.batch.set("provider-resource-1", [complete([partial]), complete([hydrated])]);
+    await run.attach("participant-a", { surface: inbox, allowedOrigins: [] });
+    const initial = run.snapshot().participants[0]!.messages[0]!;
+    expect(inbox.publish.mock.calls.at(-1)?.[0][0]?.body).not.toContain(image.base64);
+    const result = await run.finish();
+    const participant = result.participants[0]!;
+    expect(participant).toMatchObject({ observed: 1, published: 1, cleanup: "absent" });
+    expect(participant.messages).toEqual([initial]);
+    expect(participant.limitations).toEqual(expect.arrayContaining(["agentmail_content_missing", "agentmail_attachment_unavailable", "message_content_updated_after_publication"]));
+    const publication = inbox.publish.mock.calls.at(-1)?.[0][0]?.body;
+    expect(publication).toContain("The complete synthetic message");
+    expect(publication).toContain(image.base64);
+    expect(publication).toContain("message-000001");
+    expect(JSON.stringify(result)).not.toContain(image.base64);
+  });
+
+  it("retains hydrated content when a later duplicate fetch is incomplete", async () => {
+    const run = await start({ participants: ["participant-a"] });
+    const inbox = surface();
+    const full = { ...email("stable", "The retained complete message"), html: "<p>The retained complete message</p>" };
+    const partial = { ...email("stable", ""), limitations: ["agentmail_content_missing"] };
+    provider.batch.set("provider-resource-1", [complete([full]), complete([partial])]);
+    await run.attach("participant-a", { surface: inbox, allowedOrigins: [] });
+    const result = await run.finish();
+    expect(inbox.publish.mock.calls.at(-1)?.[0][0]?.body).toContain("The retained complete message");
+    expect(result.participants[0]).toMatchObject({ observed: 1, published: 1 });
+    expect(result.participants[0]?.limitations).toContain("agentmail_content_missing");
+    expect(result.participants[0]?.limitations).not.toContain("message_content_updated_after_publication");
+  });
+
+  it("keeps publishing within the renderer's message cap when later messages exceed retention", async () => {
+    const render = options.render;
+    const run = await start({ participants: ["participant-a"], render: input => {
+      if (input.messages.length > 100) throw new Error("Renderer capacity exceeded");
+      return render(input);
+    } });
+    const inbox = surface();
+    provider.batch.set("provider-resource-1", [complete(Array.from({ length: 100 }, (_, index) => email(`bounded-${index}`))), complete([email("overflow")])]);
+    await run.attach("participant-a", { surface: inbox, allowedOrigins: [] });
+    const result = await run.finish();
+    expect(result.participants[0]).toMatchObject({ observed: 100, published: 100 });
+    expect(result.participants[0]?.limitations).toContain("observation_memory_limit");
+    expect(result.participants[0]?.limitations).not.toContain("surface_publication_failed");
   });
 
   it("records final-only mail as observed but unpublished when no participant surface was attached", async () => {
@@ -271,6 +323,50 @@ describe("run-scoped real-email coordination", () => {
     expect(result.participants[0]?.limitations).toContain("comms_deadline_exceeded");
     expect(provider.release).toHaveBeenCalledOnce();
     expect(inbox.stop).toHaveBeenCalledOnce();
+  });
+
+  it("lets the real adapter return earlier messages when a later response body reaches its deadline", async () => {
+    // Start with captured provider shapes and mutate only the adverse second-message response.
+    const fixture = async (name: string): Promise<{ status: number; body: Record<string, unknown> | null }> =>
+      JSON.parse(await readFile(new URL(`./fixtures/agentmail-receiving/${name}.json`, import.meta.url), "utf8"));
+    const [auth, mailbox, listing, detail, noMessages, absent, deleted] = await Promise.all(
+      ["auth", "inbox", "messages", "message", "empty", "absent", "delete-accepted"].map(fixture));
+    detail!.body!.attachments = [];
+    const first = (listing!.body!.messages as Array<Record<string, unknown>>)[0]!;
+    listing!.body!.messages = [first, { ...first, message_id: "second-hanging-message" }];
+    const respond = (wire: { status: number; body: unknown }): Response => new Response(wire.body === null ? null : JSON.stringify(wire.body), { status: wire.status });
+    let reads = 0, removed = false;
+    let hanging!: () => void;
+    const began = new Promise<void>(resolve => { hanging = resolve; });
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/v0/auth/me") return respond(auth!);
+      if (init?.method === "POST") {
+        mailbox!.body!.client_id = JSON.parse(String(init.body)).client_id;
+        return respond(mailbox!);
+      }
+      if (init?.method === "DELETE") { removed = true; return respond(deleted!); }
+      if (url.pathname.endsWith("/messages")) { reads += 1; return respond(reads === 1 ? listing! : noMessages!); }
+      if (url.pathname.endsWith("/second-hanging-message")) {
+        hanging();
+        return new Response(new ReadableStream<Uint8Array>({ pull() { return new Promise<void>(() => undefined); } }));
+      }
+      if (url.pathname.endsWith("/message-fixture-1")) return respond(detail!);
+      return respond(removed ? absent! : mailbox!);
+    }) as typeof fetch;
+    const adapter = createAgentMailReceiver({ apiKey: "synthetic-management-key-canary", fetch: fetcher });
+    const run = await start({ participants: ["participant-a"], adapter });
+    const inbox = surface();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const attach = run.attach("participant-a", { surface: inbox, allowedOrigins: ["https://example.test"] });
+    await began;
+    await vi.advanceTimersByTimeAsync(15_001);
+    await attach;
+    const partial = run.snapshot().participants[0]!;
+    expect(partial).toMatchObject({ observed: 1, published: 1 });
+    expect(partial.limitations).toContain("agentmail_timeout");
+    expect(partial.limitations).not.toContain("comms_deadline_exceeded");
+    expect((await run.finish()).participants[0]?.cleanup).toBe("absent");
   });
 
   it("does not race a timed-out evidence callback with newer writes, and retains the mailbox", async () => {
