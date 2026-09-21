@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "./pricing.js";
 import { containsSensitive } from "./redaction.js";
-import { STUDY_ANALYSIS_SCHEMA, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput } from "./study-analysis.js";
+import { scrubTransientCommsText } from "./run-narration-secrets.js";
+import { STUDY_ANALYSIS_SCHEMA, type AnalysisObservation, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput, type StudyAnalysisResult } from "./study-analysis.js";
 import { createStudyAnalysisProvider } from "./study-analysis-provider.js";
 import { hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
@@ -150,6 +151,32 @@ export function preferLargerStudyAnalysisOutput(input: StudyAnalysisInput, confi
 export type StudyAnalysisDispatchContext = Pick<StudyAnalysisArtifact,
   "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion">;
 
+/** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. */
+function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResult {
+  const scrub = scrubTransientCommsText;
+  const observation = <T extends AnalysisObservation>(value: T): T => ({ ...value,
+    claim: scrub(value.claim), limitation: scrub(value.limitation) });
+  // A model can also echo a key as a syntactically valid finding ID. Refuse it without rewriting
+  // IDs, references or enums (including accidental collisions); never repair citation structure.
+  const structural = [
+    ...result.participants.flatMap(value => [value.streamId, value.outcome, ...value.evidenceIds, ...value.feedback.map(quote => quote.evidenceId)]),
+    ...result.findings.flatMap(value => [value.id, value.impact, value.recovery, value.confidence,
+      ...value.affectedStreamIds, ...value.exposedStreamIds, ...value.observations.flatMap(item => [item.basis, ...item.evidenceIds])]),
+    ...(result.concernReviews ?? []).flatMap(value => [value.basis, value.disposition, ...(value.findingId === null ? [] : [value.findingId]), ...value.evidenceIds])
+  ];
+  if (structural.some(value => scrub(value) !== value)) throw new Error("ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE");
+  return { ...result,
+    summary: scrub(result.summary), limitations: result.limitations.map(scrub),
+    participants: result.participants.map(value => ({ ...value, summary: scrub(value.summary), intent: scrub(value.intent),
+      outcomeReason: scrub(value.outcomeReason), limitations: value.limitations.map(scrub),
+      feedback: value.feedback.map(quote => ({ ...quote, text: scrub(quote.text) })) })),
+    findings: result.findings.map(value => ({ ...value, title: scrub(value.title), summary: scrub(value.summary),
+      exposureReason: scrub(value.exposureReason), nextStep: scrub(value.nextStep), priorityReason: scrub(value.priorityReason),
+      observations: value.observations.map(observation) })),
+    ...(result.concernReviews === undefined ? {} : { concernReviews: result.concernReviews.map(value => ({ ...observation(value), reason: scrub(value.reason) })) })
+  };
+}
+
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
   apiKey: string;
@@ -242,7 +269,9 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   }
   progress("validating");
   try {
-    artifact.result = validateAnalysisResult(input, studyAnalysisResponseSchema.parse(response.output));
+    // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
+    // expanded field lengths fail closed under the original validator; source bytes stay intact.
+    artifact.result = validateAnalysisResult(input, scrubGeneratedNarrative(studyAnalysisResponseSchema.parse(response.output)));
     artifact.status = input.coverage.complete ? "complete" : "partial";
     artifact.error = null;
     if ((response.usage?.output ?? 0) > config.maxOutputTokens

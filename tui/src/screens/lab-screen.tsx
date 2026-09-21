@@ -105,6 +105,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       {summary?.analysis === undefined ? null : (
         <Text wrap="wrap">After live runs: analysis · {summary.analysis.model} · separate ${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap</Text>
       )}
+      {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
         // in a shell they sourced, a password manager, another project — and what they need is the

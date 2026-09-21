@@ -3,6 +3,7 @@ import type { LabBackend } from "./lab-engine.js";
 import type { DetectedLocalAgent } from "./local-agent-cli.js";
 import type { DoctorResult } from "./run.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { receivingRequiredKey } from "./comms-setup.js";
 
 type Check = DoctorResult["checks"][number];
 
@@ -23,6 +24,15 @@ export async function labSetupChecks(args: {
   const unsupported = unsupportedCliRoute(config, backend);
   if (unsupported) return { desktop: false, keys: [], checks: [...checks, { name: "live route", ok: false, message: unsupported }] };
   const { desktop, keys } = labKeyRequirements(config, backend, false, args.keyPresent);
+  if (config.comms?.email?.kind === "real") {
+    const name = await receivingRequiredKey(args.cwd, config.comms.email.connection);
+    if (name) keys.push(name);
+    checks.push({ name: "real email connection", ok: name !== null && args.keyPresent(name), message: name === null
+      ? "The selected email connection is missing or invalid. Open Connections in the TUI."
+      : !args.keyPresent(name)
+      ? `Missing ${name} for the selected email connection. Provide it through process env or --env-file. Authentication has not been checked.`
+      : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested." });
+  }
   if (backend === "terminal") {
     const key = keys.find(name => name !== "E2B_API_KEY")!;
     checks.push({ name: "terminal model authentication", ok: args.keyPresent(key), message:

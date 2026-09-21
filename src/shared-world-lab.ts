@@ -627,6 +627,11 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     error: { code, message }
   });
 
+  // Direct library entrypoints must reject declarations this backend cannot execute.
+  if (String(config.comms?.email?.kind) === "real") {
+    return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", "Real email receiving is unsupported on the sequential shared-world backend. Use a supported concurrent or independent hosted computer-use study.");
+  }
+
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
   // rather than trusting a config that arrived through the library door (this fn is npm surface).
   const mediaReason = desktopMediaValidationReason(config, false);

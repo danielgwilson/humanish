@@ -41,7 +41,7 @@ export function ParticipantStub({ data, stream, updating = true, selectedEventId
       {selectedEventId ? <section className="blk selected-recorded-entry" aria-label="Selected evidence" data-selected-entry={selectedEventId}>
         <h3 className="o-label">Recorded entry</h3>
         {selectedItem || selectedEvent ? <>
-          <p className="o-mono">{selectedItem?.at ?? selectedEvent?.at ?? "Time unavailable"}</p>
+          <p className="o-mono">{selectedItem?.at || selectedEvent?.at || "Time unavailable"}</p>
           <p className="verbatim">{selectedItem?.title ?? selectedEvent?.type}</p>
           <pre className="verbatim">{selectedItem?.text ?? selectedEvent?.message ?? ""}</pre>
         </> : <p role="alert">This recorded entry is unavailable. Other participant evidence remains below.</p>}

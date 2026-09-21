@@ -1,0 +1,41 @@
+{
+  "status": 200,
+  "body": {
+    "count": 1,
+    "limit": 1,
+    "next_page_token": "fixture-next-page",
+    "messages": [
+      {
+        "organization_id": "organization-fixture-1",
+        "pod_id": "organization-fixture-1",
+        "inbox_id": "recipient@example.test",
+        "thread_id": "thread-fixture-2",
+        "message_id": "message-fixture-2",
+        "labels": [
+          "sent"
+        ],
+        "timestamp": "2026-01-01T12:00:00Z",
+        "from": "Example Sender <sender@example.test>",
+        "to": [
+          "recipient@example.test"
+        ],
+        "subject": "synthetic-subject",
+        "preview": "Synthetic verification code 123456.",
+        "attachments": [
+          {
+            "attachment_id": "attachment-fixture-2",
+            "filename": "fixture-pixel.png",
+            "size": 68,
+            "content_type": "image/png",
+            "content_disposition": "inline",
+            "content_id": "fixture-pixel"
+          }
+        ],
+        "smtp_id": "smtp-fixture-2",
+        "size": 1752,
+        "updated_at": "2026-01-01T12:00:00Z",
+        "created_at": "2026-01-01T12:00:00Z"
+      }
+    ]
+  }
+}

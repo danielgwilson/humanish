@@ -468,7 +468,7 @@ bundle is safe to promote into a public issue. Public promotion should branch on
 `shareSafety.status`:
 
 - `share_ready`: feedback draft commands may render public issue payloads;
-- `local_only`: keep the run local or generate a redacted replacement bundle;
+- `local_only`: keep the run local; only supported redaction-only cases can produce a shareable derivative;
 - `blocked`: fix the verification or public-safety failure first.
 
 The local-evidence check includes screenshots declared only by
@@ -486,6 +486,14 @@ evidence `local_only`. Either an aggregate raw declaration or a raw frame wins
 over a blurred declaration. Missing or unknown per-frame metadata retains the
 existing permissive compatibility behavior; verification does not infer pixel
 privacy from that absence.
+
+Real email receiving adds `publication.restrictions: [real-communications]` and
+an optional `commsReceiving` projection using `humanish.comms-receiving.v2`.
+Either field contributes `REAL_COMMUNICATIONS` and keeps the run `local_only`.
+This applies to interrupted bundles and after screenshot blurring: real mail can
+appear in text and analysis as well as pixels. Malformed receiving metadata fails
+bundle validation. The projection holds counts, local IDs and lifecycle/coverage
+status; private provider identities and cleanup authority are kept outside the run.
 
 ## Redacted Derivative Workspace
 

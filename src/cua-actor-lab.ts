@@ -1,3 +1,8 @@
+import { withTransientCommsSecrets } from "./run-narration-secrets.js";
+import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
+import { deployReceivingInbox } from "./comms-receiving-inbox.js";
+import type { CommsReceivingRun } from "./comms-receiving.js";
+import { receivingEmailValidationReason } from "./lab-config.js";
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones AND serves in-sandbox) driven by a REGISTRY-RESOLVED computer-use actor inside a
 // hosted E2B desktop. This is the path that makes `actors[].type` load-bearing — the
@@ -788,7 +793,7 @@ export function composeLaneInstructions(args: {
  *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
-export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string): CuaLaneSpec {
+export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string, receiving = false): CuaLaneSpec {
   // No assigned identity means no participant inbox; never fall back to the shared operator view.
   if (!address?.trim()) return spec;
   // The address is half the handoff (#351): the drain matches captured mail against the DECLARED
@@ -798,6 +803,10 @@ export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: 
   // and ends its session — the exact give-up class a live run documented — unless told the wait
   // is expected and the inbox is the next step.
   const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
+  if (receiving) return {
+    ...spec,
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Read the original email and use its verification link or code. Delivery may take a little time; refresh if needed. If mail remains missing or unavailable, report what you observed rather than assuming the app failed to send. The inbox may block remote images or undeclared destinations; those are harness limitations.`
+  };
   return {
     ...spec,
     instructions: `${spec.instructions}\n\nEmail inbox:${identity} When the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${recipientInboxUrl(inboxUrl, address)} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there. Waiting for an email is normal, not a blocker — do not end your session while waiting; open the inbox and refresh it until the email appears.`
@@ -1348,6 +1357,7 @@ export interface CuaLaneDeps {
   labCwd: string;
   redactScreenshots: boolean;
   scrubKnownValues: (text: string) => string;
+  receiving?: CommsReceivingRun;
   runSession: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /** The study's shared spend ledger, present exactly when execution.caps.maxTotalUsd is set on a
    *  live run (#299). Preflight already refused the cap on an unpriced model. */
@@ -2622,12 +2632,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   // in-sandbox catch (loopback) so its verification mail is CAPTURED, not sent to the internet. Gated
   // ENTIRELY on config.comms — no comms declared → zero change. The base-URL env is injected at
   // sandbox-create (below, so the app reads it at boot); the catch is started right after create.
-  const commsEmail = (cloneRoute || localTreeRoute) ? config.comms?.email : undefined;
+  const commsEmail = (cloneRoute || localTreeRoute) && config.comms?.email?.kind === "fake" ? config.comms.email : undefined;
   const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
   // Hoisted so the finally can drain the catch before teardown; `commsArtifactPath` is the written
   // evidence path folded into the lane outcome.
   let deployedComms: DeployedCommsCatch | undefined;
   let commsArtifactPath: string | undefined;
+  let receivingInboxUrl: string | undefined;
   // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
   // because the operator points their own app at their own catch.
   const commsEnv: Record<string, string> = commsEmail?.injectEnv !== undefined && commsPort !== undefined
@@ -2782,6 +2793,23 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL (injected
     // into its env at create) resolves the moment it boots. A comms-declared lab that can't stand the
     // catch up is a setup failure (fail closed) rather than silently sending real mail.
+    if (deps.receiving) {
+      const surface = await deployReceivingInbox(desktop, { leaseId: spec.streamId, requestTimeoutMs: Math.min(deps.requestTimeoutMs, 30_000) });
+      receivingInboxUrl = surface.url;
+      const email = config.comms?.email;
+      try {
+        await deps.receiving.attach(spec.laneId, {
+          surface,
+          allowedOrigins: [...new Set([new URL(targetUrl).origin, ...(email?.allowedOrigins ?? [])])],
+          originMap: buildOriginMap({
+            ...(config.subject.serve?.url === undefined ? {} : { internalServeUrl: config.subject.serve.url }),
+            reachableBaseUrl: targetUrl,
+            ...(email?.linkOrigin === undefined ? {} : { linkOrigin: email.linkOrigin })
+          })
+        });
+        commsArtifactPath = "comms/receiving.json";
+      } catch (error) { await surface.stop().catch(() => {}); throw error; }
+    }
     if (commsEmail && commsPort !== undefined) {
       deployedComms = await deployCommsCatch(desktop, {
         port: commsPort,
@@ -3085,7 +3113,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         // recipient it can actually receive mail into (else it would stall on an inbox that stays
         // empty). Two comms planes, mutually exclusive by parse: the in-sandbox catch humanish
         // deployed, or the adopter-hosted one (#380).
-        instructions: commsEmail && commsInboxUrl && deployedComms?.ready && laneHasInboxRecipient(commsEmail, spec.laneId)
+        instructions: deps.receiving && receivingInboxUrl
+          ? withInboxMission(spec, receivingInboxUrl, deps.receiving.address(spec.laneId), true).instructions
+          : commsEmail && commsInboxUrl && deployedComms?.ready && laneHasInboxRecipient(commsEmail, spec.laneId)
           ? withInboxMission(spec, commsInboxUrl, inboxRecipientFor(commsEmail, spec.laneId)?.address).instructions
           : deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.laneId)
             ? withInboxMission(spec, deps.externalComms.inboxUrl, inboxRecipientFor(deps.externalComms.email, spec.laneId)?.address).instructions
@@ -3248,6 +3278,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
             ? {}
             : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
         };
+      }
+      if (deps.receiving) {
+        try { await deps.receiving.finishParticipant(spec.laneId); }
+        catch { warnings.push("Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover."); }
       }
       // Off-app comms evidence (#297): before this lane's sandbox is torn down, drain everything the
       // in-sandbox catch captured, route it into a host fake inbox addressed to the declared
@@ -3718,6 +3752,10 @@ function subjectProvenanceArg(
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+  return withTransientCommsSecrets(() => runCuaActorLabWithSecrets(options));
+}
+
+async function runCuaActorLabWithSecrets(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
   const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
   const tasksReason = analysisReason.ok ? taskProtocolValidationReason(options.config, true) : analysisReason.message;
   if (tasksReason) return {
@@ -3811,7 +3849,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   if (actor?.maxOutputTokens !== undefined && (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)) {
     return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.", descriptor.id);
   }
+  const receivingReason = receivingEmailValidationReason(config);
+  if (receivingReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", receivingReason, descriptor.id);
   const inProcessRoute = hooks.buildExecutor !== undefined;
+  if (inProcessRoute && config.comms?.email?.kind === "real") return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "Real email receiving requires hosted participant desktops.", descriptor.id);
   if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
     return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.", descriptor.id);
   }
@@ -4372,9 +4413,23 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     };
   }
 
+  const receivingWarnings: string[] = [];
+  let receiving: CommsReceivingRun | undefined;
+  if (!dryRun && config.comms?.email?.kind === "real") {
+    try {
+      receiving = await prepareReceivingRun({ cwd, runId, config, env, participants: laneSpecs.map(spec => spec.laneId), runPaths,
+        registerSecrets: values => { for (const value of values) if (value.length >= 4 && !knownSecretValues.includes(value)) knownSecretValues.push(value); }
+      });
+      if (receiving) deps.receiving = receiving;
+    } catch {
+      await stopLiveFlush?.();
+      return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.", descriptor.id);
+    }
+  }
   // Run lanes (dry-run runs none). In-process is always one lane.
   let outcomes: LaneRunOutcome[] | undefined;
   let failFastReason: string | undefined;
+  try {
   if (!dryRun) {
     if (inProcessRoute) {
       outcomes = [await runInProcessLane(laneSpecs[0]!, deps)];
@@ -4385,6 +4440,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       outcomes = ran.outcomes;
       failFastReason = ran.failFastReason;
     }
+  }
+  } finally {
+    try { await receiving?.finish(); }
+    catch { receivingWarnings.push("Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved."); }
   }
   // Close the live flush BEFORE any final artifact work: no new flush may start, and an
   // in-flight one is awaited, so the final bundle write can never race a stale in-progress
@@ -4546,6 +4605,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
   });
 
+  if (receiving) bundle.commsReceiving = receiving.snapshot();
   await writeCuaRunArtifacts(bundle, createdAt, runPaths);
   // Finalize the status record from the bundle that was just written, so the index can never
   // claim an outcome the evidence does not carry. A run that throws before reaching here leaves
@@ -4578,7 +4638,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const ok = observer.ok && allLanesOk && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
-  const warnings = [...laneWarnings, ...aggregateWarnings, ...adapterWarnings, ...observer.warnings];
+  const warnings = [...receivingWarnings, ...laneWarnings, ...aggregateWarnings, ...adapterWarnings, ...observer.warnings];
 
   const laneResults = laneSpecs.map((spec, index) => toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun));
   const laneSummary = buildLaneSummary(outcomes, laneCount, plan, dryRun);
@@ -4773,6 +4833,7 @@ function buildSingleLaneBundle(args: {
 }): RunBundle {
   const { spec, outcome, config } = args;
   return buildCuaBundle({
+    realEmail: config.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
     actorId: args.descriptor.id,
     appUrl: args.appUrl,
@@ -5578,6 +5639,7 @@ export function participantFeedbackCandidates(args: {
 }
 
 export function buildCuaBundle(args: {
+  realEmail?: boolean;
   /** Lab provenance for the bundle's own `lab` field (#455). */
   lab?: RunLabProvenance;
   actorId: string;
@@ -5906,6 +5968,7 @@ export function buildCuaBundle(args: {
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
+    ...(args.realEmail && !args.dryRun ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } } : {}),
     runId: args.runId,
     mode: args.dryRun ? "dry-run" : "live",
     simCount: 1,
@@ -6444,6 +6507,7 @@ export function buildCuaFanoutBundle(args: {
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
+    ...receivingPublication(args.config, args.dryRun),
     runId: args.runId,
     mode: args.dryRun ? "dry-run" : "live",
     simCount: specs.length,

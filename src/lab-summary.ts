@@ -13,6 +13,7 @@ import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
+import { receivingRequiredKey } from "./comms-setup.js";
 
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
 
@@ -24,6 +25,7 @@ export interface LabCaps {
 }
 
 export interface LabSummary {
+  communications?: string;
   analysis?: { model: string; maxCostUsd: number };
   schema: typeof LAB_SUMMARY_SCHEMA;
   labId: string;
@@ -131,11 +133,14 @@ export async function readLabSummary(
   if (options.checkKeys === true) {
     const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
     const subjectKeys = dryRun ? [] : inspected.config.subject.env ?? [];
-    const candidates = ["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY", ...subjectKeys];
+    const email = inspected.config.comms?.email;
+    const receivingKey = !dryRun && email?.kind === "real" ? await receivingRequiredKey(cwd, email.connection) : undefined;
+    const candidates = ["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY", ...subjectKeys, ...(receivingKey ? [receivingKey] : [])];
     const probes = dryRun ? [] : await probeKeySources(candidates, { cwd, env: options.env ?? process.env }).catch(() => []);
     const present = new Set(probes.filter(probe => probe.source !== null).map(probe => probe.name));
     const required = labKeyRequirements(inspected.config, backend, dryRun, name => present.has(name));
-    const missing = [...new Set([...required.keys, ...subjectKeys])].filter(name => !present.has(name));
+    const missing = [...new Set([...required.keys, ...subjectKeys, ...(receivingKey ? [receivingKey] : [])])].filter(name => !present.has(name));
+    if (receivingKey === null) missing.push("email connection");
     keysReady = missing.length === 0;
     if (missing.length > 0) missingKeys = missing;
   }
@@ -148,6 +153,7 @@ export async function readLabSummary(
   return {
     ...(analysis ? { analysis } : {}),
     schema: LAB_SUMMARY_SCHEMA,
+    ...(inspected.config.comms?.email?.kind === "real" ? { communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only` } : {}),
     labId: String(config.id ?? lab),
     ...(typeof config.title === "string" ? { title: config.title } : {}),
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),

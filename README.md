@@ -222,8 +222,10 @@ key with input hidden. Humanish saves the key in its user-level store (shared
 across your projects) and non-secret connection metadata in
 `.humanish/local/comms.yaml`. Ctrl+C cancels entry and returns to the TUI.
 Existing environment or project keys take precedence over the saved key.
-This configures credentials only: provider authentication and real email
-receiving in studies are not available yet. Local email capture is unchanged.
+Saving a key runs a read-only authentication check. Choose **Configure a lab**
+to preview a local copy that gives each participant a fresh real inbox. Email
+is hosted by AgentMail and may be processed by actor/analysis models; these
+recordings require local review. [Setup, tradeoffs and recovery](docs/architecture/real-email-receiving.md).
 
 ## Serve the Library
 

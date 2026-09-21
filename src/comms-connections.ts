@@ -3,6 +3,7 @@ import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { parse, stringify } from "yaml";
 import { listUserKeys, probeKeySources, type KeyResolutionDeps } from "./key-resolution.js";
+import type { CommsCheckResult } from "./comms-setup.js";
 import {
   assertPreparedSelectedOutputDirectory, bindExistingManagedHumanishOutputDirectory,
   prepareManagedHumanishOutputDirectory, readContainedRegularFile, writeContainedOutputFile
@@ -12,15 +13,16 @@ export const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
 export const COMMS_CONFIG_PATH = ".humanish/local/comms.yaml";
 export const COMMS_PROVIDERS = [{
   id: "agentmail", label: "AgentMail", channel: "email", keyEnv: "AGENTMAIL_API_KEY",
-  setupAvailable: true, receivingAvailable: false,
+  setupAvailable: true, receivingAvailable: true,
   description: "A hosted email service with real inbox addresses.",
   setupUrl: "https://console.agentmail.to",
-  limitation: "Connection setup only. Receiving email in studies is not available yet."
+  limitation: "Fresh real inboxes for supported computer-use studies. Hosted processing; local evidence review only. Provider charges are separate."
 }] as const;
 
 export interface CommsConnection { provider: "agentmail"; apiKeyEnv: string }
 export interface CommsConnections { schema: typeof COMMS_CONNECTIONS_SCHEMA; connections: Record<string, CommsConnection> }
 export interface CommsSetupStatus {
+  authentication?: CommsCheckResult;
   schema: "humanish.comms-setup.v1";
   ok: boolean;
   configPath: string;
@@ -91,7 +93,7 @@ export async function saveCommsConnection(cwd: string, name = "agentmail", apiKe
       config.connections[name] = { provider: "agentmail", apiKeyEnv };
       parseConnections(config);
       await writeContainedOutputFile(root, "comms.yaml", stringify(config), "utf8");
-      return { ok: true, message: "Connection saved for this project. Email receiving is not available yet." };
+      return { ok: true, message: "Connection saved for this project. Select it in a supported lab to use fresh real inboxes." };
     } finally {
       await lock.close();
       await assertPreparedSelectedOutputDirectory(root);

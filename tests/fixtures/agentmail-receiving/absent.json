@@ -1,0 +1,10 @@
+{
+  "status": 404,
+  "body": {
+    "name": "synthetic-name",
+    "code": "not_found",
+    "message": "synthetic-message",
+    "fix": "synthetic-fix",
+    "docs": "synthetic-docs"
+  }
+}

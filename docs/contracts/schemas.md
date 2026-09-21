@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.95.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.96.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -325,7 +325,7 @@ connections:
     apiKeyEnv: AGENTMAIL_API_KEY
 ```
 
-Only AgentMail setup is currently supported. Connection names use lowercase
+AgentMail supports setup and fresh per-participant email receiving. Connection names use lowercase
 letters, digits and hyphens, beginning with a letter, up to 48 characters.
 `apiKeyEnv` names an environment variable; it never contains its value.
 Invalid fields, unsupported providers and unsafe filesystem paths are rejected.
@@ -336,7 +336,24 @@ profiles and local key presence/source, not provider authentication or delivery.
 `comms providers --json` returns `humanish.comms-providers.v1` with explicit
 setup/receiving availability. The key store accepts `humanish keys set agentmail`.
 Saving a connection neither modifies a lab nor creates a provider resource;
-`comms.email.connection` in a study remains unsupported and is rejected.
+a supported study explicitly selects `comms.email: { connection: agentmail }`.
+Optional `allowedOrigins` lists exact additional HTTP(S) origins; `linkOrigin`
+participates in the existing provisioned-subject origin rewrite. Connection
+selection cannot be combined with capture settings, recipients or provider options.
+The derived internal kind is `real`; do not write `kind` beside a connection.
+
+`comms check --online --json` returns `humanish.comms-check.v1`. Authentication,
+credential presence, unknown permissions/capacity and untested delivery are separate.
+`comms configure` previews/saves an ignored local manifest; `comms recover`
+inspects or explicitly recovers privately owned interrupted leases.
+
+Real receiving writes `humanish.comms-receiving.v2` count-only evidence with
+participant-local message IDs, observation/publication timestamps, limitations,
+acquisition and cleanup status. It contains no raw addresses, bodies, provider IDs
+or content digests. `run.json` embeds the final projection as `commsReceiving` and
+carries `publication.restrictions: [real-communications]`. Verification keeps the
+run local-only regardless of screenshot redaction. See the
+[receiving contract](../architecture/real-email-receiving.md).
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
 `humanish.oss-lab-result.v1`, `humanish.oss-meta-lab-result.v1`,

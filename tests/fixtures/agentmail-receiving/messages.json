@@ -1,0 +1,51 @@
+{
+  "status": 200,
+  "body": {
+    "count": 1,
+    "limit": 10,
+    "messages": [
+      {
+        "organization_id": "organization-fixture-1",
+        "pod_id": "organization-fixture-1",
+        "inbox_id": "recipient@example.test",
+        "thread_id": "thread-fixture-1",
+        "message_id": "message-fixture-1",
+        "labels": [
+          "received",
+          "unread"
+        ],
+        "timestamp": "2026-01-01T12:00:00Z",
+        "from": "Example Sender <sender@example.test>",
+        "to": [
+          "recipient@example.test"
+        ],
+        "subject": "synthetic-subject",
+        "preview": "Synthetic verification code 123456.",
+        "attachments": [
+          {
+            "attachment_id": "attachment-fixture-1",
+            "filename": "fixture-pixel.png",
+            "size": 68,
+            "content_type": "image/png",
+            "content_disposition": "inline",
+            "content_id": "fixture-pixel"
+          }
+        ],
+        "headers": {
+          "Authentication-Results": "synthetic-authentication-results",
+          "List-Unsubscribe": "synthetic-list-unsubscribe",
+          "List-Unsubscribe-Post": "synthetic-list-unsubscribe-post"
+        },
+        "authentication_results": {
+          "spf": "synthetic-spf",
+          "dkim": "synthetic-dkim",
+          "dmarc": "synthetic-dmarc"
+        },
+        "smtp_id": "smtp-fixture-1",
+        "size": 5090,
+        "updated_at": "2026-01-01T12:00:00Z",
+        "created_at": "2026-01-01T12:00:00Z"
+      }
+    ]
+  }
+}

@@ -1,4 +1,5 @@
 import { actorEnding, type ActorEnding } from "./actor-stop-cause.js";
+import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms-receiving-evidence.js";
 import { formatParticipantOutcomes, formatStudyTaskFunnel, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "./actor-goal-source.js";
 import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
@@ -124,6 +125,11 @@ const allKinds: RunStreamKind[] = ["ui", "browser", "terminal", "tui", "codex-ui
 export function buildObserverData(bundle: RunBundle, generatedAt = new Date().toISOString()): ObserverData {
   const byKind = Object.fromEntries(allKinds.map((kind) => [kind, 0])) as Record<RunStreamKind, number>;
   const events = [...(bundle.events ?? [])];
+  // Analysis cites this source-backed aggregate as context, not a participant
+  // action. Retain its identity for evidence navigation without inventing a
+  // timestamp, capture, or actor-trace entry. Raw provider/message data is never
+  // part of this projection, including on the best-effort live polling path.
+  const receiving = isCommsReceivingEvidence(bundle.commsReceiving) ? bundle.commsReceiving : undefined;
   const streams = (bundle.streams ?? []).map((stream) => {
     const sim = bundle.simulations.find((candidate) => candidate.id === stream.simId) ?? fallbackSimulation(bundle, stream);
     // A natural session can finish its protocol while the participant explicitly reports a
@@ -144,7 +150,14 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       kindLabel: kindLabel(stream.kind),
       statusLabel: statusLabel(status),
       terminalPlain: stripAnsi(stream.terminal?.tail ?? ""),
-      timeline: events.filter((event) => event.simId === sim.id || event.streamId === stream.id)
+      timeline: [
+        ...events.filter((event) => event.simId === sim.id || event.streamId === stream.id),
+        ...(receiving ? [{
+          id: `comms-receiving-${stream.id}`, at: "", level: "info" as const,
+          type: "Harness email receiving (count-only context)",
+          message: receivingAnalysisContext(receiving, stream.laneId), streamId: stream.id
+        }] : [])
+      ]
     };
   });
 

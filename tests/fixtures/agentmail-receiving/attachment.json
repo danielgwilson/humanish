@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "attachment_id": "attachment-fixture-1",
+    "filename": "fixture-pixel.png",
+    "size": 68,
+    "content_type": "image/png",
+    "content_disposition": "inline",
+    "content_id": "fixture-pixel",
+    "download_url": "https://cdn.agentmail.to/fixture/pixel.png?signature=synthetic",
+    "expires_at": "2026-01-01T12:00:00Z"
+  }
+}

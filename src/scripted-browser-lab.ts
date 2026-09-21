@@ -205,6 +205,12 @@ export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
 export async function runScriptedBrowserLab(options: RunScriptedBrowserLabOptions): Promise<ScriptedBrowserLabResult> {
+  if (String(options.config.comms?.email?.kind) === "real") return {
+    schema: SCRIPTED_BROWSER_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
+    actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
+    runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? "", sessions: [], warnings: [],
+    error: { code: "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", message: "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study." }
+  };
   const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
   const tasksReason = analysisReason.ok ? taskProtocolValidationReason(options.config, false) : analysisReason.message;
   if (tasksReason) return {

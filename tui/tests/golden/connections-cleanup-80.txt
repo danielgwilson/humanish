@@ -1,0 +1,12 @@
+human(ish)                                                           example-app
+‹ connections
+
+Inbox cleanup
+Study completion and inbox cleanup are separate.
+
+❯ study-20260920-a · 2 pending
+
+study-20260920-a
+Connection: agentmail
+
+↑↓ move   ⏎ select   esc back   q quit

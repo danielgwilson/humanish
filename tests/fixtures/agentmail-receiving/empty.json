@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "body": {
+    "count": 0,
+    "limit": 10,
+    "messages": []
+  }
+}

@@ -49,7 +49,11 @@ project-local. Never ask for the key in chat. The CLI alternative is
 authorized credential source), followed by
 `humanish comms connections add agentmail --json`. Existing env/file precedence
 and `HUMANISH_STRICT_KEYS=1` still apply. Read installed provider capabilities:
-this release supports setup only, not authenticated checks or real email delivery.
+use `humanish comms check --online --json` for read-only authentication.
+Authentication does not establish mailbox permissions, capacity or delivery.
+`humanish comms configure --lab <path> --json` previews an ignored lab copy;
+add `--apply --plan-token <digest>` to save the reviewed version. Launch its
+exact returned path, not a basename that could resolve to another manifest.
 
 ## Setup Workflow
 
@@ -216,18 +220,34 @@ npx humanish lab run first-run --json --no-open
 
 ### Off-app email verification (comms)
 
-When a flow is gated behind an email the app itself sends — a signup
-verification link, a one-time code, a magic link — add a `comms:` block. The
-harness redirects the app's email-API sends into a catch INSIDE the sandbox (no
-mail leaves the machine), gives the persona a synthetic inbox to open and click
-through, and writes a digest-only `humanish.comms-thread.v1` evidence artifact (no
-raw address/link/code persists). Reach for this whenever a persona must read mail
-the app sent it to finish a step.
+When a flow needs an email from the app — a verification link, one-time code or
+magic link — configure an inbox so the participant can read and use that message.
+Humanish supports local capture and fresh hosted receiving, with different setup
+and privacy behavior.
 
-Lab execution supports email capture only. `comms.sms`, saved connection
-selectors and unknown channel names are rejected. AgentMail connection/key
-setup is available separately; it does not enable real receiving yet. Real SMS
-delivery is also unavailable; a message-bus type does not establish route support.
+Choose the transport to match the app:
+
+- **Local capture** (below): app send configuration can point at a test catch;
+  no external mail service is needed. It tests the email flow without proving
+  real delivery.
+- **Real AgentMail receiving**: use `comms.email: { connection: agentmail }`.
+  Humanish acquires one fresh hosted inbox per participant before desktops start.
+  The app sends normally. Requires a configured organization-scoped key and
+  app-url/clone/local-tree hosted computer-use participants; concurrent shared
+  worlds work, sequential shared worlds and local-agent do not. Do not combine
+  connection with capture settings or substitute fresh addresses for existing
+  account identities. `allowedOrigins` can name additional trusted link origins.
+
+Real mail can reach hosted desktops, actor models and analysis models. Screenshots
+can contain it. Such runs remain `local_only` even after screenshot blurring;
+this is a publication restriction, not local-only processing. Provider charges
+and model charges are separate. Use `humanish comms recover --json` after an
+interrupted run, then `humanish comms recover --run <id> --apply --json` for its
+privately recorded resources. Never derive deletion authority from run artifacts.
+SMS, participant sending, borrowed inboxes and other providers remain unavailable.
+See `docs/architecture/real-email-receiving.md` for limits and recovery.
+
+The following configuration selects **local capture**:
 
 ```yaml
 comms:

@@ -1,0 +1,13 @@
+human(ish)                                                           example-app
+‹ connections
+
+Email lab saved
+.humanish/local/labs/signup-receiving.yaml
+
+Select this lab from Labs to start.
+Or run this exact path:
+humanish lab run .humanish/local/labs/signup-receiving.yaml
+
+❯ Back to Connections
+
+↑↓ move   ⏎ select   esc back   q quit

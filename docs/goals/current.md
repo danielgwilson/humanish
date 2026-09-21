@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-20. Release baseline: `0.95.0`.
+Status date: 2026-09-21. Release baseline: `0.96.0`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.95.0-connections-setup.md).
+in the [release notes](../release/0.96.0-real-email-receiving.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.95.0`)
+## Current Program Truth (source `0.96.0`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -100,8 +100,8 @@ substitute for it.
 | Observer | Live/recorded views, shared grid and participant playback, participant assignments, action-specific links, saved moments, zoom, comparison and phone-width review | Sparse captures cannot prove every action's effect; visual comparison alone is not a controlled experiment |
 | Review and feedback | Verification grades, feedback drafts, portable HTML, redacted bundle derivatives and computer-use completion-source labels | Sharing requires the appropriate grade; participant reports and condition matches still need task adjudication |
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links | Model interpretation needs review; bounded selection and source truncation limit coverage; opening Observer never dispatches analysis |
-| TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail connection/key setup | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
-| Off-app communication | Recipient-scoped synthetic email inboxes, supported inline raster images, email capture and digest-only thread evidence | Scope prevents accidental cross-recipient browsing; it is not tenant authentication or real-provider delivery. AgentMail setup does not enable receiving; SMS is not a configured execution route |
+| TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
+| Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; local-agent, borrowed inboxes and SMS are unsupported |
 | Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; a synthetic video-only call with separate hosted peers is proven | Audio, TURN, provider-specific rooms, physical-device and touch fidelity remain unproven; unsupported media declarations are rejected |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),

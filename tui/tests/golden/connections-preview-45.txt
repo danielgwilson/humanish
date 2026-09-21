@@ -1,0 +1,18 @@
+human(ish)                        example-app
+‹ connections
+
+Save email-enabled lab
+From: humanish/labs/signup.yaml
+
+Save as:
+.humanish/local/labs/signup-receiving.yaml
+
+Fresh inbox for each participant.
+Mail is hosted. Models may see content.
+Recordings remain restricted for sharing.
+Provider charges are separate.
+
+❯ Save lab copy
+  Cancel
+
+↑↓ move   ⏎ select   esc back   q quit
