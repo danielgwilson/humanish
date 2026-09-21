@@ -1,7 +1,32 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 
-import { buildFillDesktopWindowCommand, captureDesktopBrowserGeometry } from "../src/cua-actor-lab.js";
+import { buildFillDesktopWindowCommand, captureDesktopBrowserGeometry, parseXwininfoGeometry } from "../src/cua-actor-lab.js";
+
+const measuredMaximized = readFileSync(new URL("./fixtures/desktop-geometry/xwininfo-maximized.txt", import.meta.url), "utf8");
+describe("physical X client measurements", () => {
+  it("reads the captured absolute origin without adding the window decoration twice", () => {
+    expect(parseXwininfoGeometry(measuredMaximized)).toEqual({ x: 0, y: 51, width: 1440, height: 899, source: "xwininfo" });
+  });
+  it.each([
+    measuredMaximized.replace("Absolute upper-left Y:  51", "Absolute upper-left Y:  51.5"),
+    measuredMaximized.replace("Width: 1440", "Width: 0"),
+    measuredMaximized.replace("Height: 899", "Height: -1"),
+    measuredMaximized.replace("Width: 1440", "Width: 9007199254740992"),
+    measuredMaximized.replace(/\s*Absolute upper-left X:.*\n/, "\n"),
+    measuredMaximized.replace("IsViewable", "IsUnMapped"),
+    measuredMaximized.replace("Synthetic browser", "Synthetic\n  Absolute upper-left X: 0\nbrowser"),
+    measuredMaximized.replace("Synthetic browser", "Synthetic\n  Width: 1440\nbrowser"),
+    measuredMaximized.replace("IsViewable", "IsUnMapped").replace("Synthetic browser", "Synthetic\n  Map State: IsViewable\nbrowser"),
+    ""
+  ])("refuses incomplete, invalid or ambiguous output %#", output => {
+    expect(parseXwininfoGeometry(output)).toBeUndefined();
+  });
+  it("preserves negative absolute coordinates so containment still fails closed", () => {
+    expect(parseXwininfoGeometry(measuredMaximized.replace("Absolute upper-left X:  0", "Absolute upper-left X:  -5"))?.x).toBe(-5);
+  });
+});
 
 describe("buildFillDesktopWindowCommand", () => {
   it("moves the window to the origin and sizes it to the exact desktop resolution", () => {
@@ -44,9 +69,9 @@ function geometryDesktop(reads: Array<Bounds | undefined>, pageWindow: Bounds = 
     wait: async () => undefined,
     commands: { run: async (command: string) => {
       commands.push(command);
-      if (command.includes("getwindowgeometry --shell")) {
+      if (command.includes("xwininfo -id")) {
         const bounds = reads[Math.min(read++, reads.length - 1)];
-        return { stdout: bounds === undefined ? "" : `X=${bounds.x}\nY=${bounds.y}\nWIDTH=${bounds.width}\nHEIGHT=${bounds.height}\n` };
+        return { stdout: bounds === undefined ? "" : `Absolute upper-left X: ${bounds.x}\nAbsolute upper-left Y: ${bounds.y}\nWidth: ${bounds.width}\nHeight: ${bounds.height}\nMap State: IsViewable\n` };
       }
       if (command.includes("browserWindow: { x: window.screenX")) {
         return { stdout: JSON.stringify({ browserWindow: pageWindow, viewport: { width: 414, height: 896, deviceScaleFactor: 3 } }) };
@@ -69,16 +94,16 @@ describe("physical browser containment", () => {
     { x: 10, y: 85, width: 500, height: 811 },
     { x: -4, y: 27, width: 508, height: 869 }
   ])("removes decorations when the minimum-width client cannot fit: %j", async (clipped) => {
-    // Physical shapes retained from the September 7 hosted desktop failures.
+    // Historical reported failure shapes retained as containment regression inputs.
     const contained = { x: 0, y: 0, width: 500, height: 896 };
-    const reads = clipped.x < 0 ? [clipped, clipped, contained] : [clipped, clipped, clipped, contained];
+    const reads = clipped.x < 0 ? [clipped, clipped, contained] : [clipped, clipped, clipped, clipped, contained];
     const { desktop, commands } = geometryDesktop(reads);
     const result = await captureDesktopBrowserGeometry({
       desktop, browserFamily: "chromium", browserWindowId: "123", laneId: "narrow-screen",
       targetUrl: "http://127.0.0.1:8080/", requestedScreen: [500, 896], requestTimeoutMs: 1000
     });
     expect(result.unusable).toBeUndefined();
-    expect(result.browserWindow).toEqual({ ...contained, source: "xdotool" });
+    expect(result.browserWindow).toEqual({ ...contained, source: "xwininfo" });
     expect(commands.filter((command) => command.includes('key --clearmodifiers F11'))).toHaveLength(1);
   });
 
@@ -90,7 +115,7 @@ describe("physical browser containment", () => {
 
   it("waits for the fullscreen width after its origin has already moved", async () => {
     const clipped = { ...full, y: 32 };
-    const { desktop, commands } = geometryDesktop([clipped, clipped, clipped, { ...full, width: 1288 }, full]);
+    const { desktop, commands } = geometryDesktop([clipped, clipped, clipped, clipped, { ...full, width: 1288 }, full]);
     expect((await capture(desktop)).unusable).toBeUndefined();
     expect(commands.filter((command) => command.includes('key --clearmodifiers F11'))).toHaveLength(1);
   });
@@ -107,7 +132,7 @@ describe("physical browser containment", () => {
     const result = await capture(desktop, false);
     expect(result.unusable).toContain("outside the captured 1280x720 desktop");
     expect(result.warnings).toContain(result.unusable);
-    expect(result.browserWindow).toEqual({ ...bounds, source: "xdotool" });
+    expect(result.browserWindow).toEqual({ ...bounds, source: "xwininfo" });
     expect(commands.some((command) => command.includes("windowmove"))).toBe(false);
   });
 
@@ -116,7 +141,7 @@ describe("physical browser containment", () => {
     const { desktop } = geometryDesktop([bounds], { x: -500, y: -500, width: 414, height: 896 });
     const result = await capture(desktop, false);
     expect(result.unusable).toBeUndefined();
-    expect(result.browserWindow).toEqual({ ...bounds, source: "xdotool" });
+    expect(result.browserWindow).toEqual({ ...bounds, source: "xwininfo" });
     expect(result.viewport).toEqual({ width: 414, height: 896, deviceScaleFactor: 3, source: "cdp" });
   });
 
@@ -126,7 +151,7 @@ describe("physical browser containment", () => {
     const { desktop, commands } = geometryDesktop([before, before, after]);
     const result = await capture(desktop);
     expect(result.unusable).toBeUndefined();
-    expect(result.browserWindow).toEqual({ ...after, source: "xdotool" });
+    expect(result.browserWindow).toEqual({ ...after, source: "xwininfo" });
     expect(result.warnings.join(" ")).toContain("corrected");
     expect(commands.filter((command) => command.includes('windowsize "$win" 1280 688'))).toHaveLength(1);
   });
@@ -135,7 +160,27 @@ describe("physical browser containment", () => {
     const { desktop, commands } = geometryDesktop([{ ...full, y: 32 }]);
     const result = await capture(desktop);
     expect(result.unusable).toContain("outside the captured 1280x720 desktop");
-    expect(commands.filter((command) => command.includes('windowsize "$win" 1280 688'))).toHaveLength(1);
+    expect(commands.filter((command) => command.includes('windowsize "$win" 1280 688'))).toHaveLength(2);
+  });
+
+  it("keeps browser chrome when resizing restores a five-pixel window decoration", async () => {
+    const initial = { x: 0, y: 56, width: 1440, height: 950 };
+    const shifted = { x: 5, y: 56, width: 1440, height: 894 };
+    const contained = { ...shifted, width: 1435 };
+    const { desktop, commands } = geometryDesktop([initial, initial, shifted, contained]);
+    const result = await captureDesktopBrowserGeometry({ desktop, browserFamily: "chromium", browserWindowId: "123",
+      laneId: "decorated-desktop", targetUrl: "http://127.0.0.1:8080/", requestedScreen: [1440, 950], requestTimeoutMs: 1000 });
+    expect(result.unusable).toBeUndefined();
+    expect(result.browserWindow).toEqual({ ...contained, source: "xwininfo" });
+    expect(commands.some(command => command.includes('windowsize "$win" 1435 894'))).toBe(true);
+    expect(commands.some(command => command.includes("F11"))).toBe(false);
+  });
+
+  it("does not resize again when moving alone restores containment", async () => {
+    const { desktop, commands } = geometryDesktop([{ ...full, x: -5 }, full]);
+    expect((await capture(desktop)).unusable).toBeUndefined();
+    expect(commands.filter(command => command.includes("windowsize"))).toHaveLength(1); // initial fill only
+    expect(commands.some(command => command.includes("F11"))).toBe(false);
   });
 
   it("does not clear known clipping when the repair read-back is missing", async () => {

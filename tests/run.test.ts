@@ -206,6 +206,27 @@ async function writeHumanishBrowserScenario(cwd: string, scenarioText: string): 
 }
 
 describe("dry-run bundles", () => {
+  it("verifies new physical geometry and legacy saved geometry sources", async () => {
+    await withFixtureCopy(async cwd => {
+      const run = await runDryRun({ cwd, dryRun: true, runId: "geometry-source-compatibility" });
+      expect(run.ok).toBe(true);
+      if (!run.bundlePath || !run.runId) throw new Error("Expected a successful dry run");
+      const file = path.join(cwd, run.bundlePath);
+      const bundle = JSON.parse(await readFile(file, "utf8"));
+      expect(bundle.streams.length).toBeGreaterThan(0);
+      delete bundle.streams[0].viewport;
+      for (const source of ["xwininfo", "xdotool", "cdp", "untrusted"]) {
+        bundle.streams[0].desktopGeometry = {
+          screen: { requested: { width: 1440, height: 950 } },
+          browserWindow: { x: 0, y: 51, width: 1440, height: 899, source }
+        };
+        await writeFile(file, JSON.stringify(bundle));
+        const verified = await verifyRun(cwd, run.runId);
+        expect(verified.ok, JSON.stringify(verified)).toBe(source !== "untrusted");
+      }
+    });
+  });
+
   it("writes and verifies a synthetic run bundle", async () => {
     await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({

@@ -117,7 +117,7 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, (command) => {
           // A phone seat has its own physical display, including in the committed live fixture.
           if (fitToResolution && command.includes("xdpyinfo")) return { stdout: `dimensions: ${width}x${height} pixels\n` };
-          if (fitToResolution && command.includes("getwindowgeometry")) return { stdout: `X=0\nY=0\nWIDTH=${width}\nHEIGHT=${height}\n` };
+          if (fitToResolution && command.includes("xwininfo -id")) return { stdout: `Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: ${width}\nHeight: ${height}\nMap State: IsViewable\n` };
           return commandHandler(command);
         });
         templates.push(template);
@@ -141,7 +141,7 @@ function makeCommandHandler(state: { worldVersion: number }): (command: string) 
     if (command.includes("curl")) return { stdout: "READY" };
     if (command.includes("checkpoint-") && command.includes("tail -c")) return { stdout: `world=${state.worldVersion}\n` };
     if (command.includes("find_chrome_window")) return { stdout: "WINDOW_ID=424242\n" };
-    if (command.includes("getwindowgeometry")) return { stdout: "X=0\nY=0\nWIDTH=1440\nHEIGHT=950\n" };
+    if (command.includes("xwininfo -id")) return { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n" };
     if (command.includes("browserWindow: { x: window.screenX")) {
       return { stdout: JSON.stringify({ browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN }, viewport: FAKE_DESKTOP_VIEWPORT }) };
     }
@@ -481,7 +481,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
           requested: FAKE_DESKTOP_SCREEN,
           verified: { ...FAKE_DESKTOP_SCREEN, source: "xdpyinfo" }
         },
-        browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN, source: "xdotool" },
+        browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN, source: "xwininfo" },
         viewport: { ...FAKE_DESKTOP_VIEWPORT, source: "cdp" }
       });
       expect(stream.viewport).toEqual({ ...FAKE_DESKTOP_VIEWPORT, isMobile: false });
@@ -1263,8 +1263,8 @@ describe("concurrent physical geometry guard", () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, async () => undefined);
     const handler = makeCommandHandler(state);
-    const { module, sandboxes, killed } = makeFakeModule((command) => command.includes("getwindowgeometry")
-      ? { stdout: "X=0\nY=32\nWIDTH=1440\nHEIGHT=950\n" }
+    const { module, sandboxes, killed } = makeFakeModule((command) => command.includes("xwininfo -id")
+      ? { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n" }
       : handler(command), false);
     let participantSessions = 0;
     hooks.loadDesktopModule = async () => module;

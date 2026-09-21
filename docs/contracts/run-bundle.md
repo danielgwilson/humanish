@@ -154,14 +154,17 @@ different facts separate:
   it did not: a `mobile` (414) and a `small-mobile` (360) seat both render at 500 and are
   indistinguishable by rendered width;
 - `browserWindow`: measured browser bounds after the window-fill attempt; physical X client
-  bounds (`source: xdotool`) take precedence over page-reported outer bounds (`source: cdp`),
-  which can reflect mobile emulation;
+  bounds (`source: xwininfo`) take precedence over page-reported outer bounds (`source: cdp`),
+  which can reflect mobile emulation. Historical `source: xdotool` bundles remain readable;
+  older xdotool versions can double-count decorations in reported coordinates;
 - `viewport`: the page's CSS layout viewport and device-pixel ratio measured through CDP on
   Chromium-family hosted browsers.
 
 Before participant actions, hosted computer-use lanes check measured X bounds against every
-edge of the captured desktop. If a browser is clipped, one bounded move-and-fit correction
-accounts for the window manager's client origin. A window that remains clipped, or whose repair
+edge of the captured desktop. If a browser is clipped, a bounded move-and-fit correction
+remeasures the client origin after each of up to two resize attempts, preserving browser
+controls when they fit. A fullscreen fallback remains for minimum-width windows that cannot
+fit a narrow desktop. A window that remains clipped, or whose repair
 cannot be verified, ends the lane before participant actions. A fully contained smaller window
 can run. Missing X measurements are explicitly unverified; an emulated CSS viewport cannot
 establish physical containment. Final capture observes geometry without resizing the app.

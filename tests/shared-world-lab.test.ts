@@ -122,13 +122,14 @@ function makeCommandHandler(
     }
     if (command.includes("find_chrome_window()")) return { stdout: "WINDOW_ID=10485761\n", exitCode: 0 };
     if (command.includes("find_firefox_window()")) return { stdout: "WINDOW_ID=20971522\n", exitCode: 0 };
-    if (command.includes("xdotool getwindowgeometry --shell")) {
+    if (command.includes("xwininfo -id")) {
       return {
         stdout: [
-          `X=${FAKE_BROWSER_WINDOW.x}`,
-          `Y=${FAKE_BROWSER_WINDOW.y}`,
-          `WIDTH=${FAKE_BROWSER_WINDOW.width}`,
-          `HEIGHT=${FAKE_BROWSER_WINDOW.height}`
+          `Absolute upper-left X: ${FAKE_BROWSER_WINDOW.x}`,
+          `Absolute upper-left Y: ${FAKE_BROWSER_WINDOW.y}`,
+          `Width: ${FAKE_BROWSER_WINDOW.width}`,
+          `Height: ${FAKE_BROWSER_WINDOW.height}`,
+          "Map State: IsViewable"
         ].join("\n"),
         exitCode: 0
       };
@@ -764,7 +765,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("find_chrome_window()"))).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("browserWindow: { x: window.screenX"))).toBe(false);
     for (const stream of bundle.streams) {
-      expect(stream.desktopGeometry.browserWindow).toEqual({ ...FAKE_BROWSER_WINDOW, source: "xdotool" });
+      expect(stream.desktopGeometry.browserWindow).toEqual({ ...FAKE_BROWSER_WINDOW, source: "xwininfo" });
       expect(stream.desktopGeometry.viewport).toBeUndefined();
       expect(stream.viewport).toBeUndefined();
       expect(stream.desktopGeometry.warnings).toEqual(expect.arrayContaining([
@@ -779,8 +780,8 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   it("refuses clipped sequential seats before participant actions and cleans the shared desktop", async () => {
     const { hooks, sandbox, killed } = baseHooks({ worldVersion: 0 });
     const run = sandbox.commands.run.bind(sandbox.commands);
-    sandbox.commands.run = async (command, options) => command.includes("getwindowgeometry")
-      ? { stdout: "X=0\nY=32\nWIDTH=1440\nHEIGHT=950\n", exitCode: 0 }
+    sandbox.commands.run = async (command, options) => command.includes("xwininfo -id")
+      ? { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n", exitCode: 0 }
       : run(command, options);
     let participantSessions = 0;
     hooks.runSession = async () => { participantSessions++; throw new Error("participant must not start"); };
@@ -808,7 +809,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
           requested: FAKE_SCREEN_GEOMETRY,
           verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
         },
-        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xdotool" },
+        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xwininfo" },
         viewport: { ...FAKE_CSS_VIEWPORT, source: "cdp" }
       });
       expect(stream.viewport).toEqual({
@@ -839,7 +840,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
           requested: FAKE_SCREEN_GEOMETRY,
           verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
         },
-        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xdotool" },
+        browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xwininfo" },
         warnings: [expect.stringContaining("stream.viewport is omitted")]
       });
     }
