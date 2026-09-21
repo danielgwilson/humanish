@@ -29,6 +29,8 @@ export async function labSetupChecks(args: {
     if (name) keys.push(name);
     checks.push({ name: "real email connection", ok: name !== null && args.keyPresent(name), message: name === null
       ? "The selected email connection is missing or invalid. Open Connections in the TUI."
+      : !args.keyPresent(name)
+      ? `Missing ${name} for the selected email connection. Provide it through process env or --env-file. Authentication has not been checked.`
       : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested." });
   }
   if (backend === "terminal") {

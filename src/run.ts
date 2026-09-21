@@ -4968,7 +4968,18 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
   };
   const env = options.env ?? process.env;
   const agents = await detectLocalAgents({ ...options.localAgents, env });
-  const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"], { cwd, env });
+  const keyNames = new Set(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN", "CODEX_API_KEY"]);
+  let receivingKey: string | null = null;
+  if (options.lab) {
+    const { resolveLabManifest } = await import("./labs.js");
+    const resolved = await resolveLabManifest(cwd, options.lab);
+    if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
+      const { receivingRequiredKey } = await import("./comms-setup.js");
+      receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);
+      if (receivingKey) keyNames.add(receivingKey);
+    }
+  }
+  const probes = await probeKeySources([...keyNames], { cwd, env });
   const setup = options.lab ? await labSetupChecks({ cwd, lab: options.lab, env, agents,
     keyPresent: name => probes.some(probe => probe.name === name && probe.source !== null) }) : undefined;
   const checks: DoctorResult["checks"] = [
@@ -5063,6 +5074,9 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
     ...await (async () => {
       return probes.map((probe) => {
         const present = probe.source !== null;
+        const hint = probe.name === receivingKey
+          ? `provide ${probe.name} through process env or --env-file`
+          : probe.hint;
         // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
         const required = setup ? setup.keys.includes(probe.name) : probe.name === "E2B_API_KEY"
           || probe.name === "OPENAI_API_KEY" && !agents.some(agent => agent.authStatus === "authenticated");
@@ -5072,8 +5086,8 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
           message: present
             ? `supplied by ${probe.source}; presence only, validity not tested`
             : required
-              ? `missing from every source — ${probe.hint}`
-              : `not required for ${setup ? "the selected participant route" : "every route"}; ${probe.hint}`
+              ? `missing from every source — ${hint}`
+              : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`
         };
       });
     })(),
