@@ -1,0 +1,6 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "pass",
+  "summary": "Concurrent shared-world (ONE external-public plane, 3 simultaneous personas): swarm ran coherently; 3/3 actor session(s) passed credibility checks; mission endpoint: 3/3 ended goal_satisfied; completion reasons: goal_satisfied 3/3; overlap proven; 3 seats converged on one lobby.",
+  "gaps": []
+}

@@ -1,22 +1,36 @@
 import ThemeToggle from "./theme-toggle";
 import { Wordmark } from "./wordmark";
+import { GITHUB, VERSION } from "@/lib/site-data";
+
+export interface NavLink { label: string; href: string }
+
+const DEFAULT_LINKS: NavLink[] = [
+  { label: "Study", href: "#study" },
+  { label: "Commands", href: "#commands" },
+  { label: "Trust", href: "#trust" },
+  { label: "Docs", href: "/docs" }
+];
 
 /**
  * `base` prefixes the homepage section anchors so subpages link back to them
- * ("/#study") instead of hunting for an id they do not have. Empty on the
- * homepage itself, where the plain hashes stay in-page.
+ * ("/#studies") instead of hunting for an id they do not have. Empty on the
+ * homepage itself, where the plain hashes stay in-page. `links` lets a page
+ * with different sections (the legacy homepage) name its own anchors.
  */
-export default function Nav({ base = "" }: { base?: string }) {
+export default function Nav({ base = "", links = DEFAULT_LINKS }: { base?: string; links?: NavLink[] }) {
   return (
     <header className="nav">
       <div className="nav-in">
         <Wordmark href={base || "#"} label="humanish home" />
         <nav className="nav-links" aria-label="Primary">
-          <a href={`${base}#study`}>Study</a>
-          <a href={`${base}#commands`}>Commands</a>
-          <a href={`${base}#trust`}>Trust</a>
-          <a href="/docs">Docs</a>
+          {links.map((l) => (
+            <a key={l.href} href={l.href.startsWith("#") ? `${base}${l.href}` : l.href}>{l.label}</a>
+          ))}
         </nav>
+        <a className="nav-gh" href={GITHUB} rel="noopener" aria-label={`humanish on GitHub, version ${VERSION}`}>
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>v{VERSION}</span>
+        </a>
         <ThemeToggle />
         <a className="btn btn-primary" href="/docs">Get started</a>
       </div>

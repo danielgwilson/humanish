@@ -1,13 +1,9 @@
 import { Wordmark } from "./wordmark";
-
-const GITHUB = "https://github.com/danielgwilson/humanish";
-const DOCS = "/docs";
-const CLI_REFERENCE = "/docs/cli";
+import { BENCH, GITHUB, RECEIPTS, VERSION } from "@/lib/site-data";
 
 /**
  * `base` prefixes the homepage section anchors so subpages link back to them
- * ("/#study") instead of hunting for an id they do not have. Empty on the
- * homepage itself, where the plain hashes stay in-page.
+ * ("/#studies") instead of hunting for an id they do not have.
  */
 export default function Footer({ base = "" }: { base?: string }) {
   return (
@@ -15,21 +11,24 @@ export default function Footer({ base = "" }: { base?: string }) {
       <div className="foot-grid">
         <div className="foot-brand">
           <Wordmark />
-          <p>Open-source TypeScript CLI, MIT-licensed.</p>
+          <p>Open-source TypeScript CLI, MIT-licensed. Version {VERSION}.</p>
         </div>
         <div className="foot-cols">
           <nav className="foot-block" aria-label="Product">
             <span className="fl">Product</span>
             <a href="/docs#install">Install</a>
-            <a href={DOCS}>Docs</a>
-            <a href={CLI_REFERENCE}>CLI reference</a>
+            <a href="/docs">Docs</a>
+            <a href="/docs/cli">CLI reference</a>
+            <a href={`${GITHUB}/releases`}>Releases</a>
+            <a href="/llms.txt">llms.txt</a>
           </nav>
           <nav className="foot-block" aria-label="Evidence">
             <span className="fl">Evidence</span>
-            <a href={`${base}#study`}>Excalidraw study</a>
-            <a href="/docs/save-button-study">Save-button study</a>
             <a href="/docs/todomvc-edit-study">TodoMVC keyboard repair</a>
-            <a href={`${base}#study`}>Verify checks</a>
+            <a href="/docs/save-button-study">Save-button study</a>
+            <a href={`${RECEIPTS}/persona-axis-phone-2026-09-03.md`}>Persona axis receipts</a>
+            <a href={`${BENCH}/RESULTS-2026-09-04-0.76.0.md`}>Planted-defect benchmark</a>
+            <a href={`${base}#study`}>drawDB and the lobby game runs</a>
             <a href="/failure-modes">Known failure modes</a>
           </nav>
           <nav className="foot-block" aria-label="Source">
@@ -37,11 +36,12 @@ export default function Footer({ base = "" }: { base?: string }) {
             <a href={GITHUB}>GitHub</a>
             <a href="https://www.npmjs.com/package/humanish">npm</a>
             <a href={`${GITHUB}/blob/main/LICENSE`}>MIT license</a>
+            <a href={`${GITHUB}/blob/main/TELEMETRY.md`}>Telemetry</a>
           </nav>
         </div>
       </div>
       <div className="provenance">
-        <p>Run <code>cua-2026-08-07T17-44-48-760Z-87389419</code> · 2026-08-07 · 3/4 lanes passed · verify 16/16 checks. Excalidraw is the application studied; it is not a Humanish adopter or endorser.</p>
+        <p>Every number on this page is read from a kept run bundle; the run ids are in the linked receipts and in the embedded recordings. drawDB, TodoMVC and Excalidraw are applications studied; none is a humanish adopter or endorser. The lobby game is the maintainer&rsquo;s own. Cost lines are estimates at the dated rates each bundle records.</p>
         <span className="lic">MIT © humanish</span>
       </div>
     </footer>

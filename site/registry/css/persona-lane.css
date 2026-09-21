@@ -88,3 +88,6 @@
   .panel { box-shadow: var(--sh-rail)
   }
 }
+
+.fl, .chip, .c-bar, .c-foot, .manifest dt, .plab, .rail-k, .tile-bar .lane-id, .brief-facts dt { font-size: 11px
+}

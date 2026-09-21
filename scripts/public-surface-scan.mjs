@@ -100,6 +100,15 @@ const approvedBinaryAssets = new Map([
   ["site/public/study/excalidraw-lane3.jpg", "ada538324d00da4e7cab11c60e6e8eefe9752b2eacc95df4d407fc56fec4a647"],
   ["site/public/study/excalidraw-lane4.jpg", "8a41a212132569a0cc5d7ed5b143180cf3468733fee01687baf45aa62e4bcd10"]
 ]);
+// Captures the site publishes from kept run bundles are pinned in a generated manifest
+// (scripts/site-run-assets-manifest.mjs); each entry is a reviewed frame from a named run.
+const runAssetManifest = "site/public/runs/ASSETS.sha256.json";
+try {
+  const manifest = JSON.parse(readFileSync(runAssetManifest, "utf8"));
+  for (const [file, sha256] of Object.entries(manifest.assets ?? {})) approvedBinaryAssets.set(file, sha256);
+} catch {
+  // No manifest: only the hand-listed assets above are approved.
+}
 const approvedPublicCommitEmails = new Set([
   "daniel@danielgwilson.com",
   ...(process.env.HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")

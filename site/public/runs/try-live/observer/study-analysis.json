@@ -1,0 +1,830 @@
+{
+  "state": "ready",
+  "analysis": {
+    "schema": "humanish.study-analysis.v1",
+    "id": "analysis-7e270c60-6a18-426b-85f7-620a407b06c1",
+    "runId": "cua-2026-09-16T16-20-26-762Z-c44a6d1d",
+    "status": "complete",
+    "createdAt": "2026-09-16T16:22:32.344Z",
+    "completedAt": "2026-09-16T16:24:48.786Z",
+    "sourceRunSha256": "02420b53a6d63aeacf723ebc4bd761057d15e84b97ae02caa1179909fbef0af6",
+    "inputDigest": "143e762b46aabd8501d42ea72d8cf9a4e6ee5176d3d53a1db3353287de5a8630",
+    "configDigest": "1b3ed7a3c02c3a0a4c16480a3a7ae42b4e400bed52ef63c96befa701a29a652e",
+    "config": {
+      "model": "gpt-6-astra",
+      "question": null,
+      "maxCostUsd": 3,
+      "timeoutMs": 300000,
+      "maxOutputTokens": 16384
+    },
+    "promptVersion": "study-evidence-5",
+    "provider": "openai",
+    "usage": {
+      "cacheWriteInputTokens": 18564,
+      "cachedInputTokens": 0,
+      "usageComplete": true,
+      "dispatched": true,
+      "ratesAsOf": "2026-09-03",
+      "estimatedAdmissionUsd": 1.470788,
+      "inputTokens": 18567,
+      "outputTokens": 6097,
+      "estimatedCostUsd": 0.53693
+    },
+    "participants": [
+      {
+        "streamId": "stream-001",
+        "label": "CUA browser — try-live",
+        "assignment": "You have never seen this diagram tool before. Add two tables and give them meaningful names, then stop and say what you did, what confused you, and where you hesitated.",
+        "recordedStatus": "passed",
+        "recordedReason": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "provenance": {
+          "actorStatus": "passed",
+          "completionReason": "goal_satisfied",
+          "stopCause": null,
+          "goalSource": "participant_report",
+          "declaredOutcome": "reached",
+          "taskOutcomes": null
+        }
+      }
+    ],
+    "coverage": {
+      "includedStreamIds": [
+        "stream-001"
+      ],
+      "omittedStreamIds": [],
+      "evidenceCount": 39,
+      "captureCount": 8,
+      "complete": true,
+      "omissions": []
+    },
+    "evidence": [
+      {
+        "id": "e000001",
+        "streamId": "stream-001",
+        "eventId": "screenshot-001",
+        "kind": "screenshot",
+        "text": "turn-00-start",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:38.675Z",
+        "elapsedMs": 0,
+        "frame": 0,
+        "capture": {
+          "eventId": "screenshot-001",
+          "path": "screenshots/turn-00-start.png",
+          "sha256": "356c019f4970d4a0ccf5941bc6b78784866f3d8b8b9f6bff3585b25dd19eac52",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000002",
+        "streamId": "stream-001",
+        "eventId": "reasoning-002",
+        "kind": "reasoning",
+        "text": "The landing page offers a clear way to enter the diagram editor.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:21:42.841Z",
+        "elapsedMs": 4166,
+        "frame": 0,
+        "capture": null
+      },
+      {
+        "id": "e000003",
+        "streamId": "stream-001",
+        "eventId": "ui_action-003",
+        "kind": "ui_action",
+        "text": "click (373, 570)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:43.178Z",
+        "elapsedMs": 4503,
+        "frame": 0,
+        "capture": null
+      },
+      {
+        "id": "e000004",
+        "streamId": "stream-001",
+        "eventId": "screenshot-004",
+        "kind": "screenshot",
+        "text": "turn-01",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:43.724Z",
+        "elapsedMs": 5049,
+        "frame": 1,
+        "capture": {
+          "eventId": "screenshot-004",
+          "path": "screenshots/turn-01.png",
+          "sha256": "1c62d6ac9adb0ca2c27f603a881341108f8ee4536b578dfc2c4e9f2bc2e36062",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000005",
+        "streamId": "stream-001",
+        "eventId": "reasoning-005",
+        "kind": "reasoning",
+        "text": "I only need a simple diagram, so Generic seems appropriate. I hesitated because a database choice is required before adding tables.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:21:49.526Z",
+        "elapsedMs": 10851,
+        "frame": 1,
+        "capture": null
+      },
+      {
+        "id": "e000006",
+        "streamId": "stream-001",
+        "eventId": "ui_action-006",
+        "kind": "ui_action",
+        "text": "click (491, 583)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:49.855Z",
+        "elapsedMs": 11180,
+        "frame": 1,
+        "capture": null
+      },
+      {
+        "id": "e000007",
+        "streamId": "stream-001",
+        "eventId": "ui_action-007",
+        "kind": "ui_action",
+        "text": "click (997, 685)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:50.183Z",
+        "elapsedMs": 11508,
+        "frame": 1,
+        "capture": null
+      },
+      {
+        "id": "e000008",
+        "streamId": "stream-001",
+        "eventId": "screenshot-008",
+        "kind": "screenshot",
+        "text": "turn-02",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:50.864Z",
+        "elapsedMs": 12189,
+        "frame": 2,
+        "capture": {
+          "eventId": "screenshot-008",
+          "path": "screenshots/turn-02.png",
+          "sha256": "43feb4611f05e49023ca41d1b6d37bb0ebd2441e0acf369b6fad903cadd10186",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000009",
+        "streamId": "stream-001",
+        "eventId": "reasoning-009",
+        "kind": "reasoning",
+        "text": "The Add table button is clearly labeled; I will create the first table.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:21:54.507Z",
+        "elapsedMs": 15832,
+        "frame": 2,
+        "capture": null
+      },
+      {
+        "id": "e000010",
+        "streamId": "stream-001",
+        "eventId": "ui_action-010",
+        "kind": "ui_action",
+        "text": "click (309, 151)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:54.840Z",
+        "elapsedMs": 16165,
+        "frame": 2,
+        "capture": null
+      },
+      {
+        "id": "e000011",
+        "streamId": "stream-001",
+        "eventId": "screenshot-011",
+        "kind": "screenshot",
+        "text": "turn-03",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:55.399Z",
+        "elapsedMs": 16724,
+        "frame": 3,
+        "capture": {
+          "eventId": "screenshot-011",
+          "path": "screenshots/turn-03.png",
+          "sha256": "d449ae34dd5d45a640dac09d30aedee746147330d8f79562817ac75ecda4ea65",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000012",
+        "streamId": "stream-001",
+        "eventId": "reasoning-012",
+        "kind": "reasoning",
+        "text": "The table has an unexpected generated name. I will expand its sidebar entry to look for naming controls.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:21:59.818Z",
+        "elapsedMs": 21143,
+        "frame": 3,
+        "capture": null
+      },
+      {
+        "id": "e000013",
+        "streamId": "stream-001",
+        "eventId": "ui_action-013",
+        "kind": "ui_action",
+        "text": "click (342, 193)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:00.146Z",
+        "elapsedMs": 21471,
+        "frame": 3,
+        "capture": null
+      },
+      {
+        "id": "e000014",
+        "streamId": "stream-001",
+        "eventId": "screenshot-014",
+        "kind": "screenshot",
+        "text": "turn-04",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:00.693Z",
+        "elapsedMs": 22018,
+        "frame": 4,
+        "capture": {
+          "eventId": "screenshot-014",
+          "path": "screenshots/turn-04.png",
+          "sha256": "dd3d633bdc7ce0e7a7c6e30eb67e949e33be7255579bf91c41eef10d36b697b6",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000015",
+        "streamId": "stream-001",
+        "eventId": "reasoning-015",
+        "kind": "reasoning",
+        "text": "The expanded entry exposes a Name field. I will name this table customers and add the second table.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:22:08.933Z",
+        "elapsedMs": 30258,
+        "frame": 4,
+        "capture": null
+      },
+      {
+        "id": "e000016",
+        "streamId": "stream-001",
+        "eventId": "ui_action-016",
+        "kind": "ui_action",
+        "text": "click (206, 238)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:09.257Z",
+        "elapsedMs": 30582,
+        "frame": 4,
+        "capture": null
+      },
+      {
+        "id": "e000017",
+        "streamId": "stream-001",
+        "eventId": "ui_action-017",
+        "kind": "ui_action",
+        "text": "keypress CTRL+A",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:09.357Z",
+        "elapsedMs": 30682,
+        "frame": 4,
+        "capture": null
+      },
+      {
+        "id": "e000018",
+        "streamId": "stream-001",
+        "eventId": "ui_action-018",
+        "kind": "ui_action",
+        "text": "type [9 chars]",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:09.787Z",
+        "elapsedMs": 31112,
+        "frame": 4,
+        "capture": null
+      },
+      {
+        "id": "e000019",
+        "streamId": "stream-001",
+        "eventId": "ui_action-019",
+        "kind": "ui_action",
+        "text": "click (308, 150)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:10.153Z",
+        "elapsedMs": 31478,
+        "frame": 4,
+        "capture": null
+      },
+      {
+        "id": "e000020",
+        "streamId": "stream-001",
+        "eventId": "screenshot-020",
+        "kind": "screenshot",
+        "text": "turn-05",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:10.880Z",
+        "elapsedMs": 32205,
+        "frame": 5,
+        "capture": {
+          "eventId": "screenshot-020",
+          "path": "screenshots/turn-05.png",
+          "sha256": "ed712c9c04cff27ffc982e4ca29bd04fdd26c58c76963adadfa44e73a1cb0544",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000021",
+        "streamId": "stream-001",
+        "eventId": "reasoning-021",
+        "kind": "reasoning",
+        "text": "Two tables are listed, though they appear to overlap on the canvas. I will expand the second table to rename it.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:22:14.908Z",
+        "elapsedMs": 36233,
+        "frame": 5,
+        "capture": null
+      },
+      {
+        "id": "e000022",
+        "streamId": "stream-001",
+        "eventId": "ui_action-022",
+        "kind": "ui_action",
+        "text": "click (341, 391)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:15.230Z",
+        "elapsedMs": 36555,
+        "frame": 5,
+        "capture": null
+      },
+      {
+        "id": "e000023",
+        "streamId": "stream-001",
+        "eventId": "screenshot-023",
+        "kind": "screenshot",
+        "text": "turn-06",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:15.799Z",
+        "elapsedMs": 37124,
+        "frame": 6,
+        "capture": {
+          "eventId": "screenshot-023",
+          "path": "screenshots/turn-06.png",
+          "sha256": "f9b7af3199b2776e1eca7f0816e5595f76ac404a3c6384fc296d7252c58c0a66",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000024",
+        "streamId": "stream-001",
+        "eventId": "reasoning-024",
+        "kind": "reasoning",
+        "text": "I will name the second table orders, a meaningful companion to customers.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:22:23.390Z",
+        "elapsedMs": 44715,
+        "frame": 6,
+        "capture": null
+      },
+      {
+        "id": "e000025",
+        "streamId": "stream-001",
+        "eventId": "ui_action-025",
+        "kind": "ui_action",
+        "text": "click (208, 290)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:23.715Z",
+        "elapsedMs": 45040,
+        "frame": 6,
+        "capture": null
+      },
+      {
+        "id": "e000026",
+        "streamId": "stream-001",
+        "eventId": "ui_action-026",
+        "kind": "ui_action",
+        "text": "keypress CTRL+A",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:23.821Z",
+        "elapsedMs": 45146,
+        "frame": 6,
+        "capture": null
+      },
+      {
+        "id": "e000027",
+        "streamId": "stream-001",
+        "eventId": "ui_action-027",
+        "kind": "ui_action",
+        "text": "type [6 chars]",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:24.129Z",
+        "elapsedMs": 45454,
+        "frame": 6,
+        "capture": null
+      },
+      {
+        "id": "e000028",
+        "streamId": "stream-001",
+        "eventId": "ui_action-028",
+        "kind": "ui_action",
+        "text": "click (585, 377)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:24.458Z",
+        "elapsedMs": 45783,
+        "frame": 6,
+        "capture": null
+      },
+      {
+        "id": "e000029",
+        "streamId": "stream-001",
+        "eventId": "screenshot-029",
+        "kind": "screenshot",
+        "text": "turn-07",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:22:24.988Z",
+        "elapsedMs": 46313,
+        "frame": 7,
+        "capture": {
+          "eventId": "screenshot-029",
+          "path": "screenshots/turn-07.png",
+          "sha256": "5e945c3938414efcdcdf38ab268c409195edfa706d203d31c52a202f9eef630a",
+          "mimeType": "image/png"
+        }
+      },
+      {
+        "id": "e000030",
+        "streamId": "stream-001",
+        "eventId": "reasoning-030",
+        "kind": "reasoning",
+        "text": "The sidebar confirms two tables named customers and orders, and the app shows they were saved. The task is complete.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:22:30.740Z",
+        "elapsedMs": 52065,
+        "frame": 7,
+        "capture": null
+      },
+      {
+        "id": "e000031",
+        "streamId": "stream-001",
+        "eventId": "message-031",
+        "kind": "message",
+        "text": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "quoteEligible": true,
+        "at": "2026-09-16T16:22:30.740Z",
+        "elapsedMs": 52065,
+        "frame": 7,
+        "capture": null
+      },
+      {
+        "id": "e000032",
+        "streamId": "stream-001",
+        "eventId": "event-001-subject",
+        "kind": "run_event:cua-lab.subject.provenance",
+        "text": "Subject cloned from drawdb-io/drawdb@ca7ba9a9a107bffb28adbf3e007138db3701a6aa and served at http://127.0.0.1:3000/ in-sandbox (subject env names: none; values never persisted); state: undeclared.",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:20:26.765Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000033",
+        "streamId": "stream-001",
+        "eventId": "event-002-session",
+        "kind": "run_event:cua-lab.session.goal_satisfied",
+        "text": "passed: REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:20:26.765Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000034",
+        "streamId": "stream-001",
+        "eventId": "event-003-phase-clone",
+        "kind": "run_event:cua-lab.subject.clone.completed",
+        "text": "subject repository cloned (3462ms)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:20:34.736Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000035",
+        "streamId": "stream-001",
+        "eventId": "event-004-phase-runtime",
+        "kind": "run_event:cua-lab.subject.runtime.completed",
+        "text": "Node runtime ready (21893ms)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:20:56.709Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000036",
+        "streamId": "stream-001",
+        "eventId": "event-005-phase-install",
+        "kind": "run_event:cua-lab.subject.install.completed",
+        "text": "subject dependencies installed (15787ms)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:12.496Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000037",
+        "streamId": "stream-001",
+        "eventId": "event-006-phase-build",
+        "kind": "run_event:cua-lab.subject.build.completed",
+        "text": "subject build complete (6705ms)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:19.365Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000038",
+        "streamId": "stream-001",
+        "eventId": "event-007-phase-ready",
+        "kind": "run_event:cua-lab.subject.ready.completed",
+        "text": "subject is ready (1664ms)",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:21:21.421Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      },
+      {
+        "id": "e000039",
+        "streamId": "stream-001",
+        "eventId": "event-008-geometry-warning",
+        "kind": "run_event:cua-lab.geometry.warning",
+        "text": "Browser window clipping corrected for lane lane-01; physical bounds are 1440x950 at (0, 0).",
+        "quoteEligible": false,
+        "at": "2026-09-16T16:20:26.765Z",
+        "elapsedMs": null,
+        "frame": null,
+        "capture": null
+      }
+    ],
+    "result": {
+      "summary": "The supplied synthetic participant completed the assigned task: the ending shows two tables named customers and orders, followed by the requested account of actions, confusion, and hesitation. Reported friction concerned apparent canvas overlap, finding the naming control, and choosing a database. Naming and database selection were resolved sufficiently to finish; separation of the canvas cards was not observed. These observations do not establish a task blocker or a diagnosed layout defect.",
+      "participants": [
+        {
+          "streamId": "stream-001",
+          "summary": "Entered the editor from the landing page, proceeded through database selection using Generic, added a table, expanded its sidebar entry, and named it customers. Repeated the add-and-expand path to name the second table orders. The participant described the entry point and Add table button positively, but reported database-choice hesitation, a search for naming controls, and confusing apparent canvas overlap. Both named tables remained in the sidebar at the ending.",
+          "intent": "As a first-time user, add two meaningfully named tables, then stop and describe what was done, what was confusing, and where hesitation occurred.",
+          "outcome": "completed",
+          "outcomeReason": "The final capture shows Tables (2), with customers and orders as distinct sidebar entries and orders in the expanded Name field. The final participant message supplies the requested account of actions, confusion, and hesitation. Separating the tables on the canvas, exporting, or verifying persistence after reload were not assigned requirements.",
+          "evidenceIds": [
+            "e000001",
+            "e000003",
+            "e000004",
+            "e000005",
+            "e000006",
+            "e000007",
+            "e000008",
+            "e000010",
+            "e000011",
+            "e000012",
+            "e000013",
+            "e000014",
+            "e000019",
+            "e000020",
+            "e000021",
+            "e000022",
+            "e000023",
+            "e000029",
+            "e000031",
+            "e000033"
+          ],
+          "feedback": [
+            {
+              "evidenceId": "e000002",
+              "text": "The landing page offers a clear way to enter the diagram editor."
+            },
+            {
+              "evidenceId": "e000009",
+              "text": "The Add table button is clearly labeled; I will create the first table."
+            },
+            {
+              "evidenceId": "e000031",
+              "text": "REACHED THE GOAL.\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar."
+            }
+          ],
+          "limitations": [
+            "The observed completion rests on the displayed table count and names plus the final feedback, not on the recorded passed status or the participant's success declaration alone.",
+            "The recorded endpoint source is participant_report; taskOutcomes is null, so no independent task-condition measurement is supplied. A null stopCause supplies no additional ending explanation.",
+            "The final screen displays a last-saved indicator, but persistence after reload was not tested and was outside the assignment.",
+            "Only one canvas card is distinguishable after the second addition. Captures do not establish the underlying table coordinates or the cause of this appearance."
+          ]
+        }
+      ],
+      "findings": [
+        {
+          "id": "F1",
+          "title": "Reported overlap confusion with only one canvas card distinguishable",
+          "summary": "After the second addition, the sidebar showed two tables while only the second table's canvas card was distinguishable. The participant reported apparent overlap as confusing, including in the final feedback. Both tables were successfully named, but no canvas-separation recovery was observed.",
+          "impact": "friction",
+          "affectedStreamIds": [
+            "stream-001"
+          ],
+          "exposedStreamIds": [
+            "stream-001"
+          ],
+          "exposureReason": "This participant added a second table to a canvas already containing the first and viewed the resulting two-table state.",
+          "recovery": "not_observed",
+          "confidence": "high",
+          "observations": [
+            {
+              "claim": "The first table's card was visible before the second addition; afterward, two sidebar entries were present but only the second table's card was distinguishable at the same apparent canvas location.",
+              "basis": "visual",
+              "evidenceIds": [
+                "e000011",
+                "e000020",
+                "e000029"
+              ],
+              "limitation": "This establishes the displayed appearance, not exact object coordinates, a placement algorithm defect, or loss of the first table. Rendering or observation-environment contributions remain unverified."
+            },
+            {
+              "claim": "The participant reported apparent overlap after adding the second table and described it as confusing in the final feedback despite seeing both tables in the sidebar.",
+              "basis": "participant_statement",
+              "evidenceIds": [
+                "e000021",
+                "e000031"
+              ],
+              "limitation": "The report establishes this participant's experience, not the underlying cause. The participant did not claim that either table was deleted or that naming was prevented."
+            }
+          ],
+          "nextStep": "Reproduce two consecutive Add table actions in Generic at a stable viewport and inspect both table coordinates to distinguish coincident placement from a rendering or capture effect.",
+          "priorityReason": "Ranked first because the concern remained in the final feedback and the ending still did not visually distinguish both canvas cards. The task nevertheless completed; no blocker was observed."
+        },
+        {
+          "id": "F2",
+          "title": "Reported naming-control search resolved through sidebar expansion",
+          "summary": "The participant reported an unexpected generated name and expanded the table entry to find naming controls. That exposed the Name field, and the same path was successfully reused for the second table. This was a bounded first-use discovery step, not a failed rename.",
+          "impact": "friction",
+          "affectedStreamIds": [
+            "stream-001"
+          ],
+          "exposedStreamIds": [
+            "stream-001"
+          ],
+          "exposureReason": "The participant encountered newly added tables with generated names and used the sidebar controls to rename both.",
+          "recovery": "recovered",
+          "confidence": "high",
+          "observations": [
+            {
+              "claim": "The participant described the initial generated name as unexpected and said they would expand the sidebar entry to look for naming controls.",
+              "basis": "participant_statement",
+              "evidenceIds": [
+                "e000012"
+              ],
+              "limitation": "There was no reported failed attempt or prolonged search. This does not establish that the control was generally undiscoverable."
+            },
+            {
+              "claim": "The collapsed table entry did not display a Name field; the expanded entry did.",
+              "basis": "visual",
+              "evidenceIds": [
+                "e000011",
+                "e000014"
+              ],
+              "limitation": "Only this sidebar path was examined; alternative ways to rename a table were not tested."
+            },
+            {
+              "claim": "The ending shows the two table entries renamed customers and orders.",
+              "basis": "visual",
+              "evidenceIds": [
+                "e000029"
+              ],
+              "limitation": "This confirms successful naming in the displayed session, not that the initial discovery step was effortless or that persistence was independently tested."
+            }
+          ],
+          "nextStep": "Compare the current collapsed entry with an automatically expanded, focused Name field during the same first-use naming task.",
+          "priorityReason": "Ranked below the unresolved canvas concern because naming recovered successfully. It directly concerned an essential assigned operation, but no wrong rename or repeated failed attempt was observed."
+        },
+        {
+          "id": "F3",
+          "title": "Reported hesitation at the initial database choice",
+          "summary": "The participant reported hesitation because database selection came before table creation, then proceeded using Generic. The assignment supplied no database preference, which may have contributed to uncertainty. The dialog already provided explanatory text for Generic, and no incorrect choice or retry was observed.",
+          "impact": "friction",
+          "affectedStreamIds": [
+            "stream-001"
+          ],
+          "exposedStreamIds": [
+            "stream-001"
+          ],
+          "exposureReason": "The participant encountered the database-selection dialog on entering the empty editor.",
+          "recovery": "recovered",
+          "confidence": "high",
+          "observations": [
+            {
+              "claim": "The initial editor capture shows a database-selection dialog with an inactive Confirm button and a Generic option explaining its export flexibility and limited data types.",
+              "basis": "visual",
+              "evidenceIds": [
+                "e000004"
+              ],
+              "limitation": "The capture does not establish whether an alternative dismissal path existed. It also contradicts any claim that Generic had no explanatory guidance."
+            },
+            {
+              "claim": "The participant reported hesitation about the database choice and identified Generic as appropriate for the simple diagram.",
+              "basis": "participant_statement",
+              "evidenceIds": [
+                "e000005",
+                "e000031"
+              ],
+              "limitation": "This is reported uncertainty, not evidence of an incorrect selection or product fault. The open-ended assignment may explain part of the hesitation."
+            },
+            {
+              "claim": "Following the recorded selection clicks, the next capture shows the dialog dismissed and the empty editor available.",
+              "basis": "visual",
+              "evidenceIds": [
+                "e000008"
+              ],
+              "limitation": "This confirms continuation into the editor, but the capture itself does not display the selected database flavor."
+            }
+          ],
+          "nextStep": "Repeat with a brief explicitly allowing any database and check whether hesitation remains despite the existing Generic description before changing the selector.",
+          "priorityReason": "Ranked last because this prerequisite choice was resolved immediately along the supplied path, with no recorded retry or incorrect result. The task brief is a plausible contributor."
+        }
+      ],
+      "limitations": [
+        "The packet contains one retained synthetic participant, 39 evidence entries, and eight captures, with no declared omissions. It supports session-specific observations, not real-human population rates.",
+        "Captures sample displayed states rather than providing continuous visual coverage. Hidden state, exact table coordinates, alternative interaction paths, and persistence after reload were not tested.",
+        "Provisioning and runtime records describe study machinery, not participant-directed operations in the diagram tool.",
+        "Reported friction is distinguishable from a product defect: the database hesitation may be assignment-related, and the cause of the apparent canvas overlap remains unverified."
+      ],
+      "concernReviews": [
+        {
+          "claim": "The participant reported confusing apparent table overlap even though both tables were listed in the sidebar.",
+          "basis": "participant_statement",
+          "evidenceIds": [
+            "e000021",
+            "e000031"
+          ],
+          "limitation": "The captures support only one distinguishable canvas card, not a diagnosed overlap mechanism or missing data; the final sidebar confirms both names.",
+          "disposition": "finding",
+          "findingId": "F1",
+          "reason": "Useful unresolved display-related confusion remained at the ending, separately from successful table creation and naming."
+        },
+        {
+          "claim": "The participant looked for naming controls by expanding the generated-name table entry.",
+          "basis": "participant_statement",
+          "evidenceIds": [
+            "e000012",
+            "e000015",
+            "e000031"
+          ],
+          "limitation": "The search was brief and successful; no failed rename or evidence that expansion was the only available naming path was supplied.",
+          "disposition": "finding",
+          "findingId": "F2",
+          "reason": "Preserved as mild, recovered discovery friction directly related to the assigned naming task, rather than as a blocker."
+        },
+        {
+          "claim": "The participant reported hesitation at database selection and proceeded using Generic.",
+          "basis": "participant_statement",
+          "evidenceIds": [
+            "e000005",
+            "e000031"
+          ],
+          "limitation": "The assignment specified no database preference, and the dialog already explained Generic. No incorrect choice or subsequent database problem was established.",
+          "disposition": "finding",
+          "findingId": "F3",
+          "reason": "The reported uncertainty is useful to check even though assignment ambiguity may contribute and continuation was successful."
+        },
+        {
+          "claim": "Harness metadata reports a corrected browser-window clipping condition.",
+          "basis": "inference",
+          "evidenceIds": [
+            "e000039"
+          ],
+          "limitation": "This is an environment record, not a participant action or evidence linking clipping to the canvas appearance.",
+          "disposition": "context",
+          "findingId": null,
+          "reason": "Retained as a reason to verify geometry under a stable viewport, not as a separate product issue or an explanation for apparent overlap."
+        },
+        {
+          "claim": "The recorded session ending is passed with a goal-satisfied account matching the participant's final message.",
+          "basis": "inference",
+          "evidenceIds": [
+            "e000033"
+          ],
+          "limitation": "Recorded metadata is separate from visible task evidence: recordedStatus=passed; recordedReason=\"REACHED THE GOAL.\\nI added two tables named customers and orders. I hesitated at the required database choice and chose Generic. Finding the Name field required expanding a table. The tables appeared to overlap on the canvas, which was confusing despite both appearing in the sidebar.\"; provenance.actorStatus=passed; provenance.completionReason=goal_satisfied; provenance.stopCause=null; provenance.goalSource=participant_report; provenance.declaredOutcome=reached; provenance.taskOutcomes=null.",
+          "disposition": "context",
+          "findingId": null,
+          "reason": "Preserves the recorded ending and provenance without treating them as an independent completion measurement or an execution verdict."
+        }
+      ]
+    },
+    "error": null,
+    "captureVersion": 2
+  },
+  "corrections": [],
+  "warnings": [],
+  "automatic": {
+    "state": "complete",
+    "analysisId": "analysis-7e270c60-6a18-426b-85f7-620a407b06c1",
+    "reason": null,
+    "updatedAt": "2026-09-16T16:24:50.124Z"
+  }
+}

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { track } from "@vercel/analytics";
 import { copyCommand } from "../lib/copy-command";
+import { capture } from "./analytics/posthog-client";
 
 /** Commands remain selectable when JavaScript or clipboard access is unavailable. */
 export default function CopyButton({ text, label = "copy" }: { text: string; label?: string }) {
@@ -24,6 +25,7 @@ export default function CopyButton({ text, label = "copy" }: { text: string; lab
     if (timer.current) clearTimeout(timer.current);
     setStatus("copying");
     const outcome = await copyCommand(text, navigator.clipboard, track);
+    capture("install_copy", { command: text.split("\n")[0], outcome });
     if (current !== attempt.current) return;
     busy.current = false;
     setStatus(outcome === "success" ? "copied" : "failed");

@@ -3,6 +3,8 @@ packages:
   - observer
   - tui
 allowBuilds:
+  # posthog-js pulls core-js; its postinstall only prints a funding note.
+  core-js: false
   esbuild: true
 minimumReleaseAgeExclude:
   - fumadocs-core@16.15.7
