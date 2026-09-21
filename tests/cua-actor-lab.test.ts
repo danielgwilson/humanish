@@ -768,8 +768,8 @@ describe("runCuaActorLab", () => {
         if (command.includes("find_chrome_window")) {
           return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
         }
-        if (command.includes("getwindowgeometry")) {
-          return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=500\nHEIGHT=896\n" };
+        if (command.includes("xwininfo -id")) {
+          return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n" };
         }
         // Order matters: every probe command embeds the whole script, so match the JSON args first.
         if (command.includes('"mode":"fidelity"')) {
@@ -865,7 +865,7 @@ describe("runCuaActorLab", () => {
       commandHandler: (command) => {
         if (command.includes("xdpyinfo")) return { exitCode: 0, stdout: "dimensions: 500x896 pixels (300x200 millimeters)\n" };
         if (command.includes("find_chrome_window")) return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
-        if (command.includes("getwindowgeometry")) return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=500\nHEIGHT=896\n" };
+        if (command.includes("xwininfo -id")) return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n" };
         if (command.includes('"mode":"fidelity"')) {
           const onSecondTab = command.includes('"targetId":"T2"');
           return {
@@ -1244,7 +1244,7 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({ commandHandler: (command) => {
       if (command.includes("xdpyinfo")) return { exitCode: 0, stdout: "dimensions: 1280x800 pixels\n" };
       if (command.includes("find_chrome_window")) return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
-      if (command.includes("getwindowgeometry")) return { exitCode: 0, stdout: "X=0\nY=32\nWIDTH=1280\nHEIGHT=800\n" };
+      if (command.includes("xwininfo -id")) return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n" };
       if (command.includes("browser_preference='default'")) return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
       return undefined;
     } });
@@ -1262,7 +1262,7 @@ describe("runCuaActorLab", () => {
     expect(participantSessions).toBe(0);
     expect(killed).toEqual(["fake-sandbox-001"]);
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
-    expect(bundle.streams[0].desktopGeometry.browserWindow).toMatchObject({ y: 32, height: 800, source: "xdotool" });
+    expect(bundle.streams[0].desktopGeometry.browserWindow).toMatchObject({ y: 32, height: 800, source: "xwininfo" });
     expect(bundle.streams[0].desktopGeometry.warnings.join(" ")).toContain("outside the captured");
   });
 
@@ -1275,8 +1275,8 @@ describe("runCuaActorLab", () => {
         if (command.includes("find_chrome_window")) {
           return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
         }
-        if (command.includes("getwindowgeometry")) {
-          return { exitCode: 0, stdout: "X=0\nY=0\nWIDTH=1280\nHEIGHT=800\n" };
+        if (command.includes("xwininfo -id")) {
+          return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n" };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
           return {
@@ -1318,7 +1318,7 @@ describe("runCuaActorLab", () => {
         requested: { width: 1280, height: 800 },
         verified: { width: 1280, height: 800, source: "xdpyinfo" }
       },
-      browserWindow: { x: 0, y: 0, width: 1280, height: 800, source: "xdotool" },
+      browserWindow: { x: 0, y: 0, width: 1280, height: 800, source: "xwininfo" },
       viewport: { width: 1280, height: 661, deviceScaleFactor: 1, source: "cdp" }
     });
     expect(bundle.streams[0].viewport).toEqual({
@@ -2314,8 +2314,8 @@ describe("runCuaActorLab", () => {
         if (command.includes("find_chrome_window()")) {
           return { stdout: "WINDOW_ID=7340035\n", exitCode: 0 };
         }
-        if (command.includes("getwindowgeometry")) {
-          return { stdout: "X=0\nY=0\nWIDTH=1280\nHEIGHT=800\n", exitCode: 0 };
+        if (command.includes("xwininfo -id")) {
+          return { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n", exitCode: 0 };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
           return {
@@ -2353,7 +2353,7 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
     expect(bundle.streams[0].desktopGeometry.browserWindow).toEqual({
-      x: 0, y: 0, width: 1280, height: 800, source: "xdotool"
+      x: 0, y: 0, width: 1280, height: 800, source: "xwininfo"
     });
     expect(bundle.streams[0].desktopGeometry.viewport).toBeUndefined();
     expect(bundle.streams[0].viewport).toBeUndefined();

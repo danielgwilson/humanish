@@ -2042,7 +2042,7 @@ function isPositiveMeasurement(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-async function measureBrowserWindowWithXdotool(
+async function measureBrowserWindowWithXwininfo(
   desktop: E2BDesktopSandbox,
   windowId: string,
   requestTimeoutMs: number
@@ -2050,23 +2050,34 @@ async function measureBrowserWindowWithXdotool(
   const result = await desktop.commands.run([
     "set -euo pipefail",
     `win=${shellSingleQuote(windowId)}`,
-    "xdotool getwindowgeometry --shell \"$win\" 2>/dev/null || true"
+    // Older xdotool builds translate parent-relative offsets twice. With window
+    // decorations that falsely reports a visible client as clipped, triggering
+    // fullscreen and hiding the participant's address bar. Read root-relative
+    // client coordinates directly; never substitute emulated CDP outer bounds.
+    "LC_ALL=C xwininfo -id \"$win\" -stats 2>/dev/null"
   ].join("\n"), { requestTimeoutMs, timeoutMs: 5_000 });
-  const output = result.stdout ?? "";
-  const read = (name: string): number | undefined => {
-    const raw = output.match(new RegExp(`^${name}=(-?\\d+)$`, "m"))?.[1];
-    if (raw === undefined) return undefined;
-    const value = Number(raw);
-    return Number.isFinite(value) ? value : undefined;
+  if (result.exitCode !== undefined && result.exitCode !== 0) return undefined;
+  return parseXwininfoGeometry(result.stdout ?? "");
+}
+
+/** Root-relative physical client bounds from xwininfo's C-locale stats. */
+export function parseXwininfoGeometry(output: string): RunDesktopGeometry["browserWindow"] | undefined {
+  const read = (label: string) => {
+    const matches = [...output.matchAll(new RegExp(`^\\s*${label}:\\s*(-?\\d+)\\s*$`, "gm"))];
+    if (matches.length !== 1) return undefined;
+    const value = Number(matches[0]![1]);
+    return Number.isSafeInteger(value) ? value : undefined;
   };
-  const x = read("X");
-  const y = read("Y");
-  const width = read("WIDTH");
-  const height = read("HEIGHT");
+  const x = read("Absolute upper-left X");
+  const y = read("Absolute upper-left Y");
+  const width = read("Width");
+  const height = read("Height");
+  const mapStates = [...output.matchAll(/^\s*Map State:\s*(\S+)\s*$/gm)];
+  if (mapStates.length !== 1 || mapStates[0]![1] !== "IsViewable") return undefined;
   if (x === undefined || y === undefined || width === undefined || height === undefined || width <= 0 || height <= 0) {
     return undefined;
   }
-  return { x, y, width, height, source: "xdotool" };
+  return { x, y, width, height, source: "xwininfo" };
 }
 
 /** Physical X client bounds, never the page's emulated window.outerWidth/Height. */
@@ -2078,8 +2089,8 @@ function isBrowserWindowContained(
     && bounds.x + bounds.width <= width && bounds.y + bounds.height <= height;
 }
 
-/** One bounded repair. Window-manager decorations may keep the client origin below (0, 0),
- * so a full-screen client height can clip the bottom even after windowmove succeeds. */
+/** Bounded repair. Resizing can clear a window-manager maximize state and move the
+ * client origin as decorations return, so remeasure before a second adjustment. */
 async function fitBrowserWindowWithinDesktop(
   desktop: E2BDesktopSandbox,
   windowId: string,
@@ -2093,17 +2104,19 @@ async function fitBrowserWindowWithinDesktop(
   ].join("\n"), { requestTimeoutMs, timeoutMs: 5_000 }).catch(() => undefined);
   await run('xdotool windowmove "$win" 0 0');
   await desktop.wait(250).catch(() => undefined);
-  const moved = await measureBrowserWindowWithXdotool(desktop, windowId, requestTimeoutMs).catch(() => undefined);
+  const moved = await measureBrowserWindowWithXwininfo(desktop, windowId, requestTimeoutMs).catch(() => undefined);
   if (moved === undefined) return moved;
   let resized = moved;
-  const width = resolution[0] - moved.x;
-  const height = resolution[1] - moved.y;
   // Resizing alone cannot fix an offscreen client origin. The window manager
   // can also center a minimum-width client at a negative x on a narrow screen.
-  if (moved.x >= 0 && moved.y >= 0 && width > 0 && height > 0) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (isBrowserWindowContained(resized, resolution)) return resized;
+    const width = resolution[0] - resized.x;
+    const height = resolution[1] - resized.y;
+    if (resized.x < 0 || resized.y < 0 || width <= 0 || height <= 0) break;
     await run(`xdotool windowsize "$win" ${width} ${height}`);
     await desktop.wait(250).catch(() => undefined);
-    const measured = await measureBrowserWindowWithXdotool(desktop, windowId, requestTimeoutMs).catch(() => undefined);
+    const measured = await measureBrowserWindowWithXwininfo(desktop, windowId, requestTimeoutMs).catch(() => undefined);
     if (measured === undefined) return measured;
     resized = measured;
   }
@@ -2124,7 +2137,7 @@ async function fitBrowserWindowWithinDesktop(
   // Give the window manager a bounded settling window, keeping missing reads unverified.
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await desktop.wait(250).catch(() => undefined);
-    const measured = await measureBrowserWindowWithXdotool(desktop, windowId, requestTimeoutMs).catch(() => undefined);
+    const measured = await measureBrowserWindowWithXwininfo(desktop, windowId, requestTimeoutMs).catch(() => undefined);
     if (measured === undefined || isBrowserWindowContained(measured, resolution)) return measured;
     resized = measured;
   }
@@ -2169,38 +2182,38 @@ export async function captureDesktopBrowserGeometry(args: {
     });
   }
 
-  let xdotoolWindow: RunDesktopGeometry["browserWindow"] | undefined;
+  let physicalWindow: RunDesktopGeometry["browserWindow"] | undefined;
   if (browserWindowId !== undefined) {
     if (args.resize !== false) {
       await fillDesktopBrowserWindow(args.desktop, browserWindowId, args.requestedScreen, args.requestTimeoutMs);
       // Let the window manager apply the resize before querying both X and page layout geometry.
       await args.desktop.wait(250).catch(() => undefined);
     }
-    xdotoolWindow = await measureBrowserWindowWithXdotool(args.desktop, browserWindowId, args.requestTimeoutMs)
+    physicalWindow = await measureBrowserWindowWithXwininfo(args.desktop, browserWindowId, args.requestTimeoutMs)
       .catch(() => undefined);
   } else {
     warnings.push(`Browser window bounds could not be measured for lane ${args.laneId}; the live stream will use the full desktop.`);
   }
 
   let unusable: string | undefined;
-  if (xdotoolWindow !== undefined && !isBrowserWindowContained(xdotoolWindow, args.requestedScreen)) {
-    const before = xdotoolWindow;
+  if (physicalWindow !== undefined && !isBrowserWindowContained(physicalWindow, args.requestedScreen)) {
+    const before = physicalWindow;
     if (args.resize !== false && browserWindowId !== undefined) {
-      xdotoolWindow = await fitBrowserWindowWithinDesktop(args.desktop, browserWindowId, args.requestedScreen, args.requestTimeoutMs);
-      if (xdotoolWindow === undefined) {
+      physicalWindow = await fitBrowserWindowWithinDesktop(args.desktop, browserWindowId, args.requestedScreen, args.requestTimeoutMs);
+      if (physicalWindow === undefined) {
         // Keep the last measured bad state; a missing observation cannot prove a successful fix.
-        xdotoolWindow = before;
+        physicalWindow = before;
         unusable = `Physical browser containment could not be verified after correction for lane ${args.laneId}; the last measured window was clipped.`;
-      } else if (isBrowserWindowContained(xdotoolWindow, args.requestedScreen)) {
-        warnings.push(`Browser window clipping corrected for lane ${args.laneId}; physical bounds are ${xdotoolWindow.width}x${xdotoolWindow.height} at (${xdotoolWindow.x}, ${xdotoolWindow.y}).`);
+      } else if (isBrowserWindowContained(physicalWindow, args.requestedScreen)) {
+        warnings.push(`Browser window clipping corrected for lane ${args.laneId}; physical bounds are ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}).`);
       }
     }
-    if (unusable === undefined && !isBrowserWindowContained(xdotoolWindow, args.requestedScreen)) {
-      unusable = `Browser window is outside the captured ${args.requestedScreen[0]}x${args.requestedScreen[1]} desktop for lane ${args.laneId}: physical bounds ${xdotoolWindow.width}x${xdotoolWindow.height} at (${xdotoolWindow.x}, ${xdotoolWindow.y}), right=${xdotoolWindow.x + xdotoolWindow.width}, bottom=${xdotoolWindow.y + xdotoolWindow.height}.`;
+    if (unusable === undefined && !isBrowserWindowContained(physicalWindow, args.requestedScreen)) {
+      unusable = `Browser window is outside the captured ${args.requestedScreen[0]}x${args.requestedScreen[1]} desktop for lane ${args.laneId}: physical bounds ${physicalWindow.width}x${physicalWindow.height} at (${physicalWindow.x}, ${physicalWindow.y}), right=${physicalWindow.x + physicalWindow.width}, bottom=${physicalWindow.y + physicalWindow.height}.`;
     }
     if (unusable !== undefined) warnings.push(unusable);
   }
-  if (xdotoolWindow === undefined) {
+  if (physicalWindow === undefined) {
     warnings.push(`Physical browser containment is unverified for lane ${args.laneId}; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.`);
   }
 
@@ -2224,11 +2237,11 @@ export async function captureDesktopBrowserGeometry(args: {
         return undefined;
       })
     : undefined;
-  const browserWindow = xdotoolWindow ?? chromeGeometry?.browserWindow;
+  const browserWindow = physicalWindow ?? chromeGeometry?.browserWindow;
   const viewport = chromeGeometry?.viewport;
   // The fill check reads the X window when it was measured: under mobile emulation (#221) the
   // page's window.outerWidth reports the EMULATED screen (414), which is not a fill failure.
-  const fillBounds = xdotoolWindow;
+  const fillBounds = physicalWindow;
   if (!browserWindow) {
     warnings.push(`Browser outer bounds could not be measured for lane ${args.laneId}.`);
   } else if (unusable === undefined && fillBounds !== undefined && (fillBounds.x !== 0 || fillBounds.y !== 0 || fillBounds.width !== args.requestedScreen[0] || fillBounds.height !== args.requestedScreen[1])) {

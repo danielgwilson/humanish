@@ -1,0 +1,23 @@
+xwininfo: Window id: 0x200001 "Synthetic browser"
+
+  Absolute upper-left X:  0
+  Absolute upper-left Y:  51
+  Relative upper-left X:  0
+  Relative upper-left Y:  24
+  Width: 1440
+  Height: 899
+  Depth: 32
+  Visual: 0x4f0
+  Visual Class: TrueColor
+  Border width: 0
+  Class: InputOutput
+  Colormap: 0x200002 (not installed)
+  Bit Gravity State: NorthWestGravity
+  Window Gravity State: NorthWestGravity
+  Backing Store State: NotUseful
+  Save Under State: no
+  Map State: IsViewable
+  Override Redirect State: no
+  Corners:  +0+51  -0+51  -0-0  +0-0
+  -geometry 1440x899+0-0
+

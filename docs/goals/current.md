@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-21. Release baseline: `0.96.0`.
+Status date: 2026-09-21. Release baseline: `0.96.1`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.96.0-real-email-receiving.md).
+in the [release notes](../release/0.96.1-browser-navigation.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.96.0`)
+## Current Program Truth (source `0.96.1`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |

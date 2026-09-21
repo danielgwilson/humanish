@@ -388,7 +388,7 @@ export interface RunDesktopGeometry {
     y: number;
     width: number;
     height: number;
-    source: "cdp" | "xdotool";
+    source: "cdp" | "xdotool" | "xwininfo";
   };
   /** Browser CSS layout viewport measured from the running page, never copied from config. */
   viewport?: {
@@ -7645,7 +7645,7 @@ function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
     || !isFiniteNumber(browserWindow.y)
     || !isPositiveFiniteNumber(browserWindow.width)
     || !isPositiveFiniteNumber(browserWindow.height)
-    || (browserWindow.source !== "cdp" && browserWindow.source !== "xdotool")
+    || (browserWindow.source !== "cdp" && browserWindow.source !== "xdotool" && browserWindow.source !== "xwininfo")
   )) {
     return false;
   }
