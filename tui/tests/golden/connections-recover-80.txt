@@ -1,0 +1,16 @@
+human(ish)                                                           example-app
+‹ connections
+
+Review inbox cleanup
+study-20260920-a
+Connection: agentmail
+2 pending · 2 participants
+
+Release this study’s owned inboxes.
+An uncertain creation may be replayed, then released. Other inboxes are
+untouched.
+
+❯ Release study inboxes
+  Back to cleanup
+
+↑↓ move   ⏎ select   esc back   q quit

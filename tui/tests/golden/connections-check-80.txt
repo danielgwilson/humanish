@@ -1,0 +1,17 @@
+human(ish)                                                           example-app
+‹ connections
+
+Authentication check
+Credential: present
+Authentication: passed
+Inbox permissions: unknown
+Capacity: unknown · delivery: untested
+
+Authentication passed. Inbox permissions, capacity and delivery are still
+untested. No resources were created.
+Checked: 2026-09-20T12:00:00Z
+
+❯ Check again
+  Back to Connections
+
+↑↓ move   ⏎ select   esc back   q quit
