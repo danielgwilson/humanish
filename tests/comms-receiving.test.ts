@@ -240,6 +240,14 @@ describe("run-scoped real-email coordination", () => {
     expect(await inspectCommsRecovery({ cwd, stateDir })).toMatchObject([{ status: "closed", unresolvedCount: 0 }]);
   });
 
+  it.each(["pod", "inbox"] as const)("rejects unsupported %s scope before recording intents or requesting inboxes", async scopeType => {
+    provider.authenticate.mockResolvedValue({ ...provider.identity, scopeType });
+    await expect(start()).rejects.toMatchObject({ code: "comms_scope_unsupported" });
+    expect(provider.acquire).not.toHaveBeenCalled();
+    expect(provider.release).not.toHaveBeenCalled();
+    await expect(readdir(stateDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("cancellation racing creation retains the original intent instead of inventing replacement ownership", async () => {
     const controller = new AbortController();
     const original = provider.acquire.getMockImplementation()!;

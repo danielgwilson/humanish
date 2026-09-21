@@ -408,6 +408,8 @@ export async function startCommsReceiving(options: StartCommsReceivingOptions): 
     if (options.adapter.provider !== "agentmail") throw new CommsReceivingError("comms_provider_unsupported");
     const identity = await bounded(context => options.adapter.authenticate(context), REQUEST_MS, options.signal);
     if (!validReceivingIdentity(identity)) throw new CommsReceivingError("comms_identity_invalid");
+    // Fresh-inbox creation is supported only for the organization-scoped route advertised by setup.
+    if (identity.scopeType !== "organization") throw new CommsReceivingError("comms_scope_unsupported");
     const store = await CommsLeaseStore.create({ cwd: options.cwd, runId: options.runId, connectionName: options.connectionName,
       apiKeyEnv: options.apiKeyEnv, identity, participants: options.participants, ...(options.stateDir ? { stateDir: options.stateDir } : {}) });
     const run = new ReceivingRun(options, store);
