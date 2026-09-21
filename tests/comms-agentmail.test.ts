@@ -146,7 +146,7 @@ describe("AgentMail receiving transport", () => {
     const empty = queue(fixture("messages"), missing);
     expect((await empty.adapter.read(LEASE)).limitations).toContain("agentmail_content_missing");
   });
-  it.each(["https://evil.example.test/pixel", "http://cdn.agentmail.to/pixel", "https://cdn.agentmail.to.evil.example.test/pixel", "https://user:secret@cdn.agentmail.to/pixel", "https://cdn.agentmail.to:444/pixel", "https://cdn.agentmail.to/pixel#fragment", "https://example.s3.amazonaws.com/pixel"])("blocks unestablished download origin %s before fetching", async (url) => {
+  it.each(["https://evil.example.test/pixel", "http://cdn.agentmail.to/pixel", "https://cdn.agentmail.to.evil.example.test/pixel", "https://user:***@cdn.agentmail.to/pixel", "https://cdn.agentmail.to:444/pixel", "https://cdn.agentmail.to/pixel#fragment", "https://example.s3.amazonaws.com/pixel"])("blocks unestablished download origin %s before fetching", async (url) => {
     const descriptor = fixture("attachment"); descriptor.body!.download_url = url;
     const { adapter, calls } = queue(fixture("messages"), fixture("message"), descriptor);
     const batch = await adapter.read(LEASE);

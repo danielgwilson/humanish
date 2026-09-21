@@ -795,8 +795,8 @@ export interface LabCommsCaptureEmail {
   allowedOrigins?: never;
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
    *  `fake` (default) is an in-harness in-memory inbox in the Fowler test-double sense — an in-sandbox
-   *  catch captures the app's sends and nothing leaves the machine. `real` (provider-backed) is not yet
-   *  supported and is rejected at parse; when it lands it will carry a `provider` alongside `kind`. */
+   *  catch captures the app's sends. Provider-backed receiving uses the separate
+   *  LabCommsReceivingEmail configuration selected by a saved connection. */
   kind: "fake";
   /**
    * The subject-env var the harness sets to the in-sandbox catch's base URL — ADOPTER-NAMED (an app

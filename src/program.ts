@@ -1507,7 +1507,7 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
         const entries = (await inspectCommsRecovery({ cwd })).filter(entry => !options.run || entry.runId === options.run);
         if (!options.apply) {
           const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
-          writeResult(command, io, result, value => value.entries.length ? value.entries.map(entry => `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner ? "active owner" : "inactive"}\n`).join("") : "No recoverable email leases in this project.\n");
+          writeResult(command, io, result, value => value.entries.length ? value.entries.map(entry => `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner === null ? "unknown owner" : entry.activeOwner ? "active owner" : "inactive"}\n`).join("") : "No recoverable email leases in this project.\n");
           return;
         }
         if (!options.run || entries.length !== 1) throw new Error("selection");
