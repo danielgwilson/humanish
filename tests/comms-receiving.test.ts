@@ -128,6 +128,7 @@ describe("run-scoped real-email coordination", () => {
     expect(run.snapshot().participants[0]).toMatchObject({ observed: 1, published: 0, limitations: ["surface_publication_failed"] });
     const final = await run.finish();
     expect(final.participants[0]).toMatchObject({ observed: 1, published: 1, cleanup: "absent" });
+    expect(inbox.publish).toHaveBeenCalledTimes(3); // empty, failed content, retried retained content
     expect(inbox.publish.mock.calls.at(-1)?.[0][0]?.body).toContain(body);
     expect(JSON.stringify(final)).not.toContain("arbitrary-renderer-secret-canary");
   });
@@ -148,6 +149,7 @@ describe("run-scoped real-email coordination", () => {
     expect(participant.messages).toEqual([initial]);
     expect(participant.limitations).toEqual(expect.arrayContaining(["agentmail_content_missing", "agentmail_attachment_unavailable", "message_content_updated_after_publication"]));
     const publication = inbox.publish.mock.calls.at(-1)?.[0][0]?.body;
+    expect(inbox.publish).toHaveBeenCalledTimes(3); // empty, partial content, enriched content
     expect(publication).toContain("The complete synthetic message");
     expect(publication).toContain(image.base64);
     expect(publication).toContain("message-000001");
@@ -166,6 +168,32 @@ describe("run-scoped real-email coordination", () => {
     expect(result.participants[0]).toMatchObject({ observed: 1, published: 1 });
     expect(result.participants[0]?.limitations).toContain("agentmail_content_missing");
     expect(result.participants[0]?.limitations).not.toContain("message_content_updated_after_publication");
+    expect(inbox.publish).toHaveBeenCalledTimes(2); // later failed hydration did not degrade or rewrite content
+  });
+
+  it.each(["empty", "populated"])("does not rerender or upload unchanged %s mail on periodic/final reconciliation", async kind => {
+    let periodicPersisted!: () => void;
+    const periodicEvidence = new Promise<void>(resolve => { periodicPersisted = resolve; });
+    const render = vi.fn(options.render);
+    const run = await start({ participants: ["participant-a"], render, writeEvidence: async value => {
+      evidence.push(structuredClone(value));
+      if (provider.read.mock.calls.length >= 2) periodicPersisted();
+    } });
+    const inbox = surface();
+    const messages = kind === "empty" ? [] : [email("one"), email("two")];
+    provider.batch.set("provider-resource-1", [complete(messages), complete([...messages].reverse()), empty()]);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    await run.attach("participant-a", { surface: inbox, allowedOrigins: [] });
+    const publications = kind === "empty" ? 1 : 2;
+    expect(inbox.publish).toHaveBeenCalledTimes(publications);
+    await vi.advanceTimersByTimeAsync(3_001);
+    await periodicEvidence;
+    const result = await run.finish();
+    expect(provider.read).toHaveBeenCalledTimes(3); // first, scheduled, final: provider coverage still reconciles
+    expect(inbox.publish).toHaveBeenCalledTimes(publications);
+    expect(render).toHaveBeenCalledTimes(publications);
+    expect(result.participants[0]).toMatchObject({ observed: messages.length, published: messages.length, cleanup: "absent" });
+    expect(result.participants[0]?.limitations).not.toContain("surface_publication_failed");
   });
 
   it("keeps publishing within the renderer's message cap when later messages exceed retention", async () => {

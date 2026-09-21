@@ -122,6 +122,8 @@ type Participant = {
   evidence: ReceivingParticipantEvidence;
   messages: Map<string, ParticipantEmail>;
   contentBytes: number;
+  revision: number;
+  publishedRevision?: number;
   lease?: ReceivingLease;
   surface?: ReceivingSurface;
   allowedOrigins: string[];
@@ -150,7 +152,7 @@ class ReceivingRun implements CommsReceivingRun {
         acquisition: "pending", cleanup: "pending", observed: 0, published: 0, linkCount: 0, codeCount: 0,
         blockedAssetCount: 0, blockedLinkCount: 0, messages: [], limitations: [] };
       this.evidence.participants.push(evidence);
-      this.participants.set(record.participantId, { record, evidence, messages: new Map(), contentBytes: 0, allowedOrigins: [], finished: false });
+      this.participants.set(record.participantId, { record, evidence, messages: new Map(), contentBytes: 0, revision: 0, allowedOrigins: [], finished: false });
     }
   }
   snapshot(): CommsReceivingEvidence { return structuredClone(this.evidence); }
@@ -240,10 +242,12 @@ class ReceivingRun implements CommsReceivingRun {
     }
     participant.messages.set(message.providerMessageId, structuredClone(current));
     participant.contentBytes += size - previousSize;
+    const contentChanged = !previous || visibleContent(previous) !== visibleContent(current);
+    if (contentChanged) participant.revision += 1;
     if (previous) {
       const observation = participant.evidence.messages.find(item => item.id === id)!;
       if (timestamp && observation.providerTimestamp === undefined) observation.providerTimestamp = timestamp;
-      if (observation.publishedAt && visibleContent(previous) !== visibleContent(current)) {
+      if (observation.publishedAt && contentChanged) {
         // publishedAt is the first publication, not a claim that a subsequently enriched version was seen.
         addCode(participant.evidence.limitations, "message_content_updated_after_publication");
       }
@@ -252,8 +256,12 @@ class ReceivingRun implements CommsReceivingRun {
   }
   private async publish(participant: Participant): Promise<boolean> {
     if (!participant.surface || !participant.lease) return false;
+    // Polling reconciles provider coverage, but an unchanged visible snapshot needs no desktop I/O.
+    // Advance only after acknowledged publication so failures and later hydration remain retryable.
+    if (participant.publishedRevision === participant.revision) return true;
     if (participant.pendingPublication) { addCode(participant.evidence.limitations, "surface_publication_pending"); return false; }
     try {
+      const revision = participant.revision;
       const rendered = this.options.render({ address: participant.lease.address, messages: [...participant.messages.values()],
         allowedOrigins: participant.allowedOrigins, ...(participant.originMap ? { originMap: participant.originMap } : {}) });
       this.options.registerSecrets(rendered.secrets);
@@ -268,6 +276,7 @@ class ReceivingRun implements CommsReceivingRun {
       void pending.then(() => { if (participant.pendingPublication === pending) delete participant.pendingPublication; },
         () => { if (participant.pendingPublication === pending) delete participant.pendingPublication; });
       await bounded(() => pending, SURFACE_MS);
+      participant.publishedRevision = revision;
       const publishedAt = now();
       for (const message of participant.evidence.messages) message.publishedAt ??= publishedAt;
       participant.evidence.published = participant.evidence.messages.filter(message => message.publishedAt !== undefined).length;
