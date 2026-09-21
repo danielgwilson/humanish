@@ -84,6 +84,27 @@ describe("real-mail participant projection", () => {
     expect(result.secrets).toEqual(expect.arrayContaining(["https://evil.test/secret", "8A3F2K", "8a3f2k"]));
   });
 
+  it("preserves a color-only shorthand CTA background without permitting network CSS", () => {
+    const result = render([message({ html: `<a style="display:inline-block;background:#175942;color:#fff;padding:14px" href="${app}/verify">Confirm email address</a><a style="background:url(https://tracker.example.test/image);display:none" href="${app}/other">Other link</a>` })]);
+    const anchors = elements(result.files[0]!.body).filter((node) => node.tagName === "a" && node.attrs.some((attr) => attr.name === "rel"));
+    expect(anchors[0]?.attrs.find((attr) => attr.name === "style")?.value).toBe("display:inline-block;background-color:#175942;color:#fff;padding:14px");
+    expect(anchors[1]?.attrs.some((attr) => attr.name === "style")).toBe(false);
+    expect(result.blockedAssetCount).toBe(1);
+  });
+
+  it("never invents OTPs from URLs, ports, numeric hosts, path IDs or token queries", () => {
+    const url = "https://3000-example.example.test:8026/123456/verify?token=481920&other=654321";
+    const result = render([message({ text: `Confirm your email: ${url}`, html: `<a href="${url}">${url}</a>`, subject: "Confirm your email" })], { allowedOrigins: ["https://3000-example.example.test:8026"] });
+    const data = JSON.parse(result.files.find((file) => file.path === "inbox/message-000001.json")!.body);
+    expect(data.codes).toEqual([]); expect(result.codeCount).toBe(0);
+    expect(result.files.find((file) => file.path.endsWith("/plain"))?.body).not.toContain('class="otp"');
+    expect(result.secrets).toEqual(expect.arrayContaining([url, "481920"]));
+    for (const text of [`Your code is 481920. ${url}`, `481920\n${url}`]) {
+      const actual = render([message({ text, html: "" })]);
+      expect(actual.codeCount).toBe(1); expect(actual.secrets).toContain("481920");
+    }
+  });
+
   it("fails closed for unsafe/duplicate IDs, excessive messages, oversized and deeply nested HTML", () => {
     for (const id of ["../another", "latest", "x.json", "x?y"]) expect(() => render([message({ id })])).toThrow("local message IDs");
     expect(() => render([message(), message()])).toThrow("local message IDs");

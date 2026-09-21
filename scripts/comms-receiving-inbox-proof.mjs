@@ -16,6 +16,7 @@ await mkdir(output, { recursive: true });
 const matrix = [
   ["Empty inbox → delivered list", "desktop + phone", "pending"],
   ["Original HTML → intact CID image and first-hop link", "desktop + phone", "pending"],
+  ["Color-shorthand CTA remains visible; link-only mail has no invented OTP", "desktop + phone", "pending"],
   ["Plain / JSON → same normalized link and code", "desktop + phone", "pending"],
   ["Malicious markup / remote image / disallowed link", "desktop + phone", "pending"],
   ["Other participant / unsupported route / ingress", "two isolated servers", "pending"],
@@ -41,7 +42,7 @@ for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
 const safeMessage = {
   id: "message-000001", channel: "email", from: "Example Workspace <hello@example.test>", subject: "Confirm your email address",
   text: "Welcome to Example Workspace. Your code is 481920. Confirm your email at http://localhost:3000/verify?token=synthetic-link-code",
-  html: '<div style="padding:24px;background-color:#fafafa"><img src="cid:brand" width="168" alt="Example Workspace"><h2>Welcome to your workspace</h2><p>Confirm your email address to finish creating your account.</p><p><a style="background-color:#185641;color:#ffffff;padding:12px;border-radius:6px;font-weight:bold" href="http://localhost:3000/verify?token=synthetic-link-code">Confirm email address</a></p><p>Your verification code is <strong>481920</strong>.</p><p>If you did not request this, you can ignore this email.</p></div>',
+  html: '<div style="padding:24px;background:#f4f8f5;color:#173d32"><img src="cid:brand" width="168" alt="Example Workspace"><h2>Welcome to your workspace</h2><p>Confirm your email address to finish creating your account.</p><p><a style="display:inline-block;background:#175942;color:#fff;padding:14px" href="http://localhost:3000/verify?token=synthetic-link-code">Confirm email address</a></p><p>Your verification code is <strong>481920</strong>.</p><p>If you did not request this, you can ignore this email.</p></div>',
   inlineImages: [{ contentId: "brand", contentType: "image/png", base64: PNG.sync.write(image).toString("base64") }], limitations: []
 };
 const project = (messages, address = "reader-a@example.test") => renderReceivingInbox({ address, messages, allowedOrigins: [targetOrigin], originMap: [["http://localhost:3000", targetOrigin]] });
@@ -70,12 +71,28 @@ try {
     await page.getByRole("link", { name: "Confirm your email address", exact: true }).click();
     assert.equal(await page.getByRole("img", { name: "Example Workspace", exact: true }).evaluate((img) => img.complete && img.naturalWidth === 168), true);
     assert.equal(await page.getByRole("link", { name: "Confirm email address", exact: true }).getAttribute("href"), `${targetOrigin}/verify?token=synthetic-link-code`);
+    const cta = await page.getByRole("link", { name: "Confirm email address", exact: true }).evaluate((el) => {
+      const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+      const luminance = (color) => {
+        const channels = color.match(/[\d.]+/g).slice(0, 3).map(Number).map((value) => value / 255).map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+      };
+      const fore = luminance(style.color), back = luminance(style.backgroundColor);
+      return { color: style.color, background: style.backgroundColor, display: style.display, contrast: (Math.max(fore, back) + 0.05) / (Math.min(fore, back) + 0.05), width: rect.width, height: rect.height };
+    });
+    assert.equal(cta.display, "inline-block"); assert.equal(cta.background, "rgb(23, 89, 66)"); assert.ok(cta.contrast >= 4.5); assert.ok(cta.width >= 100 && cta.height >= 44);
+    receipt.checks.push({ name: `${label}: visible CTA foreground/background contrast`, ...cta });
     await snap("original");
     await page.getByRole("link", { name: "Plain view", exact: true }).click(); await snap("plain");
     const json = await (await fetch(new URL("/inbox/latest.json", surface.url))).json();
     assert.deepEqual(json.links, [`${targetOrigin}/verify?token=synthetic-link-code`]); assert.deepEqual(json.codes, ["481920"]);
     assert.equal(clicks, phone ? 1 : 0, "No verification link prefetch");
     await page.getByRole("link", { name: "Open email link", exact: true }).click(); await page.getByRole("heading", { name: "Email confirmed" }).waitFor(); await snap("confirmed");
+    const linkOnly = { ...safeMessage, text: "Confirm your email: http://localhost:3000/verify?token=481920", html: '<p><a href="http://localhost:3000/verify?token=481920">Confirm email</a></p>' };
+    await surface.publish(project([linkOnly]).files); await page.goto(new URL("/inbox/latest/plain", surface.url).href);
+    assert.equal(await page.locator(".otp").count(), 0);
+    assert.deepEqual((await (await fetch(new URL("/inbox/latest.json", surface.url))).json()).codes, []);
+    await snap("link-only-no-code");
     const malicious = { ...safeMessage, html: '<script>window.BAD=1</script><meta http-equiv="refresh" content="0;url=https://untrusted.example.test"><form action="https://untrusted.example.test"><input><button>Send</button></form><h2>Your access link</h2><p>This email contains a remote image and a destination outside the declared study.</p><img src="https://untrusted.example.test/pixel" alt="Company illustration"><p><a href="https://untrusted.example.test/verify">Open access link</a></p><iframe src="https://untrusted.example.test"></iframe><p style="background-image:url(https://untrusted.example.test/track)">Your code is <b>481920</b></p>', text: "Your code is 481920. Open https://untrusted.example.test/verify", inlineImages: [] };
     await surface.publish(project([malicious]).files); await page.goto(new URL("/inbox/latest", surface.url).href);
     assert.equal(await page.locator("script,iframe,form,input,button,base").count(), 0);

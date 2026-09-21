@@ -32,13 +32,18 @@ function safeStyle(style: string): string {
   for (const item of style.split(";")) {
     const colon = item.indexOf(":");
     if (colon < 1) continue;
-    const name = item.slice(0, colon).trim().toLowerCase(), value = item.slice(colon + 1).trim().toLowerCase();
+    let name = item.slice(0, colon).trim().toLowerCase();
+    const value = item.slice(colon + 1).trim().toLowerCase();
     if (value.length > 120) continue;
     const color = /^(?:#[a-f0-9]{3,8}|[a-z]{3,20}|rgba?\([\d.,% ]{1,35}\))$/;
     const size = /^(?:0|\d{1,3}(?:\.\d{1,2})?(?:px|em|rem|%))(?: (?:0|\d{1,3}(?:\.\d{1,2})?(?:px|em|rem|%))){0,3}$/;
+    // A color-only shorthand is common on email CTAs. Dropping it while retaining white text
+    // makes a working confirmation link invisible. Complex/image backgrounds remain unsupported.
+    if (name === "background" && color.test(value)) name = "background-color";
     if ((["color", "background-color", "border-color"].includes(name) && color.test(value)) ||
       (["padding", "padding-top", "padding-bottom", "padding-left", "padding-right", "margin", "margin-top", "margin-bottom", "margin-left", "margin-right", "font-size", "border-radius", "border-width", "max-width", "width", "height"].includes(name) && size.test(value)) ||
       (name === "text-align" && /^(left|right|center|justify)$/.test(value)) ||
+      (name === "display" && /^(inline|inline-block|block)$/.test(value)) ||
       (name === "font-weight" && /^(normal|bold|[1-9]00)$/.test(value)) ||
       (name === "font-style" && /^(normal|italic)$/.test(value)) ||
       (name === "text-decoration" && /^(none|underline|line-through)$/.test(value)) ||
@@ -163,7 +168,9 @@ export function renderReceivingInbox(options: {
     }
     const html = parsed.childNodes.map((node) => render(node, 0)).join("");
     const text = message.text || visibleText.join(" ");
-    const codeSource = `${message.subject ?? ""}\n${text}\n${visibleText.join(" ")}`;
+    // Ports, numeric host labels and token/query fragments are not OTP evidence. Full links and
+    // token query values still enter the scrub registry through link(), independently of codes.
+    const codeSource = `${message.subject ?? ""}\n${text}\n${visibleText.join(" ")}`.replace(/https?:\/\/[^\s<>"']+/gi, " ");
     const codes = extractOtpCodes(esc(codeSource));
     for (const code of codes) {
       secrets.add(code); secrets.add(code.toLowerCase()); allCodes.add(code);
