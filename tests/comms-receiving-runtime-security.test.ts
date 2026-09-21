@@ -72,9 +72,12 @@ describe("host-only receiving runtime boundaries", () => {
     ["configured env name", { env: ["AGENTMAIL_API_KEY"] }, {}],
     ["env alias", { env: ["APP_SENDING_KEY"] }, { APP_SENDING_KEY: KEY }],
     ["trimmed env alias", { env: ["APP_SENDING_KEY"] }, { APP_SENDING_KEY: ` ${KEY}\n` }],
+    ["authorization env alias", { env: ["APP_AUTHORIZATION"] }, { APP_AUTHORIZATION: `Bearer ${KEY}` }],
     ["configured literal name", { envValues: { AGENTMAIL_API_KEY: "another-value" } }, {}],
     ["literal alias", { envValues: { APP_SENDING_KEY: KEY } }, {}],
-    ["trimmed literal alias", { envValues: { APP_SENDING_KEY: `\n${KEY} ` } }, {}]
+    ["trimmed literal alias", { envValues: { APP_SENDING_KEY: `\n${KEY} ` } }, {}],
+    ["authorization literal", { envValues: { APP_AUTHORIZATION: `Bearer ${KEY}` } }, {}],
+    ["JSON literal", { envValues: { APP_MAIL_CONFIG: JSON.stringify({ token: KEY }) } }, {}]
   ])("rejects management credential forwarding through %s before any provider allocation", async (_name, subject, values) => {
     const lab = config();
     Object.assign(lab.subject, subject);
