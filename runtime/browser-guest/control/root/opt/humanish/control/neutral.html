@@ -1,0 +1,4 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>NoteShelf</title>
+<style>body{font:20px system-ui;margin:28px;background:#f7f8fb;color:#172033}textarea{width:780px;height:100px;font:20px monospace}button{font-size:20px;padding:10px}#pad{width:400px;height:130px;background:#dbeafe;margin-top:24px}#spacer{height:1600px}</style>
+<h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count" role="status">Saved 0</p><div id="pad">Pointer test area</div><div id="spacer"></div><p>End of page</p>
+<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=()=>proof.downs++;pad.onmouseup=()=>proof.ups++;pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;</script></html>

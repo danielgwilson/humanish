@@ -1,0 +1,36 @@
+[Unit]
+Description=Humanish offline browser guest
+RequiresMountsFor=/home/humanish /tmp /var /dev/shm
+Requires=systemd-remount-fs.service systemd-tmpfiles-setup.service
+After=local-fs.target systemd-remount-fs.service systemd-tmpfiles-setup.service
+
+[Service]
+Type=exec
+ExitType=main
+User=humanish
+Group=humanish
+UMask=0077
+WorkingDirectory=/home/humanish
+RuntimeDirectory=humanish
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=no
+ExecStart=/usr/bin/python3 -I -B /opt/humanish/control/vsock.py
+Restart=no
+KillMode=control-group
+SendSIGKILL=yes
+TimeoutStartSec=5s
+TimeoutStopSec=5s
+RuntimeMaxSec=1800s
+RuntimeRandomizedExtraSec=0
+TasksMax=256
+MemoryMax=1536M
+MemorySwapMax=0
+OOMPolicy=stop
+LimitCORE=0
+LimitNOFILE=4096
+StandardInput=null
+StandardOutput=journal+console
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+/dev/vda / ext4 ro,errors=remount-ro 0 0
+/dev/vdb /home/humanish ext4 rw,nodev,nosuid,noatime,x-systemd.device-timeout=10s,x-systemd.mount-timeout=10s 0 0
+tmpfs /run tmpfs rw,nosuid,nodev,mode=0755,size=64M,nr_inodes=16384 0 0
+tmpfs /tmp tmpfs rw,nosuid,nodev,mode=1777,size=128M,nr_inodes=32768 0 0
+tmpfs /var tmpfs rw,nosuid,nodev,mode=0755,size=64M,nr_inodes=16384 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev,noexec,mode=1777,size=256M,nr_inodes=32768 0 0
