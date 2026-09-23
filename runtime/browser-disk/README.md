@@ -28,7 +28,7 @@ python3 -B -m unittest discover -s runtime/browser-disk/tests -v
 
 The tools image uses the maintained base's digest and signed frozen Debian
 snapshot. Assembly starts in an acquired ordinary Docker container by exact
-image ID: network disabled, no bind mounts, devices, privileged flag or image
+image ID: network disabled, no user-supplied bind mounts, devices, privileged flag or image
 volumes, 2 GiB memory with no swap, two CPUs and 128 tasks. Four filesystem
 capabilities preserve the exported numeric owners and modes inside that
 container. This is an ordinary rootful Docker build, not rootless isolation or
@@ -56,7 +56,7 @@ allows only declared leaves and required parent directories to change.
 `mke2fs -d` produces a 2 GiB read-only-root candidate and a fresh 512 MiB state
 template without loop devices or mounts. Block size, inode count/size, reserved
 blocks, UUIDs, features, ownership and eager initialization are explicit.
-The state filesystem root is UID/GID1000 and0700; it contains only filesystem
+The state filesystem root is UID/GID 1000 and 0700; it contains only filesystem
 scaffolding. The fixed UUIDs identify templates, not participants or authority.
 Future owners must make private writable state copies for each participant.
 
