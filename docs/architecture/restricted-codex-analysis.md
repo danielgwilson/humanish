@@ -34,8 +34,10 @@ host RPCs and asynchronous question messages before accepting any report. The
 actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
-There is one active analyst/readiness session per Humanish process, across all
-provider factories. One fresh thread receives one turn. Evidence is not silently
+Each request owns a separate child process, temporary home and fresh thread;
+participant, analyst and readiness requests may run concurrently. An unresolved
+child process blocks new requests until its exit is confirmed. Each thread receives
+one turn. Evidence is not silently
 downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
 request data are admitted. Generated report text is limited to 2 MiB. Raw input
 notifications echo image data URLs, so their frame budget is the larger of 2 MiB

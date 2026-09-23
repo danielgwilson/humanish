@@ -1,4 +1,4 @@
-# Browser-only development kernel
+# Browser runtime development kernel
 
 Build an amd64 kernel from the exact signed Amazon microvm source paired with
 Firecracker 1.17.0. This recipe never starts a VM, installs a host package, changes
@@ -39,11 +39,11 @@ The x86_64 base-page size is 4 KiB. Virtio RNG and the upstream entropy configur
 are preserved. Mount/cgroup namespaces do not have additional standalone Kconfig
 switches in this kernel.
 
-The kernel has no loadable modules, initramfs, media, sound, DRM or virtio network
-driver. These are explicit changes to the upstream configuration, not claims
-that the upstream microvm config was already this small. Other source-tree drivers
-may remain enabled; there is no unsupported claim of a fully minimized kernel.
-The later VMM profile must still omit a guest NIC.
+Virtio networking and boot-time IP configuration support ordinary TCP and UDP.
+Loadable modules remain enabled so optional media devices can be added without
+changing the runtime architecture. Media and sound are no longer forbidden by
+policy; the browser-only image does not start media services. Initramfs, DRM and
+the listed debug features remain disabled. This is not a fully minimized kernel.
 
 The fixed guest contract is a whole-disk `/dev/vda` ext4 read-only root and a fresh
 whole-disk `/dev/vdb` ext4 state volume. No partition/UUID discovery or initramfs is

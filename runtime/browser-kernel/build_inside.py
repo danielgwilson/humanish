@@ -44,8 +44,6 @@ def check_config(actual, policy):
     for key in policy['forbidden']:
         if actual.get(key, 'n') != 'n':
             raise ValueError('Unadmitted kernel option enabled: ' + key)
-    if 'm' in actual.values():
-        raise ValueError('Browser kernel must not require loadable modules')
 
 
 def unpack_rpm(source, destination):

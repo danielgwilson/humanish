@@ -1071,8 +1071,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
         return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.");
       }
     } else {
-      if (config.execution?.target !== "e2b-desktop") {
-        return invalid("app-url subjects require `execution.target: e2b-desktop` with a registered computer-use actor (the actor drives a hosted desktop browser), or a registered scripted-browser actor for local execution.");
+      if (config.execution?.target !== "e2b-desktop" && config.execution?.target !== "local") {
+        return invalid("app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.");
       }
       if (!actorResolvesToComputerUse(type)) {
         return invalid(`actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`);

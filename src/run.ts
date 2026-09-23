@@ -276,7 +276,7 @@ export interface RunFeedbackCandidate {
   persona_id: string;
   actor: "codex-tui" | "codex-exec" | "codex-app-server" | "computer-use" | "synthetic-dry-run" | "unknown";
   // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate (issue #154 / SLICE 4).
-  substrate: "e2b-desktop" | "e2b-terminal" | "local-filesystem" | "codex-app-server" | "unknown";
+  substrate: "e2b-desktop" | "local-desktop" | "e2b-terminal" | "local-filesystem" | "codex-app-server" | "unknown";
   failure_owner: "harness" | "target-app" | "actor" | "environment" | "unknown";
   summary: string;
   expected: string;
@@ -7896,6 +7896,7 @@ function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"]
 
 function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
   return value === "e2b-desktop"
+    || value === "local-desktop"
     || value === "e2b-terminal"
     || value === "local-filesystem"
     || value === "codex-app-server"

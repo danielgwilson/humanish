@@ -1860,6 +1860,7 @@ function isAdapterFeedbackActor(value: unknown): value is RunFeedbackCandidate["
 
 function isAdapterFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
   return value === "e2b-desktop"
+    || value === "local-desktop"
     || value === "e2b-terminal"
     || value === "local-filesystem"
     || value === "codex-app-server"

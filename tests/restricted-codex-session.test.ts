@@ -187,15 +187,19 @@ describe("restricted Codex analyst session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
-  it("allows one analyst across factories and readiness calls, then releases the gate", async () => {
+  it("isolates simultaneous sessions and readiness calls sharing a login", async () => {
     const first = await fixture("hang-turn"), second = await fixture(), controller = new AbortController();
+    second.options.authHome = first.authHome;
     const pending = first.run({ ...request, signal: controller.signal });
     await vi.waitFor(async () => expect((await first.entries()).some(entry => entry.method === "turn/start")).toBe(true));
-    expect(await second.run(request)).toMatchObject({ errorCode: "codex_busy", dispatched: false });
-    expect(await checkRestrictedCodexAnalysisReadiness({}, second.options)).toEqual({ ready: false, errorCode: "codex_busy" });
-    expect(second.spawns).toHaveLength(0);
-    controller.abort(); await pending;
-    expect(await second.run(request)).toMatchObject({ status: "completed" });
+    expect(await second.run(request)).toMatchObject({ status: "completed", dispatched: true });
+    expect(await checkRestrictedCodexAnalysisReadiness({}, second.options)).toEqual({ ready: true, errorCode: null });
+    expect(second.spawns[0]!.env.CODEX_HOME).not.toBe(first.spawns[0]!.env.CODEX_HOME);
+    controller.abort();
+    expect(await pending).toMatchObject({ status: "cancelled" });
+    expect(await readFile(path.join(first.authHome, "auth.json"), "utf8")).toBe("synthetic-original-login");
+    expect(await readdir(first.tempRoot)).toEqual([]);
+    expect(await readdir(second.tempRoot)).toEqual([]);
   });
 
   it("preserves an unexpected auth replacement, original login, and names-only private recovery marker", async () => {
