@@ -73,6 +73,7 @@ export function createGuestChromiumText(options: {
   let dialogSeen = false;
   let busy = false;
   let closing: Promise<void> | undefined;
+  let activeDisposal: (() => Promise<void>) | undefined;
   const interruptions = new Set<(code: CuaExecutorErrorCode) => void>();
   const sessions = new Set<CDPSession>();
   const detachments = new WeakMap<CDPSession, Promise<void>>();
@@ -206,6 +207,7 @@ export function createGuestChromiumText(options: {
       let contextId: number;
       let used = false;
       let disposed = false;
+      let dispatchedText = false;
       let disposal: Promise<void> | undefined;
       const dispose = () => {
         if (!disposal) {
@@ -214,11 +216,18 @@ export function createGuestChromiumText(options: {
           signal.removeEventListener("abort", abortLifetime);
           disposal = (async () => {
             try { if (session) await detach(session); }
-            finally { busy = false; }
+            catch (error) {
+              throw new CuaExecutorError(isCuaExecutorError(error) ? error.code : "transport_failed",
+                dispatchedText ? "outcome_uncertain" : "not_dispatched");
+            } finally {
+              busy = false;
+              if (activeDisposal === dispose) activeDisposal = undefined;
+            }
           })();
         }
         return disposal;
       };
+      activeDisposal = dispose;
       try {
         await run(lifetime.signal, expected, async op => {
           await ready(op);
@@ -249,7 +258,10 @@ export function createGuestChromiumText(options: {
             await ready(op);
             await probe(op, session!, contextId, RECHECK);
             op.check();
-            await op.step(() => session!.send("Input.insertText", { text }), true);
+            await op.step(() => {
+              dispatchedText = true;
+              return session!.send("Input.insertText", { text });
+            }, true);
           });
         },
         close: dispose
@@ -266,7 +278,11 @@ export function createGuestChromiumText(options: {
         page.off("close", targetClosed);
         context.off("page", invalidate);
         context.off("close", targetClosed);
-        closing = Promise.all([...sessions].map(detach)).then(() => undefined);
+        const active = activeDisposal?.();
+        closing = Promise.allSettled([...(active ? [active] : []), ...[...sessions].map(detach)]).then(results => {
+          const failure = results.find(result => result.status === "rejected");
+          if (failure?.status === "rejected") throw failure.reason;
+        });
       }
       return closing;
     }

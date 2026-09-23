@@ -240,4 +240,31 @@ describe("owned Chromium text port", () => {
     await expect(f.port.assertReady(new AbortController().signal)).rejects.toMatchObject({ code: "executor_closed" });
     waiting.resolve();
   });
+
+  it("owner close disposes the active handle and removes its caller signal listener", async () => {
+    const f = fixture();
+    const remove = vi.spyOn(f.abort.signal, "removeEventListener");
+    const handle = await prepared(f);
+    await f.port.close();
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+    await expect(handle.paste()).rejects.toMatchObject({ disposition: "not_dispatched" });
+    await handle.close();
+    expect(f.detach).toHaveBeenCalledOnce();
+  });
+
+  it("a cleanup failure after acknowledged insertion never claims the text was not dispatched", async () => {
+    const f = fixture(), handle = await prepared(f);
+    await handle.paste();
+    f.detach.mockRejectedValueOnce(new Error("synthetic cleanup detail"));
+    await expect(handle.close()).rejects.toMatchObject({ code: "transport_failed", disposition: "outcome_uncertain" });
+    expect(inserts(f)).toHaveLength(1);
+  });
+
+  it("owner cleanup preserves the active handle's post-send uncertainty", async () => {
+    const f = fixture(), handle = await prepared(f);
+    await handle.paste();
+    f.detach.mockRejectedValueOnce(new Error("synthetic cleanup detail"));
+    await expect(f.port.close()).rejects.toMatchObject({ code: "transport_failed", disposition: "outcome_uncertain" });
+    expect(f.detach).toHaveBeenCalledOnce();
+  });
 });
