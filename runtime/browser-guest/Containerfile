@@ -20,7 +20,8 @@ RUN test "$(dpkg --print-architecture)" = "$TARGETARCH" \
 
 FROM packages AS runtime
 COPY openbox.xml /etc/xdg/openbox/rc.xml
-RUN groupadd --gid 1000 humanish \
+RUN chmod 0444 /etc/xdg/openbox/rc.xml \
+ && groupadd --gid 1000 humanish \
  && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin humanish \
  && passwd --lock root && passwd --lock humanish \
  && guest_home=/home/humanish \

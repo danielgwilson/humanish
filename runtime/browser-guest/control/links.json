@@ -1,0 +1,8 @@
+{
+  "etc/systemd/system/default.target": "/usr/lib/systemd/system/multi-user.target",
+  "etc/systemd/system/multi-user.target.wants/humanish-guest.service": "../humanish-guest.service",
+  "etc/systemd/system/apt-daily.timer": "/dev/null",
+  "etc/systemd/system/apt-daily-upgrade.timer": "/dev/null",
+  "etc/systemd/system/dpkg-db-backup.timer": "/dev/null",
+  "etc/systemd/system/fstrim.timer": "/dev/null"
+}

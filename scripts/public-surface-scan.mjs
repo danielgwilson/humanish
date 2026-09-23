@@ -64,6 +64,21 @@ const privateResiduePatterns = [
     .filter(Boolean))
 ];
 
+// These two quoted XDG constants name the fixed synthetic guest account, not
+// the operator's home. Keep the exception limited to their implementation and
+// emitted declarations; unrelated files, users and child paths still fail.
+const guestEnvironmentFiles = new Set([
+  "src/guest-runtime-desktop.ts",
+  "dist/guest-runtime-desktop.js",
+  "dist/guest-runtime-desktop.d.ts",
+  "runtime/browser-guest/control/root/opt/humanish/control/vsock.py"
+]);
+
+function isFixedGuestHomeConstant(file, text, match) {
+  return guestEnvironmentFiles.has(file) && match.index > 0
+    && /^(["'])\/home\/humanish\/\.(?:cache|config)\1/.test(text.slice(match.index - 1));
+}
+
 // PHI/PII detection. Labeled patterns keep false positives low in a repo full of
 // numbers; bare SSN is specific. Email is allowlisted by safe domain so synthetic
 // fixtures and the maintainer's own address do not trip the gate.
@@ -321,6 +336,7 @@ for (const file of files) {
   for (const [name, regex] of [...secretPatterns, ...privateResiduePatterns, ...piiPatterns]) {
     regex.lastIndex = 0;
     for (const match of text.matchAll(regex)) {
+      if (name === "absolute_linux_home_path" && isFixedGuestHomeConstant(file, text, match)) continue;
       findings.push({
         file,
         line: lineNumberFor(text, match.index ?? 0),

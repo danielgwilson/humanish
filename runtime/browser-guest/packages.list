@@ -6,6 +6,7 @@ fonts-noto-cjk
 fonts-noto-color-emoji
 nodejs
 openbox
+python3-minimal
 scrot
 systemd-sysv
 x11-utils

@@ -1,0 +1,10 @@
+{
+  "base": "debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c",
+  "debianSnapshot": "20260923T083042Z",
+  "securitySnapshot": "20260922T123247Z",
+  "jobsMaximum": 8,
+  "memoryBytes": 8589934592,
+  "pidsMaximum": 256,
+  "buildTimeoutSeconds": 3600,
+  "sourceDateEpoch": 1789084800
+}

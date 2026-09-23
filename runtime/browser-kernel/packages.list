@@ -1,0 +1,14 @@
+bc
+bison
+build-essential
+ca-certificates
+cpio
+flex
+gnupg
+libelf-dev
+libssl-dev
+python3
+rpm
+rpm2cpio
+xz-utils
+zstd
