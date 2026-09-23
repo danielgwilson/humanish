@@ -1,0 +1,61 @@
+"""No root call is dispatched by these CI admission fixtures."""
+import importlib.util
+import os
+from pathlib import Path
+import subprocess
+import unittest
+from unittest.mock import patch
+
+SOURCE = Path(__file__).resolve().parents[1] / 'owned-browser-ci.py'
+spec = importlib.util.spec_from_file_location('owned_browser_ci', SOURCE)
+ci = importlib.util.module_from_spec(spec); spec.loader.exec_module(ci)
+
+
+def environment():
+    return {'GITHUB_ACTIONS':'true','RUNNER_ENVIRONMENT':'github-hosted','RUNNER_OS':'Linux',
+            'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':ci.REPOSITORY,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':ci.REPOSITORY+'/'+ci.WORKFLOW+'@refs/heads/main',
+            'GITHUB_SHA':'a'*40,'GITHUB_WORKFLOW_SHA':'a'*40,'GITHUB_RUN_ID':'12345'}
+
+
+class CiTests(unittest.TestCase):
+    def test_only_reviewed_canonical_manual_host(self):
+        self.assertEqual(ci.provenance(environment())['commit'], 'a'*40)
+        for key,value in [('GITHUB_EVENT_NAME','pull_request'),('GITHUB_EVENT_NAME','push'),
+            ('GITHUB_REF','refs/heads/feature'),('GITHUB_REPOSITORY','fork/humanish'),
+            ('RUNNER_ENVIRONMENT','self-hosted'),('GITHUB_WORKFLOW_SHA','b'*40),('RUNNER_OS','Windows')]:
+            with self.subTest(key=key,value=value), self.assertRaises(ValueError): ci.provenance({**environment(),key:value})
+
+    def test_root_timeout_prevents_second_command(self):
+        ci.ROOT_UNCONFIRMED = False
+        with patch.object(ci.subprocess,'run',side_effect=subprocess.TimeoutExpired('sudo',20)) as run:
+            with self.assertRaises(ValueError): ci.root(['/usr/bin/python3'])
+            with self.assertRaises(ValueError): ci.root(['/usr/bin/python3'])
+            self.assertEqual(run.call_count,1)
+        ci.ROOT_UNCONFIRMED = False
+
+    def test_timeout_wraps_actual_root_child(self):
+        ci.ROOT_UNCONFIRMED = False
+        with patch.object(ci.subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'{}',b'')) as run:
+            ci.root(['/usr/bin/python3','-I','-S','-'],b'synthetic',timeout=7)
+            args=run.call_args.args[0]
+            self.assertLess(args.index('/usr/bin/sudo'),args.index('/usr/bin/timeout'))
+            self.assertLess(args.index('/usr/bin/timeout'),args.index('/usr/bin/python3'))
+            self.assertIn('7s',args)
+
+    def test_bare_green_or_missing_coverage_is_not_accepted(self):
+        for value in ({'aggregate':True}, {'schema':'humanish.owned-browser-qualification.v1','aggregate':False,
+            'visualReview':'pending','implementedCellsObserved':True,'cleanup':{'status':'complete'},'cases':[]}):
+            with self.assertRaises(ValueError): ci.validate(value)
+
+    def test_receipt_duplicate_members_refused(self):
+        with self.assertRaises(ValueError): ci.decode(b'{"status":1,"status":2}')
+
+    def test_artifact_inputs_use_real_builder_filenames(self):
+        source=SOURCE.read_text()
+        for name in ('browser-disks/output/rootfs.ext4','browser-disks/output/state-template.ext4','kernel-build/output/kernel.bin'):
+            self.assertIn(name,source)
+        self.assertNotIn('browser-disks/output/root.ext4',source)
+
+
+if __name__ == '__main__': unittest.main()
