@@ -102,7 +102,12 @@ export function ParticipantStub({ data, stream, updating = true, selectedEventId
             </span>
           </>
         ) : null}
-        {actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
+        {actor?.executionProfile?.billing === "account-unknown" ? (
+          <>
+            <span className="k">Account usage</span>
+            <span className="v">Codex account · dollar cost unknown</span>
+          </>
+        ) : actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
           <>
             <span className="k">Est. lane cost</span>
             <span className="v">

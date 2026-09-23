@@ -168,6 +168,67 @@ export interface ActorTokenUsage {
   costUsd?: number;
 }
 
+/** Requested execution profile; per-request verification is recorded separately. */
+export interface ActorExecutionProfile {
+  schema: "humanish.actor-execution-profile.v1";
+  transport: "codex-app-server";
+  authentication: "chatgpt-account";
+  billing: "account-unknown";
+  requestedModel: "gpt-6-astra";
+  reasoningEffort: "low";
+  cliVersion: "0.154.0";
+  toolPolicy: "restricted-codex-v1";
+  participantSchema: "humanish.restricted-participant-turn.v1";
+  memoryPolicy: "recent-eight-16k-v1";
+}
+export interface ProviderRequestReceipt {
+  dispatched: boolean | "unknown";
+  usageComplete: boolean;
+  cleanup: "confirmed" | "unconfirmed";
+}
+export interface ActorProviderRequest extends ProviderRequestReceipt {
+  ordinal: number;
+  kind: "interaction" | "debrief";
+  /** Launcher version, effective config, account, thread and empty MCP checks
+   * passed before turn/start. Does not attest remote execution or completion. */
+  profileVerified: boolean;
+  errorCode?: import("./cua-provider-error.js").CuaProviderErrorCode;
+  usage?: ActorTokenUsage;
+}
+
+/** Durable reader profile. Append new qualified profiles; never rewrite old evidence. */
+export function validActorExecutionProfile(value: unknown): value is ActorExecutionProfile {
+  const expected: ActorExecutionProfile = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
+    authentication: "chatgpt-account", billing: "account-unknown", requestedModel: "gpt-6-astra", reasoningEffort: "low",
+    cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", participantSchema: "humanish.restricted-participant-turn.v1",
+    memoryPolicy: "recent-eight-16k-v1" };
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const object = value as Record<string, unknown>;
+  return Object.keys(object).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => object[key] === v);
+}
+
+/** Closed per-attempt evidence; dollar amounts are never part of account usage. */
+export function validActorProviderRequests(value: unknown): value is ActorProviderRequest[] {
+  if (!Array.isArray(value)) return false;
+  const codes = ["request_rejected", "unavailable", "busy", "refused", "invalid_response", "protocol_error", "timeout", "cancelled", "process_failed", "cleanup_unconfirmed"];
+  return value.every((raw: unknown, index) => {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return false;
+    const r = raw as Record<string, unknown>;
+    if (Object.keys(r).some(k => !["ordinal", "kind", "dispatched", "usageComplete", "cleanup", "profileVerified", "errorCode", "usage"].includes(k)) ||
+      r.ordinal !== index + 1 || (typeof r.kind !== "string" || !["interaction", "debrief"].includes(r.kind)) ||
+      !(typeof r.dispatched === "boolean" || r.dispatched === "unknown") || typeof r.usageComplete !== "boolean" ||
+      (typeof r.cleanup !== "string" || !["confirmed", "unconfirmed"].includes(r.cleanup)) || typeof r.profileVerified !== "boolean" ||
+      (r.profileVerified && r.dispatched !== true) || (r.errorCode !== undefined && (typeof r.errorCode !== "string" || !codes.includes(r.errorCode)))) return false;
+    if (r.usage === undefined) return !r.usageComplete;
+    if (r.usage === null || typeof r.usage !== "object" || Array.isArray(r.usage)) return false;
+    const usage = r.usage as Record<string, unknown>;
+    if (Object.entries(usage).some(([k, v]) => !["input", "output", "cachedInput", "cacheWriteInput", "total"].includes(k) ||
+      typeof v !== "number" || !Number.isSafeInteger(v) || v < 0)) return false;
+    return !r.usageComplete || (typeof usage.input === "number" && typeof usage.output === "number" &&
+      ((usage.cachedInput as number | undefined) ?? 0) + ((usage.cacheWriteInput as number | undefined) ?? 0) <= usage.input);
+  });
+}
+
 /** The participant's account, not an independently confirmed product diagnosis. */
 export interface ParticipantClosingReport {
   summary: string;
@@ -192,6 +253,9 @@ export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
   provider: string;
   providerVersion?: string;
+  executionProfile?: ActorExecutionProfile;
+  providerRequests?: ActorProviderRequest[];
+  historyTurnsOmitted?: number;
   runtime?: ActorRuntimeProvenance;
   protocol: ActorProtocol;
   lane: ActorLane;
@@ -253,7 +317,7 @@ export interface ActorTrace {
     trigger: "stop_when" | "dwell";
     status: "completed" | "skipped" | "failed";
     reason: string;
-    /** Absent if no request was made; false means that request's cost is unreported. */
+    /** Absent if no request was made; false means token accounting is incomplete. */
     usageReported?: boolean;
     report?: ParticipantClosingReport;
     /** Links the readable projection so it is not heuristically classified a second time. */

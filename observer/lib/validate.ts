@@ -1,4 +1,5 @@
 import type { ObserverData } from "./observer-data";
+import { validActorExecutionProfile, validActorProviderRequests } from "./actor-execution-profile";
 
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const strings = (value: Record<string, unknown>, keys: string[]) => keys.every((key) => typeof value[key] === "string");
@@ -36,7 +37,24 @@ export function isObserverData(value: unknown): value is ObserverData {
     || !["share_ready", "local_only", "blocked"].includes(share.status as string)
     || !list(share.reasons, (v) => typeof v === "string"))) return false;
   const cost = value.cost;
-  if (cost !== undefined && (!object(cost) || !(cost.estimatedTotalUsd === null || finite(cost.estimatedTotalUsd)) || typeof cost.ratesAsOf !== "string" || !optionalBoolean(cost.placeholder))) return false;
+  if (cost !== undefined && (!object(cost) || !(cost.estimatedTotalUsd === null || finite(cost.estimatedTotalUsd)) || !(cost.ratesAsOf === null || typeof cost.ratesAsOf === "string") || !optionalBoolean(cost.placeholder))) return false;
+  if (object(cost)) {
+    const streams = value.streams as Record<string, unknown>[];
+    const account = (stream: Record<string, unknown>): boolean => {
+      const liveProfile = object(stream.liveActor) ? stream.liveActor.executionProfile : undefined;
+      const finalProfile = object(stream.actor) ? stream.actor.executionProfile : undefined;
+      const profile = liveProfile ?? finalProfile;
+      return object(profile) && profile.billing === "account-unknown";
+    };
+    if (streams.some(account)) {
+      if (cost.fullyEstimated === true || !Array.isArray(cost.breakdown)) return false;
+      for (const line of cost.breakdown) {
+        if (!object(line) || line.kind !== "model-tokens" || typeof line.estimatedCostUsd !== "number") continue;
+        const owners = typeof line.laneId === "string" ? streams.filter(s => s.id === line.laneId || s.laneId === line.laneId) : streams;
+        if (owners.length !== 1 || account(owners[0]!)) return false;
+      }
+    }
+  }
   const runtime = value.runtime;
   if (runtime !== undefined && (!object(runtime) || !strings(runtime, ["state", "observedAt", "source"])
     || !["running", "finished", "interrupted", "unknown"].includes(runtime.state as string)
@@ -78,6 +96,14 @@ function validStream(value: unknown): boolean {
       || !(estimate.ratesAsOf === null || typeof estimate.ratesAsOf === "string"))) return false;
   }
   const live = value.liveActor;
+  for (const trace of [actor, live]) {
+    if (object(trace) && trace.executionProfile !== undefined) {
+      if (!validActorExecutionProfile(trace.executionProfile) || !validActorProviderRequests(trace.providerRequests)) return false;
+      if (trace.historyTurnsOmitted !== undefined && (typeof trace.historyTurnsOmitted !== "number" || !Number.isSafeInteger(trace.historyTurnsOmitted) || trace.historyTurnsOmitted < 0)) return false;
+      if (object(trace.estimatedCost) && trace.estimatedCost.estimatedCostUsd !== null) return false;
+      if (object(trace.tokenUsage) && trace.tokenUsage.costUsd !== undefined) return false;
+    }
+  }
   if (live !== undefined && (!object(live) || typeof live.updatedAt !== "string" || !list(live.items, item))) return false;
   if (value.artifacts !== undefined && !list(value.artifacts, (v) => object(v) && strings(v, ["label", "path", "kind"]))) return false;
   return true;

@@ -1,3 +1,4 @@
+import { contradictsAccountBilling } from "./pricing.js";
 import type { CommsReceivingEvidence } from "./comms-receiving-types.js";
 import { isCommsReceivingEvidence } from "./comms-receiving-evidence.js";
 import { randomUUID } from "node:crypto";
@@ -30,7 +31,7 @@ import {
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
-import { ACTOR_TRACE_SCHEMA, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
+import { ACTOR_TRACE_SCHEMA, validActorExecutionProfile, validActorProviderRequests, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
 import { cuaGoalSource, isCuaTrace, CUA_COMPLETION_NOTE, type CuaGoalSource } from "./actor-goal-source.js";
 import { actorEnding } from "./actor-stop-cause.js";
 import type { TaskFunnel } from "./tasks.js";
@@ -528,6 +529,12 @@ export interface RunStream {
    */
   liveActor?: {
     schema: "humanish.live-actor.v1";
+    executionProfile?: ActorTrace["executionProfile"];
+    providerRequests?: ActorTrace["providerRequests"];
+    historyTurnsOmitted?: number;
+    tokenUsage?: ActorTrace["tokenUsage"];
+    estimatedCost?: ActorTrace["estimatedCost"];
+    ids?: ActorTrace["ids"];
     /** When this flush was written (ISO-8601). */
     updatedAt: string;
     items: ActorTraceItem[];
@@ -972,7 +979,7 @@ export interface RunCostLine {
   modelId?: string;
   /** null = NOT MEASURED / no rate; never coerced to 0. */
   estimatedCostUsd: number | null;
-  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported" | "interaction_usage_unreported" | "no_desktop_resources" | "desktop_lifetime_incomplete";
+  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported" | "interaction_usage_unreported" | "no_desktop_resources" | "desktop_lifetime_incomplete" | "account_billing_unknown";
   /** Pricing provenance date; non-null iff estimatedCostUsd is non-null. */
   ratesAsOf: string | null;
   source?: string;
@@ -1006,7 +1013,8 @@ export interface RunCostSummary {
   /** true when any contributing rate is a placeholder (a stand-in, not a live sheet). */
   placeholder: boolean;
   breakdown: RunCostLine[];
-  tokenUsage: { input: number; output: number; total: number };
+  /** Missing account token counts remain absent; known counts may be partial. */
+  tokenUsage: { input?: number; output?: number; total?: number };
   /** Host-side create->teardown span in minutes; null when no sandbox was created. */
   desktopMinutes: number | null;
   /** Honest "estimated; <x> unmeasured" statement. */
@@ -6323,6 +6331,7 @@ function rerunLineageFindings(bundle: RunBundle): string[] {
  */
 function costLabelingFindings(bundle: RunBundle): string[] {
   const findings: string[] = [];
+  if (contradictsAccountBilling(bundle.streams, bundle.cost)) findings.push("Run cost lines contradict account billing identity");
 
   const cost = bundle.cost;
   if (cost) {
@@ -6358,6 +6367,14 @@ function costLabelingFindings(bundle: RunBundle): string[] {
   }
 
   for (const stream of bundle.streams) {
+    for (const actor of [stream.actor, stream.liveActor]) {
+      if (actor?.executionProfile !== undefined) {
+        if (!validActorExecutionProfile(actor.executionProfile)) findings.push("Invalid actor execution profile");
+        if (!validActorProviderRequests(actor.providerRequests)) findings.push("Invalid account participant request receipts");
+        if (actor.historyTurnsOmitted !== undefined && (!Number.isSafeInteger(actor.historyTurnsOmitted) || actor.historyTurnsOmitted < 0)) findings.push("Invalid participant history omission count");
+        if (actor.executionProfile?.billing === "account-unknown" && (typeof actor.estimatedCost?.estimatedCostUsd === "number" || actor.tokenUsage?.costUsd !== undefined)) findings.push("Account participant dollars must remain unknown");
+      }
+    }
     const estimate = stream.actor?.estimatedCost;
     if (!estimate) {
       continue;

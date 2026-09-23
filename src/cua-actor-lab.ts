@@ -1,3 +1,4 @@
+import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -138,7 +139,7 @@ import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { MODEL_RATES, estimateActorCost, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
+import { MODEL_RATES, estimateActorCost, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
 import {
@@ -1154,7 +1155,7 @@ export interface CuaLaneDeps {
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a lane's loop (#441), keyed by lane. The live path wires the
    * incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
-  onTrace?: (laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage) => void;
+  onTrace?: (laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage, metadata?: CuaLiveMetadata) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -1597,8 +1598,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         : {
           // Forwards the RUNNING usage as well: the lane is where both are known, and usage
           // without it never reaches the flush — which is how the live cost stayed unknown.
-          onTrace: (items: readonly ActorTraceItem[], usage: ActorTokenUsage): void =>
-            deps.onTrace?.(spec.laneId, items, usage)
+          onTrace: (items: readonly ActorTraceItem[], usage: ActorTokenUsage, metadata?: CuaLiveMetadata): void =>
+            deps.onTrace?.(spec.laneId, items, usage, metadata)
         })
     };
     session = await deps.runSession(sessionOptions);
@@ -1621,7 +1622,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
     // never depends on the operator rate table. estimateActorCost declares absent (null) for an
     // unknown rate / missing usage rather than guessing.
-    session.trace.estimatedCost = estimateActorCost(session.trace.tokenUsage, session.trace.ids.model);
+    session.trace.estimatedCost = estimateActorCostForExecution(session.trace.tokenUsage, session.trace.ids.model, session.trace.executionProfile);
     await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
     if (session.trace.redaction.screenshots === "raw") {
       warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
@@ -1680,6 +1681,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       redactScreenshots: deps.redactScreenshots,
       scrubText: deps.scrubKnownValues,
       writeScreenshot,
+      ...(deps.onTrace === undefined ? {} : { onTrace: (items, usage, metadata) => deps.onTrace?.(spec.laneId, items, usage, metadata) }),
       ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
       ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
       ...(spec.tasks === undefined ? {} : { tasks: spec.tasks })
@@ -2436,11 +2438,11 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
   // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here
   // (before deps) so deps can reference it as a stable indirection.
-  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage) => void) | undefined;
+  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage, metadata?: CuaLiveMetadata) => void) | undefined;
   let stopLiveFlush: (() => Promise<void>) | undefined;
 
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
-    onTrace: (laneId, items, usage) => flushLiveTrace?.(laneId, items, usage),
+    onTrace: (laneId, items, usage, metadata) => flushLiveTrace?.(laneId, items, usage, metadata),
     config,
     descriptor,
     appUrl,
@@ -2562,6 +2564,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     // Running token usage per lane, so a run in flight can price itself instead of reporting the
     // cost as unknown until the moment it ends.
     const liveUsageByStream = new Map<string, ActorTokenUsage>();
+    const liveMetadataByStream = new Map<string, CuaLiveMetadata>();
     // The rate the running usage prices at. Usage without its model is not a cost, so both travel
     // together or neither does.
     const modelForLiveCost = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
@@ -2597,9 +2600,11 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
                       ? {}
                       : {
                           tokenUsage: liveUsageByStream.get(stream.id)!,
+
                           // The model too: usage without the rate it prices at is not a cost.
                           ids: { model: modelForLiveCost }
                         }),
+                    ...liveMetadataByStream.get(stream.id),
                     items: [...liveItems]
                   }
                 };
@@ -2628,13 +2633,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         flushTimer.unref?.();
       }
     };
-    flushLiveTrace = (laneId, items, usage) => {
+    flushLiveTrace = (laneId, items, usage, metadata) => {
       // An empty snapshot (the initial observation on a frameless route) carries no
       // evidence worth a disk write; the first real item triggers the first flush.
       if (items.length === 0) return;
       const streamId = streamIdByLane.get(laneId);
       if (streamId === undefined) return;
       liveItemsByStream.set(streamId, items.slice());
+      if (metadata !== undefined) liveMetadataByStream.set(streamId, metadata);
       if (usage !== undefined) liveUsageByStream.set(streamId, usage);
       flushDirty = true;
       scheduleFlush();
@@ -3275,7 +3281,8 @@ export function buildCuaCostSummary(args: {
         ratesAsOf: null
       });
     }
-    const est = lane.trace.estimatedCost;
+    const est = lane.trace.executionProfile?.billing === "account-unknown"
+      ? estimateActorCostForExecution(usage, lane.trace.ids.model, lane.trace.executionProfile) : lane.trace.estimatedCost;
     if (!est) {
       continue;
     }
@@ -3354,7 +3361,7 @@ export function buildCuaCostSummary(args: {
   }
   const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
   const estimateNote = estimatedTotalUsd === null
-    ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/pricing.ts to estimate this model.`
+    ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.lanes.some(lane => lane.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/pricing.ts to estimate this model."}`
     : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
   const note = estimateNote + ((args.desktops?.length ?? 0) > 0
     ? args.desktops!.some(usage => usage.observation !== undefined && "resources" in usage.observation)
@@ -3370,7 +3377,14 @@ export function buildCuaCostSummary(args: {
     fullyEstimated: !anyNull,
     placeholder,
     breakdown,
-    tokenUsage: { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
+    tokenUsage: args.lanes.some(lane => lane.trace.executionProfile?.billing === "account-unknown") ? {
+      ...(args.lanes.some(lane => lane.trace.tokenUsage?.input !== undefined) ? { input: sumInput } : {}),
+      ...(args.lanes.some(lane => lane.trace.tokenUsage?.output !== undefined) ? { output: sumOutput } : {}),
+      ...(args.lanes.every(lane => lane.trace.tokenUsage?.input !== undefined && lane.trace.tokenUsage?.output !== undefined &&
+        lane.trace.interactionUsageIncomplete !== true && lane.trace.debrief?.usageReported !== false &&
+        (lane.trace.executionProfile === undefined || lane.trace.providerRequests?.every(r => r.usageComplete) === true))
+        ? { total: sumInput + sumOutput } : {})
+    } : { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
     desktopMinutes: args.desktops === undefined ? args.desktopMinutes ?? null
       : args.desktops.some(usage => usage.minutes !== undefined)
         ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0)) : null,
