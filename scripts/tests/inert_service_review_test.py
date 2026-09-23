@@ -212,6 +212,20 @@ class IndependentReceiptReview(unittest.TestCase):
                 self.event(self.sample(value, case), kind)[field] = replacement
                 self.refused(value)
 
+    def test_artifact_cleanup_counts_cannot_omit_the_slice_files_or_control_sockets(self):
+        for case, key, field, replacement in (
+            ('IS01', 'unit_files', 'removed', 6),
+            ('IS02', 'unit_files', 'removed', 8),
+            ('IS09', 'control_sockets', 'removed', 1),
+            ('IS01', 'unit_files', 'retained', 1),
+            ('IS01', 'control_sockets', 'unresolved', 1),
+            ('IS01', 'control_sockets', 'removed', True),
+        ):
+            with self.subTest(case=case, key=key, field=field):
+                value = self.receipt()
+                self.sample(value, case)['cleanup'][key][field] = replacement
+                self.refused(value)
+
 
 if __name__ == '__main__':
     unittest.main()
