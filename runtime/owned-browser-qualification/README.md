@@ -92,7 +92,11 @@ python3 -B -m unittest discover -s scripts/tests -p 'owned_browser_*_test.py' -v
 node --check runtime/owned-browser-qualification/controller.mjs
 ```
 
-The manual job uploads finite JSON and three synthetic screenshots. It does not
+The manual job uploads finite JSON and three synthetic screenshots. Finite serial
+facts retain the observed kernel release, systemd version and listening-marker
+count as diagnostics; they are not guest attestation. Each slice cleanup requires
+a fresh owned zero, terminal/no-job state and acknowledged cgroup removal.
+The job does not
 distribute appliance/kernel/VMM/Node binaries or broad host logs. Bounded serial
 diagnostics remain in the private root packet on failure. An unconfirmed root
 command exit prevents a second automatic cleanup command. Disposable-host

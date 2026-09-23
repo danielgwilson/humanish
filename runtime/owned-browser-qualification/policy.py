@@ -12,6 +12,8 @@ CASES = ('PRELUDE', *tuple(f'OB{i:02}' for i in range(1, 9)))
 IMPLEMENTED = ('PRELUDE', 'OB01')
 ROLES = ('owner', 'supervisor', 'controller', 'vmm', 'prelude', 'bs', 'bw', 'canary')
 SAFE_ENV = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LC_ALL': 'C.UTF-8', 'LANG': 'C.UTF-8'}
+GUEST_KERNEL_RELEASE = '6.18.39-humanish-browser-amd64-1'
+GUEST_SYSTEMD_VERSION = '257.13-1~deb13u1'
 BOOT_ARGS = 'console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro rootfstype=ext4 init=/sbin/init'
 LAUNCHER_CAPS = 'CAP_SYS_ADMIN CAP_SYS_CHROOT CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_MKNOD'
 SOURCE_FILES = ('policy.py', 'files.py', 'ownership.py', 'qualification.py', 'owner.py',
@@ -136,7 +138,7 @@ def render(root, value, minor=None):
                       'DevicePolicy=closed', 'DeviceAllow=/dev/char/10:232 rwm', 'DeviceAllow=/dev/char/10:200 m',
                       'StandardOutput=file:' + str(instance / 'serial.fifo'),
                       'StandardError=file:' + str(instance / 'serial.fifo'),
-                      'ExecStart=!/usr/bin/python3 -I -S ' + str(code / 'launcher.py') + ' ' + value]
+                      'ExecStart=!/usr/bin/python3 -I -S -B ' + str(code / 'launcher.py') + ' ' + value]
             if minor is not None:
                 lines += ['DeviceAllow=/dev/char/10:' + str(minor) + ' m']
         elif role == 'owner':
@@ -144,10 +146,10 @@ def render(root, value, minor=None):
                       'CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_KILL CAP_SYS_PTRACE',
                       'SystemCallFilter=~ptrace process_vm_readv process_vm_writev',
                       'ReadWritePaths=' + str(root) + ' /run/systemd/system',
-                      'ExecStart=/usr/bin/python3 -I -S ' + str(code / 'owner.py') + ' ' + value]
+                      'ExecStart=/usr/bin/python3 -I -S -B ' + str(code / 'owner.py') + ' ' + value]
         elif role in ('supervisor', 'bs'):
             lines += ['Type=notify', 'NotifyAccess=main', 'WatchdogSec=10s', 'MemoryMax=64M', 'TasksMax=8',
-                      'CapabilityBoundingSet=', 'ExecStart=/usr/bin/python3 -I -S ' + str(code / 'supervisor.py') + ' ' + value + ' ' + role]
+                      'CapabilityBoundingSet=', 'ExecStart=/usr/bin/python3 -I -S -B ' + str(code / 'supervisor.py') + ' ' + value + ' ' + role]
         elif role == 'controller':
             lines += ['Type=exec', 'ExitType=cgroup', 'NotifyAccess=none', 'MemoryMax=384M', 'TasksMax=32',
                       'CapabilityBoundingSet=', 'ExecStart=' + str(root / 'catalog/node') + ' ' + str(code / 'controller.mjs') + ' ' + value]
@@ -155,7 +157,7 @@ def render(root, value, minor=None):
             lines += ['Type=notify' if role == 'prelude' else 'Type=exec', 'ExitType=cgroup',
                       'NotifyAccess=main' if role == 'prelude' else 'NotifyAccess=none',
                       'MemoryMax=32M', 'TasksMax=8', 'CapabilityBoundingSet=',
-                      'ExecStart=/usr/bin/python3 -I -S ' + str(code / 'worker.py') + ' ' + value + ' ' + role]
+                      'ExecStart=/usr/bin/python3 -I -S -B ' + str(code / 'worker.py') + ' ' + value + ' ' + role]
         result[name] = '\n'.join(lines) + '\n'
     return result
 

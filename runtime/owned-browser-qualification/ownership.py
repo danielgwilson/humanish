@@ -98,13 +98,13 @@ class Service:
 class HeldParent:
     """A retained active slice is the recursive process-absence observation point."""
     def __init__(self, manager, *, role='parent', cgroup_root=Path('/sys/fs/cgroup'), boot=boot_id):
-        if role not in ('parent', 'owner_parent'):
+        if role not in ('parent', 'owner_parent', 'study', 'other'):
             raise Refusal('invalid_parent_role')
         self.role = role
         self.manager = manager
         self.boot = boot
         self.boot_identity = boot()
-        self.group = ('/' + manager.units['study'] + '/' + manager.units['parent']) if role == 'parent' else '/' + manager.units['owner_parent']
+        self.group = ('/' + manager.units['study'] + '/' + manager.units['parent']) if role == 'parent' else '/' + manager.units[role]
         self.path = cgroup_root / self.group.lstrip('/')
         self.fd = self.events = None
         self.observations = []

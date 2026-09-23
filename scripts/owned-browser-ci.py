@@ -87,7 +87,7 @@ def validate(value):
     if any(row.get('status') != 'not_implemented' for row in rows[2:]):
         raise ValueError('fault_coverage_fabricated')
     for row in rows[:2]:
-        if row.get('status') != 'observed' or row.get('cleanup', {}).get('status') != 'complete':
+        if row.get('status') != 'observed' or row.get('cleanup', {}).get('status') != 'complete' or row.get('cleanup', {}).get('unresolved') != 0:
             raise ValueError('missing_observation')
         facts = row.get('facts', {})
         samples = facts.get('parentObservations', [])
@@ -96,16 +96,34 @@ def validate(value):
         if any(item.get('basis') != 'same_active_parent_recursive_population' for item in samples):
             raise ValueError('invalid_absence_basis')
         events = facts.get('events', [])
+        slices = [event for event in events if event.get('kind') == 'retained_slice_removed']
+        if ({event.get('role') for event in slices} != {'parent', 'owner_parent', 'study', 'other'} or len(slices) != 4 or
+            any(event.get('terminalNoJob') is not True or event.get('cgroupPathAbsent') is not True or
+                event.get('sameInvocationBeforeStop') is not True or event.get('populationBeforeStop', {}).get('populated') != 0 for event in slices)):
+            raise ValueError('retained_slice_cleanup_unconfirmed')
         progress = [event for event in events if event.get('kind') == 'unaffected_progress']
+        baseline = [event for event in events if event.get('kind') == 'counter_baseline']
+        if (len(baseline) != 1 or len(progress) != 1 or baseline[0].get('counters') != progress[0].get('before') or
+            type(baseline[0].get('boottime_ns')) is not int or type(progress[0].get('boottime_ns')) is not int or
+            baseline[0]['boottime_ns'] >= progress[0]['boottime_ns']):
+            raise ValueError('unaffected_baseline_missing')
         if len(progress) != 1 or any(progress[0].get('after', {}).get(role, 0) <= progress[0].get('before', {}).get(role, 0) for role in ('bw', 'canary')):
             raise ValueError('unaffected_progress_missing')
     prelude = {event['kind']: event for event in rows[0]['facts']['events']}
     if (prelude.get('post_ready_fork_observed', {}).get('leaderExited') is not True or
         prelude.get('same_parent_after_leaf_removal', {}).get('serviceLeafAbsent') is not True):
         raise ValueError('prelude_evidence_missing')
+    owner_population = rows[1]['facts'].get('ownerParentObservations', [])
+    if not owner_population or owner_population[0].get('populated') != 0 or owner_population[-1].get('populated') != 0 or not any(item.get('populated') == 1 for item in owner_population):
+        raise ValueError('owner_absence_unproven')
     owner = rows[1]['facts'].get('owner', {})
     if owner.get('admitted') is not True or owner.get('saveDispatches') != 1 or owner.get('materialActions') != 2:
         raise ValueError('transaction_evidence_missing')
+    boot = owner.get('bootDiagnostics', {})
+    if (boot.get('kernelRelease') != '6.18.39-humanish-browser-amd64-1' or boot.get('systemdVersion') != '257.13-1~deb13u1' or
+        type(boot.get('listeningHints')) is not int or not 1 <= boot['listeningHints'] <= 4 or
+        boot.get('authority') != 'bounded_serial_diagnostic_only'):
+        raise ValueError('guest_boot_diagnostics_missing')
     if set(rows[1]['facts'].get('frames', {})) != {'before', 'typed', 'after'}:
         raise ValueError('visible_frames_missing')
     return value

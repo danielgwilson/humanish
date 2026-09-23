@@ -167,6 +167,23 @@ def remove_finite_tree(path, allowed, *, devices=None, expected=None, expected_r
                 os.close(child)
 
 
+def stop_retained_slice(held, deadline):
+    before = held.observe(deadline)
+    if before['populated'] != 0:
+        raise Refusal('slice_still_populated')
+    held.manager.command('stop', (held.role,), deadline)
+    while True:
+        deadline.remaining()
+        row = held.manager.show(held.role, deadline)
+        if row.get('InvocationID') not in (held.invocation, '', '0' * 32):
+            raise Refusal('stopped_slice_replaced')
+        if (row.get('ActiveState') in ('inactive', 'failed') and row.get('Job') in ('', '0') and
+            row.get('ControlGroup') in ('', held.group) and not held.path.exists()):
+            return {'sameInvocationBeforeStop': True, 'populationBeforeStop': before,
+                    'terminalNoJob': True, 'cgroupPathAbsent': True}
+        time.sleep(0.1)
+
+
 class Case:
     def __init__(self, root, case_id, catalog, minor):
         self.root, self.case_id, self.catalog, self.minor = root, case_id, catalog, minor
@@ -176,6 +193,7 @@ class Case:
         self.instance = allocation_path(root, self.generation)
         self.parent = None
         self.owner_parent = None
+        self.slices = {}
         self.roles = {}
         self.started = set()
         self.unit_files = {}
@@ -231,9 +249,11 @@ class Case:
             for name, text in rendered.items():
                 self.unit_files[name] = {'identity': durable_at(fd, name, text.encode(), 0o644), 'sha256': hashlib.sha256(text.encode()).hexdigest()}
         self.manager.command('daemon-reload')
-        self.manager.command('start', ('parent',))
-        self.wait(lambda: self.manager.show('parent').get('ActiveState') == 'active')
-        self.parent = HeldParent(self.manager)
+        self.manager.command('start', ('study', 'parent', 'owner_parent', 'other'))
+        for role in ('study', 'parent', 'owner_parent', 'other'):
+            self.wait(lambda role=role: self.manager.show(role).get('ActiveState') == 'active')
+            self.slices[role] = HeldParent(self.manager, role=role)
+        self.parent, self.owner_parent = self.slices['parent'], self.slices['owner_parent']
         if self.parent.observe()['populated'] != 0:
             raise Refusal('parent_not_initially_empty')
         self.event('retained_parent_acquired', invocation=self.parent.invocation, controlGroup=self.parent.group,
@@ -311,9 +331,6 @@ class Case:
     def ob01(self):
         self.prepare_disks()
         self.start('supervisor')
-        self.manager.command('start', ('owner_parent',))
-        self.wait(lambda: self.manager.show('owner_parent').get('ActiveState') == 'active')
-        self.owner_parent = HeldParent(self.manager, role='owner_parent')
         if self.owner_parent.observe()['populated'] != 0:
             raise Refusal('owner_parent_not_empty')
         self.start('owner')
@@ -431,7 +448,7 @@ class Case:
                     remove_finite_tree(path, allowed, expected_root=self.runtime_ids[role])
                     path.rmdir()
                 for role in ('parent', 'owner_parent', 'study', 'other'):
-                    self.manager.command('stop', (role,), deadline)
+                    self.event('retained_slice_removed', role=role, **stop_retained_slice(self.slices[role], deadline))
                 with anchored('/run/systemd/system', trusted=True) as fd:
                     for name, owned in self.unit_files.items():
                         if hashlib.sha256(read_at(fd, name, 65536)).hexdigest() != owned['sha256']:
@@ -451,10 +468,10 @@ class Case:
             held.close()
         if self.owner_parent:
             self.facts['ownerParentObservations'] = self.owner_parent.observations
-            self.owner_parent.close()
         if self.parent:
             self.facts['parentObservations'] = self.parent.observations
-            self.parent.close()
+        for held in self.slices.values():
+            held.close()
         return self.cleanup
 
 

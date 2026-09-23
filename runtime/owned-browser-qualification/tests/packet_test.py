@@ -37,7 +37,10 @@ class PacketTests(unittest.TestCase):
         self.assertIn('DeviceAllow=/dev/char/10:245 m', vmm)
         self.assertNotIn('Delegate=yes', vmm)
         self.assertNotIn('CAP_SYS_PTRACE', vmm)
-        self.assertIn('ExecStart=!/usr/bin/python3 -I -S ', vmm)
+        self.assertIn('ExecStart=!/usr/bin/python3 -I -S -B ', vmm)
+        for text in units.values():
+            if '/usr/bin/python3' in text:
+                self.assertIn('/usr/bin/python3 -I -S -B ', text)
         self.assertIn('RuntimeMaxSec=2100s', units[names(GEN)['canary']])
         owner = units[names(GEN)['owner']]
         self.assertIn('CAP_SYS_PTRACE', owner)
@@ -280,3 +283,42 @@ class StagingCleanupTests(unittest.TestCase):
                 self.assertTrue(result['catalogUnchanged']); self.assertTrue(result['rootAbsent'])
                 self.assertEqual(base.exists(),not created)
                 self.assertEqual((parent/'canary').read_bytes(),b'unrelated')
+
+class FinalEvidenceTests(unittest.TestCase):
+    def test_serial_requires_both_boot_versions_besides_listening_hint(self):
+        from owner import SerialFacts
+        facts=SerialFacts()
+        self.assertTrue(facts.line(b'[ 2.000] humanish-vsock[201]: HUMANISH_GUEST_LISTENING_V1'))
+        with self.assertRaises(Refusal): facts.admitted()
+        facts.line(b'[ 0.000] Linux version 6.18.39-humanish-browser-amd64-1 (synthetic fixture)')
+        with self.assertRaises(Refusal): facts.admitted()
+        facts.line(b'[ 1.000] systemd[1]: systemd 257.13-1~deb13u1 running in system mode')
+        self.assertEqual(facts.admitted()['authority'],'bounded_serial_diagnostic_only')
+        with self.assertRaises(Refusal): facts.line(b'Linux version 6.1.0 (different boot)')
+
+    def test_slice_stop_waits_for_no_job_and_actual_path_removal(self):
+        from qualification import stop_retained_slice
+        with tempfile.TemporaryDirectory() as temporary:
+            path=Path(temporary)/'slice'; path.mkdir()
+            rows=[{'InvocationID':'a'*32,'Job':'12','ActiveState':'deactivating','ControlGroup':'/owned'},
+                  {'InvocationID':'a'*32,'Job':'','ActiveState':'inactive','ControlGroup':''}]
+            calls=[]
+            class Manager:
+                def command(self,verb,roles,deadline): calls.append((verb,roles))
+                def show(self,role,deadline):
+                    row=rows.pop(0)
+                    if not rows: path.rmdir()
+                    return row
+            held=types.SimpleNamespace(role='parent',invocation='a'*32,group='/owned',path=path,manager=Manager(),
+                observe=lambda deadline:{'populated':0,'basis':'same_active_parent_recursive_population'})
+            result=stop_retained_slice(held,Deadline.after(2))
+            self.assertEqual(calls,[('stop',('parent',))]); self.assertTrue(result['cgroupPathAbsent'])
+            self.assertEqual(rows,[])
+
+    def test_populated_or_replaced_slice_never_promotes_stop(self):
+        from qualification import stop_retained_slice
+        held=types.SimpleNamespace(observe=lambda deadline:{'populated':1})
+        with self.assertRaisesRegex(Refusal,'slice_still_populated'): stop_retained_slice(held,Deadline.after(1))
+        manager=types.SimpleNamespace(command=lambda *args:None,show=lambda *args:{'InvocationID':'b'*32})
+        held=types.SimpleNamespace(observe=lambda deadline:{'populated':0},manager=manager,role='parent',invocation='a'*32)
+        with self.assertRaisesRegex(Refusal,'stopped_slice_replaced'): stop_retained_slice(held,Deadline.after(1))

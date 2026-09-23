@@ -3,6 +3,7 @@ import hashlib
 import os
 from pathlib import Path
 import pwd
+import re
 import secrets
 import select
 import socket
@@ -13,7 +14,7 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from files import Deadline, anchored, durable_at, identity, read_at, unique_json, snapshot_finite
 from ownership import AcquiredPeer, HeldParent, Manager, Service, boottime_ns, invocation
-from policy import BOOT_ARGS, Refusal, allocation_path, checked_packet_path, encode, jail_paths, names, effective, allocation_entries
+from policy import BOOT_ARGS, Refusal, allocation_path, checked_packet_path, encode, jail_paths, names, effective, allocation_entries, GUEST_KERNEL_RELEASE, GUEST_SYSTEMD_VERSION
 from wire import LeaseChannel, atomic, notify, peer, runtime
 
 
@@ -56,6 +57,36 @@ def image(value):
     return value
 
 
+class SerialFacts:
+    """Diagnostic console hints only; bootstrap/peer identity is separate authority."""
+    def __init__(self):
+        self.value = {'kernelRelease': None, 'systemdVersion': None, 'listeningHints': 0,
+                      'authority': 'bounded_serial_diagnostic_only'}
+
+    def line(self, line):
+        for field, pattern in (
+            ('kernelRelease', rb'Linux version ([0-9][A-Za-z0-9._+~-]{0,95})(?:\s|$)'),
+            ('systemdVersion', rb'systemd ([0-9][A-Za-z0-9._+~:-]{0,95}) running in system mode')):
+            match = re.search(pattern, line)
+            if match:
+                value = match.group(1).decode('ascii')
+                if self.value[field] not in (None, value):
+                    raise Refusal('conflicting_boot_diagnostics')
+                self.value[field] = value
+        if line.rstrip().endswith(b'HUMANISH_GUEST_LISTENING_V1'):
+            self.value['listeningHints'] += 1
+            if self.value['listeningHints'] > 4:
+                raise Refusal('listening_marker_repeated')
+            return True
+        return False
+
+    def admitted(self):
+        if (self.value['kernelRelease'] != GUEST_KERNEL_RELEASE or
+            self.value['systemdVersion'] != GUEST_SYSTEMD_VERSION or self.value['listeningHints'] < 1):
+            raise Refusal('guest_boot_diagnostics_missing')
+        return dict(self.value)
+
+
 class Owner:
     def __init__(self, root, generation):
         self.root = checked_packet_path(root)
@@ -76,6 +107,7 @@ class Owner:
         self.serial_hash = hashlib.sha256()
         self.serial_tail = b''
         self.listening = False
+        self.serial_facts = SerialFacts()
         self.admitted = False
         self.completed = False
         self.creation_started = False
@@ -132,8 +164,8 @@ class Owner:
                 self.serial_tail = lines.pop()
                 if len(self.serial_tail) > 4096:
                     raise Refusal('serial_line_bounds')
-                if any(line.rstrip().endswith(b'HUMANISH_GUEST_LISTENING_V1') for line in lines):
-                    if not self.listening:
+                for line in lines:
+                    if self.serial_facts.line(line) and not self.listening:
                         self.listening = True
                         self.event('guest_listening_hint')
         if self.controller_pidfd is not None and select.select([self.controller_pidfd], [], [], 0)[0]:
@@ -362,6 +394,7 @@ class Owner:
                 if count <= 0:
                     raise Refusal('relay_write_failed')
                 del queues[channel][:count]
+        self.record['bootDiagnostics'] = self.serial_facts.admitted()
         self.record['status'] = 'transaction_observed'
 
     def close(self):
@@ -401,6 +434,7 @@ class Owner:
         if self.serial_output is not None:
             os.fsync(self.serial_output)
             os.close(self.serial_output)
+        self.record['bootDiagnostics'] = dict(self.serial_facts.value)
         self.record['cleanup'] = {**cleanup, 'durationMs': (boottime_ns() - started) // 1000000,
             'population': self.parent.observations, 'serialBytes': self.serial_bytes, 'serialSha256': self.serial_hash.hexdigest()}
         self.parent.close()

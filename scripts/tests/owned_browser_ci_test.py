@@ -1,6 +1,7 @@
 """No root call is dispatched by these CI admission fixtures."""
 import importlib.util
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -20,6 +21,26 @@ def environment():
             'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_REPOSITORY':ci.REPOSITORY,'GITHUB_REF':'refs/heads/main',
             'GITHUB_WORKFLOW_REF':ci.REPOSITORY+'/'+ci.WORKFLOW+'@refs/heads/main',
             'GITHUB_SHA':'a'*40,'GITHUB_WORKFLOW_SHA':'a'*40,'GITHUB_RUN_ID':'12345'}
+
+
+def observed_receipt():
+    population=[{'populated':value,'basis':'same_active_parent_recursive_population'} for value in (0,1,0)]
+    slices=[{'kind':'retained_slice_removed','role':role,'terminalNoJob':True,'cgroupPathAbsent':True,
+             'sameInvocationBeforeStop':True,'populationBeforeStop':{'populated':0}} for role in ('parent','owner_parent','study','other')]
+    events=[{'kind':'counter_baseline','counters':{'bw':1,'canary':1},'boottime_ns':10},
+            {'kind':'unaffected_progress','before':{'bw':1,'canary':1},'after':{'bw':2,'canary':2},'boottime_ns':20}]
+    rows=[]
+    for name in ('PRELUDE','OB01'):
+        rows.append({'id':name,'status':'observed','cleanup':{'status':'complete','unresolved':0},
+                     'facts':{'parentObservations':copy.deepcopy(population),'events':copy.deepcopy(events+slices)}})
+    rows[0]['facts']['events'] += [{'kind':'post_ready_fork_observed','leaderExited':True},
+                                  {'kind':'same_parent_after_leaf_removal','serviceLeafAbsent':True}]
+    rows[1]['facts'].update(ownerParentObservations=copy.deepcopy(population),frames={name:{} for name in ('before','typed','after')},
+        owner={'admitted':True,'saveDispatches':1,'materialActions':2,'bootDiagnostics':{'kernelRelease':'6.18.39-humanish-browser-amd64-1',
+        'systemdVersion':'257.13-1~deb13u1','listeningHints':1,'authority':'bounded_serial_diagnostic_only'}})
+    rows += [{'id':f'OB{index:02}','status':'not_implemented'} for index in range(2,9)]
+    return {'schema':'humanish.owned-browser-qualification.v1','aggregate':False,'visualReview':'pending',
+            'implementedCellsObserved':True,'cleanup':{'status':'complete'},'cases':rows}
 
 
 class CiTests(unittest.TestCase):
@@ -70,6 +91,17 @@ class CiTests(unittest.TestCase):
     def test_bare_green_or_missing_coverage_is_not_accepted(self):
         for value in ({'aggregate':True}, {'schema':'humanish.owned-browser-qualification.v1','aggregate':False,
             'visualReview':'pending','implementedCellsObserved':True,'cleanup':{'status':'complete'},'cases':[]}):
+            with self.assertRaises(ValueError): ci.validate(value)
+
+    def test_consumption_requires_boot_and_independent_cleanup_facts(self):
+        self.assertIs(ci.validate(value:=observed_receipt()),value)
+        mutations=[lambda v:v['cases'][1]['facts']['owner'].pop('bootDiagnostics'),
+            lambda v:v['cases'][1]['facts']['ownerParentObservations'].clear(),
+            lambda v:v['cases'][1]['facts']['events'].pop(),
+            lambda v:v['cases'][0]['cleanup'].update(unresolved=1),
+            lambda v:v['cases'][1]['facts']['events'][0].update(counters={'bw':0,'canary':0})]
+        for mutate in mutations:
+            value=observed_receipt(); mutate(value)
             with self.assertRaises(ValueError): ci.validate(value)
 
     def test_receipt_duplicate_members_refused(self):
