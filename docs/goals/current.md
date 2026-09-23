@@ -107,7 +107,8 @@ substitute for it.
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
 and [CLI reference](https://humanish.dev/docs/cli) when choosing a concrete path.
-Source behavior and required tests outrank stale status prose.
+Source and tests establish observed behavior. Resolve conflicts with requirements
+explicitly; neither stale status prose nor a passing test makes a bug correct.
 
 The library-assisted `local-app` route now includes a
 [runnable npm example](../architecture/examples/state-driven-local-app/README.md).
@@ -135,10 +136,12 @@ app; it does not establish persona effectiveness or independent adoption.
 Follow [AGENTS.md](../../AGENTS.md), the [invariants](../principles/invariants-and-defaults.md)
 and the [public-readiness standard](../release/public-readiness-standard.md).
 
-- Keep `main` clean and work on scoped branches/worktrees. Substantial work
-  needs an issue with scope, authority, required proof and stop conditions.
+- Keep `main` clean and work on scoped branches/worktrees. Keep the task's scope,
+  authority, relevant checks and material failure boundaries in its issue, PR or
+  current handoff; do not create a separate packet for routine work.
 - Existing explicit shipping authority governs implementation and merge;
-  otherwise issue readiness does not create authority by itself.
+  otherwise issue readiness does not create authority by itself. Machine-readiness
+  fields gate automated queue pickup, not directly assigned interactive work.
 - Never commit secrets, private transcripts/screenshots, customer data or
   private project context. Keep generated proof in ignored `.humanish/` and
   retain needed evidence before removing a worktree.
@@ -153,7 +156,10 @@ and the [public-readiness standard](../release/public-readiness-standard.md).
 
 ## Proof Before Shipping
 
-From a clean contributor worktree:
+Use the [verification guidance](../../AGENTS.md#verification): check the changed
+behavior and material risks, then stop unless new evidence warrants more work.
+Required CI remains the merge gate. For a release, run the full release gates
+from a clean contributor worktree:
 
 ```bash
 pnpm install --frozen-lockfile

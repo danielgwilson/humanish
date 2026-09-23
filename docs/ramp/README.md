@@ -14,19 +14,26 @@ context.
 
 ## First Read
 
-Read these in order:
+Start with three things:
 
-1. [`AGENTS.md`](../../AGENTS.md) for public boundary and engineering rules.
-2. [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md) — which rules are invariants and which are overridable defaults, each with the reason it exists and the check that enforces it. (The enforcement is what makes a rule real here — when a doc sentence and a test disagree, trust the test and say so.)
-3. [`README.md`](../../README.md) for install, commands, and package shape.
-4. [`docs/goals/current.md`](../goals/current.md) for the active product goal.
-5. [`docs/goals/proof-roadmap/goal.md`](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md) for the ratified proof architecture (repo-only; not shipped in the npm package, hence the absolute link).
-6. [`docs/product/open-source-install-experience.md`](../product/open-source-install-experience.md) for first-run UX.
-7. [`docs/roadmap/world-class-open-source-v0.md`](../roadmap/world-class-open-source-v0.md) for staged delivery history (historical; see its status banner).
-8. [`docs/architecture/observer.md`](../architecture/observer.md) for Observer architecture.
-9. [`docs/contracts/run-bundle.md`](../contracts/run-bundle.md) and [`docs/contracts/policy.md`](../contracts/policy.md) for proof contracts.
-10. [`docs/release/public-readiness-standard.md`](../release/public-readiness-standard.md) before deciding what must be scrubbed.
-11. [`docs/release/open-source-readiness.md`](../release/open-source-readiness.md) before touching public packaging or repository visibility.
+1. [`AGENTS.md`](../../AGENTS.md) for engineering judgment and public boundaries.
+2. The current task and [`docs/goals/current.md`](../goals/current.md) for current
+   product status. Explicit task direction takes precedence over historical queues.
+3. Instructions in the component being changed, then its relevant contracts.
+
+Use the references below as needed. Historical plans are context, not a backlog
+to resume automatically. Keep one concise current task handoff with the requested
+outcome, demonstrated behavior, next complete result, constraints and rejected or
+deferred approaches; link evidence rather than repeating its chronology.
+
+| When working on | Reference |
+| --- | --- |
+| Install, commands or first-run UX | [`README.md`](../../README.md), [install experience](../product/open-source-install-experience.md) |
+| Security, evidence handling or defaults | [Invariants and defaults](../principles/invariants-and-defaults.md) |
+| Observer | [Observer architecture](../architecture/observer.md) and its component instructions |
+| Bundle formats or policy | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md) |
+| Public artifacts or packaging | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md) |
+| Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
 
