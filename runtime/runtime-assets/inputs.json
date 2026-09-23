@@ -1,0 +1,67 @@
+{
+  "schema": "humanish.browser-boot-inputs.v1",
+  "architecture": "amd64",
+  "qualification": "development-unqualified",
+  "firecracker": {
+    "version": "1.17.0",
+    "commit": "95f868c8e345b1cc8faccd1a3c910b4989dc3f58",
+    "origin": "official GitHub HTTPS release and source; asset digest and checksum sidecar matched; release/tag not signed",
+    "signatureVerified": false
+  },
+  "kernel": {
+    "version": "6.18.39-79.141.amzn2023",
+    "repositoryRelease": "2023.12.20260817",
+    "signingFingerprint": "B21C50FA44A99720EAA72F7FE951904AD832C631",
+    "signingKeySha256": "664b632018bd84f9b249be7bd26937c560edb2f2bfc0cbc01ec5a7b4e06aad56",
+    "sourceSpecSha256": "9898e89b80fdca7c1cb5f6d8cc96566ee9df42f72a7b27d499f5e8f519f0ab25",
+    "microvmConfigSha256": "e933932eb8c9233e337b928fb1e4e697a7c26e28bbf52cfd4a51400254052707",
+    "patchCount": 140
+  },
+  "files": {
+    "firecracker-v1.17.0-x86_64.tgz": {
+      "url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-x86_64.tgz",
+      "size": 7464385,
+      "sha256": "06094a1108ae9e82aa4c23a775aa92758f53f1175d422270d9d6162cb9ade558"
+    },
+    "firecracker-v1.17.0-x86_64.tgz.sha256.txt": {
+      "url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-x86_64.tgz.sha256.txt",
+      "size": 97,
+      "sha256": "b89dea3edf551929f151b95d31168677ad2b8bb257d1d87a08470f7299749b7c"
+    },
+    "firecracker-source-95f868c8.tar.gz": {
+      "url": "https://codeload.github.com/firecracker-microvm/firecracker/tar.gz/95f868c8e345b1cc8faccd1a3c910b4989dc3f58",
+      "size": 11525155,
+      "sha256": "27280787407229c412901dfcf74cd378f1336010e71050aba43ace51cd4a0f4f"
+    },
+    "microvm-kernel-ci-x86_64-6.18.config": {
+      "url": "https://raw.githubusercontent.com/firecracker-microvm/firecracker/95f868c8e345b1cc8faccd1a3c910b4989dc3f58/resources/guest_configs/microvm-kernel-ci-x86_64-6.18.config",
+      "size": 97971,
+      "sha256": "ba22401a0c7292a4c024ebcd10a562d4a1f1bfd2faed671406d3b159c0cf5215"
+    },
+    "amazonlinux-repomd.xml": {
+      "url": "https://cdn.amazonlinux.com/al2023/core/guids/e56f3d932530715bd6022770def2a18cbd23bf97fca31b6ad2278227c8ca127e/SRPMS/repodata/repomd.xml",
+      "size": 2636,
+      "sha256": "cac3a08a7f3cb73df3d9850fcbda095516dd503555d2e1615332d5df902b2ccd"
+    },
+    "amazonlinux-repomd.xml.asc": {
+      "url": "https://cdn.amazonlinux.com/al2023/core/guids/e56f3d932530715bd6022770def2a18cbd23bf97fca31b6ad2278227c8ca127e/SRPMS/repodata/repomd.xml.asc",
+      "size": 863,
+      "sha256": "ac6556f90598e789b23d2b1c72e810d4dfc81fa57c69c43f316ff4c788f5ae80"
+    },
+    "amazonlinux-primary.xml.gz": {
+      "url": "https://cdn.amazonlinux.com/al2023/core/guids/e56f3d932530715bd6022770def2a18cbd23bf97fca31b6ad2278227c8ca127e/SRPMS/repodata/primary.xml.gz",
+      "size": 1522229,
+      "sha256": "1827e291278da933bec2f8d0522b2550088f4a9cad9286364526f374707150e8"
+    },
+    "kernel6.18-6.18.39-79.141.amzn2023.src.rpm": {
+      "url": "https://cdn.amazonlinux.com/al2023/blobstore/781fb7c91a27df1d0552a053ab4c5ddc274a95e053a95701beebf16bce6aee45/kernel6.18-6.18.39-79.141.amzn2023.src.rpm",
+      "size": 157924993,
+      "sha256": "781fb7c91a27df1d0552a053ab4c5ddc274a95e053a95701beebf16bce6aee45"
+    },
+    "system-release-2023.12.20260817-0.amzn2023.src.rpm": {
+      "url": "https://cdn.amazonlinux.com/al2023/blobstore/943a15f6cd029ff7afdafdd407736e93014f4e7d69e4121afbaba55103b9f0f7/system-release-2023.12.20260817-0.amzn2023.src.rpm",
+      "size": 28711,
+      "sha256": "943a15f6cd029ff7afdafdd407736e93014f4e7d69e4121afbaba55103b9f0f7"
+    }
+  }
+}
