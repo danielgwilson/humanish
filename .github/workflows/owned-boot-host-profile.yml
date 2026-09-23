@@ -1,0 +1,55 @@
+name: Owned boot host prerequisites
+
+on:
+  pull_request:
+    paths:
+      - scripts/owned-boot-host-profile.py
+      - scripts/tests/owned_boot_host_profile_test.py
+      - .github/workflows/owned-boot-host-profile.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/owned-boot-host-profile.py
+      - scripts/tests/owned_boot_host_profile_test.py
+      - .github/workflows/owned-boot-host-profile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Exercise fixed query and refusal fixtures without device access
+        run: /usr/bin/python3 -B -m unittest discover -s scripts/tests -p owned_boot_host_profile_test.py -v
+
+  measure:
+    # No PR, self-hosted, supplied ref, runner matrix or user inputs reach sudo.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'danielgwilson/humanish'
+    needs: fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Measure read-only prerequisites from reviewed immutable source
+        if: runner.environment == 'github-hosted'
+        run: |
+          mkdir -p .humanish/owned-boot-host-profile
+          /usr/bin/python3 -I -S -B scripts/owned-boot-host-profile.py --ci \
+            > .humanish/owned-boot-host-profile/receipt.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: owned-boot-host-prerequisites
+          path: .humanish/owned-boot-host-profile/receipt.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
