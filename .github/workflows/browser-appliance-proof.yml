@@ -1,0 +1,107 @@
+name: Browser appliance proof
+
+on:
+  pull_request:
+    paths:
+      - runtime/browser-guest/**
+      - runtime/browser-kernel/**
+      - runtime/browser-disk/**
+      - runtime/runtime-assets/**
+      - src/guest-*.ts
+      - src/browser-control-*.ts
+      - scripts/guest-runtime-*.mjs
+      - tests/guest-*.test.ts
+      - pnpm-lock.yaml
+      - tsconfig.build.json
+      - .github/workflows/browser-appliance-proof.yml
+  push:
+    branches: [main]
+    paths:
+      - runtime/browser-guest/**
+      - runtime/browser-kernel/**
+      - runtime/browser-disk/**
+      - runtime/runtime-assets/**
+      - src/guest-*.ts
+      - src/browser-control-*.ts
+      - scripts/guest-runtime-*.mjs
+      - tests/guest-*.test.ts
+      - pnpm-lock.yaml
+      - tsconfig.build.json
+      - .github/workflows/browser-appliance-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appliance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-artifacts:
+    # Ordinary disposable VM and Docker only; no KVM, sudo or host mounts.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Exercise build contracts without containers
+        run: |
+          python3 -B -m unittest discover -s runtime/runtime-assets/tests -v
+          python3 -B -m unittest discover -s runtime/browser-kernel/tests -v
+          python3 -B -m unittest discover -s runtime/browser-disk/tests -v
+      - name: Compile the fixed runtime payload
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec tsc -p tsconfig.build.json
+          node scripts/guest-runtime-package.mjs "$RUNNER_TEMP/guest-payload"
+      - name: Build the pinned offline base
+        run: python3 runtime/browser-guest/build.py --architecture amd64 --output "$RUNNER_TEMP/browser-base"
+      - name: Prove the constrained browser and packaged controller
+        run: |
+          HUMANISH_GUEST_IMAGE="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "browser-base/manifest.json")))["image"]["id"])')" node scripts/guest-runtime-proof.mjs
+      - name: Verify source inputs and compile the matching browser kernel
+        run: |
+          python3 runtime/runtime-assets/fetch.py --output "$RUNNER_TEMP/boot-inputs"
+          python3 runtime/browser-kernel/build.py --inputs "$RUNNER_TEMP/boot-inputs" --output "$RUNNER_TEMP/kernel-build" --jobs 2
+      - name: Assemble and inspect both filesystems without mounting
+        run: |
+          python3 runtime/browser-disk/build.py \
+            --base "$RUNNER_TEMP/browser-base" \
+            --package "$RUNNER_TEMP/guest-payload" \
+            --kernel-config "$RUNNER_TEMP/kernel-build/output/kernel.config" \
+            --output "$RUNNER_TEMP/browser-disks"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          # Retain receipts only. Guest/kernel/VMM bytes are not distributed.
+          name: browser-appliance-receipts
+          path: |
+            .humanish/guest-runtime-proof/**/receipt.json
+            .humanish/guest-runtime-proof/**/container.log
+            .humanish/guest-runtime-proof/**/build.log
+            ${{ runner.temp }}/guest-payload/manifest.json
+            ${{ runner.temp }}/browser-base/manifest.json
+            ${{ runner.temp }}/browser-base/build.log
+            ${{ runner.temp }}/boot-inputs/manifest.json
+            ${{ runner.temp }}/kernel-build/manifest.json
+            ${{ runner.temp }}/kernel-build/cleanup.json
+            ${{ runner.temp }}/kernel-build/build.log
+            ${{ runner.temp }}/kernel-build/output/manifest.json
+            ${{ runner.temp }}/browser-disks/manifest.json
+            ${{ runner.temp }}/browser-disks/cleanup.json
+            ${{ runner.temp }}/browser-disks/FAILED.json
+            ${{ runner.temp }}/browser-disks/build.log
+            ${{ runner.temp }}/browser-disks/output/*.json
+            ${{ runner.temp }}/browser-disks/output/*.log
+            ${{ runner.temp }}/browser-disks/failed-output/*.log
+          include-hidden-files: true
+          retention-days: 14
