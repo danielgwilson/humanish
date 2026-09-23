@@ -1,0 +1,47 @@
+name: Inert service proof
+
+on:
+  pull_request:
+    paths:
+      - runtime/inert-qualification/**
+      - runtime/broker/**
+      - scripts/inert-host-profile.py
+      - .github/workflows/inert-service-proof.yml
+  push:
+    branches: [main]
+    paths:
+      - runtime/inert-qualification/**
+      - runtime/broker/**
+      - scripts/inert-host-profile.py
+      - .github/workflows/inert-service-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inert-service-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  host-profile:
+    # A normal disposable VM. Never use a self-hosted runner or job container.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Record read-only host eligibility
+        run: |
+          mkdir -p .humanish/inert-service-proof
+          sudo -n env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C \
+            /usr/bin/python3 -I -S scripts/inert-host-profile.py \
+            > .humanish/inert-service-proof/host-profile.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: inert-host-profile
+          path: .humanish/inert-service-proof/host-profile.json
+          include-hidden-files: true
+          retention-days: 14
