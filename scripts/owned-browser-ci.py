@@ -111,6 +111,28 @@ def validate(value):
     return value
 
 
+def consume_export(exported, receipt, *, successful):
+    if exported.returncode != 0:
+        raise ValueError('image_export_failed')
+    value = decode(exported.stdout, 36 * 1024 * 1024)
+    images = value.get('images', {})
+    if (value.get('schema') != 'humanish.owned-browser-export.v1' or value.get('receipt') != receipt or
+        type(images) is not dict or set(images) - {'before', 'typed', 'after'} or
+        (successful and set(images) != {'before', 'typed', 'after'})):
+        raise ValueError('invalid_image_export')
+    expected = next((row.get('facts', {}).get('frames', {}) for row in receipt.get('cases', []) if row.get('id') == 'OB01'), {})
+    result = {}
+    for name, item in images.items():
+        data = base64.b64decode(item['data'], validate=True)
+        digest = hashlib.sha256(data).hexdigest()
+        if len(data) > 8 * 1024 * 1024 or digest != item['sha256']:
+            raise ValueError('invalid_image_bytes')
+        if successful and (expected.get(name, {}).get('sha256') != digest or expected[name].get('bytes') != len(data)):
+            raise ValueError('image_receipt_mismatch')
+        result[name] = data
+    return result
+
+
 def main(environment=os.environ):
     if len(sys.argv) != 2 or sys.argv[1] not in ('--profile', '--qualify') or os.geteuid() == 0:
         raise ValueError('finite_unprivileged_entrypoint')
@@ -168,15 +190,9 @@ def main(environment=os.environ):
     # Export only three synthetic frames and the finite receipt, even on a
     # confirmed packet failure. Never rerun cleanup after an unknown root exit.
     exported = root(['/usr/bin/python3', '-I', '-S', '-B', staged['root'] + '/code/qualification.py', 'export'], timeout=20, maximum=36 * 1024 * 1024)
-    if exported.returncode == 0:
-        images = decode(exported.stdout, 36 * 1024 * 1024)
-        if images.get('schema') != 'humanish.owned-browser-export.v1' or images.get('receipt') != value or set(images.get('images', {})) - {'before', 'typed', 'after'}:
-            raise ValueError('invalid_image_export')
-        for name, item in images['images'].items():
-            data = base64.b64decode(item['data'], validate=True)
-            if len(data) > 8 * 1024 * 1024 or hashlib.sha256(data).hexdigest() != item['sha256']:
-                raise ValueError('invalid_image_bytes')
-            (output / (name + '.png')).write_bytes(data)
+    images = consume_export(exported, value, successful=not packet_failed)
+    for name, data in images.items():
+        (output / (name + '.png')).write_bytes(data)
     if packet_failed:
         raise ValueError('packet_failed')
     validate(value)

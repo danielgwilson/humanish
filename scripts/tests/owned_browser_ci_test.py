@@ -1,5 +1,8 @@
 """No root call is dispatched by these CI admission fixtures."""
 import importlib.util
+import base64
+import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -71,6 +74,20 @@ class CiTests(unittest.TestCase):
 
     def test_receipt_duplicate_members_refused(self):
         with self.assertRaises(ValueError): ci.decode(b'{"status":1,"status":2}')
+
+    def test_success_requires_three_exported_frames_bound_to_receipt(self):
+        data=b'finite synthetic image transport bytes'
+        digest=hashlib.sha256(data).hexdigest()
+        expected={name:{'sha256':digest,'bytes':len(data)} for name in ('before','typed','after')}
+        receipt={'cases':[{'id':'OB01','facts':{'frames':expected}}]}
+        images={name:{'data':base64.b64encode(data).decode(),'sha256':digest} for name in expected}
+        def exported(value,code=0):
+            return subprocess.CompletedProcess([],code,json.dumps({'schema':'humanish.owned-browser-export.v1','receipt':receipt,'images':value}).encode(),b'')
+        self.assertEqual(set(ci.consume_export(exported(images),receipt,successful=True)),set(expected))
+        for value in (exported(images,1),exported(images,2),exported({}),exported({'before':images['before']})):
+            with self.assertRaises(ValueError): ci.consume_export(value,receipt,successful=True)
+        wrong=b'changed bytes'; changed={**images,'after':{'data':base64.b64encode(wrong).decode(),'sha256':hashlib.sha256(wrong).hexdigest()}}
+        with self.assertRaisesRegex(ValueError,'image_receipt_mismatch'): ci.consume_export(exported(changed),receipt,successful=True)
 
     def test_artifact_inputs_use_real_builder_filenames(self):
         source=SOURCE.read_text()
