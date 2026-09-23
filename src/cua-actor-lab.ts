@@ -58,9 +58,10 @@ import type { ReasoningEffort } from "./reasoning-effort.js";
 import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { startAppServerSession } from "./local-agent-appserver.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
-import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
+import { createE2BDesktopExecutor, type E2BDesktopLike } from "./e2b-desktop-executor.js";
+import { allocateE2BDesktopSession } from "./e2b-desktop-session.js";
+import type { OwnedDesktopAllocation } from "./desktop-session.js";
 import {
-  createDesktopSandbox,
   withOneRetryOnTransientE2BError,
   loadE2BDesktopModule,
   type E2BDesktopModule,
@@ -2742,13 +2743,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     }
   };
 
-  let desktopModule: E2BDesktopModule | undefined;
+  let allocation: OwnedDesktopAllocation | undefined;
   let desktop: E2BDesktopSandbox | undefined;
   try {
-    desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
+    const desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
     // Optional custom desktop template (image): present → Sandbox.create(template, opts); absent →
     // the byte-stable Sandbox.create(opts) default (stock `desktop` template).
-    desktop = await createDesktopSandbox(desktopModule, {
+    const acquired = await allocateE2BDesktopSession(desktopModule, {
       apiKey: deps.e2bApiKey,
       requestTimeoutMs: deps.requestTimeoutMs,
       timeoutMs: deps.perLaneSandboxMs,
@@ -2788,7 +2789,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         onSubjectPhase({ at: new Date(deps.now()).toISOString(), type: "cua-lab.sandbox.create.retry", message: `sandbox create retried once (${named})` });
       }
     });
-    sandboxId = desktop.sandboxId;
+    desktop = acquired.desktop;
+    allocation = acquired.allocation;
+    sandboxId = allocation.resourceId;
     // #358 salvage: journal the id to disk before any work — an interrupted run reclaims by
     // exact recorded id (`humanish reclaim`), never by enumerating the account.
     await appendSandboxReceipt(deps.artifactRoot, { at: new Date(deps.now()).toISOString(), laneId: spec.laneId, sandboxId, timeoutMs: deps.perLaneSandboxMs });
@@ -3153,50 +3156,52 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
               estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
                 estimateActorCost(usage, capModelId).estimatedCostUsd
             }),
-        desktop: desktop as unknown as E2BDesktopLike,
-        ...(launchedBrowserFamily === "chromium"
-          ? {
-              executorOptions: {
-                observeBrowserState: makeChromeBrowserStateObserver(
-                  desktop,
-                  deps.requestTimeoutMs,
-                  {
-                    ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
-                    ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
-                    targetUrl
-                  },
-                  browserTargetId,
-                  // Once per lane: a dark observation channel is a gap in the instrument, and the
-                  // funnel's NEVER MEASURED count needs this line to explain itself (#514).
-                  (reason) => {
-                    warnings.push(
-                      `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
-                        "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session."
-                    );
-                  },
-                  emulatedTargetId === undefined
-                    ? undefined
-                    : {
-                        emulatedTargetId,
-                        expectedWidth: spec.devicePreset.width,
-                        expectTouch: appliedFidelity?.requested.touch === true,
-                        onDrift: (reason) => {
-                          warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
-                        },
-                        onCovered: (coveredTargetId, read) => {
-                          // A later tab the page itself reported at the phone width: evidence that
-                          // the emulation followed the participant (#623), kept on the bundle.
-                          if (appliedFidelity === undefined) return;
-                          appliedFidelity = {
-                            ...appliedFidelity,
-                            laterTargets: [...(appliedFidelity.laterTargets ?? []), { targetId: coveredTargetId, ...read }]
-                          };
+        executor: allocation.open(createE2BDesktopExecutor(
+          desktop as unknown as E2BDesktopLike,
+          {
+            ...(launchedBrowserFamily === "chromium"
+              ? {
+                  observeBrowserState: makeChromeBrowserStateObserver(
+                    desktop,
+                    deps.requestTimeoutMs,
+                    {
+                      ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
+                      ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
+                      targetUrl
+                    },
+                    browserTargetId,
+                    // Once per lane: a dark observation channel is a gap in the instrument, and the
+                    // funnel's NEVER MEASURED count needs this line to explain itself (#514).
+                    (reason) => {
+                      warnings.push(
+                        `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
+                          "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session."
+                      );
+                    },
+                    emulatedTargetId === undefined
+                      ? undefined
+                      : {
+                          emulatedTargetId,
+                          expectedWidth: spec.devicePreset.width,
+                          expectTouch: appliedFidelity?.requested.touch === true,
+                          onDrift: (reason) => {
+                            warnings.push(`Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`);
+                          },
+                          onCovered: (coveredTargetId, read) => {
+                            // A later tab the page itself reported at the phone width: evidence that
+                            // the emulation followed the participant (#623), kept on the bundle.
+                            if (appliedFidelity === undefined) return;
+                            appliedFidelity = {
+                              ...appliedFidelity,
+                              laterTargets: [...(appliedFidelity.laterTargets ?? []), { targetId: coveredTargetId, ...read }]
+                            };
+                          }
                         }
-                      }
-                )
-              }
-            }
-          : {}),
+                  )
+                }
+              : {})
+          }
+        )).executor,
         redactScreenshots: deps.redactScreenshots,
         scrubText: deps.scrubKnownValues,
         writeScreenshot,
@@ -3237,8 +3242,10 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } finally {
     // The local brain owns a process. Close it before anything else can throw: a leaked
     // app-server per lane would outlive the run and keep a thread open on the operator's plan.
-    appServer?.close();
-    await claudeSession?.close();
+    try { appServer?.close(); }
+    catch { warnings.push("Codex session cleanup failed; desktop cleanup will still run."); }
+    try { await claudeSession?.close(); }
+    catch { warnings.push("Claude session cleanup failed; desktop cleanup will still run."); }
     // Stop the mid-run inbox-surface loop FIRST — before the teardown evidence drain below — so the two
     // `cat`s never overlap and the final surface state is deterministic. A surface failure can never
     // block teardown (the loop body is fully try/caught and this await is on its already-caught promise).
@@ -3248,130 +3255,137 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     if (!provisioned) {
       signal(false);
     }
-    if (desktop && desktopModule) {
-      if (browserLaunched) {
-        const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
-          desktop,
-          browserFamily: launchedBrowserFamily,
-          ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
-          ...(browserWindowId === undefined ? {} : { browserWindowId }),
-          ...(browserTargetId === undefined ? {} : { browserTargetId }),
-          laneId: spec.laneId,
-          targetUrl,
-          requestedScreen: spec.resolution,
-          requestTimeoutMs: deps.requestTimeoutMs,
-          pagePreference: "active",
-          resize: false
-        }).catch((error: unknown) => ({
-          warnings: [`Final browser geometry measurement failed for lane ${spec.laneId}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`]
-        }));
-        // Chosen capture rule: final-if-it-measured-anything, else launch-time. A final capture
-        // that measured EITHER field wins whole, so a partial final capture omits fields the
-        // launch-time capture had (honest omission); only a final capture that measured NOTHING
-        // falls back to the launch-time capture.
-        const chosenGeometry = finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
-          ? finalGeometry
-          : initialBrowserGeometry ?? finalGeometry;
-        const geometryWarnings = [...new Set([...(initialBrowserGeometry?.warnings ?? []), ...chosenGeometry.warnings].map((warning) => deps.scrubKnownValues(warning)))];
-        warnings.push(...geometryWarnings);
-        // The emulation holder's own log, after its announce line: which later targets it
-        // attached to, what it sent, and any reply that came back as an error (#623). Read while
-        // the sandbox is alive; the first live proof had no way to say what the holder did.
-        if (appliedFidelity !== undefined && emulationHolderName !== undefined) {
-          const holderLog = await readDetachedLog(desktop, emulationHolderName, deps.requestTimeoutMs).catch(() => "");
-          const lines = holderLog.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("{")).slice(1, 51);
-          if (lines.length > 0) appliedFidelity = { ...appliedFidelity, holderLog: lines.map((line) => deps.scrubKnownValues(line)) };
-        }
-        desktopGeometry = {
-          screen: desktopGeometry.screen,
-          ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
-          ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
-          ...(appliedFidelity === undefined ? {} : { fidelity: appliedFidelity }),
-          ...((desktopGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
-            ? {}
-            : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
-        };
-      }
-      if (deps.receiving) {
-        try { await deps.receiving.finishParticipant(spec.laneId); }
-        catch { warnings.push("Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover."); }
-      }
-      // Off-app comms evidence (#297): before this lane's sandbox is torn down, drain everything the
-      // in-sandbox catch captured, route it into a host fake inbox addressed to the declared
-      // recipients, and write the digest-only thread artifact. Wrapped so a drain failure NEVER
-      // breaks teardown — the sandbox must still be killed either way. Runs only for a ready catch.
-      if (commsEmail && deployedComms?.ready) {
-        try {
-          const commsChannel = new FakeInbox();
-          const commsInboxes: CommsAddress[] = [];
-          for (const recipient of commsEmail.recipients ?? []) {
-            if (recipient.address !== undefined) {
-              commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
-            }
-          }
-          const collected = await collectCommsThread({
+    if (desktop && allocation) {
+      try {
+        if (browserLaunched) {
+          const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
             desktop,
-            deployed: deployedComms,
-            channel: commsChannel,
-            inboxes: commsInboxes,
-            requestTimeoutMs: deps.requestTimeoutMs
-          });
-          if (collected.artifact) {
-            const path = deps.laneCount === 1 ? "comms/thread.json" : `comms/${spec.streamId}.thread.json`;
-            await writeContainedOutputFile(deps.artifactRoot, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
-            commsArtifactPath = path;
-          } else if (collected.captured > 0) {
-            // Captured mail that matched no declared recipient must not vanish silently (invariant 6:
-            // honest signals): tell the operator to declare comms.email.recipients[].address to match
-            // the address the app actually sends to (e.g. the one the persona surface will sign up with).
-            warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
-          } else {
-            // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
-            // all, so the personas stared at an empty inbox. Most common cause: the app does not
-            // actually read the declared injectEnv var for its email API base URL.
-            const transportHint = commsEmail.smtp
-              ? `Verify the app reads ${commsEmail.smtp.hostEnv}/${commsEmail.smtp.portEnv} for its SMTP host and port`
-              : `Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws)`;
-            warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. ${transportHint} and that the flow reached an email step.`);
+            browserFamily: launchedBrowserFamily,
+            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+            ...(browserWindowId === undefined ? {} : { browserWindowId }),
+            ...(browserTargetId === undefined ? {} : { browserTargetId }),
+            laneId: spec.laneId,
+            targetUrl,
+            requestedScreen: spec.resolution,
+            requestTimeoutMs: deps.requestTimeoutMs,
+            pagePreference: "active",
+            resize: false
+          }).catch((error: unknown) => ({
+            warnings: [`Final browser geometry measurement failed for lane ${spec.laneId}: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`]
+          }));
+          // Chosen capture rule: final-if-it-measured-anything, else launch-time. A final capture
+          // that measured EITHER field wins whole, so a partial final capture omits fields the
+          // launch-time capture had (honest omission); only a final capture that measured NOTHING
+          // falls back to the launch-time capture.
+          const chosenGeometry = finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
+            ? finalGeometry
+            : initialBrowserGeometry ?? finalGeometry;
+          const geometryWarnings = [...new Set([...(initialBrowserGeometry?.warnings ?? []), ...chosenGeometry.warnings].map((warning) => deps.scrubKnownValues(warning)))];
+          warnings.push(...geometryWarnings);
+          // The emulation holder's own log, after its announce line: which later targets it
+          // attached to, what it sent, and any reply that came back as an error (#623). Read while
+          // the sandbox is alive; the first live proof had no way to say what the holder did.
+          if (appliedFidelity !== undefined && emulationHolderName !== undefined) {
+            const holderLog = await readDetachedLog(desktop, emulationHolderName, deps.requestTimeoutMs).catch(() => "");
+            const lines = holderLog.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("{")).slice(1, 51);
+            if (lines.length > 0) appliedFidelity = { ...appliedFidelity, holderLog: lines.map((line) => deps.scrubKnownValues(line)) };
           }
-        } catch (error) {
-          warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+          desktopGeometry = {
+            screen: desktopGeometry.screen,
+            ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
+            ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
+            ...(appliedFidelity === undefined ? {} : { fidelity: appliedFidelity }),
+            ...((desktopGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
+              ? {}
+              : { warnings: [...(desktopGeometry.warnings ?? []), ...geometryWarnings] })
+          };
         }
-      }
-
-      const failed = sessionError !== undefined || session === undefined;
-      // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
-      // a local-tree lane's teardown decision, and vice versa.
-      const keepReason = cloneRoute && config.subject.clone?.keep === true
-        ? "subject.clone.keep"
-        : localTreeRoute && config.subject.localTree?.keep === true
-          ? "subject.localTree.keep"
-          : undefined;
-      const keepForDebug = keepReason !== undefined && failed;
-      if (keepForDebug) {
-        warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
-      } else if (typeof desktopModule.Sandbox.kill === "function") {
-        try {
-          await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
-          killed = true;
-        } catch (error) {
-          warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+        if (deps.receiving) {
+          try { await deps.receiving.finishParticipant(spec.laneId); }
+          catch { warnings.push("Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover."); }
         }
-      } else {
-        warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
-      }
-      // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost;
-      // the summary records that remaining lifetime as unknown instead of calling this complete.
-      sandboxTornDownAtMs = deps.now();
-      // The lane's live stream is now a dead page whichever teardown path ran (killed, kept, or
-      // kill-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
-      // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
-      // break teardown.
-      if (streamUrl !== undefined) {
-        try {
-          await deps.hooks.onRuntimeStreamEnded?.({ laneId: spec.laneId, simId: spec.simId, streamId: spec.streamId });
-        } catch {
-          // viewer-side only; nothing to record
+        // Off-app comms evidence (#297): before this lane's sandbox is torn down, drain everything the
+        // in-sandbox catch captured, route it into a host fake inbox addressed to the declared
+        // recipients, and write the digest-only thread artifact. Wrapped so a drain failure NEVER
+        // breaks teardown — the sandbox must still be killed either way. Runs only for a ready catch.
+        if (commsEmail && deployedComms?.ready) {
+          try {
+            const commsChannel = new FakeInbox();
+            const commsInboxes: CommsAddress[] = [];
+            for (const recipient of commsEmail.recipients ?? []) {
+              if (recipient.address !== undefined) {
+                commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
+              }
+            }
+            const collected = await collectCommsThread({
+              desktop,
+              deployed: deployedComms,
+              channel: commsChannel,
+              inboxes: commsInboxes,
+              requestTimeoutMs: deps.requestTimeoutMs
+            });
+            if (collected.artifact) {
+              const path = deps.laneCount === 1 ? "comms/thread.json" : `comms/${spec.streamId}.thread.json`;
+              await writeContainedOutputFile(deps.artifactRoot, path, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+              commsArtifactPath = path;
+            } else if (collected.captured > 0) {
+              // Captured mail that matched no declared recipient must not vanish silently (invariant 6:
+              // honest signals): tell the operator to declare comms.email.recipients[].address to match
+              // the address the app actually sends to (e.g. the one the persona surface will sign up with).
+              warnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+            } else {
+              // Zero captures is the silent-broken shape (#351): the app never posted to the catch at
+              // all, so the personas stared at an empty inbox. Most common cause: the app does not
+              // actually read the declared injectEnv var for its email API base URL.
+              const transportHint = commsEmail.smtp
+                ? `Verify the app reads ${commsEmail.smtp.hostEnv}/${commsEmail.smtp.portEnv} for its SMTP host and port`
+                : `Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws)`;
+              warnings.push(`Comms catch captured ZERO email sends — the app never delivered mail through the catch. ${transportHint} and that the flow reached an email step.`);
+            }
+          } catch (error) {
+            warnings.push(`Comms evidence collection failed (run continues; sandbox still torn down): ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+          }
+        }
+      } catch (error) {
+        warnings.push(`Desktop final evidence collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+      } finally {
+        const failed = sessionError !== undefined || session === undefined;
+        // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
+        // a local-tree lane's teardown decision, and vice versa.
+        const keepReason = cloneRoute && config.subject.clone?.keep === true
+          ? "subject.clone.keep"
+          : localTreeRoute && config.subject.localTree?.keep === true
+            ? "subject.localTree.keep"
+            : undefined;
+        const keepForDebug = keepReason !== undefined && failed;
+        const released = await allocation.close({ retainForDebug: keepForDebug });
+        killed = released.status === "released";
+        if (released.status === "released" && released.reason === "already_gone") {
+          warnings.push("Sandbox was already absent when cleanup ran; its exact termination time is unknown. Desktop cost uses the observed acquisition-to-cleanup span.");
+        } else if (released.status === "retained") {
+          warnings.push(`Sandbox ${allocation.resourceId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+        } else if (released.status === "unconfirmed") {
+          if (released.reason === "release_unavailable") {
+            warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
+          } else if (released.reason === "release_failed") {
+            warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(deps.scrubKnownValues(toErrorMessage(released.error)))}`);
+          } else {
+            warnings.push("Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.");
+          }
+        }
+        // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost;
+        // the summary records that remaining lifetime as unknown instead of calling this complete.
+        sandboxTornDownAtMs = deps.now();
+        // The lane's live stream is now a dead page whichever teardown path ran (killed, kept, or
+        // kill-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
+        // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
+        // break teardown.
+        if (streamUrl !== undefined) {
+          try {
+            await deps.hooks.onRuntimeStreamEnded?.({ laneId: spec.laneId, simId: spec.simId, streamId: spec.streamId });
+          } catch {
+            // viewer-side only; nothing to record
+          }
         }
       }
     }
