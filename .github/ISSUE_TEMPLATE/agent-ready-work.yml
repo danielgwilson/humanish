@@ -8,8 +8,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        This repo is intended to become public. Do not include PII, PHI, secrets, keys, tokens, raw private transcripts, private screenshots, or private customer/patient data.
-        Intake is permissive, but autonomous execution is rigorous. Missing readiness fields mean `needs-spec`, not silent agent pickup.
+        This repository is public. Do not include secrets or private data in issues.
+        This form is for automated queue pickup. Missing readiness fields mean `needs-spec`, not silent pickup.
+        Directly assigned, explicitly authorized interactive work does not require this form; its scope and applicable repository rules still govern.
   - type: textarea
     id: goal
     attributes:
@@ -21,7 +22,7 @@ body:
     id: readiness-block
     attributes:
       label: humanish_swarm block
-      description: Required before autonomous mutation.
+      description: Required before automated queue pickup; preserve the schema for its consumers.
       value: |
         ```yaml
         humanish_swarm:
@@ -66,4 +67,3 @@ body:
       description: What should an agent explicitly not do?
     validations:
       required: true
-
