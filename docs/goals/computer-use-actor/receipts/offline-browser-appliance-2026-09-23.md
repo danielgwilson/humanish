@@ -141,8 +141,16 @@ Ubuntu 24.04 host. It retains receipts/logs and does not upload appliance binari
 Local release gates passed 3,641 core tests and 86 TUI tests, with 10 existing
 skips, plus compiled CLI checks, public-surface scanning, documentation checks,
 site build/typecheck and component registry validation. Focused Python suites
-cover asset/kernel inputs, disk assembly/faults and the relay. Fresh CI results
-remain a required merge gate.
+cover asset/kernel inputs, disk assembly/faults and the relay.
+
+[Fresh CI run 35872206335](https://github.com/danielgwilson/humanish/actions/runs/35872206335)
+passed the full recipe: actual 17+6+3 browser/controller checks, relay imports,
+pinned kernel compilation, both disk inspections and the disk failure/cleanup
+proof. Its five kernel outputs match the accepted local build. The CI payload
+uses Node 22.14.0, while the local payload above used 24.12.0; that input changes
+the recorded runtime revision. Each CI disk binds to its own exact package and
+base inputs. The local disk hashes above are not claims about CI disk bytes.
+Required checks on the final PR head remain the merge gate.
 
 These receipts prove source-bound development construction and container
 behavior. They do not qualify actual AF_VSOCK, guest PID1/mount ordering, direct
