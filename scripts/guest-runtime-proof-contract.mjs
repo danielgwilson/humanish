@@ -7,6 +7,11 @@ export const GUEST_PROOF_CASES=Object.freeze({
 export function validateGuestProofCell(cell){
  assert.ok(Object.hasOwn(GUEST_PROOF_CASES,cell.mode));
  assert.equal(cell.commandFailure,undefined);
+ assert.equal(cell.relayImport.passed,true);assert.equal(cell.relayImport.afVsock,true);
+ assert.match(cell.relayImport.pythonVersion,/^3\.13\.\d+$/);
+ assert.match(cell.relayModuleSha256,/^[a-f0-9]{64}$/);
+ assert.equal(cell.relayImport.moduleSha256,cell.relayModuleSha256);
+ assert.equal(cell.relayImport.uid,1000);assert.equal(cell.relayImport.gid,1000);
  assert.equal(cell.state.Status,'exited');assert.equal(cell.state.ExitCode,0);assert.equal(cell.state.OOMKilled,false);
  const h=cell.hostConfig;assert.equal(h.Memory,1536*1024*1024);assert.equal(h.MemorySwap,h.Memory);assert.equal(h.ShmSize,256*1024*1024);
  assert.equal(h.ReadonlyRootfs,true);assert.equal(h.NetworkMode,'none');assert.equal(h.Privileged,false);
@@ -30,4 +35,9 @@ export function parseGuestProofResult(output){
  const lines=output.split('\n').filter(line=>line.startsWith('HUMANISH_RESULT '));
  assert.equal(lines.length,1);
  return JSON.parse(lines[0].slice(16));
+}
+export function parseGuestRelayImport(output){
+ const lines=output.split('\n').filter(line=>line.startsWith('HUMANISH_RELAY_IMPORT '));
+ assert.equal(lines.length,1);
+ return JSON.parse(lines[0].slice('HUMANISH_RELAY_IMPORT '.length));
 }

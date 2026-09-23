@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { createHash,randomUUID } from 'node:crypto';
 import { mkdir,cp,readFile,writeFile } from 'node:fs/promises';
 import { join,resolve } from 'node:path';
-import { parseGuestProofResult,validateGuestProofCell } from './guest-runtime-proof-contract.mjs';
+import { parseGuestProofResult,parseGuestRelayImport,validateGuestProofCell } from './guest-runtime-proof-contract.mjs';
 import { packageGuestRuntime } from './guest-runtime-package.mjs';
 const exec=promisify(execFile),root=resolve(import.meta.dirname,'..');
 const base=process.env.HUMANISH_GUEST_IMAGE;
@@ -28,7 +28,25 @@ await cp(join(dir,'package/root/opt/humanish/control/node_modules'),join(context
 await writeFile(join(context,'proof/package.json'),'{"type":"module"}\n');
 await writeFile(join(context,'proof/driver-wrap.mjs'),`import './driver.mjs';\nimport {readFile} from 'node:fs/promises';\nconst r=JSON.parse(await readFile('/opt/proof/output/result.json','utf8'));r.memoryMax=(await readFile('/sys/fs/cgroup/memory.max','utf8')).trim();r.memoryPeak=(await readFile('/sys/fs/cgroup/memory.peak','utf8')).trim();r.memoryEvents=await readFile('/sys/fs/cgroup/memory.events','utf8');r.pidsMax=(await readFile('/sys/fs/cgroup/pids.max','utf8')).trim();r.pidsPeak=await readFile('/sys/fs/cgroup/pids.peak','utf8').then(s=>s.trim(),()=>null);r.pidsEvents=await readFile('/sys/fs/cgroup/pids.events','utf8');r.uid=process.getuid();r.gid=process.getgid();console.log('HUMANISH_RESULT '+JSON.stringify(r));\nfor(const name of ['address-bar','unicode','saved','scroll']){try{console.log('HUMANISH_IMAGE '+name+' '+(await readFile('/opt/proof/output/'+name+'.png')).toString('base64'));}catch{}}\n`);
 // Test-only finite mount scaffolding followed by permanent guest-user drop.
-await writeFile(join(context,'proof/launch.py'),`import os,sys\nfor path,mode,uid in [('/run/humanish',0o700,1000),('/tmp/.X11-unix',0o1777,0),('/tmp/.ICE-unix',0o1777,0)]:\n os.mkdir(path,mode);os.chmod(path,mode);os.chown(path,uid,uid)\nos.setgroups([]);os.setgid(1000);os.setuid(1000)\nenv={'PATH':'/usr/bin:/bin','HOME':'/home/humanish','LANG':'C.UTF-8','LC_ALL':'C.UTF-8'}\nscript='/opt/proof/driver-wrap.mjs' if sys.argv[1]=='driver' else '/opt/proof/runtime.mjs'\nos.execve('/usr/bin/node',['node',script,sys.argv[1]],env)\n`);
+await writeFile(join(context,'proof/launch.py'),`import os,sys
+for path,mode,uid in [('/run/humanish',0o700,1000),('/tmp/.X11-unix',0o1777,0),('/tmp/.ICE-unix',0o1777,0)]:
+ os.mkdir(path,mode);os.chmod(path,mode);os.chown(path,uid,uid)
+os.setgroups([]);os.setgid(1000);os.setuid(1000)
+# Load the exact guest relay under its installed Python without calling main.
+# This imports required stdlib modules but creates no socket or child process.
+import hashlib,json
+relay_path='/opt/humanish/control/vsock.py'
+with open(relay_path,'rb') as relay_file:
+ relay_bytes=relay_file.read(65537)
+assert 0<len(relay_bytes)<=65536
+relay_globals={'__name__':'humanish_import_check'}
+exec(compile(relay_bytes,relay_path,'exec'),relay_globals)
+assert hasattr(relay_globals['socket'],'AF_VSOCK')
+print('HUMANISH_RELAY_IMPORT '+json.dumps({'passed':True,'afVsock':True,'pythonVersion':sys.version.split()[0],'moduleSha256':hashlib.sha256(relay_bytes).hexdigest(),'uid':os.getuid(),'gid':os.getgid()},separators=(',',':')),flush=True)
+env={'PATH':'/usr/bin:/bin','HOME':'/home/humanish','LANG':'C.UTF-8','LC_ALL':'C.UTF-8'}
+script='/opt/proof/driver-wrap.mjs' if sys.argv[1]=='driver' else '/opt/proof/runtime.mjs'
+os.execve('/usr/bin/node',['node',script,sys.argv[1]],env)
+`);
 const localTag='humanish-proof-base-'+randomUUID()+':local';
 await writeFile(join(context,'Dockerfile'),`FROM ${localTag}\nUSER 0:0\nCOPY root/ /\nCOPY proof/ /opt/proof/\nRUN chmod -R a+rX /opt/proof && chmod 0444 /opt/humanish/control/openbox.xml\nUSER 1000:1000\n`);
 const profilePath=join(dir,'seccomp.json'),profileHash='cc3e61cabda6bbc1e53e54d27ba4d55a9d3be829b6dd1a596f4a7b31b1cc7849';
@@ -64,6 +82,8 @@ for(const mode of ['driver','owned-stream','packaged-main']){
   cell.preflight={image:pre.Image,hostConfig:h,mounts:pre.Mounts};await writeFile(join(dir,'receipt.json'),JSON.stringify(receipt,null,2));
   let output='';try{const r=await exec('docker',['start','--attach',owned],{timeout:180000,maxBuffer:32*1024*1024});output=r.stdout+r.stderr;}catch(error){output=String(error.stdout??'')+String(error.stderr??'');cell.commandFailure=String(error.message).slice(0,300);}
   await mkdir(join(dir,mode));await writeFile(join(dir,mode,'container.log'),output);
+  cell.relayImport=parseGuestRelayImport(output);
+  cell.relayModuleSha256=manifest.files['opt/humanish/control/vsock.py'].sha256;
   cell.result=parseGuestProofResult(output);
   for(const line of output.split('\n')){
    if(line.startsWith('HUMANISH_IMAGE ')){const [,name,data]=line.split(' ');assert.match(name,/^[a-z-]+$/);await writeFile(join(dir,mode,name+'.png'),Buffer.from(data,'base64'));}

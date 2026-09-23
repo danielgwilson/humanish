@@ -64,6 +64,8 @@ permanently drops to the guest user. The proof output tmpfs and fresh-home
 mount are harness resources, not production guest alternatives. Receipts,
 screenshots, source manifests and failed attempts stay under ignored
 `.humanish/`; container removal is checked by exact acquired identity.
+Each container imports the exact packaged relay with its installed Python and
+records the module hash. This import check does not invoke the listener.
 
 Driver conformance, packaged stream control, guest PID1 behavior, ext4 boot,
 AF_VSOCK, KVM and complete studies are separate claims. Container tests do not
