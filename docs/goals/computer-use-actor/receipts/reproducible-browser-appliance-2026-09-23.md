@@ -1,8 +1,9 @@
 # Browser appliance reproducibility experiment
 
-Status: two complete local constructions have identical disk bytes; the rebuilt
-browser passed its constrained control proof. Fresh cross-host CI comparison
-remains pending. No VM or runtime release is claimed.
+Status: two complete local constructions and a fresh CI construction have
+identical whole root/state disk bytes. The kernel outputs and runtime package
+also match across hosts. Actual browser and build-failure checks passed.
+No VM or runtime release is claimed.
 
 The [disk recipe](../../../../runtime/browser-disk/README.md) admits the actual
 recorded packager Node 22.14.0, uses filesystem epoch 1735689600, fixed nonzero
@@ -67,4 +68,41 @@ The browser proof receipt SHA256 is
 All owned containers were confirmed absent. The source/small-proof review and
 68 disk contract tests passed. Independent full artifact review rehashed both
 root/state pairs, validated the source/package bindings, reparsed every inode
-row and reviewed the browser evidence. Fresh cross-host CI remains pending.
+row and reviewed the browser evidence.
+
+
+## Fresh cross-host construction
+
+[Appliance run 35887828929](https://github.com/danielgwilson/humanish/actions/runs/35887828929)
+passed for source head `987d8ccbcb7900cd574549355330d91130f8abd7`.
+The checkout log records tested merge
+`6038685f128527d686be7058d633f4cb82265c91` into
+`1c6d7d625615f1bcd9c4480cf57e24f617dbf072`.
+[PR #824](https://github.com/danielgwilson/humanish/pull/824) merged the reviewed
+source as `2be1193b2bd6924d4717aa24e9b48169688055ce`.
+
+The CI builder hashed the complete root/state disks: both match the table above.
+All five kernel outputs match the accepted local construction, including the
+27,736,920-byte ELF with SHA256
+`caf3803a0c8c3cacdc2beedbd49f4806d4697934ddb328cf4df42ff2533ef138`.
+The 882-leaf runtime package manifest is byte-identical to the local package.
+
+Independent review checked 67 source/build bindings, rehashed 76 exported
+receipt/log files and reparsed all 14,224 inode-readback rows. The existing
+browser proof consumer accepted the actual container logs: all 26 cases and
+three relay imports agree with the receipt. Real capacity failures, cooperative
+interruption without output promotion, unchanged running canary identity and
+all four owned-container cleanup observations passed.
+
+The outer base archive, Docker base image and tools image identities differ
+between hosts and remain in the retained receipts. They are not claimed to be
+reproducible. CI exported receipts and logs, not appliance binaries. Cross-host
+binary hashes come from the source-bound CI build; review independently
+rehashed the exported receipts/logs and the locally retained full artifacts.
+It did not rehash unavailable downloaded CI binaries.
+
+This result resolves whole-disk reproducibility for this exact development
+recipe. It does not establish VM boot, guest PID1, actual AF_VSOCK, lifecycle
+fault handling, ARM64, production isolation, a managed local study or permission
+to distribute images. Cooperative build interruption does not prove SIGKILL or
+VM cleanup. No npm release accompanies this receipt.
