@@ -25,6 +25,14 @@ REQUIRED = CONFIGS | LINKS.keys() | {'opt/humanish/control/' + name for name in
      'vsock.py', 'openbox.xml', 'neutral.html')}
 MAX_FILES = 20000
 MAX_BYTES = 2 * 1024 ** 3
+PACKAGER_NODE_VERSION = 'v22.14.0'
+
+
+def require_reproducible_packager(manifest):
+    # This frozen disk recipe is narrower than the general package helper and
+    # Humanish's supported Node versions. Never rewrite observed provenance.
+    if manifest['inputs']['buildInputs']['nodeVersion'] != PACKAGER_NODE_VERSION:
+        raise ValueError('Frozen disk recipe requires actual packager Node ' + PACKAGER_NODE_VERSION)
 
 
 def sha256(path):

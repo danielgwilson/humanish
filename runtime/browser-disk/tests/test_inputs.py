@@ -36,7 +36,7 @@ def fixture(directory):
         source['runtime/browser-guest/control/root/' + name] = files[name]['sha256']
     inputs = {'sourceFiles': source,
               'dependencyFiles': {'zod/package.json': files['opt/humanish/control/node_modules/zod/package.json']['sha256']},
-              'buildInputs': {'architecture': 'amd64', 'nodeVersion': 'v22.0.0', 'typescriptVersion': '6.0.3',
+              'buildInputs': {'architecture': 'amd64', 'nodeVersion': 'v22.14.0', 'typescriptVersion': '6.0.3',
                               'packageLockSha256': 'c' * 64, 'tsconfigSha256': 'd' * 64,
                               'tsconfigBuildSha256': 'e' * 64, 'bootstrapVersion': 1, 'browserControlVersion': 1}}
     manifest = {'schema': 'humanish.guest-runtime-package.v1',

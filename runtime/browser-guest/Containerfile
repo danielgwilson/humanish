@@ -35,6 +35,7 @@ RUN chmod 0444 /etc/xdg/openbox/rc.xml \
  && ln -sf /dev/null /etc/systemd/system/serial-getty@.service \
  && ln -sf /dev/null /etc/systemd/system/systemd-networkd.service \
  && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /build \
+ && rm -f /var/cache/apt/pkgcache.bin /var/cache/ldconfig/aux-cache /var/cache/fontconfig/*.cache-* \
  && : > /etc/machine-id \
  && rm -f /var/lib/dbus/machine-id \
  && find /var/log -type f -exec truncate --size 0 {} +

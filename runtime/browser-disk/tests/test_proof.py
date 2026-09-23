@@ -189,7 +189,9 @@ class ProofTests(unittest.TestCase):
                                'diagnostic': diagnostic, 'logSha256': sha256(path)}
             def validate(value):
                 (root / 'cases.json').write_text(json.dumps(value))
-                return verify_cases(root, report['sourceFiles'])
+                # Reproduction receipt mutations have separate focused tests.
+                with patch('proof.verify_reproducibility'):
+                    return verify_cases(root, report['sourceFiles'])
             self.assertEqual(validate(report), report)
             for key in ('blockCapacity', 'inodeCapacity'):
                 changed = copy.deepcopy(report)

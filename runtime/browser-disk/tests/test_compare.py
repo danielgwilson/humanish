@@ -19,12 +19,13 @@ class ComparisonTests(unittest.TestCase):
         for index, path in enumerate(self.paths):
             path.mkdir()
             disk = {'sha256': str(index) * 64, 'superblock': {'Directory Hash Seed': str(index)},
-                    'policy': {}, 'features': [], 'bytes': 32, 'freeBytes': 16, 'freeInodes': 4, 'verifiedEntries': 2}
-            report = {'request': {'source': 'same'}, 'inventorySha256': 'same',
+                    'policy': {}, 'features': [], 'bytes': 32, 'freeBytes': 16, 'freeInodes': 4, 'verifiedEntries': 2, 'filesystemEpoch': 1735689600}
+            report = {'request': {key: 'same' for key in ('kernelConfigSha256', 'packageManifestSha256', 'recipeFiles', 'baseTarSha256', 'baseManifestSha256')}, 'inventorySha256': 'same',
+                      'baseInventorySha256': 'same', 'toolPackagesSha256': 'same', 'toolFilesSha256': 'same',
                       'disks': {name: copy.deepcopy(disk) for name in ('rootfs.ext4', 'state-template.ext4')}}
             manifest = {'schema': 'humanish.browser-disk-build.v1', 'cleanup': {'confirmed': True},
                         'recipeFiles': {'recipe': 'same'}, 'runtimeRevision': 'same',
-                        'toolsImage': {'id': 'same'}, 'assembly': report}
+                        'toolsImage': {'id': 'same', 'inputs': {'pinned': 'same'}}, 'assembly': report}
             self.manifests.append(manifest)
             (path / 'manifest.json').write_text(json.dumps(manifest))
             (path / 'cleanup.json').write_text('{"confirmed":true}')
@@ -48,6 +49,22 @@ class ComparisonTests(unittest.TestCase):
 
     def test_different_source_is_not_a_reproducibility_result(self):
         self.manifests[1]['recipeFiles']['recipe'] = 'changed'
+        (self.paths[1] / 'manifest.json').write_text(json.dumps(self.manifests[1]))
+        with self.assertRaises(ValueError):
+            self.run_compare()
+
+    def test_transport_identity_differences_are_explicit_not_same_inputs(self):
+        self.manifests[1]['toolsImage']['id'] = 'different container metadata'
+        self.manifests[1]['assembly']['request']['baseTarSha256'] = 'different tar timestamps'
+        (self.paths[1] / 'manifest.json').write_text(json.dumps(self.manifests[1]))
+        result = self.run_compare()
+        self.assertFalse(result['sameDeclaredInputs'])
+        self.assertTrue(result['sameBuildProfileAndSemanticContents'])
+        self.assertFalse(result['byteReproducible'])
+        self.assertEqual(set(result['inputIdentityDifferences']), {'toolsImage', 'baseTarSha256'})
+
+    def test_matching_package_versions_cannot_hide_changed_tool_bytes(self):
+        self.manifests[1]['assembly']['toolFilesSha256'] = 'changed executable'
         (self.paths[1] / 'manifest.json').write_text(json.dumps(self.manifests[1]))
         with self.assertRaises(ValueError):
             self.run_compare()

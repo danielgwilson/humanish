@@ -76,6 +76,12 @@ copyright files. Source archive references are inventoried, but complete matchin
 source archives still need to be mirrored, checked, and reviewed before any image
 redistribution. This recipe is not legal clearance or a signed release catalog.
 
+The runtime layer removes generated apt package, ldconfig auxiliary and fontconfig
+caches to avoid build-dependent file contents. Fonts, configuration, installed
+notices and `/etc/ld.so.cache` remain intact. The guest's writable `/var` already
+masks those caches at startup. Cache removal still requires browser/font behavior
+proof; it does not by itself establish reproducible disk bytes.
+
 Neither byte-for-byte reproducibility nor runtime qualification is inferred from
 fixed inputs. A second-build comparison, native ARM64 build, kernel/controller
 integration, actual sandboxed desktop proof, boot/lifecycle/network tests, and

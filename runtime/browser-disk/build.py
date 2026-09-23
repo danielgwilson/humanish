@@ -15,7 +15,8 @@ import time
 import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from inputs import read_json, sha256, snapshot_package, validate_package
+from inputs import read_json, require_reproducible_packager, sha256, snapshot_package, validate_package
+from assemble import DISKS, FILESYSTEM_EPOCH
 
 RECIPE = Path(__file__).resolve().parent
 RECIPE_FILES = ('Containerfile', '.dockerignore', 'build.py', 'inputs.py', 'assemble.py')
@@ -145,11 +146,14 @@ def verify_output(output, request):
         claimed = report['disks'][name]
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size != size or
             claimed.get('bytes') != size or claimed.get('sha256') != sha256(path) or
-            any(claimed.get(key) is not True for key in ('cleanFsck', 'allContentsCompared', 'allModesOwnersAndHardlinksCompared'))):
+            claimed.get('policy') != DISKS[name] or claimed.get('filesystemEpoch') != FILESYSTEM_EPOCH or
+            any(claimed.get(key) is not True for key in ('cleanFsck', 'allContentsCompared', 'allModesOwnersAndHardlinksCompared', 'allPathInodeTimesCompared'))):
             raise ValueError('Disk output changed or lacks required inspection')
         claimed['allocatedBytesOnHost'] = info.st_blocks * 512
     if (sha256(output / 'root-inventory.json') != report['inventorySha256'] or
-        sha256(output / 'tool-packages.list') != report['toolPackagesSha256']):
+        sha256(output / 'tool-packages.list') != report['toolPackagesSha256'] or
+        sha256(output / 'base-inventory.json') != report['baseInventorySha256'] or
+        sha256(output / 'tool-files.json') != report['toolFilesSha256']):
         raise ValueError('Inspection inventory changed')
     return report
 
@@ -182,6 +186,7 @@ def build(base, package, kernel_config, destination):
             if base_hash != base_manifest['rootfs']['sha256'] or (stage / 'rootfs.tar').stat().st_size != base_manifest['rootfs']['size']:
                 raise ValueError('Base export changed')
             payload = snapshot_package(package, stage / 'payload')
+            require_reproducible_packager(payload)
             copy_regular(kernel_config, stage / 'kernel.config', 1024 ** 2)
             for name in ('assemble.py', 'inputs.py'):
                 copy_regular(recipe / name, stage / name, 1024 ** 2)

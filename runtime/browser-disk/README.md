@@ -5,6 +5,9 @@ install a runtime, import privileged assets, start a VM, access KVM or expose a
 new CLI execution mode. Keep generated output private under `.humanish/`.
 
 Build the maintained browser base, kernel configuration and guest payload first:
+Use actual Node **22.14.0** for this frozen appliance recipe. The general package
+helper and Humanish's supported Node versions remain broader; disk admission
+rejects a different recorded packager version without changing its provenance.
 
 ```bash
 python3 runtime/browser-guest/build.py --architecture amd64 --output .humanish/browser-base
@@ -55,7 +58,17 @@ allows only declared leaves and required parent directories to change.
 
 `mke2fs -d` produces a 2 GiB read-only-root candidate and a fresh 512 MiB state
 template without loop devices or mounts. Block size, inode count/size, reserved
-blocks, UUIDs, features, ownership and eager initialization are explicit.
+blocks, UUIDs, nonzero directory hash seeds, features, ownership and eager
+initialization are explicit. The declared filesystem epoch is **1735689600**
+(2025-01-01 UTC), an artifact-format input rather than a claimed build date.
+The assembler normalizes staging atime/mtime without following symlinks and
+refuses clocks/ctimes that cannot be clamped. `SOURCE_DATE_EPOCH` is supplied
+in the tool's explicit environment. In pinned e2fsprogs1.47.2,
+`E2FSPROGS_FAKE_TIME` alone does not clamp imported inode times;
+[the initialization](https://sources.debian.org/data/main/e/e2fsprogs/1.47.2-3/lib/ext2fs/initialize.c)
+and [population code](https://sources.debian.org/data/main/e/e2fsprogs/1.47.2-3/misc/create_inode.c)
+define this distinction. Original archives and real build dates remain retained
+outside the constructed filesystems.
 The state filesystem root is UID/GID 1000 and 0700; it contains only filesystem
 scaffolding. The fixed UUIDs identify templates, not participants or authority.
 Future owners must make private writable state copies for each participant.
@@ -63,7 +76,11 @@ Future owners must make private writable state copies for each participant.
 Both filesystems must pass `e2fsck -fn`, feature/geometry/headroom checks and
 complete content readback. `debugfs rdump` drops setuid bits and splits hardlinks
 in its extracted copy, so a separate batch reads every disk inode and checks
-exact modes, owners and hardlink equivalence classes. The init symlink chain,
+exact modes, owners and hardlink equivalence classes. All four timestamps of
+every named inode, including root and lost+found, must equal the chosen epoch.
+Primary superblock times and an unmounted template are checked separately;
+this does not claim individual timestamp inspection of reserved journal inodes.
+Whole-file comparison includes those bytes. The init symlink chain,
 Chromium sandbox mode, all payload bytes and fresh state are included.
 The tools follow the pinned [Debian13 mke2fs interface](https://manpages.debian.org/trixie/e2fsprogs/mke2fs.8.en.html).
 
@@ -73,11 +90,30 @@ inputs, failure, cancellation, missing inspection, truncated output and cleanup
 uncertainty prevent promotion; available diagnostics stay with the failed
 attempt. Cleanup never scans by name or label.
 
-Disk hashes need not repeat: filesystem creation/inode times, directory hash
-seeds and checksums are not normalized. The comparison verifies identical
-declared inputs and semantic inventories, records actual byte equality and
-retains differing superblock fields. It does not claim those fields explain
-every differing byte. Catalog any later accepted disk by its actual digest.
+The comparison rehashes each accepted construction and checks reviewed recipe,
+runtime revision, tool executable/configuration/package identities, normalization
+policy, and complete base/post-overlay inventories. Independently rebuilt image
+metadata and exported tar bytes may differ: those identities remain explicit,
+and `sameDeclaredInputs` is false when image or request identities differ.
+`sameBuildProfileAndSemanticContents` is a separate claim. Entire root and state
+hashes must agree for `byteReproducible:true`; the command returns nonzero on a
+byte mismatch and retains observed superblock differences. This is a measured
+comparison, never automatic catalog authorization or a reproducible-container claim.
+
+The existing bounded proof now also compares real tiny disks from reversed
+creation order, different source inode times, non-ASCII paths, setuid and owned
+hardlinked files, and symlinks. Its fake-time-only negative retains differing
+source timestamps and disk hashes. Production normalization must yield identical
+bytes and complete semantic readback. The same run retains capacity failures,
+cooperative cancellation, unrelated-canary continuity and exact cleanup:
+
+```bash
+python3 runtime/browser-disk/proof.py --tools-image sha256:EXACT_TOOL_IMAGE_DIGEST --output .humanish/disk-proof
+```
+
+Small fixtures do not prove full cross-host reproducibility. Full local and
+independent CI constructions, behavior checks on the cache-cleaned browser base,
+and independent artifact review are required before freezing new catalog hashes.
 
 Clean filesystems do not prove initrdless boot, effective guest mounts, systemd
 ordering, AF_VSOCK, sandbox enforcement inside a VM, KVM support, ARM64,
