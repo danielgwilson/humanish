@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getActor } from "../src/actor-registry.js";
 import { runCuaActorSession } from "../src/computer-use-actor.js";
 import type { CuaExecutor, CuaProvider, CuaTurnRequest } from "../src/computer-use.js";
-import { runCuaLane, type CuaLaneDeps, type CuaLaneSpec } from "../src/cua-actor-lab.js";
+import { runCuaActorLab, runCuaLane, type CuaLaneDeps, type CuaLaneSpec } from "../src/cua-actor-lab.js";
 import type { CuaDesktopLane, DesktopLaneEvidence } from "../src/cua-desktop-lane.js";
 import { ownDesktopAllocation } from "../src/desktop-session.js";
 import { DEVICE_PRESETS } from "../src/device-presets.js";
@@ -72,6 +72,57 @@ async function fixture() {
 }
 
 describe("ready desktop lane contract", () => {
+  it("uses the custom model on a desktop lane and closes it before the desktop", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = { id: "synthetic-provider", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({ actions: [], message: "I can read the note form.", outcome: "reached", pendingSafetyChecks: [], done: true }),
+      close: vi.fn(async () => { f.order.push("model-closed"); }) };
+    f.deps.hooks.buildProvider = vi.fn(async ({ lane }) => { expect(lane).toBe(f.spec); return provider; });
+    f.deps.runSession = runCuaActorSession;
+    const result = await runCuaLane(f.spec, f.deps);
+    expect(result.harnessError).toBe(false);
+    expect(provider.close).toHaveBeenCalledOnce();
+    expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
+  });
+
+  it("releases the desktop even if model cleanup fails", async () => {
+    const f = await fixture();
+    f.deps.hooks.buildProvider = async () => ({ id: "synthetic-provider", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({ actions: [], message: "I see the form.", outcome: "reached", pendingSafetyChecks: [], done: true }),
+      close: async () => { throw new Error("synthetic-secret-canary"); } });
+    f.deps.runSession = runCuaActorSession;
+    const result = await runCuaLane(f.spec, f.deps);
+    expect(result.harnessError).toBe(true);
+    expect(result.sessionError).toBe("Model provider cleanup is unconfirmed.");
+    expect(f.release).toHaveBeenCalledOnce();
+  });
+
+  it("never falls back to a hosted desktop for an unconfigured local target", async () => {
+    const f = await fixture();
+    const config = { ...f.deps.config, execution: { ...f.deps.config.execution, target: "local" as const } };
+    expect(parseLabConfig(config).ok).toBe(true);
+    const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, hooks: f.deps.hooks });
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("configured local desktop runtime");
+    expect(f.loadDesktopModule).not.toHaveBeenCalled();
+  });
+
+  it("records local desktop feedback without hosted credentials or resource claims", async () => {
+    const f = await fixture();
+    const config = { ...f.deps.config, execution: { ...f.deps.config.execution, target: "local" as const }, review: { analysis: false as const } };
+    const result = await runCuaActorLab({ cwd: f.cwd, config, runId: "local-feedback", dryRun: false,
+      hooks: { ...f.deps.hooks, env: {}, createDesktopLane: () => f.port, buildProvider: async () => ({
+        id: "synthetic-provider", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+        nextTurn: async () => ({ actions: [], message: "REACHED THE GOAL. The save confirmation was confusing.",
+          outcome: "reached", pendingSafetyChecks: [], done: true }) }) } });
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    const bundle = JSON.parse(await readFile(path.join(f.cwd, ".humanish/runs/local-feedback/run.json"), "utf8"));
+    expect(bundle.feedbackCandidates[0].substrate).toBe("local-desktop");
+    expect(bundle.providerResources).toBeUndefined();
+    expect(f.loadDesktopModule).not.toHaveBeenCalled();
+    expect(f.release).toHaveBeenCalledOnce();
+  });
+
   it("runs the real participant loop and persists screenshots/trace through a non-E2B port", async () => {
     const f = await fixture();
     const requests: CuaTurnRequest[] = [];

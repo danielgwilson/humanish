@@ -296,7 +296,9 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * closed against a state-only executor that returns no screenshot. (`buildProvider` ALONE is
    * allowed — that is just a model swap on the normal E2B route.)
    */
-  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor }) => Promise<CuaProvider>;
+  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; lane?: CuaLaneSpec }) => Promise<CuaProvider>;
+  /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
+  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[]) => CuaDesktopLane;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -1500,7 +1502,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     await desktopLane.prepare();
     // Start the brain BEFORE the first screenshot: the app-server handshake is ~500ms, and it
     // is paid here, while the sandbox is still settling, rather than inside turn one.
-    if (deps.localAgent === "codex") {
+    if (deps.hooks.buildProvider) {
+      localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec });
+    } else if (deps.localAgent === "codex") {
       appServer = await startAppServerSession({
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
@@ -1607,6 +1611,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
+    try { await localAgentProvider?.close?.(); }
+    catch {
+      warnings.push("Model provider cleanup is unconfirmed.");
+      sessionError ??= "Model provider cleanup is unconfirmed.";
+    }
     try { appServer?.close(); }
     catch { warnings.push('Codex session cleanup failed; desktop cleanup will still run.'); }
     try { await claudeSession?.close(); }
@@ -1669,9 +1678,10 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
+  let provider: CuaProvider | undefined;
   try {
     const executor = await deps.hooks.buildExecutor!({ config: deps.config, actor: deps.descriptor, appUrl: deps.appUrl });
-    const provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor });
+    provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor, lane: spec });
     const sessionOptions: CuaActorSessionOptions = {
       instructions: spec.instructions,
       persona: spec.persona,
@@ -1689,6 +1699,9 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     session = await deps.runSession(sessionOptions);
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
+  } finally {
+    try { await provider?.close?.(); }
+    catch { sessionError ??= "Model provider cleanup is unconfirmed."; }
   }
 
   if (session) {
@@ -2179,6 +2192,10 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     );
   }
 
+  if (config.subject.source === "app-url" && config.execution?.target === "local" && !hooks.createDesktopLane) {
+    return fail("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR", "Local browser studies require a configured local desktop runtime.", descriptor.id);
+  }
+
   // Re-enforce the fan-out cross-validation (library API surface): lanes XOR count/laneFocus,
   // device XOR raw resolution, cap, unique ids, allowPublicTargets+N>1, clone.fanout.
   const fanoutReason = cuaLaneValidationReason(config);
@@ -2293,8 +2310,8 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // the local-agent route uses a CLI the operator has already signed in to.
   if (!dryRun && !inProcessRoute) {
     const missingKeys = [
-      ...(openaiApiKey || localAgentRoute ? [] : ["OPENAI_API_KEY"]),
-      ...(e2bApiKey ? [] : ["E2B_API_KEY"])
+      ...(openaiApiKey || localAgentRoute || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
+      ...(e2bApiKey || hooks.createDesktopLane ? [] : ["E2B_API_KEY"])
     ];
     if (missingKeys.length > 0) {
       // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
@@ -2442,6 +2459,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   let stopLiveFlush: (() => Promise<void>) | undefined;
 
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
+    ...(hooks.createDesktopLane ? { createDesktopLane: hooks.createDesktopLane } : {}),
     onTrace: (laneId, items, usage, metadata) => flushLiveTrace?.(laneId, items, usage, metadata),
     config,
     descriptor,
@@ -3092,6 +3110,7 @@ function buildSingleLaneBundle(args: {
     persona: spec.persona,
     resolution: spec.resolution,
     desktopRoute: !args.inProcessRoute,
+    feedbackSubstrate: args.inProcessRoute ? "local-filesystem" : args.config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     isMobile: spec.devicePreset.isMobile,
     runId: args.runId,
@@ -3506,6 +3525,7 @@ export function buildCuaBundle(args: {
   resolution: [number, number];
   /** False only for the custom in-process route, which has no hosted screen/window to claim. */
   desktopRoute?: boolean;
+  feedbackSubstrate?: RunFeedbackCandidate["substrate"];
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
   /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
@@ -3875,7 +3895,7 @@ export function buildCuaBundle(args: {
           scenarioId: `cua-${args.labId}`,
           adapterId: args.labId,
           goal: redactText(args.mission),
-          substrate: args.desktopRoute === false ? "local-filesystem" : "e2b-desktop",
+          substrate: args.feedbackSubstrate ?? (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop"),
           lanes: [{
             laneId: args.laneId ?? "lane-01",
             streamId: "stream-001",
@@ -4421,7 +4441,7 @@ export function buildCuaFanoutBundle(args: {
           scenarioId: `cua-${config.id}`,
           adapterId: config.id,
           goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-          substrate: "e2b-desktop",
+          substrate: config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
           lanes: specs.map((spec, index) => {
             const outcome = outcomes?.[index];
             return {

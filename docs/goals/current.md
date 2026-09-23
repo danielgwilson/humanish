@@ -115,6 +115,15 @@ The library-assisted `local-app` route now includes a
 Its deterministic provider demonstrates the integration with a real loopback
 app; it does not establish persona effectiveness or independent adoption.
 
+The [local Firecracker development entrypoint](../../runtime/local-firecracker/README.md)
+runs isolated Linux browser participants through the same scheduler, recordings
+and automatic analysis as hosted studies. It uses Docker-owned resources and
+ordinary TAP/NAT networking. Continue managed-local work from this complete study
+path; the earlier offline owner/service qualification experiments are historical
+fixtures, not an installation architecture or a prerequisite queue. Managed setup,
+Mac support, inbox integration and optional media remain unfinished. The installed
+CLI default and published release remain unchanged.
+
 ## Gates And Deferred Work
 
 - Live OSS meta-lab execution remains disabled until repository-derived

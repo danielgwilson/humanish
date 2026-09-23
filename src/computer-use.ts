@@ -203,6 +203,8 @@ export interface CuaProvider {
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
+  /** Release lane-owned model resources. Idempotent; reject if cleanup is unconfirmed. */
+  close?(): Promise<void>;
 }
 
 /** The desktop side of the loop. */

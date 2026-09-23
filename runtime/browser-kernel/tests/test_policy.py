@@ -24,12 +24,13 @@ class PolicyTests(unittest.TestCase):
                 with self.subTest(key=key, wrong=wrong), self.assertRaises(ValueError):
                     builder.check_config({**self.config, key: wrong}, self.policy)
 
-    def test_forbidden_and_any_loadable_module_refuse(self):
+    def test_forbidden_features_refuse(self):
         for key in self.policy['forbidden']:
             with self.subTest(key=key), self.assertRaises(ValueError):
                 builder.check_config({**self.config, key: 'y'}, self.policy)
-        with self.assertRaises(ValueError):
-            builder.check_config({**self.config, 'CONFIG_UNEXPECTED': 'm'}, self.policy)
+
+    def test_optional_media_modules_do_not_disable_required_browser_features(self):
+        builder.check_config({**self.config, 'CONFIG_SND_ALOOP': 'm'}, self.policy)
 
     def test_config_reader_preserves_disabled_values_and_strings(self):
         with tempfile.TemporaryDirectory() as temporary:

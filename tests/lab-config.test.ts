@@ -467,7 +467,6 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       ["non-http scheme", { ...validCua, subject: { source: "app-url", appUrl: "file:///tmp/index.html" } }],
       ["not a URL", { ...validCua, subject: { source: "app-url", appUrl: "localhost:3000" } }],
       ["missing e2b-desktop target", { ...validCua, execution: { timeoutMs: 1000 } }],
-      ["local target", { ...validCua, execution: { target: "local" } }],
       ["unregistered actor type", { ...validCua, actors: [{ type: "not-a-real-actor" }] }],
       ["registered but not computer-use", { ...validCua, actors: [{ type: "codex-app-server" }] }]
     ])("fails closed on cua mis-config: %s", (_label, input) => {
@@ -920,17 +919,13 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       expect(result.error.message).toContain("clone subjects");
     });
 
-    it("still rejects app-url × local with a computer-use actor (the cross-validation branch this route narrowed)", () => {
+    it("accepts app-url × local for a computer-use desktop adapter", () => {
       const result = parseLabConfig({
         ...validScripted,
         actors: [{ type: "openai-computer-use" }],
         scenario: undefined
       });
-      expect(result.ok).toBe(false);
-      if (result.ok) return;
-      // The message must point at BOTH valid pairings so the mis-config is self-recovering.
-      expect(result.error.message).toContain("e2b-desktop");
-      expect(result.error.message).toContain("scripted-browser");
+      expect(result.ok).toBe(true);
     });
 
     it("names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error", () => {

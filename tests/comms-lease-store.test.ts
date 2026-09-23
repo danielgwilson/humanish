@@ -73,6 +73,20 @@ describe("private communications cleanup authority", () => {
     await expect(CommsLeaseStore.create(options())).rejects.toThrow();
   });
 
+  it("retains ownership while concurrent participants update the shared journal", async () => {
+    const participants = Array.from({ length: 16 }, (_, index) => `participant-${index}`);
+    const store = await CommsLeaseStore.create({ ...options(), participants });
+    try {
+      await Promise.all(participants.map(async participantId => {
+        await store.setState(participantId, "intent");
+        await store.assertOwnership();
+        await store.setState(participantId, "unresolved");
+        await store.assertOwnership();
+      }));
+      expect(store.snapshot().leases.every(lease => lease.state === "unresolved")).toBe(true);
+    } finally { await store.close(); }
+  });
+
   it("rejects a symlink or hard link substituted for a trusted journal", async () => {
     await unresolved();
     const file = await journalFile();

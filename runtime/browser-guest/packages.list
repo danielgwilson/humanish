@@ -8,7 +8,9 @@ nodejs
 openbox
 python3-minimal
 scrot
+socat
 systemd-sysv
+udev
 x11-utils
 xauth
 xdotool

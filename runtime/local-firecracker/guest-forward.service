@@ -1,0 +1,14 @@
+[Unit]
+Description=Local application TCP forwarding
+Before=humanish-guest.service
+
+[Service]
+User=humanish
+Group=humanish
+ExecStart=/usr/bin/python3 -I -B /opt/humanish/control/guest-forward.py
+NoNewPrivileges=yes
+KillMode=control-group
+TimeoutStopSec=3s
+
+[Install]
+WantedBy=multi-user.target

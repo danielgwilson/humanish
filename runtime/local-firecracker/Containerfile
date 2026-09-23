@@ -1,0 +1,7 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-minimal iproute2 nftables ca-certificates e2fsprogs \
+    && rm -rf /var/lib/apt/lists/*
+COPY launch.py /opt/humanish/launch.py
+ENTRYPOINT ["python3", "-I", "-B", "/opt/humanish/launch.py"]

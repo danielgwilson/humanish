@@ -95,23 +95,20 @@ async function checkVersion(file: string, env: NodeJS.ProcessEnv, cwd: string, s
 }
 
 type Event = { method: string; params: Record<string, unknown> };
-let activeSession = false;
-let unclosedChild = false;
+const unclosedChildren = new Set<Promise<void>>();
 function retainUnclosedChild(closed: Promise<void>): void {
-  unclosedChild = true;
-  void closed.then(() => { unclosedChild = false; });
+  unclosedChildren.add(closed);
+  void closed.then(() => { unclosedChildren.delete(closed); });
 }
 
-/** The gate covers all factories and readiness checks in this process. It does not
- * promise to serialize unrelated Codex applications using the same host login. */
+/** Each call owns a separate process, home and thread. An unresolved child blocks
+ * new work, but ordinary participant turns may run concurrently. */
 export async function runRestrictedCodexSession(request: RestrictedCodexRequest,
   options: RestrictedCodexSessionOptions = {}, readinessOnly = false): Promise<RestrictedCodexResult> {
   const error = restrictedCodexRequestError(request);
   if (error) return restrictedCodexFailure(error);
-  if (activeSession || unclosedChild) return restrictedCodexFailure("codex_busy");
-  activeSession = true;
-  try { return await executeRestrictedCodexSession(request, options, readinessOnly); }
-  finally { activeSession = false; }
+  if (unclosedChildren.size) return restrictedCodexFailure("codex_busy");
+  return executeRestrictedCodexSession(request, options, readinessOnly);
 }
 
 async function writeRecoveryMarker(work: string, sourceEnv: NodeJS.ProcessEnv,
@@ -310,11 +307,12 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       deadline.check();
     }
   } catch (error) {
-    result = restrictedCodexFailure(deadline.code ?? (error instanceof RestrictedCodexStop ? error.code : "codex_process_failed"), dispatched, usage);
+    const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
+    result = restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage);
   } finally {
     // Deadline remains authoritative until acceptance; teardown has its own small grace.
     deadline.close();
-    let cleaned = !unclosedChild;
+    let cleaned = result.errorCode !== "codex_cleanup_failed";
     if (transport) {
       const cleanupTurn = turnId ?? earlyTurnId;
       cleaned = await transport.close(dispatched && !completed && threadId && cleanupTurn
@@ -339,7 +337,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       if (work) await preserveUnexpectedAuth(work, sourceEnv).catch(() => undefined);
     }
     if (work && cleaned && !authReplaced) await rm(work, { recursive: true, force: true }).catch(() => { cleaned = false; });
-    if (work && unclosedChild) await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(() => undefined);
+    if (work && !cleaned && !authReplaced) await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(() => undefined);
     if (!cleaned) result = restrictedCodexFailure("codex_cleanup_failed", dispatched, usage);
   }
   return result;
