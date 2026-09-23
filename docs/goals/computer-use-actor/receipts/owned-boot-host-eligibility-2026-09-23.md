@@ -1,7 +1,7 @@
 # Owned browser boot: host prerequisites
 
-Status: fixture checks implemented; actual host measurement pending the reviewed
-manual workflow on `main`. No VM has been created by this probe.
+Status: actual read-only prerequisites passed on one disposable development host.
+No VM was created by this probe.
 
 The [probe](../../../../scripts/owned-boot-host-profile.py) measures one fixed
 Linux amd64 development profile on a disposable GitHub-hosted Ubuntu 24.04
@@ -49,3 +49,41 @@ finite receipt even when prerequisites are absent.
 This measurement does not establish jailed-user KVM access, complete Firecracker
 initialization, VM launch, guest boot, containment, cleanup, artifact transport,
 or a managed local Humanish study. A positive receipt grants no launch authority.
+
+
+## Actual measurement
+
+[Manual run 35885367017](https://github.com/danielgwilson/humanish/actions/runs/35885367017)
+executed reviewed source `1c6d7d625615f1bcd9c4480cf57e24f617dbf072` from canonical
+`main`. Both the 23 hermetic fixtures and actual measurement job passed.
+Independent receipt review checked the source/workflow hashes, exact ordered
+queries, closed descriptor, observed successful child exit and explicit limits.
+
+| Observed fact | Result |
+| --- | --- |
+| Runner image | Ubuntu 24.04, `20260907.300.1`, Linux amd64 |
+| Kernel | `6.17.0-1022-azure` |
+| systemd / Python | `255.4-1ubuntu8.17` / `3.12.3` |
+| Host profile | All 12 fixed prerequisite checks passed |
+| KVM | API 12; all 14 required system-descriptor capabilities supported |
+| Resource snapshot | 4 affinity CPUs, 15,789,010,944 available memory bytes, 92,372,246,528 available backing bytes |
+| Completion | Device descriptor closed; probe and command exited successfully |
+
+`ADJUST_CLOCK` returned the supported bitmask value 14; the remaining required
+queries returned 1. This confirms why support is tested as a positive integer,
+rather than equality to one. The root probe measured 15 ms internally; that is
+readback duration, not VM or browser startup latency.
+
+The retained receipt SHA256 is
+`53e44b492a535a52f03f64a3f4d69817dabec003322cafc8abde33c450a11c64`.
+The executed probe/wrapper SHA256 is
+`04311dce508bd0304d1d68cfb91cc860954d9358bab02e663e94f1ad00bbed7d`;
+the workflow SHA256 is
+`429ac4c00e96adc6f1e78184f0b070c6dfa19268cd13ce79eafea638d54c1145`.
+
+This kernel family is outside the pinned upstream list, and the receipt retains
+`kernel_tuple_development_unqualified`. The result establishes prerequisites for
+a subsequent controlled development test. It does not establish upstream host
+support, jailed access, VM boot or production isolation. No VM, service, host
+permission change or image import occurred. The available-resource snapshot is
+not allocated capacity or a local participant-count promise.
