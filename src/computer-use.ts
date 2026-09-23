@@ -24,6 +24,7 @@ import {
 import { TaskTracker, type LabTask } from "./tasks.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { isCuaAdmissionLimitError } from "./cua-admission-limit.js";
+import { CuaExecutorError, isCuaExecutorError } from "./cua-executor-error.js";
 
 // The computer-use (CUA) loop engine.
 //
@@ -197,6 +198,11 @@ export interface CuaProvider {
 
 /** The desktop side of the loop. */
 export interface CuaExecutor {
+  /**
+   * A transport that cannot safely retry or skip an unacknowledged request opts out of
+   * legacy observation/idle stall recovery. Wrappers must preserve this value.
+   */
+  readonly stallRecovery?: "fail_closed";
   /** Capture the current desktop frame and its state signature. */
   observe(): Promise<CuaObservation>;
   /**
@@ -751,6 +757,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // zero material actions is still an honest failure (timed_out). Kept beside counts.materialActions
   // so the evidence self-describes the distinction.
   let materialActions = 0;
+  let interruptedActionOutcome = false;
   let seq = 0;
   let usageInput = 0;
   let usageCachedInput = 0;
@@ -928,13 +935,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let pendingAcks: CuaSafetyCheck[] | undefined;
   try {
     currentPhase = "observing initial UI state";
-    // A stalled observe is retried once (#480); a second stall is the substrate telling us it is
-    // gone, and that ends the lane with its own name rather than an unexplained deadline.
+    // Legacy executors retry a stalled observe once (#480). A transport that cannot safely
+    // replay pending requests opts out, so even a shorter outer bound stops without retrying.
     const observeBounded = async (label: string): Promise<CuaObservation> => {
       try {
         return await raceBounded(`observe (${label})`, executor.observe(), remaining(), observationTimeoutMs, signal);
       } catch (error) {
         if (!(error instanceof CuaStallError)) throw error;
+        if (executor.stallRecovery === "fail_closed") {
+          // The outer bound says nothing about whether the still-pending request completed.
+          // The owning session will close it; this loop must not send a replacement request.
+          throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
+        }
         record({
           id: nextId("notice"),
           kind: "notice",
@@ -1269,14 +1281,18 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         // FINAL state — and a task completed by that state read as incomplete. The first live
         // study caught it: both participants reached the dashboard, said so, and the funnel
         // reported 0/2. One guarded closing observation feeds the tracker; a failed observe
-        // changes nothing (the funnel stays honest about what it saw), and no screenshot or
-        // stop evaluation rides it — the session is already over.
+        // ordinarily changes nothing (the funnel stays honest about what it saw), and no
+        // screenshot or stop evaluation rides it — the session is already over. An explicit
+        // executor failure still fails the harness instead of disappearing behind completion.
         if (taskTracker !== undefined) {
           try {
+            currentPhase = "observing closing task state";
             const closing = await observeBounded("closing");
             observeTasks(closing, turnNumber);
-          } catch {
-            // Best-effort by design.
+          } catch (error) {
+            // Ordinary closing observations remain best-effort. A declared executor failure
+            // must not disappear behind a participant's reported success.
+            if (isCuaExecutorError(error)) throw error;
           }
         }
         break;
@@ -1315,6 +1331,21 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             const pending = executor.execute(action, actionController.signal);
             if (idleBound === undefined) await raceSettle(pending, remaining(), signal);
             else await raceBounded(`idle action ${actionTitle}`, pending, remaining(), idleBound, signal);
+          } catch (error) {
+            if (error instanceof CuaStallError && executor.stallRecovery === "fail_closed") {
+              throw new CuaExecutorError("deadline_exceeded", "outcome_uncertain");
+            }
+            if (error instanceof CuaDeadlineError || error instanceof CuaAbortError) {
+              // The loop's deadline/abort may win before the executor can report whether its
+              // write reached the desktop. Cancellation alone does not establish rollback.
+              interruptedActionOutcome = true;
+              record({
+                id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "warn",
+                title: "action outcome uncertain",
+                text: redactNarration(`action: ${actionTitle}; disposition: outcome_uncertain; the loop stopped waiting before execution was acknowledged; the action was not retried`)
+              });
+            }
+            throw error;
           } finally {
             signal?.removeEventListener("abort", onAbort);
             // A deadline also closes async executor preparation, so a late pointer read
@@ -1350,8 +1381,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           // (e.g. a Ctrl+Minus keypress exiting 2), so one flaky desktop command
           // must not end the whole run. Everything else — a raceSettle deadline
           // (CuaDeadlineError) or abort (CuaAbortError), a sandbox-gone failure,
-          // any non-CommandExitError — is RE-THROWN so the existing fatal handling
-          // (actor_error / timed_out / harness_error) stays byte-identical.
+          // any non-CommandExitError — is rethrown. A typed executor declaration must also
+          // bypass command recovery even if an adapter has changed its ordinary Error metadata.
+          if (isCuaExecutorError(error)) {
+            if (error.disposition === "not_dispatched" && !isIdleAction(action)) {
+              materialActions -= 1;
+              counts.materialActions = materialActions;
+              lastMaterialActionTitle = priorMaterialActionTitle;
+            }
+            throw error;
+          }
           if (!isCommandExitError(error)) throw error;
           if (!isIdleAction(action)) {
             // The material count was applied above assuming the action would
@@ -1539,7 +1578,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       stopCause = "time_limit";
       if (materialActions > 0) {
         completionReason = "budget_reached";
-        reason = `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
+        reason = interruptedActionOutcome
+          ? `reached the ${timeoutMs}ms time budget with ${materialActions} material action attempt(s), ${counts.turns} turn(s); the latest action outcome is uncertain`
+          : `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${counts.turns} turn(s))`;
       } else {
         completionReason = "timed_out";
         reason = `wall-clock deadline reached after ${timeoutMs}ms with no material progress`;
@@ -1548,6 +1589,20 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       completionReason = "harness_error";
       reason = "run aborted by the harness";
       stopCause = "harness_aborted";
+    } else if (isCuaExecutorError(error)) {
+      completionReason = "harness_error";
+      reason = `desktop executor error: ${error.code}; disposition: ${error.disposition}`;
+      record({
+        id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
+        title: "desktop executor error",
+        text: [
+          `phase: ${redactNarration(currentPhase)}`,
+          `code: ${error.code}`,
+          `disposition: ${error.disposition}`,
+          lastActionTitle === undefined ? undefined : `last action: ${redactNarration(lastActionTitle)}`
+        ].filter(Boolean).join("; "),
+        ...(lastScreenshotRef === undefined ? {} : { screenshotRef: lastScreenshotRef })
+      });
     } else {
       completionReason = "actor_error";
       const rawMessage = error instanceof Error ? error.message : String(error);

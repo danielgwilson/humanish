@@ -76,6 +76,7 @@
     "tui:smoke": "node scripts/tui-smoke.mjs",
     "tui:test": "pnpm --filter humanish-tui test",
     "release:dogfood": "node scripts/release-dogfood.mjs",
+    "browser-control:proof": "node scripts/browser-control-proof.mjs",
     "docs:generate": "tsx scripts/generate-cli-docs.ts",
     "docs:check": "tsx scripts/generate-cli-docs.ts --check",
     "observer:browser:proof": "node scripts/observer-browser-proof.mjs",
