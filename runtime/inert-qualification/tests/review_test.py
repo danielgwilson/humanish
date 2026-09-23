@@ -496,6 +496,33 @@ class ProofIntegrityReview(unittest.TestCase):
             cleanup.assert_not_called()
             self.assertEqual((foreign / 'canary').read_text(), 'preserve')
 
+    def test_fault_progress_baseline_is_captured_after_the_phase_delay(self):
+        case = object.__new__(qualification.Case)
+        case.case = 'IS04'
+        case.variant = 'kill'
+        case.phase = 4
+        order = []
+        counters = {'bw': 1, 'cc': 1}
+
+        def delay(seconds):
+            self.assertEqual(seconds, 4)
+            order.append('phase_elapsed')
+            counters.update(bw=21, cc=21)
+
+        def baseline():
+            order.append('baseline')
+            return dict(counters)
+
+        case.counters = baseline
+        case.event = Mock()
+        case.owned = {'as': SimpleNamespace(fault=lambda _: order.append('fault'))}
+        case.await_a_absence = Mock()
+        case.preserve = Mock()
+        with patch.object(qualification.time, 'sleep', side_effect=delay):
+            case.exercise()
+        self.assertEqual(order, ['phase_elapsed', 'baseline', 'fault'])
+        case.preserve.assert_called_once_with({'bw': 21, 'cc': 21})
+
     def test_recovery_does_not_follow_a_substituted_state_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
