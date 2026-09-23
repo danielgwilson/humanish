@@ -147,6 +147,71 @@ class IndependentReceiptReview(unittest.TestCase):
                 self.event(self.sample(value, case), kind)[field] = replacement
                 self.refused(value)
 
+    def test_created_control_sockets_cannot_be_reported_as_never_created(self):
+        for case in ('IS01', 'IS02', 'IS09'):
+            with self.subTest(case=case):
+                value = self.receipt()
+                self.sample(value, case)['cleanup']['roles']['aw']['control_socket'] = 'not_created'
+                self.refused(value)
+
+    def test_aggregate_absence_count_must_match_the_per_sample_observations(self):
+        value = self.receipt()
+        value['cleanup']['absent'] = 1
+        self.refused(value)
+
+    def test_independent_absence_and_attribution_must_survive_in_the_receipt(self):
+        for case in ('IS04', 'IS05', 'IS06', 'IS07', 'IS12'):
+            for mutation in ('missing_event', 'missing_role', 'wrong_result', 'before_fault'):
+                with self.subTest(case=case, mutation=mutation):
+                    value = self.receipt()
+                    sample = self.sample(value, case)
+                    observed = self.event(sample, 'independent_absence')
+                    if mutation == 'missing_event':
+                        sample['facts']['events'].remove(observed)
+                    elif mutation == 'missing_role':
+                        observed['basis'].pop('ax')
+                    elif mutation == 'wrong_result':
+                        observed['result'] = 'exit-code'
+                    else:
+                        observed['monotonic_ns'] = self.event(sample, 'fault')['monotonic_ns'] - 1
+                    self.refused(value)
+
+    def test_ttl_or_early_expiry_cannot_masquerade_as_absolute_cap(self):
+        for mutation in ('few_renewals', 'early_deadline', 'stale_last_renewal',
+                         'still_active', 'missing_lease', 'absence_before_deadline'):
+            with self.subTest(mutation=mutation):
+                value = self.receipt()
+                sample = self.sample(value, 'IS07', 1)
+                lease = sample['facts']['roles']['as']['lease']
+                if mutation == 'few_renewals':
+                    lease['sequence'] = 1
+                elif mutation == 'early_deadline':
+                    lease['lease_deadline_ms'] = lease['study_deadline_ms'] - 1
+                elif mutation == 'stale_last_renewal':
+                    lease['last_valid_ms'] = lease['study_deadline_ms'] - 20001
+                elif mutation == 'still_active':
+                    lease['state'] = 'active'
+                elif mutation == 'missing_lease':
+                    sample['facts']['roles']['as'].pop('lease')
+                else:
+                    self.event(sample, 'independent_absence')['boottime_ns'] = lease['lease_deadline_ms'] * 1000000 - 1
+                self.refused(value)
+
+    def test_duplicate_renewal_cannot_advance_the_retained_sequence(self):
+        value = self.receipt()
+        self.sample(value, 'IS07')['facts']['roles']['as']['lease']['sequence'] = 2
+        self.refused(value)
+
+    def test_recovery_and_changed_entry_outcomes_cannot_be_inferred_from_pass(self):
+        for case, kind, field, replacement in (
+            ('IS11', 'changed_entry_refused', 'outcomes', ['removed', 'removed']),
+            ('IS12', 'recovery_observation', 'recovery', {'status': 'complete', 'absent': 2, 'unresolved': 0}),
+        ):
+            with self.subTest(case=case):
+                value = self.receipt()
+                self.event(self.sample(value, case), kind)[field] = replacement
+                self.refused(value)
+
 
 if __name__ == '__main__':
     unittest.main()
