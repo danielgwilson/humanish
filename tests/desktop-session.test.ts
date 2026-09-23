@@ -28,12 +28,26 @@ describe("owned desktop session", () => {
     expect(allocation.close()).toBe(closing);
     await expect(session.executor.observe()).rejects.toThrow("closed");
     await expect(session.executor.execute({ kind: "wait", ms: 1 })).rejects.toThrow("closed");
+    await expect(session.executor.observe()).rejects.toMatchObject({
+      name: "CuaExecutorError", code: "executor_closed", disposition: "not_dispatched"
+    });
+    await expect(session.executor.execute({ kind: "click", x: 1, y: 1 })).rejects.toMatchObject({
+      name: "CuaExecutorError", code: "executor_closed", disposition: "not_dispatched"
+    });
     expect(backend.observe).not.toHaveBeenCalled();
     expect(backend.execute).not.toHaveBeenCalled();
     finish();
     expect(await closing).toEqual({ status: "released", reason: "terminated" });
     expect(release).toHaveBeenCalledTimes(1);
     expect(session.close()).toBe(closing);
+  });
+
+  it("preserves the executor's explicit no-recovery policy without changing legacy defaults", () => {
+    const own = (backend: CuaExecutor) => ownDesktopAllocation({
+      resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" })
+    }).open(backend).executor;
+    expect(own({ ...executor(), stallRecovery: "fail_closed" }).stallRecovery).toBe("fail_closed");
+    expect(own(executor())).not.toHaveProperty("stallRecovery");
   });
 
   it("can release a failed allocation before participant binding and prevents rebinding", async () => {
