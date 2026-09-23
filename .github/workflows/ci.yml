@@ -177,6 +177,13 @@ jobs:
           retention-days: 14
           include-hidden-files: true
 
+  broker-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: python3 --version
+      - run: python3 -B -m unittest discover -s runtime/broker/tests -p '*_test.py' -v
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
