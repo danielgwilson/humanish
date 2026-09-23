@@ -109,6 +109,13 @@ class PacketTests(unittest.TestCase):
             self.assertEqual((root / 'root.ext4').read_bytes(), b'replacement')
             self.assertEqual((root / 'state.ext4').read_bytes(), b'state')
 
+    def test_cleanup_rejects_replaced_empty_root(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent=Path(temporary); root=parent/'allocation'; root.mkdir()
+            owned=identity(root.stat()); root.rename(parent/'old'); root.mkdir()
+            with self.assertRaises(Refusal): remove_finite_tree(root,{},expected_root=owned)
+            self.assertTrue(root.is_dir())
+
     def test_cleanup_refuses_symlink_and_unknown_leaf(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); (root / 'known').write_bytes(b'keep'); (root / 'unknown').write_bytes(b'keep')
@@ -210,9 +217,13 @@ class LifecycleNegatives(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary); (root/'allocation.json').write_bytes(b'original')
             owner=Owner.__new__(Owner); owner.instance=root; owner.minor=None; owner.record={}
+            owner.instance_identity=identity(root.stat())
             owner.acquired_entries=snapshot_finite(root, allocation_entries(None)[0])
             (root/'allocation.json').rename(root/'previous'); (root/'allocation.json').write_bytes(b'foreign'); (root/'previous').unlink()
-            with self.assertRaises(Refusal): owner.capture()
+            import owner as owner_module
+            original_anchor=owner_module.anchored
+            with patch.object(owner_module,'anchored',lambda path, **kwargs: original_anchor(path)), self.assertRaisesRegex(Refusal,'allocation_entry_changed'):
+                owner.capture()
             self.assertEqual((root/'allocation.json').read_bytes(),b'foreign')
 
     def test_pending_pid1_start_prevents_quiescence_even_empty_parent(self):

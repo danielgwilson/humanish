@@ -86,12 +86,16 @@ class Owner:
         if self.catalog.get('accepted') is not True:
             raise Refusal('catalog_unaccepted')
         with anchored(self.instance, trusted=True) as fd:
-            self.acquired_entries = unique_json(read_at(fd, 'expected.json', 65536))
+            expected = unique_json(read_at(fd, 'expected.json', 65536))
+            self.instance_identity, self.acquired_entries = expected['root'], expected['entries']
             self.minor = unique_json(read_at(fd, 'device-policy.json', 4096))['userfaultfdMinor']
         self.capture()
         self.last_watchdog = time.monotonic()
 
     def capture(self):
+        with anchored(self.instance, trusted=True) as fd:
+            if identity(os.fstat(fd)) != tuple(self.instance_identity):
+                raise Refusal('allocation_root_changed')
         current = snapshot_finite(self.instance, allocation_entries(self.minor)[0])
         for name, expected in self.acquired_entries.items():
             if name not in current or tuple(current[name]) != tuple(expected):

@@ -36,7 +36,7 @@ def provenance(environment):
     return {'commit': commit, 'runId': run, 'repository': REPOSITORY, 'workflow': WORKFLOW}
 
 
-def git_bytes(repository, commit, path):
+def git_bytes(repository, commit, path, maximum=2 * 1024 * 1024):
     result = subprocess.run(['/usr/bin/git', '--no-replace-objects', 'show', commit + ':' + path], cwd=repository,
                             env=ENV, capture_output=True, timeout=10, check=True)
     if len(result.stdout) > maximum:

@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -19,6 +20,26 @@ def environment():
 
 
 class CiTests(unittest.TestCase):
+    def test_actual_committed_git_blob_read_and_bound(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repository=Path(temporary)
+            def git(*args):
+                return subprocess.run(['/usr/bin/git','-c','core.hooksPath=/dev/null',*args],cwd=repository,
+                    env={**ci.ENV,'GIT_AUTHOR_NAME':'Synthetic Fixture','GIT_AUTHOR_EMAIL':'fixture@example.test',
+                         'GIT_COMMITTER_NAME':'Synthetic Fixture','GIT_COMMITTER_EMAIL':'fixture@example.test',
+                         'GIT_CONFIG_NOSYSTEM':'1'},capture_output=True,check=True,timeout=5).stdout
+            git('init','--initial-branch=main')
+            (repository/'proof.py').write_bytes(b'print("synthetic")\n')
+            git('add','proof.py'); git('commit','-m','synthetic fixture')
+            commit=git('rev-parse','HEAD').decode().strip()
+            self.assertEqual(ci.git_bytes(repository,commit,'proof.py'),b'print("synthetic")\n')
+            with self.assertRaises(ValueError): ci.git_bytes(repository,commit,'proof.py',maximum=1)
+            (repository/'proof.py').write_bytes(b'changed working tree')
+            git('add','proof.py'); git('commit','-m','replacement fixture')
+            replacement=git('rev-parse','HEAD').decode().strip()
+            git('replace',commit,replacement)
+            self.assertEqual(ci.git_bytes(repository,commit,'proof.py'),b'print("synthetic")\n')
+
     def test_only_reviewed_canonical_manual_host(self):
         self.assertEqual(ci.provenance(environment())['commit'], 'a'*40)
         for key,value in [('GITHUB_EVENT_NAME','pull_request'),('GITHUB_EVENT_NAME','push'),

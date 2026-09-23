@@ -105,7 +105,7 @@ def file_hash(path, maximum, deadline):
             os.close(source)
 
 
-def remove_finite_tree(path, allowed, *, devices=None, expected=None):
+def remove_finite_tree(path, allowed, *, devices=None, expected=None, expected_root=None):
     """No recursive pathname deletion: admit every leaf then unlink held entries.
 
     This runs only after acquired processes/creation have been proven absent.
@@ -115,6 +115,8 @@ def remove_finite_tree(path, allowed, *, devices=None, expected=None):
     found = []
     directories = []
     with anchored(path) as root_fd:
+        if expected_root is not None and identity(os.fstat(root_fd)) != tuple(expected_root):
+            raise Refusal('cleanup_root_replaced')
         def capture(fd, prefix='', depth=0):
             if depth > 20:
                 raise Refusal('cleanup_depth')
@@ -206,6 +208,7 @@ class Case:
     def install(self):
         self.instance.mkdir(mode=0o711)
         self.instance.chmod(0o711)
+        self.instance_identity = identity(self.instance.stat())
         with anchored(self.instance, trusted=True) as fd:
             durable_at(fd, 'allocation.json', encode({'generation': self.generation, 'state': 'prepared'}), 0o444)
             durable_at(fd, 'device-policy.json', encode({'userfaultfdMinor': self.minor}), 0o444)
@@ -301,7 +304,7 @@ class Case:
                 self.tick()
         self.acquired_entries = snapshot_finite(self.instance, allocation_entries(self.minor)[0])
         with anchored(self.instance, trusted=True) as fd:
-            self.acquired_entries['expected.json'] = durable_at(fd, 'expected.json', encode(self.acquired_entries), 0o444)
+            self.acquired_entries['expected.json'] = durable_at(fd, 'expected.json', encode({'root': self.instance_identity, 'entries': self.acquired_entries}), 0o444)
         self.event('fresh_per_allocation_disks', rootSha256=self.catalog['assets']['root.ext4']['sha256'],
                    stateSha256=self.catalog['assets']['state.ext4']['sha256'])
 
@@ -425,7 +428,7 @@ class Case:
                             raise Refusal('runtime_replaced')
                     allowed = {name: 'file' for name in ('status.json', 'progress.json', 'leader.json', 'worker.json', 'result.json', 'before.png', 'typed.png', 'after.png', 'serial.log')}
                     allowed.update({'lease.sock': 'socket', 'fork.sock': 'socket'})
-                    remove_finite_tree(path, allowed)
+                    remove_finite_tree(path, allowed, expected_root=self.runtime_ids[role])
                     path.rmdir()
                 for role in ('parent', 'owner_parent', 'study', 'other'):
                     self.manager.command('stop', (role,), deadline)
@@ -436,7 +439,7 @@ class Case:
                         unlink_exact(fd, name, owned['identity'])
                 self.manager.command('daemon-reload', deadline=deadline)
                 allowed, devices = allocation_entries(self.minor)
-                removed = remove_finite_tree(self.instance, allowed, devices=devices, expected=self.acquired_entries)
+                removed = remove_finite_tree(self.instance, allowed, devices=devices, expected=self.acquired_entries, expected_root=self.instance_identity)
                 self.instance.rmdir()
                 self.cleanup = {'status': 'complete', 'unresolved': 0, 'roles': outcomes, 'allocationLeavesRemoved': removed}
             except Exception:
