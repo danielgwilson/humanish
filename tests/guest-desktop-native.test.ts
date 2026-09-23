@@ -242,4 +242,46 @@ describe("guest native helper ownership and failure bounds", () => {
     expect(await readFile(canary, "utf8")).toBe("keep");
     expect(await readdir(directory)).toEqual(["unrelated-canary"]);
   });
+
+  it.each(["123", "4294967295\n"])("reads a bounded active X window ID %j", async value => {
+    const result = outcome(tools.activeWindowId(authority.signal));
+    expect(spawnMock.mock.calls[0]![0]).toBe("/usr/bin/xdotool");
+    expect(spawnMock.mock.calls[0]![1]).toEqual(["getactivewindow"]);
+    helper.stdout.write(value); helper.close(0);
+    expect((await result).value).toBe(value.trim());
+  });
+
+  it.each(["", "0", "01", "-1", "1.5", "0x123", "123 extra", "123\n456\n", "123\r\n", "4294967296", "9999999999"])("refuses malformed or out-of-range active-window output %j", async value => {
+    const result = outcome(tools.activeWindowId(authority.signal));
+    helper.stdout.write(value); helper.close(0);
+    expect((await result).error).toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    expect(spawnMock).toHaveBeenCalledOnce();
+  });
+
+  it("sends admitted ASCII through stdin, never helper arguments", async () => {
+    const text = "--window 42; $(synthetic) https://example.test/?x=1&y=2";
+    const result = outcome(tools.typeAscii(text, authority.signal));
+    expect(spawnMock.mock.calls[0]![1]).toEqual(["type", "--clearmodifiers", "--delay", "0", "--file", "-"]);
+    expect(JSON.stringify(spawnMock.mock.calls[0])).not.toContain(text);
+    expect(Buffer.concat(helper.received).toString("utf8")).toBe(text);
+    expect(helper.stdin.writableEnded).toBe(true);
+    helper.close(0);
+    expect((await result).error).toBeUndefined();
+  });
+
+  it.each(["", "é", "🙂", "\t", "\n", "\r", "\0", "\x7f", "a".repeat(65_537)])("refuses unsupported native text before allocating a helper (case %#)", async text => {
+    await expect(tools.typeAscii(text, authority.signal)).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("treats an ASCII typing diagnostic as failure even when exit is zero", async () => {
+    const result = outcome(tools.typeAscii("synthetic text", authority.signal));
+    helper.stderr.write("synthetic private skipped-key diagnostic");
+    expect(helper.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+    helper.close(0);
+    const error = (await result).error;
+    expect(error).toMatchObject({ code: "execution_failed", disposition: "outcome_uncertain", message: "Desktop executor could not complete the request." });
+    expect(String(error)).not.toContain("synthetic private");
+    expect(spawnMock).toHaveBeenCalledOnce();
+  });
 });
