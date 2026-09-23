@@ -72,6 +72,110 @@ def receipt(name, result):
     return value
 
 
+def validate_sample_evidence(case_id, sample):
+    """Require retained observations, independently of the producer's green flag."""
+    def require_fact(condition):
+        if not condition:
+            raise RuntimeError("incomplete_sample_evidence")
+
+    def integer(value, minimum=0, maximum=2**63 - 1):
+        return type(value) is int and minimum <= value <= maximum
+
+    bases = {"held_cgroup_empty", "all_held_members_exited_and_pid1_inactive"}
+    facts = sample.get("facts", {})
+    require_fact(facts.get("observation_phase") == "before_cleanup")
+    events = facts.get("events", [])
+
+    def event(kind):
+        found = [value for value in events if value.get("kind") == kind]
+        require_fact(len(found) == 1)
+        return found[0]
+
+    baseline, fault, progress = (event(kind) for kind in
+                                 ("counter_baseline", "fault", "unaffected_progress"))
+    times = [value.get("monotonic_ns") for value in (baseline, fault, progress)]
+    require_fact(all(integer(value) for value in times) and times[0] <= times[1] < times[2])
+    require_fact(fault.get("variant") == sample["variant"] and fault.get("phase") == sample["phase"])
+    before, after = progress.get("before", {}), progress.get("after", {})
+    require_fact(before == baseline.get("counters") and set(before) == {"bw", "cc"} and set(after) == {"bw", "cc"})
+    for role in ("bw", "cc"):
+        require_fact(integer(before[role]) and integer(after[role]) and after[role] > before[role])
+    require_fact(integer(sample.get("latency_ms"), maximum=120000))
+    if case_id in ("IS04", "IS05", "IS06", "IS07", "IS12"):
+        observed = event("independent_absence")
+        observed_bases = observed.get("basis", {})
+        require_fact(set(observed_bases) == {"as", "aw", "ax"} and all(value in bases for value in observed_bases.values()))
+        expected_result = "watchdog" if case_id == "IS05" else "signal" if case_id == "IS04" and sample["variant"] == "kill" else "success"
+        require_fact(observed.get("result") == expected_result)
+        require_fact(integer(observed.get("monotonic_ns")) and times[1] <= observed["monotonic_ns"] <= times[2])
+    if case_id in ("IS06", "IS07", "IS12"):
+        lease = facts.get("roles", {}).get("as", {}).get("lease", {})
+        require_fact(lease.get("state") == "expired")
+        for key in ("sequence", "last_valid_ms", "lease_deadline_ms", "study_deadline_ms"):
+            require_fact(integer(lease.get(key)))
+        observed = event("independent_absence")
+        require_fact(integer(observed.get("boottime_ns")) and observed["boottime_ns"] // 1000000 >= lease["lease_deadline_ms"])
+        if case_id == "IS07" and sample["variant"] == "absolute-cap":
+            require_fact(lease["sequence"] >= 9 and lease["lease_deadline_ms"] == lease["study_deadline_ms"])
+            require_fact(lease["last_valid_ms"] >= lease["study_deadline_ms"] - 20000)
+        else:
+            require_fact(lease["lease_deadline_ms"] == lease["last_valid_ms"] + 20000)
+            require_fact(lease["lease_deadline_ms"] < lease["study_deadline_ms"])
+            if case_id == "IS07":
+                require_fact(lease["sequence"] == 1)
+    if case_id == "IS02":
+        event("static_negative_refused_before_registration")
+    elif case_id == "IS11":
+        require_fact(event("changed_entry_refused").get("outcomes") == ["refused", "removed"])
+    elif case_id == "IS12":
+        recovery = event("recovery_observation").get("recovery", {})
+        require_fact(recovery == {"status": "complete", "absent": 3, "unresolved": 0})
+    if case_id == "IS03":
+        observed = event("leader_descendant_observed")
+        require_fact(all(observed.get(key) is True for key in
+                         ("leader_exited", "child_held", "child_alive", "service_active", "cgroup_populated")))
+        require_fact(event("descendant_stopped").get("absence_basis") in bases)
+    elif case_id == "IS08":
+        observed = event("hard_stop_observed")
+        require_fact(observed.get("pid1_result") == "timeout" and observed.get("grace_observed") is True)
+        require_fact(integer(observed.get("stop_elapsed_ms"), 4500, 30000) and observed.get("absence_basis") in bases)
+    elif case_id == "IS09":
+        observed = event("startup_gate_observed")
+        require_fact(integer(observed.get("poll_count"), 1) and observed.get("supervisor_final_state") == "failed")
+        running = observed.get("worker_seen_running", {})
+        require_fact(set(running) == {"aw", "ax"} and all(value is False for value in running.values()))
+        states = observed.get("worker_final_states", {})
+        require_fact(set(states) == {"aw", "ax"} and all(state in ("inactive", "failed") for state in states.values()))
+        if sample["variant"] == "delayed":
+            require_fact(observed.get("supervisor_pending_seen") is True)
+    elif case_id == "IS10":
+        observed = event("replacement_refusal_observed")
+        require_fact(all(observed.get(key) is True for key in
+                         ("fresh_invocation", "stale_record_refused", "replacement_still_alive")))
+
+    cleanup = sample.get("cleanup", {})
+    require_fact(cleanup.get("status") == "complete" and type(cleanup.get("unresolved")) is int and cleanup["unresolved"] == 0)
+    require_fact(integer(cleanup.get("duration_ms"), maximum=30000))
+    for key, count in (("unit_files", 4 if case_id == "IS02" else 8), ("control_sockets", 3)):
+        counts = cleanup.get(key, {})
+        require_fact(set(counts) == {"removed", "retained", "unresolved"} and all(integer(value) for value in counts.values()))
+        require_fact(counts == {"removed": count, "retained": 0, "unresolved": 0})
+    roles = cleanup.get("roles", {})
+    require_fact(set(roles) == {"as", "aw", "ax", "bs", "bw", "cc"})
+    owned = set(roles) - ({"as", "aw", "ax"} if case_id == "IS02" else {"aw", "ax"} if case_id == "IS09" else set())
+    require_fact(type(cleanup.get("absent")) is int and cleanup["absent"] == len(owned))
+    for role, value in roles.items():
+        if role in owned:
+            require_fact(value.get("processes") == "absent" and value.get("absence_basis") in bases)
+            runtime = value.get("runtime", {})
+            require_fact(runtime.get("status") == "removed" and integer(runtime.get("files_removed")) and integer(runtime.get("sockets_removed")))
+        else:
+            require_fact(value.get("processes") == ("not_registered" if case_id == "IS02" else "not_acquired"))
+            require_fact(value.get("absence_basis") is None and value.get("runtime", {}).get("status") == "not_acquired")
+        require_fact(value.get("unit_file") == ("not_created" if case_id == "IS02" and role not in owned else "removed"))
+        require_fact(value.get("control_socket") == ("removed" if role in ("aw", "ax", "bw") else "not_created"))
+
+
 def validate_packet_receipt(value, operation):
     if type(value.get("version")) is not int or value["version"] != 1 or value.get("command") != operation:
         raise RuntimeError("invalid_packet_receipt")
@@ -87,6 +191,11 @@ def validate_packet_receipt(value, operation):
             observed = [(sample.get("variant"), sample.get("phase")) for sample in row["samples"]]
             if observed != SAMPLES[row["id"]]:
                 raise RuntimeError("missing_fault_or_phase")
+            for sample in row["samples"]:
+                validate_sample_evidence(row["id"], sample)
+        observed_absent = sum(sample["cleanup"]["absent"] for row in rows for sample in row["samples"])
+        if type(value.get("cleanup", {}).get("absent")) is not int or value["cleanup"]["absent"] != observed_absent:
+            raise RuntimeError("inconsistent_cleanup_total")
     if operation in ("run-matrix", "cleanup"):
         cleanup = value.get("cleanup", {})
         if cleanup.get("status") != "complete" or type(cleanup.get("unresolved")) is not int or cleanup["unresolved"] != 0:

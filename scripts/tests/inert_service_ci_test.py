@@ -17,13 +17,74 @@ def result(value=None, code=0):
     return subprocess.CompletedProcess([], code, json.dumps(value).encode(), b"")
 
 
+def sample_evidence(case_id, variant, phase):
+    basis = "all_held_members_exited_and_pid1_inactive"
+    roles_before = {}
+    events = [
+        {"kind": "counter_baseline", "monotonic_ns": 10, "counters": {"bw": 4, "cc": 5}},
+        {"kind": "fault", "monotonic_ns": 11, "variant": variant, "phase": phase},
+        {"kind": "unaffected_progress", "monotonic_ns": 12,
+         "before": {"bw": 4, "cc": 5}, "after": {"bw": 5, "cc": 6}},
+    ]
+    if case_id in ("IS04", "IS05", "IS06", "IS07", "IS12"):
+        events.append({"kind": "independent_absence", "monotonic_ns": 11, "boottime_ns": 30000000000,
+                       "basis": {role: basis for role in ("as", "aw", "ax")},
+                       "result": "watchdog" if case_id == "IS05" else "signal" if case_id == "IS04" and variant == "kill" else "success"})
+    if case_id in ("IS06", "IS07", "IS12"):
+        roles_before["as"] = {"lease": {"state": "expired", "sequence": 1, "last_valid_ms": 10000,
+                                        "lease_deadline_ms": 30000, "study_deadline_ms": 60000}}
+        if case_id == "IS07" and variant == "absolute-cap":
+            roles_before["as"]["lease"].update(sequence=12, study_deadline_ms=30000, last_valid_ms=25000)
+    if case_id == "IS02":
+        events.append({"kind": "static_negative_refused_before_registration"})
+    elif case_id == "IS11":
+        events.append({"kind": "changed_entry_refused", "outcomes": ["refused", "removed"]})
+    elif case_id == "IS12":
+        events.append({"kind": "recovery_observation", "recovery": {"status": "complete", "absent": 3, "unresolved": 0}})
+    if case_id == "IS03":
+        events.extend([
+            {"kind": "leader_descendant_observed", "leader_exited": True, "child_held": True,
+             "child_alive": True, "service_active": True, "cgroup_populated": True},
+            {"kind": "descendant_stopped", "absence_basis": basis},
+        ])
+    elif case_id == "IS08":
+        events.append({"kind": "hard_stop_observed", "pid1_result": "timeout", "stop_elapsed_ms": 5100,
+                       "grace_observed": True, "absence_basis": basis})
+    elif case_id == "IS09":
+        events.append({"kind": "startup_gate_observed", "poll_count": 3, "supervisor_pending_seen": True,
+                       "supervisor_final_state": "failed", "worker_final_states": {"aw": "inactive", "ax": "inactive"},
+                       "worker_seen_running": {"aw": False, "ax": False}})
+    elif case_id == "IS10":
+        events.append({"kind": "replacement_refusal_observed", "fresh_invocation": True,
+                       "stale_record_refused": True, "replacement_still_alive": True})
+    absent = {"as", "aw", "ax", "bs", "bw", "cc"} - (
+        {"as", "aw", "ax"} if case_id == "IS02" else {"aw", "ax"} if case_id == "IS09" else set())
+    roles = {}
+    for role in ("as", "aw", "ax", "bs", "bw", "cc"):
+        acquired = role in absent
+        roles[role] = {
+            "processes": "absent" if acquired else "not_registered" if case_id == "IS02" else "not_acquired",
+            "absence_basis": basis if acquired else None,
+            "runtime": {"status": "removed" if acquired else "not_acquired",
+                        "files_removed": 1 if acquired else None, "sockets_removed": 0 if acquired else None},
+            "unit_file": "not_created" if case_id == "IS02" and not acquired else "removed",
+            "control_socket": "removed" if role in ("aw", "ax", "bw") else "not_created",
+        }
+    return {"status": "passed", "variant": variant, "phase": phase, "latency_ms": 5200,
+            "facts": {"observation_phase": "before_cleanup", "events": events, "roles": roles_before},
+            "cleanup": {"status": "complete", "unresolved": 0, "absent": len(absent), "duration_ms": 200,
+                        "unit_files": {"removed": 4 if case_id == "IS02" else 8, "retained": 0, "unresolved": 0},
+                        "control_sockets": {"removed": 3, "retained": 0, "unresolved": 0},
+                        "roles": roles}}
+
+
 def packet_receipt(operation, passed=True):
     return {"version": 1, "command": operation, "aggregate": passed,
             "cases": [{"id": f"IS{i:02}", "status": "passed" if passed else "pending",
-                       "samples": [{"status": "passed", "variant": variant, "phase": phase}
+                       "samples": [sample_evidence(f"IS{i:02}", variant, phase)
                                    for variant, phase in ci.SAMPLES[f"IS{i:02}"]] if passed else []}
                       for i in range(1, 13)],
-            "cleanup": {"status": "complete", "unresolved": 0, "absent": 1}}
+            "cleanup": {"status": "complete", "unresolved": 0, "absent": 167}}
 
 
 class RootTimeoutTests(unittest.TestCase):
@@ -71,6 +132,17 @@ class RootTimeoutTests(unittest.TestCase):
             change(value)
             with self.assertRaises(RuntimeError):
                 ci.validate_packet_receipt(value, "run-matrix")
+
+    def test_complete_finite_sample_evidence_is_accepted(self):
+        ci.validate_packet_receipt(packet_receipt("run-matrix"), "run-matrix")
+
+    def test_preliminary_live_receipt_shape_without_sample_cleanup_is_rejected(self):
+        value = packet_receipt("run-matrix")
+        for row in value["cases"]:
+            for sample in row["samples"]:
+                sample.pop("cleanup")
+        with self.assertRaisesRegex(RuntimeError, "incomplete_sample_evidence"):
+            ci.validate_packet_receipt(value, "run-matrix")
 
     def test_cleanup_success_does_not_require_rewriting_failed_cases(self):
         ci.validate_packet_receipt(packet_receipt("cleanup", passed=False), "cleanup")

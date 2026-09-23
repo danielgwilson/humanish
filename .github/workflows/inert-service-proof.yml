@@ -7,7 +7,7 @@ on:
       - runtime/broker/**
       - scripts/inert-host-profile.py
       - scripts/inert-service-ci.py
-      - scripts/tests/inert_service_ci_test.py
+      - scripts/tests/inert_service*_test.py
       - .github/workflows/inert-service-proof.yml
   push:
     branches: [main]
@@ -16,7 +16,7 @@ on:
       - runtime/broker/**
       - scripts/inert-host-profile.py
       - scripts/inert-service-ci.py
-      - scripts/tests/inert_service_ci_test.py
+      - scripts/tests/inert_service*_test.py
       - .github/workflows/inert-service-proof.yml
   workflow_dispatch:
 
@@ -39,7 +39,7 @@ jobs:
       - name: Exercise planning, refusals and CI failure handling without privilege
         run: |
           /usr/bin/python3 -B -m unittest discover -s runtime/inert-qualification/tests -p '*_test.py' -v
-          /usr/bin/python3 -B -m unittest discover -s scripts/tests -p 'inert_service_ci_test.py' -v
+          /usr/bin/python3 -B -m unittest discover -s scripts/tests -p 'inert_service*_test.py' -v
       - name: Record read-only host eligibility
         run: |
           mkdir -p .humanish/inert-service-proof
