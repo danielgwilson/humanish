@@ -176,6 +176,10 @@ def archive(rows):
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_unicode_distribution_filename_is_preserved(self):
+        with archive([('Főtanúsítvány.crt', tarfile.REGTYPE, '')]) as incoming:
+            self.assertIn('Főtanúsítvány.crt', archive_members(incoming))
+
     def check_refusal(self, rows):
         with archive(rows) as incoming, self.assertRaises(ValueError):
             archive_members(incoming)

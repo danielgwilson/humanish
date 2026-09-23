@@ -58,7 +58,7 @@ def canonical(value):
 
 def path_name(name):
     if (not isinstance(name, str) or not name or len(name) > 1024 or
-        any(ord(c) < 32 or ord(c) > 126 or c in '\\"' for c in name) or
+        any(not c.isprintable() or c in '\\"' for c in name) or
         name.startswith('/') or any(p in ('', '.', '..') for p in name.split('/'))):
         raise ValueError('Noncanonical relative path')
     return name
