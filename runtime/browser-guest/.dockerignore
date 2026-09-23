@@ -3,7 +3,3 @@
 !packages.list
 !inventory.mjs
 !openbox.xml
-!helper-build.mjs
-!native/
-!native/clipboard.c
-!native/clipboard-protocol.md
