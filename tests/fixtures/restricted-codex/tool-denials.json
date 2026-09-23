@@ -1,0 +1,50 @@
+[
+  {
+    "type": "custom_tool_call_output",
+    "id": "ctco_01a0cd47-c184-7810-8a2f-1334a3ca3040",
+    "call_id": "call-exec",
+    "output": "code-mode host is disabled"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c19d-78a1-93f4-dd1b3110345a",
+    "call_id": "call-0",
+    "output": "unsupported call: spawn_agent"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c1b4-7311-b38d-bb66be6e42f7",
+    "call_id": "call-1",
+    "output": "unsupported call: collaboration.spawn_agent"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c1cf-7d11-b175-c2a92da08b98",
+    "call_id": "call-2",
+    "output": "unsupported call: collaboration.spawn_agent"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c1e7-71c1-8e22-aafe4ea5acc3",
+    "call_id": "call-3",
+    "output": "code-mode host is disabled"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c1fe-7883-9dc7-acd96b1a0e2b",
+    "call_id": "call-4",
+    "output": "unsupported call: skills__list"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c217-7f11-a4f4-8b25ff733dce",
+    "call_id": "call-5",
+    "output": "unsupported call: skills__read"
+  },
+  {
+    "type": "function_call_output",
+    "id": "fco_01a0cd47-c231-7693-ac82-1fc75bb75d10",
+    "call_id": "call-6",
+    "output": "unsupported call: exec_command"
+  }
+]

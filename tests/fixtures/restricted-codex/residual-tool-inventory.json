@@ -1,0 +1,19 @@
+{
+  "tag": "sink-005",
+  "model": "gpt-6-astra",
+  "tools": [
+    "functions.exec",
+    "functions.wait",
+    "functions.request_user_input",
+    "functions.request_user_input_async"
+  ],
+  "nestedTools": [
+    "clock__curr_time",
+    "skills__list",
+    "skills__read"
+  ],
+  "skillsInstructionPresent": false,
+  "hostCanaryPresent": false,
+  "capacityLine": [],
+  "instructionSources": []
+}

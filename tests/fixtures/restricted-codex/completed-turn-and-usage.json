@@ -1,0 +1,74 @@
+[
+  {
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "msg-synthetic",
+        "text": "{\"observedColor\":\"blue\",\"observedCode\":\"BLUE-4821\",\"evidenceId\":\"e-image-1\",\"hostDataAccessible\":false}",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null
+      },
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "completedAtMs": 0
+    },
+    "emittedAtMs": 0
+  },
+  {
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "tokenUsage": {
+        "total": {
+          "totalTokens": 2998,
+          "inputTokens": 2957,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 41,
+          "reasoningOutputTokens": 0
+        },
+        "last": {
+          "totalTokens": 2998,
+          "inputTokens": 2957,
+          "cachedInputTokens": 0,
+          "cacheWriteInputTokens": 0,
+          "outputTokens": 41,
+          "reasoningOutputTokens": 0
+        },
+        "modelContextWindow": 258400
+      }
+    },
+    "emittedAtMs": 0
+  },
+  {
+    "method": "turn/completed",
+    "params": {
+      "threadId": "thread-synthetic",
+      "turn": {
+        "id": "turn-synthetic",
+        "items": [
+          {
+            "type": "agentMessage",
+            "id": "msg-synthetic",
+            "text": "{\"observedColor\":\"blue\",\"observedCode\":\"BLUE-4821\",\"evidenceId\":\"e-image-1\",\"hostDataAccessible\":false}",
+            "phase": "final_answer",
+            "memoryCitation": null,
+            "delivery": null,
+            "questions": null
+          }
+        ],
+        "itemsView": "summary",
+        "status": "completed",
+        "error": null,
+        "startedAt": 0,
+        "completedAt": 0,
+        "durationMs": 4456
+      }
+    },
+    "emittedAtMs": 0
+  }
+]

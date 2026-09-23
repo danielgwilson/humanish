@@ -1,0 +1,12 @@
+{
+  "turn": {
+    "id": "turn-synthetic",
+    "items": [],
+    "itemsView": "notLoaded",
+    "status": "inProgress",
+    "error": null,
+    "startedAt": null,
+    "completedAt": null,
+    "durationMs": null
+  }
+}

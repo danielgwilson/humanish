@@ -1,0 +1,53 @@
+{
+  "thread": {
+    "id": "thread-synthetic",
+    "environments": [],
+    "extra": null,
+    "sessionId": "thread-synthetic",
+    "forkedFromId": null,
+    "parentThreadId": null,
+    "preview": "",
+    "ephemeral": true,
+    "section": null,
+    "sectionEnteredAt": null,
+    "projectId": null,
+    "historyMode": "legacy",
+    "modelProvider": "openai",
+    "model": "gpt-6-astra",
+    "reasoningEffort": "low",
+    "createdAt": 0,
+    "updatedAt": 0,
+    "recencyAt": 0,
+    "status": {
+      "type": "idle"
+    },
+    "path": null,
+    "cwd": "/private/probe/cwd",
+    "cliVersion": "0.154.0",
+    "originator": "humanish_restriction_probe",
+    "source": "vscode",
+    "canAcceptDirectInput": true,
+    "threadSource": null,
+    "agentNickname": null,
+    "agentRole": null,
+    "gitInfo": null,
+    "name": null,
+    "daybreakEnabled": null,
+    "turns": []
+  },
+  "model": "gpt-6-astra",
+  "modelProvider": "openai",
+  "serviceTier": null,
+  "cwd": "/private/probe/cwd",
+  "runtimeWorkspaceRoots": [],
+  "instructionSources": [],
+  "approvalPolicy": "never",
+  "approvalsReviewer": "user",
+  "sandbox": {
+    "type": "readOnly",
+    "networkAccess": false
+  },
+  "activePermissionProfile": null,
+  "reasoningEffort": "low",
+  "multiAgentMode": "explicitRequestOnly"
+}

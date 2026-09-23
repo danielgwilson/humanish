@@ -1,0 +1,33 @@
+# Codex analyst protocol fixtures
+
+These fixtures derive from retained captures of installed Codex CLI **0.154.0**
+on Linux x64, using the existing ChatGPT file login and `gpt-6-astra` with low
+reasoning effort. The synthetic image contained a blue rectangle and the code
+`BLUE-4821`. No application/customer evidence or credential values were captured.
+
+- `initialize`, `thread-start`, `turn-start`, `completed-turn-and-usage`,
+  `interrupted-turn`, `effective-config`, and `mcp-status` derive from actual
+  account-backed app-server responses. The cancellation occurred after model
+  output began. The successful turn reported 2,957 input and 41 output tokens;
+  account dollar usage was unknown.
+- `account-read-projection` retains only the observed account type and required
+  auth flag. It is a selected-field projection, not the complete account payload.
+- `residual-tool-inventory` derives from the actual CLI request serialized to a
+  no-auth loopback provider. This preserves what was advertised; it does not
+  claim the provider is tool-free.
+- `tool-denials`, `async-question-items`, `raw-input-image`, and `raw-tool-call` are actual CLI
+  outputs/notifications in response to deliberately injected synthetic backend
+  tool requests. They establish dispatcher and parser behavior, not model
+  behavior. The local backend's SSE inputs derive from Codex's response-test
+  helpers and protocol types; they were not guessed from memory.
+
+IDs, paths, timestamps, and client naming are normalized. Account identifiers,
+auth contents, raw provider errors, and rate-limit/account details are excluded.
+The fixture-driven fake process is for failure injection and lifecycle tests;
+its successful response is not another live model proof.
+
+The retained proof established that `agents.enabled=false` removes the child
+agent namespace, while `features.multi_agent=false` alone did not. It also
+established actual dispatch denial with `features.code_mode_host=false`, even
+though code-mode metadata remained advertised. The full product integration
+must independently qualify the selected provider before release.

@@ -1,0 +1,71 @@
+[
+  {
+    "method": "item/started",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "call-ui-1",
+        "text": "Synthetic question must not reach a user",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": "async",
+        "questions": [
+          {
+            "title": "Synthetic question must not reach a user",
+            "options": null
+          }
+        ]
+      },
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "startedAtMs": 0
+    },
+    "emittedAtMs": 0
+  },
+  {
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "call-ui-1",
+        "text": "Synthetic question must not reach a user",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": "async",
+        "questions": [
+          {
+            "title": "Synthetic question must not reach a user",
+            "options": null
+          }
+        ]
+      },
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "completedAtMs": 0
+    },
+    "emittedAtMs": 0
+  },
+  {
+    "method": "item/completed",
+    "params": {
+      "item": {
+        "type": "agentMessage",
+        "id": "call-ui-1",
+        "text": "Synthetic question must not reach a user",
+        "phase": "final_answer",
+        "memoryCitation": null,
+        "delivery": "async",
+        "questions": [
+          {
+            "title": "Synthetic question must not reach a user",
+            "options": null
+          }
+        ]
+      },
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "completedAtMs": 0
+    },
+    "emittedAtMs": 0
+  }
+]
