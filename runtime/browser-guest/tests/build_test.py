@@ -1,5 +1,6 @@
 """Control-flow tests only; actual Debian build receipts are retained separately."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -7,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -28,6 +30,8 @@ class BuildOrchestrationTest(unittest.TestCase):
         self.mutate_source = False
         self.mutate_snapshot = False
         self.fail_export = False
+        self.wrong_helper = False
+        self.helper_bytes = b'synthetic helper; orchestration test only'
         self.architecture = 'x86_64'
 
     def tearDown(self):
@@ -48,6 +52,15 @@ class BuildOrchestrationTest(unittest.TestCase):
                 destination = Path(argv[argv.index('--output') + 1].split('dest=', 1)[1])
                 destination.mkdir()
                 (destination / 'inventory.json').write_text(json.dumps({'packages': [], 'sources': [], 'versions': {}}))
+                helper = destination / 'helper-build/helper'
+                helper.mkdir(parents=True)
+                (helper / 'clipboard').write_bytes(self.helper_bytes)
+                (helper / 'manifest.json').write_text(json.dumps({
+                    'source': {'sha256': BUILD.sha256(cwd / 'native/clipboard.c')},
+                    'protocol': {'sha256': BUILD.sha256(cwd / 'native/clipboard-protocol.md')},
+                    'binary': {'sha256': hashlib.sha256(self.helper_bytes).hexdigest(), 'size': len(self.helper_bytes)}
+                }))
+                (destination / 'helper-build/inventory.json').write_text('{}')
             elif self.mutate_snapshot:
                 (cwd / 'packages.list').chmod(0o600)
                 (cwd / 'packages.list').write_text('tampered-snapshot\n')
@@ -56,7 +69,12 @@ class BuildOrchestrationTest(unittest.TestCase):
         elif argv[1] == 'export':
             if self.fail_export:
                 raise subprocess.CalledProcessError(1, argv)
-            Path(argv[argv.index('--output') + 1]).write_bytes(b'synthetic rootfs; no runtime claim')
+            with tarfile.open(Path(argv[argv.index('--output') + 1]), 'w') as rootfs:
+                binary = b'mismatched helper' if self.wrong_helper else self.helper_bytes
+                entry = tarfile.TarInfo('opt/humanish/control/clipboard')
+                entry.mode = 0o755
+                entry.size = len(binary)
+                rootfs.addfile(entry, io.BytesIO(binary))
         return subprocess.CompletedProcess(argv, 0, stdout=output)
 
     def invoke(self):
@@ -100,6 +118,19 @@ class BuildOrchestrationTest(unittest.TestCase):
             self.invoke()
         self.assertEqual((self.output / 'previous').read_text(), 'retained')
         self.assertEqual(self.calls, [])
+
+    def test_unpinned_source_is_refused_before_docker(self):
+        (self.source / 'native/clipboard.c').write_text('synthetic changed source')
+        with self.assertRaisesRegex(RuntimeError, 'source does not match'):
+            self.invoke()
+        self.assertEqual(self.calls, [])
+
+    def test_rootfs_binary_must_match_build_provenance(self):
+        self.wrong_helper = True
+        with self.assertRaisesRegex(RuntimeError, 'differs from its provenance'):
+            self.invoke()
+        self.assertFalse((self.output / 'manifest.json').exists())
+        self.assertEqual(self.calls[-1], ['docker', 'rm', 'synthetic-acquired-container'])
 
 
 if __name__ == '__main__':

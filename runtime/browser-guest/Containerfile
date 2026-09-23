@@ -18,8 +18,19 @@ RUN test "$(dpkg --print-architecture)" = "$TARGETARCH" \
  && xargs -a /tmp/all-packages.list apt-get install -y --reinstall --download-only --no-install-recommends \
  && node /tmp/inventory.mjs
 
+FROM packages AS clipboard-build
+COPY native/clipboard.c /tmp/clipboard.c
+COPY native/clipboard-protocol.md /tmp/clipboard-protocol.md
+COPY helper-build.mjs /tmp/helper-build.mjs
+RUN apt-get install -y --no-install-recommends gcc libc6-dev libx11-dev libxtst-dev \
+ && dpkg-query -W -f='${binary:Package}=${Version}\n' > /tmp/compiler-packages.list \
+ && xargs -a /tmp/compiler-packages.list apt-get install -y --reinstall --download-only --no-install-recommends \
+ && node /tmp/inventory.mjs \
+ && node /tmp/helper-build.mjs
+
 FROM packages AS runtime
 COPY openbox.xml /etc/xdg/openbox/rc.xml
+COPY --from=clipboard-build --chmod=0755 /build/helper/clipboard /opt/humanish/control/clipboard
 RUN groupadd --gid 1000 humanish \
  && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin humanish \
  && passwd --lock root && passwd --lock humanish \
@@ -46,3 +57,4 @@ CMD ["/usr/bin/true"]
 
 FROM scratch AS provenance
 COPY --from=packages /build/ /
+COPY --from=clipboard-build /build/ /helper-build/

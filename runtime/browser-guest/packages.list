@@ -10,6 +10,5 @@ scrot
 systemd-sysv
 x11-utils
 xauth
-xclip
 xdotool
 xvfb

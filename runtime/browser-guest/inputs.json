@@ -3,6 +3,10 @@
   "suite": "trixie",
   "debianSnapshot": "20260923T083042Z",
   "securitySnapshot": "20260922T123247Z",
+  "clipboardHelper": {
+    "sourceSha256": "9fe19be078660e55f824e64187caff33d160feb77359867c194436a34a6feb9d",
+    "protocolSha256": "bcf67b9eac7c5d379c2743e8bd3cf40eb2be7db6c30ab2aeea500f2ec92ae650"
+  },
   "platforms": {
     "amd64": {
       "base": "debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c",

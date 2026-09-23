@@ -1,8 +1,9 @@
 # Browser guest base recipe
 
 This maintained development recipe builds a Debian 13 root filesystem for a
-headed Chromium desktop. It does not include a guest kernel, controller bundle,
-network gateway, broker, or independent lifetime enforcement. It exposes no
+headed Chromium desktop and a compiled, finite native clipboard helper. It does
+not include a guest kernel, controller bundle, network gateway, broker, or
+independent lifetime enforcement. It exposes no
 public Humanish local-runtime selector and is not a qualified VM image.
 
 Inputs are pinned in `inputs.json`: architecture-specific official Debian image
@@ -12,7 +13,8 @@ pulled bytes. APT verifies signed Release/index/package hashes using the Debian
 archive keyring. Only snapshot expiry checks are disabled, because a fixed
 historic snapshot otherwise expires; signature checking stays enabled.
 
-Run with a native Docker builder and Python 3, writing outside the repository:
+Run with a native Docker builder and Python 3.11 or newer, writing outside the
+repository:
 
 ```sh
 python3 runtime/browser-guest/build.py --architecture amd64 --output /tmp/browser-guest-build
@@ -39,15 +41,17 @@ directory is new; failed build logs are retained rather than overwritten.
 - Intended X display `:0`; runtime owner must start Xvfb with a fresh private
   Xauthority file and `-nolisten tcp`, fixed geometry, and guest-local storage.
 - Fixed binaries `/usr/bin/chromium`, `/usr/bin/Xvfb`, `/usr/bin/openbox`,
-  `/usr/bin/scrot`, `/usr/bin/xdotool`, `/usr/bin/xclip`, `/usr/bin/xauth`,
+  `/usr/bin/scrot`, `/usr/bin/xdotool`, `/usr/bin/xauth`,
   `/usr/bin/xdpyinfo`, and `/usr/bin/node`.
 - Openbox has no keyboard, mouse, or menu launch bindings; browser chrome and
   the address bar remain visible. No desktop session autostart is invoked.
 - DejaVu, Noto CJK, and Noto Color Emoji provide Latin, CJK and emoji fonts;
   installed fonts alone do not qualify exact input or visual rendering.
 - `/opt/humanish/control` is reserved for an independently built, pinned runtime
-  bundle. There is no npm install at boot and no copied operator profile,
-  clipboard, credential, source checkout, or E2B image.
+  bundle. Its `/opt/humanish/control/clipboard` helper is built from reviewed
+  maintained source in a separate compiler stage. There is no npm install at boot
+  and no copied operator profile, clipboard, credential, source checkout, or E2B
+  image.
 - Chromium's sandbox package is installed. The recipe never adds `--no-sandbox`.
   The native guest and container-conformance environment must independently prove
   the sandbox works; a container launch failure does not authorize disabling it.
@@ -67,7 +71,7 @@ It maps installed packages to source package/version and signed source-file
 hashes, and copies each installed package's copyright notice. Chromium media
 libraries can remain required dependencies; no separate media worker or audio
 service is added. The inventory rejects listed standalone media/remote-login
-services and package managers rather than claiming a browser contains no codecs.
+services and npm rather than claiming a browser contains no codecs.
 
 The manifest binds the recipe, base image, resulting rootfs tar, package inventory,
 and actual runtime versions. Build artifacts and full third-party notices stay
@@ -91,6 +95,28 @@ python3 -B -m unittest discover -s runtime/browser-guest/tests -p '*_test.py' -v
 Those tests substitute an inert command runner and do not establish package or
 browser behavior. An actual completed build and its retained inventory establish
 the package result for that one architecture.
+
+## Native helper build
+
+The clipboard helper source and protocol are pinned by SHA-256 in `inputs.json`.
+The build snapshots those exact files before compiling. A separate stage installs
+GCC, libc development headers, X11 and XTest development packages from the same
+signed snapshots. Its package archives, source references, notices, compiler
+version/flags, helper source, protocol, and executable hash are exported under
+`provenance/helper-build`. Only the root-owned mode-0755 executable enters the
+runtime; compilers and development headers stay in the build stage.
+
+Finalization checks the exported rootfs executable against the retained compiled
+binary hash and metadata. Compiling successfully does not qualify Unicode paste,
+clipboard races, browser acceptance, or cancellation. Those require the separate
+actual-browser transfer proof using this exact binary. The clipboard helper is
+not a full guest controller, and its presence does not change the VM/lifecycle
+or redistribution gates above.
+
+The helper must have a live, non-init direct parent; container conformance uses
+Docker's `--init`. `xclip` is absent from the maintained runtime. The fixed helper
+owns clipboard transfer; `xdotool` remains for other finite native inputs, not
+text entry.
 
 Primary references: [Debian snapshot usage](https://snapshot.debian.org/),
 [APT authentication](https://manpages.debian.org/trixie/apt/apt-secure.8.en.html),
