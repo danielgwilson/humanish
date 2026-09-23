@@ -83,7 +83,8 @@
     "observer:iframe:proof": "node scripts/observer-iframe-proof.mjs",
     "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs",
     "observer:reliability:proof": "node scripts/observer-reliability-proof.mjs",
-    "tui:connections:proof": "python3 scripts/tui-connections-proof.py"
+    "tui:connections:proof": "python3 scripts/tui-connections-proof.py",
+    "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs"
   },
   "repository": {
     "type": "git",
