@@ -61,7 +61,7 @@ describe("owned Chromium text port", () => {
       "Page.getFrameTree", "Page.createIsolatedWorld", "Runtime.evaluate", "Runtime.evaluate", "Input.insertText"
     ]);
     expect(inserts(f)).toEqual([["Input.insertText", { text }]]);
-    expect(f.assertFocusedWindow).toHaveBeenCalledTimes(2);
+    expect(f.assertFocusedWindow).toHaveBeenCalledTimes(3);
     const world = f.send.mock.calls.find(([method]) => method === "Page.createIsolatedWorld")![1]!;
     expect(world).toEqual({ frameId: "owned-frame", worldName: expect.stringMatching(/^humanish-text-/) });
     for (const [, probe] of f.send.mock.calls.filter(([method]) => method === "Runtime.evaluate")) {
@@ -145,6 +145,14 @@ describe("owned Chromium text port", () => {
     const f = fixture(), handle = await prepared(f);
     f.send.mockResolvedValueOnce({ result: { type: "boolean", value: false } });
     await expect(handle.paste()).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    expect(inserts(f)).toHaveLength(0);
+  });
+
+  it("rechecks native window authority after the renderer probe before sending text", async () => {
+    const f = fixture(), handle = await prepared(f);
+    f.assertFocusedWindow.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("synthetic focus loss"));
+    await expect(handle.paste()).rejects.toMatchObject({ code: "transport_failed", disposition: "not_dispatched" });
+    expect(f.send.mock.calls.filter(([method]) => method === "Runtime.evaluate")).toHaveLength(2);
     expect(inserts(f)).toHaveLength(0);
   });
 

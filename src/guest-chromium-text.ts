@@ -257,6 +257,7 @@ export function createGuestChromiumText(options: {
           await run(lifetime.signal, expected, async op => {
             await ready(op);
             await probe(op, session!, contextId, RECHECK);
+            await ready(op);
             op.check();
             await op.step(() => {
               dispatchedText = true;
