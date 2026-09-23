@@ -109,7 +109,7 @@ class PacketTests(unittest.TestCase):
         rows = q.matrix()
         for row in rows:
             row['status'] = 'passed'
-            row['samples'] = [{'variant': v, 'phase': p, 'status': 'passed', 'latency_ms': 1} for v, p in q.SAMPLES[row['id']]]
+            row['samples'] = [{'variant': v, 'phase': p, 'status': 'passed', 'latency_ms': 1, 'cleanup': {'status': 'complete', 'unresolved': 0, 'duration_ms': 1}} for v, p in q.SAMPLES[row['id']]]
         self.assertTrue(q.matrix_passed(rows, cleanup))
         for changed in (rows[:-1], rows + [rows[0]], [rows[1], rows[0], *rows[2:]]):
             self.assertFalse(q.matrix_passed(changed, cleanup))
@@ -182,12 +182,17 @@ class PacketTests(unittest.TestCase):
             other.absence_basis = 'held_cgroup_empty'; other.record.return_value = {'synthetic': True}
             case.owned = {'aw': stale, 'ax': other}
             with patch('qualification.show', return_value={'MainPID': '0', 'ActiveState': 'inactive'}), \
-                 patch('qualification.systemctl') as mutate, patch('qualification.cleanup_runtime') as runtime:
+                 patch('qualification.systemctl') as mutate, patch('qualification.cleanup_runtime', return_value={'files_removed': 2, 'sockets_removed': 0}) as runtime:
                 result = case.cleanup()
             self.assertEqual(result['status'], 'unresolved')
             runtime.assert_called_once_with(other, case.directory, 'ax')
             mutate.assert_not_called()
             stale.close.assert_called_once(); other.close.assert_called_once()
+            self.assertEqual(result['roles']['aw']['processes'], 'unresolved')
+            self.assertIsNone(result['roles']['aw']['absence_basis'])
+            self.assertEqual(result['roles']['ax']['absence_basis'], 'held_cgroup_empty')
+            self.assertEqual(result['roles']['ax']['runtime'], {'status': 'removed', 'files_removed': 2, 'sockets_removed': 0})
+            self.assertIsInstance(result['duration_ms'], int)
 
     def test_prepare_copies_exact_core_and_manifest(self):
         if os.geteuid() == 0: self.skipTest('prepare explicitly requires non-root')

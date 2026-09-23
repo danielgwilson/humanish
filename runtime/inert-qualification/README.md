@@ -79,16 +79,31 @@ No stale record can authorize stopping a replacement invocation.
 Each command emits one JSON object. It includes `version: 1`, `command`, `status`,
 `aggregate`, all twelve `cases`, `cleanup`, and a sanitized `host` tuple. Each
 case contains `id`, `status`, `samples`, and `max_latency_ms`; each sample contains
-`variant`, `phase`, `status`, `latency_ms`, `reason`, and bounded `facts`. Case
+`variant`, `phase`, `status`, `latency_ms`, `reason`, bounded `facts`, and a separate
+post-verdict `cleanup` result. Case
 status is `passed`, `failed`, `pending`, or `not_reached`. The current fixed table
 has 29 observations. `aggregate` requires every expected variant and repetition
 to pass plus complete cleanup. Empty, partial or reordered coverage cannot pass.
+The sample cleanup result includes duration in milliseconds, outcomes for six
+fixed roles, and unit-file/control-socket counts (`removed`, `retained`,
+`unresolved`). Each role distinguishes positive process absence and its basis
+from runtime-file/socket removal, unit-file removal, and collector-socket removal.
+Unacquired or unregistered roles do not claim positive absence. Partial runtime
+cleanup has unknown counts, never invented successful removals. Cleanup over
+30 seconds remains unresolved, including when later recovery finds nothing left.
+
 An independent verdict is persisted before cleanup; later cleanup cannot turn
 that failed verdict green. Process absence and file cleanup are distinct facts.
 
 Sanitized facts retain actual credential/capability/NNP/descriptor readback,
 effective service properties, lease sequence/deadlines, fault and absence times,
-and fresh unaffected-worker counters. Full ownership records, boot identities,
+and fresh unaffected-worker counters. The counter baseline is timestamped after
+the phase delay and before the fault; progress must follow the fault. Decisive
+events retain leader exit plus the still-active child, timeout-attributed hard
+stop, startup-gate poll counts and final states, and replacement-refusal facts
+without exporting invocation identifiers. `facts.observation_phase` explicitly
+marks the pre-cleanup snapshot; per-role `absence_basis_before_cleanup` is separate
+from the later cleanup result. Full ownership records, boot identities,
 unit names, paths, pidfds and raw fixture reports stay in root-private state.
 Only bounded fixed reports are retained; this packet has no recursive export.
 

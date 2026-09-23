@@ -51,7 +51,25 @@ def matrix_passed(rows, cleanup):
         for sample, (variant, phase) in zip(samples, expected):
             if not isinstance(sample, dict) or sample.get('variant') != variant or type(sample.get('phase')) is not int or sample['phase'] != phase or sample.get('status') != 'passed' or type(sample.get('latency_ms')) is not int or sample['latency_ms'] < 0:
                 return False
+            reclaimed = sample.get('cleanup')
+            if not isinstance(reclaimed, dict) or reclaimed.get('status') != 'complete' or reclaimed.get('unresolved') != 0 or type(reclaimed.get('duration_ms')) is not int or not 0 <= reclaimed['duration_ms'] <= 30000:
+                return False
     return True
+
+
+def finite_active_state(value):
+    return value if value in ('active', 'inactive', 'activating', 'deactivating', 'failed', 'reloading', 'maintenance') else 'unexpected'
+
+
+def cleanup_roles():
+    return {role: {'processes': 'not_acquired', 'absence_basis': None,
+                   'runtime': {'status': 'not_acquired', 'files_removed': None, 'sockets_removed': None},
+                   'unit_file': 'not_created', 'control_socket': 'not_created'} for role in ROLES}
+
+
+def outcome_counts(outcomes):
+    return {state: sum(value == state for value in outcomes.values())
+            for state in ('removed', 'retained', 'unresolved')}
 
 
 def wait_for(predicate, seconds, reason):
@@ -332,8 +350,10 @@ class Case:
                 raise Refusal('finish_refused')
 
     def exercise(self):
-        before = self.counters()
         if self.phase: time.sleep(self.phase)
+        # Progress during the phase delay cannot satisfy the post-fault check.
+        before = self.counters()
+        self.event('counter_baseline', counters=before)
         fault_time = time.monotonic()
         self.event('fault', variant=self.variant, phase=self.phase)
         if self.case == 'IS01':
@@ -354,10 +374,18 @@ class Case:
             if leader_pid not in item.pids: raise Refusal('leader_not_held')
             wait_for(lambda: exited(item.pids[leader_pid]), 3, 'leader_did_not_exit')
             time.sleep(0.3)
-            if leader.get('child') not in item.pids or show(item.name).get('ActiveState') != 'active' or item.absent():
+            active_state = show(item.name).get('ActiveState')
+            child_held = leader.get('child') in item.pids
+            child_alive = child_held and not exited(item.pids[leader['child']])
+            populated = not item.absent()
+            self.event('leader_descendant_observed', leader_exited=True,
+                       child_held=child_held, child_alive=child_alive,
+                       service_active=active_state == 'active', cgroup_populated=populated)
+            if not child_alive or active_state != 'active' or not populated:
                 raise Refusal('descendant_lifetime_failed')
             item.stop()
             wait_for(item.absent, 30, 'explicit_stop_timeout')
+            self.event('descendant_stopped', absence_basis=item.absence_basis)
         elif self.case == 'IS04':
             if self.variant == 'normal-exit': self.normal_exit()
             else: self.owned['as'].fault(signal.SIGKILL)
@@ -395,22 +423,42 @@ class Case:
         elif self.case == 'IS08':
             self.owned['aw'].stop()
             wait_for(self.owned['aw'].absent, 30, 'explicit_stop_timeout')
-            if time.monotonic() - fault_time < 4.5 or show(self.owned['aw'].name).get('Result') != 'timeout':
+            elapsed_ms = round((time.monotonic() - fault_time) * 1000)
+            timed_out = show(self.owned['aw'].name).get('Result') == 'timeout'
+            self.event('hard_stop_observed', pid1_result='timeout' if timed_out else 'unexpected',
+                       stop_elapsed_ms=elapsed_ms, grace_observed=elapsed_ms >= 4500,
+                       absence_basis=self.owned['aw'].absence_basis)
+            if elapsed_ms < 4500 or not timed_out:
                 raise Refusal('hard_stop_not_attributed')
         elif self.case == 'IS09':
             # Observe the actual dependency job throughout delayed READY/failure.
             deadline = time.monotonic() + 14
             observed_pending = False
-            while time.monotonic() < deadline:
-                supervisor = show(unit_name(self.generation, 'as'))
-                for role in ('aw', 'ax'):
-                    facts = show(unit_name(self.generation, role))
-                    if int(facts.get('MainPID', '0')) != 0 or facts.get('ActiveState') == 'active':
+            poll_count = 0
+            supervisor_state = 'not_observed'
+            worker_states = {role: 'not_observed' for role in ('aw', 'ax')}
+            worker_seen_running = {role: False for role in ('aw', 'ax')}
+            try:
+                while time.monotonic() < deadline:
+                    supervisor = show(unit_name(self.generation, 'as'))
+                    supervisor_state = finite_active_state(supervisor.get('ActiveState'))
+                    poll_count += 1
+                    if supervisor_state == 'activating': observed_pending = True
+                    for role in ('aw', 'ax'):
+                        facts = show(unit_name(self.generation, role))
+                        worker_states[role] = finite_active_state(facts.get('ActiveState'))
+                        worker_seen_running[role] |= int(facts.get('MainPID', '0')) != 0 or worker_states[role] == 'active'
+                    if any(worker_seen_running.values()):
                         raise Refusal('worker_started_before_ready')
-                if supervisor.get('ActiveState') == 'activating': observed_pending = True
-                if supervisor.get('ActiveState') == 'failed': break
-                time.sleep(0.1)
-            else: raise Refusal('startup_failure_not_observed')
+                    if supervisor_state == 'failed': break
+                    time.sleep(0.1)
+                else: raise Refusal('startup_failure_not_observed')
+            finally:
+                self.event('startup_gate_observed', poll_count=poll_count,
+                           supervisor_pending_seen=observed_pending,
+                           supervisor_final_state=supervisor_state,
+                           worker_final_states=worker_states,
+                           worker_seen_running=worker_seen_running)
             if self.variant == 'delayed' and not observed_pending: raise Refusal('startup_gate_not_observed')
         elif self.case == 'IS10':
             self.replacement()
@@ -449,12 +497,16 @@ class Case:
         wait_for(lambda: show(original.name).get('ActiveState') == 'active' and show(original.name).get('InvocationID') != original.invocation, 10, 'replacement_not_ready')
         replacement = OwnedUnit.acquire(original.name)
         try:
+            fresh_invocation = replacement.invocation != original.invocation
             try: original.stop()
             except Refusal as error:
                 if str(error) != 'replacement_refused': raise
             else: raise Refusal('replacement_not_refused')
             time.sleep(0.3)
-            if replacement.absent(): raise Refusal('replacement_was_stopped')
+            still_alive = not replacement.absent()
+            self.event('replacement_refusal_observed', fresh_invocation=fresh_invocation,
+                       stale_record_refused=True, replacement_still_alive=still_alive)
+            if not fresh_invocation or not still_alive: raise Refusal('replacement_was_stopped')
             immutable_json(self.directory / 'replacement-ownership.json', replacement.record())
             self.owned['aw'] = replacement
             original.close()
@@ -500,10 +552,21 @@ class Case:
                                   'observed': now(), 'verdict_before_cleanup': self.ready})
 
     def cleanup(self):
-        deadline = time.monotonic() + 30
+        started = time.monotonic()
+        deadline = started + 30
         unresolved = []
         unsafe_roles = set()
         absent = 0
+        details = cleanup_roles()
+        unit_outcomes = {name: 'retained' for name in self.unit_files}
+        socket_outcomes = {role: 'retained' for role in self.socket_identities}
+        for role in ROLES:
+            if unit_name(self.generation, role) in self.unit_files:
+                details[role]['unit_file'] = 'retained'
+            if role in self.socket_identities:
+                details[role]['control_socket'] = 'retained'
+            if self.case == 'IS02' and role in ('as', 'aw', 'ax'):
+                details[role]['processes'] = 'not_registered'
         try:
             with cleanup_budget(deadline):
                 for child, fd in self.relays.values():
@@ -540,6 +603,8 @@ class Case:
                             unresolved.append(role)
                     except Exception: unresolved.append(role)
                 for role, item in self.owned.items():
+                    details[role]['processes'] = 'unresolved'
+                    details[role]['runtime']['status'] = 'unresolved'
                     try: item.stop()
                     except Exception:
                         unresolved.append(role)
@@ -556,8 +621,11 @@ class Case:
                     try:
                         if role in unsafe_roles or not item.matches(): raise Refusal('cleanup_identity_unresolved')
                         if not item.absent(): raise Refusal('owned_process_unresolved')
+                        details[role]['processes'] = 'absent'
+                        details[role]['absence_basis'] = item.absence_basis
                         self.record_absence(role, item)
-                        cleanup_runtime(item, self.directory, role)
+                        runtime = cleanup_runtime(item, self.directory, role)
+                        details[role]['runtime'] = {'status': 'removed', **runtime}
                         absent += 1
                     except Exception: unresolved.append(role)
                 for study in ('a', 'b'):
@@ -569,8 +637,15 @@ class Case:
                     parent_fd = os.open('/run/systemd/system', os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
                     try:
                         for name, identity in self.unit_files.items():
-                            try: unlink_owned(parent_fd, name, identity)
-                            except Exception: unresolved.append('unit-file')
+                            try:
+                                unlink_owned(parent_fd, name, identity)
+                                unit_outcomes[name] = 'removed'
+                            except Exception:
+                                unit_outcomes[name] = 'unresolved'
+                                unresolved.append('unit-file')
+                            for role in ROLES:
+                                if name == unit_name(self.generation, role):
+                                    details[role]['unit_file'] = unit_outcomes[name]
                     finally: os.close(parent_fd)
                     try: systemctl('daemon-reload')
                     except Exception: unresolved.append('reload')
@@ -582,15 +657,30 @@ class Case:
             directory_fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
             try:
                 for role, identity in self.socket_identities.items():
-                    try: unlink_owned(directory_fd, role + '.sock', identity)
-                    except Exception: unresolved.append('owned_socket')
+                    try:
+                        unlink_owned(directory_fd, role + '.sock', identity)
+                        socket_outcomes[role] = 'removed'
+                    except Exception:
+                        socket_outcomes[role] = 'unresolved'
+                        unresolved.append('owned_socket')
+                    details[role]['control_socket'] = socket_outcomes[role]
             finally:
                 os.close(directory_fd)
             for item in self.owned.values(): item.close()
             self.owned.clear()
-        result = {'status': 'unresolved' if unresolved else 'complete', 'absent': absent, 'unresolved': len(set(unresolved))}
+        result = {'status': 'unresolved' if unresolved else 'complete', 'absent': absent,
+                  'unresolved': len(set(unresolved)), 'roles': details,
+                  'unit_files': outcome_counts(unit_outcomes),
+                  'control_sockets': outcome_counts(socket_outcomes),
+                  'duration_ms': round((time.monotonic() - started) * 1000)}
         try: immutable_json(self.directory / 'cleanup.json', result)
         except Exception:
+            result['status'] = 'unresolved'
+            result['unresolved'] += 1
+        # Include receipt persistence in the returned duration. A later recovery
+        # cannot promote this sample if its independent cleanup deadline failed.
+        result['duration_ms'] = round((time.monotonic() - started) * 1000)
+        if time.monotonic() > deadline:
             result['status'] = 'unresolved'
             result['unresolved'] += 1
         self.cleaned = result['status'] == 'complete'
@@ -668,6 +758,8 @@ def cleanup_runtime(item, directory, role, *, proven_absent=False):
             if (current.st_dev, current.st_ino) != alias_identity or not stat.S_ISLNK(current.st_mode) or os.readlink(alias) != alias_target:
                 raise Refusal('runtime_alias_changed')
             alias.unlink()
+        return {'files_removed': sum(name != 'lease.sock' for name in entries),
+                'sockets_removed': int('lease.sock' in entries)}
     finally:
         os.close(fd)
 
@@ -719,14 +811,14 @@ def recover_case(directory, root, roles=ROLES, *, process_only=False):
 
 
 def sanitized_facts(case):
-    facts = {'roles': {}, 'events': case.events}
+    facts = {'observation_phase': 'before_cleanup', 'roles': {}, 'events': case.events}
     safe_properties = ('Type', 'ExitType', 'NotifyAccess', 'WatchdogUSec', 'TimeoutStartUSec',
         'TimeoutStopUSec', 'TimeoutAbortUSec', 'RuntimeMaxUSec', 'KillMode', 'SendSIGKILL',
         'Restart', 'NoNewPrivileges', 'CapabilityBoundingSet', 'AmbientCapabilities',
         'LimitCORE', 'LimitNOFILE', 'TasksMax', 'DynamicUser')
     for role, item in case.owned.items():
         value = {'properties': {key: item.properties.get(key) for key in safe_properties},
-                 'absence_basis': item.absence_basis}
+                 'absence_basis_before_cleanup': item.absence_basis}
         worker = case.directory / (role + '-worker.json')
         if worker.exists():
             report = read_json(worker)
@@ -770,8 +862,15 @@ def run_matrix(root, host):
             for filename, value in (('verdict.json', sample), ('events.json', case.events)):
                 try: immutable_json(case.directory / filename, value)
                 except Exception: evidence_failed = True
+            cleanup_started = time.monotonic()
             try: cleanup = case.cleanup()
-            except Exception: cleanup = {'status': 'unresolved', 'absent': 0, 'unresolved': 1}
+            except Exception:
+                cleanup = {'status': 'unresolved', 'absent': 0, 'unresolved': 1,
+                           'duration_ms': round((time.monotonic() - cleanup_started) * 1000),
+                           'roles': cleanup_roles(), 'unit_files': {'removed': 0, 'retained': 0, 'unresolved': 1},
+                           'control_sockets': {'removed': 0, 'retained': 0, 'unresolved': 1}}
+            # This is a separate post-verdict record. verdict.json is immutable.
+            sample['cleanup'] = cleanup
             if evidence_failed:
                 sample.update(status='failed', reason='evidence_write_failed')
                 cleanup['unresolved'] += 1
