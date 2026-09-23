@@ -32,7 +32,7 @@ their actual dispatch. `agents.enabled=false` removes delegation; the older
 feature toggle alone did not. Humanish also refuses raw tool calls, unexpected
 host RPCs and asynchronous question messages before accepting any report. The
 actual notification/denial captures and provenance are in
-[`tests/fixtures/restricted-codex`](../../tests/fixtures/restricted-codex/README.md).
+[`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
 There is one active analyst/readiness session per Humanish process, across all
 provider factories. One fresh thread receives one turn. Evidence is not silently
