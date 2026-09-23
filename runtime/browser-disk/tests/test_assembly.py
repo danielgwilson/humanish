@@ -64,7 +64,7 @@ class AssemblyTests(unittest.TestCase):
         for name, policy in DISKS.items():
             argv = mkfs_args('/output/' + name, '/source', policy)
             self.assertEqual(argv[argv.index('-O') + 1], 'none,' + ','.join(FEATURES))
-            self.assertIn('lazy_itable_init=0,lazy_journal_init=0,root_owner=' + str(policy['uid']) + ':' + str(policy['gid']) + ',root_perms=' + format(policy['mode'], '04o'), argv)
+            self.assertIn('lazy_itable_init=0,lazy_journal_init=0,root_owner=' + str(policy['uid']) + ':' + str(policy['gid']) + ',root_perms=' + format(policy['mode'], '04o') + ',hash_seed=' + policy['hashSeed'], argv)
             self.assertEqual(int(argv[-1]) * 4096, policy['bytes'])
 
     def test_metadata_parser_uses_actual_pinned_debugfs_output_shape(self):
@@ -72,7 +72,11 @@ class AssemblyTests(unittest.TestCase):
         data = ('debugfs 1.47.2 (1-Jan-2025)\ndebugfs: stat "/x"\n'
                 'Inode: 14   Type: regular    Mode:  04755   Flags: 0x80000\n'
                 'Generation: 0    Version: 0x00000000:00000000\n'
-                'User:     0   Group:     0   Project:     0   Size: 2\n')
+                'User:     0   Group:     0   Project:     0   Size: 2\n'
+                ' ctime: 0x67748580:00000000 -- Wed Jan  1 00:00:00 2025\n'
+                ' atime: 0x67748580:00000000 -- Wed Jan  1 00:00:00 2025\n'
+                ' mtime: 0x67748580:00000000 -- Wed Jan  1 00:00:00 2025\n'
+                'crtime: 0x67748580:00000000 -- Wed Jan  1 00:00:00 2025\n')
         self.assertEqual(parse_stats(data, ['/x'])['/x']['mode'], 0o4755)
         with self.assertRaises(ValueError):
             parse_stats(data, ['/x', '/missing'])

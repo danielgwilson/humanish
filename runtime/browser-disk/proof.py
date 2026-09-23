@@ -95,7 +95,8 @@ def policy(index=1, *, size=128 * 1024**2, inodes=8192, state=False):
     return {'bytes': size, 'inodes': inodes, 'uid': 1000 if state else 0,
             'gid': 1000 if state else 0, 'mode': 0o700 if state else 0o755,
             'uuid': '26cc0000-0000-4000-8000-' + format(index, '012d'),
-            'label': 'proof-state' if state else 'proof-root'}
+            'label': 'proof-state' if state else 'proof-root',
+            'hashSeed': '26cc0022-0000-4000-8000-' + format(index, '012d')}
 
 
 def expect_capacity_failure(image, source, spec, log, diagnostic):
@@ -111,11 +112,108 @@ def expect_capacity_failure(image, source, spec, log, diagnostic):
     raise AssertionError('Undersized filesystem unexpectedly populated')
 
 
+def reproducibility_cases(output):
+    """Real mkfs counterexample and repeat; no replacement of production mkfs."""
+    from assemble import FILESYSTEM_EPOCH, TOOL_ENV, inspect_disk, mkfs_args, normalize_times, parse_stats, run
+    from inputs import tree_inventory
+    spec = policy(5)
+    rows = {}
+    inventories = []
+    for treatment in ('fake-time-only', 'normalized'):
+        for index, variant in enumerate(('a', 'b')):
+            name = treatment + '-' + variant
+            source = Path('/source-' + name)
+            source.mkdir(mode=0o755)
+            order = ['é.txt', 'setuid', 'owned']
+            if index:
+                order.reverse()
+            for entry in order:
+                target = source / entry
+                target.write_bytes(('synthetic ' + entry + '\n').encode())
+                os.chown(target, 1001 if entry == 'owned' else 0, 1002 if entry == 'owned' else 0)
+                target.chmod(0o4755 if entry == 'setuid' else 0o640)
+            os.link(source / 'owned', source / 'alias')
+            (source / 'link').symlink_to('é.txt')
+            # Deliberately older than the epoch: clamp alone cannot erase these.
+            before = FILESYSTEM_EPOCH - (index + 1) * 86400
+            for path in [*source.iterdir(), source]:
+                os.utime(path, (before, before), follow_symlinks=False)
+            info = (source / 'é.txt').lstat()
+            inventory = tree_inventory(source)
+            inventories.append(inventory)
+            image = output / (name + '.ext4')
+            log = output / (name + '-mkfs.log')
+            argv = mkfs_args(image, source, spec)
+            row = {'creationOrder': order, 'sourceMtimeNs': info.st_mtime_ns,
+                   'sourceCtimeNs': info.st_ctime_ns, 'policy': spec}
+            if treatment == 'normalized':
+                normalize_times(source)
+                run(argv, log, timeout=60)
+                row['disk'] = inspect_disk(image, inventory, spec, output)
+            else:
+                environment = {key: value for key, value in TOOL_ENV.items() if key != 'SOURCE_DATE_EPOCH'}
+                environment['E2FSPROGS_FAKE_TIME'] = str(FILESYSTEM_EPOCH)
+                with log.open('x') as handle:
+                    subprocess.run(argv, env=environment, stdout=handle, stderr=subprocess.STDOUT,
+                                   check=True, timeout=60)
+                row['disk'] = {'sha256': sha256(image), 'bytes': image.stat().st_size}
+            commands = output / (name + '-representative.commands')
+            commands.write_text('stat "/é.txt"\n')
+            inode_log = output / (name + '-representative.log')
+            row['observedTimes'] = parse_stats(run(['/usr/sbin/debugfs', '-f', str(commands), str(image)], inode_log), ['/é.txt'])['/é.txt']['times']
+            row['inodeLogSha256'] = sha256(inode_log)
+            rows[name] = row
+    if any(inventory != inventories[0] for inventory in inventories):
+        raise AssertionError('Reproducibility fixtures differ in semantic content')
+    save(output / 'reproducibility-inventory.json', inventories[0])
+    report = {'filesystemEpoch': FILESYSTEM_EPOCH, 'sameSemanticInputs': True,
+              'inventorySha256': sha256(output / 'reproducibility-inventory.json'), 'cases': rows}
+    verify_reproducibility(output, report)
+    return report
+
+
+def verify_reproducibility(output, report):
+    from assemble import FILESYSTEM_EPOCH, parse_stats
+    rows = report.get('cases', {})
+    expected = {'fake-time-only-a', 'fake-time-only-b', 'normalized-a', 'normalized-b'}
+    if (set(rows) != expected or report.get('filesystemEpoch') != FILESYSTEM_EPOCH or
+        report.get('sameSemanticInputs') is not True or
+        report.get('inventorySha256') != sha256(output / 'reproducibility-inventory.json')):
+        raise AssertionError('Missing real reproducibility cells')
+    for name, row in rows.items():
+        path = output / (name + '.ext4')
+        info = path.lstat()
+        if (row.get('policy') != policy(5) or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+            info.st_size != policy(5)['bytes'] or row['disk'].get('bytes') != info.st_size or
+            row['disk'].get('sha256') != sha256(path) or
+            row.get('inodeLogSha256') != sha256(output / (name + '-representative.log'))):
+            raise AssertionError('Reproducibility bytes changed')
+        observed = parse_stats((output / (name + '-representative.log')).read_text(), ['/é.txt'])['/é.txt']['times']
+        if observed != row.get('observedTimes'):
+            raise AssertionError('Retained inode log contradicts timestamp claim')
+        if name.startswith('normalized'):
+            if (any(row['disk'].get(key) is not True for key in
+                ('cleanFsck', 'allContentsCompared', 'allModesOwnersAndHardlinksCompared', 'allPathInodeTimesCompared')) or
+                set(row['observedTimes']) != {'atime', 'ctime', 'mtime', 'crtime'} or
+                any(value != [FILESYSTEM_EPOCH, 0] for value in row['observedTimes'].values())):
+                raise AssertionError('Normalized disk metadata not proved')
+        else:
+            index = 1 if name.endswith('-a') else 2
+            if row['observedTimes']['mtime'] != [FILESYSTEM_EPOCH - index * 86400, 0]:
+                raise AssertionError('Fake time did not demonstrate retained source mtime')
+    for prefix, identical in [('normalized', True), ('fake-time-only', False)]:
+        a, b = rows[prefix + '-a'], rows[prefix + '-b']
+        if ((a['disk']['sha256'] == b['disk']['sha256']) is not identical or
+            a['sourceMtimeNs'] == b['sourceMtimeNs'] or a['creationOrder'] != list(reversed(b['creationOrder']))):
+            raise AssertionError('Real time/order contrast not proved')
+    return report
+
+
 def container_cases():
     # Fixed paths deliberately require a fresh owned container working directory.
     if HERE != Path('/assembly') or Path.cwd() != HERE or not Path('/.dockerenv').is_file():
         raise ValueError('Disk cases require the owned Docker proof container')
-    from assemble import inspect_disk, mkfs_args, run
+    from assemble import inspect_disk, mkfs_args, normalize_times, run
     from inputs import extract_base, overlay, tree_inventory
     output = Path('/output')
     output.mkdir(mode=0o700)
@@ -136,6 +234,7 @@ def container_cases():
             source.mkdir(mode=0o700)
             os.chown(source, 1000, 1000)
         image = output / (name + '.ext4')
+        normalize_times(source)
         run(mkfs_args(image, source, spec), output / (name + '-mkfs.log'), timeout=60)
         disks[name] = inspect_disk(image, inventory, spec, output)
     save(output / 'expected-inventory.json', after)
@@ -154,11 +253,13 @@ def container_cases():
         (inodes / ('file-' + str(i))).touch()
     inode_failure = expect_capacity_failure(output / 'too-small-inodes.ext4', inodes,
         policy(4, inodes=256), output / 'inodes.log', 'Could not allocate inode')
+    reproduction = reproducibility_cases(output)
     if tree_inventory(root) != after:
         raise AssertionError('mke2fs changed source tree')
     save(output / 'cases.json', {'schema': 'humanish.browser-disk-cases.v1',
          'syntheticFixture': True, 'disks': disks, 'blockCapacity': block_failure,
          'inodeCapacity': inode_failure, 'baseEntries': len(before), 'finalEntries': len(after),
+         'reproducibility': reproduction,
          'sourceTreeUnchangedAfterMkfs': True, 'vmBooted': False,
          'sourceFiles': {name: sha256(HERE / name) for name in SOURCE_FILES}})
 
@@ -257,6 +358,7 @@ def verify_cases(output, expected_sources):
             row['returncode'] <= 0 or row.get('policy') != spec or row.get('diagnostic') != diagnostic or
             row.get('logSha256') != sha256(log) or diagnostic not in log.read_text()):
             raise AssertionError('Missing or changed actual capacity failure')
+    verify_reproducibility(output, report.get('reproducibility', {}))
     return report
 
 
