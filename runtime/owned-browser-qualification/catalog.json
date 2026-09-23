@@ -1,0 +1,44 @@
+{
+  "schema": "humanish.owned-browser-catalog.v1",
+  "accepted": true,
+  "architecture": "amd64",
+  "runtimeRevision": "guest-api1-2ec510cd6f269432d26597e6d0210d329630973f83a260189bd378fb5c28fafd",
+  "packageManifestSha256": "f9ae77be920b6ce4c309e7e15066c99fc5a323e0765e728207f31aefef173bff",
+  "assets": {
+    "firecracker": {
+      "bytes": 3676680,
+      "sha256": "99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5",
+      "mode": 365
+    },
+    "jailer": {
+      "bytes": 2243000,
+      "sha256": "65ef226e96f0ceda55ba643f445801ef2cc0ea667ef67cad8ac4f406c9c8434f",
+      "mode": 365
+    },
+    "kernel": {
+      "bytes": 27736920,
+      "sha256": "caf3803a0c8c3cacdc2beedbd49f4806d4697934ddb328cf4df42ff2533ef138",
+      "mode": 292
+    },
+    "kernel.config": {
+      "sha256": "9c4344820516d06d3ba0590b48a989c8b9236d444b16fb0a566bd33e3543f737",
+      "maximumBytes": 262144,
+      "mode": 292
+    },
+    "root.ext4": {
+      "bytes": 2147483648,
+      "sha256": "7d7ee4dc3cbb167f81cd958ff9cb27616262d10407f0753fec9a4ddaa9cdb4ec",
+      "mode": 292
+    },
+    "state.ext4": {
+      "bytes": 536870912,
+      "sha256": "ebaf1c48e2341bae5de32f7e29c9ab7ae67004861d69479bb251cbc9b04e8a24",
+      "mode": 292
+    },
+    "node": {
+      "bytes": 120177224,
+      "sha256": "1abce2374a485bddae3c27b17a3e3143e2780232026e627c4fe74ddde3f380a1",
+      "mode": 365
+    }
+  }
+}

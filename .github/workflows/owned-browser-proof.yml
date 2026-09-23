@@ -1,0 +1,77 @@
+name: Owned offline browser proof
+
+on:
+  pull_request:
+    paths:
+      - runtime/owned-browser-qualification/**
+      - scripts/owned-browser-*
+      - scripts/tests/owned_browser_*_test.py
+      - .github/workflows/owned-browser-proof.yml
+  push:
+    branches: [main]
+    paths:
+      - runtime/owned-browser-qualification/**
+      - scripts/owned-browser-*
+      - scripts/tests/owned_browser_*_test.py
+      - .github/workflows/owned-browser-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owned-browser-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Exercise finite packet with unprivileged fixtures only
+        run: |
+          python3 -B -m unittest discover -s runtime/owned-browser-qualification/tests -p '*_test.py' -v
+          python3 -B -m unittest discover -s scripts/tests -p 'owned_browser_*_test.py' -v
+  prelude-and-normal-boot:
+    # Never PR, branch dispatch, fork, self-hosted runner or user-supplied inputs.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'danielgwilson/humanish'
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 130
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Measure read-only prerequisites before builds
+        run: python3 -I -S scripts/owned-browser-ci.py --profile
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Build reviewed appliance inputs without privilege
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec tsc -p tsconfig.build.json
+          node scripts/guest-runtime-package.mjs "$RUNNER_TEMP/guest-payload"
+          python3 runtime/browser-guest/build.py --architecture amd64 --output "$RUNNER_TEMP/browser-base"
+          python3 runtime/runtime-assets/fetch.py --output "$RUNNER_TEMP/boot-inputs"
+          python3 runtime/browser-kernel/build.py --inputs "$RUNNER_TEMP/boot-inputs" --output "$RUNNER_TEMP/kernel-build" --jobs 2
+          python3 runtime/browser-disk/build.py --base "$RUNNER_TEMP/browser-base" --package "$RUNNER_TEMP/guest-payload" --kernel-config "$RUNNER_TEMP/kernel-build/output/kernel.config" --output "$RUNNER_TEMP/browser-disks"
+      - name: Observe retained-parent prelude and one offline browser transaction
+        run: python3 -I -S scripts/owned-browser-ci.py --qualify
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: owned-browser-proof
+          # Finite receipts and three synthetic screenshots only; no appliance binaries or broad logs.
+          path: |
+            .humanish/owned-browser-proof/*.json
+            .humanish/owned-browser-proof/*.png
+          include-hidden-files: true
+          retention-days: 14
