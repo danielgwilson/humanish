@@ -1,0 +1,59 @@
+name: Inert service proof
+
+on:
+  pull_request:
+    paths:
+      - runtime/inert-qualification/**
+      - runtime/broker/**
+      - scripts/inert-host-profile.py
+      - scripts/inert-service-ci.py
+      - scripts/tests/inert_service*_test.py
+      - .github/workflows/inert-service-proof.yml
+  push:
+    branches: [main]
+    paths:
+      - runtime/inert-qualification/**
+      - runtime/broker/**
+      - scripts/inert-host-profile.py
+      - scripts/inert-service-ci.py
+      - scripts/tests/inert_service*_test.py
+      - .github/workflows/inert-service-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inert-service-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inert-systemd:
+    # A normal disposable VM. Never use a self-hosted runner or job container.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Exercise planning, refusals and CI failure handling without privilege
+        run: |
+          /usr/bin/python3 -B -m unittest discover -s runtime/inert-qualification/tests -p '*_test.py' -v
+          /usr/bin/python3 -B -m unittest discover -s scripts/tests -p 'inert_service*_test.py' -v
+      - name: Record read-only host eligibility
+        run: |
+          mkdir -p .humanish/inert-service-proof
+          sudo -n env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C \
+            /usr/bin/python3 -I -S scripts/inert-host-profile.py \
+            > .humanish/inert-service-proof/host-profile.json
+      - name: Run reviewed inert service qualification on the disposable VM
+        run: /usr/bin/python3 -I -S scripts/inert-service-ci.py
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: inert-service-proof
+          path: |
+            .humanish/inert-service-proof/*.json
+            .humanish/inert-service-proof/source-bundle/
+          include-hidden-files: true
+          retention-days: 14
