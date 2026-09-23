@@ -1,0 +1,15 @@
+ca-certificates
+chromium
+chromium-sandbox
+fonts-dejavu-core
+fonts-noto-cjk
+fonts-noto-color-emoji
+nodejs
+openbox
+scrot
+systemd-sysv
+x11-utils
+xauth
+xclip
+xdotool
+xvfb

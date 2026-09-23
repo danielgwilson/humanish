@@ -1,0 +1,48 @@
+# Inputs come from the reviewed, digest-pinned inputs.json; never a moving image tag.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS packages
+ARG DEBIAN_SNAPSHOT
+ARG SECURITY_SNAPSHOT
+ARG TARGETARCH
+ENV DEBIAN_FRONTEND=noninteractive
+COPY packages.list /tmp/packages.list
+COPY inventory.mjs /tmp/inventory.mjs
+RUN test "$(dpkg --print-architecture)" = "$TARGETARCH" \
+ && rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* /etc/apt/apt.conf.d/docker-clean \
+ && printf 'Types: deb deb-src\nURIs: http://snapshot.debian.org/archive/debian/%s/\nSuites: trixie trixie-updates\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\nCheck-Valid-Until: no\n\nTypes: deb deb-src\nURIs: http://snapshot.debian.org/archive/debian-security/%s/\nSuites: trixie-security\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\nCheck-Valid-Until: no\n' "$DEBIAN_SNAPSHOT" "$SECURITY_SNAPSHOT" > /etc/apt/sources.list.d/browser-guest.sources \
+ && printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod 0755 /usr/sbin/policy-rc.d \
+ && apt-get update \
+ && apt-get dist-upgrade -y --no-install-recommends \
+ && xargs -a /tmp/packages.list apt-get install -y --no-install-recommends \
+ && dpkg-query -W -f='${binary:Package}=${Version}\n' > /tmp/all-packages.list \
+ && xargs -a /tmp/all-packages.list apt-get install -y --reinstall --download-only --no-install-recommends \
+ && node /tmp/inventory.mjs
+
+FROM packages AS runtime
+COPY openbox.xml /etc/xdg/openbox/rc.xml
+RUN groupadd --gid 1000 humanish \
+ && useradd --uid 1000 --gid 1000 --create-home --shell /usr/sbin/nologin humanish \
+ && passwd --lock root && passwd --lock humanish \
+ && guest_home=/home/humanish \
+ && mkdir -p /opt/humanish/control /run/humanish "$guest_home/.config/openbox" \
+ && cp /etc/xdg/openbox/rc.xml "$guest_home/.config/openbox/rc.xml" \
+ && chown -R 1000:1000 /home/humanish \
+ && chmod 0700 /home/humanish \
+ && ln -sf /dev/null /etc/systemd/system/apt-daily.service \
+ && ln -sf /dev/null /etc/systemd/system/apt-daily-upgrade.service \
+ && ln -sf /dev/null /etc/systemd/system/getty@.service \
+ && ln -sf /dev/null /etc/systemd/system/serial-getty@.service \
+ && ln -sf /dev/null /etc/systemd/system/systemd-networkd.service \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/* /build \
+ && : > /etc/machine-id \
+ && rm -f /var/lib/dbus/machine-id \
+ && find /var/log -type f -exec truncate --size 0 {} +
+ENV HOME=/home/humanish DISPLAY=:0 LANG=C.UTF-8 LC_ALL=C.UTF-8
+USER 1000:1000
+WORKDIR /home/humanish
+# This base deliberately has no controller/service entrypoint yet. A qualified
+# controller bundle and owner must supply startup; no npm install occurs at boot.
+CMD ["/usr/bin/true"]
+
+FROM scratch AS provenance
+COPY --from=packages /build/ /

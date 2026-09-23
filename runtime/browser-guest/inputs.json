@@ -1,0 +1,16 @@
+{
+  "schema": "humanish.browser-guest-inputs.v1",
+  "suite": "trixie",
+  "debianSnapshot": "20260923T083042Z",
+  "securitySnapshot": "20260922T123247Z",
+  "platforms": {
+    "amd64": {
+      "base": "debian@sha256:7792b1f7702a86946cd518db72b6a407302c3e9bc1635634368b878189e8221c",
+      "upstreamRevision": "8f962b15d7884a90e17876a9303cbac909d119aa"
+    },
+    "arm64": {
+      "base": "debian@sha256:da496358bd6934d2bd6a563a33176a2e50eff5490c54b4ac6fb051b69fef4071",
+      "upstreamRevision": "ca011a8b1c3b259e4cbbf83bf6841f1fd5f497c1"
+    }
+  }
+}
