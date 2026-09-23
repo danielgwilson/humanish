@@ -9,9 +9,14 @@ on:
       - runtime/runtime-assets/**
       - src/guest-*.ts
       - src/browser-control-*.ts
+      - src/frame-signature.ts
+      - src/cua-executor-error.ts
       - scripts/guest-runtime-*.mjs
+      - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
+      - package.json
       - pnpm-lock.yaml
+      - tsconfig.json
       - tsconfig.build.json
       - .github/workflows/browser-appliance-proof.yml
   push:
@@ -23,9 +28,14 @@ on:
       - runtime/runtime-assets/**
       - src/guest-*.ts
       - src/browser-control-*.ts
+      - src/frame-signature.ts
+      - src/cua-executor-error.ts
       - scripts/guest-runtime-*.mjs
+      - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
+      - package.json
       - pnpm-lock.yaml
+      - tsconfig.json
       - tsconfig.build.json
       - .github/workflows/browser-appliance-proof.yml
   workflow_dispatch:
@@ -58,6 +68,7 @@ jobs:
           python3 -B -m unittest discover -s runtime/runtime-assets/tests -v
           python3 -B -m unittest discover -s runtime/browser-kernel/tests -v
           python3 -B -m unittest discover -s runtime/browser-disk/tests -v
+          python3 -B -m unittest discover -s runtime/browser-guest/control/tests -v
       - name: Compile the fixed runtime payload
         run: |
           pnpm install --frozen-lockfile
