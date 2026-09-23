@@ -85,6 +85,10 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter humanish-observer test
       - run: pnpm exec playwright-core install --with-deps chromium
+      # Use the runner's installed Chrome with its sandbox enabled for control conformance.
+      - run: pnpm browser-control:proof
+        env:
+          HUMANISH_BROWSER_EXECUTABLE: /usr/bin/google-chrome
       - run: pnpm observer:iframe:proof
       - run: pnpm observer:browser:proof
       - run: pnpm observer:chrome:proof
@@ -94,6 +98,7 @@ jobs:
         with:
           name: observer-browser-proof
           path: |
+            .humanish/browser-control-proof/
             .humanish/observer-browser-proof/
             .humanish/observer-chrome-proof/
             .humanish/observer-reliability/

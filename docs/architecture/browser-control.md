@@ -100,3 +100,18 @@ synthetic PNGs and inert paired byte streams, with no network, model or VM calls
 They establish the protocol contract, not a real-browser or managed-runtime
 claim. The separate owned-child/browser conformance proof must retain real
 pixels and independently observed fixture mutations through the same modules.
+
+From a source checkout, run `pnpm build && pnpm browser-control:proof` with a
+Chromium installation that supports its sandbox. The proof uses a fresh profile,
+a private local socket, a separate controller process and a synthetic loopback
+page. It checks a normal save, a lost acknowledgement after one save, and owner
+revocation/cancellation during input preparation. Screenshots, loop traces,
+independent save counts and exact child/profile cleanup results are retained in
+`.humanish/browser-control-proof/`. Failed cleanup remains unconfirmed and keeps
+the private recovery directory; killing a controller alone does not prove its
+browser stopped.
+
+This is deterministic `runComputerUseLoop` conformance, not model perception,
+the study producer, a ready-desktop adapter, a durable local-study bundle or
+Observer qualification. Page request interception does not establish process-wide
+egress isolation. Those integration and runtime boundaries remain separate gates.
