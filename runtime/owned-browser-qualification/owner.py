@@ -208,7 +208,7 @@ class Owner:
             durable_at(fd, 'start-intent.json', encode({'generation': self.generation, 'role': 'vmm'}))
         with anchored(self.instance, trusted=True) as fd:
             policy = unique_json(read_at(fd, 'device-policy.json', 4096))
-        effective(self.root, self.generation, 'vmm', self.manager.show('vmm'), policy['userfaultfdMinor'])
+        self.record['vmmEffectiveUnit'] = effective(self.root, self.generation, 'vmm', self.manager.show('vmm'), policy['userfaultfdMinor'])
         self.creation_started = True
         self.manager.command('start', ('vmm',), self.deadline)
         expected = self.parent.group + '/' + self.units['vmm']

@@ -285,6 +285,55 @@ class StagingCleanupTests(unittest.TestCase):
                 self.assertEqual((parent/'canary').read_bytes(),b'unrelated')
 
 class FinalEvidenceTests(unittest.TestCase):
+    def test_exact_validated_vmm_row_survives_result_serialization(self):
+        import owner as module
+        from policy import LAUNCHER_CAPS
+        from wire import atomic, read_record
+        units=names(GEN); user=units['vmm'].removesuffix('.service')
+        row={'Id':units['vmm'], 'FragmentPath':'/run/systemd/system/'+units['vmm'], 'DropInPaths':'',
+            'Restart':'no', 'Delegate':'no', 'NoNewPrivileges':'yes', 'AmbientCapabilities':'',
+            'KillMode':'control-group', 'SendSIGKILL':'yes', 'LimitCORE':'0', 'LimitNOFILE':'1024',
+            'ProtectSystem':'strict', 'ProtectHome':'yes', 'ProtectControlGroups':'yes', 'PrivateNetwork':'yes',
+            'TimeoutStopUSec':'5s', 'TimeoutAbortUSec':'5s', 'DynamicUser':'yes', 'User':user, 'Group':user,
+            'Type':'exec', 'NotifyAccess':'none', 'ExitType':'cgroup', 'RuntimeMaxUSec':'4min',
+            'TasksMax':'128', 'MemoryMax':str(3*1024**3), 'Slice':units['parent'],
+            'CapabilityBoundingSet':LAUNCHER_CAPS.lower(), 'DeviceAllow':'/dev/char/10:232 rwm /dev/char/10:200 m',
+            'DevicePolicy':'closed', 'MemorySwapMax':'0', 'CPUQuotaPerSecUSec':'2s',
+            'BindsTo':units['owner']+' '+units['supervisor'], 'After':units['owner']+' '+units['supervisor'],
+            'ActiveState':'inactive', 'MainPID':'0'}
+        for admitted in (True, False):
+            with self.subTest(admitted=admitted), tempfile.TemporaryDirectory() as temporary:
+                root=Path(temporary); instance=root/'allocation'; instance.mkdir(); directory=root/'runtime'; directory.mkdir()
+                os.mkfifo(instance/'serial.fifo'); (instance/'device-policy.json').write_text('{"userfaultfdMinor":null}')
+                queried=[]; commands=[]; actual=dict(row)
+                if not admitted: actual['DevicePolicy']='open'
+                def show(role): queried.append(role); return actual
+                def command(*args):
+                    commands.append(args)
+                    raise RuntimeError('fixture_dispatch_boundary')
+                owner=module.Owner.__new__(module.Owner); owner.root=ROOT; owner.instance=instance
+                owner.generation=GEN; owner.record={}; owner.deadline=Deadline.after(1)
+                owner.manager=types.SimpleNamespace(show=show,command=command)
+                owner.serial=owner.serial_output=None; owner.creation_started=False
+                real_anchor=module.anchored
+                try:
+                    with patch.object(module,'runtime',return_value=directory), patch.object(module,'anchored',lambda path,**kwargs:real_anchor(path)):
+                        with self.assertRaisesRegex(RuntimeError if admitted else Refusal,
+                                'fixture_dispatch_boundary' if admitted else 'effective_vmm_policy_changed'):
+                            owner.start_vm()
+                    self.assertEqual(queried,['vmm'])
+                    self.assertEqual(len(commands),int(admitted))
+                    atomic(directory,'result',owner.record)
+                    retained=read_record(directory,'result')
+                    if admitted:
+                        self.assertIs(owner.record['vmmEffectiveUnit'],actual)
+                        self.assertEqual(retained['vmmEffectiveUnit'],actual)
+                    else:
+                        self.assertNotIn('vmmEffectiveUnit',retained)
+                finally:
+                    for fd in (owner.serial,owner.serial_output):
+                        if fd is not None: os.close(fd)
+
     def test_serial_requires_both_boot_versions_besides_listening_hint(self):
         from owner import SerialFacts
         facts=SerialFacts()
