@@ -41,7 +41,9 @@ request data are admitted. Generated report text is limited to 2 MiB. Raw input
 notifications echo image data URLs, so their frame budget is the larger of 2 MiB
 or the admitted serialized packet plus 1 MiB; total stdout is bounded separately
 at the larger of 8 MiB or twice that frame budget plus 4 MiB. Stderr is bounded at
-2 MiB and is not retained. Notifications are limited to 1,000. The request's
+2 MiB and is not retained. Notifications are limited to 65,536; aggregate
+generated assistant-text deltas are independently limited to 2 MiB, regardless
+of the input-image wire budget. The request's
 deadline includes startup; individual RPCs also have a 15-second ceiling.
 
 Account analysis has unknown dollar cost and no supported generated-token cap.

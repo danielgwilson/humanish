@@ -82,6 +82,21 @@ describe("restricted Codex analyst session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
+  it("accepts an ordinary structured answer streamed through more than 1,000 text deltas", async () => {
+    const f = await fixture("many-deltas");
+    expect(await f.run(request)).toMatchObject({ status: "completed", output: { observedCode: "BLUE-4821", summary: "Synthetic finding. ".repeat(1200) } });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("caps aggregate generated UTF-8 bytes independently of a larger admitted image wire budget", async () => {
+    const f = await fixture("aggregate-delta-overflow");
+    const dataUrl = `data:image/png;base64,${Buffer.alloc(3 * 1024 * 1024).toString("base64")}`;
+    expect(await f.run({ ...request, images: [{ evidenceId: "e-large", dataUrl }] })).toMatchObject({
+      status: "failed", errorCode: "response_too_large", output: null, dispatched: true, usageComplete: false
+    });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
   it.each([
     ["wrong-version", "codex_unsupported_version"], ["api-key-auth", "codex_unsupported_auth"], ["signed-out", "codex_login_required"],
     ["system-config", "codex_unsafe_configuration"], ["mcp-config", "codex_unsafe_configuration"], ["instructions-config", "codex_unsafe_configuration"],

@@ -163,6 +163,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
   let work: string | undefined, authLink: string | undefined, transport: RestrictedCodexTransport | undefined;
   let threadId: string | undefined, turnId: string | undefined, earlyTurnId: string | undefined;
   let dispatched = false, completed = false, usage: RestrictedCodexUsage | null = null;
+  let generatedDeltaBytes = 0;
   let outputItem: { id: string; text: string } | undefined;
   let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
   const early: Event[] = [];
@@ -242,6 +243,11 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
     transport.onNotification = (method, params) => {
       if (!dispatched) return;
       if (!hasScopedIdentity(method, params, threadId, turnId ?? earlyTurnId)) { deadline.stop("codex_protocol_error"); return; }
+      if (method === "item/agentMessage/delta") {
+        if (typeof params.delta !== "string") { deadline.stop("codex_protocol_error"); return; }
+        generatedDeltaBytes += Buffer.byteLength(params.delta);
+        if (generatedDeltaBytes > CODEX_MAX_OUTPUT_BYTES) { deadline.stop("response_too_large"); return; }
+      }
       const item = codexRecord(params.item);
       // Tool requests must fail even if the turn-start acknowledgment is lost.
       if ((method === "rawResponseItem/completed" && !["message", "reasoning"].includes(String(item.type)))

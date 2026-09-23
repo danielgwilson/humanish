@@ -78,7 +78,20 @@ if (operation === "--version") {
       if (["hang-turn", "ignore-term"].includes(scenario)) return;
       if (scenario === "stdout-large") { process.stdout.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
       if (scenario === "stderr-large") { process.stderr.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
-      if (scenario === "event-overflow") { for (let n = 0; n < 1002; n++) emit({ method: "warning", params: {} }); return; }
+      if (scenario === "event-overflow") { for (let n = 0; n < 65538; n++) emit({ method: "warning", params: {} }); return; }
+      // Params derive from the installed CLI's generated AgentMessageDelta schema;
+      // IDs come from captured items. These are synthetic stream-size mutations.
+      const delta = text => emit({ method: "item/agentMessage/delta", params: {
+        delta: text, itemId: answer.params.item.id, threadId: answer.params.threadId, turnId: answer.params.turnId
+      } });
+      if (scenario === "many-deltas") {
+        const text = JSON.stringify({ ...JSON.parse(answer.params.item.text), summary: "Synthetic finding. ".repeat(1200) });
+        answer.params.item.text = text; completion.params.turn.items[0].text = text;
+        for (let start = 0; start < text.length; start += 16) delta(text.slice(start, start + 16));
+      }
+      if (scenario === "aggregate-delta-overflow") {
+        for (let n = 0; n < 129; n++) delta("é".repeat(8192));
+      }
       if (scenario === "wrong-thread") { answer.params.threadId = "wrong-thread"; emit(answer); return; }
       if (scenario === "wrong-turn") { answer.params.turnId = "wrong-turn"; emit(answer); return; }
       if (scenario === "raw-tool") { emit(capture("raw-tool-call.json")); return; }

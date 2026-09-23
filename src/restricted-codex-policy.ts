@@ -37,7 +37,7 @@ export interface RestrictedCodexResult {
 export const CODEX_MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 export const CODEX_MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 export const CODEX_MAX_STDOUT_BYTES = 8 * 1024 * 1024;
-export const CODEX_MAX_EVENTS = 1000;
+export const CODEX_MAX_EVENTS = 65_536;
 export const CODEX_IMAGE = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 
 export const codexRecord = (value: unknown): Record<string, unknown> =>
