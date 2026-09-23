@@ -1,5 +1,3 @@
-import { validCodexAnalysisConfig } from "../../src/study-analysis-codex-config";
-import type { StudyAnalysisConfig } from "../../src/study-analysis";
 import type { LoadedStudyAnalysis, StudyAnalysisArtifact, StudyAnalysisCorrection } from "../../src/study-analysis";
 import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
@@ -23,6 +21,21 @@ const ids = (v: unknown) => list(v, id) && new Set(v as string[]).size === (v as
 const nullableText = (v: unknown) => v === null || text(v);
 const number = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
 const nullableNumber = (v: unknown) => v === null || number(v);
+// Durable reader profiles, independent of the producer's current launch policy.
+// Append newly qualified profiles; retain historical entries so saved reports stay readable.
+const accountProfiles = [{ cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", model: "gpt-6-astra", effort: "low" }] as const;
+function accountConfig(config: Record<string, unknown>): boolean {
+  if (config.provider !== "codex" || config.maxCostUsd !== null || config.maxOutputTokens !== null
+    || !number(config.timeoutMs) || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 600000
+    || !(config.question === null || typeof config.question === "string" && config.question.length <= 4000)
+    || Object.keys(config).some(key => !["provider", "model", "question", "maxCostUsd", "timeoutMs", "maxOutputTokens", "identity"].includes(key))) return false;
+  const profile = config.identity;
+  if (!object(profile) || Object.keys(profile).length !== 8 || profile.transport !== "codex-app-server"
+    || profile.authentication !== "chatgpt-account" || profile.billing !== "account-unknown"
+    || profile.requestedModel !== config.model || profile.resolvedModel !== config.model) return false;
+  return accountProfiles.some(known => known.model === config.model && known.cliVersion === profile.cliVersion
+    && known.toolPolicy === profile.toolPolicy && known.effort === profile.reasoningEffort);
+}
 const hash = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 const quote = (v: unknown) => object(v) && id(v.evidenceId) && text(v.text);
 const observation = (v: unknown) => object(v) && strings(v, ["claim", "limitation"])
@@ -62,7 +75,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
     || ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) || !nullableText(a.error)
     || !object(a.config) || !text(a.config.model) || !nullableText(a.config.question)
     || !number(a.config.timeoutMs)
-    || (a.provider === "codex" ? !validCodexAnalysisConfig(a.config as unknown as StudyAnalysisConfig)
+    || (a.provider === "codex" ? !accountConfig(a.config)
       : (a.config.provider !== undefined && a.config.provider !== "openai") || ![a.config.maxCostUsd, a.config.maxOutputTokens].every(number))
     || !object(a.usage) || ![a.usage.inputTokens, a.usage.outputTokens, a.usage.estimatedCostUsd, a.usage.estimatedAdmissionUsd].every(nullableNumber)
     || typeof a.usage.usageComplete !== "boolean" || typeof a.usage.dispatched !== "boolean" || !nullableText(a.usage.ratesAsOf)

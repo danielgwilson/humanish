@@ -13,7 +13,19 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
-  it("reads qualified account reports with exact source links and unknown dollars", () => {
+  it("retains the historical account profile independently of current launcher qualification", () => {
+    const saved = fixture();
+    saved.analysis!.provider = "codex";
+    saved.analysis!.config = { provider: "codex", model: "gpt-6-astra", question: null, timeoutMs: 600000,
+      maxCostUsd: null, maxOutputTokens: null, identity: { transport: "codex-app-server", authentication: "chatgpt-account",
+        billing: "account-unknown", requestedModel: "gpt-6-astra", resolvedModel: "gpt-6-astra", reasoningEffort: "low",
+        toolPolicy: "restricted-codex-v1", cliVersion: "0.154.0" } };
+    saved.analysis!.usage.estimatedCostUsd = null; saved.analysis!.usage.estimatedAdmissionUsd = null;
+    saved.analysis!.usage.ratesAsOf = null;
+    expect(parseStudyAnalysis(saved, data).state).toBe("ready");
+  });
+
+  it("agrees with the current producer profile while preserving source links and unknown dollars", () => {
     const saved = fixture();
     saved.analysis!.provider = "codex";
     saved.analysis!.config = { provider: "codex", model: "gpt-6-astra", question: null, timeoutMs: 600000,

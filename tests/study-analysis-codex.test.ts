@@ -200,8 +200,24 @@ describe("explicit Codex account analysis", () => {
       await program.parseAsync(["analyze", "--provider", "codex", "--run", "codex-analysis", "--cwd", f.cwd, "--dry-run", "--json", ...extra], { from: "user" });
       const result = JSON.parse(out.join(""));
       expect(result.ok).toBe(extra.length === 0); expect(exit).toBe(extra.length === 0 ? 0 : 2);
-      if (extra.length === 0) expect(result.admission).toMatchObject({ estimatedCostUsd: null, outputTokenAllowance: null });
+      if (extra.length === 0) {
+        expect(result.admission).toMatchObject({ estimatedCostUsd: null, outputTokenAllowance: null });
+        expect(result.warnings).toEqual(["Evidence and configuration admission only. Codex CLI, login, model access and account allowance were not checked; no provider request was sent."]);
+      }
       else expect(result.error.code).toBe("ANALYSIS_CONFIG_INVALID");
     }
+  });
+
+  it("does not invoke the account launcher or readiness probe during evidence admission", async () => {
+    const f = await study();
+    const launcher = await import("../src/restricted-codex-analysis.js");
+    const create = vi.spyOn(launcher, "createRestrictedCodexAnalysisProvider").mockImplementation(() => { throw new Error("Unexpected analyst launch"); });
+    const readiness = vi.spyOn(launcher, "checkRestrictedCodexAnalysisReadiness").mockRejectedValue(new Error("Unexpected readiness probe"));
+    try {
+      const result = await analyzeStudy(f.cwd, "codex-analysis", { config: config(), dryRun: true });
+      expect(result.ok).toBe(true);
+      expect(create).not.toHaveBeenCalled();
+      expect(readiness).not.toHaveBeenCalled();
+    } finally { create.mockRestore(); readiness.mockRestore(); }
   });
 });

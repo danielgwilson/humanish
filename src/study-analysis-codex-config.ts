@@ -13,12 +13,27 @@ export function codexAnalysisIdentity(model: string): CodexAnalysisIdentity {
     toolPolicy: CODEX_ANALYSIS_TOOL_POLICY, cliVersion: CODEX_ANALYSIS_CLI_VERSION };
 }
 
-/** No defaults are inserted when reading historical API artifacts. */
-export function validCodexAnalysisConfig(config: StudyAnalysisConfig): boolean {
+/** Reader profiles are append-only. A new launch qualification must not invalidate a saved report. */
+const storedProfiles = [{ cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", model: "gpt-6-astra", reasoningEffort: "low" }] as const;
+
+function matchesProfile(config: StudyAnalysisConfig, expected: CodexAnalysisIdentity): boolean {
   if (config.provider !== "codex") return false;
-  const expected = codexAnalysisIdentity(config.model);
   return Object.keys(config).every(key => ["provider", "model", "question", "maxCostUsd", "timeoutMs", "maxOutputTokens", "identity"].includes(key))
-    && config.model === CODEX_ANALYSIS_MODEL && config.maxCostUsd === null && config.maxOutputTokens === null
+    && config.model === expected.requestedModel && config.maxCostUsd === null && config.maxOutputTokens === null
     && config.identity !== undefined && config.identity !== null && typeof config.identity === "object" && Object.keys(config.identity).length === Object.keys(expected).length
     && Object.entries(expected).every(([key, value]) => config.identity[key as keyof CodexAnalysisIdentity] === value);
+}
+
+/** Execution admission uses only the currently qualified launcher profile. */
+export function validCodexAnalysisConfig(config: StudyAnalysisConfig): boolean {
+  return config.model === CODEX_ANALYSIS_MODEL && matchesProfile(config, codexAnalysisIdentity(config.model));
+}
+
+/** Reading historical artifacts never inserts defaults or selects a launch policy. */
+export function validStoredCodexAnalysisConfig(config: StudyAnalysisConfig): boolean {
+  return storedProfiles.some(profile => matchesProfile(config, {
+    transport: "codex-app-server", authentication: "chatgpt-account", billing: "account-unknown",
+    requestedModel: profile.model, resolvedModel: profile.model, reasoningEffort: profile.reasoningEffort,
+    toolPolicy: profile.toolPolicy, cliVersion: profile.cliVersion
+  }));
 }

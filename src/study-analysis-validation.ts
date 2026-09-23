@@ -1,4 +1,4 @@
-import { validCodexAnalysisConfig } from "./study-analysis-codex-config.js";
+import { validStoredCodexAnalysisConfig } from "./study-analysis-codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
@@ -269,7 +269,7 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
   const artifact: StudyAnalysisArtifact = { ...fields, result: fields.result === null ? null : normalizedResult(fields.result),
     ...(captureVersion === undefined ? {} : { captureVersion }) };
   if (artifact.provider !== (artifact.config.provider ?? "openai")
-    || (artifact.provider === "codex" && (!validCodexAnalysisConfig(artifact.config)
+    || (artifact.provider === "codex" && (!validStoredCodexAnalysisConfig(artifact.config)
       || artifact.usage.estimatedCostUsd !== null || artifact.usage.estimatedAdmissionUsd !== null || artifact.usage.ratesAsOf !== null))) {
     throw new Error("ANALYSIS_PROVIDER_INVALID");
   }

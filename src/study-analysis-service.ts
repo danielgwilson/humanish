@@ -178,7 +178,9 @@ export async function analyzeStudy(cwdInput: string, run: string, options: Analy
         error: { code: admission.error ?? "analysis_admission_denied", message: admission.error === "analysis_budget_exceeded"
           ? "The conservative admission estimate exceeds --max-cost. No provider request was sent."
           : "The analysis input or configuration did not pass admission. No provider request was sent." } };
-      if (dryRun) return { ...base, ok: true };
+      if (dryRun) return { ...base, ok: true, warnings: config.provider === "codex"
+        ? ["Evidence and configuration admission only. Codex CLI, login, model access and account allowance were not checked; no provider request was sent."]
+        : base.warnings };
       if (!options.rerun) {
         const prior = (await listStudyAnalyses(prepared)).find((entry) => entry.state === "ready"
           && entry.analysis?.inputDigest === input.inputDigest && entry.analysis.configDigest === hashStudyAnalysisValue(config)

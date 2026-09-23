@@ -7,12 +7,12 @@ import { receivingRequiredKey } from "./comms-setup.js";
 
 type Check = DoctorResult["checks"][number];
 
-/** Setup checks only: no network, provider dispatch, browser or desktop creation. */
+/** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
 export async function labSetupChecks(args: {
   cwd: string; lab: string; env: NodeJS.ProcessEnv; agents: DetectedLocalAgent[];
   keyPresent: (name: string) => boolean;
   /** Internal read-only qualification seam; never a participant/model request. */
-  codexAnalysisReadiness?: () => Promise<{ ready: boolean; errorCode: string | null }>;
+  codexAnalysisReadiness?: (env: NodeJS.ProcessEnv) => Promise<{ ready: boolean; errorCode: string | null }>;
 }): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./labs.js");
   const { selectLabBackend, resolveLabDryRun } = await import("./lab-engine.js");
@@ -58,17 +58,24 @@ export async function labSetupChecks(args: {
   }
   const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
   if (analysis?.provider === "codex") {
-    const check = args.codexAnalysisReadiness ?? (async () => (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }));
-    const readiness = await check().catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+    const check = args.codexAnalysisReadiness ?? (async (env: NodeJS.ProcessEnv) => (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env }));
+    const readiness = await check(args.env).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+    const recovery = readiness.errorCode === "codex_unsupported_platform"
+      ? "Use a Linux x64 host for this qualified account route, or explicitly select provider: openai with an API key."
+      : readiness.errorCode === "codex_busy"
+      ? "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then retry."
+      : "Install the qualified CLI and sign in with a ChatGPT account.";
     checks.push({ name: "post-run analysis", ok: readiness.ready, message: readiness.ready
       ? "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable."
-      : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). Install the qualified CLI and sign in with a ChatGPT account. No API fallback is used; participant readiness is independent.` });
+      : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.` });
   } else if (analysis) {
     checks.push({ name: "post-run analysis", ok: true, message: args.keyPresent("OPENAI_API_KEY")
       ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. Its $${analysis.maxCostUsd} admission estimate limit may decline larger studies before dispatch; it is not a provider billing cap. Participant readiness is independent.`
       : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately." });
   }
-  checks.push({ name: "check scope", ok: true, message: "Local setup only. Provider credentials are not validated, model access/quota and target reachability are untested, and no paid resources were created." });
+  checks.push({ name: "check scope", ok: true, message: analysis?.provider === "codex"
+    ? "The Codex setup check inspects local login and configuration without a model turn or participant resources. Remote account validity, model access, quota and target reachability remain untested; CLI startup may use the network."
+    : "Local setup only. Provider credentials are not validated, model access/quota and target reachability are untested, and no paid resources were created." });
   return { desktop, keys, checks };
 }
 
