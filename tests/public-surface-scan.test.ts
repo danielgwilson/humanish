@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const scanScript = resolve("scripts/public-surface-scan.mjs");
@@ -48,6 +48,28 @@ function runScan(root: string, denylistPattern = "", githubRef = "") {
 }
 
 describe("public-surface commit email policy", () => {
+  it("allows only the fixed quoted guest XDG constants in their implementation files", async () => {
+    const root = await createGitHistory(["noreply@github.com"]);
+    const guestHome = ["", "home", "humanish"].join("/");
+    try {
+      for (const file of ["src/guest-runtime-desktop.ts", "dist/guest-runtime-desktop.js", "dist/guest-runtime-desktop.d.ts", "runtime/browser-guest/control/root/opt/humanish/control/vsock.py"]) {
+        await mkdir(dirname(join(root, file)), { recursive: true });
+        await writeFile(join(root, file), `"${guestHome}/.cache" '${guestHome}/.config'\n`);
+      }
+      expect(runScan(root).status).toBe(0);
+      // Neither an arbitrary guest path nor a private username is exempted.
+      await writeFile(join(root, "src/guest-runtime-desktop.ts"), `"${guestHome}/.config/private" "${["", "home", "maintainer", ".cache"].join("/")}"\n`);
+      const denied = runScan(root);
+      expect(denied.status).toBe(1);
+      expect(denied.stderr).toContain("absolute_linux_home_path");
+      await writeFile(join(root, "src/guest-runtime-desktop.ts"), "safe\n");
+      await writeFile(join(root, "unrelated.txt"), `"${guestHome}/.cache"\n`);
+      expect(runScan(root).status).toBe(1);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+
   it("accepts both GitHub-documented noreply forms and explicit GitHub-generated addresses", async () => {
     const root = await createGitHistory([
       "0xContributor@users.noreply.github.com",
