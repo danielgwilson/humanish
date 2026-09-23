@@ -325,7 +325,9 @@ class Owner:
         self.controller_pidfd = os.pidfd_open(controller_peer[0])
         self.proxy, _ = self.accept(proxy_listener, controller_peer)
         control_frames = Frames()
-        for _ in range(50):
+        hello_deadline = Deadline.after(5)
+        while True:
+            hello_deadline.remaining()
             self.tick()
             if select.select([self.control], [], [], 0.1)[0]:
                 data = self.control.recv(8192)
@@ -344,8 +346,6 @@ class Owner:
                     status = self.lease.renew(value['sequence'])
                     send(self.control, {'operation': 'renewed', 'sequence': status['sequence']})
                 break
-        else:
-            raise Refusal('controller_hello_missing')
         account = self.start_vm()
         self.boot(account)
         bootstrap_sent = False

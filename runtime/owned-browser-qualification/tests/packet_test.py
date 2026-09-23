@@ -331,7 +331,7 @@ class InitialStreamTests(unittest.TestCase):
             data=encode(value); return len(data).to_bytes(4,'big')+data
         hello=frame({'operation':'hello','generation':GEN})
         renew=frame({'operation':'renew','sequence':1})
-        for chunks,expected_renewals in (([hello[:3],hello[3:]],[]),([hello+renew],[1])):
+        for chunks,expected_renewals in (([hello[:3],hello[3:]],[]),([hello+renew],[1]),([hello[index:index+1] for index in range(len(hello))],[])):
             with self.subTest(chunks=len(chunks)):
                 pending=list(chunks); renewals=[]; sent=[]
                 channel=types.SimpleNamespace(recv=lambda size:pending.pop(0),sendall=sent.append)
