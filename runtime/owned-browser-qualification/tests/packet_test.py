@@ -322,3 +322,26 @@ class FinalEvidenceTests(unittest.TestCase):
         manager=types.SimpleNamespace(command=lambda *args:None,show=lambda *args:{'InvocationID':'b'*32})
         held=types.SimpleNamespace(observe=lambda deadline:{'populated':0},manager=manager,role='parent',invocation='a'*32)
         with self.assertRaisesRegex(Refusal,'stopped_slice_replaced'): stop_retained_slice(held,Deadline.after(1))
+
+class InitialStreamTests(unittest.TestCase):
+    def test_actual_owner_hello_consumer_accepts_fragment_and_coalesced_renewal(self):
+        import owner as module
+        from policy import encode
+        def frame(value):
+            data=encode(value); return len(data).to_bytes(4,'big')+data
+        hello=frame({'operation':'hello','generation':GEN})
+        renew=frame({'operation':'renew','sequence':1})
+        for chunks,expected_renewals in (([hello[:3],hello[3:]],[]),([hello+renew],[1])):
+            with self.subTest(chunks=len(chunks)):
+                pending=list(chunks); renewals=[]; sent=[]
+                channel=types.SimpleNamespace(recv=lambda size:pending.pop(0),sendall=sent.append)
+                owner=module.Owner.__new__(module.Owner); owner.generation=GEN; owner.deadline=Deadline.after(1)
+                owner.listen=lambda name:None; owner.accept=lambda *args:(channel,(123,1000,1000)); owner.tick=lambda:None
+                owner.start_vm=lambda:None
+                def stop_before_boot(account): raise RuntimeError('reached_boot_boundary')
+                owner.boot=stop_before_boot
+                def renewed(sequence): renewals.append(sequence); return {'sequence':sequence}
+                lease=types.SimpleNamespace(renew=renewed)
+                with patch.object(module,'notify'), patch.object(module,'LeaseChannel',return_value=lease), patch.object(module.os,'pidfd_open',return_value=88), patch.object(module.select,'select',return_value=([channel],[],[])):
+                    with self.assertRaisesRegex(RuntimeError,'reached_boot_boundary'): owner.run()
+                self.assertEqual(renewals,expected_renewals); self.assertEqual(pending,[])

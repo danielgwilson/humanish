@@ -328,9 +328,21 @@ class Owner:
         for _ in range(50):
             self.tick()
             if select.select([self.control], [], [], 0.1)[0]:
-                messages = control_frames.feed(self.control.recv(8192))
-                if messages != [{'operation': 'hello', 'generation': self.generation}]:
+                data = self.control.recv(8192)
+                if not data:
+                    raise Refusal('controller_hello_closed')
+                messages = control_frames.feed(data)
+                if not messages:
+                    continue
+                if messages[0] != {'operation': 'hello', 'generation': self.generation}:
                     raise Refusal('controller_hello_refused')
+                # Unix stream reads need not preserve writes: a real renewal
+                # can arrive in the same read as the initial hello.
+                for value in messages[1:]:
+                    if type(value) is not dict or set(value) != {'operation', 'sequence'} or value['operation'] != 'renew':
+                        raise Refusal('controller_hello_refused')
+                    status = self.lease.renew(value['sequence'])
+                    send(self.control, {'operation': 'renewed', 'sequence': status['sequence']})
                 break
         else:
             raise Refusal('controller_hello_missing')
