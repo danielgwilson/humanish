@@ -25,6 +25,12 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
   IDs. The method was observed 989 times in a retained real report attempt that
   hit the former 1,000-notification limit; that receipt retained method counts,
   not delta payloads. This schema is not labeled an actual delta wire capture.
+- `agent-message-delta` is a separately captured notification from the integrated
+  seven-image synthetic study report on 2026-09-23, using the same qualified
+  CLI/model profile. Its IDs, delta text and timestamp are normalized. That
+  successful report emitted 1,560 message deltas and reported 15,745 input and
+  1,570 output tokens; account dollars remained unknown. Stream-size fault
+  injection uses this captured envelope, with the generated schema as reference.
 
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,
 auth contents, raw provider errors, and rate-limit/account details are excluded.

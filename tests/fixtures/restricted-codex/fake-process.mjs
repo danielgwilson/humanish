@@ -26,6 +26,7 @@ if (operation === "--version") {
   const thread = map(capture("thread-start.json"));
   const turn = capture("turn-start.json");
   const events = capture("completed-turn-and-usage.json");
+  const deltaTemplate = capture("agent-message-delta.json");
   const completion = events.find(event => event.method === "turn/completed");
   const answer = events.find(event => event.method === "item/completed");
   const usage = events.find(event => event.method === "thread/tokenUsage/updated");
@@ -79,9 +80,9 @@ if (operation === "--version") {
       if (scenario === "stdout-large") { process.stdout.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
       if (scenario === "stderr-large") { process.stderr.write("x".repeat(2 * 1024 * 1024 + 1)); return; }
       if (scenario === "event-overflow") { for (let n = 0; n < 65538; n++) emit({ method: "warning", params: {} }); return; }
-      // Params derive from the installed CLI's generated AgentMessageDelta schema;
-      // IDs come from captured items. These are synthetic stream-size mutations.
-      const delta = text => emit({ method: "item/agentMessage/delta", params: {
+      // The envelope comes from the captured account-backed study report;
+      // IDs/text below are deliberate synthetic stream-size mutations.
+      const delta = text => emit({ ...deltaTemplate, params: { ...deltaTemplate.params,
         delta: text, itemId: answer.params.item.id, threadId: answer.params.threadId, turnId: answer.params.turnId
       } });
       if (scenario === "many-deltas") {
