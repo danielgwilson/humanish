@@ -2562,6 +2562,81 @@ describe("runCuaActorLab", () => {
     expect(verified.bundlePath).toContain(result.runId);
   });
 
+  it("releases the acquired identity when a preparation hook mutates the handle and fails", async () => {
+    const sandbox = makeFakeSandbox();
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        prepareDesktop: async (desktop) => {
+          desktop.sandboxId = "unrelated-sandbox";
+          throw new Error("synthetic provisioning failure");
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    expect(outcome.result.sandbox).toMatchObject({ sandboxId: "fake-sandbox-001", killed: true });
+  });
+
+  it("passes a managed executor to the participant and closes it after the run", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    let executor: CuaExecutor | undefined;
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          executor = options.executor;
+          expect(options.desktop).toBeUndefined();
+          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+        }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.sandbox?.killed).toBe(true);
+    expect(executor).toBeDefined();
+    await expect(executor!.observe()).rejects.toThrow("closed");
+  });
+
+  it("records prior sandbox absence without claiming its exact termination time", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    module.Sandbox.kill = async () => false;
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        prepareDesktop: async () => { throw new Error("synthetic startup failure"); }
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.sandbox?.killed).toBe(true);
+    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("exact termination time is unknown"));
+  });
+
+  it("keeps malformed cleanup responses unconfirmed in the run and its cost evidence", async () => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    module.Sandbox.kill = async () => undefined as unknown as boolean;
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+      }
+    });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.sandbox?.killed).toBe(false);
+    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("release is unconfirmed"));
+    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(bundle.cost.fullyEstimated).toBe(false);
+    expect(bundle.cost.breakdown).toContainEqual(expect.objectContaining({ reason: "desktop_lifetime_incomplete", estimatedCostUsd: null }));
+  });
+
   it("reports killed=false (with a warning) when the installed SDK lacks Sandbox.kill", async () => {
     const sandbox = makeFakeSandbox();
     const module: E2BDesktopModule = {
