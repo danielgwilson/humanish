@@ -90,6 +90,10 @@ jobs:
             --package "$RUNNER_TEMP/guest-payload" \
             --kernel-config "$RUNNER_TEMP/kernel-build/output/kernel.config" \
             --output "$RUNNER_TEMP/browser-disks"
+      - name: Prove disk failure and interruption cleanup with an unrelated canary
+        run: |
+          disk_tools_image="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "browser-disks/manifest.json")))["toolsImage"]["id"])')"
+          python3 runtime/browser-disk/proof.py --tools-image "$disk_tools_image" --output "$RUNNER_TEMP/disk-fault-proof"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -114,5 +118,12 @@ jobs:
             ${{ runner.temp }}/browser-disks/output/*.json
             ${{ runner.temp }}/browser-disks/output/*.log
             ${{ runner.temp }}/browser-disks/failed-output/*.log
+            ${{ runner.temp }}/disk-fault-proof/*.json
+            ${{ runner.temp }}/disk-fault-proof/*.log
+            ${{ runner.temp }}/disk-fault-proof/cases-output/*.json
+            ${{ runner.temp }}/disk-fault-proof/cases-output/*.log
+            ${{ runner.temp }}/disk-fault-proof/interrupted-build/FAILED.json
+            ${{ runner.temp }}/disk-fault-proof/interrupted-build/cleanup.json
+            ${{ runner.temp }}/disk-fault-proof/interrupted-build/build.log
           include-hidden-files: true
           retention-days: 14
