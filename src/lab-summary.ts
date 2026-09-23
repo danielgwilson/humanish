@@ -26,7 +26,7 @@ export interface LabCaps {
 
 export interface LabSummary {
   communications?: string;
-  analysis?: { model: string; maxCostUsd: number };
+  analysis?: { provider?: "openai" | "codex"; billing?: "api-estimate" | "account-unknown"; model: string; maxCostUsd: number | null };
   schema: typeof LAB_SUMMARY_SCHEMA;
   labId: string;
   title?: string;

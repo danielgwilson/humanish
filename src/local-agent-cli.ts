@@ -477,5 +477,5 @@ export function localAgentDoctorMessage(found: readonly DetectedLocalAgent[]): s
     ? `${agent.label} reports authenticated — actors[0].type: local-agent can use it instead of a provider API key; account access and limits are untested`
     : agent.authStatus === "unauthenticated" ? `${agent.label} reports not signed in — run \`${agent.id === "codex" ? "codex login" : "claude auth login"}\``
       : `${agent.label} installed; authentication status could not be checked — run \`${agent.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed`).join(". ")
-    + ". Local-agent still needs E2B_API_KEY; post-run analysis separately needs OPENAI_API_KEY.";
+    + ". Local-agent still needs E2B_API_KEY; post-run analysis defaults to OPENAI_API_KEY, or explicitly select the restricted Codex account analyst.";
 }

@@ -1,3 +1,4 @@
+import { labSetupChecks } from "../src/doctor-lab.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -28,6 +29,20 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
 }
 
 describe("selected lab setup without paid dispatch", () => {
+  it("checks the qualified account analyst separately from participant API credentials", async () => {
+    await project(lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n", async cwd => {
+      for (const ready of [true, false]) {
+        const result = await labSetupChecks({ cwd, lab: "preview", env: keyless, agents: [], keyPresent: () => false,
+          codexAnalysisReadiness: async () => ({ ready, errorCode: ready ? null : "codex_login_required" }) });
+        const check = result.checks.find(item => item.name === "post-run analysis")!;
+        expect(check.ok).toBe(ready);
+        expect(check.message).not.toContain("OPENAI_API_KEY");
+        expect(result.keys).not.toContain("OPENAI_API_KEY");
+        expect(check.message).toContain(ready ? "account allowance remain untested" : "No API fallback");
+      }
+    });
+  });
+
   it("permits a keyless dry-run but identifies the missing live API credentials", async () => {
     await project(lab("openai-computer-use", "dry-run"), async cwd => {
       expect((await doctor(cwd, { lab: "preview", env: keyless, localAgents: noAgents })).ok).toBe(true);

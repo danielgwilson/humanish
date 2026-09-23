@@ -1,3 +1,4 @@
+import { codexAnalysisIdentity } from "../../src/study-analysis-codex-config";
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import type { LoadedStudyAnalysis } from "../../src/study-analysis";
@@ -12,6 +13,29 @@ const data = fixtures.fixture();
 const fixture = () => fixtures.analysisFixture(data);
 
 describe("independent analysis admission and projection", () => {
+  it("reads qualified account reports with exact source links and unknown dollars", () => {
+    const saved = fixture();
+    saved.analysis!.provider = "codex";
+    saved.analysis!.config = { provider: "codex", model: "gpt-6-astra", question: null, timeoutMs: 600000,
+      maxCostUsd: null, maxOutputTokens: null, identity: codexAnalysisIdentity("gpt-6-astra") };
+    saved.analysis!.usage.estimatedCostUsd = null;
+    saved.analysis!.usage.estimatedAdmissionUsd = null;
+    saved.analysis!.usage.ratesAsOf = null;
+    const selected = parseStudyAnalysis(saved, data);
+    expect(selected.state).toBe("ready");
+    const report = projectStudyAnalysis(selected, data)!;
+    expect(report.findings[0]!.moments.length).toBeGreaterThan(0);
+    expect(report.methodology.join(" ")).toContain("dollar cost and output-token ceiling unknown");
+    expect(report.methodology.join(" ")).not.toContain("$null");
+    const priced = structuredClone(saved); priced.analysis!.usage.estimatedCostUsd = 0;
+    expect(parseStudyAnalysis(priced, data).state).toBe("invalid");
+    const unqualified = structuredClone(saved);
+    if (unqualified.analysis!.config.provider === "codex") unqualified.analysis!.config.identity.cliVersion = "unqualified";
+    expect(parseStudyAnalysis(unqualified, data).state).toBe("invalid");
+    const crossProvider = structuredClone(saved); crossProvider.analysis!.provider = "openai";
+    expect(parseStudyAnalysis(crossProvider, data).state).toBe("invalid");
+  });
+
   it("projects overview counts from structured coverage and judgments, not summary prose or actor success", () => {
     const saved = fixture();
     saved.analysis!.result!.summary = "All participants completed everything. This prose must not set the counts.";

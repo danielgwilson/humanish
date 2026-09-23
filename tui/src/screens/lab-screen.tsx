@@ -103,7 +103,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         )}
       </Box>
       {summary?.analysis === undefined ? null : (
-        <Text wrap="wrap">After live runs: analysis · {summary.analysis.model} · separate ${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap</Text>
+        <Text wrap="wrap">{summary.analysis.provider === "codex" ? `After live runs: Codex account analyst · ${summary.analysis.model} · remote inference · account limits apply; dollar cost unknown` : `After live runs: analysis · ${summary.analysis.model} · separate $${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap`}</Text>
       )}
       {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
       {summary?.keysReady === false ? (
@@ -142,7 +142,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           {props.confirming === "live" ? (
             <Box marginTop={1}>
               <Text color={PALETTE.warn}>
-                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)` : ""} · ⏎ confirm · esc cancel
+                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? summary.analysis.provider === "codex" ? " + Codex account analysis (remote inference; account limits apply, dollar cost unknown)" : ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)` : ""} · ⏎ confirm · esc cancel
               </Text>
             </Box>
           ) : null}

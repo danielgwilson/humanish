@@ -11,6 +11,8 @@ type Check = DoctorResult["checks"][number];
 export async function labSetupChecks(args: {
   cwd: string; lab: string; env: NodeJS.ProcessEnv; agents: DetectedLocalAgent[];
   keyPresent: (name: string) => boolean;
+  /** Internal read-only qualification seam; never a participant/model request. */
+  codexAnalysisReadiness?: () => Promise<{ ready: boolean; errorCode: string | null }>;
 }): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./labs.js");
   const { selectLabBackend, resolveLabDryRun } = await import("./lab-engine.js");
@@ -55,7 +57,13 @@ export async function labSetupChecks(args: {
       args.env[name]?.trim() || args.keyPresent(name) ? "present; value not shown" : "missing declared subject environment variable; provide it with --env-file" });
   }
   const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
-  if (analysis) {
+  if (analysis?.provider === "codex") {
+    const check = args.codexAnalysisReadiness ?? (async () => (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }));
+    const readiness = await check().catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+    checks.push({ name: "post-run analysis", ok: readiness.ready, message: readiness.ready
+      ? "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable."
+      : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). Install the qualified CLI and sign in with a ChatGPT account. No API fallback is used; participant readiness is independent.` });
+  } else if (analysis) {
     checks.push({ name: "post-run analysis", ok: true, message: args.keyPresent("OPENAI_API_KEY")
       ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. Its $${analysis.maxCostUsd} admission estimate limit may decline larger studies before dispatch; it is not a provider billing cap. Participant readiness is independent.`
       : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately." });

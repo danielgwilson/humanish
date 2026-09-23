@@ -118,7 +118,10 @@ For a ranked review of a completed live study, run
 admission, then remove `--dry-run` to generate findings. This sends selected
 retained evidence to OpenAI and requires `OPENAI_API_KEY`. Findings appear
 beside Participants in Observer, with evidence links and separate participant
-feedback. See the [analysis contract](docs/contracts/study-analysis.md) for
+feedback. You can explicitly select a restricted Codex account analyst with
+`npx humanish analyze --run latest --provider codex`; it uses remote inference,
+requires the qualified CLI and account login, and reports dollar cost as unknown.
+The OpenAI API default stays unchanged. See the [analysis contract](docs/contracts/study-analysis.md) for
 coverage limits, estimated cost controls, corrections and sharing behavior.
 
 Supported live studies generate findings automatically after participants finish,

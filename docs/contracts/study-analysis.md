@@ -22,10 +22,10 @@ not a participant study. Here, `analyze --dry-run` means checking an existing
 study's input and admission estimate without credentials, a provider request,
 or a new analysis artifact.
 
-The default model is `gpt-6-astra`, with high reasoning effort. A request sends selected retained text and
+The default provider is `openai`; its default model is `gpt-6-astra`, with high reasoning effort. A request sends selected retained text and
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
-participant assignment. `--max-cost` is required, including for dry-run
+participant assignment. For OpenAI API analysis, `--max-cost` is required, including for dry-run
 admission. It bounds a conservative estimate, not an exact provider bill.
 `--timeout-ms` and `--max-output-tokens` bound the request. An exceeded admission
 estimate retains valid findings and usage but returns a partial result and a
@@ -47,6 +47,48 @@ an unverified essential result remains unknown even if the participant reported
 success. Findings keep reported concerns and observed recovery distinct across
 participants. Other supported models can be selected explicitly, but evidence
 reference validation does not certify their interpretation of small visual details.
+
+## Explicit Codex account analysis
+
+An existing completed recording can use a separate restricted Codex analyst:
+
+```bash
+humanish analyze --run latest --provider codex --dry-run --json
+humanish analyze --run latest --provider codex --json
+```
+
+This branch is qualified on Linux x64 with Codex CLI `0.154.0`, a file-backed
+ChatGPT account login, and `gpt-6-astra` with low reasoning effort. The participant conversation
+is never reused. Selected text and screenshots still go to remote inference;
+this is account authentication, not local inference. No API-key, alternate model
+or configured-provider fallback occurs. Model access and account allowance are
+not established by installation or login alone. Keychain-only login, other
+platforms and CLI versions are refused before a turn; they are not silently
+converted to API authentication.
+
+Omit `--max-cost` and `--max-output-tokens` for Codex. Numeric declarations are
+rejected because this transport does not enforce them. `maxCostUsd` and
+`maxOutputTokens` are stored as null. The existing evidence bounds, one analyst
+turn, bounded response bytes and whole-operation timeout still apply. One turn
+is not a claim of one upstream billed request; account limits apply. Reported
+tokens remain inspectable, but dollar estimates, admission dollars and rate dates
+remain null. Interrupted token observations remain explicitly incomplete.
+
+The dry-run validates only local evidence and configuration. It does not check
+the CLI, login, model access or quota and does not start a provider request.
+`doctor --lab <lab>` checks the selected analyst setup without a model call.
+Failures leave the recording available; inspect `analyze show` and the attempt's
+accounting before an explicit `analyze --provider codex --rerun`.
+
+The persisted identity is the required qualified execution profile: transport,
+authentication and billing class, requested and required resolved model, effort,
+tool-policy revision and CLI version. The launcher must confirm it before the
+turn. A failed pre-dispatch attempt does not prove the CLI or model was observed.
+These fields participate in the configuration digest, preventing reuse across
+providers or changed execution policies. Historical API configurations, hashes
+and corrections are read without inserting new defaults.
+
+## Evidence interpretation
 
 Analysis distinguishes participant actions from harness setup and accounting.
 Runtime credentials or model usage do not establish that a participant made an

@@ -22,7 +22,7 @@ review:
 
 Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
-mapping requires `maxCostUsd`. This limits an admission estimate, not the
+mapping using the default OpenAI API provider requires `maxCostUsd`. This limits an admission estimate, not the
 provider's final bill, and is separate from participant spending limits. Analysis
 can decline a large study before dispatch when its conservative estimate exceeds
 that limit. Use `analyze --dry-run --max-cost <usd>` on retained evidence to inspect
@@ -36,6 +36,27 @@ credential channel to the target application; each participant backend retains
 its existing authentication boundary. Review the separate analysis budget before running a manifest live; an actor's
 zero-dollar cap does not cap post-run analysis. The bundled first-contact
 zero-spend product fixture explicitly disables analysis.
+
+To explicitly use your Codex ChatGPT account for the separate analyst:
+
+```yaml
+review:
+  analysis:
+    provider: codex
+    model: gpt-6-astra
+    timeoutMs: 600000
+```
+
+This requires Linux x64, qualified Codex CLI `0.154.0`, and a file-backed ChatGPT account login; the analyst
+uses low reasoning effort and remote inference. Dollar cost and a provider
+enforced output-token ceiling are unknown, so omit `maxCostUsd` and
+`maxOutputTokens`. Numeric values are rejected before participant resources are
+allocated. There is no API fallback. Missing or unsupported account setup leaves
+an explicit failed analysis state and the original recording intact. Use
+`humanish doctor --lab <lab>` for setup checks; account allowance and model access
+remain untested until a request. An omitted provider still means OpenAI, including
+hosted studies whose participant uses a local Codex or Claude login. This setting
+does not enable managed local desktops.
 
 The same configuration works through `humanish run <lab>`, `lab run <lab>`,
 `watch <lab>`, and TUI live starts. Direct library calls to the five recording
@@ -53,7 +74,7 @@ Default analysis also skips recordings containing only setup or failure records
 with no retained participant activity. A desktop startup failure does not start
 an analysis request. The original failure remains visible.
 
-CLI live starts disclose the separate admission estimate limit before execution.
+CLI live starts disclose the selected analyst and its separate admission estimate limit or unknown account dollars before execution.
 `humanish lab preflight <lab> --json` and the TUI lab screen also expose the
 resolved budget without dispatching analysis. Library callers can inspect
 `resolveAutomaticAnalysis` or `automaticAnalysisBudget` before running.
@@ -64,7 +85,7 @@ existing job and does not start another request. Concurrent or repeated automati
 invocations cannot silently retry a paid attempt. If a process disappears while
 an attempt is in flight, its state can be unknown rather than falsely complete.
 Use manual `humanish analyze --run <exact-run-id> --max-cost 3` for an intentional
-follow-up after inspecting the existing attempt and its accounting.
+follow-up after inspecting the existing attempt and its accounting. For the account branch, use `humanish analyze --run <exact-run-id> --provider codex --rerun` without a dollar limit.
 
 Stopping participant execution does not start a fresh automatic analysis. A
 recorded harness cancellation is skipped; ordinary time limits and participant

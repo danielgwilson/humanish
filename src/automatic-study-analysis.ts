@@ -48,6 +48,7 @@ export async function requestAutomaticStudyAnalysisCancellation(cwd: string, run
 
 function outcomeOf(result: AnalyzeResult): AutomaticStudyAnalysisOutcome {
   if (result.error?.code === "ANALYSIS_PUBLICATION_FAILED") return { state: "failed", reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result };
+  if (result.error?.code?.startsWith("analysis_codex_")) return { state: "failed", reason: "AUTOMATIC_ANALYSIS_CODEX_UNAVAILABLE", result };
   if (result.status) return { state: result.status, result, reason: result.reused ? "AUTOMATIC_ANALYSIS_REUSED"
     : result.status === "partial" ? (result.error?.code === "analysis_admission_estimate_exceeded"
       ? "AUTOMATIC_ANALYSIS_ADMISSION_EXCEEDED" : result.ok ? "AUTOMATIC_ANALYSIS_LIMITATIONS" : "AUTOMATIC_ANALYSIS_FAILED")
@@ -84,7 +85,7 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
     participantEvidence = hasParticipantEvidence(bundle);
     // Bind the permanent job claim to the actual configuration before dispatch.
     // Missing-key/no-evidence skips don't need to read captured image bytes.
-    if (deps.preferLargerOutput && (!deps.defaultRequest || participantEvidence) && (deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()) {
+    if (config.provider !== "codex" && deps.preferLargerOutput && (!deps.defaultRequest || participantEvidence) && (deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim()) {
       config = preferLargerStudyAnalysisOutput(await captureStudyEvidence(prepared, bytes), config);
     }
   }
@@ -117,7 +118,7 @@ export async function runAutomaticStudyAnalysis(cwdInput: string, runId: string,
   let outcome: AutomaticStudyAnalysisOutcome;
   try {
     await poll();
-    const missingKey = !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim();
+    const missingKey = config.provider !== "codex" && !(deps.apiKey ?? process.env.OPENAI_API_KEY)?.trim();
     if (deps.defaultRequest === true && (missingKey || !participantEvidence)) {
       outcome = signal.aborted ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
         : skipped(missingKey ? "AUTOMATIC_ANALYSIS_KEY_MISSING" : "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE");

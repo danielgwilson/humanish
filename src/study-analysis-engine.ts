@@ -1,9 +1,10 @@
+import { validCodexAnalysisConfig } from "./study-analysis-codex-config.js";
 import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "./pricing.js";
 import { containsSensitive } from "./redaction.js";
 import { scrubTransientCommsText } from "./run-narration-secrets.js";
 import { STUDY_ANALYSIS_SCHEMA, type AnalysisObservation, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput, type StudyAnalysisResult } from "./study-analysis.js";
-import { createStudyAnalysisProvider } from "./study-analysis-provider.js";
+import { createStudyAnalysisProvider, type StudyAnalysisProvider } from "./study-analysis-provider.js";
 import { hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-5";
@@ -48,8 +49,8 @@ Order findings by observed task impact, replication among exposed participants, 
 export interface StudyAnalysisAdmission {
   allowed: boolean;
   error: string | null;
-  inputTokenAllowance: number;
-  outputTokenAllowance: number;
+  inputTokenAllowance: number | null;
+  outputTokenAllowance: number | null;
   estimatedCostUsd: number | null;
   ratesAsOf: string | null;
 }
@@ -114,15 +115,19 @@ function inputError(input: StudyAnalysisInput): string | null {
 export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisAdmission {
   const denied = (error: string): StudyAnalysisAdmission =>
     ({ allowed: false, error, inputTokenAllowance: 0, outputTokenAllowance: 0, estimatedCostUsd: null, ratesAsOf: null });
-  if (!SUPPORTED_MODELS.has(config.model) || !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
+  if ((config.provider === "codex" ? !validCodexAnalysisConfig(config)
+    : (config.provider !== undefined && config.provider !== "openai") || !SUPPORTED_MODELS.has(config.model)
+      || !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
+      || !Number.isSafeInteger(config.maxOutputTokens) || config.maxOutputTokens < 256 || config.maxOutputTokens > 32_768)
     || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 600_000
-    || !Number.isSafeInteger(config.maxOutputTokens) || config.maxOutputTokens < 256 || config.maxOutputTokens > 32_768
     || (config.question !== null && (typeof config.question !== "string" || config.question.length > 4000))) {
     return denied("analysis_config_invalid");
   }
   if (config.question !== null && containsSensitive(config.question)) return denied("analysis_question_sensitive");
   const badInput = inputError(input);
   if (badInput) return denied(badInput);
+  if (config.provider === "codex") return { allowed: true, error: null, inputTokenAllowance: null,
+    outputTokenAllowance: null, estimatedCostUsd: null, ratesAsOf: null };
   const rate = MODEL_RATES[config.model];
   if (!rate || rate.placeholder || !Number.isFinite(rate.inputUsdPerToken) || rate.inputUsdPerToken < 0
     || !Number.isFinite(rate.outputUsdPerToken) || rate.outputUsdPerToken < 0) return denied("analysis_rate_unknown");
@@ -143,7 +148,7 @@ export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config
  * more reasoning/report space would refuse a study its declared budget admits.
  * This is one pre-dispatch choice, never a fallback request or a budget increase. */
 export function preferLargerStudyAnalysisOutput(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisConfig {
-  if (config.maxOutputTokens !== 16_384) return config;
+  if (config.provider === "codex" || config.maxOutputTokens !== 16_384) return config;
   const expanded = { ...config, maxOutputTokens: 32_768 };
   return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
@@ -179,7 +184,9 @@ function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResu
 
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
-  apiKey: string;
+  apiKey?: string;
+  /** Internal transport injection; no manifest or CLI route can supply a provider function. */
+  codexProvider?: StudyAnalysisProvider;
   signal?: AbortSignal;
   onProgress?: (progress: StudyAnalysisProgress) => void;
   fetch?: typeof fetch;
@@ -208,7 +215,7 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     createdAt, completedAt: createdAt, sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,
     ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
     configDigest: hashStudyAnalysisValue(config), config: structuredClone(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
-    provider: "openai", participants: structuredClone(input.participants), coverage: structuredClone(input.coverage), evidence: structuredClone(input.evidence),
+    provider: config.provider ?? "openai", participants: structuredClone(input.participants), coverage: structuredClone(input.coverage), evidence: structuredClone(input.evidence),
     usage: { inputTokens: null, outputTokens: null, cachedInputTokens: null, cacheWriteInputTokens: null,
       estimatedCostUsd: null, usageComplete: false, dispatched: false, ratesAsOf: admission.ratesAsOf,
       estimatedAdmissionUsd: admission.estimatedCostUsd }, result: null, error: admission.error
@@ -232,7 +239,7 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     return finish();
   }
   if (!admission.allowed) return finish();
-  if (!options.apiKey.trim()) {
+  if (config.provider !== "codex" && !options.apiKey?.trim()) {
     artifact.error = "analysis_api_key_missing";
     return finish();
   }
@@ -247,18 +254,21 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     return finish();
   }
   progress("requesting");
-  const provider = createStudyAnalysisProvider({ apiKey: options.apiKey, ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }) });
+  const provider = config.provider === "codex"
+    ? options.codexProvider ?? (await import("./restricted-codex-analysis.js")).createRestrictedCodexAnalysisProvider()
+    : createStudyAnalysisProvider({ apiKey: options.apiKey!, ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }) });
   const response = await provider({ model: config.model, instructions: instructions(config), evidence: evidenceText(input),
     images: input.images, schema: studyAnalysisResultJsonSchema, maxOutputTokens: config.maxOutputTokens, timeoutMs: config.timeoutMs,
     ...(options.signal === undefined ? {} : { signal: options.signal }) });
   artifact.usage.dispatched = response.dispatched;
   if (response.usage) {
-    const priced = estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
+    const priced = config.provider === "codex" ? { estimatedCostUsd: null, ratesAsOf: null }
+      : estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
     artifact.usage.inputTokens = response.usage.input;
     artifact.usage.outputTokens = response.usage.output;
     artifact.usage.cachedInputTokens = response.usage.cachedInput ?? null;
     artifact.usage.cacheWriteInputTokens = response.usage.cacheWriteInput ?? null;
-    artifact.usage.usageComplete = true;
+    artifact.usage.usageComplete = response.usageComplete ?? (config.provider !== "codex");
     artifact.usage.estimatedCostUsd = priced.estimatedCostUsd;
     artifact.usage.ratesAsOf = priced.ratesAsOf;
   }
@@ -274,9 +284,9 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     artifact.result = validateAnalysisResult(input, scrubGeneratedNarrative(studyAnalysisResponseSchema.parse(response.output)));
     artifact.status = input.coverage.complete ? "complete" : "partial";
     artifact.error = null;
-    if ((response.usage?.output ?? 0) > config.maxOutputTokens
+    if (config.provider !== "codex" && ((response.usage?.output ?? 0) > config.maxOutputTokens
       || (artifact.usage.estimatedCostUsd ?? 0) > (admission.estimatedCostUsd ?? config.maxCostUsd)
-      || (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd) {
+      || (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)) {
       artifact.status = "partial";
       artifact.error = "analysis_admission_estimate_exceeded";
     }

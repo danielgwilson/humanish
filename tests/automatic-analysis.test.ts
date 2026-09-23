@@ -28,7 +28,7 @@ import type { AutomaticStudyAnalysisOutcome } from "../src/study-analysis-job.js
 const fixtures = JSON.parse(await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8")) as Array<{ name: string; config: LabConfig; backend: string }>;
 const supported = new Set(["cua", "scripted", "terminal", "shared-world", "concurrent-shared-world"]);
 const resolved = resolveAutomaticAnalysis({ maxCostUsd: 5 });
-if (!resolved.ok || !resolved.config) throw new Error("invalid synthetic test config");
+if (!resolved.ok || !resolved.config || resolved.config.provider === "codex") throw new Error("invalid synthetic test config");
 const config = resolved.config;
 
 describe("automatic analysis admission and producer boundary", () => {

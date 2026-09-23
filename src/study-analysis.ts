@@ -104,13 +104,38 @@ export interface StudyAnalysisResult {
   findings: AnalysisFinding[];
   limitations: string[];
 }
-export interface StudyAnalysisConfig {
+export interface OpenAIStudyAnalysisConfig {
+  provider?: "openai" | undefined;
   model: string;
   question: string | null;
   maxCostUsd: number;
   timeoutMs: number;
   maxOutputTokens: number;
 }
+/** Required, qualified execution profile, confirmed by the launcher before a turn.
+ * A failed pre-dispatch artifact does not prove this CLI/model was observed.
+ * These settings participate in cache and immutable attempt identity. */
+export interface CodexAnalysisIdentity {
+  transport: "codex-app-server";
+  authentication: "chatgpt-account";
+  billing: "account-unknown";
+  requestedModel: string;
+  resolvedModel: string;
+  reasoningEffort: "low";
+  toolPolicy: string;
+  cliVersion: string;
+}
+export interface CodexStudyAnalysisConfig {
+  provider: "codex";
+  model: string;
+  question: string | null;
+  maxCostUsd: null;
+  timeoutMs: number;
+  maxOutputTokens: null;
+  identity: CodexAnalysisIdentity;
+}
+/** Omitted provider remains the historical OpenAI API contract, including its exact hash. */
+export type StudyAnalysisConfig = OpenAIStudyAnalysisConfig | CodexStudyAnalysisConfig;
 export interface AnalysisUsage {
   inputTokens: number | null;
   outputTokens: number | null;
@@ -135,7 +160,7 @@ export interface StudyAnalysisArtifact {
   configDigest: string;
   config: StudyAnalysisConfig;
   promptVersion: string;
-  provider: "openai";
+  provider: "openai" | "codex";
   usage: AnalysisUsage;
   participants: AnalysisParticipantInput[];
   coverage: AnalysisCoverage;
