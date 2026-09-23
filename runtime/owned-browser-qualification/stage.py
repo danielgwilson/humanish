@@ -197,10 +197,12 @@ def stage(source, approved_source_digest, assets):
     if type(leaves) is not dict or not 1 <= len(leaves) <= 16384:
         raise ValueError('package_count')
     old_umask = os.umask(0o077)
+    base_created = False
     try:
         with directory('/var/lib', trusted=True) as parent:
             try:
                 os.mkdir('hob', 0o755, dir_fd=parent)
+                base_created = True
                 os.chmod('hob', 0o755, dir_fd=parent, follow_symlinks=False)
             except FileExistsError:
                 pass
@@ -210,6 +212,9 @@ def stage(source, approved_source_digest, assets):
             os.chmod(nonce, 0o755, dir_fd=parent, follow_symlinks=False)
             root = Path('/var/lib/hob') / nonce
             PARTIAL = str(root)
+            parent_info, root_info = os.fstat(parent), os.stat(nonce, dir_fd=parent, follow_symlinks=False)
+            staging_identity = {'root': [root_info.st_dev, root_info.st_ino, stat.S_IFMT(root_info.st_mode)],
+                'base': [parent_info.st_dev, parent_info.st_ino, stat.S_IFMT(parent_info.st_mode)], 'baseCreated': base_created}
         for name, mode in (('code', 0o755), ('catalog', 0o755), ('runtime', 0o755), ('a', 0o711), ('receipts', 0o700)):
             (root / name).mkdir(mode=mode)
             (root / name).chmod(mode)
@@ -218,6 +223,7 @@ def stage(source, approved_source_digest, assets):
         for name, data in contents.items():
             write(root / 'code' / name, data, 0o444)
         write(root / 'source-manifest.json', manifest_raw, 0o444)
+        write(root / 'staging-identity.json', json.dumps(staging_identity, sort_keys=True).encode(), 0o444)
         for name, spec in catalog['assets'].items():
             copy(Path(paths[name]), root / 'catalog' / name, spec)
         total, copied = 0, 0

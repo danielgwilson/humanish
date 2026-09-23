@@ -523,12 +523,15 @@ def finish(root):
     root = checked_packet_path(root)
     with anchored(root, trusted=True) as fd:
         source = unique_json(read_at(fd, 'source-manifest.json', 65536))
+        staged = unique_json(read_at(fd, 'staging-identity.json', 4096))
+        if identity(os.fstat(fd)) != tuple(staged['root']):
+            raise Refusal('staged_root_replaced')
         package = unique_json(read_at(fd, 'package-manifest.json', 8 * 1024 * 1024), 8 * 1024 * 1024)
     with anchored(root / 'receipts', trusted=True) as fd:
         receipt = unique_json(read_at(fd, 'receipt.json', 2 * 1024 * 1024), 2 * 1024 * 1024)
     if receipt.get('cleanup', {}).get('status') != 'complete' or receipt.get('implementedCellsObserved') is not True:
         raise Refusal('staging_retained_for_recovery')
-    allowed = {'source-manifest.json': 'file', 'package-manifest.json': 'file', 'a/.never-created': 'file'}
+    allowed = {'source-manifest.json': 'file', 'package-manifest.json': 'file', 'staging-identity.json': 'file', 'a/.never-created': 'file'}
     allowed.update({'code/' + name: 'file' for name in source['files']})
     allowed.update({'runtime/' + name.removeprefix('opt/humanish/control/'): 'file' for name in package['files'] if name.startswith('opt/humanish/control/')})
     allowed.update({'receipts/' + name: 'file' for name in ('receipt.json', 'before.png', 'typed.png', 'after.png', 'PRELUDE-serial.log', 'OB01-serial.log')})
@@ -537,10 +540,18 @@ def finish(root):
         if file_hash(root / 'catalog' / name, spec.get('bytes', spec.get('maximumBytes')), deadline) != spec['sha256']:
             raise Refusal('catalog_changed')
         allowed['catalog/' + name] = 'file'
-    count = remove_finite_tree(root, allowed)
+    count = remove_finite_tree(root, allowed, expected_root=staged['root'])
     with anchored(root.parent, trusted=True) as fd:
+        if identity(os.fstat(fd)) != tuple(staged['base']) or identity(os.stat(root.name, dir_fd=fd, follow_symlinks=False)) != tuple(staged['root']):
+            raise Refusal('staged_ancestry_replaced')
         os.rmdir(root.name, dir_fd=fd)
         os.fsync(fd)
+    if staged['baseCreated'] is True:
+        with anchored(root.parent.parent, trusted=True) as fd:
+            if identity(os.stat(root.parent.name, dir_fd=fd, follow_symlinks=False)) != tuple(staged['base']):
+                raise Refusal('staging_base_replaced')
+            os.rmdir(root.parent.name, dir_fd=fd)
+            os.fsync(fd)
     return {'status': 'complete', 'stagedLeavesRemoved': count, 'catalogUnchanged': True, 'rootAbsent': not root.exists()}
 
 

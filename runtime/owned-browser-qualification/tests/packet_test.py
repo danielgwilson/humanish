@@ -257,3 +257,26 @@ class LifecycleNegatives(unittest.TestCase):
         case=Case.__new__(Case); case.acquired_entries={'state.ext4':(1,2,stat.S_IFREG)}
         with self.assertRaises(Refusal): case.merge_acquired({'state.ext4':(1,3,stat.S_IFREG)})
         self.assertEqual(case.acquired_entries['state.ext4'],(1,2,stat.S_IFREG))
+
+class StagingCleanupTests(unittest.TestCase):
+    def test_finish_removes_only_created_staging_base_after_catalog_readback(self):
+        import qualification
+        for created in (False, True):
+            with self.subTest(created=created), tempfile.TemporaryDirectory() as temporary:
+                parent=Path(temporary); base=parent/'base'; base.mkdir(); root=base/('a'*32); root.mkdir()
+                (parent/'canary').write_bytes(b'unrelated')
+                for directory in ('code','runtime','catalog','a','receipts'): (root/directory).mkdir()
+                (root/'code/policy.py').write_bytes(b'synthetic fixed source')
+                (root/'runtime/guest-bootstrap.js').write_bytes(b'synthetic fixed payload')
+                node=b'synthetic executable bytes never executed'; (root/'catalog/node').write_bytes(node)
+                assets={'node':{'bytes':len(node),'sha256':hashlib.sha256(node).hexdigest(),'mode':0o555}}
+                (root/'receipts/receipt.json').write_text(json.dumps({'cleanup':{'status':'complete'},'implementedCellsObserved':True,'catalog':{'assets':assets}}))
+                (root/'source-manifest.json').write_text(json.dumps({'files':{'policy.py':'a'*64}}))
+                (root/'package-manifest.json').write_text(json.dumps({'files':{'opt/humanish/control/guest-bootstrap.js':{}}}))
+                (root/'staging-identity.json').write_text(json.dumps({'root':identity(root.stat()),'base':identity(base.stat()),'baseCreated':created}))
+                real_anchor=qualification.anchored
+                with patch.object(qualification,'checked_packet_path',lambda value:Path(value)), patch.object(qualification,'anchored',lambda value,**kwargs:real_anchor(value)):
+                    result=qualification.finish(root)
+                self.assertTrue(result['catalogUnchanged']); self.assertTrue(result['rootAbsent'])
+                self.assertEqual(base.exists(),not created)
+                self.assertEqual((parent/'canary').read_bytes(),b'unrelated')
