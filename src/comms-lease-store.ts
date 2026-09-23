@@ -248,7 +248,13 @@ export class CommsLeaseStore {
   private constructor(private readonly dir: AuthorityDirectory, private readonly name: string, private readonly lock: Lock,
     private journal: CommsLeaseJournal, private text: string) {}
   snapshot(): CommsLeaseJournal { return clone(this.journal); }
-  async assertOwnership(): Promise<void> {
+  assertOwnership(): Promise<void> {
+    // Reads must share the write queue: our own atomic rename is not lost authority.
+    const operation = this.serial.then(() => this.checkOwnership());
+    this.serial = operation.catch(() => undefined);
+    return operation;
+  }
+  private async checkOwnership(): Promise<void> {
     if (this.released) fail("authority_changed");
     await this.dir.assert();
     const info = await lstat(path.join(this.dir.root, this.lock.name));
@@ -257,7 +263,7 @@ export class CommsLeaseStore {
   }
   private update(change: (journal: CommsLeaseJournal) => void): Promise<void> {
     const operation = this.serial.then(async () => {
-      await this.assertOwnership();
+      await this.checkOwnership();
       const next = clone(this.journal);
       change(next);
       next.updatedAt = new Date().toISOString();
@@ -269,7 +275,7 @@ export class CommsLeaseStore {
       try {
         await file.writeFile(text);
         await file.sync();
-        await this.assertOwnership();
+        await this.checkOwnership();
         await rename(path.join(this.dir.root, temporary), path.join(this.dir.root, this.name));
         // Update memory after rename, even if the following directory flush fails.
         this.journal = next;
