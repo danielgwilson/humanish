@@ -128,6 +128,55 @@ jobs:
       # bundle's own load-time smoke runs inside `release:check` on both Node versions.
       - run: pnpm --filter humanish-tui test
 
+  guest-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect guest changes
+        id: changes
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="${PR_BASE:-HEAD^}"
+          if git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/frame-signature.ts src/browser-control-protocol.ts src/cua-executor-error.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' package.json tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: pnpm/action-setup@v6
+        if: steps.changes.outputs.needed == 'true'
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        if: steps.changes.outputs.needed == 'true'
+        with:
+          node-version: "22.14.0"
+          cache: pnpm
+      - name: Build the pinned native image and driver
+        if: steps.changes.outputs.needed == 'true'
+        run: |
+          python3 -B -m unittest discover -s runtime/browser-guest/tests -p '*_test.py' -v
+          python3 runtime/browser-guest/build.py --architecture amd64 --output "$RUNNER_TEMP/guest-image"
+          pnpm install --frozen-lockfile
+          pnpm exec tsc -p tsconfig.build.json
+      - name: Prove headed input with Chromium sandbox enabled
+        if: steps.changes.outputs.needed == 'true'
+        run: |
+          HUMANISH_GUEST_IMAGE="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "guest-image/manifest.json")))["image"]["id"])')" pnpm guest-desktop:proof
+      - uses: actions/upload-artifact@v7
+        if: always() && steps.changes.outputs.needed == 'true'
+        with:
+          name: guest-desktop-proof
+          path: |
+            .humanish/guest-desktop-proof/
+            ${{ runner.temp }}/guest-image/manifest.json
+            ${{ runner.temp }}/guest-image/build.log
+          retention-days: 14
+          include-hidden-files: true
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
