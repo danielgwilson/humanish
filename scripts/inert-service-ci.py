@@ -112,6 +112,17 @@ def main():
     # stdin, so it cannot follow a swapped source path into an unrelated file.
     stager_bytes = (REPO / "runtime/inert-qualification/stage.py").read_bytes()
     stager_digest = hashlib.sha256(stager_bytes).hexdigest()
+    source_commit = require(run(["/usr/bin/git", "rev-parse", "HEAD"])).decode().strip()
+    if not re.fullmatch("[0-9a-f]{40}", source_commit):
+        raise RuntimeError("invalid_source_commit")
+    tool_hashes = {}
+    for relative in ("scripts/inert-host-profile.py", "scripts/inert-service-ci.py",
+                     "runtime/inert-qualification/stage.py", ".github/workflows/inert-service-proof.yml"):
+        tool_hashes[relative] = hashlib.sha256((REPO / relative).read_bytes()).hexdigest()
+    (OUT / "source-provenance.json").write_text(json.dumps({
+        "source_commit": source_commit, "manifest_sha256": digest,
+        "reviewed_tools_sha256": tool_hashes,
+    }, indent=2, sort_keys=True) + "\n")
     bootstrap = "/run/humanish-inert-bootstrap-" + secrets.token_hex(16)
     stager = bootstrap + "/stage.py"
     packet_root = None

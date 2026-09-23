@@ -95,9 +95,19 @@ class RootTimeoutTests(unittest.TestCase):
             stage = repo / "runtime/inert-qualification/stage.py"
             stage.parent.mkdir(parents=True)
             stage.write_text("# synthetic stager bytes\n")
+            for relative in ("scripts/inert-host-profile.py", "scripts/inert-service-ci.py",
+                             ".github/workflows/inert-service-proof.yml"):
+                path = repo / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("synthetic CI source\n")
             digest = "f" * 64
             staged_root = "/run/humanish-inert-qualification/" + "a" * 32
             calls = []
+
+            def ordinary_command(argv, **_kwargs):
+                if argv[0] == "/usr/bin/git":
+                    return subprocess.CompletedProcess([], 0, b"b" * 40 + b"\n", b"")
+                return result({"source": str(out / "source-bundle"), "manifest_sha256": digest})
 
             def root_command(*argv, **_kwargs):
                 calls.append(argv)
@@ -116,7 +126,7 @@ class RootTimeoutTests(unittest.TestCase):
                     patch.object(ci.sys, "argv", ["inert-service-ci.py"]), \
                     patch.object(ci.os, "geteuid", return_value=1000), \
                     patch.dict(ci.os.environ, {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted"}), \
-                    patch.object(ci, "run", return_value=result({"source": str(out / "source-bundle"), "manifest_sha256": digest})), \
+                    patch.object(ci, "run", side_effect=ordinary_command), \
                     patch.object(ci, "root", side_effect=root_command):
                 with self.assertRaises(subprocess.TimeoutExpired):
                     ci.main()
