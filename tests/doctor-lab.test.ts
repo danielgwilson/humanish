@@ -1,7 +1,8 @@
+import { labSetupChecks } from "../src/doctor-lab.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { doctor } from "../src/run.js";
 import type { DetectLocalAgentsOptions } from "../src/local-agent-cli.js";
 import { runLabPreflight } from "../src/lab-preflight.js";
@@ -28,6 +29,54 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
 }
 
 describe("selected lab setup without paid dispatch", () => {
+  it("uses the doctor's selected environment for the restricted account readiness check", async () => {
+    const launcher = await import("../src/restricted-codex-analysis.js");
+    const readiness = vi.spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
+      .mockResolvedValue({ ready: false, errorCode: "codex_login_required" });
+    try {
+      await project(lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n", async cwd => {
+        const env = { PATH: "/synthetic/cli", CODEX_HOME: "/synthetic/account", OPENAI_API_KEY: "synthetic-unused-key" };
+        const result = await labSetupChecks({ cwd, lab: "preview", env, agents: [], keyPresent: () => false });
+        expect(readiness).toHaveBeenCalledExactlyOnceWith({ timeoutMs: 5000 }, { env });
+        expect(JSON.stringify(result)).not.toMatch(/synthetic\/(?:cli|account)|synthetic-unused-key/);
+      });
+    } finally { readiness.mockRestore(); }
+  });
+
+  it("checks the qualified account analyst separately from participant API credentials", async () => {
+    await project(lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n", async cwd => {
+      for (const ready of [true, false]) {
+        const result = await labSetupChecks({ cwd, lab: "preview", env: keyless, agents: [], keyPresent: () => false,
+          codexAnalysisReadiness: async () => ({ ready, errorCode: ready ? null : "codex_login_required" }) });
+        const check = result.checks.find(item => item.name === "post-run analysis")!;
+        expect(check.ok).toBe(ready);
+        expect(check.message).not.toContain("OPENAI_API_KEY");
+        expect(result.keys).not.toContain("OPENAI_API_KEY");
+        expect(check.message).toContain(ready ? "account allowance remain untested" : "No API fallback");
+        const scope = result.checks.find(item => item.name === "check scope")!.message;
+        expect(scope).toContain("without a model turn or participant resources");
+        expect(scope).toContain("CLI startup may use the network");
+        expect(scope).toContain("Remote account validity, model access, quota and target reachability remain untested");
+      }
+    });
+  });
+
+  it.each([
+    ["codex_unsupported_platform", "Use a Linux x64 host", "explicitly select provider: openai with an API key"],
+    ["codex_busy", "active in this process", "Wait for it to finish, then retry"]
+  ])("gives actionable recovery for %s", async (errorCode, reason, recovery) => {
+    await project(lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n", async cwd => {
+      const result = await labSetupChecks({ cwd, lab: "preview", env: keyless, agents: [], keyPresent: () => false,
+        codexAnalysisReadiness: async () => ({ ready: false, errorCode }) });
+      const check = result.checks.find(item => item.name === "post-run analysis")!;
+      expect(check.ok).toBe(false);
+      expect(check.message).toContain(reason);
+      expect(check.message).toContain(recovery);
+      expect(check.message).not.toContain("Install the qualified CLI");
+      expect(check.message).toContain("No API fallback");
+    });
+  });
+
   it("permits a keyless dry-run but identifies the missing live API credentials", async () => {
     await project(lab("openai-computer-use", "dry-run"), async cwd => {
       expect((await doctor(cwd, { lab: "preview", env: keyless, localAgents: noAgents })).ok).toBe(true);

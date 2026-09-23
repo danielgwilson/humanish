@@ -93,6 +93,25 @@ exact returned path, not a basename that could resolve to another manifest.
    - keep `.env.example` commit-safe and value-free;
    - never commit generated run bundles.
 
+## Choosing a findings analyst
+
+Analysis is separate from the participant. Existing manual and automatic defaults
+use the OpenAI API with its own admission budget; a local-agent participant does
+not change that default. To use the restricted Codex ChatGPT account analyst,
+set `review.analysis.provider: codex` or pass `analyze --provider codex` on a
+completed recording. This uses remote inference and the qualified CLI/login,
+not local inference or the participant's existing conversation. See
+[the analysis contract](../../docs/contracts/study-analysis.md) for the current
+CLI/model qualification and setup limits.
+
+Do not pass numeric `maxCostUsd`/`maxOutputTokens` or their CLI flags to the
+account branch. It cannot enforce those ceilings and rejects them. Account dollar
+cost remains unknown even when token usage is reported. There is no fallback to
+an API key or another provider. `analyze --dry-run --provider codex` validates
+local evidence/configuration only; `doctor --lab` checks setup without a model
+request. Inspect a failed attempt before explicitly retrying `--provider codex
+--rerun`. Opening Observer never starts analysis.
+
 ## Format Stack
 
 When creating or editing Humanish files:

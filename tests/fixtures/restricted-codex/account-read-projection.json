@@ -1,0 +1,6 @@
+{
+  "account": {
+    "type": "chatgpt"
+  },
+  "requiresOpenaiAuth": true
+}

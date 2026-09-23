@@ -7,7 +7,7 @@ export interface StudyAnalysisProviderRequest {
   evidence: string;
   images: { evidenceId: string; dataUrl: string }[];
   schema: Record<string, unknown>;
-  maxOutputTokens: number;
+  maxOutputTokens: number | null;
   timeoutMs: number;
   signal?: AbortSignal;
 }
@@ -26,9 +26,14 @@ export interface StudyAnalysisProviderResult {
   usage: StudyAnalysisTokenUsage | null;
   /** Dispatch does not imply a known charge. A failed request can still have consumed tokens. */
   dispatched: boolean;
+  /** Omitted preserves complete API-response accounting; account snapshots must state this. */
+  usageComplete?: boolean;
   errorCode: "invalid_request" | "provider_http_error" | "provider_network_error" | "invalid_response"
     | "provider_headers_timeout" | "provider_body_timeout" | "provider_connect_timeout"
     | "provider_connection_reset" | "provider_dns_error"
+    | "codex_busy" | "codex_unavailable" | "codex_unsupported_version" | "codex_unsupported_platform" | "codex_login_required"
+    | "codex_unsupported_auth" | "codex_unsafe_configuration" | "codex_model_unavailable"
+    | "codex_protocol_error" | "codex_tool_call" | "codex_process_failed" | "codex_cleanup_failed"
     | "response_too_large" | "output_incomplete" | "refusal" | "cancelled" | "timeout" | null;
   httpStatus?: number;
 }
@@ -124,7 +129,7 @@ export function createStudyAnalysisProvider(options: {
       ({ status, output: null, usage: null, dispatched, errorCode });
     if (request.signal?.aborted) return failure("cancelled", false, "cancelled");
     if (!options.apiKey.trim() || !/^[A-Za-z0-9_.-]{1,100}$/.test(request.model)
-      || !Number.isSafeInteger(request.maxOutputTokens) || request.maxOutputTokens < 256 || request.maxOutputTokens > 32_768
+      || request.maxOutputTokens === null || !Number.isSafeInteger(request.maxOutputTokens) || request.maxOutputTokens < 256 || request.maxOutputTokens > 32_768
       || !Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 600_000
       || request.images.length > 128 || request.images.some(image => !INPUT_IMAGE.test(image.dataUrl))) {
       return failure("invalid_request", false);

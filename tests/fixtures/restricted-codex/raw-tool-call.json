@@ -1,0 +1,18 @@
+{
+  "method": "rawResponseItem/completed",
+  "params": {
+    "threadId": "thread-synthetic",
+    "turnId": "turn-synthetic",
+    "item": {
+      "type": "function_call",
+      "id": "fc_01a0cd5e-b0e1-7f42-a604-e381073ee91c",
+      "name": "request_user_input",
+      "arguments": "{\"questions\": [{\"id\": \"canary\", \"header\": \"Canary\", \"question\": \"Synthetic question must not reach a user\", \"options\": [{\"label\": \"A\", \"description\": \"First\"}, {\"label\": \"B\", \"description\": \"Second\"}]}]}",
+      "call_id": "call-ui-0",
+      "internal_chat_message_metadata_passthrough": {
+        "turn_id": "turn-synthetic"
+      }
+    }
+  },
+  "emittedAtMs": 0
+}

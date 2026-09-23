@@ -278,7 +278,7 @@ humanish review [options]
 
 ## humanish analyze
 
-Analyze retained participant evidence into versioned findings. This request sends selected text and captures to OpenAI. Opening Observer never starts analysis.
+Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.
 
 ```text
 humanish analyze [options] [command]
@@ -288,11 +288,12 @@ humanish analyze [options] [command]
 | --- | --- |
 | `--run <id>` | Completed run id or latest pointer. (default: "latest") |
 | `--cwd <path>` | Target project directory. (default: ".") |
-| `--max-cost <usd>` | Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap. |
-| `--model <id>` | Supported vision analysis model; analysis uses high reasoning effort. (default: "gpt-6-astra") |
+| `--provider <name>` | Analyst: openai (default) or restricted codex account. No provider fallback. |
+| `--max-cost <usd>` | Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex. |
+| `--model <id>` | Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort. (default: "gpt-6-astra") |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
 | `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
-| `--max-output-tokens <n>` | Exact response-token limit including reasoning, 256–32768. Omit to use 32768 when admission permits, otherwise 16384. |
+| `--max-output-tokens <n>` | OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
 | `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
 | `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
 | `--json` | Print a machine-readable JSON response. |

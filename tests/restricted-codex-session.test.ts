@@ -1,0 +1,256 @@
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { checkRestrictedCodexAnalysisReadiness, createRestrictedCodexAnalysisProvider } from "../src/restricted-codex-analysis.js";
+import type { RestrictedCodexRequest } from "../src/restricted-codex-policy.js";
+import type { RestrictedCodexSessionOptions } from "../src/restricted-codex-session.js";
+import type { RestrictedCodexSpawn } from "../src/restricted-codex-transport.js";
+
+const fake = fileURLToPath(new URL("./fixtures/restricted-codex/fake-process.mjs", import.meta.url));
+const directories: string[] = [];
+const request: RestrictedCodexRequest = {
+  model: "gpt-6-astra", instructions: "Review supplied synthetic evidence only.", evidence: "Synthetic study evidence.", images: [],
+  schema: { type: "object", additionalProperties: false, required: ["observedCode"], properties: { observedCode: { type: "string" } } },
+  maxOutputTokens: null, timeoutMs: 5000
+};
+
+type Trace = Record<string, unknown>;
+async function fixture(scenario = "success") {
+  const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-test-")); directories.push(directory);
+  const authHome = path.join(directory, "auth"), tempRoot = path.join(directory, "temp"), trace = path.join(directory, "calls.jsonl");
+  await mkdir(authHome); await mkdir(tempRoot);
+  await writeFile(path.join(authHome, "auth.json"), "synthetic-original-login", { mode: 0o600 });
+  await writeFile(path.join(authHome, "config.toml"), "SYNTHETIC_HOST_CONFIG_MUST_NOT_BE_IMPORTED");
+  const spawns: { args: string[]; env: NodeJS.ProcessEnv; cwd: string; detached: boolean }[] = [];
+  const spawnFn: RestrictedCodexSpawn = (_file, args, settings) => {
+    spawns.push({ args, env: settings.env ?? {}, cwd: String(settings.cwd), detached: settings.detached });
+    return spawn(process.execPath, [fake, scenario, trace, ...args], settings);
+  };
+  const options: RestrictedCodexSessionOptions = { executable: process.execPath, authHome, tempRoot, spawnFn,
+    env: { HOME: directory, CODEX_HOME: authHome, PATH: process.env.PATH, XDG_CACHE_HOME: path.join(directory, "cache"),
+      OPENAI_API_KEY: "synthetic-api-key", E2B_API_KEY: "synthetic-desktop-key", AGENTMAIL_API_KEY: "synthetic-mail-key",
+      NODE_OPTIONS: "--invalid-option-must-not-reach-child", OPENAI_BASE_URL: "https://example.invalid" } };
+  const entries = async (): Promise<Trace[]> => readFile(trace, "utf8").then(text => text.trim().split("\n").filter(Boolean).map(line => JSON.parse(line) as Trace), () => []);
+  return { directory, authHome, tempRoot, trace, options, spawns, entries, run: createRestrictedCodexAnalysisProvider(options) };
+}
+afterEach(async () => { await Promise.all(directories.splice(0).map(directory => rm(directory, { recursive: true, force: true }))); });
+
+describe("restricted Codex analyst session", () => {
+  it("uses a separate native child, isolated config/auth home, and one strict image/text turn", async () => {
+    const f = await fixture();
+    const result = await f.run({ ...request, images: [{ evidenceId: "e-image-1", dataUrl: "data:image/png;base64,c3ludGhldGlj" }] });
+    expect(result).toMatchObject({ status: "completed", dispatched: true, errorCode: null,
+      output: { observedCode: "BLUE-4821", observedColor: "blue" }, usage: { input: 2957, output: 41, cachedInput: 0, cacheWriteInput: 0 }, usageComplete: true });
+    expect(f.spawns.map(item => item.args)).toEqual([["--version"], ["app-server", "--strict-config"]]);
+    for (const child of f.spawns) {
+      expect(child.detached).toBe(false);
+      expect(Object.keys(child.env).sort()).toEqual(["CODEX_HOME", "HOME", "PATH", "TMPDIR"]);
+      expect(child.env.HOME).not.toBe(f.directory);
+      expect(child.cwd).not.toBe(process.cwd());
+    }
+    const entries = await f.entries(), methods = entries.filter(entry => entry.method).map(entry => entry.method);
+    expect(methods.indexOf("config/read")).toBeLessThan(methods.indexOf("thread/start"));
+    expect(methods.filter(method => method === "turn/start")).toHaveLength(1);
+    const thread = entries.find(entry => entry.method === "thread/start")!.params;
+    expect(thread).toMatchObject({ ephemeral: true, experimentalRawEvents: true, environments: [], runtimeWorkspaceRoots: [], dynamicTools: [],
+      allowProviderModelFallback: false, model: "gpt-6-astra", modelProvider: "openai", config: {
+        "agents.enabled": false, "features.code_mode_host": false, "features.skip_host_skill_discovery": true, "skills.bundled.enabled": false
+      } });
+    expect(entries.find(entry => entry.method === "turn/start")!.params).toMatchObject({ model: "gpt-6-astra", effort: "low",
+      outputSchema: request.schema, environments: [], runtimeWorkspaceRoots: [], sandboxPolicy: { type: "readOnly" } });
+    expect(entries.find(entry => entry.imageCount)?.imageFiles).toEqual([expect.objectContaining({ exists: true, mode: 0o600 })]);
+    expect(JSON.stringify(entries)).not.toContain("synthetic-api-key");
+    expect(await readdir(f.tempRoot)).toEqual([]);
+    expect(await readFile(path.join(f.authHome, "auth.json"), "utf8")).toBe("synthetic-original-login");
+  });
+
+  it("readiness checks auth/config/thread without a model turn or report", async () => {
+    const f = await fixture();
+    expect(await checkRestrictedCodexAnalysisReadiness({}, f.options)).toEqual({ ready: true, errorCode: null });
+    expect((await f.entries()).some(entry => entry.method === "turn/start")).toBe(false);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("admits a large captured-shape raw image echo without dropping evidence or relaxing final-output bounds", async () => {
+    const f = await fixture("large-input-echo");
+    const dataUrl = `data:image/png;base64,${Buffer.alloc(3 * 1024 * 1024).toString("base64")}`;
+    expect(await f.run({ ...request, images: [{ evidenceId: "e-large", dataUrl }] })).toMatchObject({ status: "completed" });
+    expect((await f.entries()).find(entry => entry.imageCount)?.imageCount).toBe(1);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("accepts an ordinary structured answer streamed through more than 1,000 text deltas", async () => {
+    const f = await fixture("many-deltas");
+    expect(await f.run(request)).toMatchObject({ status: "completed", output: { observedCode: "BLUE-4821", summary: "Synthetic finding. ".repeat(1200) } });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("caps aggregate generated UTF-8 bytes independently of a larger admitted image wire budget", async () => {
+    const f = await fixture("aggregate-delta-overflow");
+    const dataUrl = `data:image/png;base64,${Buffer.alloc(3 * 1024 * 1024).toString("base64")}`;
+    expect(await f.run({ ...request, images: [{ evidenceId: "e-large", dataUrl }] })).toMatchObject({
+      status: "failed", errorCode: "response_too_large", output: null, dispatched: true, usageComplete: false
+    });
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it.each([
+    ["wrong-version", "codex_unsupported_version"], ["api-key-auth", "codex_unsupported_auth"], ["signed-out", "codex_login_required"],
+    ["system-config", "codex_unsafe_configuration"], ["mcp-config", "codex_unsafe_configuration"], ["instructions-config", "codex_unsafe_configuration"],
+    ["agents-enabled", "codex_unsafe_configuration"], ["code-host-enabled", "codex_unsafe_configuration"], ["provider-config", "codex_unsafe_configuration"],
+    ["model-mismatch", "codex_unsafe_configuration"], ["inherited-instructions", "codex_unsafe_configuration"], ["environment-enabled", "codex_unsafe_configuration"],
+    ["active-mcp", "codex_unsafe_configuration"]
+  ])("rejects %s before model dispatch", async (scenario, code) => {
+    const f = await fixture(scenario);
+    expect(await f.run(request)).toMatchObject({ status: "failed", output: null, dispatched: false, errorCode: code, usageComplete: false });
+    expect((await f.entries()).some(entry => entry.method === "turn/start")).toBe(false);
+    if (["system-config", "mcp-config", "instructions-config", "agents-enabled", "code-host-enabled", "provider-config"].includes(scenario))
+      expect((await f.entries()).some(entry => entry.method === "thread/start")).toBe(false);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("refuses missing file login, unsupported platform/model and numeric token caps without model dispatch", async () => {
+    const f = await fixture();
+    for (const overrides of [{ maxOutputTokens: 1000 }, { model: "unqualified-model" }]) {
+      const result = await f.run({ ...request, ...overrides });
+      expect(result.dispatched).toBe(false); expect(result.status).toBe("failed");
+    }
+    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, platform: "darwin" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
+    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, arch: "arm64" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
+    expect(f.spawns).toHaveLength(0);
+    await rm(path.join(f.authHome, "auth.json"));
+    expect(await f.run(request)).toMatchObject({ errorCode: "codex_login_required", dispatched: false });
+    expect(f.spawns).toHaveLength(1);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it.each([
+    ["malformed", "codex_protocol_error"], ["server-request", "codex_tool_call"], ["provider-error", "codex_protocol_error"],
+    ["wrong-thread", "codex_protocol_error"], ["wrong-turn", "codex_protocol_error"], ["raw-tool", "codex_tool_call"],
+    ["async-question", "codex_tool_call"], ["invalid-json", "invalid_response"], ["multiple-answers", "invalid_response"],
+    ["missing-answer", "invalid_response"], ["stdout-large", "response_too_large"], ["stderr-large", "response_too_large"],
+    ["event-overflow", "response_too_large"], ["exit-after-dispatch", "codex_process_failed"]
+    , ...["missing-item-thread", "missing-item-turn", "missing-usage-thread", "missing-usage-turn", "missing-completion-thread", "missing-completion-id"]
+      .map(scenario => [scenario, "codex_protocol_error"])
+  ])("fails closed on %s with a safe fixed error and no report", async (scenario, errorCode) => {
+    const f = await fixture(scenario), result = await f.run(request);
+    expect(result).toMatchObject({ output: null, errorCode, usageComplete: false });
+    expect(JSON.stringify(result)).not.toContain("SYNTHETIC_PRIVATE_ERROR_PAYLOAD");
+    expect(JSON.stringify(result)).not.toContain(f.directory);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("handles notifications before the turn acknowledgment, without losing the answer", async () => {
+    const f = await fixture("early-events");
+    expect(await f.run(request)).toMatchObject({ status: "completed", usageComplete: true, output: { observedCode: "BLUE-4821" } });
+  });
+
+  it.each(["missing-usage", "invalid-usage"])("keeps %s unknown on an otherwise completed answer", async scenario => {
+    const f = await fixture(scenario);
+    expect(await f.run(request)).toMatchObject({ status: "completed", usage: null, usageComplete: false });
+  });
+
+  it.each(["interrupted", "partial-usage"])("retains partial usage after %s without accepting the answer", async scenario => {
+    const f = await fixture(scenario);
+    expect(await f.run(request)).toMatchObject({ status: scenario === "interrupted" ? "cancelled" : "failed", output: null,
+      usage: { input: 2957, output: 41 }, usageComplete: false, dispatched: true });
+  });
+
+  it("pre-abort allocates nothing and does not start a process", async () => {
+    const f = await fixture();
+    expect(await f.run({ ...request, signal: AbortSignal.abort() })).toMatchObject({ status: "cancelled", dispatched: false });
+    expect(f.spawns).toHaveLength(0); expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it.each(["hang-version", "hang-initialize", "hang-thread-start", "hang-turn-start"])("bounds %s including setup and uncertain dispatch", async scenario => {
+    const f = await fixture(scenario), start = performance.now();
+    const result = await f.run({ ...request, timeoutMs: 600 });
+    expect(result).toMatchObject({ status: "timed_out", errorCode: "timeout", dispatched: scenario === "hang-turn-start" });
+    expect(performance.now() - start).toBeLessThan(4000);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it.each(["hang-turn", "lost-turn-ack", "ignore-term"])("interrupts %s and closes the owned native child", async scenario => {
+    const f = await fixture(scenario), controller = new AbortController();
+    const pending = f.run({ ...request, signal: controller.signal });
+    await vi.waitFor(async () => expect((await f.entries()).some(entry => entry.method === "turn/start")).toBe(true));
+    const start = performance.now(); controller.abort();
+    expect(await pending).toMatchObject({ status: "cancelled", errorCode: "cancelled", dispatched: true, output: null });
+    expect(performance.now() - start).toBeLessThan(4000);
+    const entries = await f.entries();
+    if (scenario === "lost-turn-ack") expect(entries.some(entry => entry.method === "turn/interrupt")).toBe(true);
+    for (const entry of entries.filter(entry => typeof entry.pid === "number"))
+      expect(() => process.kill(entry.pid as number, 0)).toThrow();
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("allows one analyst across factories and readiness calls, then releases the gate", async () => {
+    const first = await fixture("hang-turn"), second = await fixture(), controller = new AbortController();
+    const pending = first.run({ ...request, signal: controller.signal });
+    await vi.waitFor(async () => expect((await first.entries()).some(entry => entry.method === "turn/start")).toBe(true));
+    expect(await second.run(request)).toMatchObject({ errorCode: "codex_busy", dispatched: false });
+    expect(await checkRestrictedCodexAnalysisReadiness({}, second.options)).toEqual({ ready: false, errorCode: "codex_busy" });
+    expect(second.spawns).toHaveLength(0);
+    controller.abort(); await pending;
+    expect(await second.run(request)).toMatchObject({ status: "completed" });
+  });
+
+  it("preserves an unexpected auth replacement, original login, and names-only private recovery marker", async () => {
+    const f = await fixture("replace-auth");
+    const result = await f.run({ ...request, images: [{ evidenceId: "e1", dataUrl: "data:image/png;base64,c3ludGhldGlj" }] });
+    expect(result).toMatchObject({ status: "failed", output: null, dispatched: true, errorCode: "codex_cleanup_failed", usageComplete: false });
+    expect(await readFile(path.join(f.authHome, "auth.json"), "utf8")).toBe("synthetic-original-login");
+    const tasks = await readdir(f.tempRoot); expect(tasks).toHaveLength(1);
+    const retained = path.join(f.tempRoot, tasks[0]!);
+    expect(await readdir(retained)).toEqual(["home"]);
+    expect(await readdir(path.join(retained, "home"))).toEqual(["auth.json"]);
+    expect(await readFile(path.join(retained, "home", "auth.json"), "utf8")).toBe("synthetic-rotated-login");
+    expect((await stat(retained)).mode & 0o777).toBe(0o700);
+    expect((await stat(path.join(retained, "home", "auth.json"))).mode & 0o777).toBe(0o600);
+    const marker = await readFile(path.join(f.directory, "cache", "humanish", "codex-analysis-recovery", `${tasks[0]}.json`), "utf8");
+    expect(JSON.parse(marker)).toMatchObject({ taskDirectoryName: tasks[0], authFileName: "auth.json" });
+    expect(marker).not.toContain(f.directory); expect(marker).not.toContain("synthetic-rotated-login");
+    expect(JSON.stringify(result)).not.toContain(retained); expect(JSON.stringify(result)).not.toContain("synthetic-rotated-login");
+    for (const entry of (await f.entries()).filter(entry => typeof entry.pid === "number"))
+      expect(() => process.kill(entry.pid as number, 0)).toThrow();
+  });
+
+  it.each(["version", "app-server"])("retains ownership and blocks new work until an unkillable %s child actually closes", async stage => {
+    const f = await fixture(stage === "version" ? "hang-version" : "ignore-term"), next = await fixture();
+    const spawnOriginal = f.options.spawnFn!;
+    let heldChild: ChildProcessWithoutNullStreams | undefined;
+    let originalKill: ChildProcessWithoutNullStreams["kill"] | undefined;
+    let closed: Promise<void> | undefined;
+    f.options.spawnFn = (file, args, settings) => {
+      const child = spawnOriginal(file, args, settings);
+      if (args[0] === (stage === "version" ? "--version" : "app-server")) {
+        heldChild = child; originalKill = child.kill.bind(child);
+        closed = new Promise(resolve => child.once("close", () => resolve()));
+        child.kill = () => false; // deterministic failure to deliver a signal, not a fake exit
+      }
+      return child;
+    };
+    const controller = new AbortController();
+    const pending = createRestrictedCodexAnalysisProvider(f.options)({ ...request, signal: controller.signal });
+    try {
+      await vi.waitFor(async () => expect(stage === "version" ? heldChild !== undefined
+        : (await f.entries()).some(entry => entry.method === "turn/start")).toBe(true));
+      controller.abort();
+      expect(await pending).toMatchObject({ errorCode: "codex_cleanup_failed", output: null });
+      const tasks = await readdir(f.tempRoot); expect(tasks).toHaveLength(1);
+      expect(await stat(path.join(f.tempRoot, tasks[0]!, "home"))).toBeDefined();
+      expect(await next.run(request)).toMatchObject({ errorCode: "codex_busy", dispatched: false });
+      expect(await checkRestrictedCodexAnalysisReadiness({}, next.options)).toEqual({ ready: false, errorCode: "codex_busy" });
+      expect(next.spawns).toHaveLength(0);
+      expect(await readFile(path.join(f.authHome, "auth.json"), "utf8")).toBe("synthetic-original-login");
+    } finally {
+      originalKill?.("SIGKILL");
+      await closed;
+      await pending;
+    }
+    expect(await next.run(request)).toMatchObject({ status: "completed" });
+  });
+});

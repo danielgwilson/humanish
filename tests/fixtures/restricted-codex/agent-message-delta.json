@@ -1,0 +1,10 @@
+{
+  "method": "item/agentMessage/delta",
+  "params": {
+    "threadId": "thread-synthetic",
+    "turnId": "turn-synthetic",
+    "itemId": "msg-synthetic",
+    "delta": "synthetic"
+  },
+  "emittedAtMs": 0
+}

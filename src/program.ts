@@ -1,4 +1,4 @@
-import { automaticAnalysisBudget, formatAutomaticAnalysisBudget, DEFAULT_ANALYSIS_TIMEOUT_MS, DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis, automaticAnalysisBudget, formatAutomaticAnalysisBudget, DEFAULT_ANALYSIS_TIMEOUT_MS } from "./automatic-analysis-config.js";
 import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -1252,40 +1252,52 @@ function analysisSelection<T extends { cwd: string; run: string }>(options: T, c
 function registerAnalyzeCommand(parent: Command, io: CliIo): void {
   const analyze = parent.command("analyze")
     .enablePositionalOptions()
-    .description("Analyze retained participant evidence into versioned findings. This request sends selected text and captures to OpenAI. Opening Observer never starts analysis.")
+    .description("Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.")
     .summary("Generate evidence-linked study findings.")
     .option("--run <id>", "Completed run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--max-cost <usd>", "Required, including with --dry-run: admission estimate ceiling in USD; not an exact billing cap.")
-    .option("--model <id>", "Supported vision analysis model; analysis uses high reasoning effort.", "gpt-6-astra")
+    .option("--provider <name>", "Analyst: openai (default) or restricted codex account. No provider fallback.")
+    .option("--max-cost <usd>", "Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex.")
+    .option("--model <id>", "Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort.", "gpt-6-astra")
     .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
     .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", String(DEFAULT_ANALYSIS_TIMEOUT_MS))
-    .option("--max-output-tokens <n>", "Exact response-token limit including reasoning, 256–32768. Omit to use 32768 when admission permits, otherwise 16384.")
+    .option("--max-output-tokens <n>", "OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.")
     .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
     .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; maxCost?: string; model: string; question?: string;
+    .action(async (options: { cwd: string; run: string; provider?: string; maxCost?: string; model: string; question?: string;
       timeoutMs: string; maxOutputTokens?: string; dryRun?: boolean; rerun?: boolean }, command) => {
+      const selected = resolveAutomaticAnalysis({
+        ...(options.provider === undefined ? {} : { provider: options.provider }), model: options.model,
+        ...(options.question === undefined ? {} : { question: options.question }), timeoutMs: Number(options.timeoutMs),
+        ...(options.provider === "codex" && options.maxCost === undefined ? {} : { maxCostUsd: Number(options.maxCost) }),
+        ...(options.maxOutputTokens === undefined ? {} : { maxOutputTokens: Number(options.maxOutputTokens) })
+      });
+      if (!selected.ok || !selected.config) {
+        const result = { schema: "humanish.analyze-result.v1", ok: false, run: options.run, dryRun: options.dryRun === true,
+          reused: false, warnings: [], error: { code: "ANALYSIS_CONFIG_INVALID", message: selected.ok ? "Analysis is disabled." : selected.message } };
+        writeResult(command, io, result, value => `${value.error.message}\n`); io.setExitCode(2); return;
+      }
       const controller = new AbortController();
       const cancel = (): void => controller.abort();
       process.once("SIGINT", cancel);
       try {
         const result = await analyzeStudy(options.cwd, options.run, {
-          config: { model: options.model, maxCostUsd: Number(options.maxCost), question: options.question ?? null,
-            timeoutMs: Number(options.timeoutMs), maxOutputTokens: options.maxOutputTokens === undefined ? DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS : Number(options.maxOutputTokens) },
-          preferLargerOutput: options.maxOutputTokens === undefined,
+          config: selected.config,
+          preferLargerOutput: selected.preferLargerOutput === true,
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.rerun === undefined ? {} : { rerun: options.rerun })
         }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
           `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
         writeResult(command, io, result, (value) => {
+          if (value.ok && value.dryRun && selected.config?.provider === "codex") return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
           if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
           const lines: string[] = [];
           if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
           if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);
           if (value.executionReceiptPath) lines.push(`Execution receipt: ${value.executionReceiptPath}`);
           if (value.usage) {
-            lines.push(`Recorded attempt usage: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`);
+            lines.push(`Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`);
             lines.push(`Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`);
           }
           if (value.reused) lines.push("No new request sent.");

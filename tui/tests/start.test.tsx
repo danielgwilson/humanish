@@ -53,6 +53,24 @@ async function openLab(options: TuiOptions, columns = 80) {
 }
 
 describe("starting a run", () => {
+  it.each([45, 80])("shows unknown account analysis dollars before starting at %i columns", async columns => {
+    const { options, started } = harness({ readLabSummary: async () => ({
+      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: {},
+      analysis: { provider: "codex", billing: "account-unknown", model: "gpt-6-astra", maxCostUsd: null }
+    }) });
+    const { surface } = await openLab(options, columns);
+    try {
+      const frame = await surface.press(KEY.down, candidate => candidate.includes("unknown"));
+      expect(frame.replace(/\s+/g, " ")).toContain("dollar cost unknown");
+      expect(frame).toContain("Codex"); expect(frame).not.toMatch(/\$null|\$3/);
+      expect(frame.split("\n").every(line => [...line].length <= columns)).toBe(true);
+      const armed = await surface.press(KEY.enter, candidate => candidate.includes("confirm"));
+      expect(armed.replace(/\s+/g, " ")).toContain("Codex account analysis");
+      expect(armed.replace(/\s+/g, " ")).toContain("dollar cost unknown");
+      expect(started).toHaveLength(0);
+    } finally { surface.unmount(); }
+  });
+
   it.each([45, 80])("shows the separate analysis admission budget before starting at %i columns", async columns => {
     const { options, started } = harness({ readLabSummary: async () => ({
       schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: { laneUsd: 1 },

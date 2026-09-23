@@ -1,3 +1,4 @@
+import { validStoredCodexAnalysisConfig } from "./study-analysis-codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
@@ -128,15 +129,18 @@ export const studyAnalysisArtifactSchema = z.object({
   sourceRunSha256: digest,
   inputDigest: digest,
   configDigest: digest,
-  config: z.object({
-    model: label,
-    question: text(4000).nullable(),
-    maxCostUsd: z.number().positive().max(1000),
-    timeoutMs: z.number().int().positive().max(3600000),
-    maxOutputTokens: z.number().int().positive().max(128000)
-  }).strict(),
+  config: z.union([
+    z.object({ provider: z.literal("openai").optional(), model: label, question: text(4000).nullable(),
+      maxCostUsd: z.number().positive().max(1000), timeoutMs: z.number().int().positive().max(3600000),
+      maxOutputTokens: z.number().int().positive().max(128000) }).strict(),
+    z.object({ provider: z.literal("codex"), model: label, question: text(4000).nullable(),
+      maxCostUsd: z.null(), timeoutMs: z.number().int().positive().max(600000), maxOutputTokens: z.null(),
+      identity: z.object({ transport: z.literal("codex-app-server"), authentication: z.literal("chatgpt-account"),
+        billing: z.literal("account-unknown"), requestedModel: label, resolvedModel: label,
+        reasoningEffort: z.literal("low"), toolPolicy: label, cliVersion: label }).strict() }).strict()
+  ]),
   promptVersion: label,
-  provider: z.literal("openai"),
+  provider: z.enum(["openai", "codex"]),
   usage: z.object({
     cacheWriteInputTokens: z.number().int().min(0).max(1e12).nullable(),
     cachedInputTokens: z.number().int().min(0).max(1e12).nullable(),
@@ -264,6 +268,11 @@ export function validateStudyAnalysisArtifact(value: unknown): StudyAnalysisArti
   const { captureVersion, ...fields } = parsed.data;
   const artifact: StudyAnalysisArtifact = { ...fields, result: fields.result === null ? null : normalizedResult(fields.result),
     ...(captureVersion === undefined ? {} : { captureVersion }) };
+  if (artifact.provider !== (artifact.config.provider ?? "openai")
+    || (artifact.provider === "codex" && (!validStoredCodexAnalysisConfig(artifact.config)
+      || artifact.usage.estimatedCostUsd !== null || artifact.usage.estimatedAdmissionUsd !== null || artifact.usage.ratesAsOf !== null))) {
+    throw new Error("ANALYSIS_PROVIDER_INVALID");
+  }
   if (artifact.configDigest !== hashStudyAnalysisValue(artifact.config)
     || artifact.inputDigest !== digestStudyAnalysisInput(artifact)) throw new Error("ANALYSIS_DIGEST_INVALID");
   if (Date.parse(artifact.completedAt) < Date.parse(artifact.createdAt)) throw new Error("ANALYSIS_TIME_INVALID");
@@ -324,8 +333,8 @@ export const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema.p
   error: true
 }).extend({
   schema: z.literal("humanish.analysis-execution.v1"),
-  model: studyAnalysisArtifactSchema.shape.config.shape.model,
-  maxCostUsd: studyAnalysisArtifactSchema.shape.config.shape.maxCostUsd
+  model: label,
+  maxCostUsd: z.number().positive().max(1000).nullable()
 }).strict();
 
 export type StudyAnalysisExecutionReceipt = z.infer<typeof studyAnalysisExecutionReceiptSchema>;
@@ -349,6 +358,9 @@ function assertAnalysisUsage(usage: AnalysisUsage): void {
 export function validateStudyAnalysisExecutionReceipt(value: unknown): StudyAnalysisExecutionReceipt {
   const parsed = studyAnalysisExecutionReceiptSchema.safeParse(value);
   if (!parsed.success || Date.parse(parsed.data.completedAt) < Date.parse(parsed.data.createdAt)) throw new Error("ANALYSIS_RECEIPT_INVALID");
+  if ((parsed.data.provider === "openai" && parsed.data.maxCostUsd === null)
+    || (parsed.data.provider === "codex" && (parsed.data.maxCostUsd !== null || parsed.data.usage.estimatedCostUsd !== null
+      || parsed.data.usage.estimatedAdmissionUsd !== null || parsed.data.usage.ratesAsOf !== null))) throw new Error("ANALYSIS_RECEIPT_INVALID");
   assertAnalysisUsage(parsed.data.usage);
   return parsed.data;
 }

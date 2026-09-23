@@ -21,6 +21,21 @@ const ids = (v: unknown) => list(v, id) && new Set(v as string[]).size === (v as
 const nullableText = (v: unknown) => v === null || text(v);
 const number = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0;
 const nullableNumber = (v: unknown) => v === null || number(v);
+// Durable reader profiles, independent of the producer's current launch policy.
+// Append newly qualified profiles; retain historical entries so saved reports stay readable.
+const accountProfiles = [{ cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", model: "gpt-6-astra", effort: "low" }] as const;
+function accountConfig(config: Record<string, unknown>): boolean {
+  if (config.provider !== "codex" || config.maxCostUsd !== null || config.maxOutputTokens !== null
+    || !number(config.timeoutMs) || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 600000
+    || !(config.question === null || typeof config.question === "string" && config.question.length <= 4000)
+    || Object.keys(config).some(key => !["provider", "model", "question", "maxCostUsd", "timeoutMs", "maxOutputTokens", "identity"].includes(key))) return false;
+  const profile = config.identity;
+  if (!object(profile) || Object.keys(profile).length !== 8 || profile.transport !== "codex-app-server"
+    || profile.authentication !== "chatgpt-account" || profile.billing !== "account-unknown"
+    || profile.requestedModel !== config.model || profile.resolvedModel !== config.model) return false;
+  return accountProfiles.some(known => known.model === config.model && known.cliVersion === profile.cliVersion
+    && known.toolPolicy === profile.toolPolicy && known.effort === profile.reasoningEffort);
+}
 const hash = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 const quote = (v: unknown) => object(v) && id(v.evidenceId) && text(v.text);
 const observation = (v: unknown) => object(v) && strings(v, ["claim", "limitation"])
@@ -56,10 +71,12 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
   if (!object(a) || a.schema !== STUDY_ANALYSIS_SCHEMA || !id(a.id) || a.runId !== data.run.runId
     || !(a.captureVersion === undefined || a.captureVersion === 2)
     || !enumeration(a.status, ["complete", "partial", "failed", "cancelled"])
-    || !strings(a, ["createdAt", "completedAt", "promptVersion"]) || a.provider !== "openai"
+    || !strings(a, ["createdAt", "completedAt", "promptVersion"]) || !enumeration(a.provider, ["openai", "codex"])
     || ![a.sourceRunSha256, a.inputDigest, a.configDigest].every(hash) || !nullableText(a.error)
     || !object(a.config) || !text(a.config.model) || !nullableText(a.config.question)
-    || ![a.config.maxCostUsd, a.config.timeoutMs, a.config.maxOutputTokens].every(number)
+    || !number(a.config.timeoutMs)
+    || (a.provider === "codex" ? !accountConfig(a.config)
+      : (a.config.provider !== undefined && a.config.provider !== "openai") || ![a.config.maxCostUsd, a.config.maxOutputTokens].every(number))
     || !object(a.usage) || ![a.usage.inputTokens, a.usage.outputTokens, a.usage.estimatedCostUsd, a.usage.estimatedAdmissionUsd].every(nullableNumber)
     || typeof a.usage.usageComplete !== "boolean" || typeof a.usage.dispatched !== "boolean" || !nullableText(a.usage.ratesAsOf)
     || !object(a.coverage) || !ids(a.coverage.includedStreamIds) || !ids(a.coverage.omittedStreamIds)
@@ -72,6 +89,7 @@ function parseSelectedAnalysis(value: unknown, data: ObserverData): LoadedStudyA
     || !(a.result === null || (object(a.result) && text(a.result.summary) && list(a.result.participants, participant)
       && list(a.result.findings, finding, 100) && list(a.result.limitations, text)
       && (a.result.concernReviews === undefined || list(a.result.concernReviews, concernReview, 60))))) return invalid();
+  if (a.provider === "codex" && (a.usage.estimatedCostUsd !== null || a.usage.estimatedAdmissionUsd !== null || a.usage.ratesAsOf !== null)) return invalid();
   if ((a.status === "complete" || a.status === "partial") && a.result === null) return invalid();
   // A failed latest attempt is a valid artifact under the store's invalid
   // selection state. Preserve that terminal status without admitting claims.
@@ -198,6 +216,8 @@ export function projectStudyAnalysis(loaded: LoadedStudyAnalysis, data: Observer
       limitations: p.limitations, stale: loaded.state === "stale", moments: p.evidenceIds.flatMap((key) => { const e = evidence.get(key); return e ? [{ eventId: e.eventId, label: e.kind === "screenshot" ? "Recorded capture" : e.kind === "reasoning" ? "Reported thinking" : "Recorded evidence", elapsedMs: e.elapsedMs, at: e.at, text: e.text }] : []; }) })) ?? [],
     ...(result?.concernReviews === undefined ? {} : { concernReviews: result.concernReviews.map(({ evidenceIds, ...review }) => ({ ...review,
       moments: evidenceIds.flatMap(key => { const e = evidence.get(key); return e ? [{ streamId: e.streamId, eventId: e.eventId }] : []; }) })) }),
-    methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`, `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
+    methodology: a ? [`Analysis ${a.id} · ${a.status} · ${a.completedAt}`, `Model ${a.config.model} · ${a.promptVersion}`,
+      ...(a.config.provider === "codex" ? [`Qualified Codex account profile · ${a.config.identity.reasoningEffort} effort · CLI ${a.config.identity.cliVersion} · ${a.config.identity.toolPolicy}. Remote inference; dollar cost and output-token ceiling unknown.`,
+        `Observed token usage ${a.usage.usageComplete ? "complete" : "incomplete"}: ${a.usage.inputTokens ?? "unknown"} input, ${a.usage.outputTokens ?? "unknown"} output.`] : ["OpenAI API analysis · high reasoning effort."]), `Included ${a.coverage.evidenceCount} evidence entries and ${a.coverage.captureCount} captures. ${a.coverage.complete ? "Declared coverage complete." : "Coverage incomplete."}`,
       "This independent interpretation does not change the participant account or recorded completion evidence.", ...(a.config.question ? [`Additional review question: ${a.config.question}`] : [])] : [] };
 }
