@@ -19,25 +19,34 @@ def fixture(directory):
     root = package / 'root'
     root.mkdir(parents=True, mode=0o755)
     files = {}
-    for name in sorted(REQUIRED):
+    for name in sorted(REQUIRED | {'opt/humanish/control/node_modules/zod/package.json'}):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         if name in LINKS:
             path.symlink_to(LINKS[name])
             files[name] = {'type': 'symlink', 'target': LINKS[name], 'mode': 0o777, 'uid': 0, 'gid': 0}
         else:
-            path.write_bytes(b'' if name == 'etc/machine-id' else b'neutral fixture\n')
+            path.write_bytes(b'' if name == 'etc/machine-id' else b'{"type":"module"}\n' if name == 'opt/humanish/control/package.json' else b'neutral fixture\n')
             mode = 0o644 if name in CONFIGS and name != 'etc/machine-id' else 0o444
             path.chmod(mode)
             files[name] = {'type': 'file', 'sha256': sha256(path), 'mode': mode, 'uid': 0, 'gid': 0}
-    inputs = {'sourceFiles': {'src/guest-runtime.ts': 'a' * 64},
-              'dependencyFiles': {'zod/package.json': 'b' * 64},
+    source = {'src/guest-runtime.ts': 'a' * 64,
+              'dist/guest-runtime-main.js': files['opt/humanish/control/guest-runtime-main.js']['sha256']}
+    for name in CONFIGS | {'opt/humanish/control/' + name for name in ('vsock.py', 'openbox.xml', 'neutral.html')}:
+        source['runtime/browser-guest/control/root/' + name] = files[name]['sha256']
+    inputs = {'sourceFiles': source,
+              'dependencyFiles': {'zod/package.json': files['opt/humanish/control/node_modules/zod/package.json']['sha256']},
               'buildInputs': {'architecture': 'amd64', 'nodeVersion': 'v22.0.0', 'typescriptVersion': '6.0.3',
                               'packageLockSha256': 'c' * 64, 'tsconfigSha256': 'd' * 64,
                               'tsconfigBuildSha256': 'e' * 64, 'bootstrapVersion': 1, 'browserControlVersion': 1}}
     manifest = {'schema': 'humanish.guest-runtime-package.v1',
                 'runtimeRevision': 'guest-api1-' + hashlib.sha256(canonical(inputs)).hexdigest(),
                 'inputs': inputs, 'files': files}
+    generated = root / 'opt/humanish/control/guest-runtime-revision.js'
+    generated.chmod(0o644)
+    generated.write_text('export const GUEST_RUNTIME_REVISION = ' + json.dumps(manifest['runtimeRevision']) + ';\n')
+    generated.chmod(0o444)
+    files['opt/humanish/control/guest-runtime-revision.js']['sha256'] = sha256(generated)
     (package / 'manifest.json').write_text(json.dumps(manifest))
     root.chmod(0o755)
     for path in root.rglob('*'):
@@ -85,6 +94,28 @@ class PackageTests(unittest.TestCase):
         self.manifest['inputs']['sourceFiles']['dist/guest-runtime.js'] = 'f' * 64
         self.save()
         with self.assertRaises(ValueError):
+            validate_package(self.package)
+
+    def test_changed_executable_and_updated_file_hash_cannot_reuse_revision(self):
+        name = 'opt/humanish/control/guest-runtime-main.js'
+        path = self.package / 'root' / name
+        path.chmod(0o644)
+        path.write_text('changed executable')
+        path.chmod(0o444)
+        self.manifest['files'][name]['sha256'] = sha256(path)
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'revision inputs'):
+            validate_package(self.package)
+
+    def test_generated_revision_module_must_match_identity(self):
+        name = 'opt/humanish/control/guest-runtime-revision.js'
+        path = self.package / 'root' / name
+        path.chmod(0o644)
+        path.write_text('different identity')
+        path.chmod(0o444)
+        self.manifest['files'][name]['sha256'] = sha256(path)
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'Generated runtime identity'):
             validate_package(self.package)
 
     def test_boolean_owner_is_not_integer_owner(self):

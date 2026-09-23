@@ -169,6 +169,31 @@ def validate_package(package):
     walk(root)
     if observed != files.keys() or (root / 'etc/machine-id').stat().st_size:
         raise ValueError('Missing payload or persisted machine identity')
+    # A producer manifest is not authority, but its executable identity must be
+    # internally consistent. Rewriting only files[] must not preserve a revision.
+    compiled = {}
+    dependencies = {}
+    fixed = {}
+    for name, spec in files.items():
+        if spec['type'] != 'file':
+            continue
+        control = name.removeprefix('opt/humanish/control/')
+        if name.startswith('opt/humanish/control/node_modules/'):
+            dependencies[control.removeprefix('node_modules/')] = spec['sha256']
+        elif name.startswith('opt/humanish/control/') and control.endswith('.js'):
+            if control != 'guest-runtime-revision.js':
+                compiled['dist/' + control] = spec['sha256']
+        elif control != 'package.json':
+            fixed['runtime/browser-guest/control/root/' + name] = spec['sha256']
+    source_hashes = inputs['sourceFiles']
+    if ({name: digest for name, digest in source_hashes.items() if name.startswith('dist/')} != compiled or
+        {name: digest for name, digest in source_hashes.items() if name.startswith('runtime/browser-guest/control/root/')} != fixed or
+        inputs['dependencyFiles'] != dependencies):
+        raise ValueError('Payload bytes do not match revision inputs')
+    if ((root / 'opt/humanish/control/package.json').read_bytes() != b'{"type":"module"}\n' or
+        (root / 'opt/humanish/control/guest-runtime-revision.js').read_bytes() !=
+        ('export const GUEST_RUNTIME_REVISION = ' + json.dumps(revision) + ';\n').encode()):
+        raise ValueError('Generated runtime identity changed')
     return manifest
 
 
