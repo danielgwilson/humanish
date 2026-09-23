@@ -16,11 +16,13 @@ export class BrowserControlTransport {
   private readonly decoder = new TextDecoder("utf-8", { fatal: true });
   constructor(private readonly stream: Duplex, private readonly onFrame: (value: unknown) => void,
     private readonly onClose: (code: CuaExecutorErrorCode) => void) {
+    // destroy(error) queues its error event; even a rejected stream needs a listener
+    // before inspecting its state. Never let the native error escape to the process.
+    stream.on("error", this.error);
     if (stream.readableObjectMode || stream.writableObjectMode || stream.destroyed || stream.readableEnded || stream.writableEnded) {
       this.close("transport_failed"); return;
     }
     stream.on("data", this.data);
-    stream.on("error", this.error);
     stream.on("end", this.end);
     stream.on("close", this.end);
   }
@@ -89,8 +91,16 @@ export class BrowserControlTransport {
     clearTimeout(this.frameTimer); this.frameTimer = undefined;
     this.stream.off("data", this.data); this.stream.off("end", this.end); this.stream.off("close", this.end);
     // Retain the safe error listener until close, including errors queued by a pending write.
-    this.stream.once("close", () => this.stream.off("error", this.error));
+    const releaseListeners = (): void => {
+      this.stream.off("error", this.error);
+      this.stream.off("close", releaseListeners);
+    };
+    this.stream.once("close", releaseListeners);
     this.pendingWrite?.(new CuaExecutorError(code, "outcome_uncertain"));
-    this.stream.destroy(); this.onClose(code);
+    this.stream.destroy();
+    // A stream whose close event already happened will not emit it again. `closed`
+    // can also precede queued error/close events, so defer removal past native ticks.
+    if (this.stream.closed) setImmediate(releaseListeners);
+    this.onClose(code);
   }
 }

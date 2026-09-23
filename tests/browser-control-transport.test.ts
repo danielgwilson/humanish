@@ -1,10 +1,37 @@
 import { Duplex } from "node:stream";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it, vi } from "vitest";
 import { BrowserControlTransport } from "../src/browser-control-transport.js";
 import { BROWSER_CONTROL_LIMITS } from "../src/browser-control-protocol.js";
 import { frame, pair, tick } from "./browser-control-fixture.js";
 
 describe("browser control byte framing", () => {
+  it("contains queued native errors from rejected streams without crashing Node or retaining listeners", () => {
+    // No uncaughtException/error handler in the subprocess: the old constructor
+    // crashes after ready() has already returned its safe rejection.
+    const source = new URL("../src/browser-control-client.ts", import.meta.url).href;
+    const output = execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", `
+      import assert from 'node:assert/strict';
+      import { PassThrough } from 'node:stream';
+      import { createBrowserControlClient } from ${JSON.stringify(source)};
+      const tick = () => new Promise(resolve => setImmediate(resolve));
+      for (const mode of ['destroying', 'closed', 'object-mode']) {
+        const stream = new PassThrough({ objectMode: mode === 'object-mode' });
+        if (mode === 'closed') { stream.destroy(); await tick(); }
+        else stream.destroy(new Error('synthetic pending transport error'));
+        const client = createBrowserControlClient({ transport: stream,
+          identity: { generation: 'g', challenge: 'c', runtimeRevision: 'r' } });
+        await assert.rejects(client.ready(), { code: 'executor_closed', disposition: 'not_dispatched' });
+        await tick(); await tick();
+        assert.equal(stream.destroyed, true);
+        assert.equal(stream.listenerCount('error'), 0);
+        assert.equal(stream.listenerCount('close'), 0);
+        client.close();
+      }
+      process.stdout.write('contained\\n');
+    `], { encoding: "utf8", timeout: 10_000 });
+    expect(output).toBe("contained\n");
+  });
   it("decodes fragmented headers/bodies and coalesced frames exactly once", async () => {
     const pipes = pair(true), frames = vi.fn(), closed = vi.fn();
     const transport = new BrowserControlTransport(pipes.right, frames, closed);
