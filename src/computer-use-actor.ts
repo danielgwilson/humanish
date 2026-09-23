@@ -12,6 +12,7 @@ import type { ActorPersonaRef, ActorTokenUsage, ActorTraceItem } from "./actor-c
 import {
   runComputerUseLoop,
   type CuaExecutor,
+  type CuaLiveMetadata,
   type CuaLoopOptions,
   type CuaLoopResult,
   type CuaProvider,
@@ -28,6 +29,7 @@ import {
 } from "./openai-responses-cu.js";
 import { defaultRedactionHooks, type RedactionHooks } from "./redaction.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
+import { estimateActorCostForExecution } from "./pricing.js";
 import type { LabTask } from "./tasks.js";
 
 export interface CuaActorSessionOptions {
@@ -98,7 +100,7 @@ export interface CuaActorSessionOptions {
   /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot callback threaded to the loop (#441); see CuaLoopOptions.onTrace. */
-  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage) => void;
+  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage, metadata?: CuaLiveMetadata) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
@@ -138,7 +140,11 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace })
   };
 
-  return runComputerUseLoop(loopOptions);
+  const result = await runComputerUseLoop(loopOptions);
+  if (result.trace.executionProfile?.billing === "account-unknown") {
+    result.trace.estimatedCost = estimateActorCostForExecution(result.trace.tokenUsage, result.trace.ids.model, result.trace.executionProfile);
+  }
+  return result;
 }
 
 function buildProvider(openai: OpenAiResponsesProviderOptions | undefined, strictSpend = false): CuaProvider {

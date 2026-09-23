@@ -1,5 +1,6 @@
 import { bindExistingRunArtifactPaths } from "./run-paths.js";
 import type { RunIndexEntry } from "./run-index.js";
+import { contradictsAccountBilling } from "./pricing.js";
 import { readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./study-analysis-evidence.js";
 import { readAutomaticStudyAnalysisAccounting } from "./study-analysis-job.js";
 import { readStudyAnalysisAccountingRecords } from "./study-analysis-store.js";
@@ -67,6 +68,11 @@ export async function readStudyCosts(cwd: string, entry: RunIndexEntry): Promise
       if (bundle.cost?.fullyEstimated !== true || costs.runEstimatedUsd === null) {
         costs.incompleteRunEstimates = 1;
         warnings.push("RUN_COST_PARTIAL_OR_UNKNOWN");
+      }
+      if (Array.isArray(bundle.streams) && contradictsAccountBilling(bundle.streams, bundle.cost)) {
+        costs.runEstimatedUsd = null;
+        costs.incompleteRunEstimates = 1;
+        warnings.push("RUN_ACCOUNT_COST_CONTRADICTION");
       }
     } else if (entry.mode !== "dry-run" || costs.runEstimatedUsd !== 0) {
       costs.incompleteRunEstimates = 1;

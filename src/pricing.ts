@@ -18,6 +18,22 @@ import type { ActorTokenUsage } from "./actor-contract.js";
 export const PRICING_SCHEMA = "humanish.pricing.v1";
 export const ACTOR_ESTIMATED_COST_SCHEMA = "humanish.actor-estimated-cost.v1";
 
+/** Account lanes must never acquire a price through an aggregate or ambiguous model line. */
+export function contradictsAccountBilling(streams: readonly { id?: string; laneId?: string;
+  actor?: { executionProfile?: { billing?: unknown } | undefined }; liveActor?: { executionProfile?: { billing?: unknown } | undefined } }[],
+  cost: { fullyEstimated?: unknown; breakdown?: unknown } | undefined): boolean {
+  const account = (stream: typeof streams[number]): boolean =>
+    (stream.liveActor?.executionProfile ?? stream.actor?.executionProfile)?.billing === "account-unknown";
+  if (!cost || !streams.some(account)) return false;
+  if (cost.fullyEstimated === true) return true;
+  if (!Array.isArray(cost.breakdown)) return true;
+  return cost.breakdown.some((line: { kind?: unknown; estimatedCostUsd?: unknown; laneId?: unknown }) => {
+    if (line?.kind !== "model-tokens" || typeof line.estimatedCostUsd !== "number") return false;
+    const owners = typeof line.laneId === "string" ? streams.filter(s => s.id === line.laneId || s.laneId === line.laneId) : streams;
+    return owners.length !== 1 || account(owners[0]!);
+  });
+}
+
 export interface ModelRate {
   /** USD per input token (the per-1M equivalent is noted in the comment beside each entry). */
   inputUsdPerToken: number;
@@ -84,7 +100,7 @@ export interface ActorEstimatedCost {
   schema: typeof ACTOR_ESTIMATED_COST_SCHEMA;
   /** null = declared absent (no rate for the model / no token usage). */
   estimatedCostUsd: number | null;
-  reason?: "no_rate_for_model" | "no_token_usage";
+  reason?: "no_rate_for_model" | "no_token_usage" | "account_billing_unknown";
   /** Pricing provenance date; null iff estimatedCostUsd is null. */
   ratesAsOf: string | null;
   /** The pricing-page URL/comment that produced the rate. */
@@ -267,6 +283,15 @@ export function round6(n: number): number {
  * the rate table is injectable (tests pass a fake sheet). Returns a DECLARED-ABSENT estimate
  * (estimatedCostUsd: null + a reason) for a missing rate or missing usage — never a guessed cost.
  */
+export function estimateActorCostForExecution(
+  usage: ActorTokenUsage | undefined, modelId: string | undefined, profile?: { billing?: unknown }
+): ActorEstimatedCost {
+  return profile?.billing === "account-unknown"
+    ? { schema: ACTOR_ESTIMATED_COST_SCHEMA, estimatedCostUsd: null, ratesAsOf: null, reason: "account_billing_unknown",
+      ...(modelId === undefined ? {} : { modelId }) }
+    : estimateActorCost(usage, modelId);
+}
+
 export function estimateActorCost(
   tokenUsage: ActorTokenUsage | undefined,
   modelId: string | undefined,

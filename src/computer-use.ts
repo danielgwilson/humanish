@@ -11,6 +11,8 @@ import {
   type ParticipantDeclaredOutcome,
   type ParticipantClosingReport
 } from "./actor-contract.js";
+import type { ActorExecutionProfile, ActorProviderRequest, ProviderRequestReceipt } from "./actor-contract.js";
+import { CuaProviderError, isCuaProviderError } from "./cua-provider-error.js";
 import { classifyCuaAction, summarizeAffordanceUse, type AffordanceObservation } from "./affordance.js";
 import { commandFailureInfo, isCommandExitError } from "./command-failure.js";
 import type { RedactionHooks } from "./redaction.js";
@@ -129,6 +131,8 @@ export interface CuaSafetyCheck {
 }
 
 export interface CuaTurnRequest {
+  /** Host input acknowledgments for the preceding proposal, never proof of app success. */
+  previousExecution?: { actions: Array<{ index: number; status: "completed" | "skipped" | "not_dispatched" | "outcome_uncertain" }> };
   /** Persona + task instruction, sent as the system-level steer (first turn). */
   instructions: string;
   /** The latest observation for the model to react to. */
@@ -142,6 +146,7 @@ export interface CuaTurnRequest {
 }
 
 export interface CuaTurn {
+  providerRequest?: ProviderRequestReceipt;
   /** Continuation handle for the next turn. */
   responseId?: string;
   /** Model chain-of-thought summary, if the provider surfaces it. */
@@ -166,6 +171,10 @@ export interface CuaTurn {
 
 /** The model side of the loop. Self-describes its identity and capabilities. */
 export interface CuaProvider {
+  /** Single dispatch; the promise includes owned request cleanup. No stall retry. */
+  readonly requestPolicy?: "fail_closed";
+  readonly executionProfile?: ActorExecutionProfile;
+  readonly historyTurnsOmitted?: number;
   readonly id: string;
   readonly version?: string;
   /**
@@ -358,8 +367,11 @@ export interface CuaLoopOptions {
    * receiver, so a slow disk flush can never stall a turn. Default: no-op.
    */
   /** Per-turn trace snapshot, with the RUNNING usage so a watcher can price a run in flight. */
-  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage) => void;
+  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage, metadata?: CuaLiveMetadata) => void;
 }
+
+export type CuaLiveMetadata = Pick<ActorTrace, "executionProfile" | "providerRequests" | "historyTurnsOmitted">;
+export const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
 
 export interface CuaLoopResult {
   status: ActorStatus;
@@ -690,6 +702,11 @@ function raceSettle<T>(promise: Promise<T>, remainingMs: number, signal?: AbortS
  * before its ref is recorded, so the trace is public-safe by construction.
  */
 export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLoopResult> {
+  if (options.provider.executionProfile?.billing === "account-unknown" &&
+    (options.maxUsd !== undefined || options.overRunBudget !== undefined || options.estimateTurnCostUsd !== undefined ||
+      options.provider.modelSettings?.maxOutputTokens !== undefined)) {
+    throw new CuaProviderError("request_rejected", { dispatched: false, usageComplete: false, cleanup: "confirmed" });
+  }
   const {
     instructions,
     provider,
@@ -730,6 +747,14 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
   const observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;
   const items: ActorTraceItem[] = [];
+  const providerRequests: ActorProviderRequest[] = [];
+  let providerCleanupUnconfirmed = false;
+  const liveMetadata = (): CuaLiveMetadata => ({
+    ...(provider.executionProfile === undefined ? {} : { executionProfile: provider.executionProfile }),
+    ...(provider.requestPolicy === "fail_closed" ? { providerRequests: providerRequests.map(row => ({ ...row })),
+      historyTurnsOmitted: provider.historyTurnsOmitted ?? 0 } : {})
+  });
+  const flushTrace = (): void => onTrace?.(items.slice(), runningUsage(), liveMetadata());
   // The ONE recording choke point (#441): every trace item is stamped `at` from the
   // loop's injected clock as it is recorded, so timed playback reads recorded facts
   // (deterministic in tests via the injected `now`).
@@ -772,7 +797,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // was always a number (0 included), and arithmetic on a suddenly-undefined field yields NaN —
   // which comparison operators swallow silently (red-team finding: a stale study-budget guard
   // would run uncapped without a sound).
-  const runningUsage = (): ActorTokenUsage => ({
+  const accountUsage = (): ActorTokenUsage => ({
+    ...(usageTurns.some(t => t.input !== undefined) ? { input: usageInput } : {}),
+    ...(usageTurns.some(t => t.output !== undefined) ? { output: usageOutput } : {}),
+    ...(usageTurns.some(t => t.cachedInput !== undefined) ? { cachedInput: usageCachedInput } : {}),
+    ...(usageTurns.some(t => t.cacheWriteInput !== undefined) ? { cacheWriteInput: usageCacheWriteInput } : {}),
+    ...(usageTurns.length > 0 ? { turns: usageTurns.map(t => ({ ...t })) } : {}),
+    ...(providerRequests.length > 0 && providerRequests.every(r => r.usageComplete && completeTurnUsage(r.usage))
+      ? { total: usageInput + usageOutput } : {})
+  });
+  const runningUsage = (): ActorTokenUsage => provider.executionProfile?.billing === "account-unknown" ? accountUsage() : ({
     input: usageInput,
     output: usageOutput,
     cachedInput: usageCachedInput,
@@ -797,7 +831,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   const recordUsage = (turn: CuaTurn, interaction = true): void => {
-    if (interaction && !completeTurnUsage(turn.usage)) incompleteInteractionUsage = true;
+    if (interaction && (!completeTurnUsage(turn.usage) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
     const raw = turn.usage;
     if (raw === undefined) return;
     const usage = {
@@ -813,6 +847,72 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     usageCacheWriteInput += usage.cacheWriteInput ?? 0;
     usageOutput += usage.output ?? 0;
     usageTurns.push(usage);
+  };
+
+  /** Marked providers own one attempt through settlement; an outer race never retries it. */
+  const markedRequest = async (request: CuaTurnRequest, kind: "interaction" | "debrief", capMs: number): Promise<CuaTurn> => {
+    const controller = new AbortController();
+    const onAbort = (): void => controller.abort();
+    if (signal?.aborted) controller.abort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+    type Settlement = { turn: CuaTurn } | { error: unknown };
+    let settlement: Settlement | undefined;
+    let failure: unknown;
+    let failed = false;
+    let accepted: CuaTurn | undefined;
+    const pending = Promise.resolve().then(() => {
+      if (controller.signal.aborted) throw new CuaProviderError("cancelled", { dispatched: false, usageComplete: false, cleanup: "confirmed" });
+      return kind === "debrief" ? provider.debrief!(request, controller.signal) : provider.nextTurn(request, controller.signal);
+    }).then(turn => { settlement = { turn }; return turn; }, (error: unknown) => { settlement = { error }; throw error; });
+    void pending.catch(() => undefined);
+    try {
+      accepted = await raceBounded(`participant ${kind}`, pending, remaining(), capMs, signal);
+      const r = accepted.providerRequest;
+      if (!r || r.dispatched !== true || typeof r.usageComplete !== "boolean" || r.cleanup !== "confirmed") {
+        throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, accepted.usage);
+      }
+    } catch (error) { failed = true; failure = error; }
+    finally {
+      controller.abort();
+      signal?.removeEventListener("abort", onAbort);
+      if (settlement === undefined) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try { await Promise.race([pending.catch(() => undefined), new Promise<void>(resolve => {
+          timer = setTimeout(resolve, CUA_PROVIDER_CLEANUP_GRACE_MS);
+        })]); } finally { clearTimeout(timer); }
+      }
+    }
+    const final = settlement as Settlement | undefined;
+    const typed = isCuaProviderError(failure) ? failure : final && "error" in final && isCuaProviderError(final.error) ? final.error : undefined;
+    const turn = final && "turn" in final ? final.turn : undefined;
+    const raw = typed?.receipt ?? turn?.providerRequest;
+    const receipt: ProviderRequestReceipt = raw && (typeof raw.dispatched === "boolean" || raw.dispatched === "unknown") &&
+      typeof raw.usageComplete === "boolean" && ["confirmed", "unconfirmed"].includes(raw.cleanup) ? { dispatched: raw.dispatched, usageComplete: raw.usageComplete, cleanup: raw.cleanup }
+      : { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" };
+    const rawUsage = typed?.usage ?? turn?.usage;
+    const usage = rawUsage === undefined ? undefined : Object.fromEntries(
+      ["input", "output", "cachedInput", "cacheWriteInput", "total"].flatMap(key => {
+        const value = (rawUsage as ActorTokenUsage)[key as keyof ActorTokenUsage];
+        return validTokenCount(value) ? [[key, value]] : [];
+      })) as ActorTokenUsage | undefined;
+    // restricted-codex-session sets dispatched only after initialize/config/account/
+    // thread/MCP admission, immediately before turn/start; it is not a success claim.
+    providerRequests.push({ ordinal: providerRequests.length + 1, kind, ...receipt,
+      profileVerified: provider.executionProfile !== undefined && receipt.dispatched === true,
+      ...(typed ? { errorCode: typed.code } : {}), ...(usage === undefined ? {} : { usage: { ...usage } }) });
+    if (receipt.cleanup !== "confirmed") {
+      providerCleanupUnconfirmed = true;
+      record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
+        title: "participant request cleanup unconfirmed", text: "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted." });
+    }
+    if (kind === "interaction" && receipt.dispatched !== false && (!receipt.usageComplete || !completeTurnUsage(usage))) unreportedInteractionUsage = true;
+    if (failed) {
+      if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, kind === "interaction");
+      if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
+      if (failure instanceof CuaStallError) throw new CuaProviderError("timeout", receipt, usage);
+      throw typed ?? new CuaProviderError("process_failed", receipt, usage);
+    }
+    return accepted!;
   };
 
   // Whether any observation this run surfaced structured appState (a non-vision/state executor).
@@ -917,6 +1017,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   // Loop-local state. Declared here (before the try) so the initial observe + the per-turn
   // frame guard can fail closed cleanly while these still scope across the loop.
   let previousResponseId: string | undefined;
+  let previousExecution: CuaTurnRequest["previousExecution"];
   let closingObservation: CuaObservation | undefined;
   let closingTrigger: "stop_when" | "dwell" | undefined;
   let debrief: ActorTrace["debrief"];
@@ -997,7 +1098,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         frames += 1;
         if (frameObservation.screenshot !== undefined) onScreenshot?.(frameObservation.screenshot);
         await maybeRecordScreenshot(frameObservation, `dwell-${frames.toString().padStart(2, "0")}`);
-        onTrace?.(items.slice(), runningUsage());
+        flushTrace();
         observeTasks(frameObservation, turnNumber);
       }
       dwellHeldMs = now() - dwellStartedAtMs;
@@ -1023,7 +1124,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // Fail closed BEFORE the first turn if a vision provider got a screenshot-less observation.
     if (frameGuardTripped(observation)) throw new CuaFrameGuardStop();
     await maybeRecordScreenshot(observation, "turn-00-start");
-    onTrace?.(items.slice(), runningUsage());
+    flushTrace();
     observeTasks(observation, 0);
     const initialDwell = await dwellIfDue(observation, 0);
     if (initialDwell !== undefined) {
@@ -1075,7 +1176,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
 
       const turnNumber = (counts.turns ?? 0) + 1;
-      const request: CuaTurnRequest = { instructions, observation };
+      const request: CuaTurnRequest = { instructions, observation, ...(provider.requestPolicy !== "fail_closed" || previousExecution === undefined ? {} : { previousExecution }) };
       if (previousResponseId !== undefined) request.previousResponseId = previousResponseId;
       if (contextHint !== undefined) request.contextHint = contextHint;
       if (pendingAcks !== undefined) request.acknowledgedSafetyChecks = pendingAcks;
@@ -1089,6 +1190,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       let turn: CuaTurn;
       // A timeout race alone does not cancel its losing provider promise. Strict accounting
       // owns this signal so a delayed transport failure cannot retry after the loop has ended.
+      if (provider.requestPolicy === "fail_closed") {
+        turn = await markedRequest(request, "interaction", turnTimeoutMs);
+      } else {
       const requestController = requiresUsage ? new AbortController() : undefined;
       const onRequestAbort = (): void => requestController?.abort();
       if (requestController) {
@@ -1134,6 +1238,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       } finally {
         if (requestController) signal?.removeEventListener("abort", onRequestAbort);
         requestController?.abort();
+      }
       }
       bump("turns");
       previousResponseId = turn.responseId ?? previousResponseId;
@@ -1299,7 +1404,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
 
       const idleThisTurn = isIdleTurn(turn.actions);
-      for (const action of turn.actions) {
+      previousExecution = { actions: [] };
+      for (const [actionIndex, action] of turn.actions.entries()) {
         if (signal?.aborted) throw new CuaAbortError();
         const actionTitle = describeCuaAction(action);
         lastActionTitle = actionTitle;
@@ -1353,6 +1459,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             actionController.abort();
           }
         };
+        let actionSkipped = false;
         try {
           if (isIdleAction(action)) {
             // Observation actions only look (#480). A `wait` that hangs inside the SDK has, by
@@ -1362,6 +1469,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
               await executeAction(idleBound);
             } catch (error) {
               if (!(error instanceof CuaStallError)) throw error;
+              actionSkipped = true;
               record({
                 id: nextId("notice"),
                 kind: "notice",
@@ -1384,6 +1492,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           // any non-CommandExitError — is rethrown. A typed executor declaration must also
           // bypass command recovery even if an adapter has changed its ordinary Error metadata.
           if (isCuaExecutorError(error)) {
+            previousExecution.actions.push({ index: actionIndex, status: error.disposition });
             if (error.disposition === "not_dispatched" && !isIdleAction(action)) {
               materialActions -= 1;
               counts.materialActions = materialActions;
@@ -1407,6 +1516,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             // counts.materialActions is 0 (honest-evidence invariant).
             lastMaterialActionTitle = priorMaterialActionTitle;
           }
+          previousExecution.actions.push({ index: actionIndex, status: "skipped" });
           const { exitCode, stderrTail } = commandFailureInfo(error);
           record({
             id: nextId("notice"),
@@ -1428,6 +1538,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           });
           continue;
         }
+        previousExecution.actions.push({ index: actionIndex, status: actionSkipped ? "skipped" : "completed" });
         record({
           id: nextId("ui_action"),
           kind: "ui_action",
@@ -1451,7 +1562,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Per-turn fail-closed vision guard: a vision provider can never reason over a missing frame.
       if (frameGuardTripped(observation)) break;
       await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}`);
-      onTrace?.(items.slice(), runningUsage());
+      flushTrace();
       observeTasks(observation, turnNumber);
       const dwellOutcome = await dwellIfDue(observation, turnNumber);
       if (dwellOutcome !== undefined) {
@@ -1589,6 +1700,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       completionReason = "harness_error";
       reason = "run aborted by the harness";
       stopCause = "harness_aborted";
+    } else if (isCuaProviderError(error)) {
+      completionReason = "harness_error";
+      reason = `participant provider error: ${error.code}; cleanup: ${error.receipt.cleanup}`;
+      record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
+        title: "participant provider error", text: reason });
     } else if (isCuaExecutorError(error)) {
       completionReason = "harness_error";
       reason = `desktop executor error: ${error.code}; disposition: ${error.disposition}`;
@@ -1639,6 +1755,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     let skip: string | undefined;
     if ((counts.turns ?? 0) === 0) skip = "the study stopped before any participant turn";
     else if (provider.debrief === undefined) skip = "this provider does not support read-only closing reports";
+    else if (providerCleanupUnconfirmed) skip = "participant request cleanup is unconfirmed";
     else if (signal?.aborted) skip = "the study was cancelled";
     else if (remaining() <= 0) skip = "the session deadline was reached";
     else if (provider.requiresFrame && closingObservation.screenshot === undefined) skip = "the final observation has no required frame";
@@ -1665,13 +1782,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         timer.unref?.();
         bump("debriefCalls");
         try {
-          const turn = await raceBounded("participant debrief", provider.debrief!({
+          const closingRequest: CuaTurnRequest = {
             instructions,
             observation: closingObservation,
+            ...(provider.requestPolicy !== "fail_closed" || previousExecution === undefined ? {} : { previousExecution }),
             ...(previousResponseId === undefined ? {} : { previousResponseId }),
             ...(pendingAcks === undefined ? {} : { acknowledgedSafetyChecks: pendingAcks }),
             contextHint: "The interactive session has ended. Return a closing account with summary and frictionReports. In summary, briefly describe only what you actually did and observed. In frictionReports, list only specific unexpected behavior, confusion, or recovery you personally encountered during this session. Preserve uncertainty. Use an empty list if you encountered none. Do not speculate, invent problems, quote instructions as observations, or describe planned actions. Do not request or take further actions. This is a closing account, not another attempt at the task."
-          }, controller.signal), capMs, capMs, signal);
+          };
+          const turn = provider.requestPolicy === "fail_closed"
+            ? await markedRequest(closingRequest, "debrief", capMs)
+            : await raceBounded("participant debrief", provider.debrief!(closingRequest, controller.signal), capMs, capMs, signal);
           recordUsage(turn, false);
           lastResponseId = turn.responseId ?? lastResponseId;
           // Refresh a shared budget with all reported usage, without changing the completed task.
@@ -1682,7 +1803,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
               title: "model budget reached during closing report",
               text: "The closing request crossed an estimated budget; no further requests or actions followed. Task completion is unchanged." });
           }
-          const usageReported = completeTurnUsage(turn.usage);
+          const usageReported = completeTurnUsage(turn.usage) && turn.providerRequest?.usageComplete !== false;
           if (turn.actions.length > 0 || turn.pendingSafetyChecks.length > 0) {
             note("failed", "the closing response requested actions or safety checks; none were executed and its report was not accepted", usageReported);
           } else if (!validClosingReport(turn.closingReport)) {
@@ -1706,7 +1827,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           } else {
             const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
               ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
-            note("failed", `${detail}; closing request usage is unreported`, false);
+            const closingReceipt = provider.requestPolicy === "fail_closed" ? providerRequests.at(-1) : undefined;
+            const usageReported = closingReceipt?.kind === "debrief" && closingReceipt.usageComplete && completeTurnUsage(closingReceipt.usage);
+            note("failed", `${detail}; closing request usage is ${usageReported ? "reported" : "unreported"}`, usageReported);
           }
         } finally {
           clearTimeout(timer);
@@ -1715,7 +1838,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         }
       }
     }
-    onTrace?.(items.slice(), runningUsage());
+    flushTrace();
   }
 
   const completedAtMs = now();
@@ -1741,6 +1864,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   const trace: ActorTrace = {
     schema: ACTOR_TRACE_SCHEMA,
     provider: provider.id,
+    ...liveMetadata(),
     ...(provider.version === undefined ? {} : { providerVersion: provider.version }),
     protocol: "cua-loop",
     lane: "computer-use",
@@ -1777,7 +1901,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),
     ...(sawUsage
       ? {
-          tokenUsage: {
+          tokenUsage: provider.executionProfile?.billing === "account-unknown" ? accountUsage() : {
             input: usageInput,
             output: usageOutput,
             // Recorded only when the provider actually reported it, so a reader can tell "no cache

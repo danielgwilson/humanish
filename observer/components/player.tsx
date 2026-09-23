@@ -537,7 +537,12 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
                 ))}
               </div>
             ) : null}
-            {actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
+            {actor?.executionProfile?.billing === "account-unknown" ? (
+              <div className="blk">
+                <span className="o-label">Account usage</span>
+                <p className="verbatim">Codex account · dollar cost unknown</p>
+              </div>
+            ) : actor?.estimatedCost && typeof actor.estimatedCost.estimatedCostUsd === "number" ? (
               <div className="blk">
                 <span className="o-label">Est. lane cost</span>
                 <p className="verbatim">

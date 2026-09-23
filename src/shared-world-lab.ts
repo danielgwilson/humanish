@@ -114,7 +114,7 @@ import {
   type SharedWorldTimelineEntry
 } from "./run.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
-import { estimateActorCost, MODEL_RATES, round6 } from "./pricing.js";
+import { estimateActorCost, estimateActorCostForExecution, MODEL_RATES, round6 } from "./pricing.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 
 export const SHARED_WORLD_LAB_SCHEMA = "humanish.shared-world-lab-result.v1";
@@ -1070,7 +1070,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         }
 
         if (session) {
-          session.trace.estimatedCost = estimateActorCost(session.trace.tokenUsage, session.trace.ids.model);
+          session.trace.estimatedCost = estimateActorCostForExecution(session.trace.tokenUsage, session.trace.ids.model, session.trace.executionProfile);
           // A per-seat stop can occur before the shared callback. Closing-report usage is also
           // part of this participant's total, so reconcile the final trace before admitting a seat.
           budgetBlockedReason = noteModelEstimate(spec.roleId, session.trace.estimatedCost.estimatedCostUsd);

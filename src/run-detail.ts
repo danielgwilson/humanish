@@ -17,7 +17,7 @@ import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { estimateActorCost } from "./pricing.js";
+import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./run.js";
 
@@ -76,6 +76,7 @@ export interface RunDetail {
 
 /** The narrow slice of the actor trace this reads. Deliberately not the whole schema. */
 interface ActorTraceFacts {
+  executionProfile?: { billing?: unknown };
   persona?: { id?: string; traitsApplied?: string[] };
   status?: string;
   completionReason?: string;
@@ -153,13 +154,14 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
  * it is costing actually changes what you do.
  */
 function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
+  if (trace.executionProfile?.billing === "account-unknown") return { estimatedCostUsd: null };
   const recorded = trace.estimatedCost?.estimatedCostUsd;
   if (recorded !== undefined) return { estimatedCostUsd: recorded };
   const usage = trace.tokenUsage;
   const model = trace.ids?.model;
   if (usage === undefined || typeof model !== "string") return {};
   try {
-    const estimated = estimateActorCost(usage as never, model);
+    const estimated = estimateActorCostForExecution(usage as never, model, trace.executionProfile);
     // A model `src/pricing.ts` cannot price yields no figure rather than a wrong one.
     return typeof estimated?.estimatedCostUsd === "number" ? { estimatedCostUsd: estimated.estimatedCostUsd } : {};
   } catch {
