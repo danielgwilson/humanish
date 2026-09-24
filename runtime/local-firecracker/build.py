@@ -2,6 +2,7 @@
 """Assemble development assets using the maintained source and image recipes."""
 import argparse
 import json
+import os
 from pathlib import Path
 import platform
 import subprocess
@@ -35,7 +36,7 @@ def main():
     # The fetcher verifies bytes without granting execution; the runtime opts in.
     (output / f"inputs/vmm/firecracker-v1.17.0-{machine}").chmod(0o755)
     run("kernel", "python3", "runtime/browser-kernel/build.py", "--inputs", str(output / "inputs"),
-        "--output", str(output / "kernel"), "--jobs", "8", "--architecture", architecture)
+        "--output", str(output / "kernel"), "--jobs", str(min(8, os.cpu_count() or 1)), "--architecture", architecture)
     run("browser", "python3", "runtime/browser-guest/build.py", "--architecture", architecture, "--output", str(output / "browser"))
     run("payload", "node", "scripts/guest-runtime-package.mjs", str(output / "payload"))
     base = json.loads((ROOT / "runtime/browser-guest/inputs.json").read_text())["platforms"][architecture]["base"]
