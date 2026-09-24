@@ -134,6 +134,16 @@ operations notes, local runtime caches, or private operator packets. Public
 they are synthetic, durable, and public-safe. Public image assets must remain on
 the scanner allowlist and keep their approved checksum.
 
+## Version Policy
+
+Humanish remains on `0.x` until the maintainer explicitly decides to release
+`1.0.0`. General authority to merge and publish does not imply that decision.
+Semantic-version components are integers, not decimals: the next minor after
+`0.99.0` is `0.100.0`; a patch is `0.99.1`. Use patch releases for compatible
+fixes and minor releases for features or pre-1.0 breaking changes, documenting
+any breaking changes and migration steps. Do not use `npm version major` or
+infer 1.0 readiness from a large minor number. See [SemVer](https://semver.org/).
+
 ## Publish Procedure
 
 Only after maintainer approval. Prefer the tag-gated GitHub Actions workflow
