@@ -48,8 +48,11 @@ def main():
               "kernel": str(output / "kernel/output/kernel.bin"), "rootfs": str(output / "disks/root.ext4"),
               "stateTemplate": str(output / "disks/state.ext4"),
               "runtimeRevision": read("payload/manifest.json")["runtimeRevision"], "runnerImage": runner}
+    inputs = output / "asset-inputs.json"
+    inputs.write_text(json.dumps(assets, indent=2) + "\n")
     manifest = output / "assets.json"
-    manifest.write_text(json.dumps(assets, indent=2) + "\n")
+    run("runtime", "python3", "runtime/local-firecracker/pack.py", "--assets", str(inputs),
+        "--tag", "humanish-local-runtime:" + tag, "--output", str(manifest))
     print("Assets: " + str(manifest))
 
 

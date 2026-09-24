@@ -578,6 +578,7 @@ export function createProgram(
   registerStatsCommand(program, cliIo);
   registerExportCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
+  registerRuntimeCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
   registerWatchCommand(program, cliIo);
   registerObserveCommand(program, cliIo);
@@ -1428,6 +1429,30 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
       writeResult(command, io, result, formatRunsHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
+}
+
+function registerRuntimeCommands(parent: Command, io: CliIo): void {
+  const runtime = parent.command("runtime").description("Prepare or inspect the local browser runtime.");
+  for (const action of ["status", "setup"] as const) {
+    runtime.command(action)
+      .description(action === "status" ? "Check local Docker, virtualization and the cached browser image without downloads." : "Download and install the local browser image. Does not start a study or use model quota.")
+      .option("--json", JSON_OPTION_DESCRIPTION)
+      .action(async (_options, command) => {
+        const { localRuntimeStatus, prepareLocalRuntime } = await import("./local-runtime.js");
+        try {
+          if (action === "setup") await prepareLocalRuntime({ progress: message => io.writeErr(`${message}\n`) });
+          const status = await localRuntimeStatus();
+          const result = { schema: "humanish.runtime-result.v1", ...status };
+          writeResult(command, io, result, () => `${status.message}\n`);
+          io.setExitCode(status.ok ? 0 : 2);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Local runtime setup failed. Run humanish runtime setup to retry.";
+          const result = { schema: "humanish.runtime-result.v1", ok: false, error: { code: "HUMANISH_LOCAL_RUNTIME_SETUP_FAILED", message } };
+          writeResult(command, io, result, () => `${message}\n`);
+          io.setExitCode(2);
+        }
+      });
+  }
 }
 
 function registerCommsCommands(parent: Command, io: CliIo): void {

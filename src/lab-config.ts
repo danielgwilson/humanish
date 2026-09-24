@@ -1,3 +1,4 @@
+import { isLocalBrowserLab, localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
 import { resolveAutomaticAnalysis, type LabAnalysis } from "./automatic-analysis-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
@@ -1255,7 +1256,12 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   const analysisReason = automaticAnalysisRouteReason(config);
   if (analysisReason) return invalid(analysisReason);
-  return { ok: true, config, warnings: forwardDeclaredWarnings(config) };
+  const normalized = localBrowserDefaults(config);
+  if (isLocalBrowserLab(normalized)) {
+    const reason = localBrowserUnsupportedReason(normalized);
+    if (reason) return invalid(reason);
+  }
+  return { ok: true, config: normalized, warnings: forwardDeclaredWarnings(normalized) };
 }
 
 // The slug interpolates into an in-sandbox shell command; the strict shape is load-bearing.

@@ -1,3 +1,5 @@
+import { isLocalBrowserLab } from "./local-runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js";
 // What a lab IS, for the surface that has to describe it before you spend money (#455).
 //
 // The run index and run detail answer questions about runs. This answers a question about the LAB
@@ -25,6 +27,7 @@ export interface LabCaps {
 }
 
 export interface LabSummary {
+  runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
   communications?: string;
   analysis?: { provider?: "openai" | "codex"; billing?: "api-estimate" | "account-unknown"; model: string; maxCostUsd: number | null };
   schema: typeof LAB_SUMMARY_SCHEMA;
@@ -149,9 +152,12 @@ export async function readLabSummary(
   const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, backend);
   const subject = subjectOf(config);
   const participants = participantsOf(config);
+  const runtime = options.checkKeys === true && isLocalBrowserLab(inspected.config)
+    ? await localRuntimeStatus({ ...(options.env ? { env: options.env } : {}) }) : undefined;
 
   return {
     ...(analysis ? { analysis } : {}),
+    ...(runtime ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } } : {}),
     schema: LAB_SUMMARY_SCHEMA,
     ...(inspected.config.comms?.email?.kind === "real" ? { communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only` } : {}),
     labId: String(config.id ?? lab),

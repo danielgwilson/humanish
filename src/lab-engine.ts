@@ -1,3 +1,4 @@
+import { isLocalBrowserLab, localBrowserDefaults } from "./local-runtime-config.js";
 // The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
@@ -180,6 +181,7 @@ export async function runLab(config: LabConfig, options: RunLabOptions): Promise
 }
 
 async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise<LabOutcome> {
+  config = localBrowserDefaults(config);
   const backend = selectLabBackend(config);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
@@ -256,6 +258,10 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       return { backend, result };
     }
     case "cua": {
+      if (isLocalBrowserLab(config) && !options.cuaHooks && resolveLabDryRun(config, options.dryRun, true) === false) {
+        const { runLocalFirecrackerStudy } = await import("./local-firecracker-study.js");
+        return runLocalFirecrackerStudy({ ...options, config });
+      }
       // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runCuaActorLab({

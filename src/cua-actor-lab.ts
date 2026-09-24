@@ -32,6 +32,7 @@ import { prepareReceivingRun, receivingPublication } from "./comms-receiving-run
 import type { CommsReceivingRun } from "./comms-receiving.js";
 import { laneHasInboxRecipient, type CuaDesktopLane } from "./cua-desktop-lane.js";
 import { createE2BCuaDesktopLane } from "./e2b-cua-desktop.js";
+import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./local-runtime-config.js";
 import {
   DEFAULT_STATE_STEP_TIMEOUT_MS,
   commandDigestOf,
@@ -760,6 +761,7 @@ export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefi
  *  git clone for an upload+extract, but the shared install/build/state/start/probe pipeline
  *  costs the same wall-clock room either way. */
 function resolvePerLaneSandboxMs(config: LabConfig): number {
+  if (isLocalBrowserLab(config)) return LOCAL_BROWSER_LIFETIME_MS;
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
   const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
   const stateBudgetMs = provisionedRoute
@@ -2332,7 +2334,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
         descriptor.id
       );
     }
-    if (localAgentRoute) {
+    if (localAgentRoute && !hooks.buildProvider) {
       // Refuse HERE, before a sandbox exists. "codex is not installed" discovered after the
       // machine is paid for is the same information delivered at the worst possible moment.
       const available = await detectLocalAgents({ env });

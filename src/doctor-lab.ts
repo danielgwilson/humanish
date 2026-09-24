@@ -1,3 +1,5 @@
+import { isLocalBrowserLab } from "./local-runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js";
 import type { LabConfig } from "./lab-config.js";
 import type { LabBackend } from "./lab-engine.js";
 import type { DetectedLocalAgent } from "./local-agent-cli.js";
@@ -12,6 +14,7 @@ export async function labSetupChecks(args: {
   cwd: string; lab: string; env: NodeJS.ProcessEnv; agents: DetectedLocalAgent[];
   keyPresent: (name: string) => boolean;
   /** Internal read-only qualification seam; never a participant/model request. */
+  localRuntimeReadiness?: () => Promise<LocalRuntimeStatus>;
   codexAnalysisReadiness?: (env: NodeJS.ProcessEnv) => Promise<{ ready: boolean; errorCode: string | null }>;
 }): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./labs.js");
@@ -26,6 +29,15 @@ export async function labSetupChecks(args: {
   const unsupported = unsupportedCliRoute(config, backend);
   if (unsupported) return { desktop: false, keys: [], checks: [...checks, { name: "live route", ok: false, message: unsupported }] };
   const { desktop, keys } = labKeyRequirements(config, backend, false, args.keyPresent);
+  const local = isLocalBrowserLab(config);
+  let accountReadiness: Promise<{ ready: boolean; errorCode: string | null }> | undefined;
+  const checkAccount = () => accountReadiness ??= (args.codexAnalysisReadiness ?? (async (env: NodeJS.ProcessEnv) =>
+    (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env })))(args.env)
+    .catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  if (local) {
+    const runtime = await (args.localRuntimeReadiness ?? (() => localRuntimeStatus({ env: args.env })))();
+    checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
+  }
   if (config.comms?.email?.kind === "real") {
     const name = await receivingRequiredKey(args.cwd, config.comms.email.connection);
     if (name) keys.push(name);
@@ -42,10 +54,17 @@ export async function labSetupChecks(args: {
   } else if (backend === "cua" && config.actors[0]?.type === "local-agent") {
     const choice = config.actors[0]?.localAgent ?? "codex";
     const agent = args.agents.find(entry => entry.id === choice);
-    checks.push({ name: "local participant authentication", ok: agent?.authStatus === "authenticated", message:
-      agent?.authStatus === "authenticated" ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
-        : agent ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
-          : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.` });
+    if (local) {
+      const readiness = await checkAccount();
+      checks.push({ name: "local participant authentication", ok: readiness.ready, message: readiness.ready
+        ? "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; remote model access and quota remain untested."
+        : `Local Codex participant setup is unavailable (${readiness.errorCode}). Run humanish doctor --lab <lab>; install the qualified CLI and sign in with a ChatGPT account. No API fallback is used.` });
+    } else {
+      checks.push({ name: "local participant authentication", ok: agent?.authStatus === "authenticated", message:
+        agent?.authStatus === "authenticated" ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
+          : agent ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
+            : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.` });
+    }
   }
   if (backend === "scripted") {
     const { resolveBrowserCommand } = await import("./scripted-browser-actor.js");
@@ -58,8 +77,7 @@ export async function labSetupChecks(args: {
   }
   const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
   if (analysis?.provider === "codex") {
-    const check = args.codexAnalysisReadiness ?? (async (env: NodeJS.ProcessEnv) => (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env }));
-    const readiness = await check(args.env).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+    const readiness = await checkAccount();
     const recovery = readiness.errorCode === "codex_unsupported_platform"
       ? "Use a Linux x64 host for this qualified account route, or explicitly select provider: openai with an API key."
       : readiness.errorCode === "codex_busy"
@@ -87,8 +105,9 @@ export function labKeyRequirements(
   keyPresent: (name: string) => boolean
 ): { desktop: boolean; keys: string[] } {
   if (dryRun || unsupportedCliRoute(config, backend)) return { desktop: false, keys: [] };
-  const desktop = backend === "cua" || backend === "terminal" || backend.includes("shared-world")
-    || backend === "scripted" && config.subject.source === "clone";
+  // This flag controls the hosted desktop SDK check as well as its API key.
+  const desktop = !isLocalBrowserLab(config) && (backend === "cua" || backend === "terminal" || backend.includes("shared-world")
+    || backend === "scripted" && config.subject.source === "clone");
   const keys = desktop ? ["E2B_API_KEY"] : [];
   if (backend === "terminal") keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
   else if ((backend === "cua" && config.actors[0]?.type !== "local-agent") || backend.includes("shared-world")) keys.push("OPENAI_API_KEY");
