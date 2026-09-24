@@ -66,6 +66,11 @@ describe("local runtime preparation", () => {
     expect(state.commands).toHaveLength(1);
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("refuses a Rosetta or Intel Node process before preparing a Lima host", async () => {
+    await expect(prepareLocalRuntime({ ...options, platform: "darwin", arch: "x64" })).rejects.toThrow("M3");
+    expect(state.commands).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("read-only status reports preparation without downloading or loading", async () => {
     expect(await localRuntimeStatus(options)).toMatchObject({ ok: true, installed: false });
     expect(fetch).not.toHaveBeenCalled();

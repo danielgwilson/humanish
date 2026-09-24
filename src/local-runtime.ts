@@ -85,6 +85,7 @@ export async function localRuntimeStatus(options: RuntimeOptions = {}): Promise<
 
 /** Docker owns the installed image/cache. The archive is verified before docker load. */
 export async function prepareLocalRuntime(options: RuntimeOptions = {}): Promise<LocalFirecrackerAssets> {
+  if (!runtimeArchitecture(options)) throw new Error((await localRuntimeStatus(options)).message);
   if (usesLima(options)) await prepareLima(options, options.progress);
   const before = await localRuntimeStatus(options);
   if (!before.ok) throw new Error(before.message);
