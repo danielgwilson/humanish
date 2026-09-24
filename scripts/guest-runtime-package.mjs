@@ -78,12 +78,12 @@ export async function packageGuestRuntime(destination) {
     for (const [path, hash] of Object.entries(hashes)) dependencyFiles[name + '/' + path] = hash;
   }
   const buildInputs = {
-    architecture: 'amd64', nodeVersion: process.version, typescriptVersion: require('typescript/package.json').version,
+    architecture: process.arch === 'arm64' ? 'arm64' : 'amd64', nodeVersion: process.version, typescriptVersion: require('typescript/package.json').version,
     packageLockSha256: sha(await readFile(join(repository, 'pnpm-lock.yaml'))),
     tsconfigSha256: sha(await readFile(join(repository, 'tsconfig.json'))),
     tsconfigBuildSha256: sha(await readFile(join(repository, 'tsconfig.build.json'))), bootstrapVersion: 1, browserControlVersion: 1
   };
-  if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('Only native Linux amd64 packaging is qualified');
+  if (process.platform !== 'linux' || !['x64', 'arm64'].includes(process.arch)) throw new Error('Guest payload packaging requires native Linux amd64 or ARM64');
   const inputs = { sourceFiles, dependencyFiles, buildInputs };
   const runtimeRevision = 'guest-api1-' + sha(canonical(inputs));
   const control = join(root, 'opt/humanish/control');

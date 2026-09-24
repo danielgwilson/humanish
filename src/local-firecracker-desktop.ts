@@ -1,20 +1,16 @@
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { promisify } from "node:util";
 import { connectGuestBootstrap } from "./guest-bootstrap.js";
 import { ownDesktopAllocation, type DesktopSession } from "./desktop-session.js";
+import { runtimeDocker, runtimeExec, usesLima } from "./local-runtime-host.js";
+import { openLimaTunnel } from "./local-runtime-ssh.js";
 
-const exec = promisify(execFile);
-const docker = async (args: string[]): Promise<string> => (await exec("docker", args, {
-  timeout: 60_000, maxBuffer: 1024 * 1024
-})).stdout.trim();
+const docker = async (args: string[]): Promise<string> => (await runtimeDocker(args, {}, 60_000)).stdout.trim();
 const readLogs = async (id: string): Promise<string> => {
-  const result = await exec("docker", ["logs", "--tail", "100", id], { timeout: 10_000, maxBuffer: 1024 * 1024 });
+  const result = await runtimeDocker(["logs", "--tail", "100", id], {}, 10_000);
   return result.stdout + result.stderr;
 };
 
@@ -36,15 +32,17 @@ export async function createLocalFirecrackerDesktop(options: {
   options.signal?.throwIfAborted();
   await mkdir(options.outputRoot, { recursive: true, mode: 0o700 });
   // Unix socket paths have a small fixed limit; project paths may be much longer.
-  const work = await mkdtemp(path.join(tmpdir(), "humanish-fc-"));
+  const work = await mkdtemp("/tmp/humanish-fc-");
+  const lima = usesLima();
   const sockets = new Set<Socket>();
   let container: string | undefined;
   let client: Awaited<ReturnType<typeof connectGuestBootstrap>> | undefined;
   const stop = new AbortController();
   const signal = options.signal ? AbortSignal.any([options.signal, stop.signal]) : stop.signal;
-  const socketRoot = path.join(work, "vm");
-  const cidfile = path.join(work, "container-id");
-  await mkdir(socketRoot, { mode: 0o700 });
+  let remoteWork: string | undefined;
+  let tunnel: Awaited<ReturnType<typeof openLimaTunnel>> | undefined;
+  let socketRoot = path.join(work, "vm"), cidfile = path.join(work, "container-id");
+  let controlSocket = path.join(socketRoot, "vsock.sock");
   const forward = createServer(incoming => {
     if (signal.aborted) { incoming.destroy(); return; }
     const target = connect({ host: url.hostname, port: Number(url.port), autoSelectFamily: true });
@@ -64,7 +62,7 @@ export async function createLocalFirecrackerDesktop(options: {
     options.signal?.removeEventListener("abort", aborted);
     // Docker can create the container before its command's reply is interrupted.
     // Only this invocation's private cidfile is cleanup authority.
-    container ??= await readFile(cidfile, "utf8").then(value => /^[a-f0-9]{64}$/.test(value.trim()) ? value.trim() : undefined, () => undefined);
+    container ??= await (lima ? runtimeExec("cat", [cidfile]).then(result => result.stdout) : readFile(cidfile, "utf8")).then(value => /^[a-f0-9]{64}$/.test(value.trim()) ? value.trim() : undefined, () => undefined);
     if (container) {
       try {
         await docker(["rm", "--force", "--volumes", container]);
@@ -73,13 +71,29 @@ export async function createLocalFirecrackerDesktop(options: {
         if (!stderr.includes(`No such container: ${container}`)) return { status: "unconfirmed", reason: "release_failed" };
       }
     }
-    try { await rm(work, { recursive: true, force: true }); }
+    if (tunnel && !await tunnel.close()) return { status: "unconfirmed", reason: "release_failed" };
+    try {
+      if (remoteWork) await runtimeExec("rm", ["-rf", "--", remoteWork]);
+      await rm(work, { recursive: true, force: true });
+    }
     catch { return { status: "unconfirmed", reason: "release_failed" }; }
     return { status: "released", reason: "terminated" };
   })();
   const aborted = (): void => { void close(); };
   try {
-    await new Promise<void>((resolve, reject) => {
+    let uid = process.getuid?.() || 1000, gid = process.getgid?.() || 1000;
+    if (lima) {
+      remoteWork = (await runtimeExec("mktemp", ["-d", "/tmp/humanish-fc-XXXXXX"])).stdout.trim();
+      socketRoot = remoteWork;
+      cidfile = `${remoteWork}/container-id`;
+      controlSocket = path.join(work, "vsock.sock");
+      uid = Number((await runtimeExec("id", ["-u"])).stdout.trim());
+      gid = Number((await runtimeExec("id", ["-g"])).stdout.trim());
+      tunnel = await openLimaTunnel({ work, socketRoot, appUrl: url, signal });
+    } else {
+      await mkdir(socketRoot, { mode: 0o700 });
+    }
+    if (!lima) await new Promise<void>((resolve, reject) => {
       forward.once("error", reject);
       forward.listen(path.join(socketRoot, "vsock.sock_8000"), () => { forward.off("error", reject); resolve(); });
     });
@@ -90,7 +104,7 @@ export async function createLocalFirecrackerDesktop(options: {
       "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m", "--stop-timeout", "5",
       "--mount", `type=bind,src=${socketRoot},dst=/run/vm`,
       "--mount", "type=volume,dst=/run/state,volume-nocopy",
-      options.assets.image, url.port, String(process.getuid?.() || 1000), String(process.getgid?.() || 1000)]);
+      options.assets.image, url.port, String(uid), String(gid)]);
     if (!/^[a-f0-9]{64}$/.test(created)) throw new Error("Docker did not return a container ID.");
     container = created;
     signal.throwIfAborted();
@@ -107,7 +121,7 @@ export async function createLocalFirecrackerDesktop(options: {
       signal.throwIfAborted();
       if (performance.now() >= deadline) throw new Error("Firecracker browser startup timed out.");
       stream = await new Promise<Socket | undefined>(resolve => {
-        const socket = connect(path.join(socketRoot, "vsock.sock"));
+        const socket = connect(controlSocket);
         socket.once("connect", () => resolve(socket));
         socket.once("error", () => { socket.destroy(); resolve(undefined); });
       });

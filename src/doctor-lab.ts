@@ -79,7 +79,7 @@ export async function labSetupChecks(args: {
   if (analysis?.provider === "codex") {
     const readiness = await checkAccount();
     const recovery = readiness.errorCode === "codex_unsupported_platform"
-      ? "Use a Linux x64 host for this qualified account route, or explicitly select provider: openai with an API key."
+      ? "Use Linux x64 or the Apple Silicon Mac with a supported Codex CLI, or explicitly select provider: openai with an API key."
       : readiness.errorCode === "codex_busy"
       ? "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then retry."
       : "Install the qualified CLI and sign in with a ChatGPT account.";

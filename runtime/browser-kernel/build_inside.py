@@ -72,7 +72,17 @@ def unpack_rpm(source, destination):
 def main():
     OUTPUT.mkdir()
     expected = json.loads((WORK / 'inputs.json').read_text())
+    architecture = expected['architecture']
+    arm = architecture == 'arm64'
+    machine, make_arch = ('aarch64', 'arm64') if arm else ('x86_64', 'x86_64')
     policy = json.loads((WORK / 'policy.json').read_text())
+    if arm:
+        policy['architecture'] = architecture
+        for key in ['CONFIG_X86_64', 'CONFIG_KVM_GUEST', 'CONFIG_ACPI']:
+            policy['required'].pop(key)
+        policy['required'].update({key: 'y' for key in ['CONFIG_ARM64', 'CONFIG_ARM64_4K_PAGES',
+            'CONFIG_PCI_HOST_GENERIC', 'CONFIG_ARM_AMBA', 'CONFIG_RTC_DRV_PL031', 'CONFIG_SERIAL_OF_PLATFORM']})
+        policy['forbidden'] += ['CONFIG_ARM64_16K_PAGES', 'CONFIG_ARM64_64K_PAGES']
     toolchain = json.loads((WORK / 'toolchain.json').read_text())
     for name, record in expected['files'].items():
         path = INPUT / name
@@ -107,7 +117,7 @@ def main():
     source = WORK / 'kernel-source'
     unpack_rpm(source_rpm, source)
     spec = source / 'kernel6.18.spec'
-    if sha256(spec) != expected['kernel']['sourceSpecSha256'] or sha256(source / 'config-x86_64-microvm') != expected['kernel']['microvmConfigSha256']:
+    if sha256(spec) != expected['kernel']['sourceSpecSha256'] or sha256(source / f'config-{machine}-microvm') != expected['kernel']['microvmConfigSha256']:
         raise ValueError('Kernel source/config pairing changed')
     source_files = {file.name: {'size': file.stat().st_size, 'sha256': sha256(file)}
                     for file in sorted(source.iterdir())}
@@ -134,11 +144,11 @@ def main():
             # Match the source RPM's explicitly declared one-line fuzz policy.
             run(['patch', '-p1', '-F1', '--batch', '--forward'], cwd=kernel, stdin=patch)
     (kernel / '.scmversion').touch()
-    original = INPUT / 'microvm-kernel-ci-x86_64-6.18.config'
+    original = INPUT / f'microvm-kernel-ci-{machine}-6.18.config'
     shutil.copyfile(original, kernel / '.config')
     # The pinned FC config names the exact source RPM release. No claim of an
     # identical config: compiler normalization and browser restrictions are kept.
-    if '6.18.39-79.141.amzn2023.x86_64.microvm' not in original.read_text().splitlines()[2]:
+    if f'6.18.39-79.141.amzn2023.{machine}.microvm' not in original.read_text().splitlines()[2]:
         raise ValueError('Firecracker configuration source version mismatch')
     for key in policy['forbidden']:
         run(['scripts/config', '--disable', key.removeprefix('CONFIG_')], cwd=kernel)
@@ -146,12 +156,12 @@ def main():
         if value != 'y':
             raise ValueError('Unsupported required configuration value')
         run(['scripts/config', '--enable', key.removeprefix('CONFIG_')], cwd=kernel)
-    run(['scripts/config', '--set-str', 'LOCALVERSION', '-humanish-browser-amd64-1',
-         '--disable', 'LOCALVERSION_AUTO', '--set-str', 'BUILD_SALT', 'humanish-browser-amd64-1'], cwd=kernel)
+    run(['scripts/config', '--set-str', 'LOCALVERSION', f'-humanish-browser-{architecture}-1',
+         '--disable', 'LOCALVERSION_AUTO', '--set-str', 'BUILD_SALT', f'humanish-browser-{architecture}-1'], cwd=kernel)
     os.environ.update({'KBUILD_BUILD_USER': 'humanish', 'KBUILD_BUILD_HOST': 'kernel-builder',
                        'KBUILD_BUILD_VERSION': '1', 'KBUILD_BUILD_TIMESTAMP': '@' + str(toolchain['sourceDateEpoch']),
                        'SOURCE_DATE_EPOCH': str(toolchain['sourceDateEpoch']), 'LC_ALL': 'C.UTF-8', 'TZ': 'UTC'})
-    run(['make', 'ARCH=x86_64', 'olddefconfig'], cwd=kernel)
+    run(['make', 'ARCH=' + make_arch, 'olddefconfig'], cwd=kernel)
     actual = read_config(kernel / '.config')
     check_config(actual, policy)
     baseline = read_config(original)
@@ -160,24 +170,29 @@ def main():
     jobs = int(os.environ['HUMANISH_KERNEL_JOBS'])
     if not 1 <= jobs <= toolchain['jobsMaximum']:
         raise ValueError('Build concurrency exceeds fixed bound')
-    run(['make', 'ARCH=x86_64', '-j' + str(jobs), 'vmlinux', 'bzImage'], cwd=kernel)
-    for src, name in [('vmlinux', 'kernel.bin'), ('arch/x86/boot/bzImage', 'bzImage'),
+    run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *(['Image'] if arm else ['vmlinux', 'bzImage'])], cwd=kernel)
+    binaries = [('arch/arm64/boot/Image', 'kernel.bin')] if arm else [('vmlinux', 'kernel.bin'), ('arch/x86/boot/bzImage', 'bzImage')]
+    for src, name in [*binaries,
                       ('.config', 'kernel.config'), ('System.map', 'System.map'), ('COPYING', 'COPYING')]:
         shutil.copyfile(kernel / src, OUTPUT / name)
     shutil.copytree(kernel / 'LICENSES', OUTPUT / 'LICENSES')
     header = (OUTPUT / 'kernel.bin').read_bytes()[:64]
-    if header[:6] != b'\x7fELF\x02\x01' or int.from_bytes(header[18:20], 'little') != 62:
-        raise ValueError('Compiled kernel is not amd64 ELF')
-    elf = run(['readelf', '-h', '-l', str(OUTPUT / 'kernel.bin')], capture=True)
-    (OUTPUT / 'kernel-elf.txt').write_text(elf)
+    if arm:
+        if header[56:60] != b'ARM\x64' or (int.from_bytes(header[24:32], 'little') >> 1) & 3 != 1:
+            raise ValueError('Compiled kernel is not an ARM64 Image with 4 KiB pages')
+    else:
+        if header[:6] != b'\x7fELF\x02\x01' or int.from_bytes(header[18:20], 'little') != 62:
+            raise ValueError('Compiled kernel is not amd64 ELF')
+        elf = run(['readelf', '-h', '-l', str(OUTPUT / 'kernel.bin')], capture=True)
+        (OUTPUT / 'kernel-elf.txt').write_text(elf)
     (OUTPUT / 'config-delta.json').write_text(json.dumps(delta, indent=2) + '\n')
     (OUTPUT / 'source-files.json').write_text(json.dumps(source_files, indent=2) + '\n')
     (OUTPUT / 'patch-order.json').write_text(json.dumps(patches, indent=2) + '\n')
     outputs = {name: {'size': (OUTPUT / name).stat().st_size, 'sha256': sha256(OUTPUT / name)}
-               for name in ['kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING']}
+               for name in [*[name for _, name in binaries], 'kernel.config', 'System.map', 'COPYING']}
     result = {'schema': 'humanish.browser-kernel-build.v1', 'qualification': 'development-unqualified',
               'kernelVersion': run(['make', '-s', 'kernelrelease'], cwd=kernel, capture=True).strip(),
-              'architecture': 'amd64', 'sourceSignatureVerified': True,
+              'architecture': architecture, 'sourceSignatureVerified': True,
               'signingFingerprint': expected['kernel']['signingFingerprint'],
               'sourceSpecSha256': sha256(spec), 'patchCount': len(patches), 'policy': policy,
               'outputs': outputs, 'jobs': jobs, 'buildEnvironment': {key: os.environ[key] for key in

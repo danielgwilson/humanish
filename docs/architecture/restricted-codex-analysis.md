@@ -5,8 +5,10 @@ execution, with a separate conversation, process and tool authority. It can use
 the same host Codex login as a local-agent participant. Existing API analysis
 remains a separate provider.
 
-The qualified launcher profile is **Codex CLI 0.154.0, Linux x64, file-backed
-ChatGPT login, `gpt-6-astra`, low reasoning effort**. Other versions/platforms,
+The qualified launcher profile is **Codex CLI 0.154.0, Linux x64 or Apple Silicon
+macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**. The Mac
+profile passed installed participant/analysis studies and the native dispatch
+restriction check on an M5 Max. Other versions/platforms,
 keychain-only logins and API-key Codex logins are refused before a model turn.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.

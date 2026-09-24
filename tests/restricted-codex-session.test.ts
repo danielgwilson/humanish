@@ -118,8 +118,8 @@ describe("restricted Codex analyst session", () => {
       const result = await f.run({ ...request, ...overrides });
       expect(result.dispatched).toBe(false); expect(result.status).toBe("failed");
     }
-    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, platform: "darwin" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
-    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, arch: "arm64" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
+    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, platform: "win32", arch: "x64" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
+    expect(await createRestrictedCodexAnalysisProvider({ ...f.options, platform: "linux", arch: "arm64" })(request)).toMatchObject({ errorCode: "codex_unsupported_platform" });
     expect(f.spawns).toHaveLength(0);
     await rm(path.join(f.authHome, "auth.json"));
     expect(await f.run(request)).toMatchObject({ errorCode: "codex_login_required", dispatched: false });

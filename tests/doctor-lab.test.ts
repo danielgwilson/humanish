@@ -74,7 +74,7 @@ describe("selected lab setup without paid dispatch", () => {
   });
 
   it.each([
-    ["codex_unsupported_platform", "Use a Linux x64 host", "explicitly select provider: openai with an API key"],
+    ["codex_unsupported_platform", "Use Linux x64 or the Apple Silicon Mac", "explicitly select provider: openai with an API key"],
     ["codex_busy", "active in this process", "Wait for it to finish, then retry"]
   ])("gives actionable recovery for %s", async (errorCode, reason, recovery) => {
     await project(lab("local-agent") + "\nreview:\n  analysis:\n    provider: codex\n", async cwd => {

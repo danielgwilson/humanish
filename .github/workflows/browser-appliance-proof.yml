@@ -39,6 +39,11 @@ on:
       - tsconfig.build.json
       - .github/workflows/browser-appliance-proof.yml
   workflow_dispatch:
+    inputs:
+      arm64_candidate:
+        description: Build a native ARM64 runtime candidate and corresponding sources
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -49,6 +54,7 @@ concurrency:
 
 jobs:
   offline-artifacts:
+    if: ${{ !inputs.arm64_candidate }}
     # Ordinary disposable VM and Docker only; no KVM, sudo or host mounts.
     runs-on: ubuntu-24.04
     timeout-minutes: 70
@@ -126,4 +132,56 @@ jobs:
             ${{ runner.temp }}/disk-fault-proof/interrupted-build/cleanup.json
             ${{ runner.temp }}/disk-fault-proof/interrupted-build/build.log
           include-hidden-files: true
+          retention-days: 14
+
+  arm64-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.arm64_candidate }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.14.0'
+          cache: pnpm
+      - name: Build native ARM64 runtime
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec tsc -p tsconfig.build.json
+          python3 runtime/local-firecracker/build.py --output "$RUNNER_TEMP/runtime"
+      - name: Retain matching sources and package candidate
+        run: |
+          runtime_image="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "runtime/assets.json")))["image"])')"
+          mkdir "$RUNNER_TEMP/candidate"
+          docker image save "$runtime_image" | gzip -1 > "$RUNNER_TEMP/candidate/runtime-linux-arm64.tar.gz"
+          cp "$RUNNER_TEMP/runtime/assets.json" "$RUNNER_TEMP/candidate/assets.json"
+          python3 runtime/local-firecracker/sources.py \
+            --browser "$RUNNER_TEMP/runtime/browser" --runtime-image "$runtime_image" \
+            --boot-inputs "$RUNNER_TEMP/runtime/inputs" --kernel-build "$RUNNER_TEMP/runtime/kernel" \
+            --output "$RUNNER_TEMP/sources"
+          git archive --format=tar HEAD | gzip -1 > "$RUNNER_TEMP/sources/humanish-source.tar.gz"
+          tar -C "$RUNNER_TEMP/sources" -czf "$RUNNER_TEMP/candidate/runtime-sources.tar.gz" .
+          cd "$RUNNER_TEMP/candidate"
+          sha256sum *.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: arm64-runtime-candidate
+          path: ${{ runner.temp }}/candidate/*
+          compression-level: 0
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: arm64-runtime-build-receipts
+          path: |
+            ${{ runner.temp }}/runtime/*.log
+            ${{ runner.temp }}/runtime/*/manifest.json
+            ${{ runner.temp }}/runtime/kernel/build.log
+            ${{ runner.temp }}/runtime/browser/build.log
           retention-days: 14

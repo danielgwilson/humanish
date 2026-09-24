@@ -1,17 +1,22 @@
 # Local browser studies
 
-Linux x64 users can run isolated Firecracker browser participants from the
-installed CLI or TUI. Docker manages their containers and private state volumes;
-the normal study runner supplies scheduling, recordings, Observer and findings.
+Linux x64 and supported Apple Silicon Mac users can run isolated Firecracker
+browser participants from the installed CLI or TUI. Docker manages their
+containers and private state volumes; the normal study runner supplies
+scheduling, recordings, Observer and findings.
 No separate host service is installed.
 
 ## Start a study
 
-Prerequisites: a local, rootful Docker Engine; Linux KVM (`/dev/kvm`) and TUN
-(`/dev/net/tun`); and a signed-in, supported Codex CLI. See
+Both platforms need a signed-in, supported Codex CLI. Linux needs a local,
+rootful Docker Engine, KVM (`/dev/kvm`) and TUN (`/dev/net/tun`). Macs need an
+M3-or-newer chip, native ARM64 Node, Lima 2.2+ (`brew install lima`) and a macOS
+version supporting nested virtualization; see [Mac setup](#apple-silicon-macs).
+Docker Desktop is unnecessary. See
 [Codex account setup](restricted-codex-analysis.md) for the qualified version
 and account restrictions. Docker access is an administrative capability.
-Humanish does not install Docker or change host permissions.
+Humanish does not install Docker on Linux or change host permissions. On Mac,
+setup installs Docker only inside the dedicated Lima host.
 
 Start your app on loopback, then save a lab such as
 `.humanish/labs/local-browser.yaml`:
@@ -43,8 +48,9 @@ npx humanish doctor --lab .humanish/labs/local-browser.yaml --json
 npx humanish lab run .humanish/labs/local-browser.yaml
 ```
 
-The first live run downloads the pinned runtime archive (about 569 MiB), verifies
-its exact size and SHA-256, and loads it into Docker. Later runs reuse the image.
+The first live run downloads the pinned runtime archive (about 569 MiB on x64 or
+556 MiB on ARM64), verifies its exact size and SHA-256, and loads it into Docker.
+Later runs reuse the image.
 `humanish runtime setup` prepares it in advance. Status, doctor and dry-run never
 download an image or launch a participant. Preparation does not consume the
 participant's task-time budget. The TUI lists the same lab and runtime readiness;
@@ -64,9 +70,10 @@ Existing labs without `execution.target: local` retain their previous behavior.
 
 ## Current limits
 
-- Linux x64 only. Mac/Lima setup is a separate follow-up.
-- A local Docker Engine; remote contexts, rootless Docker and Docker Desktop
-  virtual machines are not supported by this host adapter.
+- Linux x64 or M3-or-newer Mac with native ARM64 Node and Lima. The installed
+  Mac journey was tested on an M5 Max; smaller machines are not capacity-qualified.
+- On Linux, a local Docker Engine; remote contexts, rootless Docker and Docker
+  Desktop are unsupported. The Mac adapter uses Docker inside its own Lima host.
 - Loopback HTTP(S) app URLs on explicit ports above 1023. Each participant can
   reach its selected app port, plus public destinations over ordinary TCP/UDP.
   Other private host/LAN destinations and cloud metadata are blocked.
@@ -80,9 +87,10 @@ Existing labs without `execution.target: local` retain their previous behavior.
 - Codex participants currently use `gpt-6-astra` at low effort. Hosted templates,
   device presets and hosted sandbox timeouts do not apply.
 
-Normal close removes the owned container and its private state volume. If the
-controller dies, the disconnected guest reboots, Firecracker exits and Docker
-removes both. A small host socket directory can remain after abrupt death.
+Normal close and cooperative startup cancellation remove the owned container
+and its private state volume. After a desktop connects, controller death
+disconnects the guest, which reboots; Firecracker exits and Docker removes both.
+A small host socket directory can remain after abrupt death.
 Run evidence remains in `.humanish/` under the normal local capture and sharing
 rules. An unconfirmed release is reported as such.
 
@@ -98,3 +106,42 @@ Source builders can use the
 [maintained recipes](../../runtime/local-firecracker/README.md) and set
 `HUMANISH_LOCAL_RUNTIME_IMAGE` to an already-built compatible local image. An
 invalid override fails; it does not cause an implicit registry pull.
+
+## Apple Silicon Macs
+
+The Mac adapter uses a dedicated `humanish-runtime` Lima/VZ host on M3 or
+newer Macs, with Lima 2.2+ and macOS supporting nested virtualization. Docker
+runs inside that host; Docker Desktop is unnecessary. Setup creates the host
+with 6 CPUs, 8 GiB RAM and an 80 GiB growable disk. It mounts no Mac directories.
+Start with two participants; larger concurrency has not been qualified by this
+integration. Use Lima's normal resource configuration for subsequent capacity
+experiments, without changing study concurrency behind the user's back.
+
+The scheduler and study loop remain shared. Standard OpenSSH forwards the
+browser-control Unix socket to the Mac, and the selected app port back into the
+Linux host. It preserves HTTP(S)/WebSocket bytes without parsing them. Codex
+runs on the Mac and retains the same separate participant/analyst profiles and
+file-backed login requirement. Keychain-only authentication is not supported.
+
+The installed CLI passed first-attempt public image setup and two-participant
+studies on an M5 Max: distinct app-side saves, overlapping participants,
+verified recordings and automatic account analysis. A fresh Lima instance used
+the public ARM64 catalog without a development image override. The separately
+available source archives match that native build. The manually dispatched ARM64
+job in `browser-appliance-proof.yml` builds images and sources; compilation alone
+does not establish Mac execution.
+
+Status and doctor do not create or start Lima. Explicit setup/first live use
+starts the owned host; closing a study removes its participant containers and
+volumes, but keeps the reusable Lima host running. Stop it with
+`limactl stop humanish-runtime` when no studies are running. An interrupted
+first provision remains inspectable through Lima and can be retried. Humanish
+does not replace a conflicting instance or stop unrelated instances.
+
+Normal close, cancellation and controller death were exercised on established
+Mac desktops. Shared startup cancellation and interrupted create-reply recovery
+were exercised against real Linux Docker/Firecracker, with a separate regression
+check for Lima cleanup. Forced controller death during startup, full-study
+cancellation, host sleep/wake and higher concurrency remain unqualified. A forced
+kill before a desktop connects can leave resources requiring inspection; this
+adapter adds no suspend detector that unconditionally destroys a study.
