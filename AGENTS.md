@@ -81,6 +81,8 @@ Assume this repository is public.
   and required checks, merge when green, fast-forward main and clean up the task
   worktree/branch. Follow [release gates](docs/release/open-source-readiness.md)
   when a release is authorized; do not add new approval steps on your own.
+- Stay on `0.x` until the maintainer explicitly chooses 1.0. The next minor
+  after `0.99.0` is `0.100.0`; routine shipping authority does not authorize 1.0.
 - Keep one current task handoff: requested outcome, what actually works, next
   complete user-visible result, explicit constraints and rejected/deferred paths.
   Link detailed evidence; mark superseded plans historical.
