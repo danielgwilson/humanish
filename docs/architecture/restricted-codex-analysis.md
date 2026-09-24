@@ -8,7 +8,7 @@ remains a separate provider.
 The qualified launcher profile is **Codex CLI 0.154.0, Linux x64 or Apple Silicon
 macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**. The Mac
 profile passed installed participant/analysis studies and the native dispatch
-restriction check on an M5 Max; it is pending npm release. Other versions/platforms,
+restriction check on an M5 Max. Other versions/platforms,
 keychain-only logins and API-key Codex logins are refused before a model turn.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.

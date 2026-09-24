@@ -4,9 +4,8 @@ Native Linux amd64/ARM64 source builder for a complete browser study: isolated
 Firecracker desktops, Codex-account participants, normal Observer recordings and
 automatic Codex analysis. Installed users should follow
 [local browser setup](../../docs/architecture/local-browser-runtime.md), which
-downloads a prepared image. The Mac/Lima candidate passed installed studies
-with the ARM64 image; its public download path remains a release gate. Inboxes
-and optional media remain follow-ups.
+downloads a prepared image. The Mac/Lima path passed installed studies and
+public ARM64 image setup on an M5 Max. Inboxes and optional media remain follow-ups.
 
 ## Run it
 
