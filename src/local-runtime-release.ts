@@ -8,7 +8,13 @@ export const LOCAL_RUNTIME_RELEASE: LocalRuntimeRelease = {
   image: "sha256:9597abdb46255190640443ea485010d2a45f51699e7cb47372d6ee895d280f5c"
 };
 
-/** ARM64 is enabled only after the installed Mac candidate is verified. */
+/** Architecture-specific artifacts; each retains matching sources and notices. */
 export const LOCAL_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {
-  amd64: LOCAL_RUNTIME_RELEASE
+  amd64: LOCAL_RUNTIME_RELEASE,
+  arm64: {
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.24.2/runtime-linux-arm64.tar.gz",
+    sha256: "16f10b21f6436ef39f18fb9615cae7045d3fc2a20798c1e42122d574f58c759b",
+    bytes: 582695626,
+    image: "sha256:52cd53169236cd70a445938bda008987f18a97303794ae0ff75cc15bbbd26671"
+  }
 };

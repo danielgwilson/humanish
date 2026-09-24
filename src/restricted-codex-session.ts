@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, chmod, lstat, mkdir, mkdtemp, open, readdir, realpath, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { CODEX_IMAGE, CODEX_MAX_OUTPUT_BYTES, RESTRICTED_CODEX_ANALYSIS_IDENTITY, RESTRICTED_CODEX_ANALYSIS_MODELS,
   admitsRestrictedCodexConfig, admitsRestrictedCodexThread, codexRecord, restrictedCodexConfig, restrictedCodexFailure,
@@ -61,8 +62,15 @@ async function resolveExecutable(options: RestrictedCodexSessionOptions, env: No
     const packageRoot = path.dirname(path.dirname(resolved));
     const triple = platform === "darwin" ? "aarch64-apple-darwin" : "x86_64-unknown-linux-musl";
     const nativePackage = platform === "darwin" ? "codex-darwin-arm64" : "codex-linux-x64";
-    for (const candidate of [path.join(packageRoot, "node_modules", "@openai", nativePackage, "vendor", triple, "bin", "codex"),
-      path.join(packageRoot, "vendor", triple, "bin", "codex")]) {
+    const candidates: string[] = [];
+    try {
+      // Match the npm launcher's resolution: optional packages may be hoisted or
+      // linked by the package manager rather than nested inside @openai/codex.
+      const manifest = createRequire(resolved).resolve(`@openai/${nativePackage}/package.json`);
+      candidates.push(path.join(path.dirname(manifest), "vendor", triple, "bin", "codex"));
+    } catch { /* Older packages may bundle the native executable directly. */ }
+    candidates.push(path.join(packageRoot, "vendor", triple, "bin", "codex"));
+    for (const candidate of candidates) {
       if (await isNativeExecutable(candidate, platform)) return realpath(candidate);
     }
   }

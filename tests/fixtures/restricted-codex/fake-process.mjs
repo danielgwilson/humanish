@@ -22,6 +22,8 @@ if (operation === "--version") {
   const reply = (id, result) => write({ id, result });
   const emit = value => write(map(value));
   const init = capture("initialize.json"); init.codexHome = process.env.HOME;
+  // Native 0.154.0 captures report macos/unix on macOS and linux/unix on Linux.
+  init.platformOs = process.platform === "darwin" ? "macos" : "linux";
   const config = map(capture("effective-config.json"));
   const thread = map(capture("thread-start.json"));
   const turn = capture("turn-start.json");

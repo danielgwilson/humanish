@@ -115,12 +115,13 @@ Linux host. It preserves HTTP(S)/WebSocket bytes without parsing them. Codex
 runs on the Mac and retains the same separate participant/analyst profiles and
 file-backed login requirement. Keychain-only authentication is not supported.
 
-**This candidate is not a published Mac feature.** The ARM64 release catalog
-remains empty until an installed Mac study passes. Development testing uses an
-already-loaded image selected by `HUMANISH_LOCAL_RUNTIME_IMAGE`; it does not
-silently substitute the published x64 runtime. The manually dispatched ARM64
-candidate job in `browser-appliance-proof.yml` builds native images and matching
-sources. It establishes compilation and packaging, not Mac execution.
+**This candidate is not yet an npm-released Mac feature.** An installed candidate
+passed two-participant studies on an M5 Max using a preloaded ARM64 image, with
+distinct app-side saves, overlapping participants, verified recordings and
+automatic account analysis. The catalog now pins that same image and its public
+download; acceptance from a fresh Lima host remains the release gate. The
+manually dispatched ARM64 job in `browser-appliance-proof.yml` builds native
+images and matching sources. Compilation alone does not establish Mac execution.
 
 Status and doctor do not create or start Lima. Explicit setup/first live use
 starts the owned host; closing a study removes its participant containers and
@@ -129,7 +130,7 @@ volumes, but keeps the reusable Lima host running. Stop it with
 first provision remains inspectable through Lima and can be retried. Humanish
 does not replace a conflicting instance or stop unrelated instances.
 
-Mac acceptance requires the installed CLI journey, two independently verified
-app saves, recordings, automatic analysis, and normal/interrupted cleanup.
-Host sleep/wake and higher concurrency remain separate measured limits; this
-adapter adds no suspend detector that unconditionally destroys a study.
+Normal close, cancellation and controller death were exercised on established
+Mac desktops. Startup interruption, full-study cancellation, host sleep/wake
+and higher concurrency remain unqualified; this adapter adds no suspend detector
+that unconditionally destroys a study.
