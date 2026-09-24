@@ -23,8 +23,17 @@ def sha256(path):
         return hashlib.file_digest(source, 'sha256').hexdigest()
 
 
-def pins():
-    return json.loads((ROOT / 'inputs.json').read_text())
+def pins(architecture='amd64'):
+    inputs = json.loads((ROOT / 'inputs.json').read_text())
+    if architecture == 'arm64':
+        arm = json.loads((ROOT / 'inputs-arm64.json').read_text())
+        inputs['architecture'] = architecture
+        inputs['kernel']['microvmConfigSha256'] = arm['microvmConfigSha256']
+        inputs['files'] = {name: value for name, value in inputs['files'].items() if 'x86_64' not in name}
+        inputs['files'].update(arm['files'])
+    elif architecture != 'amd64':
+        raise ValueError('Unsupported architecture')
+    return inputs
 
 
 def verify_file(path, expected):
@@ -80,10 +89,11 @@ def download(expected, destination):
     verify_file(destination, expected)
 
 
-def extract_vmm(archive, destination):
+def extract_vmm(archive, destination, architecture="amd64"):
     """Extract only known regular members; never invoke downloaded programs here."""
-    prefix = 'release-v1.17.0-x86_64/'
-    names = ['firecracker-v1.17.0-x86_64', 'jailer-v1.17.0-x86_64',
+    machine = 'aarch64' if architecture == 'arm64' else 'x86_64'
+    prefix = f'release-v1.17.0-{machine}/'
+    names = [f'firecracker-v1.17.0-{machine}', f'jailer-v1.17.0-{machine}',
              'LICENSE', 'NOTICE', 'THIRD-PARTY', 'SHA256SUMS']
     destination.mkdir(mode=0o700)
     with tarfile.open(archive, 'r:gz') as source:
@@ -121,23 +131,25 @@ def extract_vmm(archive, destination):
             raise ValueError('Release member checksum mismatch')
         if name.startswith(('firecracker-', 'jailer-')):
             header = (destination / name).read_bytes()[:64]
-            if header[:6] != b'\x7fELF\x02\x01' or int.from_bytes(header[18:20], 'little') != 62:
-                raise ValueError('Release binary is not amd64 ELF')
+            if header[:6] != b'\x7fELF\x02\x01' or int.from_bytes(header[18:20], 'little') != (183 if architecture == 'arm64' else 62):
+                raise ValueError('Release binary architecture does not match')
     return {name: {'size': (destination / name).stat().st_size,
                    'sha256': sha256(destination / name)} for name in names}
 
 
-def fetch(destination):
+def fetch(destination, architecture="amd64"):
     destination.mkdir(mode=0o700)
-    inputs = pins()
+    inputs = pins(architecture)
+    machine = "aarch64" if architecture == "arm64" else "x86_64"
+    release = f"firecracker-v1.17.0-{machine}.tgz"
     try:
         for name, expected in inputs['files'].items():
             download(expected, destination / name)
-        sidecar = (destination / 'firecracker-v1.17.0-x86_64.tgz.sha256.txt').read_text()
-        if sidecar.split() != [inputs['files']['firecracker-v1.17.0-x86_64.tgz']['sha256'],
-                              'firecracker-v1.17.0-x86_64.tgz']:
+        sidecar = (destination / (release + '.sha256.txt')).read_text()
+        if sidecar.split() != [inputs['files'][release]['sha256'],
+                              release]:
             raise ValueError('Release checksum sidecar mismatch')
-        members = extract_vmm(destination / 'firecracker-v1.17.0-x86_64.tgz', destination / 'vmm')
+        members = extract_vmm(destination / release, destination / 'vmm', architecture)
         manifest = {'schema': 'humanish.browser-boot-download.v1',
                     'qualification': 'development-unqualified', 'inputs': inputs,
                     'vmmMembers': members, 'executed': False, 'vmBooted': False,
@@ -152,7 +164,8 @@ def fetch(destination):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--architecture', choices=['amd64', 'arm64'], default='amd64')
     args = parser.parse_args()
-    result = fetch(args.output.absolute())
+    result = fetch(args.output.absolute(), args.architecture)
     print(json.dumps({'status': 'downloaded', 'output': str(args.output.absolute()),
                       'qualification': result['qualification']}))

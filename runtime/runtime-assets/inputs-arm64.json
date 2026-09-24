@@ -1,0 +1,21 @@
+{
+  "architecture": "arm64",
+  "microvmConfigSha256": "3251d87a392537bf86fc5d99f275b7a2d7e7dc4995c3f038384dc84dcdfb5103",
+  "files": {
+    "firecracker-v1.17.0-aarch64.tgz": {
+      "url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-aarch64.tgz",
+      "size": 7294031,
+      "sha256": "e351ebe4f7a16b5873bbd51005d2e6767103cff4d5ebc829df2d3f95a93e2256"
+    },
+    "firecracker-v1.17.0-aarch64.tgz.sha256.txt": {
+      "url": "https://github.com/firecracker-microvm/firecracker/releases/download/v1.17.0/firecracker-v1.17.0-aarch64.tgz.sha256.txt",
+      "size": 98,
+      "sha256": "43cf50645fd37ca08e14223d6acd12e38f69ff000342d3fcab22fa51687b8f30"
+    },
+    "microvm-kernel-ci-aarch64-6.18.config": {
+      "url": "https://raw.githubusercontent.com/firecracker-microvm/firecracker/95f868c8e345b1cc8faccd1a3c910b4989dc3f58/resources/guest_configs/microvm-kernel-ci-aarch64-6.18.config",
+      "size": 98096,
+      "sha256": "35cce8e8b754a84523ca20dc068fc3f8f03a15523be36a8623bad54e11972e2a"
+    }
+  }
+}

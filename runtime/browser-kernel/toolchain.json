@@ -6,5 +6,6 @@
   "memoryBytes": 8589934592,
   "pidsMaximum": 256,
   "buildTimeoutSeconds": 3600,
-  "sourceDateEpoch": 1789084800
+  "sourceDateEpoch": 1789084800,
+  "arm64Base": "debian@sha256:da496358bd6934d2bd6a563a33176a2e50eff5490c54b4ac6fb051b69fef4071"
 }

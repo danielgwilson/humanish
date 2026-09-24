@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build an amd64 development kernel in an ordinary container; never boot it."""
+"""Build a native development kernel in an ordinary container; never boot it."""
 import argparse
 import datetime
 import hashlib
@@ -41,14 +41,18 @@ def load_asset_module():
     return module
 
 
-def build(inputs, destination, jobs):
+def build(inputs, destination, jobs, architecture="amd64"):
     destination = destination.absolute()
     destination.mkdir(mode=0o700)
     snapshot = destination / 'recipe'
     snapshot.mkdir(mode=0o700)
     for name in RECIPE_FILES:
         shutil.copyfile(ROOT / name, snapshot / name)
-    shutil.copyfile(ASSETS / 'inputs.json', snapshot / 'inputs.json')
+    asset_module = load_asset_module()
+    if architecture == 'amd64':
+        shutil.copyfile(ASSETS / 'inputs.json', snapshot / 'inputs.json')
+    else:
+        (snapshot / 'inputs.json').write_text(json.dumps(asset_module.pins(architecture), indent=2) + '\n')
     shutil.copyfile(ASSETS / 'fetch.py', snapshot / 'fetch.py')
     recipe_hashes = {path.name: sha256(path) for path in snapshot.iterdir()}
     for path in snapshot.iterdir():
@@ -82,11 +86,11 @@ def build(inputs, destination, jobs):
 
     try:
         engine = json.loads(docker('info', '--format', '{{json .}}', capture=True))
-        if engine['Architecture'] not in ('x86_64', 'amd64'):
-            raise ValueError('A native amd64 Docker builder is required')
+        if engine['Architecture'] not in (('aarch64', 'arm64') if architecture == 'arm64' else ('x86_64', 'amd64')):
+            raise ValueError('A native Docker builder of the requested architecture is required')
         iid = destination / 'toolchain-image-id.txt'
-        docker('build', '--platform', 'linux/amd64', '--file', 'Containerfile',
-               '--build-arg', 'BASE_IMAGE=' + toolchain['base'],
+        docker('build', '--platform', 'linux/' + architecture, '--file', 'Containerfile',
+               '--build-arg', 'BASE_IMAGE=' + toolchain['arm64Base' if architecture == 'arm64' else 'base'],
                '--build-arg', 'DEBIAN_SNAPSHOT=' + toolchain['debianSnapshot'],
                '--build-arg', 'SECURITY_SNAPSHOT=' + toolchain['securitySnapshot'],
                '--iidfile', str(iid), '.', timeout=1800)
@@ -181,6 +185,7 @@ if __name__ == '__main__':
     parser.add_argument('--inputs', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--jobs', type=int, choices=range(1, 9), default=4)
+    parser.add_argument('--architecture', choices=['amd64', 'arm64'], default='amd64')
     args = parser.parse_args()
-    result = build(args.inputs.absolute(), args.output, args.jobs)
+    result = build(args.inputs.absolute(), args.output, args.jobs, args.architecture)
     print(json.dumps({'status': 'built', 'manifest': str(result), 'vmBooted': False}))

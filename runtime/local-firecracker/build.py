@@ -14,8 +14,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if platform.system() != "Linux" or platform.machine() not in ("x86_64", "amd64"):
-        parser.error("This development builder currently supports Linux amd64.")
+    if platform.system() != "Linux" or platform.machine() not in ("x86_64", "amd64", "aarch64", "arm64"):
+        parser.error("This builder requires native Linux amd64 or ARM64.")
+    architecture = "arm64" if platform.machine() in ("aarch64", "arm64") else "amd64"
+    machine = "aarch64" if architecture == "arm64" else "x86_64"
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
 
@@ -29,14 +31,14 @@ def main():
 
     tag = uuid.uuid4().hex
     runner, guest = "humanish-firecracker-runner:" + tag, "humanish-firecracker-guest:" + tag
-    run("inputs", "python3", "runtime/runtime-assets/fetch.py", "--output", str(output / "inputs"))
+    run("inputs", "python3", "runtime/runtime-assets/fetch.py", "--output", str(output / "inputs"), "--architecture", architecture)
     # The fetcher verifies bytes without granting execution; the runtime opts in.
-    (output / "inputs/vmm/firecracker-v1.17.0-x86_64").chmod(0o755)
+    (output / f"inputs/vmm/firecracker-v1.17.0-{machine}").chmod(0o755)
     run("kernel", "python3", "runtime/browser-kernel/build.py", "--inputs", str(output / "inputs"),
-        "--output", str(output / "kernel"), "--jobs", "8")
-    run("browser", "python3", "runtime/browser-guest/build.py", "--architecture", "amd64", "--output", str(output / "browser"))
+        "--output", str(output / "kernel"), "--jobs", "8", "--architecture", architecture)
+    run("browser", "python3", "runtime/browser-guest/build.py", "--architecture", architecture, "--output", str(output / "browser"))
     run("payload", "node", "scripts/guest-runtime-package.mjs", str(output / "payload"))
-    base = json.loads((ROOT / "runtime/browser-guest/inputs.json").read_text())["platforms"]["amd64"]["base"]
+    base = json.loads((ROOT / "runtime/browser-guest/inputs.json").read_text())["platforms"][architecture]["base"]
     run("runner", "docker", "build", "--build-arg", "BASE_IMAGE=" + base,
         "-f", "runtime/local-firecracker/Containerfile", "-t", runner, "runtime/local-firecracker")
     run("guest", "docker", "build", "--build-arg", "BROWSER_IMAGE=" + read("browser/manifest.json")["image"]["localTag"],
@@ -44,7 +46,7 @@ def main():
         "-t", guest, "runtime/local-firecracker")
     run("disks", "python3", "runtime/local-firecracker/build-disk.py", "--guest-image", guest,
         "--tools-image", runner, "--output", str(output / "disks"))
-    assets = {"firecracker": str(output / "inputs/vmm/firecracker-v1.17.0-x86_64"),
+    assets = {"firecracker": str(output / f"inputs/vmm/firecracker-v1.17.0-{machine}"),
               "kernel": str(output / "kernel/output/kernel.bin"), "rootfs": str(output / "disks/root.ext4"),
               "stateTemplate": str(output / "disks/state.ext4"),
               "runtimeRevision": read("payload/manifest.json")["runtimeRevision"], "runnerImage": runner}
