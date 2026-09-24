@@ -6,8 +6,8 @@ the same host Codex login as a local-agent participant. Existing API analysis
 remains a separate provider.
 
 The qualified launcher profile is **Codex CLI 0.154.0, Linux x64, file-backed
-ChatGPT login, `gpt-6-astra`, low reasoning effort**. Other versions/platforms,
-keychain-only logins and API-key Codex logins are refused before a model turn.
+ChatGPT login, `gpt-6-astra`, low reasoning effort**. The Apple Silicon Mac launcher is a development candidate pending live
+qualification. Other versions/platforms, keychain-only logins and API-key Codex logins are refused before a model turn.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.
 

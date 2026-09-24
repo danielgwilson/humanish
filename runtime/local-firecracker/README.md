@@ -1,10 +1,12 @@
 # Local Firecracker study integration
 
-Source builder for a complete browser study on Linux amd64: isolated
+Native Linux amd64/ARM64 source builder for a complete browser study: isolated
 Firecracker desktops, Codex-account participants, normal Observer recordings and
 automatic Codex analysis. Installed users should follow
 [local browser setup](../../docs/architecture/local-browser-runtime.md), which
-downloads a prepared image. Mac setup, inboxes and optional media remain follow-ups.
+downloads a prepared x64 image. The Mac/Lima adapter and ARM64 image are
+development candidates pending an installed Mac study. Inboxes and optional
+media remain follow-ups.
 
 ## Run it
 
@@ -84,3 +86,9 @@ Humanish source commit for its build scripts and guest control code. Large sourc
 archives can be split into numbered parts below GitHub's per-asset limit; include
 checksums and exact concatenation/extraction instructions in the release.
 Review the distributable inputs, never publish local run bundles or build logs.
+
+ARM64 builds run natively in Linux (including Lima on supported Macs), using the
+same recipes with the pinned ARM64 VMM, guest base and upstream kernel config.
+The kernel output is the raw ARM64 `Image`, not x86 ELF `vmlinux`. The manual
+`arm64_candidate` workflow input builds a transferable image and corresponding
+source archive on an ARM64 runner; it does not boot a VM or qualify Mac support.

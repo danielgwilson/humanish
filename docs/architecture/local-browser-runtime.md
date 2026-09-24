@@ -98,3 +98,38 @@ Source builders can use the
 [maintained recipes](../../runtime/local-firecracker/README.md) and set
 `HUMANISH_LOCAL_RUNTIME_IMAGE` to an already-built compatible local image. An
 invalid override fails; it does not cause an implicit registry pull.
+
+## Apple Silicon development candidate
+
+The source adapter uses a dedicated `humanish-runtime` Lima/VZ host on M3 or
+newer Macs, with Lima 2.2+ and macOS supporting nested virtualization. Docker
+runs inside that host; Docker Desktop is unnecessary. Setup creates the host
+with 6 CPUs, 8 GiB RAM and an 80 GiB growable disk. It mounts no Mac directories.
+Start with two participants; larger concurrency has not been qualified by this
+integration. Use Lima's normal resource configuration for subsequent capacity
+experiments, without changing study concurrency behind the user's back.
+
+The scheduler and study loop remain shared. Standard OpenSSH forwards the
+browser-control Unix socket to the Mac, and the selected app port back into the
+Linux host. It preserves HTTP(S)/WebSocket bytes without parsing them. Codex
+runs on the Mac and retains the same separate participant/analyst profiles and
+file-backed login requirement. Keychain-only authentication is not supported.
+
+**This candidate is not a published Mac feature.** The ARM64 release catalog
+remains empty until an installed Mac study passes. Development testing uses an
+already-loaded image selected by `HUMANISH_LOCAL_RUNTIME_IMAGE`; it does not
+silently substitute the published x64 runtime. The manually dispatched ARM64
+candidate job in `browser-appliance-proof.yml` builds native images and matching
+sources. It establishes compilation and packaging, not Mac execution.
+
+Status and doctor do not create or start Lima. Explicit setup/first live use
+starts the owned host; closing a study removes its participant containers and
+volumes, but keeps the reusable Lima host running. Stop it with
+`limactl stop humanish-runtime` when no studies are running. An interrupted
+first provision remains inspectable through Lima and can be retried. Humanish
+does not replace a conflicting instance or stop unrelated instances.
+
+Mac acceptance requires the installed CLI journey, two independently verified
+app saves, recordings, automatic analysis, and normal/interrupted cleanup.
+Host sleep/wake and higher concurrency remain separate measured limits; this
+adapter adds no suspend detector that unconditionally destroys a study.

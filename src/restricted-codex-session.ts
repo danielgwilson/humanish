@@ -28,14 +28,16 @@ function childEnvironment(source: NodeJS.ProcessEnv, home: string, scratch: stri
   return result;
 }
 
-async function isNativeExecutable(file: string): Promise<boolean> {
+async function isNativeExecutable(file: string, platform: NodeJS.Platform): Promise<boolean> {
   try {
     await access(file, constants.X_OK);
     const handle = await open(file, "r");
     try {
       const buffer = Buffer.alloc(4);
       const read = await handle.read(buffer, 0, 4, 0);
-      return read.bytesRead === 4 && buffer.equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]));
+      return read.bytesRead === 4 && (platform === "darwin"
+        ? ["cffaedfe", "feedfacf", "cafebabe", "bebafeca", "cafebabf"].includes(buffer.toString("hex"))
+        : buffer.equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])));
     } finally { await handle.close(); }
   } catch { return false; }
 }
@@ -43,6 +45,7 @@ async function isNativeExecutable(file: string): Promise<boolean> {
 /** Resolve PATH without running a shell. The npm launcher is resolved to its
  * native optional package so cleanup owns the real app-server child. */
 async function resolveExecutable(options: RestrictedCodexSessionOptions, env: NodeJS.ProcessEnv): Promise<string> {
+  const platform = options.platform ?? process.platform;
   let selected = options.executable;
   if (selected === undefined) {
     for (const directory of (env.PATH ?? "").split(path.delimiter).filter(entry => path.isAbsolute(entry))) {
@@ -53,13 +56,14 @@ async function resolveExecutable(options: RestrictedCodexSessionOptions, env: No
   if (selected === undefined || !path.isAbsolute(selected)) throw new RestrictedCodexStop("codex_unavailable");
   let resolved: string;
   try { resolved = await realpath(selected); } catch { throw new RestrictedCodexStop("codex_unavailable"); }
-  if (await isNativeExecutable(resolved)) return resolved;
+  if (await isNativeExecutable(resolved, platform)) return resolved;
   if (path.basename(resolved) === "codex.js" && path.basename(path.dirname(resolved)) === "bin") {
     const packageRoot = path.dirname(path.dirname(resolved));
-    const triple = "x86_64-unknown-linux-musl";
-    for (const candidate of [path.join(packageRoot, "node_modules", "@openai", "codex-linux-x64", "vendor", triple, "bin", "codex"),
+    const triple = platform === "darwin" ? "aarch64-apple-darwin" : "x86_64-unknown-linux-musl";
+    const nativePackage = platform === "darwin" ? "codex-darwin-arm64" : "codex-linux-x64";
+    for (const candidate of [path.join(packageRoot, "node_modules", "@openai", nativePackage, "vendor", triple, "bin", "codex"),
       path.join(packageRoot, "vendor", triple, "bin", "codex")]) {
-      if (await isNativeExecutable(candidate)) return realpath(candidate);
+      if (await isNativeExecutable(candidate, platform)) return realpath(candidate);
     }
   }
   throw new RestrictedCodexStop("codex_unavailable");
@@ -152,7 +156,8 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
   options: RestrictedCodexSessionOptions = {}, readinessOnly = false): Promise<RestrictedCodexResult> {
   const admissionError = restrictedCodexRequestError(request);
   if (admissionError) return restrictedCodexFailure(admissionError);
-  if ((options.platform ?? process.platform) !== "linux" || (options.arch ?? process.arch) !== "x64")
+  const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
+  if (!(platform === "linux" && arch === "x64") && !(platform === "darwin" && arch === "arm64"))
     return restrictedCodexFailure("codex_unsupported_platform");
   const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
   const sourceEnv = options.env ?? process.env;
@@ -265,7 +270,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
     });
     if (typeof initialize.userAgent !== "string" || !initialize.userAgent.includes(`/0.154.0 `)
-      || initialize.codexHome !== home || initialize.platformOs !== "linux" || initialize.platformFamily !== "unix")
+      || initialize.codexHome !== home || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
       throw new RestrictedCodexStop("codex_unsupported_version");
     transport.notify("initialized", {});
     const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
