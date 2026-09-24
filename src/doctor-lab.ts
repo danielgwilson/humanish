@@ -105,9 +105,10 @@ export function labKeyRequirements(
   keyPresent: (name: string) => boolean
 ): { desktop: boolean; keys: string[] } {
   if (dryRun || unsupportedCliRoute(config, backend)) return { desktop: false, keys: [] };
-  const desktop = backend === "cua" || backend === "terminal" || backend.includes("shared-world")
-    || backend === "scripted" && config.subject.source === "clone";
-  const keys = desktop && !isLocalBrowserLab(config) ? ["E2B_API_KEY"] : [];
+  // This flag controls the hosted desktop SDK check as well as its API key.
+  const desktop = !isLocalBrowserLab(config) && (backend === "cua" || backend === "terminal" || backend.includes("shared-world")
+    || backend === "scripted" && config.subject.source === "clone");
+  const keys = desktop ? ["E2B_API_KEY"] : [];
   if (backend === "terminal") keys.push(keyPresent("CODEX_API_KEY") ? "CODEX_API_KEY" : "OPENAI_API_KEY");
   else if ((backend === "cua" && config.actors[0]?.type !== "local-agent") || backend.includes("shared-world")) keys.push("OPENAI_API_KEY");
   return { desktop, keys };

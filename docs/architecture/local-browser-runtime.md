@@ -37,6 +37,7 @@ execution:
 ```
 
 ```sh
+npx humanish init --yes
 npx humanish runtime status --json
 npx humanish doctor --lab .humanish/labs/local-browser.yaml --json
 npx humanish lab run .humanish/labs/local-browser.yaml

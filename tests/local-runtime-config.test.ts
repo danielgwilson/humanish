@@ -12,12 +12,12 @@ describe("local browser lab configuration", () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config).toMatchObject({ actors: [{ model: "gpt-6-astra", reasoningEffort: "low" }],
       review: { analysis: { provider: "codex" } }, execution: { desktop: { resolution: [960, 720] } } });
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false).keys).toEqual([]);
+    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({ desktop: false, keys: [] });
   });
   it("requires only the model API key for local API participants", () => {
     const parsed = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use" }] });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(labKeyRequirements(parsed.config, "cua", false, () => false).keys).toEqual(["OPENAI_API_KEY"]);
+    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({ desktop: false, keys: ["OPENAI_API_KEY"] });
     expect(parsed.config.review?.analysis).toBeUndefined();
   });
   it("preserves explicit analysis opt-out and hosted routing", () => {
