@@ -34,6 +34,12 @@ calls are rejected rather than queued. The client marks its executor with
 `stallRecovery: 'fail_closed'`, so an earlier computer-use loop deadline cannot
 trigger the legacy observation retry or idle-action skip behavior.
 
+An action explicitly rejected with `action_rejected` / `not_dispatched` can
+recover in the shared study loop. It records the rejection, withholds the rest
+of that action batch and takes a fresh observation before asking the participant
+what to do next. It never automatically replays input. Other executor failures,
+including uncertain outcomes and failed observations, still end the session.
+
 ## Wire contract
 
 Each frame is a four-byte unsigned big-endian length followed by strict UTF-8
