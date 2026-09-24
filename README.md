@@ -4,7 +4,7 @@ Synthetic user research for apps, CLIs, and agent-facing product flows.
 Open-source and public-safe.
 
 Humanish runs studies. Realistic synthetic participants, each with its own
-goals, patience, and skill, actually use your product on hosted desktops while
+goals, patience, and skill, actually use your product on isolated desktops while
 you watch. A study leaves verifiable evidence: screenshots, action traces,
 per-task completion funnels, participant outcomes with the denominator
 attached, and estimated cost lines. A fail-closed share-safety gate stands
@@ -41,12 +41,18 @@ Choose how the participant runs:
 | Route | Participant authentication | Desktop | Automatic findings |
 | --- | --- | --- | --- |
 | `first-run` preview | None; synthetic evidence only | None | No model analysis |
+| [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker + KVM; no E2B key | Separate Codex account analyst by default |
 | `openai-computer-use` | `OPENAI_API_KEY` | `E2B_API_KEY` + desktop SDK | Separate OpenAI request |
 | [`local-agent`](https://humanish.dev/docs/local-agents) | Codex or Claude Code's own login | `E2B_API_KEY` + desktop SDK | Still needs `OPENAI_API_KEY`; skipped without it |
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
 authenticate Humanish's OpenAI API requests. Choose the actor explicitly in
 your lab; installing Codex does not change an `openai-computer-use` lab.
+
+For local browsers, install only `humanish` and follow the
+[local study setup](docs/architecture/local-browser-runtime.md). The first live
+run downloads a verified runtime image; `npx humanish runtime setup` prepares it
+ahead of time. Mac/Lima, local inboxes and local media are not integrated yet.
 
 **Run a live study with the API route.** Set the desktop and model keys with hidden prompts, then
 send one synthetic participant into the included drawDB study:

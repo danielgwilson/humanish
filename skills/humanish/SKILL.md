@@ -95,9 +95,10 @@ exact returned path, not a basename that could resolve to another manifest.
 
 ## Choosing a findings analyst
 
-Analysis is separate from the participant. Existing manual and automatic defaults
-use the OpenAI API with its own admission budget; a local-agent participant does
-not change that default. To use the restricted Codex ChatGPT account analyst,
+Analysis is separate from the participant. Hosted and manual defaults use the
+OpenAI API with its own admission budget. An explicitly local browser study with
+a Codex participant defaults to a separate Codex account analyst. To select that
+restricted Codex ChatGPT account analyst on other supported studies,
 set `review.analysis.provider: codex` or pass `analyze --provider codex` on a
 completed recording. This uses remote inference and the qualified CLI/login,
 not local inference or the participant's existing conversation. See
@@ -111,6 +112,25 @@ an API key or another provider. `analyze --dry-run --provider codex` validates
 local evidence/configuration only; `doctor --lab` checks setup without a model
 request. Inspect a failed attempt before explicitly retrying `--provider codex
 --rerun`. Opening Observer never starts analysis.
+
+## Local browser setup
+
+On Linux x64 with a local rootful Docker Engine, KVM and TUN, an `app-url` lab can
+set `execution.target: local` and `actors[0].type: local-agent` with
+`localAgent: codex`. It uses the supported Codex ChatGPT login, not E2B or an
+OpenAI API key. Inference is remote and consumes account quota. Existing hosted
+labs stay hosted; never silently change their execution or billing provider.
+
+Use `humanish runtime status --json` and `humanish doctor --lab <path> --json`
+for read-only setup inspection. `humanish runtime setup` downloads and verifies
+the pinned runtime; a live local run also prepares it automatically. The normal
+`humanish lab run <path>` command and TUI use the same study runner and Observer.
+See [the complete example and limits](../../docs/architecture/local-browser-runtime.md).
+
+Local browsers currently require a loopback app URL with an explicit port above
+1023, use a 960×720 Chromium desktop, and reject inbox/media declarations. Mac
+setup is not integrated. Do not claim that installing the CLI also installs
+Docker or makes these prerequisites available.
 
 ## Format Stack
 

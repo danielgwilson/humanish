@@ -1,9 +1,10 @@
 # Local Firecracker study integration
 
-Development entrypoint for a complete browser study on Linux amd64: isolated
+Source builder for a complete browser study on Linux amd64: isolated
 Firecracker desktops, Codex-account participants, normal Observer recordings and
-automatic Codex analysis. It is not yet the installed CLI default. Managed asset
-downloads, Mac setup, inboxes and optional media remain follow-ups.
+automatic Codex analysis. Installed users should follow
+[local browser setup](../../docs/architecture/local-browser-runtime.md), which
+downloads a prepared image. Mac setup, inboxes and optional media remain follow-ups.
 
 ## Run it
 
@@ -48,11 +49,38 @@ The existing guest browser control interface implements `DesktopSession`.
 `CuaDesktopLane` plugs it into the existing scheduler, participant loop and
 recording pipeline. Each Codex request retains its own process, home and thread.
 The guest exits on controller disconnect; Firecracker's reboot path exits the
-VMM, and Docker removes the container. Explicit close removes the temporary
-state files too. Abrupt controller death can leave those private temporary files;
-automatic disk-cache reclamation remains installation work. A 30-minute process
+VMM, and Docker removes the container and its anonymous state volume. Abrupt
+controller death can leave a small host socket directory. A 30-minute process
 deadline bounds a guest that stops responding.
 
 The development guest currently uses a 960×720 Chromium desktop, 2 vCPUs and
 2 GiB guest RAM per participant. Media is off. A NIC and loadable-module support
 preserve the path to optional media without changing the study or network model.
+
+## Distribute a runtime
+
+`build.py` produces `assets.json` with an immutable image ID and runtime revision.
+`pack.py` can also package already-prepared assets without rebuilding the kernel.
+Use `docker image save <image> | gzip -1` for the downloadable archive, then
+record its exact byte count, SHA-256 and image ID in `src/local-runtime-release.ts`.
+Publish under a versioned `runtime-*` GitHub release; users never follow a moving
+tag. Runtime tags do not publish the npm package.
+
+Retain and distribute the matching sources and notices alongside the image:
+
+```sh
+python3 runtime/local-firecracker/sources.py \
+  --browser .humanish/local-assets/browser \
+  --runtime-image humanish-local-runtime:<build-tag> \
+  --boot-inputs .humanish/local-assets/inputs \
+  --kernel-build .humanish/local-assets/kernel \
+  --output .humanish/runtime-sources
+```
+
+The collector matches guest and runner packages to the retained Debian source
+indices, verifies each source download, and includes the kernel source/config,
+Firecracker source and license notices. Include a `git archive` of the matching
+Humanish source commit for its build scripts and guest control code. Large source
+archives can be split into numbered parts below GitHub's per-asset limit; include
+checksums and exact concatenation/extraction instructions in the release.
+Review the distributable inputs, never publish local run bundles or build logs.

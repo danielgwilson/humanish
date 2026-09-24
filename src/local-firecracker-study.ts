@@ -1,49 +1,51 @@
 import path from "node:path";
-import { runLab, type LabOutcome } from "./lab-engine.js";
+import { runLab, type LabOutcome, type RunLabOptions } from "./lab-engine.js";
 import type { LabConfig } from "./lab-config.js";
 import type { DesktopSession } from "./desktop-session.js";
 import type { DesktopLaneEvidence } from "./cua-desktop-lane.js";
 import { runCuaActorSession } from "./computer-use-actor.js";
 import { createLocalFirecrackerDesktop, type LocalFirecrackerAssets } from "./local-firecracker-desktop.js";
+import { localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
+import { prepareLocalRuntime } from "./local-runtime.js";
+import { checkRestrictedCodexAnalysisReadiness } from "./restricted-codex-analysis.js";
 import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
 
-/** Development entrypoint over explicitly supplied assets. All study execution,
- * evidence and analysis remain in the normal lab runner. No installer/default selection. */
-export async function runLocalFirecrackerStudy(options: {
-  cwd: string; config: LabConfig; assets: LocalFirecrackerAssets; runId?: string; signal?: AbortSignal;
+/** Local desktop/provider composition over the shared lab runner. */
+export async function runLocalFirecrackerStudy(options: RunLabOptions & {
+  config: LabConfig; assets?: LocalFirecrackerAssets; signal?: AbortSignal;
 }): Promise<LabOutcome> {
-  const { config } = options;
-  const actor = config.actors[0];
-  const desktop = config.execution?.desktop;
-  if (config.subject.source !== "app-url" || config.execution?.target !== "local" || config.actors.length !== 1 ||
-    actor?.type !== "openai-computer-use" || actor.model !== "gpt-6-astra" ||
-    (actor.reasoningEffort !== undefined && actor.reasoningEffort !== "low") ||
-    actor.maxOutputTokens !== undefined || actor.lanes?.some(lane =>
-      (lane.reasoningEffort !== undefined && lane.reasoningEffort !== "low") || lane.device !== undefined) ||
-    desktop?.resolution?.[0] !== 960 || desktop.resolution[1] !== 720 || desktop.device !== undefined ||
-    (desktop.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
-    desktop.media !== undefined || desktop.template !== undefined || desktop.sandboxTimeoutMs !== undefined || config.comms !== undefined ||
-    config.execution.caps?.maxUsd !== undefined || config.execution.caps?.maxTotalUsd !== undefined ||
-    config.scenario?.caps?.maxUsd !== undefined || config.scenario?.caps?.maxTotalUsd !== undefined ||
-    (config.review?.analysis !== false && (!config.review?.analysis || config.review.analysis.provider !== "codex"))) {
-    throw new Error("This development runtime requires local app-url, gpt-6-astra at low effort, 960×720 Chromium, no comms/media or dollar/output caps, and Codex analysis (or analysis disabled).");
-  }
+  const config = localBrowserDefaults(options.config);
+  const unsupported = localBrowserUnsupportedReason(config);
+  if (unsupported) throw new Error(unsupported);
+  const account = config.actors[0]?.type === "local-agent";
+  let preparing: Promise<LocalFirecrackerAssets> | undefined;
+  const assets = (): Promise<LocalFirecrackerAssets> => preparing ??= (async () => {
+    if (account) {
+      const readiness = await checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 });
+      if (!readiness.ready) throw new Error(`Codex account is not ready (${readiness.errorCode}). Run humanish doctor --lab <lab> before starting a local study.`);
+    }
+    return options.assets ?? await prepareLocalRuntime({
+      ...(options.signal ? { signal: options.signal } : {}),
+      progress: message => process.stderr.write(`${message}\n`)
+    });
+  })();
   const sessions: DesktopSession[] = [];
   const participants: ReturnType<typeof createRestrictedCodexParticipant>[] = [];
   let cleanupUnconfirmed = false;
   try {
-    return await runLab(config, { cwd: options.cwd, dryRun: false, open: false,
-      ...(options.runId === undefined ? {} : { runId: options.runId }),
-      automaticAnalysis: { onStart() { if (cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed."); } },
+    return await runLab(config, { ...options,
+      automaticAnalysis: { ...options.automaticAnalysis, onStart() {
+        if (cleanupUnconfirmed) throw new Error("Local study cleanup is unconfirmed.");
+        return options.automaticAnalysis?.onStart?.();
+      } },
       cuaHooks: {
-        env: {},
         createDesktopLane(spec, warnings) {
           let session: DesktopSession | undefined;
           let finalizing: Promise<void> | undefined;
           const evidence: DesktopLaneEvidence = { killed: false, streamUrlPresent: false, stateStepRecords: [], phaseRecords: [] };
           return {
             async prepare() {
-              session = await createLocalFirecrackerDesktop({ assets: options.assets,
+              session = await createLocalFirecrackerDesktop({ assets: await assets(),
                 appUrl: spec.targetUrl ?? config.subject.appUrl!, outputRoot: path.join(options.cwd, ".humanish", "local-runtime"),
                 ...(options.signal === undefined ? {} : { signal: options.signal }) });
               sessions.push(session);
@@ -63,7 +65,7 @@ export async function runLocalFirecrackerStudy(options: {
             snapshot: () => evidence
           };
         },
-        async buildProvider() {
+        ...(account ? { async buildProvider() {
           const participant = createRestrictedCodexParticipant();
           participants.push(participant);
           return Object.assign(participant.provider, { async close() {
@@ -72,8 +74,8 @@ export async function runLocalFirecrackerStudy(options: {
               throw new Error("Local participant cleanup is unconfirmed.");
             }
           } });
-        },
-        runSession: input => runCuaActorSession({ ...input, ...(options.signal === undefined ? {} : { signal: options.signal }) })
+        } } : {}),
+        ...(options.signal ? { runSession: (input: Parameters<typeof runCuaActorSession>[0]) => runCuaActorSession({ ...input, signal: options.signal! }) } : {})
       }
     });
   } finally {

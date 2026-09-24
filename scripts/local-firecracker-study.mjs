@@ -33,14 +33,14 @@ try {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const appUrl = `http://127.0.0.1:${server.address().port}/`;
   const parsed = parseLabConfig({ schema: 'humanish.lab.v2', id: 'local-note-study', title: 'Two isolated note readers',
-    subject: { source: 'app-url', appUrl }, actors: [{ type: 'openai-computer-use', model: 'gpt-6-astra',
+    subject: { source: 'app-url', appUrl }, actors: [{ type: 'local-agent', localAgent: 'codex', model: 'gpt-6-astra',
       mission: 'Save your assigned note, then describe whether the confirmation is clear.', lanes: [
         { id: 'reader-a', target: appUrl + '?reader=a', instruction: 'Your note is exactly: Bring a notebook.' },
         { id: 'reader-b', target: appUrl + '?reader=b', instruction: 'Your note is exactly: Bring a pencil.' }
       ] }], scenario: { mode: 'live' }, execution: { target: 'local', concurrency: 2, timeoutMs: 120_000,
       desktop: { resolution: [960, 720] } }, review: { analysis: { provider: 'codex' } }, policies: { redactScreenshots: false } });
   if (!parsed.ok) throw new Error(parsed.error.message);
-  const outcome = await runLocalFirecrackerStudy({ cwd: process.cwd(), config: parsed.config, assets,
+  const outcome = await runLocalFirecrackerStudy({ cwd: process.cwd(), config: parsed.config, dryRun: false, open: false, assets,
     signal: AbortSignal.any([abort.signal, AbortSignal.timeout(300_000)]) });
   const result = outcome.result;
   assert.equal(result.ok, true, JSON.stringify(result));

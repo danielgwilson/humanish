@@ -1,9 +1,9 @@
 # Current Goals
 
-Status date: 2026-09-23. Release baseline: `0.97.0`.
+Status date: 2026-09-24. Release baseline: `0.98.0`.
 
 This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.97.0-codex-account-analysis.md).
+in the [release notes](../release/0.98.0-local-browser-studies.md).
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,7 +88,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.97.0`)
+## Current Program Truth (source `0.98.0`)
 
 | Surface | Available in merged source | Remaining boundary |
 | --- | --- | --- |
@@ -115,14 +115,15 @@ The library-assisted `local-app` route now includes a
 Its deterministic provider demonstrates the integration with a real loopback
 app; it does not establish persona effectiveness or independent adoption.
 
-The [local Firecracker development entrypoint](../../runtime/local-firecracker/README.md)
+The [local browser runtime](../architecture/local-browser-runtime.md)
 runs isolated Linux browser participants through the same scheduler, recordings
 and automatic analysis as hosted studies. It uses Docker-owned resources and
 ordinary TAP/NAT networking. Continue managed-local work from this complete study
 path; the earlier offline owner/service qualification experiments are historical
-fixtures, not an installation architecture or a prerequisite queue. Managed setup,
-Mac support, inbox integration and optional media remain unfinished. The installed
-CLI default and published release remain unchanged.
+fixtures, not an installation architecture or a prerequisite queue. Explicit
+Linux local labs now use the installed CLI/TUI, with a verified runtime download
+before the first live run. Mac support, inbox integration and optional media
+remain unfinished. Existing hosted labs retain their behavior.
 
 ## Gates And Deferred Work
 

@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { constants } from "node:fs";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,8 +20,8 @@ const readLogs = async (id: string): Promise<string> => {
 
 /** Internal development assets; setup/distribution chooses these, never a participant. */
 export interface LocalFirecrackerAssets {
-  firecracker: string; kernel: string; rootfs: string; stateTemplate: string;
-  runtimeRevision: string; runnerImage: string;
+  image: string;
+  runtimeRevision: string;
 }
 
 /** One VM and an opaque TCP forward to the explicitly selected loopback app. */
@@ -68,7 +67,7 @@ export async function createLocalFirecrackerDesktop(options: {
     container ??= await readFile(cidfile, "utf8").then(value => /^[a-f0-9]{64}$/.test(value.trim()) ? value.trim() : undefined, () => undefined);
     if (container) {
       try {
-        await docker(["rm", "--force", container]);
+        await docker(["rm", "--force", "--volumes", container]);
       } catch (error) {
         const stderr = (error as { stderr?: string }).stderr ?? "";
         if (!stderr.includes(`No such container: ${container}`)) return { status: "unconfirmed", reason: "release_failed" };
@@ -80,24 +79,18 @@ export async function createLocalFirecrackerDesktop(options: {
   })();
   const aborted = (): void => { void close(); };
   try {
-    await copyFile(options.assets.stateTemplate, path.join(work, "state.ext4"), constants.COPYFILE_FICLONE);
-    await chmod(path.join(work, "state.ext4"), 0o600);
     await new Promise<void>((resolve, reject) => {
       forward.once("error", reject);
       forward.listen(path.join(socketRoot, "vsock.sock_8000"), () => { forward.off("error", reject); resolve(); });
     });
-    const mounts = [
-      [options.assets.firecracker, "/firecracker", true], [options.assets.kernel, "/kernel", true],
-      [options.assets.rootfs, "/root.ext4", true], [path.join(work, "state.ext4"), "/state.ext4", false],
-      [socketRoot, "/run/vm", false]
-    ] as const;
     const created = await docker(["create", "--rm", "--cidfile", cidfile, "--init", "--user", "0:0", "--read-only", "--cap-drop", "ALL",
       "--cap-add", "NET_ADMIN", "--cap-add", "SETUID", "--cap-add", "SETGID", "--cap-add", "CHOWN",
       "--device", "/dev/kvm", "--device", "/dev/net/tun", "--security-opt", "no-new-privileges",
       "--sysctl", "net.ipv4.ip_forward=1", "--memory", "3g", "--memory-swap", "3g", "--cpus", "2", "--pids-limit", "128",
       "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m", "--stop-timeout", "5",
-      ...mounts.flatMap(([source, target, readonly]) => ["--mount", `type=bind,src=${path.resolve(source)},dst=${target}${readonly ? ",readonly" : ""}`]),
-      options.assets.runnerImage, url.port, String(process.getuid?.() || 1000), String(process.getgid?.() || 1000)]);
+      "--mount", `type=bind,src=${socketRoot},dst=/run/vm`,
+      "--mount", "type=volume,dst=/run/state,volume-nocopy",
+      options.assets.image, url.port, String(process.getuid?.() || 1000), String(process.getgid?.() || 1000)]);
     if (!/^[a-f0-9]{64}$/.test(created)) throw new Error("Docker did not return a container ID.");
     container = created;
     signal.throwIfAborted();

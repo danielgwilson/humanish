@@ -235,3 +235,10 @@ them should install `@e2b/desktop` explicitly instead of receiving that
 substrate as part of the default Humanish package install. When a GitHub token is
 present, repo labels are redacted in durable artifacts by default; live stream
 auth URLs are used only by the attached watch server and are not persisted.
+
+An explicitly selected [local browser lab](../architecture/local-browser-runtime.md)
+can instead use Linux x64, Docker/KVM and an existing Codex ChatGPT login for
+participants and findings. The installed CLI prepares its pinned image before
+the first live run. It does not install host prerequisites, and Mac, inbox and
+media integration remain separate follow-ups. Existing hosted lab configuration
+is preserved.

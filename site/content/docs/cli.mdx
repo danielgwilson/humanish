@@ -37,6 +37,7 @@ humanish [options] [command]
 - [humanish stats](#humanish-stats): Roll up cost, outcomes, and durations across runs.
 - [humanish export](#humanish-export): Export Observer HTML or a redacted bundle workspace.
 - [humanish comms](#humanish-comms): Off-app comms surfaces.
+- [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
 - [humanish reclaim](#humanish-reclaim): Reclaim an interrupted run's sandboxes by recorded id.
 - [humanish watch](#humanish-watch): Run sims, open the observer, keep the shell attached.
 - [humanish observe](#humanish-observe): Follow a run's saved evidence over loopback http.
@@ -540,6 +541,44 @@ humanish comms catch [options]
 | `--token <value>` | Require this bearer token on GET /deliveries (recommended when reachable off-host). |
 | `--inbox-port <port>` | Also serve a READ-ONLY inbox listener on 0.0.0.0:&lt;port&gt;, so a persona on another machine can open /inbox. Without it the catch stays loopback-only. |
 | `--recipient <address>` | Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed. |
+| `-h, --help` | display help for command |
+
+## humanish runtime
+
+Prepare or inspect the local browser runtime.
+
+```text
+humanish runtime [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | display help for command |
+
+### humanish runtime status
+
+Check local Docker, virtualization and the cached browser image without downloads.
+
+```text
+humanish runtime status [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | display help for command |
+
+### humanish runtime setup
+
+Download and install the local browser image. Does not start a study or use model quota.
+
+```text
+humanish runtime setup [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
 ## humanish reclaim

@@ -29,6 +29,18 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
 }
 
 describe("selected lab setup without paid dispatch", () => {
+  it("checks the qualified local participant even when analysis is disabled", async () => {
+    const manifest = lab("local-agent").replace("https://preview.example.test/", "http://localhost:3000/")
+      .replace("target: e2b-desktop", "target: local") + "\nreview:\n  analysis: false\n";
+    await project(manifest, async cwd => {
+      const result = await labSetupChecks({ cwd, lab: "preview", env: keyless, agents: [], keyPresent: () => false,
+        localRuntimeReadiness: async () => ({ ok: true, installed: false, message: "Runtime will download" }),
+        codexAnalysisReadiness: async () => ({ ready: false, errorCode: "codex_login_required" }) });
+      expect(result.keys).toEqual([]);
+      expect(result.checks.find(item => item.name === "local participant authentication")).toMatchObject({ ok: false });
+      expect(result.checks.some(item => item.name === "post-run analysis")).toBe(false);
+    });
+  });
   it("uses the doctor's selected environment for the restricted account readiness check", async () => {
     const launcher = await import("../src/restricted-codex-analysis.js");
     const readiness = vi.spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
