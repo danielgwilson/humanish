@@ -1407,6 +1407,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       const idleThisTurn = isIdleTurn(turn.actions);
       previousExecution = { actions: [] };
+      let rejectedActionTitle: string | undefined;
       for (const [actionIndex, action] of turn.actions.entries()) {
         if (signal?.aborted) throw new CuaAbortError();
         const actionTitle = describeCuaAction(action);
@@ -1485,20 +1486,29 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             await executeAction();
           }
         } catch (error) {
-          // RECOVERY at the loop boundary (covers ALL action kinds uniformly):
-          // only a genuine substrate-command failure is recoverable. The real
-          // @e2b/desktop Sandbox THROWS a CommandExitError on ANY non-zero exit
-          // (e.g. a Ctrl+Minus keypress exiting 2), so one flaky desktop command
-          // must not end the whole run. Everything else — a raceSettle deadline
-          // (CuaDeadlineError) or abort (CuaAbortError), a sandbox-gone failure,
-          // any non-CommandExitError — is rethrown. A typed executor declaration must also
-          // bypass command recovery even if an adapter has changed its ordinary Error metadata.
+          // A declared pre-dispatch action rejection leaves the desktop usable.
+          // Other typed failures retain their terminal handling, independently of
+          // the legacy E2B CommandExitError recovery below.
           if (isCuaExecutorError(error)) {
             previousExecution.actions.push({ index: actionIndex, status: error.disposition });
             if (error.disposition === "not_dispatched" && !isIdleAction(action)) {
               materialActions -= 1;
               counts.materialActions = materialActions;
               lastMaterialActionTitle = priorMaterialActionTitle;
+            }
+            if (error.code === "action_rejected" && error.disposition === "not_dispatched") {
+              rejectedActionTitle = actionTitle;
+              // Later actions may depend on this one (type, then submit). Return
+              // their full acknowledgement list and let a fresh observation decide.
+              for (let index = actionIndex + 1; index < turn.actions.length; index++) {
+                previousExecution.actions.push({ index, status: "not_dispatched" });
+              }
+              record({
+                id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "warn",
+                title: "action rejected before dispatch",
+                text: redactNarration(`action: ${actionTitle}; code: action_rejected; disposition: not_dispatched; remaining batch actions not dispatched: ${turn.actions.length - actionIndex - 1}`)
+              });
+              break;
             }
             throw error;
           }
@@ -1641,6 +1651,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // Recovery may suggest another approach, but must not instruct early abandonment while
       // the task still calls for waiting. The counters, time and spend guards own hard stops.
       const contextHints: string[] = [];
+      if (rejectedActionTitle !== undefined) {
+        contextHints.push(`Your action (${rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`);
+      }
       if (consecutiveNoProgress >= noProgressRecoverySteps && consecutiveNoProgress < noProgressSteps) {
         contextHints.push(
           `No visible progress for ${consecutiveNoProgress} step(s). ` +

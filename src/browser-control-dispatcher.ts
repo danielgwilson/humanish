@@ -62,7 +62,9 @@ export function attachBrowserControlDispatcher(options: BrowserControlDispatcher
     if (closed) return;
     try {
       await transport.send(reply);
-      if (!reply.ok) { transport.close(reply.error.code); return; }
+      if (!reply.ok && (request.operation !== "EXECUTE" || reply.error.code !== "action_rejected" || reply.error.disposition !== "not_dispatched")) {
+        transport.close(reply.error.code); return;
+      }
     } catch { transport.close("transport_failed"); }
     finally { dispose(); busy = false; }
   }

@@ -4,7 +4,7 @@ import {
   type CuaExecutorErrorCode, type CuaExecutorDisposition
 } from "../src/cua-executor-error.js";
 import {
-  runComputerUseLoop, type CuaAction, type CuaExecutor, type CuaLoopOptions, type CuaProvider
+  runComputerUseLoop, type CuaAction, type CuaExecutor, type CuaLoopOptions, type CuaProvider, type CuaTurn
 } from "../src/computer-use.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 
@@ -97,16 +97,61 @@ describe("executor failure attribution", () => {
     expect(JSON.stringify(result)).not.toContain("synthetic-private-value");
   });
 
-  it("retains an explicit refusal before dispatch without claiming uncertainty", async () => {
+  it.each([undefined, "fail_closed"] as const)("lets the participant recover from a rejected action with request policy %s", async (requestPolicy) => {
+    const rejected: CuaAction = { kind: "type", text: "synthetic-private-value" };
+    const submit: CuaAction = { kind: "keypress", keys: ["Enter"] };
+    const first: CuaAction = { kind: "click", x: 1, y: 2 };
+    const recovery: CuaAction[] = [{ kind: "click", x: 3, y: 4 }, { kind: "type", text: "replacement" }];
+    const turn = (actions: CuaAction[]): CuaTurn => ({ actions, done: actions.length === 0, pendingSafetyChecks: [],
+      providerRequest: { dispatched: true, usageComplete: false, cleanup: "confirmed" } });
+    const actor = { ...provider(), ...(requestPolicy ? { requestPolicy } : {}),
+      nextTurn: vi.fn<CuaProvider["nextTurn"]>()
+        .mockResolvedValueOnce(turn([first, rejected, submit]))
+        .mockResolvedValueOnce(turn(recovery))
+        .mockResolvedValueOnce(turn([])) };
+    let frame = 0;
+    const execute = vi.fn(async (action: CuaAction) => {
+      if (action === rejected) throw new CuaExecutorError("action_rejected", "not_dispatched");
+    });
+    const result = await run({ observe: async () => ({ stateSignature: `frame-${++frame}` }), execute }, { provider: actor });
+    expect(result).toMatchObject({ status: "passed", completionReason: "goal_satisfied" });
+    expect(execute.mock.calls.map(([action]) => action)).toEqual([first, rejected, ...recovery]);
+    const next = actor.nextTurn.mock.calls[1]![0];
+    expect(next.observation.stateSignature).toBe("frame-2");
+    expect(next.contextHint).toContain("rejected before dispatch");
+    if (requestPolicy) expect(next.previousExecution?.actions).toEqual([
+      { index: 0, status: "completed" }, { index: 1, status: "not_dispatched" }, { index: 2, status: "not_dispatched" }
+    ]);
+    expect(result.trace.items.filter(item => item.kind === "ui_action")).toHaveLength(3);
+    expect(result.trace.counts).toMatchObject({ actions: 4, materialActions: 3 });
+    expect(result.trace.items.find(item => item.title === "action rejected before dispatch")).toMatchObject({
+      status: "warn", text: expect.stringContaining("remaining batch actions not dispatched: 1")
+    });
+    expect(JSON.stringify(result)).not.toContain("synthetic-private-value");
+  });
+
+  it("bounds repeated pre-dispatch rejection without counting it as progress", async () => {
     const result = await run({
       observe: async () => ({ stateSignature: "fixture" }),
       execute: async () => { throw new CuaExecutorError("action_rejected", "not_dispatched"); }
-    }, { provider: provider([{ kind: "click", x: 1, y: 2 }]) });
-    expect(result.completionReason).toBe("harness_error");
-    expect(result.reason).toBe("desktop executor error: action_rejected; disposition: not_dispatched");
+    }, { provider: provider([{ kind: "click", x: 1, y: 2 }]), noProgressSteps: 2 });
+    expect(result.completionReason).toBe("gave_up");
     expect(result.trace.items.filter(item => item.kind === "ui_action")).toEqual([]);
-    expect(result.trace.counts.actions).toBe(1); // The participant chose it.
-    expect(result.trace.counts.materialActions).toBe(0); // The executor refused before dispatch.
+    expect(result.trace.counts.actions).toBe(3);
+    expect(result.trace.counts.materialActions).toBe(0);
+  });
+
+  it.each([
+    ["action_rejected", "outcome_uncertain"], ["transport_failed", "not_dispatched"],
+    ["session_revoked", "not_dispatched"], ["invalid_request", "not_dispatched"]
+  ] satisfies [CuaExecutorErrorCode, CuaExecutorDisposition][])("still stops for %s / %s", async (code, disposition) => {
+    const actor = provider([{ kind: "type", text: "private" }]);
+    const execute = vi.fn(async () => { throw new CuaExecutorError(code, disposition); });
+    const result = await run({ observe: async () => ({ stateSignature: "fixture" }), execute }, { provider: actor });
+    expect(result.completionReason).toBe("harness_error");
+    expect(execute).toHaveBeenCalledOnce();
+    expect(actor.nextTurn).toHaveBeenCalledOnce();
+    expect(result.trace.items.filter(item => item.kind === "ui_action")).toEqual([]);
   });
 
   it("keeps acknowledged actions when the following observation fails, without retrying", async () => {

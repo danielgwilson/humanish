@@ -146,9 +146,18 @@ describe("browser control client and dispatcher", () => {
     expect(error).toMatchObject({ code: "action_rejected", disposition: "outcome_uncertain" });
     expect(JSON.stringify(f.rightWrites.map(bytes => bytes.toString()))).not.toContain(secret); f.close();
   });
-  it("accepts an explicit genuine driver rejection without claiming completion", async () => {
-    const f = setup({ executor: { observe: async () => observation(), execute: async () => { throw new CuaExecutorError("action_rejected", "not_dispatched"); } } });
-    await expect(f.client.executor.execute(click)).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" }); f.close();
+  it("keeps the channel usable after a genuine pre-dispatch rejection", async () => {
+    const execute = vi.fn().mockRejectedValueOnce(new CuaExecutorError("action_rejected", "not_dispatched")).mockResolvedValue(undefined);
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(f.client.executor.execute(click)).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    await expect(f.client.executor.observe()).resolves.toHaveProperty("screenshot");
+    await expect(f.client.executor.execute(click)).resolves.toBeUndefined();
+    expect(execute).toHaveBeenCalledTimes(2); f.close();
+  });
+  it("still closes the channel when an observation is rejected before dispatch", async () => {
+    const f = setup({ executor: { observe: async () => { throw new CuaExecutorError("action_rejected", "not_dispatched"); }, execute: async () => {} } });
+    await expect(f.client.executor.observe()).rejects.toMatchObject({ code: "action_rejected" });
+    await expect(f.client.executor.execute(click)).rejects.toMatchObject({ code: "executor_closed" }); f.close();
   });
   it.each([
     request(1, "EXECUTE", { actionId: "action-1", action: click }), request(1, "HELLO", { secret: "extra" }),

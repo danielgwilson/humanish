@@ -23,8 +23,9 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
     const operation = pending; pending = undefined; operation.dispose();
     if (operation.reply!.ok) operation.resolve(operation.reply!);
     else {
-      transport.close(operation.reply!.error.code);
-      operation.reject(new CuaExecutorError(operation.reply!.error.code, operation.reply!.error.disposition));
+      const { code, disposition } = operation.reply!.error;
+      if (operation.request.operation !== "EXECUTE" || code !== "action_rejected" || disposition !== "not_dispatched") transport.close(code);
+      operation.reject(new CuaExecutorError(code, disposition));
     }
   };
   const transport = new BrowserControlTransport(options.transport, value => {
