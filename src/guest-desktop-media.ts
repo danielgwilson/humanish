@@ -98,6 +98,8 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
   let buffer = Buffer.alloc(0), ready = false, closed = false, expectedExit = false, wrapped = false, nextCommand = 1;
   let resolveReady!: () => void, rejectReady!: (error: Error) => void;
   const readiness = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+  void readiness.catch(() => {});
+  let closing: Promise<void> | undefined;
   const queue: HeardSpeech[] = [], pending = new Map<string, { resolve(): void; reject(error: CuaExecutorError): void; timer: NodeJS.Timeout }>();
   const terminal = (): void => {
     if (closed || expectedExit) return;
@@ -146,11 +148,13 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
   const abort = (): void => { void close(); };
   options.signal.addEventListener("abort", abort, { once: true });
   const close = async (): Promise<void> => {
-    if (expectedExit) return;
+    if (closing) return closing;
     expectedExit = true; closed = true; clearTimeout(readyTimer); options.signal.removeEventListener("abort", abort);
     const error = new CuaExecutorError("session_revoked", "outcome_uncertain");
     for (const command of pending.values()) { clearTimeout(command.timer); command.reject(error); }
-    pending.clear(); await transport.close();
+    pending.clear();
+    closing = Promise.resolve().then(() => transport.close());
+    return closing;
   };
   const readinessAbort = (): void => { rejectReady(new CuaExecutorError("session_revoked", "not_dispatched")); };
   options.signal.addEventListener("abort", readinessAbort, { once: true });
@@ -175,14 +179,24 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
         if (!pulse || !validText(candidate.text) || closed || options.signal.aborted || signal?.aborted) {
           throw new CuaExecutorError("action_rejected", "not_dispatched");
         }
-        const id = `speak-${nextCommand++}`, controller = new AbortController();
-        const combined = signal ? AbortSignal.any([options.signal, signal, controller.signal]) : AbortSignal.any([options.signal, controller.signal]);
+        const id = `speak-${nextCommand++}`;
+        const combined = signal ? AbortSignal.any([options.signal, signal]) : options.signal;
         let written = false;
         const operation = new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(() => { controller.abort(); reject(new CuaExecutorError("deadline_exceeded", written ? "outcome_uncertain" : "not_dispatched")); }, SPEAK_TIMEOUT_MS);
+          const timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new CuaExecutorError("deadline_exceeded", written ? "outcome_uncertain" : "not_dispatched"));
+            void close().catch(() => {});
+          }, SPEAK_TIMEOUT_MS);
           pending.set(id, { resolve, reject, timer });
         });
-        const cancelled = (): void => { const command = pending.get(id); if (!command) return; pending.delete(id); clearTimeout(command.timer); command.reject(new CuaExecutorError("session_revoked", written ? "outcome_uncertain" : "not_dispatched")); };
+        void operation.catch(() => {});
+        const cancelled = (): void => {
+          const command = pending.get(id); if (!command) return;
+          pending.delete(id); clearTimeout(command.timer);
+          command.reject(new CuaExecutorError("session_revoked", written ? "outcome_uncertain" : "not_dispatched"));
+          void close().catch(() => {});
+        };
         combined.addEventListener("abort", cancelled, { once: true });
         try {
           written = true;

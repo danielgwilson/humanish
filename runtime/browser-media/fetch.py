@@ -12,11 +12,6 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent
-ALLOWED_HOSTS = frozenset({
-    'github.com', 'codeload.github.com', 'huggingface.co',
-    'cdn-lfs.huggingface.co', 'cdn-lfs-us-1.hf.co', 'cas-bridge.xethub.hf.co',
-    'us.aws.cdn.hf.co'
-})
 
 
 def sha256(path):
@@ -32,8 +27,8 @@ def verify(path, expected):
 
 def validate_url(url):
     parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != 'https' or parsed.hostname not in ALLOWED_HOSTS or parsed.username or parsed.password or parsed.port not in (None, 443):
-        raise ValueError('Media input URL is outside the fixed HTTPS origin set')
+    if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.port not in (None, 443):
+        raise ValueError('Media inputs require HTTPS without credentials')
 
 
 class Redirects(urllib.request.HTTPRedirectHandler):

@@ -131,6 +131,7 @@ export async function packageGuestRuntime(destination, { media = false } = {}) {
   const expectedLeaves = new Set([...Object.keys(fixedHashes), ...Object.keys(links),
     ...selected.modules.map(name => 'opt/humanish/control/' + name), 'opt/humanish/control/package.json',
     ...mediaModules.map(name => 'opt/humanish/media/' + name),
+    ...(media ? ['opt/humanish/media/package.json'] : []),
     ...Object.keys(dependencyFiles).map(path => 'opt/humanish/control/node_modules/' + path)]);
   if (Object.keys(files).length !== expectedLeaves.size || Object.keys(files).some(path => !expectedLeaves.has(path))) {
     throw new Error('Payload leaf set changed during snapshot');

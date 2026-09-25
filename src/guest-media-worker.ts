@@ -3,6 +3,7 @@ import { createConnection } from "node:net";
 import { request } from "node:http";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { mkdir } from "node:fs/promises";
 
 const PATH = "/usr/bin:/bin";
 const SAMPLE_RATE = 16_000;
@@ -186,6 +187,7 @@ async function speak(text: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  await mkdir(env.XDG_RUNTIME_DIR, { recursive: true, mode: 0o700 });
   const persistent: ChildProcess[] = [];
   if (config.microphone) persistent.push(await startPulse());
   const camera = await startCamera(); if (camera) persistent.push(camera);

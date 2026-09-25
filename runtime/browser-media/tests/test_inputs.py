@@ -28,8 +28,10 @@ class MediaInputTests(unittest.TestCase):
             self.assertFalse(result['executed'])
             self.assertFalse(result['redistributionApproved'])
 
-    def test_unapproved_redirect_origin_is_rejected(self):
-        with self.assertRaises(ValueError): FETCH.validate_url('https://example.invalid/model')
+    def test_cdn_redirects_keep_https_without_credentials(self):
+        FETCH.validate_url('https://example.test/model')
+        for url in ['http://example.test/model', 'https://user:secret@example.test/model']:
+            with self.assertRaises(ValueError): FETCH.validate_url(url)
 
 
 if __name__ == '__main__': unittest.main()

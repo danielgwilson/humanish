@@ -56,6 +56,12 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
                 appUrl: spec.targetUrl ?? config.subject.appUrl!, outputRoot: path.join(options.cwd, ".humanish", "local-runtime"),
                 ...(options.signal === undefined ? {} : { signal: options.signal }) });
               sessions.push(session);
+              if (media !== undefined) evidence.desktopBrowser = { requested: "chromium", resolved: "chromium", media: {
+                ...(media.camera === undefined ? {} : { camera: { source: "synthetic", file: "/dev/video0" } }),
+                ...(media.microphone === undefined ? {} : { microphone: { source: "speech" } }),
+                permission: media.permission,
+                flags: media.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : []
+              } };
             },
             async openSession() {
               if (!session) throw new Error("The local desktop has not been prepared.");

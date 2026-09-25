@@ -236,7 +236,7 @@ describe("ready desktop lane contract", () => {
     expect(result.sandboxId).toBeUndefined();
     expect(result.desktopResources).toBeUndefined();
     expect(result.desktopDurationMs).toBeUndefined();
-    expect(f.order.slice(0, 3)).toEqual(["prepare", "gate:true", "open"]);
+    expect(f.order.slice(0, 3)).toEqual(["prepare", "open", "gate:true"]);
     expect(f.order.indexOf("click")).toBeGreaterThan(f.order.indexOf("observe"));
     expect(f.order.at(-1)).toBe("release");
     expect(f.release).toHaveBeenCalledOnce();
@@ -267,7 +267,7 @@ describe("ready desktop lane contract", () => {
     expect(result.sessionError).toBe("Synthetic failure [scrubbed]");
     expect(result.killed).toBe(true);
     expect(f.port.finalize).toHaveBeenCalledExactlyOnceWith({ failed: true });
-    expect(f.order).toContain(`gate:${stage !== "prepare"}`);
+    expect(f.order).toContain(`gate:${stage === "participant"}`);
     expect(f.backend.execute).not.toHaveBeenCalled();
     expect(f.release).toHaveBeenCalledOnce();
     expect(f.loadDesktopModule).not.toHaveBeenCalled();

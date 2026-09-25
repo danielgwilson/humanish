@@ -62,4 +62,22 @@ describe("guest desktop media", () => {
       signal: new AbortController().signal, onTerminal: vi.fn(), transport })).rejects.toMatchObject({ code: "invalid_request" });
     expect(transport.handlers).toBeUndefined();
   });
+
+  it("stops pending playback on cancellation and waits for the same cleanup", async () => {
+    const transport = new FakeTransport(), { media } = await start(transport), wrapped = media.wrap(executor());
+    let finishCleanup!: () => void;
+    const cleanup = new Promise<void>(resolve => { finishCleanup = resolve; });
+    const close = vi.spyOn(transport, "close").mockImplementation(async () => { await cleanup; transport.closed = true; });
+    vi.spyOn(transport, "write").mockResolvedValue(undefined);
+    const controller = new AbortController();
+    const speaking = wrapped.execute({ kind: "speak", text: "A short utterance." }, controller.signal);
+    const rejected = expect(speaking).rejects.toMatchObject({ disposition: "outcome_uncertain" });
+    await Promise.resolve(); controller.abort();
+    let closed = false;
+    const closing = media.close().then(() => { closed = true; });
+    await Promise.resolve(); expect(closed).toBe(false);
+    finishCleanup(); await closing; await rejected;
+    expect(close).toHaveBeenCalledOnce();
+    await expect(wrapped.observe()).rejects.toMatchObject({ code: "execution_failed" });
+  });
 });

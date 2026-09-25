@@ -30,17 +30,25 @@ def main():
     parser.add_argument("--runtime-image", required=True)
     parser.add_argument("--boot-inputs", type=Path, required=True)
     parser.add_argument("--kernel-build", type=Path, required=True)
+    parser.add_argument("--media-browser", type=Path, help="Optional media browser build directory")
+    parser.add_argument("--media-inputs", type=Path, help="Matching pinned media sources/model directory")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if (args.media_browser is None) != (args.media_inputs is None):
+        parser.error("--media-browser and --media-inputs must be provided together")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     (output / "debian").mkdir()
     inventory = json.loads((args.browser / "provenance/inventory.json").read_text())
     pins = json.loads((args.browser / "manifest.json").read_text())["inputs"]
     wanted = {(item["name"], item["version"]) for item in inventory["sources"]}
-    installed = subprocess.check_output(["docker", "run", "--rm", "--network", "none", "--entrypoint", "dpkg-query",
-        args.runtime_image, "-W", "-f=${source:Package}\t${source:Version}\n"], text=True)
-    wanted.update(tuple(line.split("\t")) for line in installed.strip().splitlines())
+    images = [args.runtime_image]
+    if args.media_browser:
+        images.append(json.loads((args.media_browser / "manifest.json").read_text())["image"]["localTag"])
+    for image in images:
+        installed = subprocess.check_output(["docker", "run", "--rm", "--network", "none", "--entrypoint", "dpkg-query",
+            image, "-W", "-f=${source:Package}\t${source:Version}\n"], text=True)
+        wanted.update(tuple(line.split("\t")) for line in installed.strip().splitlines())
     matched = {}
     apt = (args.browser / "provenance/apt").resolve()
     for index in sorted(apt.glob("*Sources.lz4")):
@@ -96,6 +104,14 @@ def main():
         subprocess.run(["docker", "cp", container + ":/usr/share/doc", str(output / "runner-notices")], check=True)
     finally:
         subprocess.run(["docker", "rm", container], check=True)
+    if args.media_browser:
+        container = subprocess.check_output(["docker", "create", images[-1]], text=True).strip()
+        try:
+            subprocess.run(["docker", "cp", container + ":/usr/share/doc", str(output / "media-notices")], check=True)
+        finally:
+            subprocess.run(["docker", "rm", container], check=True)
+        shutil.copytree(args.media_inputs, output / "media-inputs")
+        shutil.copytree(args.media_browser / "recipe", output / "media-build-recipe")
     (output / "boot").mkdir()
     for source in args.boot_inputs.iterdir():
         if source.name.endswith(".src.rpm") or source.name.startswith("firecracker-source-"):
