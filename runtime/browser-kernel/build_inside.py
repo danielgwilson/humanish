@@ -183,7 +183,7 @@ def main():
             members = archive.getmembers()
             if len(members) > 256 or sum(item.size for item in members) > 8 * 1024 * 1024:
                 raise ValueError('V4L2 source archive exceeds bound')
-            if any(not item.name.startswith('v4l2loopback-0.15.4/') for item in members):
+            if any(item.name != 'v4l2loopback-0.15.4' and not item.name.startswith('v4l2loopback-0.15.4/') for item in members):
                 raise ValueError('Unexpected V4L2 source archive root')
             archive.extractall(WORK, filter='data')
         (WORK / 'v4l2loopback-0.15.4').rename(source)
