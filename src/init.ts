@@ -159,6 +159,10 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     const absolutePath = path.join(cwd, file.path);
     const existing = await readTextIfExists(preparedProjectRoot, file.path);
 
+    if (existing !== null && options.localBrowser !== undefined && file.path === "humanish/labs/local-browser.yaml") {
+      warnings.push("Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.");
+    }
+
     if (existing === null) {
       changes.push({
         path: file.path,

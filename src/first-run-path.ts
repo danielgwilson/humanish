@@ -77,7 +77,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
       : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
     steps.push({
       command: "humanish doctor --lab local-browser",
-      why: `check the local browser study (${prerequisites}); no E2B or model API key, no resources launched or quota used`
+      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`
     });
     return steps;
   }
