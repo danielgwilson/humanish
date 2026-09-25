@@ -21,7 +21,7 @@ await mkdir(join(payload, 'output'), { recursive: true, mode: 0o777 });
 await chmod(join(payload, 'output'), 0o777); // Only inside the disposable container after docker cp.
 await cp(join(root, 'scripts/guest-desktop-proof-child.mjs'), join(payload, 'proof.mjs'));
 await writeFile(join(payload, 'package.json'), '{"type":"module"}');
-const driverModules = ['guest-desktop-executor', 'guest-desktop-native', 'guest-browser-tools', 'guest-chromium-text', 'browser-control-protocol', 'cua-executor-error', 'frame-signature'];
+const driverModules = ['guest-desktop-executor', 'guest-desktop-native', 'guest-browser-tools', 'guest-chromium-text', 'browser-control-protocol', 'cua-executor-error', 'cua-speech', 'frame-signature'];
 for (const name of driverModules) {
   await cp(join(root, 'dist', name + '.js'), join(payload, 'dist', name + '.js'));
 }

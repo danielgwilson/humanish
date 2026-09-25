@@ -1,6 +1,7 @@
 import { PNG } from "pngjs";
 import { z } from "zod";
-import { CUA_SPEECH_LIMITS, type CuaAction, type CuaObservation, type HeardSpeech } from "./computer-use.js";
+import type { CuaAction, CuaObservation } from "./computer-use.js";
+import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
 import { CuaExecutorError, isCuaExecutorError, type CuaExecutorErrorCode } from "./cua-executor-error.js";
 
 export const BROWSER_CONTROL_VERSION = 1;

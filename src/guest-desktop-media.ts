@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { CUA_SPEECH_LIMITS, type CuaExecutor, type CuaObservation, type HeardSpeech } from "./computer-use.js";
+import type { CuaExecutor, CuaObservation } from "./computer-use.js";
+import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 
 const WORKER_LINE_BYTES = 8_192;
