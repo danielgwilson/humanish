@@ -1,12 +1,14 @@
 import { PNG } from "pngjs";
 import { z } from "zod";
-import type { CuaAction, CuaObservation } from "./computer-use.js";
+import { CUA_SPEECH_LIMITS, type CuaAction, type CuaObservation, type HeardSpeech } from "./computer-use.js";
 import { CuaExecutorError, isCuaExecutorError, type CuaExecutorErrorCode } from "./cua-executor-error.js";
 
 export const BROWSER_CONTROL_VERSION = 1;
 export const BROWSER_CONTROL_LIMITS = Object.freeze({
   frameBytes: 12 * 1024 * 1024, pngBytes: 8 * 1024 * 1024,
   dimension: 4096, pixels: 16_000_000, textBytes: 64 * 1024,
+  speechCharacters: CUA_SPEECH_LIMITS.characters, speechBytes: CUA_SPEECH_LIMITS.bytes,
+  heardSpeech: CUA_SPEECH_LIMITS.utterances, speechDurationMs: CUA_SPEECH_LIMITS.durationMs,
   chordKeys: 16, keyCharacters: 64, dragPoints: 1024, waitMs: 30_000,
   requestTimeoutMs: 35_000, maxRequestTimeoutMs: 60_000
 });
@@ -14,9 +16,11 @@ export interface BrowserControlIdentity { generation: string; challenge: string;
 const token = z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/);
 const identitySchema = z.strictObject({ generation: token, challenge: token, runtimeRevision: token });
 const text = z.string().max(BROWSER_CONTROL_LIMITS.textBytes).refine(value => Buffer.byteLength(value) <= BROWSER_CONTROL_LIMITS.textBytes);
+const speechText = z.string().min(1).max(BROWSER_CONTROL_LIMITS.speechCharacters)
+  .refine(value => value.trim().length > 0 && Buffer.byteLength(value) <= BROWSER_CONTROL_LIMITS.speechBytes);
 const coordinate = z.number().finite().min(-1_000_000).max(1_000_000);
 const point = { x: coordinate, y: coordinate };
-export const browserControlActionSchema = z.discriminatedUnion("kind", [
+const browserActionSchemas = [
   z.strictObject({ kind: z.literal("click"), ...point, button: z.enum(["left", "right", "middle"]).optional() }),
   z.strictObject({ kind: z.literal("double_click"), ...point }),
   z.strictObject({ kind: z.literal("move"), ...point }),
@@ -26,14 +30,28 @@ export const browserControlActionSchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("drag"), path: z.array(z.strictObject(point)).min(1).max(BROWSER_CONTROL_LIMITS.dragPoints) }),
   z.strictObject({ kind: z.literal("wait"), ms: z.number().finite().min(0).max(BROWSER_CONTROL_LIMITS.waitMs).optional() }),
   z.strictObject({ kind: z.literal("screenshot") })
+] as const;
+export const browserOnlyControlActionSchema = z.discriminatedUnion("kind", browserActionSchemas);
+export const browserControlActionSchema = z.discriminatedUnion("kind", [
+  ...browserActionSchemas,
+  z.strictObject({ kind: z.literal("speak"), text: speechText })
 ]).transform((action): CuaAction => {
   if (action.kind === "click") return { kind: action.kind, x: action.x, y: action.y, ...(action.button !== undefined ? { button: action.button } : {}) };
   if (action.kind === "wait") return { kind: action.kind, ...(action.ms !== undefined ? { ms: action.ms } : {}) };
   return action;
 });
+const heardSpeechSchema = z.strictObject({
+  id: token,
+  source: z.literal("speaker_audio"),
+  text: speechText,
+  durationMs: z.number().int().min(1).max(BROWSER_CONTROL_LIMITS.speechDurationMs)
+});
+const heardSpeechListSchema = z.array(heardSpeechSchema).min(1).max(BROWSER_CONTROL_LIMITS.heardSpeech)
+  .refine(rows => new Set(rows.map(row => row.id)).size === rows.length);
 const observationSchema = z.strictObject({
   png: z.string().min(1).max(4 * Math.ceil(BROWSER_CONTROL_LIMITS.pngBytes / 3)).regex(/^[A-Za-z0-9+/]*={0,2}$/).refine(value => value.length % 4 === 0),
-  stateSignature: text, url: text.optional(), title: text.optional(), text: text.optional(), scrollY: coordinate.optional()
+  stateSignature: text, url: text.optional(), title: text.optional(), text: text.optional(), scrollY: coordinate.optional(),
+  heardSpeech: heardSpeechListSchema.optional()
 });
 type WireObservation = z.infer<typeof observationSchema>;
 const common = {
@@ -81,6 +99,11 @@ export function validateBrowserControlAction(value: unknown): CuaAction {
   if (!parsed.success) throw new CuaExecutorError("invalid_request", "not_dispatched");
   return parsed.data;
 }
+export function validateHeardSpeech(value: unknown): HeardSpeech[] {
+  const parsed = heardSpeechListSchema.safeParse(value);
+  if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+  return parsed.data;
+}
 
 /** Check dimensions before allocating decoder output; v1 accepts browser-style 8-bit, noninterlaced PNG. */
 export function validateBrowserControlPng(bytes: Buffer): void {
@@ -113,7 +136,8 @@ export function encodeBrowserControlObservation(observation: CuaObservation): Wi
   validateBrowserControlPng(observation.screenshot);
   const parsed = observationSchema.safeParse({ png: observation.screenshot.toString("base64"), stateSignature: observation.stateSignature,
     ...(observation.url !== undefined ? { url: observation.url } : {}), ...(observation.title !== undefined ? { title: observation.title } : {}),
-    ...(observation.text !== undefined ? { text: observation.text } : {}), ...(observation.scrollY !== undefined ? { scrollY: observation.scrollY } : {}) });
+    ...(observation.text !== undefined ? { text: observation.text } : {}), ...(observation.scrollY !== undefined ? { scrollY: observation.scrollY } : {}),
+    ...(observation.heardSpeech !== undefined ? { heardSpeech: observation.heardSpeech } : {}) });
   if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
   return parsed.data;
 }
@@ -126,7 +150,8 @@ export function decodeBrowserControlObservation(value: unknown): CuaObservation 
   validateBrowserControlPng(screenshot);
   return { screenshot, stateSignature: state.stateSignature,
     ...(state.url !== undefined ? { url: state.url } : {}), ...(state.title !== undefined ? { title: state.title } : {}),
-    ...(state.text !== undefined ? { text: state.text } : {}), ...(state.scrollY !== undefined ? { scrollY: state.scrollY } : {}) };
+    ...(state.text !== undefined ? { text: state.text } : {}), ...(state.scrollY !== undefined ? { scrollY: state.scrollY } : {}),
+    ...(state.heardSpeech !== undefined ? { heardSpeech: state.heardSpeech } : {}) };
 }
 export function safeBrowserControlFailure(error: unknown, dispatched: boolean): { code: CuaExecutorErrorCode; disposition: "not_dispatched" | "outcome_uncertain" } {
   if (isCuaExecutorError(error)) return { code: error.code, disposition: error.disposition };

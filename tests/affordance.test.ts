@@ -21,13 +21,15 @@ import type { CuaAction } from "../src/computer-use.js";
 const classOf = (action: CuaAction) => classifyCuaAction(action).affordance;
 
 describe("affordance classification (#369)", () => {
-  it("classifies the naturalistic core: pointer, keyboard, observation", () => {
+  it("classifies the naturalistic core: pointer, keyboard, speech, observation", () => {
     expect(classOf({ kind: "click", x: 10, y: 20 })).toBe("pointer");
     expect(classOf({ kind: "double_click", x: 1, y: 2 })).toBe("pointer");
     expect(classOf({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 120 })).toBe("pointer");
     expect(classOf({ kind: "drag", path: [{ x: 0, y: 0 }, { x: 5, y: 5 }] })).toBe("pointer");
     expect(classOf({ kind: "type", text: "hello@example.test" })).toBe("keyboard");
     expect(classOf({ kind: "keypress", keys: ["Enter"] })).toBe("keyboard");
+    expect(classOf({ kind: "speak", text: "Hello" })).toBe("speech");
+    expect(NATURALISTIC_AFFORDANCE_CLASSES).toContain("speech");
     // Observing is not acting: a bare move, a wait, and a screenshot actuate nothing.
     expect(classOf({ kind: "move", x: 3, y: 4 })).toBe("observation");
     expect(classOf({ kind: "wait", ms: 500 })).toBe("observation");

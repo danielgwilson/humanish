@@ -38,6 +38,8 @@ export type AffordanceClass =
   | "pointer"
   /** Keyboard input into the page: typed text that is not a URL and not script. */
   | "keyboard"
+  /** Spoken input sent through the participant's admitted microphone path. */
+  | "speech"
   /** Direct navigation by URL (the `nav` subset). A human affordance; see the note above. */
   | "url-navigation"
   /** Script execution via the address bar (a `javascript:` URL). Not a human affordance. */
@@ -53,6 +55,7 @@ export type AffordanceClass =
 export const NATURALISTIC_AFFORDANCE_CLASSES: readonly AffordanceClass[] = [
   "pointer",
   "keyboard",
+  "speech",
   "url-navigation",
   "observation"
 ];
@@ -146,6 +149,8 @@ export function classifyCuaAction(action: CuaAction): AffordanceObservation {
       }
       return { affordance: "keyboard" };
     }
+    case "speak":
+      return { affordance: "speech" };
     default:
       // The wire->CuaAction mapper drops unrecognized action types before they reach here, so
       // this is unreachable today; classify defensively rather than throwing inside a run.

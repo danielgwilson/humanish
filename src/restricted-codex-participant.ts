@@ -1,12 +1,12 @@
 import type { ActorTokenUsage, ProviderRequestReceipt } from "./actor-contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { CuaProviderError, isCuaProviderError, type CuaProviderErrorCode } from "./cua-provider-error.js";
-import { validateBrowserControlPng } from "./browser-control-protocol.js";
+import { validateBrowserControlPng, validateHeardSpeech } from "./browser-control-protocol.js";
 import { createRestrictedCodexSession, type RestrictedCodexSessionOptions } from "./restricted-codex-session.js";
 import type { RestrictedCodexAnalysisErrorCode, RestrictedCodexResult } from "./restricted-codex-policy.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { PARTICIPANT_PROFILE, PARTICIPANT_LIMITS as L, PARTICIPANT_TOOL_SCHEMA, PARTICIPANT_FINAL_SCHEMA,
-  parseParticipantTool, parseParticipantFinal } from "./restricted-codex-participant-policy.js";
+import { PARTICIPANT_PROFILE, PARTICIPANT_LIMITS as L, PARTICIPANT_FINAL_SCHEMA,
+  participantToolSchema, parseParticipantTool, parseParticipantFinal } from "./restricted-codex-participant-policy.js";
 
 export type ParticipantProviderCloseResult = { status: "confirmed" | "unconfirmed" };
 export interface RestrictedParticipantOptions {
@@ -15,6 +15,8 @@ export interface RestrictedParticipantOptions {
   authMode?: "operator";
   model?: string;
   reasoningEffort?: ReasoningEffort;
+  /** Admit speech actions and heard-speaker evidence for a speech-capable desktop only. */
+  speechEnabled?: boolean;
 }
 const codeOf = (code: RestrictedCodexAnalysisErrorCode | null): CuaProviderErrorCode => {
   if (code === "cancelled" || code === "timeout" || code === "refusal") return code === "refusal" ? "refused" : code;
@@ -34,7 +36,7 @@ function deferred<T>() {
   void promise.catch(() => undefined);
   return { promise, resolve, reject };
 }
-const TOOL_DESCRIPTION = `Act on the participant's browser through Humanish. Submit one to four UI actions and a short public comment; never private reasoning. Humanish returns a JSON STRING with execution acknowledgments and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl). Call serially and inspect each returned screenshot before deciding what to do next. Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
+const toolDescription = (speechEnabled: boolean): string => `Act on the participant's browser through Humanish. Submit one to four UI actions${speechEnabled ? ", including speak when you need to reply aloud," : ""} and a short public comment; never private reasoning. Humanish returns a JSON STRING with execution acknowledgments${speechEnabled ? ", speech heard from the actual participant speaker sink," : ""} and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments${speechEnabled ? ", heardSpeech: r.heardSpeech" : ""}, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl). Call serially and inspect each returned screenshot${speechEnabled ? " and heardSpeech array" : ""} before deciding what to do next.${speechEnabled ? " Use speak only after the visible UI shows that you joined the call and your microphone is unmuted; it sends audio into that call." : ""} Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
 
 /** One native tool-calling conversation; the existing CUA loop owns every input. */
 export function createRestrictedCodexParticipant(options: RestrictedParticipantOptions = {}): {
@@ -43,6 +45,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
   const timeoutMs = options.requestTimeoutMs ?? L.requestMs;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > L.requestMs) throw new CuaProviderError("request_rejected", noDispatch());
   const operator = options.authMode === "operator";
+  const speechEnabled = options.speechEnabled === true;
   const model = options.model ?? (operator ? undefined : PARTICIPANT_PROFILE.requestedModel);
   const effort = options.reasoningEffort ?? "low";
   let closed = false, failedCleanup = false, incompleteUsage = false, active = false, closingPhase = false;
@@ -66,10 +69,10 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
   let abortAt: number | undefined;
   const session = createRestrictedCodexSession({ ...options.session, participant: {
     ...(operator ? { authMode: "operator" as const } : {}), reasoningEffort: effort,
-    tool: { name: "humanish_ui", description: TOOL_DESCRIPTION, inputSchema: PARTICIPANT_TOOL_SCHEMA,
+    tool: { name: "humanish_ui", description: toolDescription(speechEnabled), inputSchema: participantToolSchema(speechEnabled),
       async call(args) {
         if (closed || closingPhase || continuation || !active) throw new Error("Unexpected participant tool call");
-        const turn = parseParticipantTool(args);
+        const turn = parseParticipantTool(args, speechEnabled);
         const reply = deferred<string>(); continuation = reply; lastActionCount = turn.actions.length;
         emit({ turn });
         return reply.promise;
@@ -91,12 +94,13 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       let receipt = noDispatch(), usage: ActorTokenUsage | undefined;
       try {
         const result: RestrictedCodexResult = await session.run({ ...(model === undefined ? {} : { model }),
-          instructions: `${instructions}\n\nYou are the study participant throughout this conversation, including its closing account. Use only the supplied screenshots and humanish_ui tool to interact. The tool returns a JSON string: parse it, inspect acknowledgments, and display imageUrl with Code Mode image(). Do not print the image data URL as text. Keep your persona and earlier observations throughout the session. Speak publicly about your experience, never reveal private reasoning. Completed inputs do not prove application outcomes; verify on the next screenshot. When the task ends, return only the required final JSON with outcome, summary and frictionReports. Report observed confusion and recovered mistakes as well as blockers. Do not invent observations.`,
+          instructions: `${instructions}\n\nYou are the study participant throughout this conversation, including its closing account. Use only the supplied screenshots and humanish_ui tool to interact. The tool returns a JSON string: parse it, inspect acknowledgments${speechEnabled ? " and heardSpeech captured from the actual participant speaker sink" : ""}, and display imageUrl with Code Mode image(). Do not print the image data URL as text. Keep your persona and earlier observations throughout the session.${speechEnabled ? " A speak action plays into the participant microphone; use it only after the visible UI shows that you joined the call and the microphone is unmuted." : ""} Speak publicly about your experience, never reveal private reasoning. Completed inputs do not prove application outcomes; verify on the next screenshot. When the task ends, return only the required final JSON with outcome, summary and frictionReports. Report observed confusion and recovered mistakes as well as blockers. Do not invent observations.`,
           evidence: JSON.stringify({ phase: closingPhase ? "closing" : "interaction", contextHint: req.contextHint ?? null,
             instruction: closingPhase ? "Interaction has ended. Do not call tools; give your closing account."
               : "Use humanish_ui to act. Inspect each result before choosing the next batch. Finish when appropriate.",
             width: req.observation.screenshot!.readUInt32BE(16), height: req.observation.screenshot!.readUInt32BE(20),
-            previousExecution: req.previousExecution ?? null }),
+            previousExecution: req.previousExecution ?? null,
+            ...(speechEnabled ? { heardSpeech: req.observation.heardSpeech ?? [] } : {}) }),
           images: [{ evidenceId: "current-frame", dataUrl: imageUrl }], schema: PARTICIPANT_FINAL_SCHEMA,
           maxOutputTokens: null, timeoutMs, signal: controller!.signal });
         receipt = { dispatched: result.dispatched, usageComplete: result.usageComplete,
@@ -128,6 +132,11 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     const frame = req.observation.screenshot;
     try { if (!Buffer.isBuffer(frame)) throw new Error(); validateBrowserControlPng(frame); }
     catch { throw new CuaProviderError("request_rejected", noDispatch()); }
+    if (req.observation.heardSpeech !== undefined) {
+      if (!speechEnabled) throw new CuaProviderError("request_rejected", noDispatch());
+      try { validateHeardSpeech(req.observation.heardSpeech); }
+      catch { throw new CuaProviderError("request_rejected", noDispatch()); }
+    }
     const acknowledgments = req.previousExecution?.actions;
     if ((continuation && acknowledgments === undefined) || (acknowledgments !== undefined &&
       (lastActionCount === undefined || !Array.isArray(acknowledgments) || acknowledgments.length !== lastActionCount ||
@@ -142,6 +151,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       if (continuation) {
         const reply = continuation; continuation = undefined;
         reply.resolve(JSON.stringify({ acknowledgments: acknowledgments!.map(({ index, status }) => ({ index, status })), imageUrl,
+          ...(speechEnabled ? { heardSpeech: req.observation.heardSpeech ?? [] } : {}),
           contextHint: req.contextHint ?? null, closing: debrief }));
       } else if (!active) launch(req, imageUrl);
       else throw new CuaProviderError("busy", noDispatch());

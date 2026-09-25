@@ -59,6 +59,7 @@ export function ownDesktopAllocation(options: {
         close,
         executor: {
           ...(executor.stallRecovery === "fail_closed" ? { stallRecovery: "fail_closed" as const } : {}),
+          ...(executor.speechEnabled === true ? { speechEnabled: true as const } : {}),
           observe: async () => { assertOpen(); return executor.observe(); },
           execute: async (action: CuaAction, signal?: AbortSignal) => { assertOpen(); return executor.execute(action, signal); }
         }

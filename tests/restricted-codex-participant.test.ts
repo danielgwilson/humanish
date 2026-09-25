@@ -4,6 +4,7 @@ import { createRestrictedCodexParticipant } from "../src/restricted-codex-partic
 import {
   PARTICIPANT_FINAL_SCHEMA,
   PARTICIPANT_TOOL_SCHEMA,
+  participantToolSchema,
   parseParticipantFinal,
   parseParticipantTool
 } from "../src/restricted-codex-participant-policy.js";
@@ -64,6 +65,9 @@ describe("restricted participant conversation", () => {
     expect(parseParticipantTool({ narration: "I will click Save.", actions: [{ kind: "click", x: 1.5, y: 2.25 }] })).toMatchObject({
       actions: [{ kind: "click", x: 1.5, y: 2.25 }], done: false, providerRequestPending: true
     });
+    expect(() => parseParticipantTool({ narration: "I will answer.", actions: [{ kind: "speak", text: "Hello" }] })).toThrow();
+    expect(parseParticipantTool({ narration: "I will answer.", actions: [{ kind: "speak", text: "Hello" }] }, true))
+      .toMatchObject({ actions: [{ kind: "speak", text: "Hello" }] });
     for (const value of [
       { narration: "x", actions: [], extra: true },
       { narration: "x", actions: [] },
@@ -86,6 +90,31 @@ describe("restricted participant conversation", () => {
       required: ["narration", "actions"], properties: { narration: { type: "string" }, actions: { type: "array", minItems: 1, maxItems: 4 } } });
     expect(PARTICIPANT_FINAL_SCHEMA).toMatchObject({ type: "object", additionalProperties: false });
     expect(PARTICIPANT_FINAL_SCHEMA.required).toEqual(["outcome", "summary", "frictionReports"]);
+    expect(JSON.stringify(PARTICIPANT_TOOL_SCHEMA)).not.toContain('"speak"');
+    expect(JSON.stringify(participantToolSchema(true))).toContain('"speak"');
+  });
+
+  it("keeps heard speaker evidence and spoken replies in the same admitted conversation", async () => {
+    let toolReply: Record<string, unknown> | undefined;
+    run.mockImplementationOnce(async () => {
+      toolReply = JSON.parse(await nativeTool()({ narration: "I will answer aloud.", actions: [{ kind: "speak", text: "Yes, I can hear you." }] }));
+      return result();
+    });
+    const firstSpeech = [{ id: "utterance-1", source: "speaker_audio" as const, text: "Can you hear me?", durationMs: 800 }];
+    const secondSpeech = [{ id: "utterance-2", source: "speaker_audio" as const, text: "Yes, thanks.", durationMs: 600 }];
+    const h = createRestrictedCodexParticipant({ speechEnabled: true });
+    const signal = new AbortController().signal;
+    const proposal = await h.provider.nextTurn({ ...request(frame(1)), observation: {
+      ...request(frame(1)).observation, heardSpeech: firstSpeech
+    } }, signal);
+    expect(proposal.actions).toEqual([{ kind: "speak", text: "Yes, I can hear you." }]);
+    expect(JSON.parse(run.mock.calls[0]![0].evidence)).toMatchObject({ heardSpeech: firstSpeech });
+    const terminal = await h.provider.nextTurn({ ...request(frame(2)), observation: {
+      ...request(frame(2)).observation, heardSpeech: secondSpeech
+    }, previousExecution: { actions: [{ index: 0, status: "completed" }] } }, signal);
+    expect(terminal.done).toBe(true);
+    expect(toolReply).toMatchObject({ heardSpeech: secondSpeech, acknowledgments: [{ index: 0, status: "completed" }] });
+    await h.close();
   });
 
   it("keeps one native run across tool callbacks, returns acknowledgments and fresh screenshots, then closes in the same persona session", async () => {
