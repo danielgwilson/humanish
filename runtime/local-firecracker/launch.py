@@ -51,12 +51,15 @@ table ip humanish {
   }
 }
 """, text=True, check=True)
+    media_args = (" v4l2loopback.devices=1 v4l2loopback.video_nr=0 "
+                  "v4l2loopback.card_label=HumanishSyntheticCamera v4l2loopback.exclusive_caps=1"
+                  if os.environ.get("HUMANISH_RUNTIME_MEDIA") == "1" else "")
     config = {
         "boot-source": {
             "kernel_image_path": "/kernel",
             "boot_args": "console=ttyS0 reboot=k panic=1 root=/dev/vda ro "
             "ip=192.0.2.2::192.0.2.1:255.255.255.252::eth0:off "
-            f"humanish.app_port={app_port}",
+            f"humanish.app_port={app_port}{media_args}",
         },
         "machine-config": {"vcpu_count": 2, "mem_size_mib": 2048},
         "drives": [

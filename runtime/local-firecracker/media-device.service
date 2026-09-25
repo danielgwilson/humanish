@@ -7,7 +7,7 @@ Type=oneshot
 RemainAfterExit=yes
 StandardOutput=journal+console
 StandardError=journal+console
-ExecStart=/usr/sbin/insmod /opt/humanish/media/v4l2loopback.ko video_nr=0 card_label=HumanishSyntheticCamera exclusive_caps=1
+ExecStart=/usr/bin/test -c /dev/video0
 ExecStartPost=/bin/chown 1000:1000 /dev/video0
 ExecStartPost=/bin/chmod 0600 /dev/video0
 

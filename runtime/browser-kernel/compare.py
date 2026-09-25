@@ -22,7 +22,7 @@ def compare(first, second):
         for name, declared in receipt['result']['outputs'].items():
             allowed = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
             if receipt['result'].get('media') is True:
-                allowed.update({'v4l2loopback.ko', 'COPYING.v4l2loopback'})
+                allowed.add('COPYING.v4l2loopback')
             if name not in allowed:
                 raise ValueError('Unexpected build output')
             file = directory / 'output' / name
@@ -35,7 +35,7 @@ def compare(first, second):
                 raise ValueError('Retained output changed after build')
         expected_outputs = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
         if receipt['result'].get('media') is True:
-            expected_outputs.update({'v4l2loopback.ko', 'COPYING.v4l2loopback'})
+            expected_outputs.add('COPYING.v4l2loopback')
         if set(observed) != expected_outputs:
             raise ValueError('Incomplete build outputs')
         for name, declared in receipt['recipeHashes'].items():

@@ -11,6 +11,7 @@ COPY --from=kernel /${KERNEL_FILE} /kernel
 COPY --from=disks /${ROOT_FILE} /root.ext4
 COPY --from=state /${STATE_FILE} /state-template.ext4
 COPY launch.py /opt/humanish/launch.py
+ENV HUMANISH_RUNTIME_MEDIA=${MEDIA}
 LABEL org.opencontainers.image.source="https://github.com/danielgwilson/humanish" \
       to.humanish.runtime.api="1" \
       to.humanish.runtime.revision="${RUNTIME_REVISION}" \

@@ -148,6 +148,22 @@ def main():
         with (source / name).open('rb') as patch:
             # Match the source RPM's explicitly declared one-line fuzz policy.
             run(['patch', '-p1', '-F1', '--batch', '--forward'], cwd=kernel, stdin=patch)
+    media_source = None
+    if media:
+        media_source = WORK / 'v4l2loopback'
+        with tarfile.open(WORK / 'v4l2loopback-0.15.4.tar.gz') as archive:
+            members = archive.getmembers()
+            if len(members) > 256 or sum(item.size for item in members) > 8 * 1024 * 1024:
+                raise ValueError('V4L2 source archive exceeds bound')
+            if any(item.name != 'v4l2loopback-0.15.4' and not item.name.startswith('v4l2loopback-0.15.4/') for item in members):
+                raise ValueError('Unexpected V4L2 source archive root')
+            archive.extractall(WORK, filter='data')
+        (WORK / 'v4l2loopback-0.15.4').rename(media_source)
+        driver = kernel / 'drivers/media/v4l2-core'
+        for name in ['v4l2loopback.c', 'v4l2loopback.h', 'v4l2loopback_formats.h']:
+            shutil.copyfile(media_source / name, driver / name)
+        with (driver / 'Makefile').open('a') as makefile:
+            makefile.write('\nobj-$(CONFIG_VIDEO_DEV) += v4l2loopback.o\n')
     (kernel / '.scmversion').touch()
     original = INPUT / f'microvm-kernel-ci-{machine}-6.18.config'
     shutil.copyfile(original, kernel / '.config')
@@ -176,26 +192,11 @@ def main():
     if not 1 <= jobs <= toolchain['jobsMaximum']:
         raise ValueError('Build concurrency exceeds fixed bound')
     kernel_targets = ['Image'] if arm else ['vmlinux', 'bzImage']
-    if media:
-        # External-module modpost requires the symbol table produced by the
-        # complete modules target; an image-only build does not retain it.
-        kernel_targets.append('modules')
     run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *kernel_targets], cwd=kernel)
     media_outputs = []
     if media:
-        source = WORK / 'v4l2loopback'
-        with tarfile.open(WORK / 'v4l2loopback-0.15.4.tar.gz') as archive:
-            members = archive.getmembers()
-            if len(members) > 256 or sum(item.size for item in members) > 8 * 1024 * 1024:
-                raise ValueError('V4L2 source archive exceeds bound')
-            if any(item.name != 'v4l2loopback-0.15.4' and not item.name.startswith('v4l2loopback-0.15.4/') for item in members):
-                raise ValueError('Unexpected V4L2 source archive root')
-            archive.extractall(WORK, filter='data')
-        (WORK / 'v4l2loopback-0.15.4').rename(source)
-        run(['make', 'ARCH=' + make_arch, '-C', str(kernel), 'M=' + str(source), 'modules'])
-        shutil.copyfile(source / 'v4l2loopback.ko', OUTPUT / 'v4l2loopback.ko')
-        shutil.copyfile(source / 'COPYING', OUTPUT / 'COPYING.v4l2loopback')
-        media_outputs = ['v4l2loopback.ko', 'COPYING.v4l2loopback']
+        shutil.copyfile(media_source / 'COPYING', OUTPUT / 'COPYING.v4l2loopback')
+        media_outputs = ['COPYING.v4l2loopback']
     binaries = [('arch/arm64/boot/Image', 'kernel.bin')] if arm else [('vmlinux', 'kernel.bin'), ('arch/x86/boot/bzImage', 'bzImage')]
     for src, name in [*binaries,
                       ('.config', 'kernel.config'), ('System.map', 'System.map'), ('COPYING', 'COPYING')]:
@@ -222,7 +223,8 @@ def main():
               'sourceSpecSha256': sha256(spec), 'patchCount': len(patches), 'policy': policy,
               'outputs': outputs, 'jobs': jobs, 'buildEnvironment': {key: os.environ[key] for key in
                   ['KBUILD_BUILD_USER', 'KBUILD_BUILD_HOST', 'KBUILD_BUILD_VERSION', 'KBUILD_BUILD_TIMESTAMP', 'SOURCE_DATE_EPOCH']},
-              'media': media, 'vmBooted': False, 'redistributionApproved': False}
+              'media': media, 'cameraDriver': 'v4l2loopback-0.15.4-built-in' if media else None,
+              'vmBooted': False, 'redistributionApproved': False}
     (OUTPUT / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'status': 'built', 'outputs': outputs}), flush=True)
 
