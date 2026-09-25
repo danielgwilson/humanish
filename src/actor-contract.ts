@@ -178,8 +178,8 @@ export interface ActorExecutionProfile {
   requestedModel: "gpt-6-astra";
   reasoningEffort: "low";
   cliVersion: "0.154.0";
-  toolPolicy: "restricted-codex-v1";
-  participantSchema: "humanish.restricted-participant-turn.v1";
+  toolPolicy: "restricted-codex-v1" | "codex-ui-tools-v1";
+  participantSchema: "humanish.restricted-participant-turn.v1" | "humanish.codex-ui-tool.v1";
   memoryPolicy: "recent-eight-16k-v1" | "continuing-thread-v1";
 }
 export interface ProviderRequestReceipt {
@@ -200,14 +200,20 @@ export interface ActorProviderRequest extends ProviderRequestReceipt {
 
 /** Durable reader profile. Append new qualified profiles; never rewrite old evidence. */
 export function validActorExecutionProfile(value: unknown): value is ActorExecutionProfile {
-  const expected: ActorExecutionProfile = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
+  const expected = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
     authentication: "chatgpt-account", billing: "account-unknown", requestedModel: "gpt-6-astra", reasoningEffort: "low",
-    cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", participantSchema: "humanish.restricted-participant-turn.v1",
-    memoryPolicy: "recent-eight-16k-v1" };
+    cliVersion: "0.154.0" };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const object = value as Record<string, unknown>;
-  return Object.keys(object).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => key === "memoryPolicy"
-    ? object[key] === "recent-eight-16k-v1" || object[key] === "continuing-thread-v1" : object[key] === v);
+  if (Object.keys(object).length !== Object.keys(expected).length + 3 ||
+    !Object.entries(expected).every(([key, expectedValue]) => object[key] === expectedValue)) return false;
+  const legacy = object.toolPolicy === "restricted-codex-v1"
+    && object.participantSchema === "humanish.restricted-participant-turn.v1"
+    && (object.memoryPolicy === "recent-eight-16k-v1" || object.memoryPolicy === "continuing-thread-v1");
+  const uiTools = object.toolPolicy === "codex-ui-tools-v1"
+    && object.participantSchema === "humanish.codex-ui-tool.v1"
+    && object.memoryPolicy === "continuing-thread-v1";
+  return legacy || uiTools;
 }
 
 /** Closed per-attempt evidence; dollar amounts are never part of account usage. */
