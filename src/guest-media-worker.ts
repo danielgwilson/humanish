@@ -135,9 +135,18 @@ function transcribe(raw: Buffer): Promise<string> {
   });
 }
 
-function startListening(): ChildProcess | undefined {
+async function startListening(): Promise<ChildProcess | undefined> {
   if (!config.microphone) return undefined;
   const capture = child("/usr/bin/parec", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker.monitor"], { stdout: "pipe" });
+  const captureReady = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => { cleanup(); reject(new Error("speaker capture was not ready")); }, 5_000);
+    const ready = (): void => { cleanup(); resolve(); };
+    const failed = (): void => { cleanup(); reject(new Error("speaker capture failed")); };
+    const cleanup = (): void => {
+      clearTimeout(timer); capture.stdout!.off("data", ready); capture.off("error", failed); capture.off("close", failed);
+    };
+    capture.stdout!.once("data", ready); capture.once("error", failed); capture.once("close", failed);
+  });
   let pending = Buffer.alloc(0), active: Buffer[] | undefined, pre: Buffer[] = [], voiceFrames = 0, quietFrames = 0;
   const utterances: Array<{ audio: Buffer; durationMs: number }> = []; let transcribing = false, nextId = 1;
   const drain = async (): Promise<void> => {
@@ -176,6 +185,9 @@ function startListening(): ChildProcess | undefined {
     }
   });
   capture.once("close", finish);
+  const prime = child("/usr/bin/paplay", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker"], { stdin: "pipe" });
+  prime.stdin!.end(Buffer.alloc(FRAME_BYTES * PRE_ROLL_FRAMES));
+  await Promise.all([captureReady, waitExit(prime)]);
   return capture;
 }
 
@@ -192,7 +204,7 @@ async function main(): Promise<void> {
   if (config.microphone) persistent.push(await startPulse());
   const camera = await startCamera(); if (camera) persistent.push(camera);
   const whisper = await startWhisper(); if (whisper) persistent.push(whisper);
-  const capture = startListening(); if (capture) persistent.push(capture);
+  const capture = await startListening(); if (capture) persistent.push(capture);
   for (const child of persistent) child.once("close", () => {
     if (!closing) { close(); process.exit(1); }
   });
