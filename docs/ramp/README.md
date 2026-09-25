@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.101.0` (2026-09-25). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to 0.42.0. The containment boundary introduced in
+Package/source candidate in this tree: `0.102.0` (2026-09-25); latest published is `0.101.0`. The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to `0.42.0`. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority. The bundled OSS meta-lab is dry-run only until
@@ -53,6 +53,10 @@ flows.
 If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
+
+The [0.102.0 candidate note](../release/0.102.0-participant-media.md) describes
+optional native camera and speech. Linux live acceptance is complete; the ARM
+image still needs Mac media execution acceptance before merge and publication.
 
 The [0.101.0 release note](../release/0.101.0-codex-ui-tools.md) describes native
 Codex UI tools shared by local Firecracker and hosted E2B participants.
