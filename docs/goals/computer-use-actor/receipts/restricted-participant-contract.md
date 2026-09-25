@@ -7,20 +7,24 @@ API providers and saved bundles without the new fields keep their defaults.
 
 ## Admission and output
 
-Admission uses the launcher's supported Linux x64, file-backed ChatGPT login
-route. The requested profile records Codex CLI 0.154.0, `gpt-6-astra`, low
+Admission uses the launcher's supported Linux x64 or Apple Silicon macOS,
+file-backed ChatGPT login route. The requested profile records Codex CLI 0.154.0, `gpt-6-astra`, low
 reasoning effort and the `restricted-codex-v1` policy. The durable profile itself is a request declaration.
 Each request's `profileVerified` means the launcher passed its version, effective
 config, account, thread and empty MCP checks before attempting `turn/start`.
 It does not establish remote completion, quota, a charge, or a successful action.
 
-A fresh restricted thread receives the participant instructions, current PNG,
-explicit context hint, and recent history. DOM, executor app state, hidden text,
-provider continuation IDs and private reasoning are not participant input.
-History retains at most eight prior turns and 16 KiB. It contains public
-participant narration, action descriptions and input acknowledgment statuses;
-typed content is represented by its length. Omitted history is counted.
-Acknowledged input is not proof that the app reached the intended state.
+One restricted Codex thread belongs to each participant for the full interaction
+and closing feedback. The initial persona and assignment stay fixed. Each turn
+adds the current PNG, context hint and previous input acknowledgments to that
+conversation. Codex manages context compaction; Humanish does not discard turns
+after an eight-turn window. The execution profile records `continuing-thread-v1`;
+readers still accept the earlier `recent-eight-16k-v1` bundles.
+
+DOM, executor app state, hidden text and private reasoning are not participant
+input. Proposed actions and acknowledged input do not prove that the app reached
+the intended state; the next screenshot supplies observable evidence. No new
+conversation is silently substituted after a provider failure.
 
 A complete proposal is validated before any action: one to four existing browser
 actions, or a closing outcome with no actions. Fractional coordinates survive.
@@ -59,10 +63,10 @@ allocates a desktop or reads an API key.
 
 ## Verification boundary
 
-Hermetic tests exercise output schemas, bounded memory, cancellation and late
+Hermetic tests exercise output schemas, conversation isolation, cancellation and late
 settlement, accounting, durable readers, and the real bundle/completion producer.
-Provider domain mocks are identified as such. The retained launcher wire fixture
-is reused unchanged to prove dispatch admission, cleanup and rejection of a
+Provider domain mocks are identified as such. The captured launcher wire fixtures
+are reused with documented synthetic ID/counter mutations to prove dispatch admission, cleanup and rejection of a
 non-participant answer; it is not a fabricated successful account study.
 
 A live acceptance run must separately retain actual schema acceptance, visible
