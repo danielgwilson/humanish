@@ -160,7 +160,14 @@ export interface CuaTurn {
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
-  usage?: { input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number };
+  usage?: {
+    input?: number;
+    output?: number;
+    cachedInput?: number;
+    cacheWriteInput?: number;
+    /** Per model inference inside this provider interaction. */
+    turns?: Array<{ input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number }>;
+  };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
   /** Explicit provider interruption, independent of actions or participant intent. */
@@ -400,11 +407,26 @@ function validTokenCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function normalizedUsageTurns(usage: NonNullable<CuaTurn["usage"]>): NonNullable<ActorTokenUsage["turns"]> | undefined {
+  if (!Array.isArray(usage.turns) || usage.turns.length === 0) return undefined;
+  const fields = ["input", "output", "cachedInput", "cacheWriteInput"] as const;
+  const turns: NonNullable<ActorTokenUsage["turns"]> = [];
+  for (const raw of usage.turns) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    if (fields.every(field => raw[field] === undefined) || fields.some(field => raw[field] !== undefined && !validTokenCount(raw[field]))) return undefined;
+    if ((raw.cachedInput ?? 0) + (raw.cacheWriteInput ?? 0) > (raw.input ?? 0)) return undefined;
+    turns.push(Object.fromEntries(fields.flatMap(field => raw[field] === undefined ? [] : [[field, raw[field]]])));
+  }
+  return fields.every(field => turns.reduce((sum, turn) => sum + (turn[field] ?? 0), 0) === (usage[field] ?? 0))
+    ? turns : undefined;
+}
+
 function completeTurnUsage(usage: CuaTurn["usage"]): boolean {
   return usage !== undefined && validTokenCount(usage.input) && validTokenCount(usage.output)
     && (usage.cachedInput === undefined || validTokenCount(usage.cachedInput))
     && (usage.cacheWriteInput === undefined || validTokenCount(usage.cacheWriteInput))
-    && (usage.cachedInput ?? 0) + (usage.cacheWriteInput ?? 0) <= usage.input;
+    && (usage.cachedInput ?? 0) + (usage.cacheWriteInput ?? 0) <= usage.input
+    && (usage.turns === undefined || normalizedUsageTurns(usage) !== undefined);
 }
 
 // Waiting is a legitimate strategy, not idleness. A persona told to sign up and verify by email
@@ -798,15 +820,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let incompleteInteractionUsage = false;
   let unreportedInteractionUsage = false;
   let interactionRequestPending = false;
-  // Per provider-REQUEST usage, in order (#334): the recorded fact long-context pricing tiers
-  // need — totals alone cannot say which requests crossed the provider's threshold.
+  // Per model-inference usage, in order (#334): the recorded fact long-context pricing tiers
+  // need. A continuing native tool interaction may contain several inference requests.
   const usageTurns: NonNullable<ActorTokenUsage["turns"]> = [];
   const knownPendingUsage = (): NonNullable<CuaTurn["usage"]> | undefined => {
     const usage = interactionRequestPending ? provider.pendingRequestUsage : undefined;
     if (!completeTurnUsage(usage)) return undefined;
+    const turns = usage!.turns === undefined ? undefined : normalizedUsageTurns(usage!);
     return { input: usage!.input!, output: usage!.output!,
       ...(usage!.cachedInput === undefined ? {} : { cachedInput: usage!.cachedInput }),
-      ...(usage!.cacheWriteInput === undefined ? {} : { cacheWriteInput: usage!.cacheWriteInput }) };
+      ...(usage!.cacheWriteInput === undefined ? {} : { cacheWriteInput: usage!.cacheWriteInput }),
+      ...(turns === undefined ? {} : { turns }) };
   };
   const withPendingUsage = (settled: ActorTokenUsage): ActorTokenUsage => {
     const pendingUsage = knownPendingUsage();
@@ -821,7 +845,9 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         ? { cachedInput: (settled.cachedInput ?? 0) + (pendingUsage.cachedInput ?? 0) } : {}),
       ...((settled.cacheWriteInput !== undefined || pendingUsage.cacheWriteInput !== undefined)
         ? { cacheWriteInput: (settled.cacheWriteInput ?? 0) + (pendingUsage.cacheWriteInput ?? 0) } : {}),
-      turns: [...(settled.turns ?? []), { ...pendingUsage }],
+      turns: [...(settled.turns ?? []), ...(pendingUsage.turns ?? [{ input: pendingUsage.input!, output: pendingUsage.output!,
+        ...(pendingUsage.cachedInput === undefined ? {} : { cachedInput: pendingUsage.cachedInput }),
+        ...(pendingUsage.cacheWriteInput === undefined ? {} : { cacheWriteInput: pendingUsage.cacheWriteInput }) }])],
       ...(settled.total === undefined ? {} : { total: input + output })
     };
   };
@@ -865,8 +891,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
   const recordUsage = (turn: CuaTurn, interaction = true): void => {
     if (turn.providerRequestPending === true) return;
-    if (interaction && (!completeTurnUsage(turn.usage) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
     const raw = turn.usage;
+    const turns = raw?.turns === undefined ? undefined : normalizedUsageTurns(raw);
+    if (interaction && (!completeTurnUsage(raw) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
+    if (interaction && raw?.turns !== undefined && turns === undefined) unreportedInteractionUsage = true;
     if (raw === undefined) return;
     const usage = {
       ...(validTokenCount(raw.input) ? { input: raw.input } : {}),
@@ -880,7 +908,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     usageCachedInput += usage.cachedInput ?? 0;
     usageCacheWriteInput += usage.cacheWriteInput ?? 0;
     usageOutput += usage.output ?? 0;
-    usageTurns.push(usage);
+    if (raw.turns === undefined) usageTurns.push(usage);
+    else if (turns !== undefined) usageTurns.push(...turns);
   };
 
   /** Marked providers own one attempt through settlement; an outer race never retries it. */

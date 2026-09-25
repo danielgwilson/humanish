@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { PARTICIPANT_PROFILE } from "../src/restricted-codex-participant-policy.js";
-import type { ActorCapabilities } from "../src/actor-contract.js";
+import type { ActorCapabilities, ActorTokenUsage } from "../src/actor-contract.js";
 import {
   runComputerUseLoop,
   type CuaExecutor,
   type CuaProvider,
   type CuaTurn
 } from "../src/computer-use.js";
+import { estimateActorCost } from "../src/pricing.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 
 const capabilities: ActorCapabilities = {
@@ -204,6 +205,72 @@ describe("continuing provider requests in the CUA loop", () => {
     expect(result.trace.providerRequests?.[0]?.usage).toEqual({ input: 20, output: 4 });
     expect(result.trace.tokenUsage).toMatchObject({ input: 20, output: 4, total: 24, turns: [{ input: 20, output: 4 }] });
     expect(result.trace.interactionUsageIncomplete).toBeUndefined();
+  });
+
+  it("prices successive native inferences separately while settling one provider request", async () => {
+    const first = { input: 150_000, output: 1, cachedInput: 0, cacheWriteInput: 0 };
+    const second = { input: 150_000, output: 1, cachedInput: 0, cacheWriteInput: 0 };
+    let active = false, call = 0;
+    let pendingUsage: CuaTurn["usage"];
+    const provider: CuaProvider = {
+      id: "multi-inference-continuing-synthetic",
+      requestPolicy: "fail_closed",
+      capabilities,
+      get interactionUsageIncomplete() { return active; },
+      get pendingRequestUsage() { return pendingUsage; },
+      nextTurn: async () => {
+        active = true; call += 1;
+        if (call === 1) {
+          pendingUsage = { ...first, turns: [first] };
+          return pending({ kind: "click", x: 4, y: 5 });
+        }
+        if (call === 2) {
+          pendingUsage = { input: 300_000, output: 2, cachedInput: 0, cacheWriteInput: 0, turns: [first, second] };
+          return pending({ kind: "keypress", keys: ["ENTER"] });
+        }
+        pendingUsage = undefined; active = false;
+        return terminal({ usage: { input: 300_000, output: 2, cachedInput: 0, cacheWriteInput: 0, turns: [first, second] } });
+      }
+    };
+    let state = 0;
+    const execute = vi.fn(async () => { state += 1; });
+    const estimate = vi.fn((usage: ActorTokenUsage) => estimateActorCost(usage, "synthetic", { synthetic: {
+      inputUsdPerToken: 1, outputUsdPerToken: 0, cachedInputUsdPerToken: 1, cacheWriteUsdPerToken: 1,
+      longContext: { thresholdInputTokens: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+      asOf: "2026-09-25", source: "synthetic"
+    } }).estimatedCostUsd);
+
+    const result = await runComputerUseLoop({
+      ...options(provider, { execute, observe: async () => ({ screenshot, stateSignature: String(state) }) }),
+      maxUsd: 400_000,
+      estimateTurnCostUsd: estimate,
+      requireReportedUsageForSpendCap: true
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(estimate.mock.results.map(result => result.value)).toEqual([150_000, 300_000, 300_000]);
+    expect(result.trace.providerRequests).toEqual([expect.objectContaining({ ordinal: 1, kind: "interaction",
+      usage: { input: 300_000, output: 2, cachedInput: 0, cacheWriteInput: 0 } })]);
+    expect(result.trace.tokenUsage?.turns).toEqual([first, second]);
+    expect(result.trace.interactionUsageIncomplete).toBeUndefined();
+  });
+
+  it.each([
+    { label: "empty", turns: [] },
+    { label: "mismatched", turns: [{ input: 150_000, output: 1 }, { input: 149_999, output: 1 }] }
+  ])("marks an $label inference subledger incomplete without recording a fabricated tierable turn", async ({ turns }) => {
+    const provider: CuaProvider = { id: "mismatched-inference-ledger", requestPolicy: "fail_closed", capabilities,
+      nextTurn: async () => terminal({ usage: { input: 300_000, output: 2, turns } }) };
+
+    const result = await runComputerUseLoop(options(provider, {
+      execute: async () => undefined,
+      observe: async () => ({ screenshot, stateSignature: "ready" })
+    }));
+
+    expect(result.trace.tokenUsage).toMatchObject({ input: 300_000, output: 2, total: 300_002 });
+    expect(result.trace.tokenUsage?.turns).toBeUndefined();
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
   });
 
   it("fails a strict capped pending request whose usage is still missing", async () => {

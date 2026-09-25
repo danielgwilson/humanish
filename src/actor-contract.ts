@@ -155,10 +155,10 @@ export interface ActorTokenUsage {
    *  (OpenAI 5.6+ bills these at a surcharge and reports `cache_write_tokens`). Same
    *  honestly-absent discipline as `cachedInput` (#334). */
   cacheWriteInput?: number;
-  /** Per provider-REQUEST usage, in request order. Recorded fact, not pricing: a provider
-   *  that re-prices whole requests past an input-size threshold (long-context tiers) can
-   *  only be priced exactly from per-request sizes; totals cannot say which requests
-   *  crossed. Additive and honestly absent on producers that do not record it (#334). */
+  /** Per model-inference request usage, in request order. One provider interaction can contain
+   *  several inferences around native tool calls. A provider that re-prices whole requests past
+   *  an input-size threshold can only be priced exactly from these sizes; totals cannot say which
+   *  requests crossed. Additive and honestly absent on producers that do not record it (#334). */
   turns?: Array<{
     input?: number;
     cachedInput?: number;
