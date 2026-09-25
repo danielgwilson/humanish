@@ -12,7 +12,7 @@ pnpm build
 node runtime/browser-media/e2b-template.mjs humanish-browser-media
 ```
 
-The E2B SDK reads `E2B_API_KEY`. The recipe downloads fixed Node, whisper.cpp,
+The streaming worker was checked with `@e2b/desktop` 2.4.0. The E2B SDK reads `E2B_API_KEY`. The recipe downloads fixed Node, whisper.cpp,
 and Whisper model revisions, verifies every digest, retains the upstream
 licenses and model card, and builds a 4-vCPU/4-GiB template. Select the returned
 template name or ID with `execution.desktop.template` and request

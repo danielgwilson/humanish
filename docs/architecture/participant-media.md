@@ -56,7 +56,7 @@ recording with text evidence, not an audio/video call recording.
 ## Hosted desktops
 
 The same worker and participant loop support speech on an explicitly prepared
-E2B media template. Select it with `execution.desktop.template`. The host starts
+E2B media template; see the [build recipe](../../runtime/browser-media/E2B.md). Select it with `execution.desktop.template`. The host starts
 the worker through the SDK's streaming command interface; model credentials stay
 on the host. Missing worker dependencies fail desktop preparation before a
 participant starts.
