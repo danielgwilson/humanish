@@ -55,6 +55,37 @@
         "threadId": "thread-synthetic",
         "turnId": "turn-synthetic",
         "item": {
+          "type": "function_call",
+          "id": "wait-call-synthetic",
+          "name": "wait",
+          "arguments": "{\"cell_id\":\"1\",\"yield_time_ms\":20000}",
+          "call_id": "wait-call-id-synthetic"
+        }
+      }
+    },
+    {
+      "method": "rawResponseItem/completed",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
+          "type": "function_call_output",
+          "id": "wait-output-synthetic",
+          "call_id": "wait-call-id-synthetic",
+          "output": [
+            { "type": "input_text", "text": "Script completed\nWall time 12.0 seconds\nOutput:\n" },
+            { "type": "input_text", "text": "[{\"index\":0,\"status\":\"completed\"}]" },
+            { "type": "input_image", "image_url": "data:image/png;base64,c3ludGhldGlj" }
+          ]
+        }
+      }
+    },
+    {
+      "method": "rawResponseItem/completed",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
           "type": "custom_tool_call_output",
           "call_id": "code-mode-call-synthetic",
           "output": "Synthetic acknowledgment and image forwarded to the model."

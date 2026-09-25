@@ -38,6 +38,8 @@ if (operation === "--version") {
   if (scenario === "participant-wrong-tool") participantTool.request.params.tool = "unexpected_tool";
   if (scenario === "participant-wrong-namespace") participantTool.request.params.namespace = "unexpected_namespace";
   if (scenario === "participant-wrong-thread") participantTool.request.params.threadId = "unexpected-thread";
+  if (scenario === "participant-raw-wrong-function")
+    participantTool.afterResponse.find(event => event.params?.item?.type === "function_call").params.item.name = "unexpected_function";
   let participantDuplicateSent = false;
   if (scenario === "system-config") config.layers.find(layer => layer.name.type === "system").config = { notify: ["synthetic-command"] };
   if (scenario === "mcp-config") config.config.mcp_servers = { synthetic: { command: "synthetic-command" } };
@@ -105,6 +107,7 @@ if (operation === "--version") {
         if (scenario === "participant-usage-before-tool") emit(usage);
         for (const event of participantTool.beforeResponse) emit(event);
         emit(participantTool.request);
+        if (scenario === "participant-premature-completion") emit(completion);
         return;
       }
       if (scenario.startsWith("continuing")) {

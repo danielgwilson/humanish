@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import type { CuaProviderFailurePhase } from "./cua-provider-error.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
-import { CODEX_IMAGE, CODEX_MAX_OUTPUT_BYTES, RESTRICTED_CODEX_ANALYSIS_IDENTITY, RESTRICTED_CODEX_ANALYSIS_MODELS,
+import { CODEX_IMAGE, CODEX_MAX_OUTPUT_BYTES, CODEX_MAX_REQUEST_BYTES, RESTRICTED_CODEX_ANALYSIS_IDENTITY, RESTRICTED_CODEX_ANALYSIS_MODELS,
   admitsRestrictedCodexConfig, admitsRestrictedCodexThread, codexRecord, restrictedCodexConfig, restrictedCodexFailure,
   restrictedCodexRequestError, restrictedCodexUsage, type RestrictedCodexRequest, type RestrictedCodexResult,
   type RestrictedCodexUsage } from "./restricted-codex-policy.js";
@@ -135,7 +135,8 @@ async function checkVersion(file: string, env: NodeJS.ProcessEnv, cwd: string, s
 
 const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
 const analystRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
-const participantRawItemTypes = [...analystRawItemTypes, "custom_tool_call", "custom_tool_call_output"];
+const participantRawItemTypes = [...analystRawItemTypes, "custom_tool_call", "custom_tool_call_output",
+  "function_call", "function_call_output"];
 
 type Event = { method: string; params: Record<string, unknown> };
 const unclosedChildren = new Set<Promise<void>>();
@@ -245,6 +246,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     let turnId: string | undefined, earlyTurnId: string | undefined;
     let dispatched = false, usage: RestrictedCodexUsage | null = null;
     let completed = false, compacted = false;
+    let toolRequestPending = false;
     let latestUsage: RestrictedCodexUsage | null = null;
     const requestUsageBaseline = previousUsage;
     let generatedDeltaBytes = 0;
@@ -266,6 +268,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       if (method === "rawResponseItem/completed") {
         if (!allowedRawItemTypes.includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
         if (item.type === "custom_tool_call" && item.name !== "exec") { deadline.stop("codex_tool_call"); return; }
+        if (item.type === "function_call" && item.name !== "wait") { deadline.stop("codex_tool_call"); return; }
         if (item.type === "message" && Array.isArray(item.content)
           && item.content.some(content => codexRecord(content).type === "refusal")) deadline.stop("refusal");
       }
@@ -308,7 +311,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       }
       if (method === "turn/completed") {
         const turn = codexRecord(params.turn);
-        if (turn.id !== turnId || completed) { deadline.stop("codex_protocol_error"); return; }
+        if (turn.id !== turnId || completed || toolRequestPending) { deadline.stop("codex_protocol_error"); return; }
         completed = true;
         if (turn.status === "interrupted") { deadline.stop("cancelled"); return; }
         if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
@@ -332,6 +335,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       // Tool requests must fail even if the turn-start acknowledgment is lost.
       if ((method === "rawResponseItem/completed" && !allowedRawItemTypes.includes(String(item.type)))
         || (method === "rawResponseItem/completed" && item.type === "custom_tool_call" && item.name !== "exec")
+        || (method === "rawResponseItem/completed" && item.type === "function_call" && item.name !== "wait")
         || (["item/started", "item/completed"].includes(method) && item.type === "agentMessage"
           && (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)))) {
         deadline.stop("codex_tool_call"); return;
@@ -351,12 +355,13 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       const callId = params.callId;
       if (!participant || method !== "item/tool/call" || params.threadId !== threadId || params.turnId !== activeTurnId
         || params.namespace !== null || params.tool !== participant.tool.name || typeof callId !== "string"
-        || callId.length === 0 || callId.length > 200 || toolCallIds.has(callId))
+        || callId.length === 0 || callId.length > 200 || toolCallIds.has(callId) || toolRequestPending)
         throw new RestrictedCodexStop("codex_tool_call");
       toolCallIds.add(callId);
+      toolRequestPending = true;
       deadline.pause();
       const text = await deadline.wait(participant.tool.call(params.arguments));
-      if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_OUTPUT_BYTES) throw new RestrictedCodexStop("invalid_response");
+      if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_REQUEST_BYTES) throw new RestrictedCodexStop("invalid_response");
       try { JSON.parse(text); } catch { throw new RestrictedCodexStop("invalid_response"); }
       return { success: true, contentItems: [{ type: "inputText", text }] };
     };
@@ -364,7 +369,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     try {
       pendingUsage = undefined;
       deadline.check();
-      const frameLimit = Math.max(CODEX_MAX_OUTPUT_BYTES, Buffer.byteLength(JSON.stringify({ instructions: request.instructions,
+      const frameLimit = Math.max(participant ? CODEX_MAX_REQUEST_BYTES : CODEX_MAX_OUTPUT_BYTES, Buffer.byteLength(JSON.stringify({ instructions: request.instructions,
         evidence: request.evidence, images: request.images, schema: request.schema })) + 1024 * 1024);
       if (!transport) {
         const file = await resolveExecutable(options, sourceEnv);
@@ -399,6 +404,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         }));
         transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
         transport.onNotification = onNotification;
+        transport.onRequestComplete = () => { toolRequestPending = false; };
         phase = "initialize";
         const initialize = await transport.rpc("initialize", {
           clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
@@ -440,6 +446,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       } else {
         transport.beginRequest(deadline, frameLimit);
         transport.onNotification = onNotification;
+        transport.onRequestComplete = () => { toolRequestPending = false; };
       }
       if (readinessOnly) {
         result = { status: "completed", output: null, usage: null, usageComplete: false, dispatched: false, errorCode: null };
@@ -481,6 +488,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       activeDeadline = undefined;
       if (transport) transport.onNotification = () => undefined;
       if (transport) transport.onRequest = undefined;
+      if (transport) transport.onRequestComplete = undefined;
       if (result.errorCode !== null) {
         if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
         if (!await dispose()) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };

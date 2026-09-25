@@ -117,6 +117,7 @@ export class RestrictedCodexTransport {
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
   onRequest: ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>) | undefined;
+  onRequestComplete: (() => void) | undefined;
 
   constructor(readonly owned: OwnedCodexProcess, private deadline: RestrictedCodexDeadline,
     private frameLimit = CODEX_MAX_OUTPUT_BYTES) {
@@ -172,6 +173,7 @@ export class RestrictedCodexTransport {
           if (this.closing || this.deadline.code !== null) return;
           this.write({ id, result });
           this.deadline.resume();
+          this.onRequestComplete?.();
         } catch { this.fail("codex_process_failed"); }
       }, error => {
         try {

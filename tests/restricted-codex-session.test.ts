@@ -386,7 +386,8 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
-  it.each(["participant-wrong-tool", "participant-wrong-namespace", "participant-wrong-thread", "participant-duplicate-call"])(
+  it.each(["participant-wrong-tool", "participant-wrong-namespace", "participant-wrong-thread", "participant-duplicate-call",
+    "participant-raw-wrong-function"])(
     "rejects undeclared callback authority in %s", async scenario => {
       const f = await fixture(scenario);
       delete f.options.env!.NODE_OPTIONS;
@@ -427,6 +428,17 @@ describe("restricted Codex Code Mode participant session", () => {
     finishTool(JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }));
     expect(await pending).toMatchObject({ status: "completed", usage: { input: 2957, output: 41 } });
     expect(session.pendingUsage).toBeUndefined();
+    expect(await session.close()).toBe(true);
+  });
+
+  it("rejects turn completion while a host tool response is still outstanding", async () => {
+    const f = await fixture("participant-premature-completion");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => new Promise<string>(() => undefined) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined })).toMatchObject({ status: "failed",
+      errorCode: "codex_protocol_error", dispatched: true });
     expect(await session.close()).toBe(true);
   });
 });
