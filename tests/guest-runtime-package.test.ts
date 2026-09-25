@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
@@ -48,6 +48,7 @@ describe('guest package immutable input binding',()=>{
   const root=await fixture();expect(run(root,'plain').status).toBe(0);expect(run(root,'media',true).status).toBe(0);
   const plain=JSON.parse(await readFile(join(root,'plain/manifest.json'),'utf8'));
   const media=JSON.parse(await readFile(join(root,'media/manifest.json'),'utf8'));
+  expect(await readdir(join(root,'plain/root/opt/humanish'))).not.toContain('media');
   expect(plain.files['opt/humanish/media/guest-media-worker.js']).toBeUndefined();
   expect(media.files['opt/humanish/media/guest-media-worker.js']).toBeTruthy();
   expect(media.runtimeRevision).not.toBe(plain.runtimeRevision);

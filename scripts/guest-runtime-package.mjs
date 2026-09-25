@@ -75,11 +75,13 @@ export async function packageGuestRuntime(destination, { media = false } = {}) {
     sourceFiles['dist/' + name] = sha(await readFile(join(repository, 'dist', name)));
   }
   const mediaRoot = join(root, 'opt/humanish/media');
-  await mkdir(mediaRoot, { recursive: true });
-  for (const name of mediaModules) {
-    await cp(join(repository, 'dist', name), join(mediaRoot, name));
+  if (media) {
+    await mkdir(mediaRoot, { recursive: true });
+    for (const name of mediaModules) {
+      await cp(join(repository, 'dist', name), join(mediaRoot, name));
+    }
+    await writeFile(join(mediaRoot, 'package.json'), '{"type":"module"}\n');
   }
-  if (media) await writeFile(join(mediaRoot, 'package.json'), '{"type":"module"}\n');
   for (const name of selected.packages) {
     const packageRoot = await realpath(join(repository, 'node_modules', name));
     const hashes = await inventory(packageRoot);
