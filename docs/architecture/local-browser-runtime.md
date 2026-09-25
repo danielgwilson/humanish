@@ -31,8 +31,9 @@ npx humanish lab run local-browser
 
 `init` also writes `humanish/labs/local-browser.yaml` with safe defaults when
 the two options are omitted. The options provide the normal setup path for the
-app URL and mission; direct YAML editing remains available for advanced changes.
-The resulting lab has this shape:
+app URL and mission on first setup. If the file already exists, `init` preserves
+it and warns that these options were skipped; edit the existing manifest to
+change its URL or mission. The resulting lab has this shape:
 
 ```yaml
 schema: humanish.lab.v2

@@ -29,7 +29,6 @@ Use **Node.js 20 or newer**, in a project directory:
 
 ```bash
 npm install --save-dev humanish
-npx humanish init --yes
 ```
 
 `@e2b/desktop` is the optional peer for live hosted desktops. Install it alongside
@@ -56,7 +55,7 @@ run downloads a verified runtime image; `npx humanish runtime setup` prepares it
 ahead of time. Supported Macs use Lima instead of Docker Desktop. Local inboxes
 and local camera/microphone support remain follow-ups.
 
-Configure the included local study without editing YAML:
+For a new local study, initialize with your app URL and task:
 
 ```bash
 npx humanish init --yes \
@@ -65,6 +64,10 @@ npx humanish init --yes \
 npx humanish doctor --lab local-browser
 npx humanish run local-browser
 ```
+
+Start your app before running the study. If you already initialized this project,
+edit `humanish/labs/local-browser.yaml` to change its URL or mission; `init`
+preserves existing files and warns when supplied settings cannot be applied.
 
 `doctor` only inspects setup. It does not install or start the runtime, open a
 browser, or use Codex account quota. The local study needs a supported Codex CLI
@@ -75,6 +78,7 @@ TUN; M3-or-newer Apple Silicon Macs need native ARM64 Node and Lima 2.2+.
 send one synthetic participant into the included drawDB study:
 
 ```bash
+npx humanish init --yes
 npx humanish keys set e2b
 npx humanish keys set openai
 npx humanish doctor --lab try-live
@@ -97,6 +101,7 @@ the app to build and the participant to work. See [budgets and privacy](https://
 **Preview without keys.** To see the evidence format before connecting providers:
 
 ```bash
+npx humanish init --yes
 npx humanish run first-run
 npx humanish observe --run latest --open
 ```
