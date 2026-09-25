@@ -26,6 +26,8 @@ def main():
                            "--entrypoint", "sh", args.tools_image, "-ec", """
 mkdir /rootfs
 tar --numeric-owner -xpf /source.tar -C /rootfs
+# Docker export markers do not describe the VM that will boot this filesystem.
+rm -f /rootfs/.dockerenv /rootfs/run/.containerenv
 rm -f /rootfs/etc/resolv.conf
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /rootfs/etc/resolv.conf
 truncate -s 3G /root.ext4
