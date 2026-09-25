@@ -70,10 +70,21 @@ async function isNativeExecutable(file: string, platform: NodeJS.Platform): Prom
   } catch { return false; }
 }
 
+/** Official npm launcher target map for the Unix hosts supported by this transport. */
+export function restrictedCodexNpmTarget(platform: NodeJS.Platform, arch: string): {
+  triple: string; packageName: string;
+} | undefined {
+  if (platform === "linux" && arch === "x64") return { triple: "x86_64-unknown-linux-musl", packageName: "codex-linux-x64" };
+  if (platform === "linux" && arch === "arm64") return { triple: "aarch64-unknown-linux-musl", packageName: "codex-linux-arm64" };
+  if (platform === "darwin" && arch === "x64") return { triple: "x86_64-apple-darwin", packageName: "codex-darwin-x64" };
+  if (platform === "darwin" && arch === "arm64") return { triple: "aarch64-apple-darwin", packageName: "codex-darwin-arm64" };
+  return undefined;
+}
+
 /** Resolve PATH without running a shell. The npm launcher is resolved to its
  * native optional package so cleanup owns the real app-server child. */
 async function resolveExecutable(options: RestrictedCodexSessionOptions, env: NodeJS.ProcessEnv): Promise<string> {
-  const platform = options.platform ?? process.platform;
+  const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
   let selected = options.executable;
   if (selected === undefined) {
     for (const directory of (env.PATH ?? "").split(path.delimiter).filter(entry => path.isAbsolute(entry))) {
@@ -87,8 +98,9 @@ async function resolveExecutable(options: RestrictedCodexSessionOptions, env: No
   if (await isNativeExecutable(resolved, platform)) return resolved;
   if (path.basename(resolved) === "codex.js" && path.basename(path.dirname(resolved)) === "bin") {
     const packageRoot = path.dirname(path.dirname(resolved));
-    const triple = platform === "darwin" ? "aarch64-apple-darwin" : "x86_64-unknown-linux-musl";
-    const nativePackage = platform === "darwin" ? "codex-darwin-arm64" : "codex-linux-x64";
+    const target = restrictedCodexNpmTarget(platform, arch);
+    if (!target) throw new RestrictedCodexStop("codex_unavailable");
+    const { triple, packageName: nativePackage } = target;
     const candidates: string[] = [];
     try {
       // Match the npm launcher's resolution: optional packages may be hoisted or
@@ -258,6 +270,8 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     const early: Event[] = [];
     let resolveTurn!: (value: RestrictedCodexResult) => void;
     const finished = new Promise<RestrictedCodexResult>(resolve => { resolveTurn = resolve; });
+    let resolveTurnReady!: (value: string) => void;
+    const turnReady = new Promise<string>(resolve => { resolveTurnReady = resolve; });
 
     const handleTurnEvent = (method: string, params: Record<string, unknown>): void => {
       if (!hasScopedIdentity(method, params, threadId, turnId)) { deadline.stop("codex_protocol_error"); return; }
@@ -351,7 +365,9 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     };
 
     const onRequest: RestrictedCodexTransport["onRequest"] = async (method, params) => {
-      const activeTurnId = turnId ?? earlyTurnId;
+      // App-server can write the turn/start reply and first server request in one
+      // stdout chunk. Wait for the acknowledged identity before admitting work.
+      const activeTurnId = turnId ?? earlyTurnId ?? await deadline.wait(turnReady);
       const callId = params.callId;
       if (!participant || method !== "item/tool/call" || params.threadId !== threadId || params.turnId !== activeTurnId
         || params.namespace !== null || params.tool !== participant.tool.name || typeof callId !== "string"
@@ -470,6 +486,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if (typeof returnedTurnId !== "string" || returnedTurnId.length === 0 || returnedTurnId.length > 200
           || (earlyTurnId !== undefined && earlyTurnId !== returnedTurnId)) throw new RestrictedCodexStop("codex_protocol_error");
         turnId = returnedTurnId;
+        resolveTurnReady(turnId);
         interrupt = { threadId: threadId!, turnId };
         for (const event of early) handleTurnEvent(event.method, event.params);
         early.length = 0;
@@ -506,7 +523,9 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       if (closed || (identity && (identity.requestedModel !== request.model || identity.instructions !== request.instructions)))
         return Promise.resolve(restrictedCodexFailure("invalid_request"));
       if (pending || unclosedChildren.size) return Promise.resolve(restrictedCodexFailure("codex_busy"));
-      if (!(platform === "linux" && arch === "x64") && !(platform === "darwin" && arch === "arm64"))
+      const supportedPlatform = operatorAuth ? restrictedCodexNpmTarget(platform, arch) !== undefined
+        : (platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64");
+      if (!supportedPlatform)
         return Promise.resolve(restrictedCodexFailure("codex_unsupported_platform"));
       const task = execute(request, readinessOnly);
       pending = task;

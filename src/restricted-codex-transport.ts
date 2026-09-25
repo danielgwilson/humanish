@@ -14,7 +14,6 @@ export class RestrictedCodexStop extends Error {
 
 export class RestrictedCodexDeadline {
   private deadlineAt: number;
-  private remainingMs: number;
   code: RestrictedCodexAnalysisErrorCode | null = null;
   private readonly stopped: Promise<never>;
   private rejectStopped!: (reason: RestrictedCodexStop) => void;
@@ -22,8 +21,7 @@ export class RestrictedCodexDeadline {
   private paused = false;
   private readonly onAbort = (): void => this.stop("cancelled");
 
-  constructor(timeoutMs: number, private readonly signal?: AbortSignal) {
-    this.remainingMs = timeoutMs;
+  constructor(private readonly timeoutMs: number, private readonly signal?: AbortSignal) {
     this.deadlineAt = performance.now() + timeoutMs;
     this.stopped = new Promise<never>((_resolve, reject) => { this.rejectStopped = reject; });
     void this.stopped.catch(() => undefined);
@@ -41,16 +39,15 @@ export class RestrictedCodexDeadline {
     clearTimeout(this.timer);
     this.timer = setTimeout(() => this.stop("timeout"), Math.max(1, ms));
   }
-  /** Host tool execution is outside model time. Cancellation remains active. */
+  /** Host tool execution is outside model time. A response starts a fresh inference slice. */
   pause(): void {
     this.check();
     if (this.paused) throw new RestrictedCodexStop("codex_protocol_error");
-    this.remainingMs = Math.max(1, this.deadlineAt - performance.now());
     clearTimeout(this.timer); this.timer = undefined; this.paused = true;
   }
   resume(): void {
     if (!this.paused || this.code !== null) return;
-    this.paused = false; this.deadlineAt = performance.now() + this.remainingMs; this.arm(this.remainingMs);
+    this.paused = false; this.deadlineAt = performance.now() + this.timeoutMs; this.arm(this.timeoutMs);
   }
   check(): void {
     if (!this.paused && this.code === null && performance.now() >= this.deadlineAt) this.stop("timeout");
@@ -173,6 +170,8 @@ export class RestrictedCodexTransport {
           if (this.closing || this.deadline.code !== null) return;
           this.write({ id, result });
           this.deadline.resume();
+          this.stdoutBytes = 0;
+          this.eventCount = 0;
           this.onRequestComplete?.();
         } catch { this.fail("codex_process_failed"); }
       }, error => {

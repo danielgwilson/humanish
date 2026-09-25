@@ -441,4 +441,17 @@ describe("restricted Codex Code Mode participant session", () => {
       errorCode: "codex_protocol_error", dispatched: true });
     expect(await session.close()).toBe(true);
   });
+
+  it("starts a fresh inference deadline after a successful host tool response", async () => {
+    const f = await fixture("participant-deadline-reset");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" });
+      } } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined, timeoutMs: 700 })).toMatchObject({ status: "completed", errorCode: null });
+    expect(await session.close()).toBe(true);
+  });
 });

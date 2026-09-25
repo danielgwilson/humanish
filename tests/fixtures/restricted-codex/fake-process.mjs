@@ -71,8 +71,12 @@ if (operation === "--version") {
         emit({ ...participantTool.request, id: 901 });
         return;
       }
-      for (const event of participantTool.afterResponse) emit(event);
-      emit(answer); emit(usage); emit(completion);
+      const finishParticipant = () => {
+        for (const event of participantTool.afterResponse) emit(event);
+        emit(answer); emit(usage); emit(completion);
+      };
+      if (scenario === "participant-deadline-reset") setTimeout(finishParticipant, 500);
+      else finishParticipant();
       return;
     }
     if (message.method === "initialized") return;
@@ -104,10 +108,14 @@ if (operation === "--version") {
       if (scenario === "lost-turn-ack") { emit({ method: "turn/started", params: { threadId: thread.thread.id, turn: turn.turn } }); return; }
       if (scenario !== "early-events") reply(message.id, map(turn));
       if (participantTool) {
-        if (scenario === "participant-usage-before-tool") emit(usage);
-        for (const event of participantTool.beforeResponse) emit(event);
-        emit(participantTool.request);
-        if (scenario === "participant-premature-completion") emit(completion);
+        const requestParticipantTool = () => {
+          if (scenario === "participant-usage-before-tool") emit(usage);
+          for (const event of participantTool.beforeResponse) emit(event);
+          emit(participantTool.request);
+          if (scenario === "participant-premature-completion") emit(completion);
+        };
+        if (scenario === "participant-deadline-reset") setTimeout(requestParticipantTool, 350);
+        else requestParticipantTool();
         return;
       }
       if (scenario.startsWith("continuing")) {
