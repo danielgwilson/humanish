@@ -26,6 +26,7 @@ export interface RestrictedCodexRequest {
 }
 export interface RestrictedCodexUsage { input: number; output: number; cachedInput?: number; cacheWriteInput?: number }
 export interface RestrictedCodexResult {
+  failurePhase?: import("./cua-provider-error.js").CuaProviderFailurePhase;
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
   output: unknown;
   usage: RestrictedCodexUsage | null;

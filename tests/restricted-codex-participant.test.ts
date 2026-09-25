@@ -65,7 +65,15 @@ describe("restricted participant output and explicit memory", () => {
   it("retains failed usage and does not map malformed output to completion", async () => {
     run.mockResolvedValue(result({ unexpected: true })); const h = createRestrictedCodexParticipant();
     await expect(h.provider.nextTurn(request(), new AbortController().signal)).rejects.toMatchObject({ code: "invalid_response",
-      receipt: { dispatched: true, cleanup: "confirmed" }, usage: { input: 20 } }); await h.close();
+      failurePhase: "response", receipt: { dispatched: true, cleanup: "confirmed" }, usage: { input: 20 } }); await h.close();
+  });
+  it("preserves cleanup failure phase through the early closed-participant branch", async () => {
+    run.mockResolvedValue({ ...result(), status: "failed", errorCode: "codex_cleanup_failed", failurePhase: "cleanup" });
+    const h = createRestrictedCodexParticipant();
+    await expect(h.provider.nextTurn(request(), new AbortController().signal)).rejects.toMatchObject({
+      code: "cleanup_unconfirmed", failurePhase: "cleanup", receipt: { cleanup: "unconfirmed" }
+    });
+    expect(await h.close()).toEqual({ status: "unconfirmed" });
   });
   it("has one total cleanup grace and irreversibly refuses after an aborted attempt", async () => {
     vi.useFakeTimers(); let finish!: (v: RestrictedCodexResult) => void;

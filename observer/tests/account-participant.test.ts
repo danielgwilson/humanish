@@ -19,6 +19,16 @@ const account = () => {
   return data;
 };
 describe("account participant durable reader", () => {
+  it("opens recordings with finite failure phases and keeps older recordings readable", () => {
+    for (const phase of [undefined, "startup", "initialize", "config/read", "account/read", "thread/start",
+      "mcpServerStatus/list", "turn/start", "response", "cleanup", "private/raw/path"]) {
+      const data = account();
+      const failed = { ...request, errorCode: "timeout", ...(phase === undefined ? {} : { failurePhase: phase }) };
+      data.streams[0].actor.providerRequests = [failed];
+      expect(validActorProviderRequests([failed])).toBe(serverRequests([failed]));
+      expect(isObserverData(data)).toBe(phase !== "private/raw/path");
+    }
+  });
   it("agrees with the server's durable profile and closed request schema", () => {
     for (const value of [PARTICIPANT_PROFILE, { ...PARTICIPANT_PROFILE, cliVersion: "unqualified" }, { ...PARTICIPANT_PROFILE, secret: "synthetic" }, null])
       expect(validActorExecutionProfile(value)).toBe(serverProfile(value));

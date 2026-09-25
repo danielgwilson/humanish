@@ -13,14 +13,16 @@ export function validActorExecutionProfile(value: unknown): boolean {
 export function validActorProviderRequests(value: unknown): boolean {
   if (!Array.isArray(value)) return false;
   const codes = ["request_rejected", "unavailable", "busy", "refused", "invalid_response", "protocol_error", "timeout", "cancelled", "process_failed", "cleanup_unconfirmed"];
+  const phases = ["startup", "initialize", "config/read", "account/read", "thread/start", "mcpServerStatus/list", "turn/start", "response", "cleanup"];
   return value.every((raw: unknown, index) => {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return false;
     const r = raw as Record<string, unknown>;
-    if (Object.keys(r).some(k => !["ordinal", "kind", "dispatched", "usageComplete", "cleanup", "profileVerified", "errorCode", "usage"].includes(k)) ||
+    if (Object.keys(r).some(k => !["ordinal", "kind", "dispatched", "usageComplete", "cleanup", "profileVerified", "errorCode", "failurePhase", "usage"].includes(k)) ||
       r.ordinal !== index + 1 || (typeof r.kind !== "string" || !["interaction", "debrief"].includes(r.kind)) ||
       !(typeof r.dispatched === "boolean" || r.dispatched === "unknown") || typeof r.usageComplete !== "boolean" ||
       (typeof r.cleanup !== "string" || !["confirmed", "unconfirmed"].includes(r.cleanup)) || typeof r.profileVerified !== "boolean" ||
-      (r.profileVerified && r.dispatched !== true) || (r.errorCode !== undefined && (typeof r.errorCode !== "string" || !codes.includes(r.errorCode)))) return false;
+      (r.profileVerified && r.dispatched !== true) || (r.errorCode !== undefined && (typeof r.errorCode !== "string" || !codes.includes(r.errorCode))) ||
+      (r.failurePhase !== undefined && (r.errorCode === undefined || typeof r.failurePhase !== "string" || !phases.includes(r.failurePhase)))) return false;
     if (r.usage === undefined) return !r.usageComplete;
     if (r.usage === null || typeof r.usage !== "object" || Array.isArray(r.usage)) return false;
     const usage = r.usage as Record<string, unknown>;

@@ -768,6 +768,13 @@ scenario:
 
 ## Actor Trace
 
+Failed account participant requests may include an optional `failurePhase` in
+`providerRequests`, identifying startup, the named Codex setup RPC, `turn/start`,
+`response`, or cleanup. It is a finite local classification, never raw provider
+text. Older receipts without it remain valid. The phase does not replace the
+separate dispatch, usage, or cleanup evidence, and does not establish the cause
+of a timeout. Participant outcome text includes the phase when available.
+
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `humanish.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,
 Claude Agent SDK blocks, pi events, computer-use cycles, scripted browser

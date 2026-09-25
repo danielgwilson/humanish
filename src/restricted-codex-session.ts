@@ -4,6 +4,7 @@ import { access, chmod, lstat, mkdir, mkdtemp, open, readdir, realpath, rm, stat
 import { homedir, tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
+import type { CuaProviderFailurePhase } from "./cua-provider-error.js";
 import { CODEX_IMAGE, CODEX_MAX_OUTPUT_BYTES, RESTRICTED_CODEX_ANALYSIS_IDENTITY, RESTRICTED_CODEX_ANALYSIS_MODELS,
   admitsRestrictedCodexConfig, admitsRestrictedCodexThread, codexRecord, restrictedCodexConfig, restrictedCodexFailure,
   restrictedCodexRequestError, restrictedCodexUsage, type RestrictedCodexRequest, type RestrictedCodexResult,
@@ -176,6 +177,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
   let generatedDeltaBytes = 0;
   let outputItem: { id: string; text: string } | undefined;
   let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
+  let phase: CuaProviderFailurePhase = "startup";
   const early: Event[] = [];
   let resolveTurn!: (value: RestrictedCodexResult) => void;
   const finished = new Promise<RestrictedCodexResult>(resolve => { resolveTurn = resolve; });
@@ -274,6 +276,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       if (turnId === undefined) early.push({ method, params });
       else handleTurnEvent(method, params);
     };
+    phase = "initialize";
     const initialize = await transport.rpc("initialize", {
       clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
     });
@@ -281,22 +284,27 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       || initialize.codexHome !== home || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
       throw new RestrictedCodexStop("codex_unsupported_version");
     transport.notify("initialized", {});
+    phase = "config/read";
     const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
     if (!admitsRestrictedCodexConfig(effective, configPath, request.model)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+    phase = "account/read";
     const account = await transport.rpc("account/read", { refreshToken: false });
     if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
     if (codexRecord(account.account).type !== "chatgpt" || account.requiresOpenaiAuth !== true)
       throw new RestrictedCodexStop("codex_unsupported_auth");
+    phase = "thread/start";
     const thread = await transport.rpc("thread/start", { cwd, ephemeral: true, experimentalRawEvents: true,
       approvalPolicy: "never", sandbox: "read-only", model: request.model, modelProvider: "openai", allowProviderModelFallback: false,
       environments: [], runtimeWorkspaceRoots: [], dynamicTools: [], baseInstructions: request.instructions, config: config.overrides });
     if (!admitsRestrictedCodexThread(thread, request.model, cwd)) throw new RestrictedCodexStop("codex_unsafe_configuration");
     threadId = String(codexRecord(thread.thread).id);
+    phase = "mcpServerStatus/list";
     const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
     if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null) throw new RestrictedCodexStop("codex_unsafe_configuration");
     if (readinessOnly) {
       result = { status: "completed", output: null, usage: null, usageComplete: false, dispatched: false, errorCode: null };
     } else {
+      phase = "turn/start";
       const input: Record<string, unknown>[] = [{ type: "text", text: request.evidence, text_elements: [] }];
       for (const [index, image] of request.images.entries()) {
         deadline.check();
@@ -316,12 +324,13 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       turnId = returnedTurnId;
       for (const event of early) handleTurnEvent(event.method, event.params);
       early.length = 0;
+      phase = "response";
       result = await deadline.wait(finished);
       deadline.check();
     }
   } catch (error) {
     const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
-    result = restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage);
+    result = { ...restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage), failurePhase: phase };
   } finally {
     // Deadline remains authoritative until acceptance; teardown has its own small grace.
     deadline.close();
@@ -351,9 +360,9 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
     }
     if (work && cleaned && !authReplaced) await rm(work, { recursive: true, force: true }).catch(() => { cleaned = false; });
     if (work && !cleaned && !authReplaced) await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(() => undefined);
-    if (!cleaned) result = restrictedCodexFailure("codex_cleanup_failed", dispatched, usage);
+    if (!cleaned) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };
   }
-  return result;
+  return result.errorCode !== null && result.failurePhase === undefined ? { ...result, failurePhase: phase } : result;
 }
 
 export async function checkRestrictedCodexSessionReadiness(input: { signal?: AbortSignal; timeoutMs?: number } = {},

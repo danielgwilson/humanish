@@ -901,7 +901,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     // thread/MCP admission, immediately before turn/start; it is not a success claim.
     providerRequests.push({ ordinal: providerRequests.length + 1, kind, ...receipt,
       profileVerified: provider.executionProfile !== undefined && receipt.dispatched === true,
-      ...(typed ? { errorCode: typed.code } : {}), ...(usage === undefined ? {} : { usage: { ...usage } }) });
+      ...(typed ? { errorCode: typed.code, ...(typed.failurePhase === undefined ? {} : { failurePhase: typed.failurePhase }) } : {}),
+      ...(usage === undefined ? {} : { usage: { ...usage } }) });
     if (receipt.cleanup !== "confirmed") {
       providerCleanupUnconfirmed = true;
       record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
@@ -911,7 +912,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     if (failed) {
       if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, kind === "interaction");
       if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
-      if (failure instanceof CuaStallError) throw new CuaProviderError("timeout", receipt, usage);
+      if (failure instanceof CuaStallError) throw new CuaProviderError("timeout", receipt, usage, typed?.failurePhase);
       throw typed ?? new CuaProviderError("process_failed", receipt, usage);
     }
     return accepted!;
@@ -1717,7 +1718,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       stopCause = "harness_aborted";
     } else if (isCuaProviderError(error)) {
       completionReason = "harness_error";
-      reason = `participant provider error: ${error.code}; cleanup: ${error.receipt.cleanup}`;
+      reason = `participant provider error: ${error.code}${error.failurePhase ? ` during ${error.failurePhase}` : ""}; cleanup: ${error.receipt.cleanup}`;
       record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
         title: "participant provider error", text: reason });
     } else if (isCuaExecutorError(error)) {

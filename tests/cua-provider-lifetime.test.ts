@@ -23,6 +23,16 @@ function setup(nextTurn: CuaProvider["nextTurn"]) {
 }
 afterEach(() => vi.useRealTimers());
 describe("single-dispatch participant request lifetime", () => {
+  it("preserves a setup timeout phase in the recording and human-readable outcome", async () => {
+    const s = setup(async () => { throw new CuaProviderError("timeout",
+      { dispatched: false, usageComplete: false, cleanup: "confirmed" }, undefined, "thread/start"); });
+    const r = await s.run();
+    expect(r.completionReason).toBe("harness_error");
+    expect(r.trace.providerRequests?.[0]).toMatchObject({ errorCode: "timeout", failurePhase: "thread/start",
+      dispatched: false, profileVerified: false, cleanup: "confirmed" });
+    expect(r.reason).toContain("timeout during thread/start");
+    expect(s.execute).not.toHaveBeenCalled();
+  });
   it("records complete account tokens once without inventing dollar cost", async () => {
     const s = setup(async () => turn()); const r = await s.run();
     expect(r.completionReason).toBe("goal_satisfied");
