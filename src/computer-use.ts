@@ -117,7 +117,7 @@ export interface CuaObservation {
   scrollY?: number;
   title?: string;
   text?: string;
-  /** Finalized remote utterances captured from the participant's speaker sink. */
+  /** Finalized speech captured from the participant's speaker sink. */
   heardSpeech?: HeardSpeech[];
 }
 

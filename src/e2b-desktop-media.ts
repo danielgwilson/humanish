@@ -40,7 +40,7 @@ export async function startE2BDesktopMedia(options: {
         let timer: NodeJS.Timeout | undefined;
         try {
           await Promise.race([handle.wait?.().catch(() => {}), new Promise<void>(resolve => {
-            timer = setTimeout(() => { void handle?.kill?.().finally(resolve); }, 2000);
+            timer = setTimeout(() => { void handle?.kill?.().catch(() => {}).finally(resolve); }, 2000);
           })]);
         } finally { clearTimeout(timer); }
       }

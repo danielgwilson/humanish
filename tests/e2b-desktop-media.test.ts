@@ -45,6 +45,23 @@ describe("hosted speech transport", () => {
     expect(f.handle.kill).not.toHaveBeenCalled();
   });
 
+  it("settles worker cleanup when EOF stalls and the SDK kill rejects", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture();
+      f.handle.closeStdin.mockImplementation(async () => {});
+      f.handle.kill.mockRejectedValue(new Error("sandbox disconnected"));
+      const media = await startE2BDesktopMedia({ desktop: f.desktop, media: { microphone: { source: "speech" } },
+        signal: new AbortController().signal, onTerminal: vi.fn(), requestTimeoutMs: 5000 });
+      const closed = media.close();
+      await vi.advanceTimersByTimeAsync(2000);
+      await expect(closed).resolves.toBeUndefined();
+      expect(f.handle.kill).toHaveBeenCalledOnce();
+      await media.close();
+      expect(f.handle.closeStdin).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+
   it("refuses the conflicting hosted camera before starting a worker", async () => {
     const f = fixture();
     await expect(startE2BDesktopMedia({ desktop: f.desktop, media: { camera: { source: "synthetic" }, microphone: { source: "speech" } },
