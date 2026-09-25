@@ -175,8 +175,8 @@ export interface ActorExecutionProfile {
   transport: "codex-app-server";
   authentication: "chatgpt-account";
   billing: "account-unknown";
-  requestedModel: "gpt-6-astra";
-  reasoningEffort: "low";
+  requestedModel: string;
+  reasoningEffort: import("./reasoning-effort.js").ReasoningEffort;
   cliVersion: "0.154.0";
   toolPolicy: "restricted-codex-v1" | "codex-ui-tools-v1";
   participantSchema: "humanish.restricted-participant-turn.v1" | "humanish.codex-ui-tool.v1";
@@ -201,16 +201,19 @@ export interface ActorProviderRequest extends ProviderRequestReceipt {
 /** Durable reader profile. Append new qualified profiles; never rewrite old evidence. */
 export function validActorExecutionProfile(value: unknown): value is ActorExecutionProfile {
   const expected = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
-    authentication: "chatgpt-account", billing: "account-unknown", requestedModel: "gpt-6-astra", reasoningEffort: "low",
+    authentication: "chatgpt-account", billing: "account-unknown",
     cliVersion: "0.154.0" };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const object = value as Record<string, unknown>;
-  if (Object.keys(object).length !== Object.keys(expected).length + 3 ||
+  if (Object.keys(object).length !== Object.keys(expected).length + 5 ||
     !Object.entries(expected).every(([key, expectedValue]) => object[key] === expectedValue)) return false;
-  const legacy = object.toolPolicy === "restricted-codex-v1"
+  const legacy = object.requestedModel === "gpt-6-astra" && object.reasoningEffort === "low"
+    && object.toolPolicy === "restricted-codex-v1"
     && object.participantSchema === "humanish.restricted-participant-turn.v1"
     && (object.memoryPolicy === "recent-eight-16k-v1" || object.memoryPolicy === "continuing-thread-v1");
-  const uiTools = object.toolPolicy === "codex-ui-tools-v1"
+  const uiTools = typeof object.requestedModel === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(object.requestedModel)
+    && typeof object.reasoningEffort === "string" && ["none", "minimal", "low", "medium", "high", "xhigh", "max"].includes(object.reasoningEffort)
+    && object.toolPolicy === "codex-ui-tools-v1"
     && object.participantSchema === "humanish.codex-ui-tool.v1"
     && object.memoryPolicy === "continuing-thread-v1";
   return legacy || uiTools;

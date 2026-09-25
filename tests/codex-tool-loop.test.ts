@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { PARTICIPANT_PROFILE } from "../src/restricted-codex-participant-policy.js";
 import type { ActorCapabilities } from "../src/actor-contract.js";
 import {
   runComputerUseLoop,
@@ -60,6 +61,21 @@ function options(provider: CuaProvider, executor: CuaExecutor, writeScreenshot =
 }
 
 describe("continuing provider requests in the CUA loop", () => {
+  it("refuses API-dollar caps when startup discovers ChatGPT account billing", async () => {
+    let authenticated = false;
+    const provider: CuaProvider = { id: "operator-account", capabilities, requestPolicy: "fail_closed",
+      get executionProfile() { return authenticated ? PARTICIPANT_PROFILE : undefined; },
+      async nextTurn() { authenticated = true; return pending({ kind: "click", x: 1, y: 1 }); }
+    };
+    const execute = vi.fn();
+    const estimate = vi.fn(() => 0);
+    const result = await runComputerUseLoop({ ...options(provider, { observe: async () => ({ screenshot, stateSignature: "initial" }), execute }),
+      maxUsd: 1, estimateTurnCostUsd: estimate });
+    expect(result.completionReason).toBe("harness_error");
+    expect(result.reason).toContain("ChatGPT account");
+    expect(result.trace.executionProfile?.billing).toBe("account-unknown");
+    expect(execute).not.toHaveBeenCalled(); expect(estimate).not.toHaveBeenCalled();
+  });
   it("records two yielded action cycles but settles and charges the model request once", async () => {
     const turns = [
       pending({ kind: "click", x: 12, y: 18 }),

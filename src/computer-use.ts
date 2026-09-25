@@ -175,10 +175,10 @@ export interface CuaTurn {
 export interface CuaProvider {
   /** Single dispatch; the promise includes owned request cleanup. No stall retry. */
   readonly requestPolicy?: "fail_closed";
-  readonly executionProfile?: ActorExecutionProfile;
+  readonly executionProfile?: ActorExecutionProfile | undefined;
   readonly historyTurnsOmitted?: number;
   readonly id: string;
-  readonly version?: string;
+  readonly version?: string | undefined;
   /**
    * The request settings this provider will actually send, for the trace to record. `version` says
    * WHICH model; this says how it was asked to run. Optional: a provider with no such settings
@@ -1294,6 +1294,14 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
       recordUsage(turn);
+      // A host-authenticated provider may learn its account billing class during
+      // startup. Never price that account usage from an API model rate.
+      if (provider.executionProfile?.billing === "account-unknown" &&
+        (maxUsd !== undefined || overRunBudget !== undefined || estimateTurnCostUsd !== undefined)) {
+        completionReason = "harness_error";
+        reason = "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.";
+        break;
+      }
       if (turn.interruption !== undefined) {
         // A provider can exhaust its response budget before producing visible text, or midway
         // through an action. Preserve usage and partial narration, but never interpret either as

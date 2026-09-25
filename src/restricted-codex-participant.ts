@@ -160,8 +160,14 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     return task;
   };
   const provider: CuaProvider = {
-    id: "codex-participant", ...(model === undefined ? {} : { version: model }), requiresFrame: true, requestPolicy: "fail_closed",
-    ...(!operator ? { executionProfile: PARTICIPANT_PROFILE } : {}), modelSettings: { reasoningEffort: effort },
+    id: "codex-participant", requiresFrame: true, requestPolicy: "fail_closed",
+    get version() { return session.resolvedModel ?? model; },
+    get executionProfile() {
+      if (!operator) return PARTICIPANT_PROFILE;
+      return session.authentication === "chatgpt-account" && session.resolvedModel
+        ? { ...PARTICIPANT_PROFILE, requestedModel: session.resolvedModel, reasoningEffort: effort } : undefined;
+    },
+    modelSettings: { reasoningEffort: effort },
     capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: operator,
       preGrantableApprovals: false, inProcessTools: false, license: "proprietary" },
     get pendingRequestUsage() { return session.pendingUsage; },

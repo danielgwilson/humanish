@@ -36,7 +36,8 @@ command.
 
 The same participant implementation drives hosted E2B desktops. That route keeps
 the operator's Codex home/authentication and configured model selection, with
-explicit effort honored. It does not claim the fixed account execution profile.
+explicit effort honored. It records the resolved model; ChatGPT authentication carries unknown-dollar
+account billing, while API-key authentication remains separately priceable.
 Only the Humanish UI tool is enabled; general-purpose Codex tools and inherited
 MCP integrations are disabled for the participant thread.
 

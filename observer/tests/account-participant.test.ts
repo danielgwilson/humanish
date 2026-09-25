@@ -37,7 +37,7 @@ describe("account participant durable reader", () => {
     }
   });
   it("opens both legacy profiles and the Codex UI-tool profile without reinterpreting recordings", () => {
-    for (const profile of [legacyRollingProfile, legacyContinuingProfile, uiToolsProfile]) {
+    for (const profile of [legacyRollingProfile, legacyContinuingProfile, uiToolsProfile, { ...uiToolsProfile, requestedModel: "gpt-5.6-sol", reasoningEffort: "high" }]) {
       expect(validActorExecutionProfile(profile)).toBe(true);
       expect(serverProfile(profile)).toBe(true);
       const data = account(profile);
@@ -48,6 +48,9 @@ describe("account participant durable reader", () => {
   });
   it("rejects mixed policy, schema and memory generations", () => {
     const invalid = [
+      { ...legacyContinuingProfile, requestedModel: "gpt-5.6-sol" },
+      { ...uiToolsProfile, requestedModel: "" },
+      { ...uiToolsProfile, reasoningEffort: "invalid" },
       { ...legacyContinuingProfile, participantSchema: uiToolsProfile.participantSchema },
       { ...uiToolsProfile, participantSchema: legacyContinuingProfile.participantSchema },
       { ...uiToolsProfile, memoryPolicy: "recent-eight-16k-v1" },

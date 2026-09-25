@@ -1576,7 +1576,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         : {
           maxUsd,
           estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
-            estimateActorCost(usage, capModelId).estimatedCostUsd
+            estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd
         }),
       executor: ready.executor,
       redactScreenshots: deps.redactScreenshots,
@@ -1593,7 +1593,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ? {}
         : {
           overRunBudget: (usage: ActorTokenUsage): string | null => {
-            const estimate = estimateActorCost(usage, capModelId).estimatedCostUsd;
+            const estimate = estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd;
             const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
             return totalUsd > deps.runBudget!.maxTotalUsd
               ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`

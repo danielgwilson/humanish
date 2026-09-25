@@ -10,12 +10,13 @@ import {
 import { createRestrictedCodexSession } from "../src/restricted-codex-session.js";
 import type { RestrictedCodexRequest, RestrictedCodexResult } from "../src/restricted-codex-policy.js";
 
-const { run, sessionClose } = vi.hoisted(() => ({
+const { run, sessionClose, metadata } = vi.hoisted(() => ({
+  metadata: { resolvedModel: undefined as string | undefined, authentication: undefined as "chatgpt-account" | "api-key" | undefined },
   run: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(),
   sessionClose: vi.fn<() => Promise<boolean>>()
 }));
 vi.mock("../src/restricted-codex-session.js", () => ({
-  createRestrictedCodexSession: vi.fn(() => ({ run, close: sessionClose }))
+  createRestrictedCodexSession: vi.fn(() => ({ run, close: sessionClose, get resolvedModel() { return metadata.resolvedModel; }, get authentication() { return metadata.authentication; } }))
 }));
 const createSession = vi.mocked(createRestrictedCodexSession);
 
@@ -41,13 +42,24 @@ function nativeTool(): NativeTool {
 }
 
 beforeEach(() => {
-  run.mockReset();
+  run.mockReset(); metadata.resolvedModel = undefined; metadata.authentication = undefined;
   sessionClose.mockReset().mockResolvedValue(true);
   createSession.mockClear();
 });
 afterEach(() => { vi.useRealTimers(); });
 
 describe("restricted participant conversation", () => {
+  it.each(["chatgpt-account", "api-key"] as const)("records resolved operator model and %s billing truthfully", async authentication => {
+    run.mockImplementation(async () => { metadata.resolvedModel = "gpt-5.6-sol"; metadata.authentication = authentication; return result(); });
+    const h = createRestrictedCodexParticipant({ authMode: "operator", reasoningEffort: "high" });
+    expect(h.provider.version).toBeUndefined(); expect(h.provider.executionProfile).toBeUndefined();
+    await h.provider.nextTurn(request(), new AbortController().signal);
+    expect(run.mock.calls[0]![0].model).toBeUndefined();
+    expect(h.provider.version).toBe("gpt-5.6-sol");
+    if (authentication === "chatgpt-account") expect(h.provider.executionProfile).toMatchObject({ requestedModel: "gpt-5.6-sol", reasoningEffort: "high", billing: "account-unknown" });
+    else expect(h.provider.executionProfile).toBeUndefined();
+    await h.close();
+  });
   it("strictly validates native tool batches and final accounts without rounding or filtering", () => {
     expect(parseParticipantTool({ narration: "I will click Save.", actions: [{ kind: "click", x: 1.5, y: 2.25 }] })).toMatchObject({
       actions: [{ kind: "click", x: 1.5, y: 2.25 }], done: false, providerRequestPending: true
