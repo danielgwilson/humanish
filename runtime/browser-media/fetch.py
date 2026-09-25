@@ -14,7 +14,8 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent
 ALLOWED_HOSTS = frozenset({
     'github.com', 'codeload.github.com', 'huggingface.co',
-    'cdn-lfs.huggingface.co', 'cdn-lfs-us-1.hf.co', 'cas-bridge.xethub.hf.co'
+    'cdn-lfs.huggingface.co', 'cdn-lfs-us-1.hf.co', 'cas-bridge.xethub.hf.co',
+    'us.aws.cdn.hf.co'
 })
 
 
