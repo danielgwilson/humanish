@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runGuestRuntime } from '../src/guest-runtime.js';
-import { GuestBootstrapReader, encodeGuestBootstrap } from '../src/guest-bootstrap.js';
+import { GuestBootstrapReader, encodeGuestBootstrap, guestReadyTimeoutMs } from '../src/guest-bootstrap.js';
 import { createBrowserControlClient } from '../src/browser-control-client.js';
 import { identity, pair, observation, tick } from './browser-control-fixture.js';
 
@@ -46,5 +46,37 @@ describe('one guest runtime lifecycle',()=>{
     const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:value=>{if(value==='R')throw new Error('synthetic');},
       createDesktop:async signal=>{observed=signal;return f.desktop;}});
     f.left.write(encodeGuestBootstrap(identity));await expect(running).rejects.toBeDefined();expect(observed?.aborted).toBe(true);expect(f.close).toHaveBeenCalledOnce();f.left.destroy();
+  });
+  it('withholds READY until initial navigation finishes and forwards only the admitted URL',async()=>{
+    const f=fixture(); let finish!:()=>void;
+    const navigation=new Promise<void>(resolve=>{finish=resolve;});
+    const initialUrl='http://127.0.0.1:3000/notes';
+    const createDesktop=vi.fn(async(_signal:AbortSignal,_terminal:()=>void,url?:string)=>{expect(url).toBe(initialUrl);await navigation;return f.desktop;});
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
+    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
+    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await tick();
+    expect(f.marker.mock.calls).toEqual([['A']]); expect(createDesktop).toHaveBeenCalledOnce();
+    finish();await ready.identity;ready.handoff();
+    expect(f.marker.mock.calls).toEqual([['A'],['R']]);
+    const runtime=await running;f.left.destroy();await runtime.closed;
+  });
+  it('never acknowledges an initial navigation failure',async()=>{
+    const f=fixture();
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
+      createDesktop:async()=>{throw new Error('Synthetic navigation failure');}});
+    f.left.write(encodeGuestBootstrap(identity,false,'http://localhost:3000/'));
+    await expect(running).rejects.toThrow('Synthetic navigation failure');
+    expect(f.marker.mock.calls).toEqual([['A']]);expect(f.right.destroyed).toBe(true);f.left.destroy();
+  });
+  it('bounds initial navigation preparation without changing the omitted-URL deadline',async()=>{
+    vi.useFakeTimers();const f=fixture();
+    const initialUrl='http://localhost:3000/';
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
+      createDesktop:()=>new Promise(()=>{})});
+    const rejected=expect(running).rejects.toBeDefined();
+    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await vi.advanceTimersByTimeAsync(35_000);
+    expect(f.right.destroyed).toBe(false);
+    await vi.advanceTimersByTimeAsync(guestReadyTimeoutMs(initialUrl)-35_000+4000);await rejected;
+    expect(f.right.destroyed).toBe(true);expect(f.marker.mock.calls).toEqual([['A']]);f.left.destroy();
   });
 });

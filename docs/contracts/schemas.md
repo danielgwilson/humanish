@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.99.1`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.100.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -767,6 +767,13 @@ scenario:
 ```
 
 ## Actor Trace
+
+Failed account participant requests may include an optional `failurePhase` in
+`providerRequests`, identifying startup, the named Codex setup RPC, `turn/start`,
+`response`, or cleanup. It is a finite local classification, never raw provider
+text. Older receipts without it remain valid. The phase does not replace the
+separate dispatch, usage, or cleanup evidence, and does not establish the cause
+of a timeout. Participant outcome text includes the phase when available.
 
 Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `humanish.actor-trace.v1` (`src/actor-contract.ts`): Codex app-server items,

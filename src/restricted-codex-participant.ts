@@ -82,13 +82,13 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       usage = result.usage ?? undefined;
       if (receipt.cleanup === "unconfirmed") { failedCleanup = true; closed = true; }
       if (result.dispatched && !result.usageComplete && !debrief) incompleteUsage = true;
-      if (closed || own.signal.aborted) throw new CuaProviderError(receipt.cleanup === "unconfirmed" ? "cleanup_unconfirmed" : "cancelled", receipt, usage);
-      if (result.status !== "completed" || result.errorCode !== null) throw new CuaProviderError(codeOf(result.errorCode), receipt, usage);
+      if (closed || own.signal.aborted) throw new CuaProviderError(receipt.cleanup === "unconfirmed" ? "cleanup_unconfirmed" : "cancelled", receipt, usage, result.failurePhase);
+      if (result.status !== "completed" || result.errorCode !== null) throw new CuaProviderError(codeOf(result.errorCode), receipt, usage, result.failurePhase);
       let turn: CuaTurn;
       try {
         turn = debrief ? { actions: [], pendingSafetyChecks: [], done: true, closingReport: parseParticipantClosing(result.output) }
           : parseParticipantTurn(result.output);
-      } catch { throw new CuaProviderError("invalid_response", receipt, usage); }
+      } catch { throw new CuaProviderError("invalid_response", receipt, usage, "response"); }
       if (!debrief) { history.push({ narration: turn.message ?? "", actions: turn.actions.map(describeCuaAction) }); trim(); }
       return { ...turn, ...(usage === undefined ? {} : { usage }), providerRequest: receipt };
     } catch (error) {

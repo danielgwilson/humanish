@@ -27,9 +27,30 @@ describe("what to do next, resolved against this machine", () => {
     }
   });
 
+  it("offers supported hosts the local route without sending them to E2B or an API key", () => {
+    const linux = firstRunSteps({
+      hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: false,
+      installedInProject: true, platform: "linux", arch: "x64"
+    });
+    expect(linux.at(-1)?.command).toBe("humanish doctor --lab local-browser");
+    expect(linux.at(-1)?.why).toContain("Docker, KVM, TUN");
+    expect(linux.at(-1)?.why).toContain("no E2B or model API key");
+    expect(linux.at(-1)?.why).toContain("humanish runtime setup");
+    expect(linux.at(-1)?.why).toContain("humanish run local-browser");
+
+    const mac = firstRunSteps({
+      hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: false,
+      installedInProject: true, platform: "darwin", arch: "arm64"
+    });
+    expect(mac.at(-1)?.why).toContain("M3-or-newer Mac");
+    expect(mac.at(-1)?.why).toContain("Lima 2.2+");
+  });
+
   it("asks for the ONE credential a live study always needs, when it is missing", () => {
-    const steps = firstRunSteps({ hasE2bKey: false, hasProviderKey: true, localAgents: ["Codex"], hasDesktopSdk: true, installedInProject: true });
+    const steps = firstRunSteps({ hasE2bKey: false, hasProviderKey: true, localAgents: ["Codex"], hasDesktopSdk: true,
+      installedInProject: true, platform: "win32", arch: "x64" });
     expect(steps.at(-1)?.command).toBe("humanish keys set e2b");
+    expect(steps.at(-1)?.why).toContain("Local browsers are unavailable on this host");
   });
 
   it("offers the real run when the machine can do one — by key OR by signed-in agent", () => {
@@ -120,6 +141,59 @@ describe("init leaves instructions for the next coding agent", () => {
       expect(lab).toContain("mode: live");
       // A first run must not be able to become expensive.
       expect(lab).toContain("maxUsd");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("configures a local browser app and mission without YAML editing", async () => {
+    const cwd = await project();
+    try {
+      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
+        appUrl: "http://localhost:4173/app",
+        mission: "Create a synthetic note and save it."
+      } });
+      expect(result.ok).toBe(true);
+      const lab = await readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8");
+      expect(lab).toContain('appUrl: "http://localhost:4173/app"');
+      expect(lab).toContain('mission: "Create a synthetic note and save it."');
+      expect(lab).toContain("target: local");
+      expect(lab).toContain("localAgent: codex");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a non-loopback local browser target before writing", async () => {
+    const cwd = await project();
+    try {
+      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
+        appUrl: "https://public.example.test:4443"
+      } });
+      expect(result).toMatchObject({ ok: false, error: { code: "HUMANISH_INVALID_LOCAL_BROWSER" } });
+      await expect(readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8")).rejects.toThrow();
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves an existing local lab and warns when explicit setup flags could not apply", async () => {
+    const cwd = await project();
+    try {
+      await runInit({ cwd, yes: true, env: {} });
+      const file = path.join(cwd, "humanish/labs/local-browser.yaml");
+      const before = await readFile(file, "utf8");
+      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
+        appUrl: "http://localhost:4173",
+        mission: "Use a different flow."
+      } });
+      expect(await readFile(file, "utf8")).toBe(before);
+      expect(result.warnings).toContain(
+        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it."
+      );
+
+      const ordinaryRepeat = await runInit({ cwd, yes: true, env: {} });
+      expect(ordinaryRepeat.warnings).not.toEqual(expect.arrayContaining([expect.stringContaining("--local-browser")]));
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }

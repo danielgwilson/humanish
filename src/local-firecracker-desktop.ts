@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { connectGuestBootstrap } from "./guest-bootstrap.js";
+import { connectGuestBootstrap, validateGuestInitialUrl } from "./guest-bootstrap.js";
 import { ownDesktopAllocation, type DesktopSession } from "./desktop-session.js";
 import { runtimeDocker, runtimeExec, usesLima } from "./local-runtime-host.js";
 import { openLimaTunnel } from "./local-runtime-ssh.js";
@@ -24,9 +24,9 @@ export interface LocalFirecrackerAssets {
 export async function createLocalFirecrackerDesktop(options: {
   assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal;
 }): Promise<DesktopSession> {
-  const url = new URL(options.appUrl);
-  if (!["http:", "https:"].includes(url.protocol) || !["localhost", "127.0.0.1"].includes(url.hostname)
-    || url.username || url.password || !/^\d+$/.test(url.port) || Number(url.port) < 1024) {
+  let url: URL;
+  try { url = new URL(validateGuestInitialUrl(options.appUrl)); }
+  catch {
     throw new Error("Local Firecracker requires a loopback HTTP(S) app on a port above 1023.");
   }
   options.signal?.throwIfAborted();
@@ -128,12 +128,12 @@ export async function createLocalFirecrackerDesktop(options: {
       if (!stream) await delay(100, undefined, { signal });
     }
     const identity = { generation: randomUUID(), challenge: randomUUID(), runtimeRevision: options.assets.runtimeRevision };
-    client = await connectGuestBootstrap(stream, identity, signal);
+    try { client = await connectGuestBootstrap(stream, identity, signal, url.href); }
+    catch (error) {
+      signal.throwIfAborted();
+      throw new Error("Local browser startup or initial page navigation failed or timed out.", { cause: error });
+    }
     await client.ready();
-    for (const action of [
-      { kind: "keypress", keys: ["CTRL", "l"] }, { kind: "type", text: url.href },
-      { kind: "keypress", keys: ["ENTER"] }, { kind: "wait", ms: 500 }
-    ] as const) await client.executor.execute(action.kind === "keypress" ? { ...action, keys: [...action.keys] } : action, signal);
     signal.throwIfAborted();
     options.signal?.addEventListener("abort", aborted, { once: true });
     return ownDesktopAllocation({ resourceId: container, release: async () => {

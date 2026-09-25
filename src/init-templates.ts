@@ -9,6 +9,47 @@ export interface RuntimeDirectory {
   plane: "runtime";
 }
 
+export interface LocalBrowserStarter {
+  appUrl: string;
+  mission: string;
+}
+
+export const DEFAULT_LOCAL_BROWSER_STARTER: LocalBrowserStarter = {
+  appUrl: "http://127.0.0.1:3000",
+  mission: "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck."
+};
+
+function localBrowserLab(starter: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER): StarterFile {
+  return {
+    path: "humanish/labs/local-browser.yaml",
+    plane: "source",
+    contents: `schema: humanish.lab.v2
+id: local-browser
+title: Local browser · your app · Codex account
+description: >-
+  Run a Codex-account participant in an isolated local browser against your loopback app—no E2B
+  or OpenAI API key. Inference is remote and uses account quota. Before the first live run, use
+  humanish doctor --lab local-browser to check the supported Codex login and local runtime.
+subject:
+  source: app-url
+  appUrl: ${JSON.stringify(starter.appUrl)}
+actors:
+  - type: local-agent
+    localAgent: codex
+    persona: synthetic-new-user
+    mission: ${JSON.stringify(starter.mission)}
+execution:
+  target: local
+  concurrency: 1
+  timeoutMs: 120000
+scenario:
+  mode: live
+defaults:
+  open: true
+`
+  };
+}
+
 export const starterFiles: StarterFile[] = [
   {
     path: "humanish/README.md",
@@ -193,6 +234,7 @@ defaults:
   open: true
 `
   },
+  localBrowserLab(),
   {
     path: "humanish/labs/cua-browser.yaml",
     plane: "source",
@@ -504,9 +546,13 @@ export const humanishScripts: Record<string, string> = {
  * a signed-in Codex and no provider key, the study runs with the operator's own agent and needs
  * only E2B. Writing the other one there would hand someone homework instead of a first run.
  */
-export function starterFilesFor(actor: "openai-computer-use" | "local-agent"): StarterFile[] {
-  if (actor === "openai-computer-use") return starterFiles;
-  return starterFiles.map((file) => {
+export function starterFilesFor(
+  actor: "openai-computer-use" | "local-agent",
+  localBrowser: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER
+): StarterFile[] {
+  const files = starterFiles.map((file) => file.path === "humanish/labs/local-browser.yaml" ? localBrowserLab(localBrowser) : file);
+  if (actor === "openai-computer-use") return files;
+  return files.map((file) => {
     if (file.path !== "humanish/labs/try-live.yaml") return file;
     return {
       ...file,

@@ -106,6 +106,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         <Text wrap="wrap">{summary.analysis.provider === "codex" ? `After live runs: Codex account analyst · ${summary.analysis.model} · remote inference · account limits apply; dollar cost unknown` : `After live runs: analysis · ${summary.analysis.model} · separate $${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap`}</Text>
       )}
       {summary?.runtime ? <Text color={summary.runtime.ok ? PALETTE.ok : PALETTE.warn}>{summary.runtime.message}</Text> : null}
+      {summary?.participantReadiness ? <Text color={summary.participantReadiness.ok ? PALETTE.ok : PALETTE.warn}>{summary.participantReadiness.message}</Text> : null}
       {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
@@ -209,7 +210,7 @@ function StartRow({
   summary
 }: LabScreenProps & { active: boolean; mode: LabRunMode }): React.ReactElement {
   const live = mode === "live";
-  const blocked = live && (summary?.keysReady === false || summary?.runtime?.ok === false);
+  const blocked = live && (summary?.keysReady === false || summary?.runtime?.ok === false || summary?.participantReadiness?.ok === false);
   const accent = live ? PALETTE.warn : PALETTE.accent;
   return (
     <Box width={columns}>
@@ -225,7 +226,7 @@ function StartRow({
       <Text dimColor={!blocked} {...color(blocked ? PALETTE.warn : undefined)}>
         {live
           ? blocked
-            ? `${expectationLine(row.liveExpectation)} · ${summary?.keysReady === false ? "needs keys" : "needs runtime setup"}`
+            ? `${expectationLine(row.liveExpectation)} · ${summary?.keysReady === false ? "needs keys" : summary?.runtime?.ok === false ? "needs runtime setup" : "needs Codex login"}`
             : expectationLine(row.liveExpectation)
           : "free · no keys, no spend"}
       </Text>

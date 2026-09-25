@@ -13,7 +13,10 @@ PORT = 5251
 QUEUE_BYTES = 256 * 1024
 ACCEPT_SECONDS = 15
 ADMISSION_SECONDS = 5
-READY_SECONDS = 35
+# Browser startup (35s), initial main-document navigation (30s), paint (5s),
+# plus the separately bounded admission phase. Omitted-URL guests still use
+# their original 35s deadline inside the Node owner.
+READY_SECONDS = 75
 STOP_SECONDS = 4
 RUNTIME_SECONDS = 1800
 ENV = {"PATH": "/usr/bin:/bin", "HOME": "/home/humanish", "USER": "humanish", "LOGNAME": "humanish",

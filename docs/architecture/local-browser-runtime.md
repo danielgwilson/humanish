@@ -18,8 +18,22 @@ and account restrictions. Docker access is an administrative capability.
 Humanish does not install Docker on Linux or change host permissions. On Mac,
 setup installs Docker only inside the dedicated Lima host.
 
-Start your app on loopback, then save a lab such as
-`.humanish/labs/local-browser.yaml`:
+Configure the starter while initializing the project, then start your app on
+the same loopback URL:
+
+```sh
+npx humanish init --yes \
+  --local-browser http://127.0.0.1:3000 \
+  --local-mission "Create a note and explain anything confusing about saving it"
+npx humanish doctor --lab local-browser
+npx humanish lab run local-browser
+```
+
+`init` also writes `humanish/labs/local-browser.yaml` with safe defaults when
+the two options are omitted. The options provide the normal setup path for the
+app URL and mission on first setup. If the file already exists, `init` preserves
+it and warns that these options were skipped; edit the existing manifest to
+change its URL or mission. The resulting lab has this shape:
 
 ```yaml
 schema: humanish.lab.v2
@@ -42,10 +56,9 @@ execution:
 ```
 
 ```sh
-npx humanish init --yes
 npx humanish runtime status --json
-npx humanish doctor --lab .humanish/labs/local-browser.yaml --json
-npx humanish lab run .humanish/labs/local-browser.yaml
+npx humanish doctor --lab local-browser --json
+npx humanish lab run local-browser
 ```
 
 The first live run downloads the pinned runtime archive (about 569 MiB on x64 or
@@ -67,6 +80,13 @@ For API billing and its supported caps, use `type: openai-computer-use`, remove
 `localAgent`, and provide `OPENAI_API_KEY`. Its analysis retains the existing API
 default. Neither path silently falls back to another provider or hosted desktop.
 Existing labs without `execution.target: local` retain their previous behavior.
+
+Before handing the desktop to the participant, the guest navigates to the
+selected app and waits up to 30 seconds for the initial document's
+`DOMContentLoaded` event, then allows a bounded paint. It does not wait for app
+data, images or network idle: the app's own loading screen remains observable.
+Navigation failures and timeouts fail startup and release the owned desktop.
+Later participant actions and observations do not use this startup wait.
 
 ## Current limits
 

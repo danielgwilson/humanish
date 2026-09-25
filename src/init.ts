@@ -4,6 +4,7 @@ import { AGENTS_SECTION_MARKER, agentsSection, firstRunGuidance, starterActorFor
 import { detectLocalAgents } from "./local-agent-cli.js";
 
 import {
+  DEFAULT_LOCAL_BROWSER_STARTER,
   humanishScripts,
   runtimeDirectories,
   starterFiles,
@@ -26,6 +27,8 @@ export interface InitOptions {
   yes?: boolean;
   /** Injected so a test can decide what credentials this machine appears to have. */
   env?: NodeJS.ProcessEnv;
+  /** Configure the starter local-browser lab without making the operator edit YAML. */
+  localBrowser?: { appUrl: string; mission?: string };
 }
 
 export type InitMode = "dry-run" | "applied" | "needs-confirmation";
@@ -54,6 +57,7 @@ export interface InitResult {
       | "HUMANISH_CONFIRMATION_REQUIRED"
       | "HUMANISH_INVALID_CWD"
       | "HUMANISH_INVALID_PACKAGE_JSON"
+      | "HUMANISH_INVALID_LOCAL_BROWSER"
       | "HUMANISH_UNSAFE_PROJECT_PATH";
     message: string;
   };
@@ -91,6 +95,13 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       changes,
       warnings,
       error: cwdCheck
+    };
+  }
+  const localBrowser = validateLocalBrowserStarter(options.localBrowser);
+  if (!localBrowser.ok) {
+    return {
+      schema: INIT_RESPONSE_SCHEMA, ok: false, mode, cwd: requestedCwd, changes, warnings,
+      error: { code: "HUMANISH_INVALID_LOCAL_BROWSER", message: localBrowser.message }
     };
   }
   const cwd = await realpath(requestedCwd);
@@ -144,9 +155,13 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
   // a file that asks for a credential they were just told they do not need (#505).
   const starterActor = starterActorFor(await firstRunEnvironment(options.env ?? process.env));
-  for (const file of starterFilesFor(starterActor)) {
+  for (const file of starterFilesFor(starterActor, localBrowser.value)) {
     const absolutePath = path.join(cwd, file.path);
     const existing = await readTextIfExists(preparedProjectRoot, file.path);
+
+    if (existing !== null && options.localBrowser !== undefined && file.path === "humanish/labs/local-browser.yaml") {
+      warnings.push("Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.");
+    }
 
     if (existing === null) {
       changes.push({
@@ -273,6 +288,24 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
   };
 }
 
+function validateLocalBrowserStarter(input: InitOptions["localBrowser"]):
+  | { ok: true; value: { appUrl: string; mission: string } }
+  | { ok: false; message: string } {
+  const value = {
+    appUrl: input?.appUrl.trim() || DEFAULT_LOCAL_BROWSER_STARTER.appUrl,
+    mission: input?.mission?.trim() || DEFAULT_LOCAL_BROWSER_STARTER.mission
+  };
+  let url: URL;
+  try { url = new URL(value.appUrl); }
+  catch { return { ok: false, message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023." }; }
+  if (!["http:", "https:"].includes(url.protocol) || !["localhost", "127.0.0.1"].includes(url.hostname)
+    || url.username || url.password || Number(url.port) < 1024) {
+    return { ok: false, message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023." };
+  }
+  if (value.mission.length > 4_000) return { ok: false, message: "--local-mission must be 4,000 characters or fewer." };
+  return { ok: true, value };
+}
+
 /**
  * What to tell the operator next. Local CLI status is classified without returning
  * its output or reading its credential file; provider keys are checked for presence.
@@ -300,7 +333,9 @@ async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvi
     hasDesktopSdk,
     hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
     hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
-    localAgents: agents.filter((agent) => agent.authStatus === "authenticated").map((agent) => agent.label)
+    localAgents: agents.filter((agent) => agent.authStatus === "authenticated").map((agent) => agent.label),
+    platform: process.platform,
+    arch: process.arch
   };
 }
 

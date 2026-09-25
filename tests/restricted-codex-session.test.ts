@@ -165,10 +165,11 @@ describe("restricted Codex analyst session", () => {
     expect(f.spawns).toHaveLength(0); expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
-  it.each(["hang-version", "hang-initialize", "hang-thread-start", "hang-turn-start"])("bounds %s including setup and uncertain dispatch", async scenario => {
+  it.each([["hang-version", "startup"], ["hang-initialize", "initialize"], ["hang-thread-start", "thread/start"],
+    ["hang-turn-start", "turn/start"]])("bounds %s and identifies the timed-out phase", async (scenario, failurePhase) => {
     const f = await fixture(scenario), start = performance.now();
     const result = await f.run({ ...request, timeoutMs: 600 });
-    expect(result).toMatchObject({ status: "timed_out", errorCode: "timeout", dispatched: scenario === "hang-turn-start" });
+    expect(result).toMatchObject({ status: "timed_out", errorCode: "timeout", failurePhase, dispatched: scenario === "hang-turn-start" });
     expect(performance.now() - start).toBeLessThan(4000);
     expect(await readdir(f.tempRoot)).toEqual([]);
   });

@@ -70,7 +70,7 @@ export function LabsScreen({
         <Text>no labs here yet</Text>
         <Box marginTop={1} flexDirection="column">
           <Text dimColor>a lab is a study: who to send, to what, and what counts as done.</Text>
-          <Text dimColor>write one in humanish/labs/, or `humanish init` for three to start from.</Text>
+          <Text dimColor>write one in humanish/labs/, or `humanish init` for starter studies.</Text>
         </Box>
       </Box>
     ) : (
