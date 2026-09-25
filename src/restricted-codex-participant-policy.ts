@@ -6,10 +6,9 @@ import type { ActorExecutionProfile, ParticipantClosingReport } from "./actor-co
 export const PARTICIPANT_PROFILE: Readonly<ActorExecutionProfile> = Object.freeze({
   schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server", authentication: "chatgpt-account",
   billing: "account-unknown", requestedModel: "gpt-6-astra", reasoningEffort: "low", cliVersion: "0.154.0",
-  toolPolicy: "restricted-codex-v1", participantSchema: "humanish.restricted-participant-turn.v1", memoryPolicy: "recent-eight-16k-v1"
+  toolPolicy: "restricted-codex-v1", participantSchema: "humanish.restricted-participant-turn.v1", memoryPolicy: "continuing-thread-v1"
 });
-export const PARTICIPANT_LIMITS = Object.freeze({ instructions: 64 * 1024, hint: 8 * 1024, history: 16 * 1024,
-  historyTurns: 8, narration: 2000, output: 256 * 1024, actions: 4, requestMs: 180_000, cleanupMs: 5000 });
+export const PARTICIPANT_LIMITS = Object.freeze({ instructions: 64 * 1024, hint: 8 * 1024, narration: 2000, output: 256 * 1024, actions: 4, requestMs: 180_000, cleanupMs: 5000 });
 const envelope = z.strictObject({ schema: z.literal(PARTICIPANT_PROFILE.participantSchema),
   narration: z.string().max(PARTICIPANT_LIMITS.narration), done: z.boolean(),
   outcome: z.enum(["reached", "not_reached", "blocked"]).nullable(),

@@ -29,6 +29,15 @@ describe("account participant durable reader", () => {
       expect(isObserverData(data)).toBe(phase !== "private/raw/path");
     }
   });
+  it("opens both memory-policy generations without reinterpreting old recordings", () => {
+    for (const policy of ["recent-eight-16k-v1", "continuing-thread-v1", "future-policy", ["continuing-thread-v1"], null]) {
+      const profile = { ...PARTICIPANT_PROFILE, memoryPolicy: policy };
+      const valid = policy === "recent-eight-16k-v1" || policy === "continuing-thread-v1";
+      expect(validActorExecutionProfile(profile)).toBe(valid); expect(serverProfile(profile)).toBe(valid);
+      const data = account(); data.streams[0].actor.executionProfile = profile;
+      const before = structuredClone(data); expect(isObserverData(data)).toBe(valid); expect(data).toEqual(before);
+    }
+  });
   it("agrees with the server's durable profile and closed request schema", () => {
     for (const value of [PARTICIPANT_PROFILE, { ...PARTICIPANT_PROFILE, cliVersion: "unqualified" }, { ...PARTICIPANT_PROFILE, secret: "synthetic" }, null])
       expect(validActorExecutionProfile(value)).toBe(serverProfile(value));
