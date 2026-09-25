@@ -1,23 +1,16 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import type { CuaExecutor, CuaObservation } from "./computer-use.js";
+import { CUA_SPEECH_LIMITS, type CuaExecutor, type CuaObservation, type HeardSpeech } from "./computer-use.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 
 const WORKER_LINE_BYTES = 8_192;
 const READY_TIMEOUT_MS = 35_000;
 const SPEAK_TIMEOUT_MS = 30_000;
 const HEARD_QUEUE = 8;
-const HEARD_PER_OBSERVATION = 4;
+const HEARD_PER_OBSERVATION = CUA_SPEECH_LIMITS.utterances;
 
 export interface GuestDesktopMediaDeclaration {
   camera?: { source: string };
   microphone?: { source: string };
-}
-
-interface HeardSpeech {
-  id: string;
-  source: "speaker_audio";
-  text: string;
-  durationMs: number;
 }
 
 export interface DesktopMediaWorkerTransport {
@@ -42,7 +35,8 @@ export interface GuestDesktopMedia {
 }
 
 function validText(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0 && value.length <= 400 && Buffer.byteLength(value) <= 1600
+  return typeof value === "string" && value.trim().length > 0 && value.length <= CUA_SPEECH_LIMITS.characters
+    && Buffer.byteLength(value) <= CUA_SPEECH_LIMITS.bytes
     && Buffer.from(value, "utf8").toString("utf8") === value;
 }
 
@@ -51,7 +45,7 @@ function heard(value: unknown): HeardSpeech | undefined {
   const item = value as Partial<HeardSpeech>;
   if (typeof item.id !== "string" || !/^[-A-Za-z0-9._]+$/.test(item.id) || item.id.length > 128
     || item.source !== "speaker_audio" || !validText(item.text)
-    || !Number.isSafeInteger(item.durationMs) || item.durationMs! < 1 || item.durationMs! > 120_000) return undefined;
+    || !Number.isSafeInteger(item.durationMs) || item.durationMs! < 1 || item.durationMs! > CUA_SPEECH_LIMITS.durationMs) return undefined;
   return item as HeardSpeech;
 }
 
@@ -172,7 +166,7 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
         const observation = await executor.observe();
         if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
         const items = queue.splice(0, HEARD_PER_OBSERVATION);
-        return items.length ? { ...observation, heardSpeech: items } as CuaObservation : observation;
+        return items.length ? { ...observation, heardSpeech: items } : observation;
       },
       async execute(action: Parameters<CuaExecutor["execute"]>[0], signal?: AbortSignal): Promise<void> {
         if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
@@ -200,6 +194,6 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
         } finally { combined.removeEventListener("abort", cancelled); const command = pending.get(id); if (command) { pending.delete(id); clearTimeout(command.timer); } }
       }
     };
-    return result as CuaExecutor;
+    return result;
   } };
 }
