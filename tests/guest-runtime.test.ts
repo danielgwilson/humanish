@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runGuestRuntime } from '../src/guest-runtime.js';
-import { GuestBootstrapReader, encodeGuestBootstrap } from '../src/guest-bootstrap.js';
+import { GuestBootstrapReader, encodeGuestBootstrap, guestReadyTimeoutMs } from '../src/guest-bootstrap.js';
 import { createBrowserControlClient } from '../src/browser-control-client.js';
 import { identity, pair, observation, tick } from './browser-control-fixture.js';
 
@@ -67,5 +67,16 @@ describe('one guest runtime lifecycle',()=>{
     f.left.write(encodeGuestBootstrap(identity,false,'http://localhost:3000/'));
     await expect(running).rejects.toThrow('Synthetic navigation failure');
     expect(f.marker.mock.calls).toEqual([['A']]);expect(f.right.destroyed).toBe(true);f.left.destroy();
+  });
+  it('bounds initial navigation preparation without changing the omitted-URL deadline',async()=>{
+    vi.useFakeTimers();const f=fixture();
+    const initialUrl='http://localhost:3000/';
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
+      createDesktop:()=>new Promise(()=>{})});
+    const rejected=expect(running).rejects.toBeDefined();
+    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await vi.advanceTimersByTimeAsync(35_000);
+    expect(f.right.destroyed).toBe(false);
+    await vi.advanceTimersByTimeAsync(guestReadyTimeoutMs(initialUrl)-35_000+4000);await rejected;
+    expect(f.right.destroyed).toBe(true);expect(f.marker.mock.calls).toEqual([['A']]);f.left.destroy();
   });
 });
