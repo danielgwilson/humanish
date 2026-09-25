@@ -905,6 +905,7 @@ export interface RunBundle {
      */
     media?: {
       camera?: { source: "synthetic" | "file"; file: string };
+      microphone?: { source: "speech" };
       permission: "prompt" | "granted";
       flags: string[];
     };

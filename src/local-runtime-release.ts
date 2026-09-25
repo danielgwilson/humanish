@@ -18,3 +18,6 @@ export const LOCAL_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRunt
     image: "sha256:fcb7e1e8e5641fa39c7b74016648f2f0da50760546753e5835f6e93f4d50834f"
   }
 };
+
+/** Media assets are separate so ordinary browser studies keep the smaller download. */
+export const LOCAL_MEDIA_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {};

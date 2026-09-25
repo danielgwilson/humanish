@@ -40,6 +40,7 @@ import {
   type SubjectPhaseEvent
 } from "./e2b-cua-provisioning.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "./e2b-desktop-executor.js";
+import { startE2BDesktopMedia } from "./e2b-desktop-media.js";
 import {
   loadE2BDesktopModule,
   type E2BDesktopSandbox
@@ -159,6 +160,8 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
 
   let allocation: OwnedDesktopAllocation | undefined;
   let desktop: E2BDesktopSandbox | undefined;
+  let speech: Awaited<ReturnType<typeof startE2BDesktopMedia>> | undefined;
+  const mediaStop = new AbortController();
   let preparationStarted = false;
   let prepared = false;
   let opened = false;
@@ -374,6 +377,10 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       // A declared camera (#509) is in place before the browser starts: the feed is generated or
       // uploaded first, and a feed that cannot be produced fails the lane closed here.
       const requestedMedia = config.execution?.desktop?.media;
+      if (requestedMedia?.microphone?.source === "speech") {
+        speech = await startE2BDesktopMedia({ desktop, media: requestedMedia, signal: mediaStop.signal,
+          onTerminal: () => mediaStop.abort(), requestTimeoutMs: deps.requestTimeoutMs });
+      }
       const mediaEvidence = requestedMedia === undefined
         ? undefined
         : await prepareDesktopMedia(desktop, requestedMedia, config.policies?.mediaPermission ?? "prompt", deps.labCwd, deps.requestTimeoutMs);
@@ -390,7 +397,8 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
             ]
             : []),
           ...(mediaEvidence?.flags ?? [])
-        ]
+        ],
+        speech?.env
       );
       desktopBrowser = mediaEvidence === undefined
         ? browserLaunch.evidence
@@ -513,8 +521,7 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
         : deps.externalComms && laneHasInboxRecipient(deps.externalComms.email, spec.laneId)
           ? { url: deps.externalComms.inboxUrl, ...optionalAddress(inboxRecipientFor(deps.externalComms.email, spec.laneId)?.address) }
           : undefined;
-    return {
-      executor: allocation.open(createE2BDesktopExecutor(
+    const executor = createE2BDesktopExecutor(
         desktop as unknown as E2BDesktopLike,
         {
           ...(launchedBrowserFamily === "chromium"
@@ -559,8 +566,9 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
             }
             : {})
         }
-      )).executor, ...(inbox === undefined ? {} : { inbox })
-    };
+      );
+    return { executor: allocation.open(speech?.wrap(executor) ?? executor).executor,
+      ...(inbox === undefined ? {} : { inbox }) };
 
   }
 
@@ -665,6 +673,8 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       } catch (error) {
         warnings.push(`Desktop final evidence collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
       } finally {
+        mediaStop.abort();
+        await speech?.close().catch(() => { warnings.push("Speech worker cleanup was interrupted; desktop teardown will reclaim it."); });
         // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
         // a local-tree lane's teardown decision, and vice versa.
         const keepReason = cloneRoute && config.subject.clone?.keep === true

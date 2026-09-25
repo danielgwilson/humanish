@@ -3,6 +3,7 @@ import type { CuaExecutor } from "./computer-use.js";
 import { attachBrowserControlDispatcher } from "./browser-control-dispatcher.js";
 import { encodeGuestBootstrap, GuestBootstrapReader, GUEST_BOOTSTRAP_LIMITS, guestReadyTimeoutMs } from "./guest-bootstrap.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
+import type { GuestMediaConfig } from "./guest-media-config.js";
 
 export interface GuestRuntimeDesktop { executor: CuaExecutor; close(): Promise<{ complete: boolean }> }
 export interface GuestRuntimeOptions {
@@ -11,7 +12,7 @@ export interface GuestRuntimeOptions {
   signal: AbortSignal;
   /** Fixed private supervision channel, not browser-control output. */
   marker(value: "A" | "R"): void;
-  createDesktop(signal: AbortSignal, onTerminal: () => void, initialUrl?: string): Promise<GuestRuntimeDesktop>;
+  createDesktop(signal: AbortSignal, onTerminal: () => void, initialUrl?: string, media?: GuestMediaConfig): Promise<GuestRuntimeDesktop>;
 }
 
 /** One admitted desktop and one dispatcher. The owner retains physical teardown. */
@@ -64,7 +65,7 @@ export async function runGuestRuntime(options: GuestRuntimeOptions): Promise<{ c
     clearTimeout(timer);
     timer = setTimeout(() => { void close(); }, guestReadyTimeoutMs(reader.initialUrl));
     options.marker("A");
-    preparing = options.createDesktop(authority, terminal, reader.initialUrl);
+    preparing = options.createDesktop(authority, terminal, reader.initialUrl, reader.media);
     desktop = await Promise.race([preparing, new Promise<never>((_, reject) => {
       const stop = (): void => reject(new CuaExecutorError("session_revoked", "not_dispatched"));
       authority.addEventListener("abort", stop, { once: true });

@@ -58,6 +58,19 @@ describe("fixed canonical guest bootstrap", () => {
     expect(parseGuestBootstrap(encodeGuestBootstrap(identity,true).subarray(4),identity.runtimeRevision,true)).toEqual(identity);
     reader.close(); p.left.destroy();
   });
+  it("admits only an explicit native media configuration, while READY stays unchanged", async () => {
+    const p = pair(true), reader = new GuestBootstrapReader(p.right, identity.runtimeRevision, new AbortController().signal);
+    const media = { camera: { source: "synthetic" }, microphone: { source: "speech" }, permission: "prompt" } as const;
+    p.left.write(encodeGuestBootstrap(identity, false, "http://localhost:3000/", media));
+    await reader.identity;
+    expect(reader.media).toEqual(media);
+    expect(() => encodeGuestBootstrap(identity, true, undefined, media)).toThrow();
+    reader.close(); p.left.destroy();
+    for (const invalid of [{ permission: "prompt" }, { camera: { source: "/tmp/camera.y4m" }, permission: "prompt" },
+      { microphone: { source: "speech" }, permission: "prompt", command: "echo unsafe" }]) {
+      expect(() => parseGuestBootstrap(Buffer.from(JSON.stringify({ version: 1, identity, media: invalid })), identity.runtimeRevision)).toThrow();
+    }
+  });
   it.each(["http://example.com:3000/","http://localhost/","http://localhost:80/","http://localhost:1023/",
     "http://user:password@localhost:3000/","file:///tmp/notes.html","http://[::1]:3000/","http://localhost:65536/",
     "http://localhost:3000/"+"a".repeat(GUEST_BOOTSTRAP_LIMITS.initialUrlBytes)])("refuses unsupported initial URL %# before dispatch", initialUrl => {

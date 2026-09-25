@@ -24,10 +24,10 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
     c.execution!.concurrency = 1;
   }, "shared-world routes"],
   ["Firefox", c => { c.execution!.desktop!.browser = "firefox"; }, "requires Chrome or Chromium"],
-  ["desktop CLI", c => { c.subject = { source: "desktop-cli", product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] } }; }, "hosted computer-use browser lanes"],
-  ["in-process app", c => { c.subject.source = "local-app"; c.execution!.target = "local"; }, "hosted computer-use browser lanes"],
-  ["scripted browser", c => { c.actors[0]!.type = "scripted-browser"; c.execution!.target = "local"; c.scenario!.ref = "scripted-first-run"; }, "hosted computer-use browser lanes"],
-  ["terminal", c => { c.subject = { source: "terminal-product", product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] } }; c.actors[0]!.type = "codex-exec"; c.execution!.target = "e2b-terminal"; }, "hosted computer-use browser lanes"]
+  ["desktop CLI", c => { c.subject = { source: "desktop-cli", product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] } }; }, "computer-use browser lanes"],
+  ["in-process app", c => { c.subject.source = "local-app"; c.execution!.target = "local"; }, "computer-use browser lanes"],
+  ["scripted browser", c => { c.actors[0]!.type = "scripted-browser"; c.execution!.target = "local"; c.scenario!.ref = "scripted-first-run"; }, "computer-use browser lanes"],
+  ["terminal", c => { c.subject = { source: "terminal-product", product: { name: "sample-cli", publicSurfaces: ["https://example.com/docs"] } }; c.actors[0]!.type = "codex-exec"; c.execution!.target = "e2b-terminal"; }, "computer-use browser lanes"]
 ];
 
 describe("declared camera capabilities must reach an implemented route", () => {

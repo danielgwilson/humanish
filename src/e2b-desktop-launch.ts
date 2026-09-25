@@ -99,7 +99,8 @@ export interface E2BDesktopCreateOptions {
 }
 
 export interface E2BCommandRunOptions {
-  background?: false;
+  background?: boolean;
+  stdin?: boolean;
   cwd?: string;
   envs?: Record<string, string>;
   onStderr?: (data: string) => void | Promise<void>;
@@ -113,6 +114,11 @@ export interface E2BCommandResult {
   exitCode?: number;
   stderr?: string;
   stdout?: string;
+  /** Streaming command handle, returned only when background is true. */
+  sendStdin?(data: string | Uint8Array, options?: { requestTimeoutMs?: number }): Promise<void>;
+  closeStdin?(options?: { requestTimeoutMs?: number }): Promise<void>;
+  kill?(): Promise<boolean>;
+  wait?(): Promise<E2BCommandResult>;
 }
 
 export interface E2BDesktopSandbox {

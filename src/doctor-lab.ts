@@ -48,7 +48,7 @@ export async function labSetupChecks(args: {
     (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env })))(args.env)
     .catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
   if (local) {
-    const runtime = await (args.localRuntimeReadiness ?? (() => localRuntimeStatus({ env: args.env })))();
+    const runtime = await (args.localRuntimeReadiness ?? (() => localRuntimeStatus({ env: args.env, media: config.execution?.desktop?.media !== undefined })))();
     checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
   }
   if (config.comms?.email?.kind === "real") {

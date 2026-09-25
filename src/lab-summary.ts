@@ -154,7 +154,7 @@ export async function readLabSummary(
   const subject = subjectOf(config);
   const participants = participantsOf(config);
   const runtime = options.checkKeys === true && isLocalBrowserLab(inspected.config)
-    ? await localRuntimeStatus({ ...(options.env ? { env: options.env } : {}) }) : undefined;
+    ? await localRuntimeStatus({ ...(options.env ? { env: options.env } : {}), media: inspected.config.execution?.desktop?.media !== undefined }) : undefined;
   const participantReadiness = options.checkKeys === true && isLocalBrowserLab(inspected.config)
     && inspected.config.actors[0]?.type === "local-agent"
     ? await localCodexParticipantCheck({ env: options.env ?? process.env }) : undefined;

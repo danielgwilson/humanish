@@ -20,6 +20,22 @@ describe("local browser lab configuration", () => {
     expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({ desktop: false, keys: ["OPENAI_API_KEY"] });
     expect(parsed.config.review?.analysis).toBeUndefined();
   });
+  it("admits optional native camera and conversation without adding provider keys", () => {
+    const media = { camera: { source: "synthetic" }, microphone: { source: "speech" } };
+    const parsed = parseLabConfig({ ...base, execution: { target: "local", desktop: { media } } });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    expect(parsed.config.execution?.desktop?.media).toEqual(media);
+    expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({ desktop: false, keys: [] });
+  });
+  it("rejects unsupported file devices and model providers before running", () => {
+    for (const media of [{ camera: { source: "camera.y4m" } }, { microphone: { source: "voice.wav" } }]) {
+      expect(parseLabConfig({ ...base, execution: { target: "local", desktop: { media } } }).ok).toBe(false);
+    }
+    const parsed = parseLabConfig({ ...base, actors: [{ type: "openai-computer-use" }],
+      execution: { target: "local", desktop: { media: { microphone: { source: "speech" } } } } });
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && parsed.error.message).toContain("requires local-agent with Codex");
+  });
   it("preserves explicit analysis opt-out and hosted routing", () => {
     const local = parseLabConfig({ ...base, review: { analysis: false } });
     expect(local.ok && local.config.review?.analysis).toBe(false);

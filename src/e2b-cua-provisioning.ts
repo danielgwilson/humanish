@@ -62,6 +62,7 @@ export interface DesktopBrowserEvidence {
 
 export interface DesktopMediaEvidence {
   camera?: { source: "synthetic" | "file"; file: string; };
+  microphone?: { source: "speech" };
   permission: "prompt" | "granted";
   flags: string[];
 }
@@ -93,7 +94,10 @@ export async function prepareDesktopMedia(
   readHostFile: (absolutePath: string) => Promise<Buffer> = (absolutePath) => readFile(absolutePath)
 ): Promise<DesktopMediaEvidence> {
   if (media.microphone !== undefined) {
-    throw new Error("execution.desktop.media.microphone.source injection is unsupported; the declared microphone file cannot be delivered, including on custom templates.");
+    if (media.microphone.source !== "speech") throw new Error("Microphone source-file injection is unsupported; use source: speech.");
+    if (media.camera !== undefined) throw new Error("Hosted synthetic cameras cannot be combined with speech.");
+    // The lane starts and admits the speech worker before launching the browser.
+    return { microphone: { source: "speech" }, permission, flags: permission === "granted" ? ["--use-fake-ui-for-media-stream"] : [] };
   }
   const flags: string[] = [];
   let camera: DesktopMediaEvidence["camera"];
@@ -457,7 +461,8 @@ export async function openDesktopBrowserTarget(
   browserPreference: LabDesktopBrowser | undefined,
   /** Launch-time flags that make mobile fidelity (#221) hold across every tab: the user agent and
    *  touch events are browser-wide here, where the CDP holder covers only the launch page. */
-  extraChromiumFlags: readonly string[] = []
+  extraChromiumFlags: readonly string[] = [],
+  environment?: Readonly<Record<string, string>>
 ): Promise<DesktopBrowserLaunchResult> {
   const requestedBrowser = browserPreference ?? "default";
   if (isHttpUrl(targetUrl)) {
@@ -545,6 +550,7 @@ export async function openDesktopBrowserTarget(
         desktop.commands.run(browserLaunchCommand, {
           requestTimeoutMs,
           timeoutMs: 15_000,
+          ...(environment === undefined ? {} : { envs: { ...environment } }),
         }),
       ({ exitCode, stderrTail }) =>
         new Error(
