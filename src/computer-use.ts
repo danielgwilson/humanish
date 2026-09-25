@@ -202,6 +202,8 @@ export interface CuaProvider {
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
    *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete. */
   readonly interactionUsageIncomplete?: boolean;
+  /** Latest known usage for the active, unsettled request. Used only for runtime spend guards. */
+  readonly pendingRequestUsage?: CuaTurn["usage"];
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
@@ -791,9 +793,38 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let usageInput = 0;
   let usageCachedInput = 0;
   let usageCacheWriteInput = 0;
+  let usageOutput = 0;
+  let sawUsage = false;
+  let incompleteInteractionUsage = false;
+  let unreportedInteractionUsage = false;
+  let interactionRequestPending = false;
   // Per provider-REQUEST usage, in order (#334): the recorded fact long-context pricing tiers
   // need — totals alone cannot say which requests crossed the provider's threshold.
   const usageTurns: NonNullable<ActorTokenUsage["turns"]> = [];
+  const knownPendingUsage = (): NonNullable<CuaTurn["usage"]> | undefined => {
+    const usage = interactionRequestPending ? provider.pendingRequestUsage : undefined;
+    if (!completeTurnUsage(usage)) return undefined;
+    return { input: usage!.input!, output: usage!.output!,
+      ...(usage!.cachedInput === undefined ? {} : { cachedInput: usage!.cachedInput }),
+      ...(usage!.cacheWriteInput === undefined ? {} : { cacheWriteInput: usage!.cacheWriteInput }) };
+  };
+  const withPendingUsage = (settled: ActorTokenUsage): ActorTokenUsage => {
+    const pendingUsage = knownPendingUsage();
+    if (pendingUsage === undefined) return settled;
+    const input = (settled.input ?? 0) + pendingUsage.input!;
+    const output = (settled.output ?? 0) + pendingUsage.output!;
+    return {
+      ...settled,
+      input,
+      output,
+      ...((settled.cachedInput !== undefined || pendingUsage.cachedInput !== undefined)
+        ? { cachedInput: (settled.cachedInput ?? 0) + (pendingUsage.cachedInput ?? 0) } : {}),
+      ...((settled.cacheWriteInput !== undefined || pendingUsage.cacheWriteInput !== undefined)
+        ? { cacheWriteInput: (settled.cacheWriteInput ?? 0) + (pendingUsage.cacheWriteInput ?? 0) } : {}),
+      turns: [...(settled.turns ?? []), { ...pendingUsage }],
+      ...(settled.total === undefined ? {} : { total: input + output })
+    };
+  };
   // The running usage snapshot both spend guards consume: totals plus the per-request ledger,
   // shaped exactly like the trace's final tokenUsage so one estimator prices both identically.
   // Unlike the persisted trace (where absent means "unreported"), this runtime callback arg
@@ -810,19 +841,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(providerRequests.length > 0 && providerRequests.every(r => r.usageComplete && completeTurnUsage(r.usage))
       ? { total: usageInput + usageOutput } : {})
   });
-  const runningUsage = (): ActorTokenUsage => provider.executionProfile?.billing === "account-unknown" ? accountUsage() : ({
+  const runningUsage = (): ActorTokenUsage => withPendingUsage(provider.executionProfile?.billing === "account-unknown" ? accountUsage() : ({
     input: usageInput,
     output: usageOutput,
     cachedInput: usageCachedInput,
     cacheWriteInput: usageCacheWriteInput,
     ...(usageTurns.length > 0 ? { turns: usageTurns } : {})
-  });
-  let usageOutput = 0;
-  let sawUsage = false;
-  let incompleteInteractionUsage = false;
-  let unreportedInteractionUsage = false;
-  let interactionRequestPending = false;
+  }));
   const hasUnreportedInteractionUsage = (): boolean => unreportedInteractionUsage || provider.interactionUsageIncomplete === true;
+  const usageUnavailableForCap = (): boolean => incompleteInteractionUsage || unreportedInteractionUsage ||
+    (interactionRequestPending ? knownPendingUsage() === undefined : provider.interactionUsageIncomplete === true);
   let lastResponseId: string | undefined;
   let currentPhase = "initializing computer-use loop";
   let lastActionTitle: string | undefined;
@@ -1295,7 +1323,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           title: tokenLimit ? "provider token limit reached" : unexpectedStatus ? "unexpected provider response status" : "provider response incomplete", text: reason });
         break;
       }
-      if (requiresUsage && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
+      if (requiresUsage && usageUnavailableForCap()) {
         stopForUnreportedUsage();
         break;
       }
@@ -1794,11 +1822,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     else if (signal?.aborted) skip = "the study was cancelled";
     else if (remaining() <= 0) skip = "the session deadline was reached";
     else if (provider.requiresFrame && closingObservation.screenshot === undefined) skip = "the final observation has no required frame";
-    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
+    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && usageUnavailableForCap()) {
       skip = "remaining model budget is unknown because an earlier participant turn did not report complete usage";
     }
     if (skip === undefined && maxUsd !== undefined) {
-      const estimate = sawUsage ? estimateTurnCostUsd?.(runningUsage()) : undefined;
+      const estimate = sawUsage || knownPendingUsage() !== undefined ? estimateTurnCostUsd?.(runningUsage()) : undefined;
       if (estimate === undefined || estimate === null || !Number.isFinite(estimate)) skip = "remaining model budget could not be established";
       else if (estimate >= maxUsd) skip = "the estimated model budget was reached";
     }
@@ -1930,7 +1958,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
-    ...(hasUnreportedInteractionUsage() || (requiresUsage && incompleteInteractionUsage) ? { interactionUsageIncomplete: true as const } : {}),
+    ...(interactionRequestPending || hasUnreportedInteractionUsage() || (requiresUsage && incompleteInteractionUsage)
+      ? { interactionUsageIncomplete: true as const } : {}),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),
