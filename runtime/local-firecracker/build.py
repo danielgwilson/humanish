@@ -41,7 +41,7 @@ def main():
     kernel_command = ["python3", "runtime/browser-kernel/build.py", "--inputs", str(output / "inputs"),
         "--output", str(output / "kernel"), "--jobs", str(min(8, os.cpu_count() or 1)), "--architecture", architecture]
     if args.media:
-        kernel_command += ["--media-inputs", str(output / "media-inputs")]
+        kernel_command += ["--media"]
     run("kernel", *kernel_command)
     run("browser", "python3", "runtime/browser-guest/build.py", "--architecture", architecture, "--output", str(output / "browser"))
     run("payload", "node", "scripts/guest-runtime-package.mjs", *(["--media"] if args.media else []), str(output / "payload"))
@@ -61,7 +61,6 @@ def main():
     if args.media:
         media_guest = "humanish-firecracker-media-guest:" + tag
         run("media-guest", "docker", "build", "--build-arg", "GUEST_IMAGE=" + guest,
-            "--build-context", "media_kernel=" + str(output / "kernel/output"),
             "-f", "runtime/local-firecracker/MediaGuest.Containerfile", "-t", media_guest,
             "runtime/local-firecracker")
         guest = media_guest

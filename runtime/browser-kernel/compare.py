@@ -21,8 +21,6 @@ def compare(first, second):
         observed = {}
         for name, declared in receipt['result']['outputs'].items():
             allowed = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
-            if receipt['result'].get('media') is True:
-                allowed.add('COPYING.v4l2loopback')
             if name not in allowed:
                 raise ValueError('Unexpected build output')
             file = directory / 'output' / name
@@ -34,8 +32,6 @@ def compare(first, second):
             if observed[name] != declared:
                 raise ValueError('Retained output changed after build')
         expected_outputs = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
-        if receipt['result'].get('media') is True:
-            expected_outputs.add('COPYING.v4l2loopback')
         if set(observed) != expected_outputs:
             raise ValueError('Incomplete build outputs')
         for name, declared in receipt['recipeHashes'].items():
@@ -56,9 +52,8 @@ def compare(first, second):
                    and all(left['recipeHashes'][name] == right['recipeHashes'][name]
                            for name in COMPILATION_RECIPES)
                    and (left['result'].get('media') == right['result'].get('media'))
-                   and (left['result'].get('media') is not True or all(
-                       left['recipeHashes'].get(name) == right['recipeHashes'].get(name)
-                       for name in ('media-policy.json', 'media-input.json', 'v4l2loopback-0.15.4.tar.gz'))))
+                   and (left['result'].get('media') is not True
+                        or left['recipeHashes'].get('media-policy.json') == right['recipeHashes'].get('media-policy.json')))
     return {'schema': 'humanish.browser-kernel-repeat.v1',
             'sameCompilationInputs': same_inputs,
             'sameKernelOutputs': actual_outputs[0] == actual_outputs[1],

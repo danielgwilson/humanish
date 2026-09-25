@@ -1,11 +1,6 @@
 {
   "schema": "humanish.browser-media-inputs.v1",
   "files": {
-    "v4l2loopback-0.15.4.tar.gz": {
-      "url": "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v0.15.4.tar.gz",
-      "size": 90006,
-      "sha256": "21a17702648aa6a937b88a93bd71ef9f547815ead28719cafcfcc247396643dc"
-    },
     "whisper.cpp-927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz": {
       "url": "https://github.com/ggml-org/whisper.cpp/archive/927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz",
       "size": 9357755,
