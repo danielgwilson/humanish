@@ -28,13 +28,14 @@ studied; it is not a Humanish adopter or endorser.
 Use **Node.js 20 or newer**, in a project directory:
 
 ```bash
-npm install --save-dev humanish @e2b/desktop
+npm install --save-dev humanish
 npx humanish init --yes
 ```
 
 `@e2b/desktop` is the optional peer for live hosted desktops. Install it alongside
-Humanish so the CLI can resolve it; a one-shot `npx humanish@latest` can miss the
-peer. The keyless preview needs only `humanish`.
+Humanish when choosing that route (`npm install --save-dev @e2b/desktop`) so the
+CLI can resolve it; a one-shot `npx humanish@latest` can miss the peer. The keyless
+preview and local-browser setup need only `humanish`.
 
 Choose how the participant runs:
 
@@ -54,6 +55,21 @@ For local browsers, install only `humanish` and follow the
 run downloads a verified runtime image; `npx humanish runtime setup` prepares it
 ahead of time. Supported Macs use Lima instead of Docker Desktop. Local inboxes
 and local camera/microphone support remain follow-ups.
+
+Configure the included local study without editing YAML:
+
+```bash
+npx humanish init --yes \
+  --local-browser http://127.0.0.1:3000 \
+  --local-mission "Complete the primary flow and explain anything confusing"
+npx humanish doctor --lab local-browser
+npx humanish run local-browser
+```
+
+`doctor` only inspects setup. It does not install or start the runtime, open a
+browser, or use Codex account quota. The local study needs a supported Codex CLI
+version and ChatGPT login. Linux x64 also needs local rootful Docker, KVM and
+TUN; M3-or-newer Apple Silicon Macs need native ARM64 Node and Lima 2.2+.
 
 **Run a live study with the API route.** Set the desktop and model keys with hidden prompts, then
 send one synthetic participant into the included drawDB study:

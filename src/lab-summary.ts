@@ -10,7 +10,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js"
 // declared is not "unlimited" and not "$0"; it is a line the screen does not draw.
 
 import { resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
-import { labKeyRequirements } from "./doctor-lab.js";
+import { labKeyRequirements, localCodexParticipantCheck } from "./doctor-lab.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
 import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
@@ -28,6 +28,7 @@ export interface LabCaps {
 
 export interface LabSummary {
   runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
+  participantReadiness?: { ok: boolean; message: string };
   communications?: string;
   analysis?: { provider?: "openai" | "codex"; billing?: "api-estimate" | "account-unknown"; model: string; maxCostUsd: number | null };
   schema: typeof LAB_SUMMARY_SCHEMA;
@@ -154,10 +155,14 @@ export async function readLabSummary(
   const participants = participantsOf(config);
   const runtime = options.checkKeys === true && isLocalBrowserLab(inspected.config)
     ? await localRuntimeStatus({ ...(options.env ? { env: options.env } : {}) }) : undefined;
+  const participantReadiness = options.checkKeys === true && isLocalBrowserLab(inspected.config)
+    && inspected.config.actors[0]?.type === "local-agent"
+    ? await localCodexParticipantCheck({ env: options.env ?? process.env }) : undefined;
 
   return {
     ...(analysis ? { analysis } : {}),
     ...(runtime ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } } : {}),
+    ...(participantReadiness ? { participantReadiness: { ok: participantReadiness.ok, message: participantReadiness.message } } : {}),
     schema: LAB_SUMMARY_SCHEMA,
     ...(inspected.config.comms?.email?.kind === "real" ? { communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only` } : {}),
     labId: String(config.id ?? lab),

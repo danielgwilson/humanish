@@ -258,7 +258,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       return { backend, result };
     }
     case "cua": {
-      if (isLocalBrowserLab(config) && !options.cuaHooks && resolveLabDryRun(config, options.dryRun, true) === false) {
+      if (isLocalBrowserLab(config) && !options.cuaHooks) {
         const { runLocalFirecrackerStudy } = await import("./local-firecracker-study.js");
         return runLocalFirecrackerStudy({ ...options, config });
       }

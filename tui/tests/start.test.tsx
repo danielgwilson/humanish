@@ -53,6 +53,24 @@ async function openLab(options: TuiOptions, columns = 80) {
 }
 
 describe("starting a run", () => {
+  it("shows local runtime and Codex-account readiness without implying API keys", async () => {
+    const { options } = harness({ readLabSummary: async () => ({
+      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: {}, keysReady: true,
+      runtime: { ok: true, installed: false, message: "Run humanish runtime setup to prepare it." },
+      participantReadiness: { ok: false, message: "Install the supported Codex CLI version and sign in with a ChatGPT account. No API fallback is used." }
+    }) });
+    const { surface } = await openLab(options);
+    try {
+      const frame = await surface.press("", candidate => candidate.includes("runtime setup") && candidate.includes("supported Codex CLI version"));
+      expect(frame).toContain("runtime setup");
+      expect(frame).toContain("supported Codex CLI version");
+      expect(frame).not.toContain("E2B_API_KEY");
+      expect(frame).not.toContain("OPENAI_API_KEY");
+      const live = await surface.press(KEY.down, candidate => candidate.includes("needs Codex login"));
+      expect(live).toContain("needs Codex login");
+    } finally { surface.unmount(); }
+  });
+
   it.each([45, 80])("shows unknown account analysis dollars before starting at %i columns", async columns => {
     const { options, started } = harness({ readLabSummary: async () => ({
       schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: {},

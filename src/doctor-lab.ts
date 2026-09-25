@@ -9,6 +9,19 @@ import { receivingRequiredKey } from "./comms-setup.js";
 
 type Check = DoctorResult["checks"][number];
 
+/** Shared read-only Codex account check for local participants in doctor and the TUI. */
+export async function localCodexParticipantCheck(args: {
+  env: NodeJS.ProcessEnv;
+  readiness?: (env: NodeJS.ProcessEnv) => Promise<{ ready: boolean; errorCode: string | null }>;
+}): Promise<Check> {
+  const readiness = await (args.readiness ?? (async (env: NodeJS.ProcessEnv) =>
+    (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness({ timeoutMs: 5000 }, { env })))(args.env)
+    .catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  return { name: "local participant authentication", ok: readiness.ready, message: readiness.ready
+    ? "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; inference is remote, and model access and account quota remain untested."
+    : `Local Codex participant setup is unavailable (${readiness.errorCode}). Install the supported Codex CLI version and sign in with a ChatGPT account. No API fallback is used.` };
+}
+
 /** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
 export async function labSetupChecks(args: {
   cwd: string; lab: string; env: NodeJS.ProcessEnv; agents: DetectedLocalAgent[];
@@ -55,10 +68,7 @@ export async function labSetupChecks(args: {
     const choice = config.actors[0]?.localAgent ?? "codex";
     const agent = args.agents.find(entry => entry.id === choice);
     if (local) {
-      const readiness = await checkAccount();
-      checks.push({ name: "local participant authentication", ok: readiness.ready, message: readiness.ready
-        ? "Qualified Codex CLI and ChatGPT login are ready for restricted local browser participants. No E2B or model API key is required; remote model access and quota remain untested."
-        : `Local Codex participant setup is unavailable (${readiness.errorCode}). Run humanish doctor --lab <lab>; install the qualified CLI and sign in with a ChatGPT account. No API fallback is used.` });
+      checks.push(await localCodexParticipantCheck({ env: args.env, readiness: checkAccount }));
     } else {
       checks.push({ name: "local participant authentication", ok: agent?.authStatus === "authenticated", message:
         agent?.authStatus === "authenticated" ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`

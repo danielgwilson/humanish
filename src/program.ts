@@ -597,13 +597,21 @@ function registerInitCommand(parent: Command, io: CliIo): void {
     .summary("Set up humanish/ source and .humanish/ runtime state.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
+    .option("--local-browser <url>", "Set the local-browser starter to this loopback app URL (explicit port above 1023).")
+    .option("--local-mission <text>", "Set the local-browser participant mission.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; dryRun?: boolean; json?: boolean; yes?: boolean }, command) => {
+    .action(async (options: { cwd: string; dryRun?: boolean; json?: boolean; yes?: boolean; localBrowser?: string; localMission?: string }, command) => {
       const initOptions = {
         cwd: options.cwd,
         ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.yes === undefined ? {} : { yes: options.yes })
+        ...(options.yes === undefined ? {} : { yes: options.yes }),
+        ...(options.localBrowser === undefined && options.localMission === undefined ? {} : {
+          localBrowser: {
+            appUrl: options.localBrowser ?? "http://127.0.0.1:3000",
+            ...(options.localMission === undefined ? {} : { mission: options.localMission })
+          }
+        })
       };
       const result = await runInit(initOptions);
 
