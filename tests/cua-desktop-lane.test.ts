@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
@@ -81,6 +81,50 @@ async function fixture() {
 }
 
 describe("ready desktop lane contract", () => {
+  it("refuses an unsupported hosted Codex version before creating a desktop participant", async () => {
+    const f = await fixture();
+    const executable = path.join(f.cwd, "codex");
+    await writeFile(executable, `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.153.0\\n"); process.exit(0); }\nprocess.exit(99);\n`);
+    await chmod(executable, 0o700);
+    const parsed = parseLabConfig({ ...f.deps.config,
+      actors: [{ type: "local-agent", localAgent: "codex", persona: "first-time-visitor", mission: "Save a note." }],
+      review: { analysis: false } });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const createDesktopLane = vi.fn(() => f.port);
+
+    const result = await runCuaActorLab({ cwd: f.cwd, config: parsed.config, dryRun: false,
+      hooks: { ...f.deps.hooks, env: { PATH: f.cwd }, createDesktopLane } });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.message).toContain("Codex CLI 0.154.0");
+    expect(result.error?.message).toContain("no desktop was launched");
+    expect(createDesktopLane).not.toHaveBeenCalled();
+    expect(restrictedParticipantFactory).not.toHaveBeenCalled();
+  });
+
+  it("refuses API-dollar caps for a hosted ChatGPT-account participant before creating a desktop", async () => {
+    const f = await fixture();
+    const executable = path.join(f.cwd, "codex");
+    await writeFile(executable, `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.154.0\\n"); process.exit(0); }\nprocess.exit(99);\n`);
+    await chmod(executable, 0o700);
+    const parsed = parseLabConfig({ ...f.deps.config,
+      actors: [{ type: "local-agent", localAgent: "codex", persona: "first-time-visitor", mission: "Save a note." }],
+      execution: { ...f.deps.config.execution, caps: { maxUsd: 1 } }, review: { analysis: false } });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const createDesktopLane = vi.fn(() => f.port);
+
+    const result = await runCuaActorLab({ cwd: f.cwd, config: parsed.config, dryRun: false,
+      hooks: { ...f.deps.hooks, env: { PATH: f.cwd }, createDesktopLane } });
+
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
+    expect(result.error?.message).toContain("ChatGPT-account");
+    expect(createDesktopLane).not.toHaveBeenCalled();
+    expect(restrictedParticipantFactory).not.toHaveBeenCalled();
+  });
+
   it("composes hosted Codex through the shared participant factory with operator auth and declared model settings", async () => {
     const f = await fixture();
     const provider: CuaProvider = { id: "restricted-codex-participant", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,

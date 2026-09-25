@@ -127,7 +127,7 @@ import {
   type LabSubjectState
 } from "./lab-config.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
-import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import { checkHostedCodexCompatibility, createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { buildObserverData } from "./observer-data.js";
 import {
   attachObserverRuntimeStreamUrls,
@@ -2367,6 +2367,26 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
             : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
           descriptor.id
         );
+      }
+      if (chosen.id === "codex") {
+        const compatibility = await checkHostedCodexCompatibility(chosen.binPath, { env });
+        if (compatibility !== "supported") {
+          return fail(
+            "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+            compatibility === "unsupported_platform"
+              ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
+              : `Hosted Codex participants require Codex CLI 0.154.0. Run \`codex --version\` and install the supported version before retrying; no desktop was launched.`,
+            descriptor.id
+          );
+        }
+        if (chosen.billing === "account-unknown" &&
+          (config.execution?.caps?.maxUsd !== undefined || config.execution?.caps?.maxTotalUsd !== undefined)) {
+          return fail(
+            "HUMANISH_CUA_LAB_UNPRICED_CAP",
+            "A ChatGPT-account Codex participant has no API-dollar price, so execution.caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
+            descriptor.id
+          );
+        }
       }
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());

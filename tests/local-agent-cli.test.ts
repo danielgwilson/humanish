@@ -5,6 +5,7 @@ import path from "node:path";
 
 import type { CuaObservation } from "../src/computer-use.js";
 import {
+  checkHostedCodexCompatibility,
   createLocalAgentProvider,
   detectLocalAgents,
   localAgentDoctorMessage,
@@ -215,7 +216,7 @@ describe("telling the operator what they already have", () => {
   it("accepts a CLI-reported keyring login without a credential file", async () => {
     const found = await detectLocalAgents({ home: "/home/dev", env: {}, which: async bin => bin === "codex" ? "/usr/bin/codex" : undefined,
       exists: async () => false, authProbe: async () => ({ code: 0, stdout: "", stderr: "Logged in using ChatGPT\nprivate-account-marker" }) });
-    expect(found[0]).toMatchObject({ credentialsPresent: false, authStatus: "authenticated" });
+    expect(found[0]).toMatchObject({ credentialsPresent: false, authStatus: "authenticated", billing: "account-unknown" });
     expect(JSON.stringify(found)).not.toContain("private-account-marker");
   });
 
@@ -242,7 +243,7 @@ describe("telling the operator what they already have", () => {
         return { code: 0, stdout: "", stderr: "Logged in using an API key - private-account-marker" };
       } });
     expect(checked).toEqual(["/custom/codex/auth.json"]);
-    expect(found[0]?.authStatus).toBe("authenticated");
+    expect(found[0]).toMatchObject({ authStatus: "authenticated", billing: "api" });
     expect(JSON.stringify(found)).not.toContain("private-account-marker");
   });
 
@@ -271,4 +272,18 @@ describe("telling the operator what they already have", () => {
       }
     } finally { await rm(directory, { recursive: true, force: true }); }
   }, 10000);
+
+  it("checks the qualified hosted Codex version without initializing app-server", async () => {
+    const calls: string[][] = [];
+    const probe = async (_bin: string, args: readonly string[]) => {
+      calls.push([...args]);
+      return { code: 0, stdout: "codex-cli 0.154.0\n", stderr: "" };
+    };
+    await expect(checkHostedCodexCompatibility("/synthetic/codex", { platform: "linux", arch: "arm64", probe })).resolves.toBe("supported");
+    expect(calls).toEqual([["--version"]]);
+    await expect(checkHostedCodexCompatibility("/synthetic/codex", { platform: "darwin", arch: "x64",
+      probe: async () => ({ code: 0, stdout: "codex-cli 0.153.0\n", stderr: "" }) })).resolves.toBe("unsupported_version");
+    await expect(checkHostedCodexCompatibility("/synthetic/codex", { platform: "win32", arch: "x64",
+      probe: async () => { throw new Error("must not spawn"); } })).resolves.toBe("unsupported_platform");
+  });
 });
