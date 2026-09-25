@@ -116,6 +116,13 @@ if (operation === "--version") {
       if (participantTool) {
         const requestParticipantTool = () => {
           if (scenario === "participant-usage-before-tool") emit(usage);
+          if (scenario === "participant-multi-usage") {
+            const first = structuredClone(usage);
+            Object.assign(first.params.tokenUsage.total, { totalTokens: 150100, inputTokens: 150000, outputTokens: 100 });
+            emit(first);
+            Object.assign(usage.params.tokenUsage.total, { totalTokens: 300200, inputTokens: 300000, outputTokens: 200 });
+            emit(usage);
+          }
           for (const event of participantTool.beforeResponse) emit(event);
           emit(participantTool.request);
           if (scenario === "participant-premature-completion") emit(completion);

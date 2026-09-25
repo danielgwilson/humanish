@@ -32,6 +32,7 @@ export interface RestrictedCodexResult {
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
   output: unknown;
   usage: RestrictedCodexUsage | null;
+  inferenceUsage?: RestrictedCodexUsage[];
   usageComplete: boolean;
   dispatched: boolean;
   errorCode: RestrictedCodexAnalysisErrorCode | null;

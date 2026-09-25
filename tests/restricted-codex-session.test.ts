@@ -469,6 +469,26 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await session.close()).toBe(true);
   });
 
+  it("keeps each native inference separate while retaining the cumulative turn usage", async () => {
+    const f = await fixture("participant-multi-usage");
+    delete f.options.env!.NODE_OPTIONS;
+    let finishTool!: (value: string) => void;
+    const waitingTool = new Promise<string>(resolve => { finishTool = resolve; });
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => waitingTool } };
+    const session = createRestrictedCodexSession(f.options), pending = session.run({ ...request, model: undefined });
+    const perInference = [
+      { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 },
+      { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 }
+    ];
+    await vi.waitFor(() => expect(session.pendingInferenceUsage).toEqual(perInference));
+    expect(session.pendingUsage).toEqual({ input: 300000, output: 200, cachedInput: 0, cacheWriteInput: 0 });
+    finishTool(JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }));
+    expect(await pending).toMatchObject({ status: "completed", usage: { input: 300000, output: 200 }, inferenceUsage: perInference });
+    expect(session.pendingInferenceUsage).toBeUndefined();
+    expect(await session.close()).toBe(true);
+  });
+
   it("rejects turn completion while a host tool response is still outstanding", async () => {
     const f = await fixture("participant-premature-completion");
     delete f.options.env!.NODE_OPTIONS;

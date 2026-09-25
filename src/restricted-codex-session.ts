@@ -202,9 +202,18 @@ function hasScopedIdentity(method: string, params: Record<string, unknown>, thre
   return (params.threadId === undefined || params.threadId === threadId) && (params.turnId === undefined || params.turnId === turnId);
 }
 
+function usageDelta(total: RestrictedCodexUsage, baseline: RestrictedCodexUsage): RestrictedCodexUsage | null {
+  const delta = { input: total.input - baseline.input, output: total.output - baseline.output,
+    cachedInput: (total.cachedInput ?? 0) - (baseline.cachedInput ?? 0),
+    cacheWriteInput: (total.cacheWriteInput ?? 0) - (baseline.cacheWriteInput ?? 0) };
+  return Object.values(delta).every(value => Number.isSafeInteger(value) && value >= 0)
+    && delta.cachedInput + delta.cacheWriteInput <= delta.input ? delta : null;
+}
+
 /** One private process and conversation per owner. Only completed turns may continue. */
 export interface RestrictedCodexSession {
   readonly pendingUsage?: RestrictedCodexUsage | undefined;
+  readonly pendingInferenceUsage?: RestrictedCodexUsage[] | undefined;
   readonly resolvedModel?: string | undefined;
   readonly authentication?: "chatgpt-account" | "api-key" | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
@@ -222,6 +231,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
   let identity: { requestedModel: string | undefined; model: string; instructions: string } | undefined;
   let previousUsage: RestrictedCodexUsage | null = { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 };
   let pendingUsage: RestrictedCodexUsage | undefined;
+  let pendingInferenceUsage: RestrictedCodexUsage[] | undefined;
   let resolvedModel: string | undefined;
   let authentication: "chatgpt-account" | "api-key" | undefined;
   let activeDeadline: RestrictedCodexDeadline | undefined;
@@ -264,6 +274,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     let completed = false, compacted = false;
     let toolRequestPending = false;
     let latestUsage: RestrictedCodexUsage | null = null;
+    let inferenceUsage: RestrictedCodexUsage[] | null = participant ? [] : null;
     const requestUsageBaseline = previousUsage;
     let generatedDeltaBytes = 0;
     let selectedModel = identity?.model;
@@ -293,14 +304,15 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       if (method === "thread/tokenUsage/updated") {
         const total = restrictedCodexUsage(params.tokenUsage);
         // App-server reports cumulative thread usage. Receipts must charge only this turn.
-        if (total && requestUsageBaseline) {
-          const delta = { input: total.input - requestUsageBaseline.input, output: total.output - requestUsageBaseline.output,
-            cachedInput: (total.cachedInput ?? 0) - (requestUsageBaseline.cachedInput ?? 0),
-            cacheWriteInput: (total.cacheWriteInput ?? 0) - (requestUsageBaseline.cacheWriteInput ?? 0) };
-          usage = Object.values(delta).every(value => Number.isSafeInteger(value) && value >= 0)
-            && delta.cachedInput + delta.cacheWriteInput <= delta.input ? delta : null;
-        } else usage = null;
+        usage = total && requestUsageBaseline ? usageDelta(total, requestUsageBaseline) : null;
+        if (inferenceUsage !== null) {
+          const inferenceDelta = total && (latestUsage ?? requestUsageBaseline)
+            ? usageDelta(total, (latestUsage ?? requestUsageBaseline)!) : null;
+          if (!inferenceDelta) inferenceUsage = null;
+          else if (Object.values(inferenceDelta).some(value => value > 0)) inferenceUsage.push(inferenceDelta);
+        }
         pendingUsage = usage ?? undefined;
+        pendingInferenceUsage = inferenceUsage?.length ? inferenceUsage.map(item => ({ ...item })) : undefined;
         latestUsage = total;
       }
       if (method === "item/started" || method === "item/completed") {
@@ -335,6 +347,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
         try {
           pendingUsage = undefined;
+          pendingInferenceUsage = undefined;
           resolveTurn({ status: "completed", output: JSON.parse(outputItem.text) as unknown, usage,
             usageComplete: usage !== null && !compacted, dispatched: true, errorCode: null });
         } catch { deadline.stop("invalid_response"); }
@@ -369,16 +382,18 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     };
 
     const onRequest: RestrictedCodexTransport["onRequest"] = async (method, params) => {
-      // App-server can write the turn/start reply and first server request in one
-      // stdout chunk. Wait for the acknowledged identity before admitting work.
-      const activeTurnId = turnId ?? earlyTurnId ?? await deadline.wait(turnReady);
       const callId = params.callId;
-      if (!participant || method !== "item/tool/call" || params.threadId !== threadId || params.turnId !== activeTurnId
-        || params.namespace !== null || params.tool !== participant.tool.name || typeof callId !== "string"
+      if (!participant || method !== "item/tool/call" || params.threadId !== threadId || typeof params.turnId !== "string"
+        || params.turnId.length === 0 || params.turnId.length > 200 || params.namespace !== null
+        || params.tool !== participant.tool.name || typeof callId !== "string"
         || callId.length === 0 || callId.length > 200 || toolCallIds.has(callId) || toolRequestPending)
         throw new RestrictedCodexStop("codex_tool_call");
-      toolCallIds.add(callId);
+      // Mark the request outstanding before waiting for a same-chunk turn/start
+      // acknowledgment, so an early completion can never be accepted.
       toolRequestPending = true;
+      const activeTurnId = turnId ?? earlyTurnId ?? await deadline.wait(turnReady);
+      if (params.turnId !== activeTurnId) throw new RestrictedCodexStop("codex_tool_call");
+      toolCallIds.add(callId);
       deadline.pause();
       const text = await deadline.wait(participant.tool.call(params.arguments));
       if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_REQUEST_BYTES) throw new RestrictedCodexStop("invalid_response");
@@ -518,6 +533,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       result = { ...restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage), failurePhase: phase };
     } finally {
       pendingUsage = undefined;
+      pendingInferenceUsage = undefined;
       deadline.close();
       activeDeadline = undefined;
       if (transport) transport.onNotification = () => undefined;
@@ -528,11 +544,15 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if (!await dispose()) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };
       }
     }
-    return result.errorCode !== null && result.failurePhase === undefined ? { ...result, failurePhase: phase } : result;
+    if (result.errorCode !== null && result.failurePhase === undefined) result = { ...result, failurePhase: phase };
+    if (participant && usage !== null && inferenceUsage !== null && inferenceUsage.length > 0)
+      result = { ...result, inferenceUsage: inferenceUsage.map(item => ({ ...item })) };
+    return result;
   }
 
   return {
     get pendingUsage() { return pendingUsage; },
+    get pendingInferenceUsage() { return pendingInferenceUsage?.map(item => ({ ...item })); },
     get resolvedModel() { return resolvedModel; },
     get authentication() { return authentication; },
     run(request, readinessOnly = false) {
