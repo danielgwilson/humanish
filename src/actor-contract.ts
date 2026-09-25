@@ -190,7 +190,7 @@ export interface ProviderRequestReceipt {
 export interface ActorProviderRequest extends ProviderRequestReceipt {
   ordinal: number;
   kind: "interaction" | "debrief";
-  /** Launcher version, effective config, account, thread and empty MCP checks
+  /** Launcher version, effective config, account, thread and tool-policy checks
    * passed before turn/start. Does not attest remote execution or completion. */
   profileVerified: boolean;
   errorCode?: import("./cua-provider-error.js").CuaProviderErrorCode;

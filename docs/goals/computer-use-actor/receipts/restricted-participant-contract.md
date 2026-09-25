@@ -12,7 +12,7 @@ file-backed ChatGPT login route. The requested profile records Codex CLI 0.154.0
 `gpt-6-astra`, low reasoning effort and the `codex-ui-tools-v1` policy. The durable
 profile itself is a request declaration.
 Each request's `profileVerified` means the launcher passed its version, effective
-config, account, thread and empty MCP checks before attempting `turn/start`.
+config, account, thread and tool-policy checks before attempting `turn/start`.
 It does not establish remote completion, quota, a charge, or a successful action.
 
 One restricted Codex thread belongs to each participant for the full interaction

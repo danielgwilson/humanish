@@ -139,12 +139,11 @@ import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { MODEL_RATES, estimateActorCost, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
+import { MODEL_RATES, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
 import {
   createRestrictedCodexParticipant,
-  type RestrictedParticipantOptions
 } from "./restricted-codex-participant.js";
 import {
   prepareRunArtifactPaths,
@@ -1516,7 +1515,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
         session: { env }
-      } as RestrictedParticipantOptions);
+      });
       localAgentProvider = codexParticipant.provider;
     } else if (deps.localAgent === "claude") {
       // One session for the whole run, like the codex thread above (#520). The one-shot
