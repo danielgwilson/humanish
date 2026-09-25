@@ -32,6 +32,16 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
   1,570 output tokens; account dollars remained unknown. Stream-size fault
   injection uses this captured envelope, with the generated schema as reference.
 
+- `native-compaction-items` selects the observed method, thread/turn identity and
+  item fields from actual 0.154.0 `contextCompaction` start/completed notifications
+  during a six-turn synthetic screenshot study on 2026-09-25. Identities are
+  normalized; envelope `emittedAtMs` and parameter `startedAtMs`/`completedAtMs`
+  timestamps are omitted. This is a selected-field capture, not a verbatim wire
+  envelope. A private fixture lowered the compaction threshold to 5,000 tokens;
+  production keeps the CLI default. Recall continued after two compactions.
+  Their separate raw response usage was absent from the CLI's cumulative thread
+  counters, so Humanish marks affected turns' known counts as incomplete.
+
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,
 auth contents, raw provider errors, and rate-limit/account details are excluded.
 The fixture-driven fake process is for failure injection and lifecycle tests;

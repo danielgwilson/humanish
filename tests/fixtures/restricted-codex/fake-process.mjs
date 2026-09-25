@@ -79,6 +79,8 @@ if (operation === "--version") {
         const original = capture("completed-turn-and-usage.json").find(event => event.method === "thread/tokenUsage/updated");
         for (const [key, value] of Object.entries(original.params.tokenUsage.total)) usage.params.tokenUsage.total[key] = value * turnNumber;
       }
+      if (scenario === "continuing-compaction" && turnNumber === 2)
+        for (const event of capture("native-compaction-items.json")) emit(event);
       if (scenario === "continuing-hang" && turnNumber === 2) return;
       if (scenario === "continuing-stale" && turnNumber === 2) {
         write({ ...answer, params: { ...answer.params, turnId: "turn-synthetic-1" } }); return;

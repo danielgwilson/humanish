@@ -107,6 +107,9 @@ async function checkVersion(file: string, env: NodeJS.ProcessEnv, cwd: string, s
   }
 }
 
+const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
+const allowedRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
+
 type Event = { method: string; params: Record<string, unknown> };
 const unclosedChildren = new Set<Promise<void>>();
 function retainUnclosedChild(closed: Promise<void>): void {
@@ -207,7 +210,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     activeDeadline = deadline;
     let turnId: string | undefined, earlyTurnId: string | undefined;
     let dispatched = false, usage: RestrictedCodexUsage | null = null;
-    let completed = false;
+    let completed = false, compacted = false;
     let latestUsage: RestrictedCodexUsage | null = null;
     let generatedDeltaBytes = 0;
     let outputItem: { id: string; text: string } | undefined;
@@ -220,8 +223,11 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     const handleTurnEvent = (method: string, params: Record<string, unknown>): void => {
       if (!hasScopedIdentity(method, params, threadId, turnId)) { deadline.stop("codex_protocol_error"); return; }
       const item = codexRecord(params.item);
+      // CLI 0.154 thread totals omit compaction requests. Retain known usage,
+      // but never label it complete when native compaction occurred in this turn.
+      if (method === "thread/compacted" || item.type === "contextCompaction" || rawCompactionTypes.includes(String(item.type))) compacted = true;
       if (method === "rawResponseItem/completed") {
-        if (!["message", "reasoning", "compaction", "compaction_summary", "context_compaction"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        if (!allowedRawItemTypes.includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
         if (item.type === "message" && Array.isArray(item.content)
           && item.content.some(content => codexRecord(content).type === "refusal")) deadline.stop("refusal");
       }
@@ -261,7 +267,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
         try {
           resolveTurn({ status: "completed", output: JSON.parse(outputItem.text) as unknown, usage,
-            usageComplete: usage !== null, dispatched: true, errorCode: null });
+            usageComplete: usage !== null && !compacted, dispatched: true, errorCode: null });
         } catch { deadline.stop("invalid_response"); }
       }
     };
@@ -276,7 +282,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       }
       const item = codexRecord(params.item);
       // Tool requests must fail even if the turn-start acknowledgment is lost.
-      if ((method === "rawResponseItem/completed" && !["message", "reasoning", "compaction", "compaction_summary", "context_compaction"].includes(String(item.type)))
+      if ((method === "rawResponseItem/completed" && !allowedRawItemTypes.includes(String(item.type)))
         || (["item/started", "item/completed"].includes(method) && item.type === "agentMessage"
           && (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)))) {
         deadline.stop("codex_tool_call"); return;

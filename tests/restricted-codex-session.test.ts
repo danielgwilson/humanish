@@ -285,6 +285,18 @@ describe("continuing restricted Codex conversation", () => {
     expect(await session.run(request)).toMatchObject({ errorCode: "invalid_request", dispatched: false });
   });
 
+  it("continues through captured native compaction while reporting its token counts as partial", async () => {
+    const f = await fixture("continuing-compaction"), session = createRestrictedCodexSession(f.options);
+    try {
+      expect(await session.run(request)).toMatchObject({ status: "completed", usageComplete: true });
+      expect(await session.run(request)).toMatchObject({ status: "completed", usageComplete: false,
+        usage: { input: 2957, output: 41 } });
+      expect(await session.run(request)).toMatchObject({ status: "completed", usageComplete: true,
+        usage: { input: 2957, output: 41 } });
+      expect((await f.entries()).filter(entry => entry.method === "thread/start")).toHaveLength(1);
+    } finally { expect(await session.close()).toBe(true); }
+  });
+
   it("has a fresh request deadline after time spent between completed turns", async () => {
     const f = await fixture("continuing"), session = createRestrictedCodexSession(f.options);
     try {

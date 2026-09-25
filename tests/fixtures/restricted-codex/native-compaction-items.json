@@ -1,0 +1,24 @@
+[
+  {
+    "method": "item/started",
+    "params": {
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "item": {
+        "id": "compaction-synthetic",
+        "type": "contextCompaction"
+      }
+    }
+  },
+  {
+    "method": "item/completed",
+    "params": {
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "item": {
+        "id": "compaction-synthetic",
+        "type": "contextCompaction"
+      }
+    }
+  }
+]

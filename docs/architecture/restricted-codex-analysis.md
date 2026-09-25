@@ -47,6 +47,8 @@ threads never share state with each other or the analyst.
 An unresolved child process blocks new sessions until its exit is confirmed.
 Limits and deadlines apply to each request, including startup on the first turn.
 Thread-cumulative token usage is converted to per-turn usage before accounting.
+The qualified CLI omits compaction requests from its thread totals. A turn that
+compacts therefore retains known counts but records incomplete usage.
 Evidence is not silently downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
 request data are admitted. Generated report text is limited to 2 MiB. Raw input
 notifications echo image data URLs, so their frame budget is the larger of 2 MiB
