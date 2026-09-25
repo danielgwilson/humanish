@@ -16,8 +16,17 @@ import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/openai-responses-cu.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
 
+const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
+vi.mock("../src/restricted-codex-participant.js", async importOriginal => ({
+  ...await importOriginal<typeof import("../src/restricted-codex-participant.js")>(),
+  createRestrictedCodexParticipant: restrictedParticipantFactory
+}));
+
 const temporary: string[] = [];
-afterEach(async () => { await Promise.all(temporary.splice(0).map(dir => rm(dir, { recursive: true, force: true }))); });
+afterEach(async () => {
+  restrictedParticipantFactory.mockReset();
+  await Promise.all(temporary.splice(0).map(dir => rm(dir, { recursive: true, force: true })));
+});
 
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
@@ -72,6 +81,47 @@ async function fixture() {
 }
 
 describe("ready desktop lane contract", () => {
+  it("composes hosted Codex through the shared participant factory with operator auth and declared model settings", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = { id: "restricted-codex-participant", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({ actions: [], message: "I can read the note form.", outcome: "reached", pendingSafetyChecks: [], done: true }) };
+    const close = vi.fn(async () => { f.order.push("model-closed"); return { status: "confirmed" as const }; });
+    restrictedParticipantFactory.mockReturnValue({ provider, close });
+    f.deps.localAgent = "codex";
+    f.deps.config = { ...f.deps.config, actors: [{ ...f.deps.config.actors[0]!, model: "gpt-5.6-sol" }] };
+    f.spec.reasoningEffort = "high";
+    f.deps.env = { PATH: "/synthetic/bin", CODEX_HOME: "/synthetic/operator-codex" };
+    f.deps.runSession = runCuaActorSession;
+
+    const result = await runCuaLane(f.spec, f.deps);
+
+    expect(result.harnessError).toBe(false);
+    expect(restrictedParticipantFactory).toHaveBeenCalledExactlyOnceWith({
+      authMode: "operator",
+      model: "gpt-5.6-sol",
+      reasoningEffort: "high",
+      session: { env: f.deps.env }
+    });
+    expect(close).toHaveBeenCalledOnce();
+    expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
+  });
+
+  it("records an unconfirmed shared Codex close before releasing the hosted desktop", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = { id: "restricted-codex-participant", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({ actions: [], message: "I can read the note form.", outcome: "reached", pendingSafetyChecks: [], done: true }) };
+    const close = vi.fn(async () => { f.order.push("model-close-unconfirmed"); return { status: "unconfirmed" as const }; });
+    restrictedParticipantFactory.mockReturnValue({ provider, close });
+    f.deps.localAgent = "codex";
+    f.deps.runSession = runCuaActorSession;
+
+    const result = await runCuaLane(f.spec, f.deps);
+
+    expect(result.harnessError).toBe(true);
+    expect(result.sessionError).toBe("Model provider cleanup is unconfirmed.");
+    expect(f.order.slice(-2)).toEqual(["model-close-unconfirmed", "release"]);
+  });
+
   it("uses the custom model on a desktop lane and closes it before the desktop", async () => {
     const f = await fixture();
     const provider: CuaProvider = { id: "synthetic-provider", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,

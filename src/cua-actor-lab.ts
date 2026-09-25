@@ -126,7 +126,6 @@ import {
   type LabSubjectServe,
   type LabSubjectState
 } from "./lab-config.js";
-import { startAppServerSession } from "./local-agent-appserver.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
 import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { buildObserverData } from "./observer-data.js";
@@ -143,6 +142,10 @@ import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona }
 import { MODEL_RATES, estimateActorCost, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
+import {
+  createRestrictedCodexParticipant,
+  type RestrictedParticipantOptions
+} from "./restricted-codex-participant.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
@@ -1483,7 +1486,7 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, env } = deps;
-  let appServer: Awaited<ReturnType<typeof startAppServerSession>> | undefined;
+  let codexParticipant: ReturnType<typeof createRestrictedCodexParticipant> | undefined;
   let claudeSession: Awaited<ReturnType<typeof startClaudeSession>> | undefined;
   let localAgentProvider: CuaProvider | undefined;
   const warnings: string[] = [];
@@ -1502,18 +1505,19 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const desktopLane = deps.createDesktopLane?.(spec, warnings) ?? createE2BCuaDesktopLane(spec, deps, warnings);
   try {
     await desktopLane.prepare();
-    // Start the brain BEFORE the first screenshot: the app-server handshake is ~500ms, and it
-    // is paid here, while the sandbox is still settling, rather than inside turn one.
     if (deps.hooks.buildProvider) {
       localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec });
     } else if (deps.localAgent === "codex") {
-      appServer = await startAppServerSession({
+      // Hosted local-agent studies use the same native participant engine as local desktops.
+      // Operator auth deliberately retains the operator's Codex home, config and supported auth
+      // stores instead of applying the isolated restricted-account profile used by local studies.
+      codexParticipant = createRestrictedCodexParticipant({
+        authMode: "operator",
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        // The persona lives on the THREAD, so it is stated once instead of re-sent every turn.
-        baseInstructions: spec.instructions
-      });
-      localAgentProvider = appServer.provider;
+        session: { env }
+      } as RestrictedParticipantOptions);
+      localAgentProvider = codexParticipant.provider;
     } else if (deps.localAgent === "claude") {
       // One session for the whole run, like the codex thread above (#520). The one-shot
       // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
@@ -1613,13 +1617,21 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
-    try { await localAgentProvider?.close?.(); }
+    try { if (codexParticipant === undefined) await localAgentProvider?.close?.(); }
     catch {
       warnings.push("Model provider cleanup is unconfirmed.");
       sessionError ??= "Model provider cleanup is unconfirmed.";
     }
-    try { appServer?.close(); }
-    catch { warnings.push('Codex session cleanup failed; desktop cleanup will still run.'); }
+    try {
+      const cleanup = await codexParticipant?.close();
+      if (cleanup?.status === "unconfirmed") {
+        warnings.push("Model provider cleanup is unconfirmed.");
+        sessionError ??= "Model provider cleanup is unconfirmed.";
+      }
+    } catch {
+      warnings.push("Model provider cleanup is unconfirmed.");
+      sessionError ??= "Model provider cleanup is unconfirmed.";
+    }
     try { await claudeSession?.close(); }
     catch { warnings.push('Claude session cleanup failed; desktop cleanup will still run.'); }
     try {
