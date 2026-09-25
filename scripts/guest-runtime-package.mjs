@@ -53,24 +53,31 @@ async function closure() {
   await visit('guest-runtime-main.js');
   return { modules: [...seen].sort(), packages: [...packages].sort() };
 }
-export async function packageGuestRuntime(destination) {
+export async function packageGuestRuntime(destination, { media = false } = {}) {
   const output = resolve(destination), root = join(output, 'root');
   await mkdir(output, { mode: 0o700 }); // Refuse reusing a stale output.
   await mkdir(root, { mode: 0o755 });
   const selected = await closure();
+  const mediaModules = media ? ['guest-media-worker.js'] : [];
   const sourceFiles = {}, dependencyFiles = {};
   const fixed = join(repository, 'runtime/browser-guest/control/root');
   const fixedHashes = await inventory(fixed);
   for (const [path, hash] of Object.entries(fixedHashes)) sourceFiles['runtime/browser-guest/control/root/' + path] = hash;
   const linksPath = 'runtime/browser-guest/control/links.json';
   const links = JSON.parse(await readFile(join(repository, linksPath), 'utf8'));
-  for (const file of [...selected.modules.map(name => 'src/' + name.replace(/\.js$/, '.ts')), linksPath, 'scripts/guest-runtime-package.mjs']) {
+  for (const file of [...selected.modules.map(name => 'src/' + name.replace(/\.js$/, '.ts')),
+    ...mediaModules.map(name => 'src/' + name.replace(/\.js$/, '.ts')), linksPath, 'scripts/guest-runtime-package.mjs']) {
     sourceFiles[file] = sha(await readFile(join(repository, file)));
   }
   // Bind the bytes actually executed, including stale/modified compiler output.
   // The generated revision itself is excluded to avoid a self-hash cycle.
-  for (const name of selected.modules.filter(name => name !== 'guest-runtime-revision.js')) {
+  for (const name of [...selected.modules.filter(name => name !== 'guest-runtime-revision.js'), ...mediaModules]) {
     sourceFiles['dist/' + name] = sha(await readFile(join(repository, 'dist', name)));
+  }
+  const mediaRoot = join(root, 'opt/humanish/media');
+  await mkdir(mediaRoot, { recursive: true });
+  for (const name of mediaModules) {
+    await cp(join(repository, 'dist', name), join(mediaRoot, name));
   }
   for (const name of selected.packages) {
     const packageRoot = await realpath(join(repository, 'node_modules', name));
@@ -122,6 +129,7 @@ export async function packageGuestRuntime(destination) {
   await finalize(root);
   const expectedLeaves = new Set([...Object.keys(fixedHashes), ...Object.keys(links),
     ...selected.modules.map(name => 'opt/humanish/control/' + name), 'opt/humanish/control/package.json',
+    ...mediaModules.map(name => 'opt/humanish/media/' + name),
     ...Object.keys(dependencyFiles).map(path => 'opt/humanish/control/node_modules/' + path)]);
   if (Object.keys(files).length !== expectedLeaves.size || Object.keys(files).some(path => !expectedLeaves.has(path))) {
     throw new Error('Payload leaf set changed during snapshot');
@@ -129,7 +137,7 @@ export async function packageGuestRuntime(destination) {
   for (const [path, expected] of Object.entries(sourceFiles)) {
     if (sha(await readFile(join(repository, path))) !== expected) throw new Error('Package source changed during snapshot');
     const payloadPath = path.startsWith('runtime/browser-guest/control/root/') ? path.slice('runtime/browser-guest/control/root/'.length)
-      : path.startsWith('dist/') ? 'opt/humanish/control/' + path.slice(5) : undefined;
+      : path.startsWith('dist/') ? (mediaModules.includes(path.slice(5)) ? 'opt/humanish/media/' : 'opt/humanish/control/') + path.slice(5) : undefined;
     if (payloadPath && files[payloadPath]?.sha256 !== expected) throw new Error('Copied source differs from captured input');
   }
   for (const [path, expected] of Object.entries(dependencyFiles)) {
@@ -143,7 +151,11 @@ export async function packageGuestRuntime(destination) {
   return manifest;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.length !== 3) throw new Error('Usage: node scripts/guest-runtime-package.mjs NEW_OUTPUT_DIRECTORY');
-  const manifest = await packageGuestRuntime(process.argv[2]);
+  const media = process.argv[2] === '--media';
+  const destination = process.argv[media ? 3 : 2];
+  if (!destination || process.argv.length !== (media ? 4 : 3)) {
+    throw new Error('Usage: node scripts/guest-runtime-package.mjs [--media] NEW_OUTPUT_DIRECTORY');
+  }
+  const manifest = await packageGuestRuntime(destination, { media });
   console.log(JSON.stringify({ schema: manifest.schema, runtimeRevision: manifest.runtimeRevision, files: Object.keys(manifest.files).length }));
 }
