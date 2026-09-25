@@ -17,7 +17,12 @@ let dispatched = false;
 let stopping;
 let transport;
 let controller;
+function startupPhase(phase) {
+  process.send?.({ event: "startup", phase });
+}
+startupPhase("launch");
 const context = await chromium.launchPersistentContext(profilePath, {
+  timeout: 30000,
   headless: true,
   chromiumSandbox: true,
   executablePath,
@@ -25,12 +30,13 @@ const context = await chromium.launchPersistentContext(profilePath, {
   serviceWorkers: "block",
   args: ["--disable-background-networking", "--disable-component-update", "--no-first-run"]
 });
+startupPhase("navigation");
 await context.route("**/*", async route => {
   if (new URL(route.request().url()).origin === allowedOrigin) await route.continue();
   else { unexpectedRequests++; await route.abort(); }
 });
 const page = context.pages()[0] ?? await context.newPage();
-await page.goto(targetUrl);
+await page.goto(targetUrl, { timeout: 30000 });
 
 function assertAuthorized(signal) {
   if (authority.signal.aborted || signal?.aborted) {
@@ -108,6 +114,7 @@ const executor = {
     }
   }
 };
+startupPhase("connection");
 transport = net.createConnection(socketPath);
 await new Promise((resolve, reject) => { transport.once("connect", resolve); transport.once("error", reject); });
 controller = attachBrowserControlDispatcher({ transport, identity, executor, isAuthorized: () => !authority.signal.aborted, authoritySignal: authority.signal });
@@ -130,4 +137,5 @@ process.on("message", async message => {
   } catch { process.send?.({ event: "fixture-error" }); await stop(); process.exitCode = 1; }
 });
 process.once("disconnect", () => { void stop(); });
+startupPhase("ready");
 process.send?.({ event: "ready", browserVersion: context.browser()?.version() ?? "unavailable", chromiumSandbox: true });
