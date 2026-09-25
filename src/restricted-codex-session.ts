@@ -5,6 +5,7 @@ import { homedir, tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { CuaProviderFailurePhase } from "./cua-provider-error.js";
+import type { ReasoningEffort } from "./reasoning-effort.js";
 import { CODEX_IMAGE, CODEX_MAX_OUTPUT_BYTES, RESTRICTED_CODEX_ANALYSIS_IDENTITY, RESTRICTED_CODEX_ANALYSIS_MODELS,
   admitsRestrictedCodexConfig, admitsRestrictedCodexThread, codexRecord, restrictedCodexConfig, restrictedCodexFailure,
   restrictedCodexRequestError, restrictedCodexUsage, type RestrictedCodexRequest, type RestrictedCodexResult,
@@ -21,6 +22,16 @@ export interface RestrictedCodexSessionOptions {
   platform?: NodeJS.Platform;
   arch?: string;
   spawnFn?: RestrictedCodexSpawn;
+  participant?: {
+    authMode?: "operator";
+    reasoningEffort?: ReasoningEffort;
+    tool: {
+      name: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      call(args: unknown): Promise<string>;
+    };
+  };
 }
 
 function childEnvironment(source: NodeJS.ProcessEnv, home: string, scratch: string): NodeJS.ProcessEnv {
@@ -28,6 +39,21 @@ function childEnvironment(source: NodeJS.ProcessEnv, home: string, scratch: stri
   for (const key of ["PATH", "LANG", "USER", "LOGNAME"])
     if (typeof source[key] === "string") result[key] = source[key];
   return result;
+}
+
+function configArguments(overrides: Record<string, unknown>): string[] {
+  return Object.entries(overrides).flatMap(([key, value]) => ["-c", `${key}=${JSON.stringify(value)}`]);
+}
+
+function validParticipant(options: RestrictedCodexSessionOptions["participant"]): boolean {
+  if (!options) return true;
+  const { tool } = options;
+  if ((options.authMode !== undefined && options.authMode !== "operator")
+    || typeof tool?.name !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(tool.name)
+    || typeof tool.description !== "string" || tool.description.length === 0 || tool.description.length > 4096
+    || !tool.inputSchema || typeof tool.inputSchema !== "object" || Array.isArray(tool.inputSchema)
+    || typeof tool.call !== "function") return false;
+  try { return Buffer.byteLength(JSON.stringify(tool.inputSchema)) <= 256 * 1024; } catch { return false; }
 }
 
 async function isNativeExecutable(file: string, platform: NodeJS.Platform): Promise<boolean> {
@@ -108,7 +134,8 @@ async function checkVersion(file: string, env: NodeJS.ProcessEnv, cwd: string, s
 }
 
 const rawCompactionTypes = ["compaction", "compaction_summary", "context_compaction"];
-const allowedRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
+const analystRawItemTypes = ["message", "reasoning", ...rawCompactionTypes];
+const participantRawItemTypes = [...analystRawItemTypes, "custom_tool_call", "custom_tool_call_output"];
 
 type Event = { method: string; params: Record<string, unknown> };
 const unclosedChildren = new Set<Promise<void>>();
@@ -169,15 +196,18 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
 } {
   const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
   const sourceEnv = options.env ?? process.env;
+  const participant = options.participant, operatorAuth = participant?.authMode === "operator";
+  const reasoningEffort = participant?.reasoningEffort ?? "low";
   const spawnFn: RestrictedCodexSpawn = options.spawnFn ?? ((file, args, settings) => spawn(file, args, settings));
   let work: string | undefined, authLink: string | undefined, transport: RestrictedCodexTransport | undefined;
   let threadId: string | undefined, cwd = "", scratch = "";
-  let identity: { model: string; instructions: string } | undefined;
+  let identity: { requestedModel: string | undefined; model: string; instructions: string } | undefined;
   let previousUsage: RestrictedCodexUsage | null = { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 };
   let activeDeadline: RestrictedCodexDeadline | undefined;
   let interrupt: { threadId: string; turnId: string } | undefined;
   let closed = false, cleanupTrusted = true;
   let pending: Promise<RestrictedCodexResult> | undefined, closing: Promise<boolean> | undefined, disposing: Promise<boolean> | undefined;
+  const toolCallIds = new Set<string>();
 
   const dispose = (): Promise<boolean> => {
     closed = true;
@@ -213,6 +243,8 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     let completed = false, compacted = false;
     let latestUsage: RestrictedCodexUsage | null = null;
     let generatedDeltaBytes = 0;
+    let selectedModel = identity?.model;
+    const allowedRawItemTypes = participant ? participantRawItemTypes : analystRawItemTypes;
     let outputItem: { id: string; text: string } | undefined;
     let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
     let phase: CuaProviderFailurePhase = "startup";
@@ -228,6 +260,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       if (method === "thread/compacted" || item.type === "contextCompaction" || rawCompactionTypes.includes(String(item.type))) compacted = true;
       if (method === "rawResponseItem/completed") {
         if (!allowedRawItemTypes.includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        if (item.type === "custom_tool_call" && item.name !== "exec") { deadline.stop("codex_tool_call"); return; }
         if (item.type === "message" && Array.isArray(item.content)
           && item.content.some(content => codexRecord(content).type === "refusal")) deadline.stop("refusal");
       }
@@ -244,7 +277,15 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         latestUsage = total;
       }
       if (method === "item/started" || method === "item/completed") {
-        if (!["userMessage", "agentMessage", "reasoning", "contextCompaction"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        const allowedItems = participant
+          ? ["userMessage", "agentMessage", "reasoning", "contextCompaction", "dynamicToolCall"]
+          : ["userMessage", "agentMessage", "reasoning", "contextCompaction"];
+        if (!allowedItems.includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        if (item.type === "dynamicToolCall" && (item.tool !== participant?.tool.name || item.namespace !== null
+          || (method === "item/started" && item.status !== "inProgress")
+          || (method === "item/completed" && (item.status !== "completed" || item.success !== true)))) {
+          deadline.stop("codex_tool_call"); return;
+        }
         if (item.type === "agentMessage") {
           if (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)) {
             deadline.stop("codex_tool_call"); return;
@@ -283,6 +324,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       const item = codexRecord(params.item);
       // Tool requests must fail even if the turn-start acknowledgment is lost.
       if ((method === "rawResponseItem/completed" && !allowedRawItemTypes.includes(String(item.type)))
+        || (method === "rawResponseItem/completed" && item.type === "custom_tool_call" && item.name !== "exec")
         || (["item/started", "item/completed"].includes(method) && item.type === "agentMessage"
           && (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)))) {
         deadline.stop("codex_tool_call"); return;
@@ -295,6 +337,21 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       }
       if (turnId === undefined) early.push({ method, params });
       else handleTurnEvent(method, params);
+    };
+
+    const onRequest: RestrictedCodexTransport["onRequest"] = async (method, params) => {
+      const activeTurnId = turnId ?? earlyTurnId;
+      const callId = params.callId;
+      if (!participant || method !== "item/tool/call" || params.threadId !== threadId || params.turnId !== activeTurnId
+        || params.namespace !== null || params.tool !== participant.tool.name || typeof callId !== "string"
+        || callId.length === 0 || callId.length > 200 || toolCallIds.has(callId))
+        throw new RestrictedCodexStop("codex_tool_call");
+      toolCallIds.add(callId);
+      deadline.pause();
+      const text = await deadline.wait(participant.tool.call(params.arguments));
+      if (typeof text !== "string" || Buffer.byteLength(text) > CODEX_MAX_OUTPUT_BYTES) throw new RestrictedCodexStop("invalid_response");
+      try { JSON.parse(text); } catch { throw new RestrictedCodexStop("invalid_response"); }
+      return { success: true, contentItems: [{ type: "inputText", text }] };
     };
 
     try {
@@ -312,21 +369,25 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
         const env = childEnvironment(sourceEnv, home, scratch);
         await checkVersion(file, env, cwd, spawnFn, deadline);
-        const config = restrictedCodexConfig(request.model), configPath = path.join(home, "config.toml");
-        await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
-        const authHome = options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
-        if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
-        let authFile: string;
-        try {
-          authFile = await realpath(path.join(authHome, "auth.json"));
-          if (!(await stat(authFile)).isFile()) throw new Error();
-        } catch { throw new RestrictedCodexStop("codex_login_required"); }
+        const configMode = { participantCodeMode: participant !== undefined, reasoningEffort, operatorAuth };
+        const config = restrictedCodexConfig(request.model, configMode), configPath = path.join(home, "config.toml");
+        if (!operatorAuth) {
+          await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
+          const authHome = options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
+          if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
+          let authFile: string;
+          try {
+            authFile = await realpath(path.join(authHome, "auth.json"));
+            if (!(await stat(authFile)).isFile()) throw new Error();
+          } catch { throw new RestrictedCodexStop("codex_login_required"); }
+          deadline.check();
+          authLink = path.join(home, "auth.json");
+          await symlink(authFile, authLink);
+        }
         deadline.check();
-        authLink = path.join(home, "auth.json");
-        await symlink(authFile, authLink);
-        deadline.check();
-        const owned = ownCodexProcess(spawnFn(file, ["app-server", "--strict-config"], {
-          cwd, env, detached: false, stdio: ["pipe", "pipe", "pipe"]
+        const appServerArgs = ["app-server", "--strict-config", ...(operatorAuth ? configArguments(config.overrides) : [])];
+        const owned = ownCodexProcess(spawnFn(file, appServerArgs, {
+          cwd, env: operatorAuth ? { ...sourceEnv } : env, detached: false, stdio: ["pipe", "pipe", "pipe"]
         }));
         transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
         transport.onNotification = onNotification;
@@ -335,27 +396,39 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
           clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
         });
         if (typeof initialize.userAgent !== "string" || !initialize.userAgent.includes(`/0.154.0 `)
-          || initialize.codexHome !== home || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
+          || (!operatorAuth && initialize.codexHome !== home)
+          || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
           throw new RestrictedCodexStop("codex_unsupported_version");
         transport.notify("initialized", {});
         phase = "config/read";
         const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
-        if (!admitsRestrictedCodexConfig(effective, configPath, request.model)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        if (!admitsRestrictedCodexConfig(effective, configPath, request.model, configMode)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        selectedModel = String(codexRecord(effective.config).model);
         phase = "account/read";
         const account = await transport.rpc("account/read", { refreshToken: false });
         if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
-        if (codexRecord(account.account).type !== "chatgpt" || account.requiresOpenaiAuth !== true)
+        const accountType = codexRecord(account.account).type;
+        if ((!operatorAuth && accountType !== "chatgpt") || (operatorAuth && !["chatgpt", "apiKey"].includes(String(accountType)))
+          || account.requiresOpenaiAuth !== true)
           throw new RestrictedCodexStop("codex_unsupported_auth");
+        const mcpServers = codexRecord(codexRecord(effective.config).mcp_servers);
+        const mcpNames = Object.keys(mcpServers);
+        if (mcpNames.length > 100 || mcpNames.some(name => name.length === 0 || name.length > 200))
+          throw new RestrictedCodexStop("codex_unsafe_configuration");
+        const threadConfig = { ...config.overrides };
+        for (const name of mcpNames) threadConfig[`mcp_servers.${JSON.stringify(name)}.enabled`] = false;
         phase = "thread/start";
         const thread = await transport.rpc("thread/start", { cwd, ephemeral: true, experimentalRawEvents: true,
-          approvalPolicy: "never", sandbox: "read-only", model: request.model, modelProvider: "openai", allowProviderModelFallback: false,
-          environments: [], runtimeWorkspaceRoots: [], dynamicTools: [], baseInstructions: request.instructions, config: config.overrides });
-        if (!admitsRestrictedCodexThread(thread, request.model, cwd)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+          approvalPolicy: "never", sandbox: "read-only", model: selectedModel, modelProvider: "openai", allowProviderModelFallback: false,
+          environments: [], runtimeWorkspaceRoots: [], dynamicTools: participant ? [{ type: "function", name: participant.tool.name,
+            description: participant.tool.description, inputSchema: participant.tool.inputSchema }] : [],
+          baseInstructions: request.instructions, config: threadConfig });
+        if (!admitsRestrictedCodexThread(thread, selectedModel, cwd, reasoningEffort)) throw new RestrictedCodexStop("codex_unsafe_configuration");
         threadId = String(codexRecord(thread.thread).id);
         phase = "mcpServerStatus/list";
         const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
         if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null) throw new RestrictedCodexStop("codex_unsafe_configuration");
-        identity = { model: request.model, instructions: request.instructions };
+        identity = { requestedModel: request.model, model: selectedModel, instructions: request.instructions };
       } else {
         transport.beginRequest(deadline, frameLimit);
         transport.onNotification = onNotification;
@@ -364,6 +437,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         result = { status: "completed", output: null, usage: null, usageComplete: false, dispatched: false, errorCode: null };
       } else {
         phase = "turn/start";
+        if (participant) transport.onRequest = onRequest;
         const input: Record<string, unknown>[] = [{ type: "text", text: request.evidence, text_elements: [] }];
         for (const [index, image] of request.images.entries()) {
           deadline.check();
@@ -376,7 +450,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
         dispatched = true;
         const turn = await transport.rpc("turn/start", { threadId, cwd, approvalPolicy: "never", sandboxPolicy: { type: "readOnly" },
-          environments: [], runtimeWorkspaceRoots: [], effort: "low", model: request.model, outputSchema: request.schema, input });
+          environments: [], runtimeWorkspaceRoots: [], effort: reasoningEffort, model: selectedModel!, outputSchema: request.schema, input });
         const returnedTurnId = codexRecord(turn.turn).id;
         if (typeof returnedTurnId !== "string" || returnedTurnId.length === 0 || returnedTurnId.length > 200
           || (earlyTurnId !== undefined && earlyTurnId !== returnedTurnId)) throw new RestrictedCodexStop("codex_protocol_error");
@@ -397,6 +471,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       deadline.close();
       activeDeadline = undefined;
       if (transport) transport.onNotification = () => undefined;
+      if (transport) transport.onRequest = undefined;
       if (result.errorCode !== null) {
         if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
         if (!await dispose()) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };
@@ -407,9 +482,10 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
 
   return {
     run(request, readinessOnly = false) {
-      const error = restrictedCodexRequestError(request);
+      const error = restrictedCodexRequestError(request, operatorAuth);
       if (error) return Promise.resolve(restrictedCodexFailure(error));
-      if (closed || (identity && (identity.model !== request.model || identity.instructions !== request.instructions)))
+      if (!validParticipant(participant)) return Promise.resolve(restrictedCodexFailure("invalid_request"));
+      if (closed || (identity && (identity.requestedModel !== request.model || identity.instructions !== request.instructions)))
         return Promise.resolve(restrictedCodexFailure("invalid_request"));
       if (pending || unclosedChildren.size) return Promise.resolve(restrictedCodexFailure("codex_busy"));
       if (!(platform === "linux" && arch === "x64") && !(platform === "darwin" && arch === "arm64"))

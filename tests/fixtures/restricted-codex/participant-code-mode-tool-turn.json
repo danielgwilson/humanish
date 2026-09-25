@@ -1,0 +1,85 @@
+{
+  "schema": "humanish.codex-0.154-code-mode-tool-turn.v1",
+  "source": "Sanitized projection of the retained 2026-09-25 Codex CLI 0.154.0 live probe; reasoning, auth, raw image bytes, and private identifiers are omitted.",
+  "beforeResponse": [
+    {
+      "method": "rawResponseItem/completed",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
+          "type": "custom_tool_call",
+          "id": "code-mode-exec-synthetic",
+          "status": "completed",
+          "call_id": "code-mode-call-synthetic",
+          "name": "exec",
+          "input": "const r = JSON.parse(await tools.humanish_ui({kind: 'observe'})); text(r.acknowledgments); image(r.imageUrl);"
+        }
+      }
+    },
+    {
+      "method": "item/started",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
+          "type": "dynamicToolCall",
+          "id": "dynamic-tool-synthetic",
+          "namespace": null,
+          "tool": "humanish_ui",
+          "arguments": { "kind": "observe" },
+          "status": "inProgress",
+          "contentItems": null,
+          "success": null,
+          "durationMs": null
+        }
+      }
+    }
+  ],
+  "request": {
+    "id": 900,
+    "method": "item/tool/call",
+    "params": {
+      "threadId": "thread-synthetic",
+      "turnId": "turn-synthetic",
+      "callId": "tool-call-synthetic",
+      "namespace": null,
+      "tool": "humanish_ui",
+      "arguments": { "kind": "observe" }
+    }
+  },
+  "afterResponse": [
+    {
+      "method": "rawResponseItem/completed",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
+          "type": "custom_tool_call_output",
+          "call_id": "code-mode-call-synthetic",
+          "output": "Synthetic acknowledgment and image forwarded to the model."
+        }
+      }
+    },
+    {
+      "method": "item/completed",
+      "params": {
+        "threadId": "thread-synthetic",
+        "turnId": "turn-synthetic",
+        "item": {
+          "type": "dynamicToolCall",
+          "id": "dynamic-tool-synthetic",
+          "namespace": null,
+          "tool": "humanish_ui",
+          "arguments": { "kind": "observe" },
+          "status": "completed",
+          "contentItems": [
+            { "type": "inputText", "text": "{\"acknowledgments\":[],\"imageUrl\":\"data:image/png;base64,c3ludGhldGlj\"}" }
+          ],
+          "success": true,
+          "durationMs": 500
+        }
+      }
+    }
+  ]
+}

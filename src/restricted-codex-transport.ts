@@ -13,18 +13,21 @@ export class RestrictedCodexStop extends Error {
 }
 
 export class RestrictedCodexDeadline {
-  readonly expiresAt: number;
+  private deadlineAt: number;
+  private remainingMs: number;
   code: RestrictedCodexAnalysisErrorCode | null = null;
   private readonly stopped: Promise<never>;
   private rejectStopped!: (reason: RestrictedCodexStop) => void;
-  private readonly timer: ReturnType<typeof setTimeout>;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private paused = false;
   private readonly onAbort = (): void => this.stop("cancelled");
 
   constructor(timeoutMs: number, private readonly signal?: AbortSignal) {
-    this.expiresAt = performance.now() + timeoutMs;
+    this.remainingMs = timeoutMs;
+    this.deadlineAt = performance.now() + timeoutMs;
     this.stopped = new Promise<never>((_resolve, reject) => { this.rejectStopped = reject; });
     void this.stopped.catch(() => undefined);
-    this.timer = setTimeout(() => this.stop("timeout"), timeoutMs);
+    this.arm(timeoutMs);
     signal?.addEventListener("abort", this.onAbort, { once: true });
     if (signal?.aborted) this.stop("cancelled");
   }
@@ -33,8 +36,24 @@ export class RestrictedCodexDeadline {
     this.code = code;
     this.rejectStopped(new RestrictedCodexStop(code));
   }
+  get expiresAt(): number { return this.deadlineAt; }
+  private arm(ms: number): void {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.stop("timeout"), Math.max(1, ms));
+  }
+  /** Host tool execution is outside model time. Cancellation remains active. */
+  pause(): void {
+    this.check();
+    if (this.paused) throw new RestrictedCodexStop("codex_protocol_error");
+    this.remainingMs = Math.max(1, this.deadlineAt - performance.now());
+    clearTimeout(this.timer); this.timer = undefined; this.paused = true;
+  }
+  resume(): void {
+    if (!this.paused || this.code !== null) return;
+    this.paused = false; this.deadlineAt = performance.now() + this.remainingMs; this.arm(this.remainingMs);
+  }
   check(): void {
-    if (this.code === null && performance.now() >= this.expiresAt) this.stop("timeout");
+    if (!this.paused && this.code === null && performance.now() >= this.deadlineAt) this.stop("timeout");
     if (this.code !== null) throw new RestrictedCodexStop(this.code);
   }
   async wait<T>(promise: Promise<T>): Promise<T> {
@@ -97,6 +116,7 @@ export class RestrictedCodexTransport {
   private eventCount = 0;
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
+  onRequest: ((method: string, params: Record<string, unknown>) => Promise<Record<string, unknown>>) | undefined;
 
   constructor(readonly owned: OwnedCodexProcess, private deadline: RestrictedCodexDeadline,
     private frameLimit = CODEX_MAX_OUTPUT_BYTES) {
@@ -142,8 +162,25 @@ export class RestrictedCodexTransport {
     const value = codexRecord(raw);
     if (Object.keys(value).length === 0) { this.fail("codex_protocol_error"); return; }
     if (value.id !== undefined && typeof value.method === "string") {
-      this.write({ id: value.id, error: { code: -32601, message: "Analyst host requests are disabled" } });
-      this.fail("codex_tool_call"); return;
+      if (!this.onRequest || ++this.eventCount > CODEX_MAX_EVENTS) {
+        this.write({ id: value.id, error: { code: -32601, message: "Host request is disabled" } });
+        this.fail(this.eventCount > CODEX_MAX_EVENTS ? "response_too_large" : "codex_tool_call"); return;
+      }
+      const id = value.id;
+      void this.onRequest(value.method, codexRecord(value.params)).then(result => {
+        try {
+          if (this.closing || this.deadline.code !== null) return;
+          this.write({ id, result });
+          this.deadline.resume();
+        } catch { this.fail("codex_process_failed"); }
+      }, error => {
+        try {
+          if (!this.closing && this.deadline.code === null)
+            this.write({ id, error: { code: -32000, message: "Host request failed" } });
+        } catch { /* The owned process is already failing. */ }
+        this.fail(error instanceof RestrictedCodexStop ? error.code : "codex_tool_call");
+      });
+      return;
     }
     if (typeof value.id === "number" && value.method === undefined) {
       const pending = this.pending.get(value.id);
