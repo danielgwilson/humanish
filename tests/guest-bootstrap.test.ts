@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { encodeGuestBootstrap, parseGuestBootstrap, GuestBootstrapReader, connectGuestBootstrap } from "../src/guest-bootstrap.js";
+import { encodeGuestBootstrap, parseGuestBootstrap, GuestBootstrapReader, connectGuestBootstrap, GUEST_BOOTSTRAP_LIMITS } from "../src/guest-bootstrap.js";
 import { identity, pair, tick } from "./browser-control-fixture.js";
 import { execFileSync } from "node:child_process";
 import { runGuestRuntime } from "../src/guest-runtime.js";
@@ -44,9 +44,31 @@ describe("fixed canonical guest bootstrap", () => {
     p.left.write(Buffer.concat([encodeGuestBootstrap(identity),Buffer.from([0])]));
     await expect(reader.identity).rejects.toMatchObject({code:"protocol_mismatch"}); p.left.destroy();
   });
-  it.each([0,1025,0xffffffff])("refuses length %i from header alone", async n => {
+  it.each([0,GUEST_BOOTSTRAP_LIMITS.bytes+1,0xffffffff])("refuses length %i from header alone", async n => {
     const p=pair(), reader=new GuestBootstrapReader(p.right,identity.runtimeRevision,new AbortController().signal);
     const b=Buffer.alloc(4);b.writeUInt32BE(n);p.left.write(b);
+    await expect(reader.identity).rejects.toMatchObject({code:"protocol_mismatch"});p.left.destroy();
+  });
+  it("admits a canonical initial loopback URL without changing the READY identity", async () => {
+    const p=pair(true), reader=new GuestBootstrapReader(p.right,identity.runtimeRevision,new AbortController().signal);
+    const initialUrl="http://localhost:3000/notes?q=%E2%9C%93";
+    p.left.write(encodeGuestBootstrap(identity,false,initialUrl));
+    await expect(reader.identity).resolves.toEqual(identity);
+    expect(reader.initialUrl).toBe(initialUrl);
+    expect(parseGuestBootstrap(encodeGuestBootstrap(identity,true).subarray(4),identity.runtimeRevision,true)).toEqual(identity);
+    reader.close(); p.left.destroy();
+  });
+  it.each(["http://example.com:3000/","http://localhost/","http://localhost:80/","http://localhost:1023/",
+    "http://user:password@localhost:3000/","file:///tmp/notes.html","http://[::1]:3000/","http://localhost:65536/",
+    "http://localhost:3000/"+"a".repeat(GUEST_BOOTSTRAP_LIMITS.initialUrlBytes)])("refuses unsupported initial URL %# before dispatch", initialUrl => {
+    expect(()=>encodeGuestBootstrap(identity,false,initialUrl)).toThrow();
+    const bytes=Buffer.from(JSON.stringify({version:1,identity,initialUrl}));
+    expect(()=>parseGuestBootstrap(bytes,identity.runtimeRevision)).toThrow();
+  });
+  it("does not admit an initial URL on READY or enlarge the READY byte bound", async () => {
+    expect(()=>encodeGuestBootstrap(identity,true,"http://localhost:3000/")).toThrow();
+    const p=pair(), reader=new GuestBootstrapReader(p.right,identity.runtimeRevision,new AbortController().signal,true);
+    const header=Buffer.alloc(4);header.writeUInt32BE(GUEST_BOOTSTRAP_LIMITS.readyBytes+1);p.left.write(header);
     await expect(reader.identity).rejects.toMatchObject({code:"protocol_mismatch"});p.left.destroy();
   });
   it("does not extend the original admission deadline for trickled header bytes", async () => {

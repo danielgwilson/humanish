@@ -4,34 +4,57 @@ import { CuaExecutorError } from "./cua-executor-error.js";
 import { createBrowserControlClient } from "./browser-control-client.js";
 
 export const GUEST_BOOTSTRAP_VERSION = 1;
-export const GUEST_BOOTSTRAP_LIMITS = Object.freeze({ bytes: 1024, admissionMs: 5000, readyMs: 35_000, connectMs: 3000, port: 5251 });
+export const GUEST_BOOTSTRAP_LIMITS = Object.freeze({ bytes: 65_536 + 1024, readyBytes: 1024, initialUrlBytes: 65_536,
+  admissionMs: 5000, readyMs: 35_000, navigationMs: 30_000, paintMs: 5000, connectMs: 3000, port: 5251 });
 const refused = (): CuaExecutorError => new CuaExecutorError("protocol_mismatch", "not_dispatched");
-function canonical(identity: BrowserControlIdentity, ready: boolean): string {
+/** Same entry authority as the local desktop's opaque app-port forward. */
+export function validateGuestInitialUrl(value: string): string {
+  try {
+    if (typeof value !== "string") throw refused();
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || !["localhost", "127.0.0.1"].includes(url.hostname)
+      || url.username || url.password || !/^\d+$/.test(url.port) || Number(url.port) < 1024
+      || Buffer.byteLength(url.href) > GUEST_BOOTSTRAP_LIMITS.initialUrlBytes) throw refused();
+    return url.href;
+  } catch { throw refused(); }
+}
+export function guestReadyTimeoutMs(initialUrl?: string): number {
+  return GUEST_BOOTSTRAP_LIMITS.readyMs + (initialUrl === undefined ? 0 : GUEST_BOOTSTRAP_LIMITS.navigationMs + GUEST_BOOTSTRAP_LIMITS.paintMs);
+}
+function canonical(identity: BrowserControlIdentity, ready: boolean, initialUrl?: string): string {
   const { generation, challenge, runtimeRevision } = validateBrowserControlIdentity(identity);
   const fixed = { generation, challenge, runtimeRevision };
-  return JSON.stringify(ready ? { version: 1, ready: true, identity: fixed } : { version: 1, identity: fixed });
+  if (initialUrl !== undefined && (ready || validateGuestInitialUrl(initialUrl) !== initialUrl)) throw refused();
+  return JSON.stringify(ready ? { version: 1, ready: true, identity: fixed }
+    : { version: 1, identity: fixed, ...(initialUrl === undefined ? {} : { initialUrl }) });
 }
-export function encodeGuestBootstrap(identity: BrowserControlIdentity, ready = false): Buffer {
-  const bytes = Buffer.from(canonical(identity, ready));
-  if (bytes.length > GUEST_BOOTSTRAP_LIMITS.bytes) throw refused();
+export function encodeGuestBootstrap(identity: BrowserControlIdentity, ready = false, initialUrl?: string): Buffer {
+  const bytes = Buffer.from(canonical(identity, ready, initialUrl));
+  if (bytes.length > (ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes)) throw refused();
   const frame = Buffer.alloc(4 + bytes.length);
   frame.writeUInt32BE(bytes.length); bytes.copy(frame, 4);
   return frame;
 }
 export function parseGuestBootstrap(bytes: Buffer, revision: string, ready = false): BrowserControlIdentity {
-  if (!bytes.length || bytes.length > GUEST_BOOTSTRAP_LIMITS.bytes || bytes.some(byte => byte > 127)) throw refused();
+  return parseBootstrap(bytes, revision, ready).identity;
+}
+function parseBootstrap(bytes: Buffer, revision: string, ready: boolean): { identity: BrowserControlIdentity; initialUrl?: string } {
+  if (!bytes.length || bytes.length > (ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes) || bytes.some(byte => byte > 127)) throw refused();
   try {
     const value: unknown = JSON.parse(bytes.toString("ascii"));
     if (typeof value !== "object" || value === null || !("identity" in value)) throw refused();
     const identity = validateBrowserControlIdentity(value.identity);
-    if (identity.runtimeRevision !== revision || canonical(identity, ready) !== bytes.toString("ascii")) throw refused();
-    return identity;
+    const initialUrl = "initialUrl" in value ? value.initialUrl : undefined;
+    if (initialUrl !== undefined && typeof initialUrl !== "string") throw refused();
+    if (identity.runtimeRevision !== revision || canonical(identity, ready, initialUrl) !== bytes.toString("ascii")) throw refused();
+    return { identity, ...(initialUrl === undefined ? {} : { initialUrl }) };
   } catch { throw refused(); }
 }
 
 /** Own the first frame and continue refusing early bytes until synchronous handoff. */
 export class GuestBootstrapReader {
   readonly identity: Promise<BrowserControlIdentity>;
+  initialUrl: string | undefined;
   private resolve!: (identity: BrowserControlIdentity) => void;
   private reject!: (error: CuaExecutorError) => void;
   private readonly header = Buffer.alloc(4);
@@ -42,11 +65,11 @@ export class GuestBootstrapReader {
   private terminal = false;
   private timer: NodeJS.Timeout;
   constructor(private readonly stream: Duplex, private readonly revision: string, private readonly signal: AbortSignal,
-    private readonly ready = false, private readonly onFailure: () => void = () => {}) {
+    private readonly ready = false, private readonly onFailure: () => void = () => {}, readyTimeoutMs: number = GUEST_BOOTSTRAP_LIMITS.readyMs) {
     this.identity = new Promise((resolve, reject) => { this.resolve = resolve; this.reject = reject; });
     // A later factory rejection must not leave the admission rejection unconsumed.
     void this.identity.catch(() => {});
-    this.timer = setTimeout(() => this.fail("deadline_exceeded"), ready ? GUEST_BOOTSTRAP_LIMITS.readyMs : GUEST_BOOTSTRAP_LIMITS.admissionMs);
+    this.timer = setTimeout(() => this.fail("deadline_exceeded"), ready ? readyTimeoutMs : GUEST_BOOTSTRAP_LIMITS.admissionMs);
     stream.on("error", this.error); stream.on("close", this.end); stream.on("end", this.end); stream.on("data", this.data);
     signal.addEventListener("abort", this.abort, { once: true });
     if (signal.aborted || stream.destroyed || stream.readableEnded || stream.writableEnded || stream.readableObjectMode || stream.writableObjectMode) this.abort();
@@ -61,7 +84,7 @@ export class GuestBootstrapReader {
       value.copy(this.header, this.headerUsed, 0, count); this.headerUsed += count; offset += count;
       if (this.headerUsed < 4) return;
       const length = this.header.readUInt32BE(0);
-      if (!length || length > GUEST_BOOTSTRAP_LIMITS.bytes) { this.fail(); return; }
+      if (!length || length > (this.ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes)) { this.fail(); return; }
       this.body = Buffer.alloc(length);
     }
     const count = Math.min(value.length - offset, this.body.length - this.used);
@@ -69,8 +92,9 @@ export class GuestBootstrapReader {
     if (offset !== value.length) { this.fail(); return; }
     if (this.used === this.body.length) {
       try {
-        const identity = parseGuestBootstrap(this.body, this.revision, this.ready);
-        this.admitted = true; clearTimeout(this.timer); this.resolve(identity);
+        const parsed = parseBootstrap(this.body, this.revision, this.ready);
+        this.initialUrl = parsed.initialUrl;
+        this.admitted = true; clearTimeout(this.timer); this.resolve(parsed.identity);
       } catch { this.fail(); }
     }
   };
@@ -101,8 +125,9 @@ export class GuestBootstrapReader {
 }
 
 /** Fixed preface on an already acquired Firecracker stream; no path discovery/retry. */
-export async function connectGuestBootstrap(stream: Duplex, identity: BrowserControlIdentity, signal: AbortSignal): Promise<ReturnType<typeof createBrowserControlClient>> {
+export async function connectGuestBootstrap(stream: Duplex, identity: BrowserControlIdentity, signal: AbortSignal, initialUrl?: string): Promise<ReturnType<typeof createBrowserControlClient>> {
   validateBrowserControlIdentity(identity);
+  const request = encodeGuestBootstrap(identity, false, initialUrl);
   await new Promise<void>((resolve, reject) => {
     let bytes = Buffer.alloc(0), done = false;
     const timer = setTimeout(() => finish(new CuaExecutorError("deadline_exceeded", "not_dispatched")), GUEST_BOOTSTRAP_LIMITS.connectMs);
@@ -136,9 +161,9 @@ export async function connectGuestBootstrap(stream: Duplex, identity: BrowserCon
     if (signal.aborted || stream.destroyed) abort();
     else { stream.resume(); stream.write("CONNECT 5251\n", error => { if (error) end(); }); }
   });
-  const reader = new GuestBootstrapReader(stream, identity.runtimeRevision, signal, true);
+  const reader = new GuestBootstrapReader(stream, identity.runtimeRevision, signal, true, undefined, guestReadyTimeoutMs(initialUrl));
   try {
-    stream.write(encodeGuestBootstrap(identity), error => { if (error) reader.close(); });
+    stream.write(request, error => { if (error) reader.close(); });
     const actual = await reader.identity;
     if (!sameBrowserControlIdentity(actual, identity)) throw refused();
     reader.handoff();

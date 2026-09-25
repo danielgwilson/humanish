@@ -47,4 +47,25 @@ describe('one guest runtime lifecycle',()=>{
       createDesktop:async signal=>{observed=signal;return f.desktop;}});
     f.left.write(encodeGuestBootstrap(identity));await expect(running).rejects.toBeDefined();expect(observed?.aborted).toBe(true);expect(f.close).toHaveBeenCalledOnce();f.left.destroy();
   });
+  it('withholds READY until initial navigation finishes and forwards only the admitted URL',async()=>{
+    const f=fixture(); let finish!:()=>void;
+    const navigation=new Promise<void>(resolve=>{finish=resolve;});
+    const initialUrl='http://127.0.0.1:3000/notes';
+    const createDesktop=vi.fn(async(_signal:AbortSignal,_terminal:()=>void,url?:string)=>{expect(url).toBe(initialUrl);await navigation;return f.desktop;});
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
+    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
+    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await tick();
+    expect(f.marker.mock.calls).toEqual([['A']]); expect(createDesktop).toHaveBeenCalledOnce();
+    finish();await ready.identity;ready.handoff();
+    expect(f.marker.mock.calls).toEqual([['A'],['R']]);
+    const runtime=await running;f.left.destroy();await runtime.closed;
+  });
+  it('never acknowledges an initial navigation failure',async()=>{
+    const f=fixture();
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
+      createDesktop:async()=>{throw new Error('Synthetic navigation failure');}});
+    f.left.write(encodeGuestBootstrap(identity,false,'http://localhost:3000/'));
+    await expect(running).rejects.toThrow('Synthetic navigation failure');
+    expect(f.marker.mock.calls).toEqual([['A']]);expect(f.right.destroyed).toBe(true);f.left.destroy();
+  });
 });

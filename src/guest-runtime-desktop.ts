@@ -10,6 +10,7 @@ import { createGuestBrowserTools } from "./guest-browser-tools.js";
 import { createGuestDesktopExecutor } from "./guest-desktop-executor.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import type { GuestRuntimeDesktop } from "./guest-runtime.js";
+import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
 
 export const GUEST_RUNTIME_PATHS = Object.freeze({ root: "/opt/humanish/control", run: "/run/humanish", home: "/home/humanish" });
 export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/home/humanish", USER: "humanish", LOGNAME: "humanish",
@@ -17,13 +18,30 @@ export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/
   XDG_RUNTIME_DIR: "/run/humanish/xdg", XDG_CACHE_HOME: "/home/humanish/.cache", XDG_CONFIG_HOME: "/home/humanish/.config", TMPDIR: "/tmp" });
 const bad = (): CuaExecutorError => new CuaExecutorError("execution_failed", "not_dispatched");
 const CONFIG_SHA = "4ae1c52eab748a3624b3948ce792647be258caba70c8c72038b9a43be6459552";
-export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "browser" | "sandbox" | "focus" | "fixture";
+export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "browser" | "sandbox" | "focus" | "fixture" | "navigation";
 
-/** Fixed guest layout. No caller paths, environment, command, page selector or URL. */
+/** Initial document only: do not wait for app data, subresources or network idle. */
+export async function navigateGuestInitialPage(page: Pick<Page, "goto" | "waitForFunction">, initialUrl: string, signal: AbortSignal): Promise<void> {
+  const url = validateGuestInitialUrl(initialUrl);
+  signal.throwIfAborted();
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: GUEST_BOOTSTRAP_LIMITS.navigationMs });
+  signal.throwIfAborted();
+  // A document event precedes compositing. Yield a paint before handing the
+  // native full-desktop capture to a participant; this is not app readiness.
+  const painted = await page.waitForFunction(`() => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)));
+  })`, undefined, { timeout: GUEST_BOOTSTRAP_LIMITS.paintMs });
+  await painted.dispose();
+  signal.throwIfAborted();
+}
+
+/** Fixed guest layout with an optional admitted initial loopback app URL. */
 export async function createGuestRuntimeDesktop(options: {
   signal: AbortSignal; onTerminal(): void;
   onPhase?(phase: GuestRuntimePhase): void;
+  initialUrl?: string;
 }): Promise<GuestRuntimeDesktop & { readonly owner: { context: BrowserContext; page: Page; sandboxReport: string; configSha256: string } }> {
+  if (options.initialUrl !== undefined) validateGuestInitialUrl(options.initialUrl);
   const controller = new AbortController();
   const signal = AbortSignal.any([options.signal, controller.signal]);
   const children: { child: ChildProcess; closed: Promise<void>; exited: boolean }[] = [];
@@ -150,8 +168,12 @@ export async function createGuestRuntimeDesktop(options: {
     } });
     const tools = createGuestBrowserTools(native, content);
     const executor = createGuestDesktopExecutor({ width: 960, height: 720, tools, authoritySignal: signal, onTerminal: options.onTerminal });
-    progress("fixture"); await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`); check();
-    await page.locator("#note").waitFor(); check();
+    if (options.initialUrl !== undefined) {
+      progress("navigation"); await navigateGuestInitialPage(page, options.initialUrl, signal); check();
+    } else {
+      progress("fixture"); await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`); check();
+      await page.locator("#note").waitFor(); check();
+    }
     return { executor, close, owner: { context, page, sandboxReport, configSha256: CONFIG_SHA } };
   } catch {
     await close(); throw Object.assign(bad(), { phase });
