@@ -41,8 +41,8 @@ switches in this kernel.
 
 Virtio networking and boot-time IP configuration support ordinary TCP and UDP.
 The upstream MicroVM patch disables loading modules even when `CONFIG_MODULES`
-is enabled. The optional media kernel therefore builds the pinned v4l2loopback
-driver in; its device parameters use the standard kernel command line. Media
+is enabled. The optional media kernel therefore enables Amazon's included
+v4l2loopback driver; its parameters use the standard kernel command line. Media
 and sound are allowed by policy, but the browser-only image starts no media
 services. Initramfs, DRM and the listed debug features remain disabled.
 
