@@ -178,7 +178,7 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(provider.seen).toHaveLength(2);
     expect(provider.seen[1]!.observation.heardSpeech).toEqual(heardSpeech);
-    const speechEvidence = result.trace.items.find(item => item.title === "remote speech heard");
+    const speechEvidence = result.trace.items.find(item => item.title === "speech heard");
     expect(speechEvidence?.text).toContain("[redacted]");
     expect(JSON.stringify(result.trace)).not.toContain("PRIVATE");
   });

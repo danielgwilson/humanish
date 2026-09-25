@@ -121,7 +121,8 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
     if (!ready) { terminal(); return; }
     if (item.type === "heard") {
       const utterance = heard(item.utterance); if (!utterance) { terminal(); return; }
-      if (queue.length === HEARD_QUEUE) queue.shift(); queue.push(utterance); return;
+      if (queue.length === HEARD_QUEUE) { terminal(); return; }
+      queue.push(utterance); return;
     }
     if (item.type === "reply" && typeof item.id === "string" && typeof item.ok === "boolean") {
       const command = pending.get(item.id); if (!command) { terminal(); return; }
@@ -167,11 +168,14 @@ export async function startDesktopMedia(options: GuestDesktopMediaOptions): Prom
     const result = {
       ...executor, speechEnabled: pulse,
       async observe(): Promise<CuaObservation> {
+        if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
         const observation = await executor.observe();
+        if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
         const items = queue.splice(0, HEARD_PER_OBSERVATION);
         return items.length ? { ...observation, heardSpeech: items } as CuaObservation : observation;
       },
       async execute(action: Parameters<CuaExecutor["execute"]>[0], signal?: AbortSignal): Promise<void> {
+        if (closed) throw new CuaExecutorError("execution_failed", "not_dispatched");
         const candidate = action as { kind?: unknown; text?: unknown };
         if (candidate.kind !== "speak") return executor.execute(action, signal);
         if (!pulse || !validText(candidate.text) || closed || options.signal.aborted || signal?.aborted) {

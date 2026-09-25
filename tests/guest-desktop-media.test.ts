@@ -52,7 +52,8 @@ describe("guest desktop media", () => {
     expect(base.execute).toHaveBeenCalledWith(action, undefined);
     transport.send({ type: "heard", utterance: { id: "bad", source: "speaker_audio", text: "", durationMs: 0 } });
     expect(terminal).toHaveBeenCalledOnce();
-    await expect(wrapped.execute({ kind: "speak", text: "after failure" } as unknown as CuaAction)).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+    await expect(wrapped.execute({ kind: "speak", text: "after failure" } as unknown as CuaAction)).rejects.toMatchObject({ code: "execution_failed", disposition: "not_dispatched" });
+    await expect(wrapped.observe()).rejects.toMatchObject({ code: "execution_failed" });
   });
 
   it("rejects unsupported declarations before starting the worker", async () => {

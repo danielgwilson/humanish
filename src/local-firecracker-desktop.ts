@@ -140,7 +140,6 @@ export async function createLocalFirecrackerDesktop(options: {
       throw new Error("Local browser startup or initial page navigation failed or timed out.", { cause: error });
     }
     await client.ready();
-    if (options.media?.microphone?.source === "speech") client.executor.speechEnabled = true;
     signal.throwIfAborted();
     options.signal?.addEventListener("abort", aborted, { once: true });
     return ownDesktopAllocation({ resourceId: container, release: async () => {

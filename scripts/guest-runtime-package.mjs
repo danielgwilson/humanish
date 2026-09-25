@@ -79,6 +79,7 @@ export async function packageGuestRuntime(destination, { media = false } = {}) {
   for (const name of mediaModules) {
     await cp(join(repository, 'dist', name), join(mediaRoot, name));
   }
+  if (media) await writeFile(join(mediaRoot, 'package.json'), '{"type":"module"}\n');
   for (const name of selected.packages) {
     const packageRoot = await realpath(join(repository, 'node_modules', name));
     const hashes = await inventory(packageRoot);

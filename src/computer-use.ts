@@ -1167,7 +1167,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         pendingHeardSpeech.push(utterance);
         heardSpeechChanged = true;
         record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "ok",
-          title: "remote speech heard", text: redactNarration(utterance.text) });
+          title: "speech heard", text: redactNarration(utterance.text) });
       }
       if (pendingHeardSpeech.length > CUA_SPEECH_LIMITS.utterances) {
         throw new CuaExecutorError("invalid_response", "outcome_uncertain");
@@ -1679,6 +1679,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           kind: "ui_action",
           lifecycle: "completed",
           title: actionTitle,
+          ...(action.kind === "speak" ? { text: redactNarration(action.text) } : {}),
           // Structured pin coordinates (#441), exactly the click classes the Observer
           // pins render — recorded fact instead of a title re-parse downstream.
           ...(action.kind === "click" || action.kind === "double_click"

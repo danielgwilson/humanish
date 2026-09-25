@@ -155,7 +155,10 @@ export async function createGuestRuntimeDesktop(options: {
     check();
     if (options.media !== undefined) {
       progress("media");
-      media = await startDesktopMedia({ media: options.media, env: GUEST_RUNTIME_ENV, signal, onTerminal: options.onTerminal });
+      media = await startDesktopMedia({ media: {
+        ...(options.media.camera === undefined ? {} : { camera: options.media.camera }),
+        ...(options.media.microphone === undefined ? {} : { microphone: options.media.microphone })
+      }, env: GUEST_RUNTIME_ENV, signal, onTerminal: options.onTerminal });
       check();
     }
     progress("browser"); pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, { executablePath: "/usr/bin/chromium",

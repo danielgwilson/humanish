@@ -72,8 +72,8 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
             snapshot: () => evidence
           };
         },
-        ...(account ? { async buildProvider() {
-          const participant = createRestrictedCodexParticipant();
+        ...(account ? { async buildProvider({ executor }) {
+          const participant = createRestrictedCodexParticipant({ speechEnabled: executor?.speechEnabled === true });
           participants.push(participant);
           return Object.assign(participant.provider, { async close() {
             if ((await participant.close()).status !== "confirmed") {

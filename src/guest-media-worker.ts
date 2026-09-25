@@ -69,9 +69,7 @@ async function retry(action: () => Promise<boolean>, attempts = 100): Promise<vo
 function run(binary: string, args: string[]): Promise<void> { return waitExit(child(binary, args)); }
 
 async function startPulse(): Promise<ChildProcess> {
-  const pulse = child("/usr/bin/pulseaudio", ["--daemonize=no", "--exit-idle-time=-1", "--disallow-exit", "--log-target=stderr"], { stderr: "pipe" });
-  let stderrBytes = 0;
-  pulse.stderr!.on("data", (bytes: Buffer) => { stderrBytes += bytes.length; if (stderrBytes > 16_384) pulse.stderr!.pause(); });
+  const pulse = child("/usr/bin/pulseaudio", ["--daemonize=no", "--exit-idle-time=-1", "--disallow-exit", "--log-target=stderr"]);
   await retry(async () => {
     try { await run("/usr/bin/pactl", ["info"]); return true; } catch { return false; }
   });
@@ -86,7 +84,7 @@ async function startPulse(): Promise<ChildProcess> {
 async function startCamera(): Promise<ChildProcess | undefined> {
   if (!config.camera) return undefined;
   const camera = child("/usr/bin/ffmpeg", ["-nostdin", "-v", "error", "-re", "-f", "lavfi", "-i",
-    "testsrc2=size=640x360:rate=10", "-pix_fmt", "yuv420p", "-f", "v4l2", "/dev/video0"], { stderr: "pipe" });
+    "testsrc2=size=640x360:rate=10", "-pix_fmt", "yuv420p", "-f", "v4l2", "/dev/video0"]);
   let failed = false; camera.once("close", () => { failed = true; });
   await new Promise(resolve => setTimeout(resolve, 250));
   if (failed) throw new Error("camera producer failed");
@@ -96,9 +94,7 @@ async function startCamera(): Promise<ChildProcess | undefined> {
 async function startWhisper(): Promise<ChildProcess | undefined> {
   if (!config.microphone) return undefined;
   const server = child(config.whisperServer, ["--host", "127.0.0.1", "--port", String(WHISPER_PORT),
-    "--model", config.whisperModel, "--threads", "2", "--language", "en"], { stderr: "pipe" });
-  let stderrBytes = 0;
-  server.stderr!.on("data", (bytes: Buffer) => { stderrBytes += bytes.length; if (stderrBytes > 16_384) server.stderr!.pause(); });
+    "--model", config.whisperModel, "--threads", "2", "--language", "en"]);
   await retry(() => new Promise(resolve => {
     const socket = createConnection({ host: "127.0.0.1", port: WHISPER_PORT });
     socket.once("connect", () => { socket.destroy(); resolve(true); });
@@ -133,13 +129,14 @@ function transcribe(raw: Buffer): Promise<string> {
         } catch (error) { reject(error); }
       }); response.once("error", reject);
     });
+    call.setTimeout(20_000, () => call.destroy(new Error("transcription timed out")));
     call.once("error", reject); call.end(Buffer.concat([before, audio, fields]));
   });
 }
 
 function startListening(): ChildProcess | undefined {
   if (!config.microphone) return undefined;
-  const capture = child("/usr/bin/parec", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker.monitor"], { stdout: "pipe", stderr: "pipe" });
+  const capture = child("/usr/bin/parec", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker.monitor"], { stdout: "pipe" });
   let pending = Buffer.alloc(0), active: Buffer[] | undefined, pre: Buffer[] = [], voiceFrames = 0, quietFrames = 0;
   const utterances: Array<{ audio: Buffer; durationMs: number }> = []; let transcribing = false, nextId = 1;
   const drain = async (): Promise<void> => {
@@ -147,16 +144,17 @@ function startListening(): ChildProcess | undefined {
     try {
       while (!closing && utterances.length) {
         const item = utterances.shift()!;
-        const text = boundedText(await transcribe(item.audio).catch(() => ""));
+        const text = boundedText(await transcribe(item.audio));
         if (text) emit({ type: "heard", utterance: { id: `speech-${nextId++}`, source: "speaker_audio", text, durationMs: item.durationMs } });
       }
-    } finally { transcribing = false; }
+    } catch { close(); process.exit(1); }
+    finally { transcribing = false; }
   };
   const finish = (): void => {
     if (!active) return;
     const bytes = Buffer.concat(active).subarray(0, MAX_AUDIO_BYTES), durationMs = Math.max(1, Math.round(bytes.length / 2 / SAMPLE_RATE * 1000));
     if (voiceFrames >= MIN_VOICE_FRAMES) {
-      if (utterances.length === TRANSCRIPTION_QUEUE) utterances.shift();
+      if (utterances.length === TRANSCRIPTION_QUEUE) { close(); process.exit(1); }
       utterances.push({ audio: bytes, durationMs }); void drain();
     }
     active = undefined; voiceFrames = 0; quietFrames = 0;
@@ -181,8 +179,8 @@ function startListening(): ChildProcess | undefined {
 }
 
 async function speak(text: string): Promise<void> {
-  const tts = child("/usr/bin/espeak-ng", ["--stdout", "--stdin"], { stdin: "pipe", stdout: "pipe", stderr: "pipe" });
-  const playback = child("/usr/bin/paplay", ["--device=humanish_mic"], { stdin: "pipe", stderr: "pipe" });
+  const tts = child("/usr/bin/espeak-ng", ["--stdout", "--stdin"], { stdin: "pipe", stdout: "pipe" });
+  const playback = child("/usr/bin/paplay", ["--device=humanish_mic"], { stdin: "pipe" });
   tts.stdout!.pipe(playback.stdin!); tts.stdin!.end(text);
   await Promise.all([waitExit(tts), waitExit(playback)]);
 }

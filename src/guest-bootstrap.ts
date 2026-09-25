@@ -173,7 +173,8 @@ export async function connectGuestBootstrap(stream: Duplex, identity: BrowserCon
     if (!sameBrowserControlIdentity(actual, identity)) throw refused();
     reader.handoff();
   } catch (error) { reader.close(); stream.destroy(); throw error; }
-  const client = createBrowserControlClient({ transport: stream, identity });
+  const client = createBrowserControlClient({ transport: stream, identity,
+    ...(media?.microphone?.source === "speech" ? { speechEnabled: true } : {}) });
   stream.resume();
   return client;
 }
