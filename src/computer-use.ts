@@ -146,6 +146,8 @@ export interface CuaTurnRequest {
 }
 
 export interface CuaTurn {
+  /** This action proposal yielded from a provider request that remains active. No receipt or usage is settled yet. */
+  providerRequestPending?: true;
   providerRequest?: ProviderRequestReceipt;
   /** Continuation handle for the next turn. */
   responseId?: string;
@@ -819,6 +821,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let sawUsage = false;
   let incompleteInteractionUsage = false;
   let unreportedInteractionUsage = false;
+  let interactionRequestPending = false;
   const hasUnreportedInteractionUsage = (): boolean => unreportedInteractionUsage || provider.interactionUsageIncomplete === true;
   let lastResponseId: string | undefined;
   let currentPhase = "initializing computer-use loop";
@@ -833,6 +836,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   const recordUsage = (turn: CuaTurn, interaction = true): void => {
+    if (turn.providerRequestPending === true) return;
     if (interaction && (!completeTurnUsage(turn.usage) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
     const raw = turn.usage;
     if (raw === undefined) return;
@@ -862,6 +866,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     let failure: unknown;
     let failed = false;
     let accepted: CuaTurn | undefined;
+    let pendingYield = false;
     const pending = Promise.resolve().then(() => {
       if (controller.signal.aborted) throw new CuaProviderError("cancelled", { dispatched: false, usageComplete: false, cleanup: "confirmed" });
       return kind === "debrief" ? provider.debrief!(request, controller.signal) : provider.nextTurn(request, controller.signal);
@@ -869,9 +874,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     void pending.catch(() => undefined);
     try {
       accepted = await raceBounded(`participant ${kind}`, pending, remaining(), capMs, signal);
-      const r = accepted.providerRequest;
-      if (!r || r.dispatched !== true || typeof r.usageComplete !== "boolean" || r.cleanup !== "confirmed") {
-        throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, accepted.usage);
+      if (accepted.providerRequestPending === true) {
+        if (kind !== "interaction" || accepted.done || accepted.actions.length === 0 || accepted.pendingSafetyChecks.length > 0 ||
+          accepted.providerRequest !== undefined || accepted.usage !== undefined || accepted.interruption !== undefined || accepted.closingReport !== undefined) {
+          throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" });
+        }
+        pendingYield = true;
+      } else {
+        const r = accepted.providerRequest;
+        if (!r || r.dispatched !== true || typeof r.usageComplete !== "boolean" || r.cleanup !== "confirmed") {
+          throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, accepted.usage);
+        }
       }
     } catch (error) { failed = true; failure = error; }
     finally {
@@ -884,6 +897,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         })]); } finally { clearTimeout(timer); }
       }
     }
+    if (!failed && pendingYield) {
+      interactionRequestPending = true;
+      return accepted!;
+    }
     const final = settlement as Settlement | undefined;
     const typed = isCuaProviderError(failure) ? failure : final && "error" in final && isCuaProviderError(final.error) ? final.error : undefined;
     const turn = final && "turn" in final ? final.turn : undefined;
@@ -891,7 +908,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     const receipt: ProviderRequestReceipt = raw && (typeof raw.dispatched === "boolean" || raw.dispatched === "unknown") &&
       typeof raw.usageComplete === "boolean" && ["confirmed", "unconfirmed"].includes(raw.cleanup) ? { dispatched: raw.dispatched, usageComplete: raw.usageComplete, cleanup: raw.cleanup }
       : { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" };
-    const rawUsage = typed?.usage ?? turn?.usage;
+    const rawUsage = typed?.usage ?? (turn?.providerRequestPending === true ? undefined : turn?.usage);
     const usage = rawUsage === undefined ? undefined : Object.fromEntries(
       ["input", "output", "cachedInput", "cacheWriteInput", "total"].flatMap(key => {
         const value = (rawUsage as ActorTokenUsage)[key as keyof ActorTokenUsage];
@@ -899,7 +916,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       })) as ActorTokenUsage | undefined;
     // restricted-codex-session sets dispatched only after initialize/config/account/
     // thread/MCP admission, immediately before turn/start; it is not a success claim.
-    providerRequests.push({ ordinal: providerRequests.length + 1, kind, ...receipt,
+    const settledKind = interactionRequestPending ? "interaction" : kind;
+    providerRequests.push({ ordinal: providerRequests.length + 1, kind: settledKind, ...receipt,
       profileVerified: provider.executionProfile !== undefined && receipt.dispatched === true,
       ...(typed ? { errorCode: typed.code, ...(typed.failurePhase === undefined ? {} : { failurePhase: typed.failurePhase }) } : {}),
       ...(usage === undefined ? {} : { usage: { ...usage } }) });
@@ -908,9 +926,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
         title: "participant request cleanup unconfirmed", text: "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted." });
     }
-    if (kind === "interaction" && receipt.dispatched !== false && (!receipt.usageComplete || !completeTurnUsage(usage))) unreportedInteractionUsage = true;
+    if (settledKind === "interaction" && receipt.dispatched !== false && (!receipt.usageComplete || !completeTurnUsage(usage))) unreportedInteractionUsage = true;
+    interactionRequestPending = false;
     if (failed) {
-      if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, kind === "interaction");
+      if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, settledKind === "interaction");
       if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
       if (failure instanceof CuaStallError) throw new CuaProviderError("timeout", receipt, usage, typed?.failurePhase);
       throw typed ?? new CuaProviderError("process_failed", receipt, usage);
@@ -1844,7 +1863,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
               ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
             const closingReceipt = provider.requestPolicy === "fail_closed" ? providerRequests.at(-1) : undefined;
-            const usageReported = closingReceipt?.kind === "debrief" && closingReceipt.usageComplete && completeTurnUsage(closingReceipt.usage);
+            const usageReported = closingReceipt?.usageComplete === true && completeTurnUsage(closingReceipt.usage);
             note("failed", `${detail}; closing request usage is ${usageReported ? "reported" : "unreported"}`, usageReported);
           }
         } finally {
