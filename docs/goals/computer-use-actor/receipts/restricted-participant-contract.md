@@ -8,8 +8,9 @@ API providers and saved bundles without the new fields keep their defaults.
 ## Admission and output
 
 Admission uses the launcher's supported Linux x64 or Apple Silicon macOS,
-file-backed ChatGPT login route. The requested profile records Codex CLI 0.154.0, `gpt-6-astra`, low
-reasoning effort and the `restricted-codex-v1` policy. The durable profile itself is a request declaration.
+file-backed ChatGPT login route. The requested profile records Codex CLI 0.154.0,
+`gpt-6-astra`, low reasoning effort and the `restricted-codex-v1` policy. The durable
+profile itself is a request declaration.
 Each request's `profileVerified` means the launcher passed its version, effective
 config, account, thread and empty MCP checks before attempting `turn/start`.
 It does not establish remote completion, quota, a charge, or a successful action.
@@ -66,8 +67,9 @@ allocates a desktop or reads an API key.
 Hermetic tests exercise output schemas, conversation isolation, cancellation and late
 settlement, accounting, durable readers, and the real bundle/completion producer.
 Provider domain mocks are identified as such. The captured launcher wire fixtures
-are reused with documented synthetic ID/counter mutations to prove dispatch admission, cleanup and rejection of a
-non-participant answer; it is not a fabricated successful account study.
+are reused with documented synthetic ID/counter mutations to prove dispatch
+admission, cleanup and rejection of a non-participant answer; they are not a
+fabricated successful account study.
 
 A live acceptance run must separately retain actual schema acceptance, visible
 Unicode input and Save behavior, the normal automatic report, exact source and

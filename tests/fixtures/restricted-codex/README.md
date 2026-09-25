@@ -35,7 +35,10 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,
 auth contents, raw provider errors, and rate-limit/account details are excluded.
 The fixture-driven fake process is for failure injection and lifecycle tests;
-its successful response is not another live model proof.
+its successful response is not another live model proof. Continuing-session tests
+reuse these envelopes with successive synthetic turn IDs and cumulative token
+counters. These mutations test conversation identity, request accounting and
+cleanup; real visual recall is qualified separately against the native CLI.
 
 The retained proof established that `agents.enabled=false` removes the child
 agent namespace, while `features.multi_agent=false` alone did not. It also
