@@ -180,7 +180,7 @@ export interface ActorExecutionProfile {
   cliVersion: "0.154.0";
   toolPolicy: "restricted-codex-v1";
   participantSchema: "humanish.restricted-participant-turn.v1";
-  memoryPolicy: "recent-eight-16k-v1";
+  memoryPolicy: "recent-eight-16k-v1" | "continuing-thread-v1";
 }
 export interface ProviderRequestReceipt {
   dispatched: boolean | "unknown";
@@ -206,7 +206,8 @@ export function validActorExecutionProfile(value: unknown): value is ActorExecut
     memoryPolicy: "recent-eight-16k-v1" };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const object = value as Record<string, unknown>;
-  return Object.keys(object).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => object[key] === v);
+  return Object.keys(object).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => key === "memoryPolicy"
+    ? object[key] === "recent-eight-16k-v1" || object[key] === "continuing-thread-v1" : object[key] === v);
 }
 
 /** Closed per-attempt evidence; dollar amounts are never part of account usage. */

@@ -1,15 +1,14 @@
 import type { ActorTokenUsage, ProviderRequestReceipt } from "./actor-contract.js";
-import { describeCuaAction, type CuaProvider, type CuaTurn, type CuaTurnRequest } from "./computer-use.js";
+import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import { CuaProviderError, isCuaProviderError, type CuaProviderErrorCode } from "./cua-provider-error.js";
 import { validateBrowserControlPng } from "./browser-control-protocol.js";
-import { runRestrictedCodexSession, type RestrictedCodexSessionOptions } from "./restricted-codex-session.js";
+import { createRestrictedCodexSession, type RestrictedCodexSessionOptions } from "./restricted-codex-session.js";
 import type { RestrictedCodexAnalysisErrorCode, RestrictedCodexResult } from "./restricted-codex-policy.js";
 import { PARTICIPANT_PROFILE, PARTICIPANT_LIMITS as L, PARTICIPANT_TURN_SCHEMA, PARTICIPANT_CLOSING_SCHEMA,
   parseParticipantTurn, parseParticipantClosing } from "./restricted-codex-participant-policy.js";
 
 export type ParticipantProviderCloseResult = { status: "confirmed" | "unconfirmed" };
 export interface RestrictedParticipantOptions { session?: RestrictedCodexSessionOptions; requestTimeoutMs?: number }
-type Memory = { narration: string; actions: string[]; execution?: CuaTurnRequest["previousExecution"] };
 const codeOf = (code: RestrictedCodexAnalysisErrorCode | null): CuaProviderErrorCode => {
   if (code === "cancelled" || code === "timeout" || code === "refusal") return code === "refusal" ? "refused" : code;
   if (code === "codex_cleanup_failed") return "cleanup_unconfirmed";
@@ -22,28 +21,34 @@ const codeOf = (code: RestrictedCodexAnalysisErrorCode | null): CuaProviderError
 };
 const noDispatch = (): ProviderRequestReceipt => ({ dispatched: false, usageComplete: false, cleanup: "confirmed" });
 
-/** Fresh single turns over an already-owned executor. No desktop or login acquisition here. */
+/** One continuing participant conversation over an already-owned executor. */
 export function createRestrictedCodexParticipant(options: RestrictedParticipantOptions = {}): {
   provider: CuaProvider; close(): Promise<ParticipantProviderCloseResult>;
 } {
   const timeoutMs = options.requestTimeoutMs ?? L.requestMs;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > L.requestMs) throw new CuaProviderError("request_rejected", noDispatch());
-  let closed = false, failedCleanup = false, incompleteUsage = false, omitted = 0;
+  const session = createRestrictedCodexSession(options.session);
+  let closed = false, failedCleanup = false, incompleteUsage = false;
   let instructions: string | undefined;
-  let history: Memory[] = [];
+  let lastActionCount: number | undefined;
+  let sessionClosing: Promise<boolean> | undefined;
+  let sessionSettled = false;
   let controller: AbortController | undefined;
   let pending: Promise<CuaTurn> | undefined;
   let closing: Promise<ParticipantProviderCloseResult> | undefined;
   let abortAt: number | undefined;
   let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+  const closeSession = (): Promise<boolean> => sessionClosing ??= Promise.resolve().then(() => session.close()).catch(() => false).then(confirmed => {
+    sessionSettled = true;
+    if (!confirmed) failedCleanup = true;
+    return confirmed;
+  });
   const revoke = (): void => {
     closed = true;
     abortAt ??= performance.now();
     controller?.abort();
-    cleanupTimer ??= setTimeout(() => { if (pending) failedCleanup = true; }, Math.max(0, L.cleanupMs - (performance.now() - abortAt)));
-  };
-  const trim = (): void => {
-    while (history.length > L.historyTurns || Buffer.byteLength(JSON.stringify(history)) > L.history) { history.shift(); omitted++; }
+    void closeSession();
+    cleanupTimer ??= setTimeout(() => { if (pending || !sessionSettled) failedCleanup = true; }, Math.max(0, L.cleanupMs - (performance.now() - abortAt)));
   };
   async function execute(req: CuaTurnRequest, signal: AbortSignal, debrief: boolean, own: AbortController): Promise<CuaTurn> {
     let receipt = noDispatch();
@@ -60,40 +65,48 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       const frame = req.observation.screenshot;
       try { if (!Buffer.isBuffer(frame)) throw new Error(); validateBrowserControlPng(frame); }
       catch { throw new CuaProviderError("request_rejected", receipt); }
-      instructions ??= req.instructions;
-      const last = history.at(-1);
-      if (last && req.previousExecution !== undefined) {
-        if (req.previousExecution.actions.length !== last.actions.length || req.previousExecution.actions.some((a, i) =>
-          a.index !== i || !["completed", "skipped", "not_dispatched", "outcome_uncertain"].includes(a.status))) {
+      let previousExecution: CuaTurnRequest["previousExecution"];
+      if (req.previousExecution !== undefined) {
+        const actions = req.previousExecution?.actions;
+        if (lastActionCount === undefined || !Array.isArray(actions) || actions.length !== lastActionCount || actions.some((a, i) =>
+          !a || a.index !== i || !["completed", "skipped", "not_dispatched", "outcome_uncertain"].includes(a.status))) {
           throw new CuaProviderError("request_rejected", receipt);
         }
-        last.execution = { actions: req.previousExecution.actions.map(a => ({ ...a })) };
+        previousExecution = { actions: actions.map(({ index, status }) => ({ index, status })) };
       }
-      trim();
-      const result: RestrictedCodexResult = await runRestrictedCodexSession({ model: PARTICIPANT_PROFILE.requestedModel,
-        instructions: `${instructions}\n\nYou are the study participant. Use only the current screenshot and explicit recent history. Describe your experience as public participant speech, never private reasoning. History contains proposals and input acknowledgments, not independent proof of success. A completed input does not prove its application outcome. Never use tools or request integrations. ${debrief ? "The interaction has ended. Give only a closing summary and frictionReports about what you observed; do not propose actions." : "Return the supplied JSON schema. Continue with one to four browser actions, or explicitly finish with no actions and your outcome. Preserve uncertainty and do not invent observations."}`,
-        evidence: JSON.stringify({ phase: debrief ? "closing" : "interaction", width: frame!.readUInt32BE(16), height: frame!.readUInt32BE(20),
-          contextHint: req.contextHint ?? null, memoryPolicy: PARTICIPANT_PROFILE.memoryPolicy, omittedTurns: omitted, history }),
+      instructions ??= req.instructions;
+      const result: RestrictedCodexResult = await session.run({ model: PARTICIPANT_PROFILE.requestedModel,
+        instructions: `${instructions}\n\nYou are the study participant throughout this conversation, including its closing account. Use the screenshots, your conversation history and explicit input acknowledgments. Describe your experience as public participant speech, never private reasoning. Earlier proposals and completed inputs are not independent proof of their application outcomes. Preserve uncertainty and do not invent observations. Never use tools or request integrations. Follow the current phase instruction and supplied JSON schema.`,
+        evidence: JSON.stringify({ phase: debrief ? "closing" : "interaction",
+          instruction: debrief ? "The interaction has ended. Give only a closing summary and frictionReports about what you observed; do not propose actions."
+            : "Continue with one to four browser actions, or explicitly finish with no actions and your outcome.",
+          width: frame!.readUInt32BE(16), height: frame!.readUInt32BE(20),
+          contextHint: req.contextHint ?? null, memoryPolicy: PARTICIPANT_PROFILE.memoryPolicy, previousExecution: previousExecution ?? null }),
         images: [{ evidenceId: "current-frame", dataUrl: `data:image/png;base64,${frame!.toString("base64")}` }],
         schema: debrief ? PARTICIPANT_CLOSING_SCHEMA : PARTICIPANT_TURN_SCHEMA, maxOutputTokens: null, timeoutMs, signal: own.signal
-      }, options.session);
+      });
       receipt = { dispatched: result.dispatched, usageComplete: result.usageComplete,
         cleanup: result.errorCode === "codex_cleanup_failed" ? "unconfirmed" : "confirmed" };
       usage = result.usage ?? undefined;
-      if (receipt.cleanup === "unconfirmed") { failedCleanup = true; closed = true; }
+      if (receipt.cleanup === "unconfirmed") { failedCleanup = true; revoke(); }
       if (result.dispatched && !result.usageComplete && !debrief) incompleteUsage = true;
       if (closed || own.signal.aborted) throw new CuaProviderError(receipt.cleanup === "unconfirmed" ? "cleanup_unconfirmed" : "cancelled", receipt, usage, result.failurePhase);
-      if (result.status !== "completed" || result.errorCode !== null) throw new CuaProviderError(codeOf(result.errorCode), receipt, usage, result.failurePhase);
+      if (result.status !== "completed" || result.errorCode !== null) {
+        revoke();
+        throw new CuaProviderError(codeOf(result.errorCode), receipt, usage, result.failurePhase);
+      }
       let turn: CuaTurn;
       try {
         turn = debrief ? { actions: [], pendingSafetyChecks: [], done: true, closingReport: parseParticipantClosing(result.output) }
           : parseParticipantTurn(result.output);
-      } catch { throw new CuaProviderError("invalid_response", receipt, usage, "response"); }
-      if (!debrief) { history.push({ narration: turn.message ?? "", actions: turn.actions.map(describeCuaAction) }); trim(); }
+      } catch { revoke(); throw new CuaProviderError("invalid_response", receipt, usage, "response"); }
+      // A done turn has no new input batch. Closing acknowledgments still refer
+      // to the last proposed actions, even after the participant reports done.
+      if (!debrief && turn.actions.length) lastActionCount = turn.actions.length;
       return { ...turn, ...(usage === undefined ? {} : { usage }), providerRequest: receipt };
     } catch (error) {
       if (isCuaProviderError(error)) throw error;
-      failedCleanup = true; closed = true; incompleteUsage = true;
+      failedCleanup = true; incompleteUsage = true; revoke();
       throw new CuaProviderError("process_failed", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, usage);
     } finally { signal.removeEventListener("abort", onAbort); }
   }
@@ -103,7 +116,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     const own = new AbortController(); controller = own;
     const task = execute(req, signal, debrief, own);
     pending = task;
-    void task.finally(() => { if (pending === task) { pending = undefined; controller = undefined; clearTimeout(cleanupTimer); } }).catch(() => undefined);
+    void task.finally(() => { if (pending === task) { pending = undefined; controller = undefined; } }).catch(() => undefined);
     return task;
   };
   const provider: CuaProvider = {
@@ -111,21 +124,22 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     executionProfile: PARTICIPANT_PROFILE, modelSettings: { reasoningEffort: "low" },
     capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: false,
       preGrantableApprovals: false, inProcessTools: false, license: "proprietary" },
-    get interactionUsageIncomplete() { return incompleteUsage; }, get historyTurnsOmitted() { return omitted; },
+    get interactionUsageIncomplete() { return incompleteUsage; }, get historyTurnsOmitted() { return 0; },
     nextTurn: (req, signal) => start(req, signal, false), debrief: (req, signal) => start(req, signal, true)
   };
   return { provider, close: () => {
     if (closing) return closing;
-    revoke(); history = []; instructions = undefined;
+    revoke();
     closing = (async () => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const settled = !pending || await Promise.race([pending.then(() => true, () => true), new Promise<false>(resolve => {
+        const settled = await Promise.race([Promise.all([pending?.then(() => undefined, () => undefined), closeSession()])
+          .then(([, confirmed]) => confirmed), new Promise<false>(resolve => {
           timer = setTimeout(() => resolve(false), Math.max(0, L.cleanupMs - (performance.now() - abortAt!)));
         })]);
         if (!settled) failedCleanup = true;
         return { status: failedCleanup ? "unconfirmed" : "confirmed" } as ParticipantProviderCloseResult;
-      } finally { clearTimeout(timer); clearTimeout(cleanupTimer); history = []; instructions = undefined; }
+      } finally { clearTimeout(timer); clearTimeout(cleanupTimer); lastActionCount = undefined; instructions = undefined; }
     })();
     return closing;
   } };

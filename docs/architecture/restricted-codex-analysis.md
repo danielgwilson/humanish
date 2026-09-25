@@ -36,11 +36,20 @@ host RPCs and asynchronous question messages before accepting any report. The
 actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
-Each request owns a separate child process, temporary home and fresh thread;
-participant, analyst and readiness requests may run concurrently. An unresolved
-child process blocks new requests until its exit is confirmed. Each thread receives
-one turn. Evidence is not silently
-downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
+Each analyst or readiness request owns a separate child process, temporary home
+and fresh thread. Participants use the same launcher with one process and thread
+for their entire interaction and closing feedback; successive turns append the
+current screenshot, context and action acknowledgments to that conversation.
+Codex manages context compaction. Humanish does not replace it with a rolling
+history window or restart a failed conversation without its memory. Participant
+threads never share state with each other or the analyst.
+
+An unresolved child process blocks new sessions until its exit is confirmed.
+Limits and deadlines apply to each request, including startup on the first turn.
+Thread-cumulative token usage is converted to per-turn usage before accounting.
+The qualified CLI omits compaction requests from its thread totals. A turn that
+compacts therefore retains known counts but records incomplete usage.
+Evidence is not silently downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
 request data are admitted. Generated report text is limited to 2 MiB. Raw input
 notifications echo image data URLs, so their frame budget is the larger of 2 MiB
 or the admitted serialized packet plus 1 MiB; total stdout is bounded separately

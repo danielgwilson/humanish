@@ -2,16 +2,19 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runRestrictedParticipantStudy } from "../src/restricted-codex-participant-run.js";
 import { parseLabConfig } from "../src/lab-config.js";
-import { runRestrictedCodexSession } from "../src/restricted-codex-session.js";
+import type { RestrictedCodexRequest, RestrictedCodexResult } from "../src/restricted-codex-policy.js";
 import { PARTICIPANT_PROFILE } from "../src/restricted-codex-participant-policy.js";
 import { estimateActorCostForExecution, estimateActorCost, contradictsAccountBilling } from "../src/pricing.js";
 import { readRunDetail } from "../src/run-detail.js";
 import { verifyRun } from "../src/run.js";
-vi.mock("../src/restricted-codex-session.js", () => ({ runRestrictedCodexSession: vi.fn() }));
-const session = vi.mocked(runRestrictedCodexSession);
+const { session, sessionClose } = vi.hoisted(() => ({
+  session: vi.fn<(request: RestrictedCodexRequest) => Promise<RestrictedCodexResult>>(), sessionClose: vi.fn<() => Promise<boolean>>()
+}));
+vi.mock("../src/restricted-codex-session.js", () => ({ createRestrictedCodexSession: vi.fn(() => ({ run: session, close: sessionClose })) }));
+beforeEach(() => { sessionClose.mockReset().mockResolvedValue(true); });
 const directories: string[] = [];
 afterEach(async () => { session.mockReset(); await Promise.all(directories.splice(0).map(d => rm(d, { recursive: true, force: true }))); });
 function config(analysis: false | { provider: "codex" } = false) {
@@ -36,10 +39,10 @@ describe("account participant producer and accounting", () => {
   });
   it("uses the normal finalized producer and automatic boundary after exact cleanup", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-study-")); directories.push(cwd);
-    session.mockResolvedValue(success);
+    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
     const close = vi.fn(async () => ({ status: "released" as const, reason: "terminated" as const }));
     const automatic = vi.fn(async () => {
-      expect(close).toHaveBeenCalledTimes(1);
+      expect(close).toHaveBeenCalledTimes(1); expect(sessionClose).toHaveBeenCalledTimes(1);
       const run = JSON.parse(await readFile(path.join(cwd, ".humanish/runs/account-proof/run.json"), "utf8"));
       expect(run.streams[0].actor.providerRequests[0].cleanup).toBe("confirmed");
       return { state: "skipped" as const, reason: "synthetic_domain_test" };
@@ -68,9 +71,26 @@ describe("account participant producer and accounting", () => {
     await writeFile(path.join(cwd, ".humanish/runs/account-proof/run.json"), JSON.stringify(nullProfile));
     expect((await verifyRun(cwd, "account-proof")).ok).toBe(false);
   });
+  it("waits for the continuing conversation to close before desktop release and analysis", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-conversation-")); directories.push(cwd);
+    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
+    let started!: () => void; let confirm!: (value: boolean) => void;
+    const closing = new Promise<void>(resolve => { started = resolve; });
+    const confirmation = new Promise<boolean>(resolve => { confirm = resolve; });
+    sessionClose.mockImplementation(() => { started(); return confirmation; });
+    const close = vi.fn(async () => ({ status: "released" as const, reason: "terminated" as const }));
+    const automatic = vi.fn(async () => ({ state: "skipped" as const, reason: "synthetic_domain_test" }));
+    const frame = PNG.sync.write(new PNG({ width: 2, height: 2 }));
+    const pending = runRestrictedParticipantStudy({ cwd, config: config({ provider: "codex" }), desktop: { resourceId: "synthetic-owned", close,
+      executor: { observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }), execute: vi.fn() } }, automaticAnalysis: { run: automatic } });
+    await closing; expect(sessionClose).toHaveBeenCalledTimes(1); expect(close).not.toHaveBeenCalled(); expect(automatic).not.toHaveBeenCalled();
+    confirm(true); const outcome = await pending;
+    expect(outcome.providerCleanup.status).toBe("confirmed"); expect(close).toHaveBeenCalledTimes(1); expect(automatic).toHaveBeenCalledTimes(1);
+    expect(session).toHaveBeenCalledTimes(1);
+  });
   it("awaits one pending desktop finalizer before automatic completion and final return", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-finalizer-")); directories.push(cwd);
-    session.mockResolvedValue(success);
+    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
     let release!: () => void;
     const started = new Promise<void>(resolve => { release = resolve; });
     let confirm!: (value: { status: "released"; reason: "terminated" }) => void;

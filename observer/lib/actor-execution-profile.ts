@@ -6,7 +6,8 @@ export function validActorExecutionProfile(value: unknown): boolean {
     memoryPolicy: "recent-eight-16k-v1" };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
-  return Object.keys(record).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => record[key] === v);
+  return Object.keys(record).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => key === "memoryPolicy"
+    ? record[key] === "recent-eight-16k-v1" || record[key] === "continuing-thread-v1" : record[key] === v);
 }
 
 /** Closed per-attempt evidence; dollar amounts are never part of account usage. */

@@ -43,6 +43,7 @@ describe.skipIf(!LIVE)("openai-computer-use actor (LIVE, spend-gated)", () => {
         noProgressSteps: 5,
         openai: { apiKey: process.env.OPENAI_API_KEY as string, reasoningEffort: "low" },
         desktop: desktop as unknown as E2BDesktopLike,
+        redactScreenshots: true,
         now: () => Date.now()
       });
 
@@ -55,8 +56,11 @@ describe.skipIf(!LIVE)("openai-computer-use actor (LIVE, spend-gated)", () => {
       const shots = result.trace.items.filter((item) => item.kind === "screenshot");
       expect(shots.length).toBeGreaterThan(0);
       expect(shots.every((item) => item.screenshotRef?.redaction === "blurred")).toBe(true);
+      process.stderr.write(`humanish live E2B: status=${result.status} completion=${result.completionReason} turns=${result.trace.counts.turns} actions=${result.trace.counts.actions} screenshots=${shots.length}\n`);
     } finally {
-      await desktop.kill().catch(() => undefined);
+      const killed = await desktop.kill();
+      expect(await desktop.isRunning()).toBe(false);
+      process.stderr.write(`humanish live E2B cleanup: exact sandbox ${killed ? "terminated" : "already absent"}\n`);
     }
   });
 });
