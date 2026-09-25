@@ -40,10 +40,11 @@ are preserved. Mount/cgroup namespaces do not have additional standalone Kconfig
 switches in this kernel.
 
 Virtio networking and boot-time IP configuration support ordinary TCP and UDP.
-Loadable modules remain enabled so optional media devices can be added without
-changing the runtime architecture. Media and sound are no longer forbidden by
-policy; the browser-only image does not start media services. Initramfs, DRM and
-the listed debug features remain disabled. This is not a fully minimized kernel.
+The upstream MicroVM patch disables loading modules even when `CONFIG_MODULES`
+is enabled. The optional media kernel therefore builds the pinned v4l2loopback
+driver in; its device parameters use the standard kernel command line. Media
+and sound are allowed by policy, but the browser-only image starts no media
+services. Initramfs, DRM and the listed debug features remain disabled.
 
 The fixed guest contract is a whole-disk `/dev/vda` ext4 read-only root and a fresh
 whole-disk `/dev/vdb` ext4 state volume. No partition/UUID discovery or initramfs is
