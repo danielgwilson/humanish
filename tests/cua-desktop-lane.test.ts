@@ -11,7 +11,8 @@ import type { CuaDesktopLane, DesktopLaneEvidence } from "../src/cua-desktop-lan
 import { ownDesktopAllocation } from "../src/desktop-session.js";
 import { DEVICE_PRESETS } from "../src/device-presets.js";
 import { createE2BCuaDesktopLane } from "../src/e2b-cua-desktop.js";
-import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import { E2B_SPEECH_TEMPLATE } from "../src/e2b-desktop-media.js";
+import type { E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../src/openai-responses-cu.js";
 import { prepareSelectedOutputDirectory } from "../src/selected-output-paths.js";
@@ -81,6 +82,30 @@ async function fixture() {
 }
 
 describe("ready desktop lane contract", () => {
+  it.each([
+    { speech: false, template: undefined, expected: undefined },
+    { speech: true, template: undefined, expected: E2B_SPEECH_TEMPLATE },
+    { speech: true, template: "custom-speech-desktop", expected: "custom-speech-desktop" }
+  ])("selects the desktop image for speech=$speech, override=$template", async ({ speech, template, expected }) => {
+    const f = await fixture();
+    const parsed = parseLabConfig({ ...f.deps.config,
+      actors: [{ type: "local-agent", localAgent: "codex", persona: "first-time-visitor", mission: "Join a call." }],
+      execution: { ...f.deps.config.execution, desktop: {
+        ...(template ? { template } : {}), ...(speech ? { media: { microphone: { source: "speech" } } } : {})
+      } } });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    f.deps.config = parsed.config;
+    const create = vi.fn(async () => { throw new Error("synthetic allocation stop"); });
+    f.deps.hooks.loadDesktopModule = async () => ({ Sandbox: { create } } as unknown as E2BDesktopModule);
+    const adapter = createE2BCuaDesktopLane(f.spec, f.deps, []);
+    await expect(adapter.prepare()).rejects.toThrow("synthetic allocation stop");
+    expect(create).toHaveBeenCalledOnce();
+    if (expected) expect(create).toHaveBeenCalledWith(expected, expect.objectContaining({ resolution: f.spec.resolution }));
+    else expect(create).toHaveBeenCalledWith(expect.objectContaining({ resolution: f.spec.resolution }));
+    await adapter.finalize({ failed: true });
+  });
+
   it("refuses an unsupported hosted Codex version before creating a desktop participant", async () => {
     const f = await fixture();
     const executable = path.join(f.cwd, "codex");

@@ -5,7 +5,11 @@ E2B speech uses the same guest media worker, PulseAudio devices, synthetic
 runtime. It extends E2B's maintained `desktop` template; the default browser
 template remains unchanged.
 
-From a source checkout, build Humanish and then build a private E2B template:
+Humanish selects its versioned public speech template automatically when a lab
+requests `media.microphone.source: speech`. No custom template build is needed.
+`execution.desktop.template` can override that default.
+
+To maintain or customize the template, build from a source checkout:
 
 ```sh
 pnpm build
@@ -20,6 +24,8 @@ template name or ID with `execution.desktop.template` and request
 
 The recipe deliberately stages build inputs under `/opt/humanish/build` rather
 than `/tmp`: E2B can clean `/tmp` between cached Build System 2.0 layers. It
-does not publish the template. A maintainer can publish a qualified build with
-E2B's `template publish` command; publishing requires a separate cross-account
-launch check before Humanish can use that template as a default.
+does not publish the template. Maintainers can publish a qualified build with
+[E2B's `template publish` command](https://e2b.dev/docs/sdk-reference/cli/v1.0.9/template#e2b-template-publish),
+verify public visibility, and verify launch by the exact template ID. Use a new
+versioned template for an update; do not overwrite the template used by a released
+Humanish version.

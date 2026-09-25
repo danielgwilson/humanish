@@ -55,11 +55,14 @@ recording with text evidence, not an audio/video call recording.
 
 ## Hosted desktops
 
-The same worker and participant loop support speech on an explicitly prepared
-E2B media template; see the [build recipe](../../runtime/browser-media/E2B.md). Select it with `execution.desktop.template`. The host starts
-the worker through the SDK's streaming command interface; model credentials stay
-on the host. Missing worker dependencies fail desktop preparation before a
-participant starts.
+The same worker and participant loop support hosted speech. Humanish selects a
+versioned public E2B media template when speech is requested; ordinary browser
+studies keep the stock desktop. The usual E2B credentials and Codex login are
+sufficient. `execution.desktop.template` remains an explicit override for your
+own compatible image; see the [build recipe](../../runtime/browser-media/E2B.md).
+The host starts the worker through the SDK's streaming command interface, and
+model credentials stay on the host. Missing dependencies fail desktop preparation
+before a participant starts.
 
 Existing hosted synthetic cameras use Chromium's fake-device flags. Those flags
 also replace its microphone, so hosted camera and speech cannot currently be

@@ -1,6 +1,15 @@
 import { startDesktopMedia } from "./guest-desktop-media.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./e2b-desktop-launch.js";
-import type { LabDesktopMedia } from "./lab-config.js";
+import type { LabConfig, LabDesktopMedia } from "./lab-config.js";
+
+/** Versioned public template built by runtime/browser-media/e2b-template.mjs. */
+export const E2B_SPEECH_TEMPLATE = "5egp1wpnx3c1dx3uo0ff";
+
+export function e2bDesktopTemplate(config: LabConfig): string | undefined {
+  if (config.execution?.target === "local") return undefined;
+  return config.execution?.desktop?.template
+    ?? (config.execution?.desktop?.media?.microphone?.source === "speech" ? E2B_SPEECH_TEMPLATE : undefined);
+}
 
 /** The same worker and conversation contract, transported by the hosted SDK's stdin/stdout. */
 export async function startE2BDesktopMedia(options: {

@@ -1,3 +1,4 @@
+import { e2bDesktopTemplate } from "./e2b-desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
@@ -3126,6 +3127,7 @@ function buildSingleLaneBundle(args: {
   inProgress?: boolean;
 }): RunBundle {
   const { spec, outcome, config } = args;
+  const desktopTemplate = e2bDesktopTemplate(config);
   return buildCuaBundle({
     realEmail: config.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
@@ -3164,7 +3166,7 @@ function buildSingleLaneBundle(args: {
     source: args.source,
     ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
-    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     providerResources: providerResourcesForOutcome({
       outcome,
@@ -4379,6 +4381,7 @@ export function buildCuaFanoutBundle(args: {
   const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
   const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
   const configuredBrowser = config.execution?.desktop?.browser;
+  const desktopTemplate = e2bDesktopTemplate(config);
   const resolvedBrowsers = (outcomes ?? [])
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
@@ -4489,8 +4492,8 @@ export function buildCuaFanoutBundle(args: {
             };
           })
         }),
-    // Custom desktop image provenance (every lane launched on it); omitted on the stock default.
-    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    // Selected hosted image, including the optional speech default; omitted on the stock desktop.
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(configuredBrowser === undefined
       ? {}
       : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),

@@ -40,7 +40,7 @@ import {
   type SubjectPhaseEvent
 } from "./e2b-cua-provisioning.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "./e2b-desktop-executor.js";
-import { startE2BDesktopMedia } from "./e2b-desktop-media.js";
+import { e2bDesktopTemplate, startE2BDesktopMedia } from "./e2b-desktop-media.js";
 import {
   loadE2BDesktopModule,
   type E2BDesktopSandbox
@@ -171,8 +171,8 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
     if (preparationStarted || finalization) throw new Error('Desktop lane preparation can only start once, before finalization.');
     preparationStarted = true;
     const desktopModule = await (deps.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    // Optional custom desktop template (image): present → Sandbox.create(template, opts); absent →
-    // the byte-stable Sandbox.create(opts) default (stock `desktop` template).
+    // An explicit template wins. Speech gets the versioned media image; ordinary
+    // browser studies retain the SDK default desktop.
     const acquired = await allocateE2BDesktopSession(desktopModule, {
       apiKey: deps.e2bApiKey,
       requestTimeoutMs: deps.requestTimeoutMs,
@@ -202,7 +202,7 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       resolution: spec.resolution,
       dpi: 96,
       lifecycle: { onTimeout: "kill" }
-    }, config.execution?.desktop?.template, {
+    }, e2bDesktopTemplate(config), {
       // The default loader reclaims an acquired handle before retrying failed desktop startup.
       // Its error names the cleanup outcome; pre-construction allocation failures remain unowned.
       onRetry: (reason) => {

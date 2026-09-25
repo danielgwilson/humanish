@@ -1518,9 +1518,6 @@ export function desktopMediaValidationReason(
     if (config.execution?.target !== "local" && media.camera !== undefined) {
       return "Hosted synthetic cameras replace Chromium's microphone and cannot be combined with speech. Use a local media desktop for camera and speech together, or omit the hosted camera.";
     }
-    if (config.execution?.target !== "local" && config.execution?.desktop?.template === undefined) {
-      return "Hosted speech requires a media desktop template. Set execution.desktop.template to a template built with the Humanish media runtime.";
-    }
   }
   return undefined;
 }
