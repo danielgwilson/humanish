@@ -39,6 +39,7 @@ function mailbox(child) {
   const queued = [];
   const waiting = new Map();
   child.on("message", message => {
+    if (message?.event === "startup") return;
     const waiter = waiting.get(message?.event);
     if (waiter) { waiting.delete(message.event); waiter(message); }
     else queued.push(message);
@@ -68,6 +69,7 @@ async function runCase(mode) {
   const server = net.createServer();
   const connected = once(server, "connection");
   await new Promise(resolve => server.listen(socketPath, resolve));
+  const startupStarted = performance.now();
   const child = fork(path.join(root, "scripts/lib/browser-control-proof-child.mjs"), [socketPath, profile, `http://127.0.0.1:${app.address().port}/`, JSON.stringify(identity), mode, executablePath], {
     cwd: root, env: { PATH: process.env.PATH, HOME: owned, TMPDIR: owned, LANG: "C.UTF-8", PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH ?? path.join(os.homedir(), ".cache/ms-playwright") },
     stdio: ["ignore", "ignore", "pipe", "ipc"]
@@ -77,9 +79,17 @@ async function runCase(mode) {
   let client;
   let childStderr = "";
   child.stderr.on("data", chunk => { childStderr = (childStderr + chunk.toString()).slice(-16000); });
-  const result = { mode, passed: false, independentSaves: 0, controlPathOnly: true };
+  const result = { mode, passed: false, independentSaves: 0, controlPathOnly: true, startup: [] };
+  child.on("message", message => {
+    if (message?.event === "startup") result.startup.push({ phase: message.phase, elapsedMs: Math.round(performance.now() - startupStarted) });
+  });
   try {
-    const [transport] = await bounded(connected, "child connection");
+    // Allow the child's 30s browser launch + 30s navigation, with 10s for process/IPC setup.
+    // Control and cleanup keep their independent, shorter deadlines.
+    const [transport] = await bounded(Promise.race([
+      connected,
+      exit.then(([code, signal]) => { throw new Error(`Fixture exited during startup: code=${code}, signal=${signal}`); })
+    ]), "browser startup / child connection", 70000);
     client = createBrowserControlClient({ transport, identity, requestTimeoutMs: 5000 });
     const ready = await next("ready");
     result.browser = { version: ready.browserVersion, chromiumSandbox: ready.chromiumSandbox };
@@ -172,6 +182,9 @@ async function runCase(mode) {
     result.independentSaves = saves;
     result.requests = requests;
     result.behaviorPassed = true;
+  } catch (error) {
+    result.error = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     client?.close();
     if (child.connected) child.send({ command: "stop" });
@@ -195,7 +208,6 @@ async function runCase(mode) {
       // Killing the direct controller does not establish that Chromium exited. Preserve its
       // private profile and socket directory rather than deleting possibly active state.
       result.retainedRecoveryDirectoryName = path.basename(owned);
-      await writeFile(path.join(artifactDir, "fixture-stderr.txt"), childStderr);
       throw error;
     } finally {
       server.close(); app.closeAllConnections(); await new Promise(resolve => app.close(resolve));
@@ -205,6 +217,7 @@ async function runCase(mode) {
         result.cleanup = result.ownedDirectoryAbsent ? "confirmed" : "unconfirmed";
       }
       result.passed = result.behaviorPassed === true && result.cleanup === "confirmed";
+      await writeFile(path.join(artifactDir, "fixture-stderr.txt"), childStderr);
       await writeFile(path.join(artifactDir, "result.json"), JSON.stringify(result, null, 2));
     }
   }
