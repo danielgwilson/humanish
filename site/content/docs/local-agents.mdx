@@ -87,8 +87,8 @@ inputs execute in the selected sandbox; credentials stay with the host CLI.
 - **It is slower.** Launching and communicating with a local CLI adds latency. Give the lane
   enough `execution.timeoutMs` for the task and inspect elapsed time in its evidence.
 - **The evidence says which brain ran it.** The trace records
-  the selected model and the provider's execution/authentication profile, so a
-  local-agent run is never silently compared against an API one.
+  the provider and resolved Codex model. Qualified ChatGPT-account participants
+  additionally record their execution profile with unknown-dollar billing.
 - **Both agents keep one conversation for the whole run.** Codex through an
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
