@@ -102,6 +102,7 @@ if (operation === "--version") {
       if (scenario === "lost-turn-ack") { emit({ method: "turn/started", params: { threadId: thread.thread.id, turn: turn.turn } }); return; }
       if (scenario !== "early-events") reply(message.id, map(turn));
       if (participantTool) {
+        if (scenario === "participant-usage-before-tool") emit(usage);
         for (const event of participantTool.beforeResponse) emit(event);
         emit(participantTool.request);
         return;

@@ -413,4 +413,20 @@ describe("restricted Codex Code Mode participant session", () => {
     expect(await session.close()).toBe(true);
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
+
+  it("exposes active-turn usage once and clears it before the terminal result resolves", async () => {
+    const f = await fixture("participant-usage-before-tool");
+    delete f.options.env!.NODE_OPTIONS;
+    let finishTool!: (value: string) => void;
+    const waitingTool = new Promise<string>(resolve => { finishTool = resolve; });
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => waitingTool } };
+    const session = createRestrictedCodexSession(f.options);
+    const pending = session.run({ ...request, model: undefined });
+    await vi.waitFor(() => expect(session.pendingUsage).toEqual({ input: 2957, output: 41, cachedInput: 0, cacheWriteInput: 0 }));
+    finishTool(JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }));
+    expect(await pending).toMatchObject({ status: "completed", usage: { input: 2957, output: 41 } });
+    expect(session.pendingUsage).toBeUndefined();
+    expect(await session.close()).toBe(true);
+  });
 });

@@ -190,10 +190,13 @@ function hasScopedIdentity(method: string, params: Record<string, unknown>, thre
 }
 
 /** One private process and conversation per owner. Only completed turns may continue. */
-export function createRestrictedCodexSession(options: RestrictedCodexSessionOptions = {}): {
+export interface RestrictedCodexSession {
+  readonly pendingUsage?: RestrictedCodexUsage | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
-} {
+}
+
+export function createRestrictedCodexSession(options: RestrictedCodexSessionOptions = {}): RestrictedCodexSession {
   const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
   const sourceEnv = options.env ?? process.env;
   const participant = options.participant, operatorAuth = participant?.authMode === "operator";
@@ -203,6 +206,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
   let threadId: string | undefined, cwd = "", scratch = "";
   let identity: { requestedModel: string | undefined; model: string; instructions: string } | undefined;
   let previousUsage: RestrictedCodexUsage | null = { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 };
+  let pendingUsage: RestrictedCodexUsage | undefined;
   let activeDeadline: RestrictedCodexDeadline | undefined;
   let interrupt: { threadId: string; turnId: string } | undefined;
   let closed = false, cleanupTrusted = true;
@@ -242,6 +246,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     let dispatched = false, usage: RestrictedCodexUsage | null = null;
     let completed = false, compacted = false;
     let latestUsage: RestrictedCodexUsage | null = null;
+    const requestUsageBaseline = previousUsage;
     let generatedDeltaBytes = 0;
     let selectedModel = identity?.model;
     const allowedRawItemTypes = participant ? participantRawItemTypes : analystRawItemTypes;
@@ -267,13 +272,14 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       if (method === "thread/tokenUsage/updated") {
         const total = restrictedCodexUsage(params.tokenUsage);
         // App-server reports cumulative thread usage. Receipts must charge only this turn.
-        if (total && previousUsage) {
-          const delta = { input: total.input - previousUsage.input, output: total.output - previousUsage.output,
-            cachedInput: (total.cachedInput ?? 0) - (previousUsage.cachedInput ?? 0),
-            cacheWriteInput: (total.cacheWriteInput ?? 0) - (previousUsage.cacheWriteInput ?? 0) };
+        if (total && requestUsageBaseline) {
+          const delta = { input: total.input - requestUsageBaseline.input, output: total.output - requestUsageBaseline.output,
+            cachedInput: (total.cachedInput ?? 0) - (requestUsageBaseline.cachedInput ?? 0),
+            cacheWriteInput: (total.cacheWriteInput ?? 0) - (requestUsageBaseline.cacheWriteInput ?? 0) };
           usage = Object.values(delta).every(value => Number.isSafeInteger(value) && value >= 0)
             && delta.cachedInput + delta.cacheWriteInput <= delta.input ? delta : null;
         } else usage = null;
+        pendingUsage = usage ?? undefined;
         latestUsage = total;
       }
       if (method === "item/started" || method === "item/completed") {
@@ -307,6 +313,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if (turn.status === "interrupted") { deadline.stop("cancelled"); return; }
         if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
         try {
+          pendingUsage = undefined;
           resolveTurn({ status: "completed", output: JSON.parse(outputItem.text) as unknown, usage,
             usageComplete: usage !== null && !compacted, dispatched: true, errorCode: null });
         } catch { deadline.stop("invalid_response"); }
@@ -355,6 +362,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
     };
 
     try {
+      pendingUsage = undefined;
       deadline.check();
       const frameLimit = Math.max(CODEX_MAX_OUTPUT_BYTES, Buffer.byteLength(JSON.stringify({ instructions: request.instructions,
         evidence: request.evidence, images: request.images, schema: request.schema })) + 1024 * 1024);
@@ -468,6 +476,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
       const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
       result = { ...restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage), failurePhase: phase };
     } finally {
+      pendingUsage = undefined;
       deadline.close();
       activeDeadline = undefined;
       if (transport) transport.onNotification = () => undefined;
@@ -481,6 +490,7 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
   }
 
   return {
+    get pendingUsage() { return pendingUsage; },
     run(request, readinessOnly = false) {
       const error = restrictedCodexRequestError(request, operatorAuth);
       if (error) return Promise.resolve(restrictedCodexFailure(error));
