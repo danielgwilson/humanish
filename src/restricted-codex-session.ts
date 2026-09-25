@@ -114,14 +114,13 @@ function retainUnclosedChild(closed: Promise<void>): void {
   void closed.then(() => { unclosedChildren.delete(closed); });
 }
 
-/** Each call owns a separate process, home and thread. An unresolved child blocks
- * new work, but ordinary participant turns may run concurrently. */
+/** Analysts/readiness keep their one-shot lifetime; participants own a session. */
 export async function runRestrictedCodexSession(request: RestrictedCodexRequest,
   options: RestrictedCodexSessionOptions = {}, readinessOnly = false): Promise<RestrictedCodexResult> {
-  const error = restrictedCodexRequestError(request);
-  if (error) return restrictedCodexFailure(error);
-  if (unclosedChildren.size) return restrictedCodexFailure("codex_busy");
-  return executeRestrictedCodexSession(request, options, readinessOnly);
+  const session = createRestrictedCodexSession(options);
+  const result = await session.run(request, readinessOnly);
+  return await session.close() ? result
+    : { ...restrictedCodexFailure("codex_cleanup_failed", result.dispatched, result.usage), failurePhase: "cleanup" };
 }
 
 async function writeRecoveryMarker(work: string, sourceEnv: NodeJS.ProcessEnv,
@@ -160,99 +159,114 @@ function hasScopedIdentity(method: string, params: Record<string, unknown>, thre
   return (params.threadId === undefined || params.threadId === threadId) && (params.turnId === undefined || params.turnId === turnId);
 }
 
-/** Exactly one fresh thread/turn; private host auth, no participant state reuse. */
-async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
-  options: RestrictedCodexSessionOptions = {}, readinessOnly = false): Promise<RestrictedCodexResult> {
-  const admissionError = restrictedCodexRequestError(request);
-  if (admissionError) return restrictedCodexFailure(admissionError);
+/** One private process and conversation per owner. Only completed turns may continue. */
+export function createRestrictedCodexSession(options: RestrictedCodexSessionOptions = {}): {
+  run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
+  close(): Promise<boolean>;
+} {
   const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
-  if (!(platform === "linux" && arch === "x64") && !(platform === "darwin" && arch === "arm64"))
-    return restrictedCodexFailure("codex_unsupported_platform");
-  const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
   const sourceEnv = options.env ?? process.env;
   const spawnFn: RestrictedCodexSpawn = options.spawnFn ?? ((file, args, settings) => spawn(file, args, settings));
   let work: string | undefined, authLink: string | undefined, transport: RestrictedCodexTransport | undefined;
-  let threadId: string | undefined, turnId: string | undefined, earlyTurnId: string | undefined;
-  let dispatched = false, completed = false, usage: RestrictedCodexUsage | null = null;
-  let generatedDeltaBytes = 0;
-  let outputItem: { id: string; text: string } | undefined;
-  let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
-  let phase: CuaProviderFailurePhase = "startup";
-  const early: Event[] = [];
-  let resolveTurn!: (value: RestrictedCodexResult) => void;
-  const finished = new Promise<RestrictedCodexResult>(resolve => { resolveTurn = resolve; });
+  let threadId: string | undefined, cwd = "", scratch = "";
+  let identity: { model: string; instructions: string } | undefined;
+  let previousUsage: RestrictedCodexUsage | null = { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 };
+  let activeDeadline: RestrictedCodexDeadline | undefined;
+  let interrupt: { threadId: string; turnId: string } | undefined;
+  let closed = false, cleanupTrusted = true;
+  let pending: Promise<RestrictedCodexResult> | undefined, closing: Promise<boolean> | undefined, disposing: Promise<boolean> | undefined;
 
-  const handleTurnEvent = (method: string, params: Record<string, unknown>): void => {
-    if (!hasScopedIdentity(method, params, threadId, turnId)) { deadline.stop("codex_protocol_error"); return; }
-    const item = codexRecord(params.item);
-    if (method === "rawResponseItem/completed") {
-      if (!["message", "reasoning"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
-      if (item.type === "message" && Array.isArray(item.content)
-        && item.content.some(content => codexRecord(content).type === "refusal")) deadline.stop("refusal");
-    }
-    if (method === "thread/tokenUsage/updated") usage = restrictedCodexUsage(params.tokenUsage);
-    if (method === "item/started" || method === "item/completed") {
-      if (!["userMessage", "agentMessage", "reasoning"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
-      if (item.type === "agentMessage") {
-        if (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)) {
-          deadline.stop("codex_tool_call"); return;
-        }
-        if (method === "item/completed" && item.phase !== "commentary") {
-          if (typeof item.id !== "string" || typeof item.text !== "string" || Buffer.byteLength(item.text) > CODEX_MAX_OUTPUT_BYTES
-            || (item.phase !== null && item.phase !== "final_answer") || (item.delivery !== null && item.delivery !== undefined)
-            || (outputItem && (outputItem.id !== item.id || outputItem.text !== item.text))) {
-            deadline.stop("invalid_response"); return;
-          }
-          outputItem = { id: item.id, text: item.text };
-        }
+  const dispose = (): Promise<boolean> => {
+    closed = true;
+    return disposing ??= (async () => {
+      let cleaned = cleanupTrusted;
+      if (transport) {
+        cleaned = await transport.close(interrupt).catch(() => false) && cleaned;
+        if (!cleaned) retainUnclosedChild(transport.owned.closed);
       }
-    }
-    if (method === "turn/completed") {
-      const turn = codexRecord(params.turn);
-      if (turn.id !== turnId || completed) { deadline.stop("codex_protocol_error"); return; }
-      completed = true;
-      if (turn.status === "interrupted") { deadline.stop("cancelled"); return; }
-      if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
-      try {
-        resolveTurn({ status: "completed", output: JSON.parse(outputItem.text) as unknown, usage,
-          usageComplete: usage !== null, dispatched: true, errorCode: null });
-      } catch { deadline.stop("invalid_response"); }
-    }
+      let authReplaced = false;
+      if (authLink && cleaned) {
+        try {
+          authReplaced = !(await lstat(authLink)).isSymbolicLink();
+          if (!authReplaced) await unlink(authLink);
+        } catch (error) { if (codexRecord(error).code !== "ENOENT") cleaned = false; }
+      }
+      // Preserve unexpected login rotation for private recovery, never overwrite host auth.
+      if (authReplaced) {
+        cleaned = false;
+        if (work) await preserveUnexpectedAuth(work, sourceEnv).catch(() => undefined);
+      }
+      if (work && cleaned) await rm(work, { recursive: true, force: true }).catch(() => { cleaned = false; });
+      if (work && !cleaned && !authReplaced) await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(() => undefined);
+      return cleaned;
+    })();
   };
 
-  try {
-    deadline.check();
-    const file = await resolveExecutable(options, sourceEnv);
-    deadline.check();
-    work = await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-analysis-"));
-    await chmod(work, 0o700);
-    work = await realpath(work);
-    const home = path.join(work, "home"), cwd = path.join(work, "cwd"), scratch = path.join(work, "scratch");
-    for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
-    const env = childEnvironment(sourceEnv, home, scratch);
-    await checkVersion(file, env, cwd, spawnFn, deadline);
-    const config = restrictedCodexConfig(request.model), configPath = path.join(home, "config.toml");
-    await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
-    const authHome = options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
-    if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
-    let authFile: string;
-    try {
-      authFile = await realpath(path.join(authHome, "auth.json"));
-      if (!(await stat(authFile)).isFile()) throw new Error();
-    } catch { throw new RestrictedCodexStop("codex_login_required"); }
-    deadline.check();
-    authLink = path.join(home, "auth.json");
-    await symlink(authFile, authLink);
-    deadline.check();
-    const owned = ownCodexProcess(spawnFn(file, ["app-server", "--strict-config"], {
-      cwd, env, detached: false, stdio: ["pipe", "pipe", "pipe"]
-    }));
-    // Raw input notifications echo supplied image data. Bound that wire separately
-    // from the 2 MiB generated report, without dropping admitted evidence.
-    const frameLimit = Math.max(CODEX_MAX_OUTPUT_BYTES, Buffer.byteLength(JSON.stringify({ instructions: request.instructions,
-      evidence: request.evidence, images: request.images, schema: request.schema })) + 1024 * 1024);
-    transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
-    transport.onNotification = (method, params) => {
+  async function execute(request: RestrictedCodexRequest, readinessOnly: boolean): Promise<RestrictedCodexResult> {
+    const deadline = new RestrictedCodexDeadline(request.timeoutMs, request.signal);
+    activeDeadline = deadline;
+    let turnId: string | undefined, earlyTurnId: string | undefined;
+    let dispatched = false, usage: RestrictedCodexUsage | null = null;
+    let completed = false;
+    let latestUsage: RestrictedCodexUsage | null = null;
+    let generatedDeltaBytes = 0;
+    let outputItem: { id: string; text: string } | undefined;
+    let result: RestrictedCodexResult = restrictedCodexFailure("codex_process_failed");
+    let phase: CuaProviderFailurePhase = "startup";
+    const early: Event[] = [];
+    let resolveTurn!: (value: RestrictedCodexResult) => void;
+    const finished = new Promise<RestrictedCodexResult>(resolve => { resolveTurn = resolve; });
+
+    const handleTurnEvent = (method: string, params: Record<string, unknown>): void => {
+      if (!hasScopedIdentity(method, params, threadId, turnId)) { deadline.stop("codex_protocol_error"); return; }
+      const item = codexRecord(params.item);
+      if (method === "rawResponseItem/completed") {
+        if (!["message", "reasoning", "compaction", "compaction_summary", "context_compaction"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        if (item.type === "message" && Array.isArray(item.content)
+          && item.content.some(content => codexRecord(content).type === "refusal")) deadline.stop("refusal");
+      }
+      if (method === "thread/tokenUsage/updated") {
+        const total = restrictedCodexUsage(params.tokenUsage);
+        // App-server reports cumulative thread usage. Receipts must charge only this turn.
+        if (total && previousUsage) {
+          const delta = { input: total.input - previousUsage.input, output: total.output - previousUsage.output,
+            cachedInput: (total.cachedInput ?? 0) - (previousUsage.cachedInput ?? 0),
+            cacheWriteInput: (total.cacheWriteInput ?? 0) - (previousUsage.cacheWriteInput ?? 0) };
+          usage = Object.values(delta).every(value => Number.isSafeInteger(value) && value >= 0)
+            && delta.cachedInput + delta.cacheWriteInput <= delta.input ? delta : null;
+        } else usage = null;
+        latestUsage = total;
+      }
+      if (method === "item/started" || method === "item/completed") {
+        if (!["userMessage", "agentMessage", "reasoning", "contextCompaction"].includes(String(item.type))) { deadline.stop("codex_tool_call"); return; }
+        if (item.type === "agentMessage") {
+          if (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)) {
+            deadline.stop("codex_tool_call"); return;
+          }
+          if (method === "item/completed" && item.phase !== "commentary") {
+            if (typeof item.id !== "string" || typeof item.text !== "string" || Buffer.byteLength(item.text) > CODEX_MAX_OUTPUT_BYTES
+              || (item.phase !== null && item.phase !== "final_answer") || (item.delivery !== null && item.delivery !== undefined)
+              || (outputItem && (outputItem.id !== item.id || outputItem.text !== item.text))) {
+              deadline.stop("invalid_response"); return;
+            }
+            outputItem = { id: item.id, text: item.text };
+          }
+        }
+      }
+      if (method === "turn/completed") {
+        const turn = codexRecord(params.turn);
+        if (turn.id !== turnId || completed) { deadline.stop("codex_protocol_error"); return; }
+        completed = true;
+        if (turn.status === "interrupted") { deadline.stop("cancelled"); return; }
+        if (turn.status !== "completed" || turn.error !== null || !outputItem) { deadline.stop("invalid_response"); return; }
+        try {
+          resolveTurn({ status: "completed", output: JSON.parse(outputItem.text) as unknown, usage,
+            usageComplete: usage !== null, dispatched: true, errorCode: null });
+        } catch { deadline.stop("invalid_response"); }
+      }
+    };
+
+    const onNotification: RestrictedCodexTransport["onNotification"] = (method, params) => {
       if (!dispatched) return;
       if (!hasScopedIdentity(method, params, threadId, turnId ?? earlyTurnId)) { deadline.stop("codex_protocol_error"); return; }
       if (method === "item/agentMessage/delta") {
@@ -262,7 +276,7 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
       }
       const item = codexRecord(params.item);
       // Tool requests must fail even if the turn-start acknowledgment is lost.
-      if ((method === "rawResponseItem/completed" && !["message", "reasoning"].includes(String(item.type)))
+      if ((method === "rawResponseItem/completed" && !["message", "reasoning", "compaction", "compaction_summary", "context_compaction"].includes(String(item.type)))
         || (["item/started", "item/completed"].includes(method) && item.type === "agentMessage"
           && (item.delivery === "async" || (Array.isArray(item.questions) && item.questions.length > 0)))) {
         deadline.stop("codex_tool_call"); return;
@@ -271,98 +285,140 @@ async function executeRestrictedCodexSession(request: RestrictedCodexRequest,
         const value = codexRecord(params.turn).id;
         if (typeof value !== "string" || value.length === 0 || (earlyTurnId !== undefined && value !== earlyTurnId))
           deadline.stop("codex_protocol_error");
-        else earlyTurnId = value;
+        else { earlyTurnId = value; interrupt = { threadId: threadId!, turnId: value }; }
       }
       if (turnId === undefined) early.push({ method, params });
       else handleTurnEvent(method, params);
     };
-    phase = "initialize";
-    const initialize = await transport.rpc("initialize", {
-      clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
-    });
-    if (typeof initialize.userAgent !== "string" || !initialize.userAgent.includes(`/0.154.0 `)
-      || initialize.codexHome !== home || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
-      throw new RestrictedCodexStop("codex_unsupported_version");
-    transport.notify("initialized", {});
-    phase = "config/read";
-    const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
-    if (!admitsRestrictedCodexConfig(effective, configPath, request.model)) throw new RestrictedCodexStop("codex_unsafe_configuration");
-    phase = "account/read";
-    const account = await transport.rpc("account/read", { refreshToken: false });
-    if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
-    if (codexRecord(account.account).type !== "chatgpt" || account.requiresOpenaiAuth !== true)
-      throw new RestrictedCodexStop("codex_unsupported_auth");
-    phase = "thread/start";
-    const thread = await transport.rpc("thread/start", { cwd, ephemeral: true, experimentalRawEvents: true,
-      approvalPolicy: "never", sandbox: "read-only", model: request.model, modelProvider: "openai", allowProviderModelFallback: false,
-      environments: [], runtimeWorkspaceRoots: [], dynamicTools: [], baseInstructions: request.instructions, config: config.overrides });
-    if (!admitsRestrictedCodexThread(thread, request.model, cwd)) throw new RestrictedCodexStop("codex_unsafe_configuration");
-    threadId = String(codexRecord(thread.thread).id);
-    phase = "mcpServerStatus/list";
-    const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
-    if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null) throw new RestrictedCodexStop("codex_unsafe_configuration");
-    if (readinessOnly) {
-      result = { status: "completed", output: null, usage: null, usageComplete: false, dispatched: false, errorCode: null };
-    } else {
-      phase = "turn/start";
-      const input: Record<string, unknown>[] = [{ type: "text", text: request.evidence, text_elements: [] }];
-      for (const [index, image] of request.images.entries()) {
+
+    try {
+      deadline.check();
+      const frameLimit = Math.max(CODEX_MAX_OUTPUT_BYTES, Buffer.byteLength(JSON.stringify({ instructions: request.instructions,
+        evidence: request.evidence, images: request.images, schema: request.schema })) + 1024 * 1024);
+      if (!transport) {
+        const file = await resolveExecutable(options, sourceEnv);
         deadline.check();
-        const match = CODEX_IMAGE.exec(image.dataUrl)!;
-        const imagePath = path.join(scratch, `evidence-${index}.${match[1] === "jpeg" ? "jpg" : match[1]}`);
-        await writeFile(imagePath, Buffer.from(match[2]!, "base64"), { mode: 0o600, flag: "wx" });
-        input.push({ type: "text", text: JSON.stringify({ captureEvidenceId: image.evidenceId }), text_elements: [] }, { type: "localImage", path: imagePath });
+        work = await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-analysis-"));
+        await chmod(work, 0o700);
+        work = await realpath(work);
+        const home = path.join(work, "home");
+        cwd = path.join(work, "cwd"); scratch = path.join(work, "scratch");
+        for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
+        const env = childEnvironment(sourceEnv, home, scratch);
+        await checkVersion(file, env, cwd, spawnFn, deadline);
+        const config = restrictedCodexConfig(request.model), configPath = path.join(home, "config.toml");
+        await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
+        const authHome = options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
+        if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
+        let authFile: string;
+        try {
+          authFile = await realpath(path.join(authHome, "auth.json"));
+          if (!(await stat(authFile)).isFile()) throw new Error();
+        } catch { throw new RestrictedCodexStop("codex_login_required"); }
+        deadline.check();
+        authLink = path.join(home, "auth.json");
+        await symlink(authFile, authLink);
+        deadline.check();
+        const owned = ownCodexProcess(spawnFn(file, ["app-server", "--strict-config"], {
+          cwd, env, detached: false, stdio: ["pipe", "pipe", "pipe"]
+        }));
+        transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
+        transport.onNotification = onNotification;
+        phase = "initialize";
+        const initialize = await transport.rpc("initialize", {
+          clientInfo: { name: "humanish_analysis", version: "1.0.0" }, capabilities: { experimentalApi: true }
+        });
+        if (typeof initialize.userAgent !== "string" || !initialize.userAgent.includes(`/0.154.0 `)
+          || initialize.codexHome !== home || initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") || initialize.platformFamily !== "unix")
+          throw new RestrictedCodexStop("codex_unsupported_version");
+        transport.notify("initialized", {});
+        phase = "config/read";
+        const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
+        if (!admitsRestrictedCodexConfig(effective, configPath, request.model)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        phase = "account/read";
+        const account = await transport.rpc("account/read", { refreshToken: false });
+        if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
+        if (codexRecord(account.account).type !== "chatgpt" || account.requiresOpenaiAuth !== true)
+          throw new RestrictedCodexStop("codex_unsupported_auth");
+        phase = "thread/start";
+        const thread = await transport.rpc("thread/start", { cwd, ephemeral: true, experimentalRawEvents: true,
+          approvalPolicy: "never", sandbox: "read-only", model: request.model, modelProvider: "openai", allowProviderModelFallback: false,
+          environments: [], runtimeWorkspaceRoots: [], dynamicTools: [], baseInstructions: request.instructions, config: config.overrides });
+        if (!admitsRestrictedCodexThread(thread, request.model, cwd)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        threadId = String(codexRecord(thread.thread).id);
+        phase = "mcpServerStatus/list";
+        const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
+        if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        identity = { model: request.model, instructions: request.instructions };
+      } else {
+        transport.beginRequest(deadline, frameLimit);
+        transport.onNotification = onNotification;
       }
-      deadline.check();
-      // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
-      dispatched = true;
-      const turn = await transport.rpc("turn/start", { threadId, cwd, approvalPolicy: "never", sandboxPolicy: { type: "readOnly" },
-        environments: [], runtimeWorkspaceRoots: [], effort: "low", model: request.model, outputSchema: request.schema, input });
-      const returnedTurnId = codexRecord(turn.turn).id;
-      if (typeof returnedTurnId !== "string" || returnedTurnId.length === 0 || returnedTurnId.length > 200
-        || (earlyTurnId !== undefined && earlyTurnId !== returnedTurnId)) throw new RestrictedCodexStop("codex_protocol_error");
-      turnId = returnedTurnId;
-      for (const event of early) handleTurnEvent(event.method, event.params);
-      early.length = 0;
-      phase = "response";
-      result = await deadline.wait(finished);
-      deadline.check();
-    }
-  } catch (error) {
-    const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
-    result = { ...restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage), failurePhase: phase };
-  } finally {
-    // Deadline remains authoritative until acceptance; teardown has its own small grace.
-    deadline.close();
-    let cleaned = result.errorCode !== "codex_cleanup_failed";
-    if (transport) {
-      const cleanupTurn = turnId ?? earlyTurnId;
-      cleaned = await transport.close(dispatched && !completed && threadId && cleanupTurn
-        ? { threadId, turnId: cleanupTurn } : undefined).catch(() => false);
-      if (!cleaned) retainUnclosedChild(transport.owned.closed);
-    }
-    let authReplaced = false;
-    if (authLink && cleaned) {
-      try {
-        const info = await lstat(authLink);
-        authReplaced = !info.isSymbolicLink();
-        if (!authReplaced) await unlink(authLink);
-      } catch (error) {
-        if (codexRecord(error).code !== "ENOENT") cleaned = false;
+      if (readinessOnly) {
+        result = { status: "completed", output: null, usage: null, usageComplete: false, dispatched: false, errorCode: null };
+      } else {
+        phase = "turn/start";
+        const input: Record<string, unknown>[] = [{ type: "text", text: request.evidence, text_elements: [] }];
+        for (const [index, image] of request.images.entries()) {
+          deadline.check();
+          const match = CODEX_IMAGE.exec(image.dataUrl)!;
+          const imagePath = path.join(scratch, `evidence-${index}.${match[1] === "jpeg" ? "jpg" : match[1]}`);
+          await writeFile(imagePath, Buffer.from(match[2]!, "base64"), { mode: 0o600 });
+          input.push({ type: "text", text: JSON.stringify({ captureEvidenceId: image.evidenceId }), text_elements: [] }, { type: "localImage", path: imagePath });
+        }
+        deadline.check();
+        // Even a lost acknowledgment may have dispatched the request. Never claim zero cost.
+        dispatched = true;
+        const turn = await transport.rpc("turn/start", { threadId, cwd, approvalPolicy: "never", sandboxPolicy: { type: "readOnly" },
+          environments: [], runtimeWorkspaceRoots: [], effort: "low", model: request.model, outputSchema: request.schema, input });
+        const returnedTurnId = codexRecord(turn.turn).id;
+        if (typeof returnedTurnId !== "string" || returnedTurnId.length === 0 || returnedTurnId.length > 200
+          || (earlyTurnId !== undefined && earlyTurnId !== returnedTurnId)) throw new RestrictedCodexStop("codex_protocol_error");
+        turnId = returnedTurnId;
+        interrupt = { threadId: threadId!, turnId };
+        for (const event of early) handleTurnEvent(event.method, event.params);
+        early.length = 0;
+        phase = "response";
+        result = await deadline.wait(finished);
+        deadline.check();
+        previousUsage = latestUsage;
+        interrupt = undefined;
+      }
+    } catch (error) {
+      const code = error instanceof RestrictedCodexStop ? error.code : "codex_process_failed";
+      result = { ...restrictedCodexFailure(code === "codex_cleanup_failed" ? code : deadline.code ?? code, dispatched, usage), failurePhase: phase };
+    } finally {
+      deadline.close();
+      activeDeadline = undefined;
+      if (transport) transport.onNotification = () => undefined;
+      if (result.errorCode !== null) {
+        if (result.errorCode === "codex_cleanup_failed") cleanupTrusted = false;
+        if (!await dispose()) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };
       }
     }
-    // An unexpected replacement may contain rotated login state. Do not discard it
-    // or overwrite the host login. Leave this private control-plane directory for
-    // recovery and fail closed; no path or credential is included in the result.
-    if (authReplaced) {
-      cleaned = false;
-      if (work) await preserveUnexpectedAuth(work, sourceEnv).catch(() => undefined);
-    }
-    if (work && cleaned && !authReplaced) await rm(work, { recursive: true, force: true }).catch(() => { cleaned = false; });
-    if (work && !cleaned && !authReplaced) await writeRecoveryMarker(work, sourceEnv, "process_cleanup_unconfirmed").catch(() => undefined);
-    if (!cleaned) result = { ...restrictedCodexFailure("codex_cleanup_failed", dispatched, usage), failurePhase: "cleanup" };
+    return result.errorCode !== null && result.failurePhase === undefined ? { ...result, failurePhase: phase } : result;
   }
-  return result.errorCode !== null && result.failurePhase === undefined ? { ...result, failurePhase: phase } : result;
+
+  return {
+    run(request, readinessOnly = false) {
+      const error = restrictedCodexRequestError(request);
+      if (error) return Promise.resolve(restrictedCodexFailure(error));
+      if (closed || (identity && (identity.model !== request.model || identity.instructions !== request.instructions)))
+        return Promise.resolve(restrictedCodexFailure("invalid_request"));
+      if (pending || unclosedChildren.size) return Promise.resolve(restrictedCodexFailure("codex_busy"));
+      if (!(platform === "linux" && arch === "x64") && !(platform === "darwin" && arch === "arm64"))
+        return Promise.resolve(restrictedCodexFailure("codex_unsupported_platform"));
+      const task = execute(request, readinessOnly);
+      pending = task;
+      void task.finally(() => { if (pending === task) pending = undefined; }).catch(() => undefined);
+      return task;
+    },
+    close() {
+      closed = true;
+      activeDeadline?.stop("cancelled");
+      return closing ??= (async () => { await pending; return dispose(); })();
+    }
+  };
 }
 
 export async function checkRestrictedCodexSessionReadiness(input: { signal?: AbortSignal; timeoutMs?: number } = {},

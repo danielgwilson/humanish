@@ -17,8 +17,10 @@ if (operation === "--version") {
   else console.log(scenario === "wrong-version" ? "codex-cli 0.0.1" : "codex-cli 0.154.0");
 } else {
   if (scenario === "ignore-term") { process.on("SIGTERM", () => undefined); setInterval(() => undefined, 1000); }
+  let turnNumber = 0;
   const map = value => JSON.parse(JSON.stringify(value).replaceAll("/private/probe/home", process.env.HOME)
-    .replaceAll("/private/probe/cwd", process.cwd()));
+    .replaceAll("/private/probe/cwd", process.cwd())
+    .replaceAll("turn-synthetic", scenario.startsWith("continuing") ? `turn-synthetic-${turnNumber}` : "turn-synthetic"));
   const reply = (id, result) => write({ id, result });
   const emit = value => write(map(value));
   const init = capture("initialize.json"); init.codexHome = process.env.HOME;
@@ -64,6 +66,7 @@ if (operation === "--version") {
       reply(message.id, {});
       for (const event of capture("interrupted-turn.json")) emit(event);
     } else if (message.method === "turn/start") {
+      turnNumber++;
       note({ imageCount: message.params.input.filter(item => item.type === "localImage").length,
         imageFiles: message.params.input.filter(item => item.type === "localImage").map(item => ({ path: item.path, exists: fs.existsSync(item.path), mode: fs.statSync(item.path).mode & 0o777 })) });
       if (scenario === "replace-auth") {
@@ -71,7 +74,15 @@ if (operation === "--version") {
         fs.writeFileSync(path.join(process.env.HOME, "auth.json"), "synthetic-rotated-login", { mode: 0o644 });
       }
       if (scenario === "lost-turn-ack") { emit({ method: "turn/started", params: { threadId: thread.thread.id, turn: turn.turn } }); return; }
-      if (scenario !== "early-events") reply(message.id, turn);
+      if (scenario !== "early-events") reply(message.id, map(turn));
+      if (scenario.startsWith("continuing")) {
+        const original = capture("completed-turn-and-usage.json").find(event => event.method === "thread/tokenUsage/updated");
+        for (const [key, value] of Object.entries(original.params.tokenUsage.total)) usage.params.tokenUsage.total[key] = value * turnNumber;
+      }
+      if (scenario === "continuing-hang" && turnNumber === 2) return;
+      if (scenario === "continuing-stale" && turnNumber === 2) {
+        write({ ...answer, params: { ...answer.params, turnId: "turn-synthetic-1" } }); return;
+      }
       if (scenario === "large-input-echo") {
         const raw = capture("raw-input-image.json"), image = message.params.input.find(item => item.type === "localImage");
         raw.params.item.content.find(item => item.type === "input_image").image_url = `data:image/png;base64,${fs.readFileSync(image.path).toString("base64")}`;

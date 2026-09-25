@@ -98,14 +98,14 @@ export class RestrictedCodexTransport {
   private closing = false;
   onNotification: (method: string, params: Record<string, unknown>) => void = () => undefined;
 
-  constructor(readonly owned: OwnedCodexProcess, private readonly deadline: RestrictedCodexDeadline,
-    private readonly frameLimit = CODEX_MAX_OUTPUT_BYTES) {
+  constructor(readonly owned: OwnedCodexProcess, private deadline: RestrictedCodexDeadline,
+    private frameLimit = CODEX_MAX_OUTPUT_BYTES) {
     const child = owned.child;
     child.on("error", () => this.fail("codex_process_failed"));
     child.stdin.on("error", () => this.fail("codex_process_failed"));
     child.on("close", () => this.fail("codex_process_failed"));
     child.stdout.on("data", (chunk: Buffer) => {
-      if ((!this.closing && deadline.code !== null) || (this.closing && this.pending.size === 0)) return;
+      if ((!this.closing && this.deadline.code !== null) || (this.closing && this.pending.size === 0)) return;
       this.stdoutBytes += chunk.length;
       if (this.stdoutBytes > Math.max(CODEX_MAX_STDOUT_BYTES, this.frameLimit * 2 + CODEX_MAX_OUTPUT_BYTES * 2)) {
         this.fail("response_too_large"); return;
@@ -117,13 +117,21 @@ export class RestrictedCodexTransport {
         this.line = this.line.slice(split + 1);
         if (line.length === 0) { this.fail("codex_protocol_error"); return; }
         try { this.message(JSON.parse(line) as unknown); } catch { this.fail("codex_protocol_error"); }
-        if (deadline.code !== null && !this.closing) return;
+        if (this.deadline.code !== null && !this.closing) return;
       }
     });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderrBytes += chunk.length;
       if (this.stderrBytes > CODEX_MAX_OUTPUT_BYTES) this.fail("response_too_large");
     });
+  }
+  /** A completed turn releases its deadline and wire budget, not its conversation. */
+  beginRequest(deadline: RestrictedCodexDeadline, frameLimit: number): void {
+    if (this.deadline.code !== null) throw new RestrictedCodexStop(this.deadline.code);
+    if (this.closing || this.owned.isClosed() || this.pending.size) throw new RestrictedCodexStop("codex_process_failed");
+    this.deadline = deadline;
+    this.frameLimit = frameLimit;
+    this.stdoutBytes = 0; this.stderrBytes = 0; this.eventCount = 0;
   }
   private fail(code: RestrictedCodexAnalysisErrorCode): void {
     if (!this.closing) this.deadline.stop(code);

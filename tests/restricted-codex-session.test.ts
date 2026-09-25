@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkRestrictedCodexAnalysisReadiness, createRestrictedCodexAnalysisProvider } from "../src/restricted-codex-analysis.js";
 import type { RestrictedCodexRequest } from "../src/restricted-codex-policy.js";
-import type { RestrictedCodexSessionOptions } from "../src/restricted-codex-session.js";
+import { createRestrictedCodexSession, type RestrictedCodexSessionOptions } from "../src/restricted-codex-session.js";
 import type { RestrictedCodexSpawn } from "../src/restricted-codex-transport.js";
 
 const fake = fileURLToPath(new URL("./fixtures/restricted-codex/fake-process.mjs", import.meta.url));
@@ -257,5 +257,83 @@ describe("restricted Codex analyst session", () => {
       await pending;
     }
     expect(await next.run(request)).toMatchObject({ status: "completed" });
+  });
+});
+
+
+describe("continuing restricted Codex conversation", () => {
+  it("keeps one home/process/thread beyond eight turns, with fresh images and per-turn usage", async () => {
+    const f = await fixture("continuing"), session = createRestrictedCodexSession(f.options);
+    try {
+      for (let index = 0; index < 12; index++) {
+        const result = await session.run({ ...request, evidence: `Observation ${index}`,
+          images: [{ evidenceId: `frame-${index}`, dataUrl: "data:image/png;base64,c3ludGhldGlj" }] });
+        expect(result).toMatchObject({ status: "completed", usage: { input: 2957, output: 41 }, usageComplete: true });
+      }
+      const entries = await f.entries();
+      for (const method of ["initialize", "account/read", "thread/start"])
+        expect(entries.filter(entry => entry.method === method)).toHaveLength(1);
+      const turns = entries.filter(entry => entry.method === "turn/start").map(entry => entry.params as Record<string, unknown>);
+      expect(turns).toHaveLength(12);
+      expect(new Set(turns.map(turn => turn.threadId)).size).toBe(1);
+      expect(turns.at(-1)!.input).toEqual(expect.arrayContaining([expect.objectContaining({ text: "Observation 11" })]));
+      expect(f.spawns).toHaveLength(2); // version + app-server, not per turn
+      expect(await readdir(f.tempRoot)).toHaveLength(1);
+    } finally { expect(await session.close()).toBe(true); }
+    expect(await readdir(f.tempRoot)).toEqual([]);
+    expect(await session.close()).toBe(true);
+    expect(await session.run(request)).toMatchObject({ errorCode: "invalid_request", dispatched: false });
+  });
+
+  it("has a fresh request deadline after time spent between completed turns", async () => {
+    const f = await fixture("continuing"), session = createRestrictedCodexSession(f.options);
+    try {
+      expect(await session.run({ ...request, timeoutMs: 500 })).toMatchObject({ status: "completed" });
+      await new Promise(resolve => setTimeout(resolve, 550));
+      expect(await session.run(request)).toMatchObject({ status: "completed" });
+    } finally { await session.close(); }
+  });
+
+  it("rejects changed identity without replacing the conversation", async () => {
+    const f = await fixture("continuing"), session = createRestrictedCodexSession(f.options);
+    try {
+      expect(await session.run(request)).toMatchObject({ status: "completed" });
+      expect(await session.run({ ...request, instructions: "A different persona" })).toMatchObject({ errorCode: "invalid_request", dispatched: false });
+      expect(await session.run(request)).toMatchObject({ status: "completed" });
+      expect((await f.entries()).filter(entry => entry.method === "thread/start")).toHaveLength(1);
+    } finally { await session.close(); }
+  });
+
+  it("close cancels an active continuation and confirms process cleanup", async () => {
+    const f = await fixture("continuing-hang"), session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    const pending = session.run(request);
+    await vi.waitFor(async () => expect((await f.entries()).filter(entry => entry.method === "turn/start")).toHaveLength(2));
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_busy", dispatched: false });
+    const closing = session.close();
+    expect(await pending).toMatchObject({ status: "cancelled", dispatched: true });
+    expect(await closing).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+    for (const entry of (await f.entries()).filter(entry => typeof entry.pid === "number"))
+      expect(() => process.kill(entry.pid as number, 0)).toThrow();
+  });
+
+  it("rejects an earlier turn's output instead of accepting it as the current observation", async () => {
+    const f = await fixture("continuing-stale"), session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_protocol_error", dispatched: true });
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("does not restart a failed idle process with an empty memory", async () => {
+    const f = await fixture("continuing"), session = createRestrictedCodexSession(f.options);
+    expect(await session.run(request)).toMatchObject({ status: "completed" });
+    const entry = (await f.entries()).find(entry => entry.operation === "app-server")!;
+    process.kill(entry.pid as number, "SIGTERM");
+    await vi.waitFor(() => expect(() => process.kill(entry.pid as number, 0)).toThrow());
+    expect(await session.run(request)).toMatchObject({ errorCode: "codex_process_failed", dispatched: false });
+    expect(f.spawns).toHaveLength(2);
+    expect(await session.close()).toBe(true);
   });
 });
