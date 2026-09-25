@@ -183,13 +183,16 @@ async function runCase(mode) {
     result.requests = requests;
     result.behaviorPassed = true;
   } catch (error) {
-    result.error = error instanceof Error ? error.message : String(error);
+    result.failure = error instanceof Error ? error.message : String(error);
     throw error;
   } finally {
     client?.close();
     if (child.connected) child.send({ command: "stop" });
     let cleanupConfirmed = false;
     try {
+      if (result.failure && (child.exitCode !== null || child.signalCode !== null)) {
+        throw new Error("Fixture exited before browser close acknowledgment");
+      }
       const closed = await next("closed");
       result.browserCloseAcknowledged = true;
       result.unexpectedPageRequestsObserved = closed.unexpectedRequests;
@@ -205,10 +208,11 @@ async function runCase(mode) {
         result.childExit = { code, signal };
       } catch { result.childExitUnconfirmed = true; }
       result.cleanup = "unconfirmed";
+      result.cleanupError = error instanceof Error ? error.message : String(error);
       // Killing the direct controller does not establish that Chromium exited. Preserve its
       // private profile and socket directory rather than deleting possibly active state.
       result.retainedRecoveryDirectoryName = path.basename(owned);
-      throw error;
+      if (!result.failure) throw error;
     } finally {
       server.close(); app.closeAllConnections(); await new Promise(resolve => app.close(resolve));
       if (cleanupConfirmed) {
