@@ -205,6 +205,8 @@ function hasScopedIdentity(method: string, params: Record<string, unknown>, thre
 /** One private process and conversation per owner. Only completed turns may continue. */
 export interface RestrictedCodexSession {
   readonly pendingUsage?: RestrictedCodexUsage | undefined;
+  readonly resolvedModel?: string | undefined;
+  readonly authentication?: "chatgpt-account" | "api-key" | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -220,6 +222,8 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
   let identity: { requestedModel: string | undefined; model: string; instructions: string } | undefined;
   let previousUsage: RestrictedCodexUsage | null = { input: 0, output: 0, cachedInput: 0, cacheWriteInput: 0 };
   let pendingUsage: RestrictedCodexUsage | undefined;
+  let resolvedModel: string | undefined;
+  let authentication: "chatgpt-account" | "api-key" | undefined;
   let activeDeadline: RestrictedCodexDeadline | undefined;
   let interrupt: { threadId: string; turnId: string } | undefined;
   let closed = false, cleanupTrusted = true;
@@ -433,7 +437,8 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         phase = "config/read";
         const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
         if (!admitsRestrictedCodexConfig(effective, configPath, request.model, configMode)) throw new RestrictedCodexStop("codex_unsafe_configuration");
-        selectedModel = String(codexRecord(effective.config).model);
+        const configuredModel = codexRecord(effective.config).model;
+        selectedModel = typeof configuredModel === "string" ? configuredModel : undefined;
         phase = "account/read";
         const account = await transport.rpc("account/read", { refreshToken: false });
         if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
@@ -441,23 +446,35 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
         if ((!operatorAuth && accountType !== "chatgpt") || (operatorAuth && !["chatgpt", "apiKey"].includes(String(accountType)))
           || account.requiresOpenaiAuth !== true)
           throw new RestrictedCodexStop("codex_unsupported_auth");
+        authentication = accountType === "apiKey" ? "api-key" : "chatgpt-account";
         const mcpServers = codexRecord(codexRecord(effective.config).mcp_servers);
         const mcpNames = Object.keys(mcpServers);
-        if (mcpNames.length > 100 || mcpNames.some(name => name.length === 0 || name.length > 200))
+        // Request overrides are split literally on dots by Codex. Limit names to
+        // TOML bare-key characters so each override targets the inherited entry.
+        if (mcpNames.length > 100 || mcpNames.some(name => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
           throw new RestrictedCodexStop("codex_unsafe_configuration");
         const threadConfig = { ...config.overrides };
-        for (const name of mcpNames) threadConfig[`mcp_servers.${JSON.stringify(name)}.enabled`] = false;
+        for (const name of mcpNames) threadConfig[`mcp_servers.${name}.enabled`] = false;
         phase = "thread/start";
         const thread = await transport.rpc("thread/start", { cwd, ephemeral: true, experimentalRawEvents: true,
           approvalPolicy: "never", sandbox: "read-only", model: selectedModel, modelProvider: "openai", allowProviderModelFallback: false,
           environments: [], runtimeWorkspaceRoots: [], dynamicTools: participant ? [{ type: "function", name: participant.tool.name,
             description: participant.tool.description, inputSchema: participant.tool.inputSchema }] : [],
           baseInstructions: request.instructions, config: threadConfig });
-        if (!admitsRestrictedCodexThread(thread, selectedModel, cwd, reasoningEffort)) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        const returnedModel = codexRecord(thread.thread).model;
+        if (typeof returnedModel !== "string" || returnedModel.length === 0 || returnedModel.length > 200
+          || (selectedModel !== undefined && returnedModel !== selectedModel)
+          || !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort))
+          throw new RestrictedCodexStop("codex_unsafe_configuration");
+        selectedModel = returnedModel;
+        resolvedModel = returnedModel;
         threadId = String(codexRecord(thread.thread).id);
-        phase = "mcpServerStatus/list";
-        const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
-        if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null) throw new RestrictedCodexStop("codex_unsafe_configuration");
+        if (!operatorAuth) {
+          phase = "mcpServerStatus/list";
+          const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
+          if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null)
+            throw new RestrictedCodexStop("codex_unsafe_configuration");
+        }
         identity = { requestedModel: request.model, model: selectedModel, instructions: request.instructions };
       } else {
         transport.beginRequest(deadline, frameLimit);
@@ -516,6 +533,8 @@ export function createRestrictedCodexSession(options: RestrictedCodexSessionOpti
 
   return {
     get pendingUsage() { return pendingUsage; },
+    get resolvedModel() { return resolvedModel; },
+    get authentication() { return authentication; },
     run(request, readinessOnly = false) {
       const error = restrictedCodexRequestError(request, operatorAuth);
       if (error) return Promise.resolve(restrictedCodexFailure(error));

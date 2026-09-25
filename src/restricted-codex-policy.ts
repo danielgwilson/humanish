@@ -118,7 +118,12 @@ export function admitsRestrictedCodexConfig(raw: unknown, configPath: string, mo
     if (!ownLayer) return false;
   }
   const reasoningEffort = mode.reasoningEffort ?? "low", codeMode = mode.participantCodeMode === true;
-  if ((model === undefined ? typeof config.model !== "string" || config.model.length === 0 || config.model.length > 200 : config.model !== model)
+  const inheritedModel = config.model;
+  const modelAdmitted = model === undefined && mode.operatorAuth
+    ? inheritedModel === undefined || inheritedModel === null
+      || (typeof inheritedModel === "string" && inheritedModel.length > 0 && inheritedModel.length <= 200)
+    : inheritedModel === model;
+  if (!modelAdmitted
     || config.model_provider !== "openai" || config.model_reasoning_effort !== reasoningEffort
     || (!mode.operatorAuth && config.forced_login_method !== "chatgpt") || config.sandbox_mode !== "read-only" || config.approval_policy !== "never"
     || config.project_doc_max_bytes !== 0 || config.web_search !== "disabled" || features.skip_host_skill_discovery !== true

@@ -378,12 +378,50 @@ describe("restricted Codex Code Mode participant session", () => {
       const thread = entries.find(entry => entry.method === "thread/start")!.params as Record<string, unknown>;
       expect(thread).toMatchObject({ model: "operator-configured-model", dynamicTools: [{ type: "function", name: "humanish_ui" }],
         config: { "features.code_mode": true, "features.code_mode_host": true, "features.code_mode_only": true,
-          "mcp_servers.\"inherited_synthetic\".enabled": false } });
+          "mcp_servers.inherited_synthetic.enabled": false } });
+      expect(session.resolvedModel).toBe("operator-configured-model");
+      expect(session.authentication).toBe("chatgpt-account");
       expect(entries.find(entry => entry.method === "turn/start")!.params).toMatchObject({ model: "operator-configured-model", effort: "high" });
       expect(entries.find(entry => entry.toolResponse)?.toolResponse).toEqual({ success: true, contentItems: [{ type: "inputText",
         text: JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }) }] });
     } finally { expect(await session.close()).toBe(true); }
     expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("reports admitted API-key authentication without exposing credentials", async () => {
+    const f = await fixture("participant-api-key-auth");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "completed", dispatched: false });
+    expect(session.resolvedModel).toBe("operator-configured-model");
+    expect(session.authentication).toBe("api-key");
+    expect(await session.close()).toBe(true);
+  });
+
+  it("lets Codex resolve an unconfigured operator default model, then exposes the resolved identity", async () => {
+    const f = await fixture("participant-default-model");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "completed", dispatched: false });
+    expect(session.resolvedModel).toBe("operator-configured-model");
+    const threadParams = (await f.entries()).find(entry => entry.method === "thread/start")!.params as Record<string, unknown>;
+    expect(threadParams).not.toHaveProperty("model");
+    expect(await session.close()).toBe(true);
+  });
+
+  it("rejects inherited MCP names that cannot be addressed by a dotted override", async () => {
+    const f = await fixture("participant-unsafe-mcp-name");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "failed",
+      errorCode: "codex_unsafe_configuration", dispatched: false });
+    expect(await session.close()).toBe(true);
   });
 
   it.each(["participant-wrong-tool", "participant-wrong-namespace", "participant-wrong-thread", "participant-duplicate-call",

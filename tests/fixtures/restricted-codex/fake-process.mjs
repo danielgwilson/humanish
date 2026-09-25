@@ -52,7 +52,10 @@ if (operation === "--version") {
     config.config.features.code_mode_only = true;
     config.config.model_reasoning_effort = "high";
     config.config.model = "operator-configured-model";
+    if (scenario === "participant-default-model") delete config.config.model;
     config.config.mcp_servers = { inherited_synthetic: { command: "synthetic-command", enabled: true } };
+    if (scenario === "participant-unsafe-mcp-name")
+      config.config.mcp_servers = { "inherited.synthetic": { command: "synthetic-command", enabled: true } };
     thread.model = "operator-configured-model"; thread.thread.model = "operator-configured-model";
     thread.reasoningEffort = "high"; thread.thread.reasoningEffort = "high";
   }
@@ -88,12 +91,15 @@ if (operation === "--version") {
     else if (message.method === "config/read") reply(message.id, config);
     else if (message.method === "account/read") {
       const account = capture("account-read-projection.json");
-      if (scenario === "api-key-auth") account.account.type = "apiKey";
+      if (scenario === "api-key-auth" || scenario === "participant-api-key-auth") account.account.type = "apiKey";
       if (scenario === "signed-out") account.account = null;
       reply(message.id, account);
     } else if (message.method === "thread/start") reply(message.id, thread);
     else if (message.method === "mcpServerStatus/list") reply(message.id,
-      scenario === "active-mcp" ? { data: [{ name: "synthetic" }], nextCursor: null } : capture("mcp-status.json"));
+      scenario === "active-mcp" ? { data: [{ name: "synthetic" }], nextCursor: null }
+        : participantTool ? { data: Object.keys(config.config.mcp_servers).map(name => ({ name, runtimeStatus: null,
+          tools: { cached_synthetic_tool: {} }, resources: [], resourceTemplates: [], authStatus: "unsupported" })), nextCursor: null }
+          : capture("mcp-status.json"));
     else if (message.method === "turn/interrupt") {
       reply(message.id, {});
       for (const event of capture("interrupted-turn.json")) emit(event);
