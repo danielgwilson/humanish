@@ -1,0 +1,35 @@
+ARG BROWSER_IMAGE
+FROM ${BROWSER_IMAGE} AS builder
+USER 0:0
+ARG DEBIAN_SNAPSHOT
+ARG SECURITY_SNAPSHOT
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential cmake \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=media_inputs whisper.cpp-927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz /tmp/whisper.tar.gz
+RUN mkdir /tmp/whisper \
+ && tar -xzf /tmp/whisper.tar.gz --strip-components=1 -C /tmp/whisper \
+ && cmake -S /tmp/whisper -B /tmp/whisper/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DWHISPER_BUILD_TESTS=OFF \
+ && cmake --build /tmp/whisper/build --target whisper-server --parallel 2
+
+FROM ${BROWSER_IMAGE} AS runtime
+USER 0:0
+COPY packages.list /tmp/media-packages.list
+RUN apt-get update \
+ && xargs -a /tmp/media-packages.list apt-get install -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/*
+COPY --from=builder /tmp/whisper/build/bin/whisper-server /opt/humanish/media/whisper-server
+COPY --from=builder /tmp/whisper/LICENSE /opt/humanish/media/LICENSE.whisper.cpp
+COPY --from=media_inputs ggml-tiny.en.bin /opt/humanish/media/ggml-tiny.en.bin
+COPY --from=media_inputs whisper-model-README.md /opt/humanish/media/README.whisper-model.md
+COPY guest-media-worker.js /opt/humanish/media/guest-media-worker.js
+RUN printf '{"type":"module"}\n' > /opt/humanish/media/package.json \
+ && chown -R 0:0 /opt/humanish/media \
+ && find /opt/humanish/media -type d -exec chmod 0555 {} + \
+ && find /opt/humanish/media -type f -exec chmod 0444 {} + \
+ && chmod 0555 /opt/humanish/media/whisper-server
+LABEL to.humanish.runtime.media="1" \
+      to.humanish.runtime.media.camera="synthetic-v4l2" \
+      to.humanish.runtime.media.microphone="speech" \
+      to.humanish.runtime.media.voice="espeak-ng-synthetic"
+USER 1000:1000

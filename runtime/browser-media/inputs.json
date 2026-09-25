@@ -1,0 +1,25 @@
+{
+  "schema": "humanish.browser-media-inputs.v1",
+  "files": {
+    "v4l2loopback-0.15.4.tar.gz": {
+      "url": "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v0.15.4.tar.gz",
+      "size": 90006,
+      "sha256": "21a17702648aa6a937b88a93bd71ef9f547815ead28719cafcfcc247396643dc"
+    },
+    "whisper.cpp-927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz": {
+      "url": "https://github.com/ggml-org/whisper.cpp/archive/927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz",
+      "size": 9357755,
+      "sha256": "41b664fee09e79176ac277b5237debec34f8d74af3c7d71f333f1ec67989ecde"
+    },
+    "ggml-tiny.en.bin": {
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1f/ggml-tiny.en.bin?download=true",
+      "size": 77704715,
+      "sha256": "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f"
+    },
+    "whisper-model-README.md": {
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1f/README.md?download=true",
+      "size": 3196,
+      "sha256": "21fd967098804f33fc84e803fb0e5ab7666d71801f4027cf28a65e7af09c1758"
+    }
+  }
+}

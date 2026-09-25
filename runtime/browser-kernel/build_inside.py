@@ -76,6 +76,11 @@ def main():
     arm = architecture == 'arm64'
     machine, make_arch = ('aarch64', 'arm64') if arm else ('x86_64', 'x86_64')
     policy = json.loads((WORK / 'policy.json').read_text())
+    media = os.environ.get('HUMANISH_MEDIA_KERNEL') == '1'
+    if media:
+        media_policy = json.loads((WORK / 'media-policy.json').read_text())
+        policy['required'].update(media_policy['required'])
+        policy['forbidden'] += media_policy['forbidden']
     if arm:
         policy['architecture'] = architecture
         for key in ['CONFIG_X86_64', 'CONFIG_KVM_GUEST', 'CONFIG_ACPI']:
@@ -171,6 +176,21 @@ def main():
     if not 1 <= jobs <= toolchain['jobsMaximum']:
         raise ValueError('Build concurrency exceeds fixed bound')
     run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *(['Image'] if arm else ['vmlinux', 'bzImage'])], cwd=kernel)
+    media_outputs = []
+    if media:
+        source = WORK / 'v4l2loopback'
+        with tarfile.open(WORK / 'v4l2loopback-0.15.4.tar.gz') as archive:
+            members = archive.getmembers()
+            if len(members) > 256 or sum(item.size for item in members) > 8 * 1024 * 1024:
+                raise ValueError('V4L2 source archive exceeds bound')
+            if any(not item.name.startswith('v4l2loopback-0.15.4/') for item in members):
+                raise ValueError('Unexpected V4L2 source archive root')
+            archive.extractall(WORK, filter='data')
+        (WORK / 'v4l2loopback-0.15.4').rename(source)
+        run(['make', 'ARCH=' + make_arch, '-C', str(kernel), 'M=' + str(source), 'modules'])
+        shutil.copyfile(source / 'v4l2loopback.ko', OUTPUT / 'v4l2loopback.ko')
+        shutil.copyfile(source / 'COPYING', OUTPUT / 'COPYING.v4l2loopback')
+        media_outputs = ['v4l2loopback.ko', 'COPYING.v4l2loopback']
     binaries = [('arch/arm64/boot/Image', 'kernel.bin')] if arm else [('vmlinux', 'kernel.bin'), ('arch/x86/boot/bzImage', 'bzImage')]
     for src, name in [*binaries,
                       ('.config', 'kernel.config'), ('System.map', 'System.map'), ('COPYING', 'COPYING')]:
@@ -189,7 +209,7 @@ def main():
     (OUTPUT / 'source-files.json').write_text(json.dumps(source_files, indent=2) + '\n')
     (OUTPUT / 'patch-order.json').write_text(json.dumps(patches, indent=2) + '\n')
     outputs = {name: {'size': (OUTPUT / name).stat().st_size, 'sha256': sha256(OUTPUT / name)}
-               for name in [*[name for _, name in binaries], 'kernel.config', 'System.map', 'COPYING']}
+               for name in [*[name for _, name in binaries], 'kernel.config', 'System.map', 'COPYING', *media_outputs]}
     result = {'schema': 'humanish.browser-kernel-build.v1', 'qualification': 'development-unqualified',
               'kernelVersion': run(['make', '-s', 'kernelrelease'], cwd=kernel, capture=True).strip(),
               'architecture': architecture, 'sourceSignatureVerified': True,
@@ -197,7 +217,7 @@ def main():
               'sourceSpecSha256': sha256(spec), 'patchCount': len(patches), 'policy': policy,
               'outputs': outputs, 'jobs': jobs, 'buildEnvironment': {key: os.environ[key] for key in
                   ['KBUILD_BUILD_USER', 'KBUILD_BUILD_HOST', 'KBUILD_BUILD_VERSION', 'KBUILD_BUILD_TIMESTAMP', 'SOURCE_DATE_EPOCH']},
-              'vmBooted': False, 'redistributionApproved': False}
+              'media': media, 'vmBooted': False, 'redistributionApproved': False}
     (OUTPUT / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'status': 'built', 'outputs': outputs}), flush=True)
 

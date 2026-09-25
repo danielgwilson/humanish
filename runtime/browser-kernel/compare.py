@@ -20,7 +20,10 @@ def compare(first, second):
             raise ValueError('Both builds must have confirmed owned cleanup')
         observed = {}
         for name, declared in receipt['result']['outputs'].items():
-            if name not in ('kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'):
+            allowed = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
+            if receipt['result'].get('media') is True:
+                allowed.update({'v4l2loopback.ko', 'COPYING.v4l2loopback'})
+            if name not in allowed:
                 raise ValueError('Unexpected build output')
             file = directory / 'output' / name
             if file.is_symlink() or not file.is_file():
@@ -30,7 +33,10 @@ def compare(first, second):
                                   'sha256': hashlib.file_digest(data, 'sha256').hexdigest()}
             if observed[name] != declared:
                 raise ValueError('Retained output changed after build')
-        if set(observed) != {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}:
+        expected_outputs = {'kernel.bin', 'bzImage', 'kernel.config', 'System.map', 'COPYING'}
+        if receipt['result'].get('media') is True:
+            expected_outputs.update({'v4l2loopback.ko', 'COPYING.v4l2loopback'})
+        if set(observed) != expected_outputs:
             raise ValueError('Incomplete build outputs')
         for name, declared in receipt['recipeHashes'].items():
             if Path(name).name != name:
@@ -48,7 +54,11 @@ def compare(first, second):
                    and left['toolchainImage'] == right['toolchainImage']
                    and left['result']['buildEnvironment'] == right['result']['buildEnvironment']
                    and all(left['recipeHashes'][name] == right['recipeHashes'][name]
-                           for name in COMPILATION_RECIPES))
+                           for name in COMPILATION_RECIPES)
+                   and (left['result'].get('media') == right['result'].get('media'))
+                   and (left['result'].get('media') is not True or all(
+                       left['recipeHashes'].get(name) == right['recipeHashes'].get(name)
+                       for name in ('media-policy.json', 'media-input.json', 'v4l2loopback-0.15.4.tar.gz'))))
     return {'schema': 'humanish.browser-kernel-repeat.v1',
             'sameCompilationInputs': same_inputs,
             'sameKernelOutputs': actual_outputs[0] == actual_outputs[1],

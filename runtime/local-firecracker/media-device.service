@@ -1,0 +1,13 @@
+[Unit]
+Description=Humanish synthetic camera device
+Before=humanish-guest.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/insmod /opt/humanish/media/v4l2loopback.ko video_nr=0 card_label=HumanishSyntheticCamera exclusive_caps=1
+ExecStartPost=/bin/chown 1000:1000 /dev/video0
+ExecStartPost=/bin/chmod 0600 /dev/video0
+
+[Install]
+WantedBy=multi-user.target
