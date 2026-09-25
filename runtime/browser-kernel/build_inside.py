@@ -175,7 +175,12 @@ def main():
     jobs = int(os.environ['HUMANISH_KERNEL_JOBS'])
     if not 1 <= jobs <= toolchain['jobsMaximum']:
         raise ValueError('Build concurrency exceeds fixed bound')
-    run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *(['Image'] if arm else ['vmlinux', 'bzImage'])], cwd=kernel)
+    kernel_targets = ['Image'] if arm else ['vmlinux', 'bzImage']
+    if media:
+        # External-module modpost requires the symbol table produced by the
+        # complete modules target; an image-only build does not retain it.
+        kernel_targets.append('modules')
+    run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *kernel_targets], cwd=kernel)
     media_outputs = []
     if media:
         source = WORK / 'v4l2loopback'
