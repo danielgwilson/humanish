@@ -109,7 +109,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
         let turn: CuaTurn;
         try { turn = parseParticipantFinal(result.output); }
         catch { throw new CuaProviderError("invalid_response", receipt, usage, "response"); }
-        emit({ turn: { ...turn, ...(usage === undefined ? {} : { usage }), providerRequest: receipt } });
+        emit({ turn: { ...turn, ...(usage === undefined ? {} : { usage: { ...usage, turns: result.inferenceUsage ?? [] } }), providerRequest: receipt } });
       } catch (error) {
         incompleteUsage ||= receipt.dispatched !== false && !receipt.usageComplete;
         revoke();
@@ -170,7 +170,10 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     modelSettings: { reasoningEffort: effort },
     capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: operator,
       preGrantableApprovals: false, inProcessTools: false, license: "proprietary" },
-    get pendingRequestUsage() { return session.pendingUsage; },
+    get pendingRequestUsage() {
+      const usage = session.pendingUsage;
+      return usage === undefined ? undefined : { ...usage, turns: session.pendingInferenceUsage ?? [] };
+    },
     get interactionUsageIncomplete() { return incompleteUsage || active; }, get historyTurnsOmitted() { return 0; },
     nextTurn: (req, signal) => start(req, signal, false), debrief: (req, signal) => start(req, signal, true)
   };

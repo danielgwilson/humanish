@@ -31,7 +31,7 @@ const request = (screenshot = frame()) => ({ instructions: "Use the synthetic pa
 const finalOutput = (changes: Record<string, unknown> = {}) => ({ outcome: "reached", summary: "I saved the note.",
   frictionReports: ["The first click was skipped, so I retried."], ...changes });
 const result = (output: unknown = finalOutput(), changes: Partial<RestrictedCodexResult> = {}): RestrictedCodexResult => ({
-  status: "completed", output, usage: { input: 20, output: 5 }, usageComplete: true, dispatched: true, errorCode: null, ...changes
+  status: "completed", output, usage: { input: 20, output: 5 }, inferenceUsage: [{ input: 20, output: 5 }], usageComplete: true, dispatched: true, errorCode: null, ...changes
 });
 
 type NativeTool = (args: unknown) => Promise<string>;
@@ -112,6 +112,7 @@ describe("restricted participant conversation", () => {
     } }, signal);
     expect(terminal).toMatchObject({ done: true, outcome: "reached", providerRequest: { dispatched: true, usageComplete: true },
       closingReport: { summary: "I saved the note." } });
+    expect(terminal.usage).toEqual({ input: 20, output: 5, turns: [{ input: 20, output: 5 }] });
     expect(run).toHaveBeenCalledTimes(1);
     expect(replies[0]).toEqual({ acknowledgments: [{ index: 0, status: "skipped" }],
       imageUrl: `data:image/png;base64,${frame(2).toString("base64")}`, contextHint: "RETRY_AFTER_SKIP", closing: false });
