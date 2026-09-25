@@ -10,17 +10,24 @@ the packaged Node entrypoint. CID and echoed challenge values are not
 credentials: the future host owner must bind the stream to its acquired guest
 and current lease.
 
-Node alone validates the first frame: four-byte big-endian length, at most
-1024 payload bytes, canonical ASCII JSON with exactly `version` and `identity`.
+Node alone validates the first frame: four-byte big-endian length, canonical
+ASCII JSON with `version`, `identity` and an optional `initialUrl`. The URL is
+limited to 64 KiB; the complete request has another 1 KiB for its envelope.
 Identity is the existing generation/challenge/runtimeRevision object. Unknown,
 reordered, duplicated, escaped or otherwise noncanonical input is refused.
-After fixed desktop preparation, READY transfers the stream to the existing
+The optional URL uses the local launcher's loopback HTTP(S), explicit-port and
+no-userinfo rules. It is navigated once during preparation, waiting for
+`DOMContentLoaded` and a bounded paint; omission retains the neutral fixture.
+READY remains limited to 1 KiB and transfers the stream to the existing
 browser-control dispatcher. There is no shell, actor JavaScript, selector,
-arbitrary path, configurable URL, reconnect or fallback operation.
+arbitrary path, reconnect or fallback operation.
 
 The private Node-to-relay pipe carries only ordered `A` and `R` supervision
 markers. Python enforces admission within five seconds and readiness within
-35 seconds of spawning Node, including import time. The listener accepts for
+75 seconds of spawning Node, including import time. Node retains a 35-second
+preparation bound when no initial URL is supplied. Initial navigation adds
+30 seconds for the document and five for paint to the total preparation bound.
+The listener accepts for
 15 seconds; these are fixed development bounds, not a qualified cohort policy.
 The host's absolute lease deadline remains authoritative. Queues are bounded
 at 256 KiB in each direction. EOF and failures revoke input before exact-owned
