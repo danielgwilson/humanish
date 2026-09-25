@@ -34,7 +34,7 @@ function deferred<T>() {
   void promise.catch(() => undefined);
   return { promise, resolve, reject };
 }
-const TOOL_DESCRIPTION = `Act on the participant's browser through Humanish. Submit one to four UI actions and a short public comment; never private reasoning. Humanish returns a JSON STRING with execution acknowledgments and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text(r); image(r.imageUrl). Call serially and inspect each returned screenshot before deciding what to do next. Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
+const TOOL_DESCRIPTION = `Act on the participant's browser through Humanish. Submit one to four UI actions and a short public comment; never private reasoning. Humanish returns a JSON STRING with execution acknowledgments and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl). Call serially and inspect each returned screenshot before deciding what to do next. Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
 
 /** One native tool-calling conversation; the existing CUA loop owns every input. */
 export function createRestrictedCodexParticipant(options: RestrictedParticipantOptions = {}): {
@@ -48,7 +48,18 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
   let closed = false, failedCleanup = false, incompleteUsage = false, active = false, closingPhase = false;
   let instructions: string | undefined, lastActionCount: number | undefined;
   let continuation: ReturnType<typeof deferred<string>> | undefined;
-  let event = deferred<CuaTurn>();
+  type Event = { turn: CuaTurn } | { error: CuaProviderError };
+  const events: Event[] = [];
+  let waiter: ReturnType<typeof deferred<Event>> | undefined;
+  const emit = (event: Event): void => {
+    if (waiter) { const current = waiter; waiter = undefined; current.resolve(event); }
+    else events.push(event);
+  };
+  const nextEvent = async (): Promise<CuaTurn> => {
+    const event = events.shift() ?? await (waiter ??= deferred<Event>()).promise;
+    if ("error" in event) throw event.error;
+    return event.turn;
+  };
   let nativeTask: Promise<void> | undefined, pending: Promise<CuaTurn> | undefined;
   let controller: AbortController | undefined;
   let sessionClosing: Promise<boolean> | undefined, closing: Promise<ParticipantProviderCloseResult> | undefined;
@@ -60,7 +71,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
         if (closed || closingPhase || continuation || !active) throw new Error("Unexpected participant tool call");
         const turn = parseParticipantTool(args);
         const reply = deferred<string>(); continuation = reply; lastActionCount = turn.actions.length;
-        event.resolve(turn);
+        emit({ turn });
         return reply.promise;
       } }
   } });
@@ -98,16 +109,17 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
         let turn: CuaTurn;
         try { turn = parseParticipantFinal(result.output); }
         catch { throw new CuaProviderError("invalid_response", receipt, usage, "response"); }
-        event.resolve({ ...turn, ...(usage === undefined ? {} : { usage }), providerRequest: receipt });
+        emit({ turn: { ...turn, ...(usage === undefined ? {} : { usage }), providerRequest: receipt } });
       } catch (error) {
         incompleteUsage ||= receipt.dispatched !== false && !receipt.usageComplete;
         revoke();
-        event.reject(isCuaProviderError(error) ? error
-          : new CuaProviderError("process_failed", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, usage));
+        emit({ error: isCuaProviderError(error) ? error
+          : new CuaProviderError("process_failed", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, usage) });
       } finally { active = false; }
     })();
   }
   async function execute(req: CuaTurnRequest, signal: AbortSignal, debrief: boolean): Promise<CuaTurn> {
+    if (events.length) return nextEvent();
     if (signal.aborted) { revoke(); throw new CuaProviderError("cancelled", noDispatch()); }
     if (typeof req.instructions !== "string" || Buffer.byteLength(req.instructions) > L.instructions ||
       (req.contextHint !== undefined && (typeof req.contextHint !== "string" || Buffer.byteLength(req.contextHint) > L.hint)) ||
@@ -127,14 +139,13 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     try {
       instructions ??= req.instructions; closingPhase = debrief;
       const imageUrl = `data:image/png;base64,${frame!.toString("base64")}`;
-      event = deferred<CuaTurn>();
       if (continuation) {
         const reply = continuation; continuation = undefined;
         reply.resolve(JSON.stringify({ acknowledgments: acknowledgments!.map(({ index, status }) => ({ index, status })), imageUrl,
           contextHint: req.contextHint ?? null, closing: debrief }));
       } else if (!active) launch(req, imageUrl);
       else throw new CuaProviderError("busy", noDispatch());
-      return await event.promise;
+      return await nextEvent();
     } finally {
       // The shared loop aborts each request's signal after it yields. The native
       // turn must remain alive while Humanish executes and records its actions.
@@ -142,7 +153,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     }
   }
   const start = (req: CuaTurnRequest, signal: AbortSignal, debrief: boolean): Promise<CuaTurn> => {
-    if (closed) return Promise.reject(new CuaProviderError("request_rejected", noDispatch()));
+    if (closed && events.length === 0) return Promise.reject(new CuaProviderError("request_rejected", noDispatch()));
     if (pending) return Promise.reject(new CuaProviderError("busy", noDispatch()));
     const task = execute(req, signal, debrief); pending = task;
     void task.finally(() => { if (pending === task) pending = undefined; }).catch(() => undefined);
@@ -153,6 +164,7 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
     ...(!operator ? { executionProfile: PARTICIPANT_PROFILE } : {}), modelSettings: { reasoningEffort: effort },
     capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: operator,
       preGrantableApprovals: false, inProcessTools: false, license: "proprietary" },
+    get pendingRequestUsage() { return session.pendingUsage; },
     get interactionUsageIncomplete() { return incompleteUsage || active; }, get historyTurnsOmitted() { return 0; },
     nextTurn: (req, signal) => start(req, signal, false), debrief: (req, signal) => start(req, signal, true)
   };

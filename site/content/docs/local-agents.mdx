@@ -63,11 +63,17 @@ The hosted Codex route keeps the operator's normal Codex home and configuration;
 it does not substitute the isolated file-backed ChatGPT profile used by
 [local browser studies](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md).
 
-Humanish starts it in a scratch directory with read-only restrictions for Codex
-or `--allowedTools Read` for Claude Code, and supplies a screenshot for each
-turn. The returned desktop actions execute in E2B. The local CLI remains a host
-process under those configured restrictions; they are not a separate sandbox
-for everything the CLI can access.
+Humanish starts Codex in a scratch directory with its general-purpose tools
+disabled and one Humanish UI tool. Codex calls that tool to propose desktop
+inputs; Humanish executes them, records them and returns acknowledgments with
+the next screenshot. The same participant implementation drives local
+Firecracker and hosted E2B desktops. One app-server thread retains the persona
+and conversation through the final feedback.
+
+Claude Code uses `--allowedTools Read` and returns desktop actions through its
+existing conversation adapter. Both CLIs remain host processes under configured
+restrictions, not separate sandboxes for everything the CLI can access. Desktop
+inputs execute in the selected sandbox; credentials stay with the host CLI.
 
 ## Usage and limitations
 
