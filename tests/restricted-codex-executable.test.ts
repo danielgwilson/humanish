@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkRestrictedCodexAnalysisReadiness } from "../src/restricted-codex-analysis.js";
+import { restrictedCodexNpmTarget } from "../src/restricted-codex-session.js";
 import type { RestrictedCodexSpawn } from "../src/restricted-codex-transport.js";
 
 const directories: string[] = [];
@@ -17,6 +18,13 @@ const platforms = [
 ] as const;
 
 describe("restricted Codex npm executable resolution", () => {
+  it("matches the official npm launcher map for operator Unix architectures", () => {
+    expect(restrictedCodexNpmTarget("linux", "x64")).toEqual({ packageName: "codex-linux-x64", triple: "x86_64-unknown-linux-musl" });
+    expect(restrictedCodexNpmTarget("linux", "arm64")).toEqual({ packageName: "codex-linux-arm64", triple: "aarch64-unknown-linux-musl" });
+    expect(restrictedCodexNpmTarget("darwin", "x64")).toEqual({ packageName: "codex-darwin-x64", triple: "x86_64-apple-darwin" });
+    expect(restrictedCodexNpmTarget("darwin", "arm64")).toEqual({ packageName: "codex-darwin-arm64", triple: "aarch64-apple-darwin" });
+    expect(restrictedCodexNpmTarget("win32", "x64")).toBeUndefined();
+  });
   for (const target of platforms) {
     it.each(["hoisted", "nested", "bundled"] as const)(`resolves the ${target.platform} %s layout to a directly owned native executable`, async layout => {
       const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-layout-")); directories.push(directory);

@@ -54,7 +54,8 @@ describe.skipIf(!LIVE)("cua-actor-lab (LIVE, spend-gated)", () => {
         mission: "Look at the page on screen, scroll down once to see the rest of it, then in your final message state the main heading text exactly and stop. Do not navigate anywhere else."
       }],
       execution: { target: "e2b-desktop", timeoutMs: 120_000 },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
+      policies: { redactScreenshots: true }
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
 

@@ -41,6 +41,12 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
   production keeps the CLI default. Recall continued after two compactions.
   Their separate raw response usage was absent from the CLI's cumulative thread
   counters, so Humanish marks affected turns' known counts as incomplete.
+- `participant-code-mode-tool-turn` is a selected-field projection of the
+  2026-09-25 CLI 0.154.0 Code Mode probe. It retains the confirmed `exec` raw
+  items, `dynamicToolCall` lifecycle, `item/tool/call` request, and JSON text
+  result shape. It also retains the separately captured `wait` function call and
+  output shape from a 15-second host callback. The screenshot is replaced with
+  a tiny synthetic data URL; reasoning and private identifiers are omitted.
 
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,
 auth contents, raw provider errors, and rate-limit/account details are excluded.

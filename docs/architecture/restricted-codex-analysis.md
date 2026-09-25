@@ -37,12 +37,15 @@ actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
 Each analyst or readiness request owns a separate child process, temporary home
-and fresh thread. Participants use the same launcher with one process and thread
-for their entire interaction and closing feedback; successive turns append the
-current screenshot, context and action acknowledgments to that conversation.
+and fresh thread. Participants share the native session implementation with a
+separate UI-tool policy: Code Mode can call one Humanish desktop tool, and each
+result supplies actual input acknowledgments and the current screenshot. Local
+Firecracker and hosted E2B use this same participant implementation. Hosted
+participants preserve operator authentication and model configuration; the
+restricted analyst profile above remains unchanged.
 Codex manages context compaction. Humanish does not replace it with a rolling
 history window or restart a failed conversation without its memory. Participant
-threads never share state with each other or the analyst.
+threads never share conversation state with each other or the analyst.
 
 An unresolved child process blocks new sessions until its exit is confirmed.
 Limits and deadlines apply to each request, including startup on the first turn.

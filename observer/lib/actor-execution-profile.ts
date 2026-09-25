@@ -1,13 +1,22 @@
 /** Durable artifact profile. This reader never selects or imports CLI execution policy. */
 export function validActorExecutionProfile(value: unknown): boolean {
   const expected = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
-    authentication: "chatgpt-account", billing: "account-unknown", requestedModel: "gpt-6-astra", reasoningEffort: "low",
-    cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", participantSchema: "humanish.restricted-participant-turn.v1",
-    memoryPolicy: "recent-eight-16k-v1" };
+    authentication: "chatgpt-account", billing: "account-unknown",
+    cliVersion: "0.154.0" };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
-  return Object.keys(record).length === Object.keys(expected).length && Object.entries(expected).every(([key, v]) => key === "memoryPolicy"
-    ? record[key] === "recent-eight-16k-v1" || record[key] === "continuing-thread-v1" : record[key] === v);
+  if (Object.keys(record).length !== Object.keys(expected).length + 5 ||
+    !Object.entries(expected).every(([key, expectedValue]) => record[key] === expectedValue)) return false;
+  const legacy = record.requestedModel === "gpt-6-astra" && record.reasoningEffort === "low"
+    && record.toolPolicy === "restricted-codex-v1"
+    && record.participantSchema === "humanish.restricted-participant-turn.v1"
+    && (record.memoryPolicy === "recent-eight-16k-v1" || record.memoryPolicy === "continuing-thread-v1");
+  const uiTools = typeof record.requestedModel === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(record.requestedModel)
+    && typeof record.reasoningEffort === "string" && ["none", "minimal", "low", "medium", "high", "xhigh", "max"].includes(record.reasoningEffort)
+    && record.toolPolicy === "codex-ui-tools-v1"
+    && record.participantSchema === "humanish.codex-ui-tool.v1"
+    && record.memoryPolicy === "continuing-thread-v1";
+  return legacy || uiTools;
 }
 
 /** Closed per-attempt evidence; dollar amounts are never part of account usage. */

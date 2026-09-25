@@ -126,9 +126,8 @@ import {
   type LabSubjectServe,
   type LabSubjectState
 } from "./lab-config.js";
-import { startAppServerSession } from "./local-agent-appserver.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
-import { createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import { checkHostedCodexCompatibility, createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
 import { buildObserverData } from "./observer-data.js";
 import {
   attachObserverRuntimeStreamUrls,
@@ -140,9 +139,12 @@ import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
 import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { MODEL_RATES, estimateActorCost, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
+import { MODEL_RATES, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
+import {
+  createRestrictedCodexParticipant,
+} from "./restricted-codex-participant.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
@@ -1483,7 +1485,7 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
   const { config, env } = deps;
-  let appServer: Awaited<ReturnType<typeof startAppServerSession>> | undefined;
+  let codexParticipant: ReturnType<typeof createRestrictedCodexParticipant> | undefined;
   let claudeSession: Awaited<ReturnType<typeof startClaudeSession>> | undefined;
   let localAgentProvider: CuaProvider | undefined;
   const warnings: string[] = [];
@@ -1502,18 +1504,19 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const desktopLane = deps.createDesktopLane?.(spec, warnings) ?? createE2BCuaDesktopLane(spec, deps, warnings);
   try {
     await desktopLane.prepare();
-    // Start the brain BEFORE the first screenshot: the app-server handshake is ~500ms, and it
-    // is paid here, while the sandbox is still settling, rather than inside turn one.
     if (deps.hooks.buildProvider) {
       localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec });
     } else if (deps.localAgent === "codex") {
-      appServer = await startAppServerSession({
+      // Hosted local-agent studies use the same native participant engine as local desktops.
+      // Operator auth deliberately retains the operator's Codex home, config and supported auth
+      // stores instead of applying the isolated restricted-account profile used by local studies.
+      codexParticipant = createRestrictedCodexParticipant({
+        authMode: "operator",
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        // The persona lives on the THREAD, so it is stated once instead of re-sent every turn.
-        baseInstructions: spec.instructions
+        session: { env }
       });
-      localAgentProvider = appServer.provider;
+      localAgentProvider = codexParticipant.provider;
     } else if (deps.localAgent === "claude") {
       // One session for the whole run, like the codex thread above (#520). The one-shot
       // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
@@ -1572,7 +1575,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         : {
           maxUsd,
           estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
-            estimateActorCost(usage, capModelId).estimatedCostUsd
+            estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd
         }),
       executor: ready.executor,
       redactScreenshots: deps.redactScreenshots,
@@ -1589,7 +1592,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ? {}
         : {
           overRunBudget: (usage: ActorTokenUsage): string | null => {
-            const estimate = estimateActorCost(usage, capModelId).estimatedCostUsd;
+            const estimate = estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd;
             const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
             return totalUsd > deps.runBudget!.maxTotalUsd
               ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
@@ -1613,13 +1616,21 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
-    try { await localAgentProvider?.close?.(); }
+    try { if (codexParticipant === undefined) await localAgentProvider?.close?.(); }
     catch {
       warnings.push("Model provider cleanup is unconfirmed.");
       sessionError ??= "Model provider cleanup is unconfirmed.";
     }
-    try { appServer?.close(); }
-    catch { warnings.push('Codex session cleanup failed; desktop cleanup will still run.'); }
+    try {
+      const cleanup = await codexParticipant?.close();
+      if (cleanup?.status === "unconfirmed") {
+        warnings.push("Model provider cleanup is unconfirmed.");
+        sessionError ??= "Model provider cleanup is unconfirmed.";
+      }
+    } catch {
+      warnings.push("Model provider cleanup is unconfirmed.");
+      sessionError ??= "Model provider cleanup is unconfirmed.";
+    }
     try { await claudeSession?.close(); }
     catch { warnings.push('Claude session cleanup failed; desktop cleanup will still run.'); }
     try {
@@ -2355,6 +2366,26 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
             : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
           descriptor.id
         );
+      }
+      if (chosen.id === "codex") {
+        const compatibility = await checkHostedCodexCompatibility(chosen.binPath, { env });
+        if (compatibility !== "supported") {
+          return fail(
+            "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+            compatibility === "unsupported_platform"
+              ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
+              : `Hosted Codex participants require Codex CLI 0.154.0. Run \`codex --version\` and install the supported version before retrying; no desktop was launched.`,
+            descriptor.id
+          );
+        }
+        if (chosen.billing === "account-unknown" &&
+          (config.execution?.caps?.maxUsd !== undefined || config.execution?.caps?.maxTotalUsd !== undefined)) {
+          return fail(
+            "HUMANISH_CUA_LAB_UNPRICED_CAP",
+            "A ChatGPT-account Codex participant has no API-dollar price, so execution.caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
+            descriptor.id
+          );
+        }
       }
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());

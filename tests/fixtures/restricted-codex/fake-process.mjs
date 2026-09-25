@@ -34,11 +34,31 @@ if (operation === "--version") {
   const completion = events.find(event => event.method === "turn/completed");
   const answer = events.find(event => event.method === "item/completed");
   const usage = events.find(event => event.method === "thread/tokenUsage/updated");
+  const participantTool = scenario.startsWith("participant") ? capture("participant-code-mode-tool-turn.json") : null;
+  if (scenario === "participant-wrong-tool") participantTool.request.params.tool = "unexpected_tool";
+  if (scenario === "participant-wrong-namespace") participantTool.request.params.namespace = "unexpected_namespace";
+  if (scenario === "participant-wrong-thread") participantTool.request.params.threadId = "unexpected-thread";
+  if (scenario === "participant-raw-wrong-function")
+    participantTool.afterResponse.find(event => event.params?.item?.type === "function_call").params.item.name = "unexpected_function";
+  let participantDuplicateSent = false;
   if (scenario === "system-config") config.layers.find(layer => layer.name.type === "system").config = { notify: ["synthetic-command"] };
   if (scenario === "mcp-config") config.config.mcp_servers = { synthetic: { command: "synthetic-command" } };
   if (scenario === "instructions-config") config.config.instructions = "SYNTHETIC_UNTRUSTED_INSTRUCTIONS";
   if (scenario === "agents-enabled") config.config.agents.enabled = true;
   if (scenario === "code-host-enabled") config.config.features.code_mode_host = true;
+  if (participantTool) {
+    config.config.features.code_mode = true;
+    config.config.features.code_mode_host = true;
+    config.config.features.code_mode_only = true;
+    config.config.model_reasoning_effort = "high";
+    config.config.model = "operator-configured-model";
+    if (scenario === "participant-default-model") delete config.config.model;
+    config.config.mcp_servers = { inherited_synthetic: { command: "synthetic-command", enabled: true } };
+    if (scenario === "participant-unsafe-mcp-name")
+      config.config.mcp_servers = { "inherited.synthetic": { command: "synthetic-command", enabled: true } };
+    thread.model = "operator-configured-model"; thread.thread.model = "operator-configured-model";
+    thread.reasoningEffort = "high"; thread.thread.reasoningEffort = "high";
+  }
   if (scenario === "provider-config") config.config.openai_base_url = "https://example.invalid";
   if (scenario === "model-mismatch") { thread.model = "unqualified-model"; thread.thread.model = "unqualified-model"; }
   if (scenario === "inherited-instructions") thread.instructionSources = [{ path: "/synthetic/AGENTS.md" }];
@@ -47,6 +67,21 @@ if (operation === "--version") {
   rl.on("line", line => {
     const message = JSON.parse(line);
     note({ method: message.method, params: message.params });
+    if (participantTool && message.method === undefined && message.id === participantTool.request.id) {
+      note({ toolResponse: message.result });
+      if (scenario === "participant-duplicate-call" && !participantDuplicateSent) {
+        participantDuplicateSent = true;
+        emit({ ...participantTool.request, id: 901 });
+        return;
+      }
+      const finishParticipant = () => {
+        for (const event of participantTool.afterResponse) emit(event);
+        emit(answer); emit(usage); emit(completion);
+      };
+      if (scenario === "participant-deadline-reset") setTimeout(finishParticipant, 500);
+      else finishParticipant();
+      return;
+    }
     if (message.method === "initialized") return;
     if (scenario === `hang-${message.method.replaceAll("/", "-")}`) return;
     if (scenario === "malformed" && message.method === "initialize") { process.stdout.write("{not-json}\n"); return; }
@@ -56,12 +91,15 @@ if (operation === "--version") {
     else if (message.method === "config/read") reply(message.id, config);
     else if (message.method === "account/read") {
       const account = capture("account-read-projection.json");
-      if (scenario === "api-key-auth") account.account.type = "apiKey";
+      if (scenario === "api-key-auth" || scenario === "participant-api-key-auth") account.account.type = "apiKey";
       if (scenario === "signed-out") account.account = null;
       reply(message.id, account);
     } else if (message.method === "thread/start") reply(message.id, thread);
     else if (message.method === "mcpServerStatus/list") reply(message.id,
-      scenario === "active-mcp" ? { data: [{ name: "synthetic" }], nextCursor: null } : capture("mcp-status.json"));
+      scenario === "active-mcp" ? { data: [{ name: "synthetic" }], nextCursor: null }
+        : participantTool ? { data: Object.keys(config.config.mcp_servers).map(name => ({ name, runtimeStatus: null,
+          tools: { cached_synthetic_tool: {} }, resources: [], resourceTemplates: [], authStatus: "unsupported" })), nextCursor: null }
+          : capture("mcp-status.json"));
     else if (message.method === "turn/interrupt") {
       reply(message.id, {});
       for (const event of capture("interrupted-turn.json")) emit(event);
@@ -75,6 +113,24 @@ if (operation === "--version") {
       }
       if (scenario === "lost-turn-ack") { emit({ method: "turn/started", params: { threadId: thread.thread.id, turn: turn.turn } }); return; }
       if (scenario !== "early-events") reply(message.id, map(turn));
+      if (participantTool) {
+        const requestParticipantTool = () => {
+          if (scenario === "participant-usage-before-tool") emit(usage);
+          if (scenario === "participant-multi-usage") {
+            const first = structuredClone(usage);
+            Object.assign(first.params.tokenUsage.total, { totalTokens: 150100, inputTokens: 150000, outputTokens: 100 });
+            emit(first);
+            Object.assign(usage.params.tokenUsage.total, { totalTokens: 300200, inputTokens: 300000, outputTokens: 200 });
+            emit(usage);
+          }
+          for (const event of participantTool.beforeResponse) emit(event);
+          emit(participantTool.request);
+          if (scenario === "participant-premature-completion") emit(completion);
+        };
+        if (scenario === "participant-deadline-reset") setTimeout(requestParticipantTool, 350);
+        else requestParticipantTool();
+        return;
+      }
       if (scenario.startsWith("continuing")) {
         const original = capture("completed-turn-and-usage.json").find(event => event.method === "thread/tokenUsage/updated");
         for (const [key, value] of Object.entries(original.params.tokenUsage.total)) usage.params.tokenUsage.total[key] = value * turnNumber;

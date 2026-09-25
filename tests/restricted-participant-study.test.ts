@@ -24,7 +24,7 @@ function config(analysis: false | { provider: "codex" } = false) {
   if (!parsed.ok) throw new Error(parsed.error.message); return parsed.config;
 }
 const success = { status: "completed" as const, usage: { input: 50, output: 10 }, usageComplete: true, dispatched: true, errorCode: null,
-  output: { schema: PARTICIPANT_PROFILE.participantSchema, narration: "I finished the synthetic task.", done: true, outcome: "reached", actions: [] } };
+  output: { outcome: "reached", summary: "I finished the synthetic task.", frictionReports: [] } };
 describe("account participant producer and accounting", () => {
   it("keeps actual model API rates separate from account billing", () => {
     const tokens = { input: 1000, output: 10 };
@@ -39,7 +39,7 @@ describe("account participant producer and accounting", () => {
   });
   it("uses the normal finalized producer and automatic boundary after exact cleanup", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-study-")); directories.push(cwd);
-    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
+    session.mockResolvedValue(success);
     const close = vi.fn(async () => ({ status: "released" as const, reason: "terminated" as const }));
     const automatic = vi.fn(async () => {
       expect(close).toHaveBeenCalledTimes(1); expect(sessionClose).toHaveBeenCalledTimes(1);
@@ -73,7 +73,7 @@ describe("account participant producer and accounting", () => {
   });
   it("waits for the continuing conversation to close before desktop release and analysis", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-conversation-")); directories.push(cwd);
-    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
+    session.mockResolvedValue(success);
     let started!: () => void; let confirm!: (value: boolean) => void;
     const closing = new Promise<void>(resolve => { started = resolve; });
     const confirmation = new Promise<boolean>(resolve => { confirm = resolve; });
@@ -90,7 +90,7 @@ describe("account participant producer and accounting", () => {
   });
   it("awaits one pending desktop finalizer before automatic completion and final return", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-account-finalizer-")); directories.push(cwd);
-    session.mockImplementation(async r => ({ ...success, output: JSON.parse(r.evidence).phase === "closing" ? { summary: "I finished the synthetic task.", frictionReports: [] } : success.output }));
+    session.mockResolvedValue(success);
     let release!: () => void;
     const started = new Promise<void>(resolve => { release = resolve; });
     let confirm!: (value: { status: "released"; reason: "terminated" }) => void;

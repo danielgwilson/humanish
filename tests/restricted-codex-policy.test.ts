@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { admitsRestrictedCodexConfig, restrictedCodexRequestError, type RestrictedCodexRequest } from "../src/restricted-codex-policy.js";
+import { admitsRestrictedCodexConfig, restrictedCodexConfig, restrictedCodexRequestError,
+  type RestrictedCodexRequest } from "../src/restricted-codex-policy.js";
 
 const captured = JSON.parse(readFileSync(new URL("./fixtures/restricted-codex/effective-config.json", import.meta.url), "utf8"));
 const admitted = (raw: unknown) => admitsRestrictedCodexConfig(raw, "/private/probe/home/config.toml", "gpt-6-astra");
@@ -33,5 +34,24 @@ describe("restricted Codex effective policy", () => {
     const dataUrl = `data:image/png;base64,${Buffer.alloc(21 * 1024 * 1024).toString("base64")}`;
     expect(restrictedCodexRequestError({ ...request, images: [{ evidenceId: "e1", dataUrl }] })).toBe("invalid_request");
     expect(restrictedCodexRequestError({ ...request, evidence: "x".repeat(33 * 1024 * 1024) })).toBe("invalid_request");
+  });
+  it("enables only the Code Mode trio while inheriting an operator model and auth profile", () => {
+    const mode = { participantCodeMode: true, reasoningEffort: "high" as const, operatorAuth: true };
+    const generated = restrictedCodexConfig(undefined, mode);
+    expect(generated.overrides).not.toHaveProperty("model");
+    expect(generated.overrides).not.toHaveProperty("forced_login_method");
+    expect(generated.overrides).toMatchObject({ "features.code_mode": true, "features.code_mode_host": true,
+      "features.code_mode_only": true, "features.shell_tool": false, model_reasoning_effort: "high" });
+    const value = structuredClone(captured);
+    value.config.model = "operator-configured-model";
+    value.config.model_reasoning_effort = "high";
+    value.config.features.code_mode = true;
+    value.config.features.code_mode_host = true;
+    value.config.features.code_mode_only = true;
+    value.config.mcp_servers = { inherited_synthetic: { command: "synthetic-command" } };
+    value.config.openai_base_url = "https://operator-provider.invalid";
+    expect(admitsRestrictedCodexConfig(value, "/unused/operator/config.toml", undefined, mode)).toBe(true);
+    value.config.features.shell_tool = true;
+    expect(admitsRestrictedCodexConfig(value, "/unused/operator/config.toml", undefined, mode)).toBe(false);
   });
 });

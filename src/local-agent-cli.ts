@@ -28,6 +28,8 @@ import path from "node:path";
 import type { ActorCapabilities, ParticipantDeclaredOutcome } from "./actor-contract.js";
 import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
+import { RESTRICTED_CODEX_ANALYSIS_IDENTITY } from "./restricted-codex-policy.js";
+import { restrictedCodexNpmTarget } from "./restricted-codex-session.js";
 
 export type LocalAgentId = "codex" | "claude";
 
@@ -374,6 +376,8 @@ export interface DetectedLocalAgent extends LocalAgentDescriptor {
   credentialsPresent: boolean;
   /** CLI-reported local status, not a provider request or account-validity test. */
   authStatus: "authenticated" | "unauthenticated" | "unknown";
+  /** Known Codex login billing class. Absent when the status text is not one of the pinned shapes. */
+  billing?: "account-unknown" | "api";
 }
 
 export interface DetectLocalAgentsOptions {
@@ -408,21 +412,40 @@ async function authProbe(bin: string, args: readonly string[], env: NodeJS.Proce
   });
 }
 
-function classifyAuth(agent: LocalAgentId, result: SpawnResult): DetectedLocalAgent["authStatus"] {
+function classifyAuth(agent: LocalAgentId, result: SpawnResult): Pick<DetectedLocalAgent, "authStatus" | "billing"> {
   if (agent === "codex") {
     const text = `${result.stdout}\n${result.stderr}`;
-    if (result.code === 0 && /^Logged in\b/m.test(text)) return "authenticated";
-    if (result.code === 1 && /^Not logged in\s*$/m.test(text)) return "unauthenticated";
+    if (result.code === 0 && /^Logged in using ChatGPT\b/m.test(text)) return { authStatus: "authenticated", billing: "account-unknown" };
+    if (result.code === 0 && /^Logged in using an API key\b/m.test(text)) return { authStatus: "authenticated", billing: "api" };
+    if (result.code === 0 && /^Logged in\b/m.test(text)) return { authStatus: "authenticated" };
+    if (result.code === 1 && /^Not logged in\s*$/m.test(text)) return { authStatus: "unauthenticated" };
   } else {
     try {
       const value: unknown = JSON.parse(result.stdout);
       if (value && typeof value === "object" && "loggedIn" in value) {
-        if (value.loggedIn === true && result.code === 0) return "authenticated";
-        if (value.loggedIn === false && result.code === 1) return "unauthenticated";
+        if (value.loggedIn === true && result.code === 0) return { authStatus: "authenticated" };
+        if (value.loggedIn === false && result.code === 1) return { authStatus: "unauthenticated" };
       }
     } catch { /* Old CLI, invalid config or unsupported status command: unknown. */ }
   }
-  return "unknown";
+  return { authStatus: "unknown" };
+}
+
+export type HostedCodexCompatibility = "supported" | "unsupported_platform" | "unsupported_version";
+
+/** Host-only compatibility check. It never initializes app-server or submits a model request. */
+export async function checkHostedCodexCompatibility(binPath: string, options: {
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  arch?: string;
+  probe?: (bin: string, args: readonly string[], env: NodeJS.ProcessEnv) => Promise<SpawnResult>;
+} = {}): Promise<HostedCodexCompatibility> {
+  const platform = options.platform ?? process.platform, arch = options.arch ?? process.arch;
+  if (restrictedCodexNpmTarget(platform, arch) === undefined) return "unsupported_platform";
+  const result = await (options.probe ?? authProbe)(binPath, ["--version"], options.env ?? process.env)
+    .catch(() => ({ code: null, stdout: "", stderr: "" }));
+  return result.code === 0 && result.stdout.trim() === `codex-cli ${RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion}`
+    ? "supported" : "unsupported_version";
 }
 
 /**
@@ -457,12 +480,12 @@ export async function detectLocalAgents(options: DetectLocalAgentsOptions = {}):
       ? path.join(env.CODEX_HOME, "auth.json") : descriptor.id === "claude" && env.CLAUDE_CONFIG_DIR
         ? path.join(env.CLAUDE_CONFIG_DIR, ".credentials.json") : path.join(home, descriptor.credentialPath);
     const status = await (options.authProbe ?? authProbe)(binPath, descriptor.id === "codex" ? ["login", "status"] : ["auth", "status"], env)
-      .then(result => classifyAuth(descriptor.id, result)).catch(() => "unknown" as const);
+      .then(result => classifyAuth(descriptor.id, result)).catch(() => ({ authStatus: "unknown" as const }));
     found.push({
       ...descriptor,
       binPath,
       credentialsPresent: (await exists(file).catch(() => false)),
-      authStatus: status
+      ...status
     });
   }
   return found;

@@ -146,6 +146,8 @@ export interface CuaTurnRequest {
 }
 
 export interface CuaTurn {
+  /** This action proposal yielded from a provider request that remains active. No receipt or usage is settled yet. */
+  providerRequestPending?: true;
   providerRequest?: ProviderRequestReceipt;
   /** Continuation handle for the next turn. */
   responseId?: string;
@@ -158,7 +160,14 @@ export interface CuaTurn {
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
-  usage?: { input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number };
+  usage?: {
+    input?: number;
+    output?: number;
+    cachedInput?: number;
+    cacheWriteInput?: number;
+    /** Per model inference inside this provider interaction. */
+    turns?: Array<{ input?: number; output?: number; cachedInput?: number; cacheWriteInput?: number }>;
+  };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
   /** Explicit provider interruption, independent of actions or participant intent. */
@@ -173,10 +182,10 @@ export interface CuaTurn {
 export interface CuaProvider {
   /** Single dispatch; the promise includes owned request cleanup. No stall retry. */
   readonly requestPolicy?: "fail_closed";
-  readonly executionProfile?: ActorExecutionProfile;
+  readonly executionProfile?: ActorExecutionProfile | undefined;
   readonly historyTurnsOmitted?: number;
   readonly id: string;
-  readonly version?: string;
+  readonly version?: string | undefined;
   /**
    * The request settings this provider will actually send, for the trace to record. `version` says
    * WHICH model; this says how it was asked to run. Optional: a provider with no such settings
@@ -200,6 +209,8 @@ export interface CuaProvider {
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
    *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete. */
   readonly interactionUsageIncomplete?: boolean;
+  /** Latest known usage for the active, unsettled request. Used only for runtime spend guards. */
+  readonly pendingRequestUsage?: CuaTurn["usage"];
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
@@ -396,11 +407,26 @@ function validTokenCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
+function normalizedUsageTurns(usage: NonNullable<CuaTurn["usage"]>): NonNullable<ActorTokenUsage["turns"]> | undefined {
+  if (!Array.isArray(usage.turns) || usage.turns.length === 0) return undefined;
+  const fields = ["input", "output", "cachedInput", "cacheWriteInput"] as const;
+  const turns: NonNullable<ActorTokenUsage["turns"]> = [];
+  for (const raw of usage.turns) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+    if (fields.every(field => raw[field] === undefined) || fields.some(field => raw[field] !== undefined && !validTokenCount(raw[field]))) return undefined;
+    if ((raw.cachedInput ?? 0) + (raw.cacheWriteInput ?? 0) > (raw.input ?? 0)) return undefined;
+    turns.push(Object.fromEntries(fields.flatMap(field => raw[field] === undefined ? [] : [[field, raw[field]]])));
+  }
+  return fields.every(field => turns.reduce((sum, turn) => sum + (turn[field] ?? 0), 0) === (usage[field] ?? 0))
+    ? turns : undefined;
+}
+
 function completeTurnUsage(usage: CuaTurn["usage"]): boolean {
   return usage !== undefined && validTokenCount(usage.input) && validTokenCount(usage.output)
     && (usage.cachedInput === undefined || validTokenCount(usage.cachedInput))
     && (usage.cacheWriteInput === undefined || validTokenCount(usage.cacheWriteInput))
-    && (usage.cachedInput ?? 0) + (usage.cacheWriteInput ?? 0) <= usage.input;
+    && (usage.cachedInput ?? 0) + (usage.cacheWriteInput ?? 0) <= usage.input
+    && (usage.turns === undefined || normalizedUsageTurns(usage) !== undefined);
 }
 
 // Waiting is a legitimate strategy, not idleness. A persona told to sign up and verify by email
@@ -789,9 +815,42 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   let usageInput = 0;
   let usageCachedInput = 0;
   let usageCacheWriteInput = 0;
-  // Per provider-REQUEST usage, in order (#334): the recorded fact long-context pricing tiers
-  // need — totals alone cannot say which requests crossed the provider's threshold.
+  let usageOutput = 0;
+  let sawUsage = false;
+  let incompleteInteractionUsage = false;
+  let unreportedInteractionUsage = false;
+  let interactionRequestPending = false;
+  // Per model-inference usage, in order (#334): the recorded fact long-context pricing tiers
+  // need. A continuing native tool interaction may contain several inference requests.
   const usageTurns: NonNullable<ActorTokenUsage["turns"]> = [];
+  const knownPendingUsage = (): NonNullable<CuaTurn["usage"]> | undefined => {
+    const usage = interactionRequestPending ? provider.pendingRequestUsage : undefined;
+    if (!completeTurnUsage(usage)) return undefined;
+    const turns = usage!.turns === undefined ? undefined : normalizedUsageTurns(usage!);
+    return { input: usage!.input!, output: usage!.output!,
+      ...(usage!.cachedInput === undefined ? {} : { cachedInput: usage!.cachedInput }),
+      ...(usage!.cacheWriteInput === undefined ? {} : { cacheWriteInput: usage!.cacheWriteInput }),
+      ...(turns === undefined ? {} : { turns }) };
+  };
+  const withPendingUsage = (settled: ActorTokenUsage): ActorTokenUsage => {
+    const pendingUsage = knownPendingUsage();
+    if (pendingUsage === undefined) return settled;
+    const input = (settled.input ?? 0) + pendingUsage.input!;
+    const output = (settled.output ?? 0) + pendingUsage.output!;
+    return {
+      ...settled,
+      input,
+      output,
+      ...((settled.cachedInput !== undefined || pendingUsage.cachedInput !== undefined)
+        ? { cachedInput: (settled.cachedInput ?? 0) + (pendingUsage.cachedInput ?? 0) } : {}),
+      ...((settled.cacheWriteInput !== undefined || pendingUsage.cacheWriteInput !== undefined)
+        ? { cacheWriteInput: (settled.cacheWriteInput ?? 0) + (pendingUsage.cacheWriteInput ?? 0) } : {}),
+      turns: [...(settled.turns ?? []), ...(pendingUsage.turns ?? [{ input: pendingUsage.input!, output: pendingUsage.output!,
+        ...(pendingUsage.cachedInput === undefined ? {} : { cachedInput: pendingUsage.cachedInput }),
+        ...(pendingUsage.cacheWriteInput === undefined ? {} : { cacheWriteInput: pendingUsage.cacheWriteInput }) }])],
+      ...(settled.total === undefined ? {} : { total: input + output })
+    };
+  };
   // The running usage snapshot both spend guards consume: totals plus the per-request ledger,
   // shaped exactly like the trace's final tokenUsage so one estimator prices both identically.
   // Unlike the persisted trace (where absent means "unreported"), this runtime callback arg
@@ -808,18 +867,16 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(providerRequests.length > 0 && providerRequests.every(r => r.usageComplete && completeTurnUsage(r.usage))
       ? { total: usageInput + usageOutput } : {})
   });
-  const runningUsage = (): ActorTokenUsage => provider.executionProfile?.billing === "account-unknown" ? accountUsage() : ({
+  const runningUsage = (): ActorTokenUsage => withPendingUsage(provider.executionProfile?.billing === "account-unknown" ? accountUsage() : ({
     input: usageInput,
     output: usageOutput,
     cachedInput: usageCachedInput,
     cacheWriteInput: usageCacheWriteInput,
     ...(usageTurns.length > 0 ? { turns: usageTurns } : {})
-  });
-  let usageOutput = 0;
-  let sawUsage = false;
-  let incompleteInteractionUsage = false;
-  let unreportedInteractionUsage = false;
+  }));
   const hasUnreportedInteractionUsage = (): boolean => unreportedInteractionUsage || provider.interactionUsageIncomplete === true;
+  const usageUnavailableForCap = (): boolean => incompleteInteractionUsage || unreportedInteractionUsage ||
+    (interactionRequestPending ? knownPendingUsage() === undefined : provider.interactionUsageIncomplete === true);
   let lastResponseId: string | undefined;
   let currentPhase = "initializing computer-use loop";
   let lastActionTitle: string | undefined;
@@ -833,8 +890,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
   };
 
   const recordUsage = (turn: CuaTurn, interaction = true): void => {
-    if (interaction && (!completeTurnUsage(turn.usage) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
+    if (turn.providerRequestPending === true) return;
     const raw = turn.usage;
+    const turns = raw?.turns === undefined ? undefined : normalizedUsageTurns(raw);
+    if (interaction && (!completeTurnUsage(raw) || turn.providerRequest?.usageComplete === false)) incompleteInteractionUsage = true;
+    if (interaction && raw?.turns !== undefined && turns === undefined) unreportedInteractionUsage = true;
     if (raw === undefined) return;
     const usage = {
       ...(validTokenCount(raw.input) ? { input: raw.input } : {}),
@@ -848,7 +908,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     usageCachedInput += usage.cachedInput ?? 0;
     usageCacheWriteInput += usage.cacheWriteInput ?? 0;
     usageOutput += usage.output ?? 0;
-    usageTurns.push(usage);
+    if (raw.turns === undefined) usageTurns.push(usage);
+    else if (turns !== undefined) usageTurns.push(...turns);
   };
 
   /** Marked providers own one attempt through settlement; an outer race never retries it. */
@@ -862,6 +923,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     let failure: unknown;
     let failed = false;
     let accepted: CuaTurn | undefined;
+    let pendingYield = false;
     const pending = Promise.resolve().then(() => {
       if (controller.signal.aborted) throw new CuaProviderError("cancelled", { dispatched: false, usageComplete: false, cleanup: "confirmed" });
       return kind === "debrief" ? provider.debrief!(request, controller.signal) : provider.nextTurn(request, controller.signal);
@@ -869,9 +931,17 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     void pending.catch(() => undefined);
     try {
       accepted = await raceBounded(`participant ${kind}`, pending, remaining(), capMs, signal);
-      const r = accepted.providerRequest;
-      if (!r || r.dispatched !== true || typeof r.usageComplete !== "boolean" || r.cleanup !== "confirmed") {
-        throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, accepted.usage);
+      if (accepted.providerRequestPending === true) {
+        if (kind !== "interaction" || accepted.done || accepted.actions.length === 0 || accepted.pendingSafetyChecks.length > 0 ||
+          accepted.providerRequest !== undefined || accepted.usage !== undefined || accepted.interruption !== undefined || accepted.closingReport !== undefined) {
+          throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" });
+        }
+        pendingYield = true;
+      } else {
+        const r = accepted.providerRequest;
+        if (!r || r.dispatched !== true || typeof r.usageComplete !== "boolean" || r.cleanup !== "confirmed") {
+          throw new CuaProviderError("invalid_response", { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" }, accepted.usage);
+        }
       }
     } catch (error) { failed = true; failure = error; }
     finally {
@@ -884,6 +954,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         })]); } finally { clearTimeout(timer); }
       }
     }
+    if (!failed && pendingYield) {
+      interactionRequestPending = true;
+      return accepted!;
+    }
     const final = settlement as Settlement | undefined;
     const typed = isCuaProviderError(failure) ? failure : final && "error" in final && isCuaProviderError(final.error) ? final.error : undefined;
     const turn = final && "turn" in final ? final.turn : undefined;
@@ -891,7 +965,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     const receipt: ProviderRequestReceipt = raw && (typeof raw.dispatched === "boolean" || raw.dispatched === "unknown") &&
       typeof raw.usageComplete === "boolean" && ["confirmed", "unconfirmed"].includes(raw.cleanup) ? { dispatched: raw.dispatched, usageComplete: raw.usageComplete, cleanup: raw.cleanup }
       : { dispatched: "unknown", usageComplete: false, cleanup: "unconfirmed" };
-    const rawUsage = typed?.usage ?? turn?.usage;
+    const rawUsage = typed?.usage ?? (turn?.providerRequestPending === true ? undefined : turn?.usage);
     const usage = rawUsage === undefined ? undefined : Object.fromEntries(
       ["input", "output", "cachedInput", "cacheWriteInput", "total"].flatMap(key => {
         const value = (rawUsage as ActorTokenUsage)[key as keyof ActorTokenUsage];
@@ -899,7 +973,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       })) as ActorTokenUsage | undefined;
     // restricted-codex-session sets dispatched only after initialize/config/account/
     // thread/MCP admission, immediately before turn/start; it is not a success claim.
-    providerRequests.push({ ordinal: providerRequests.length + 1, kind, ...receipt,
+    const settledKind = interactionRequestPending ? "interaction" : kind;
+    providerRequests.push({ ordinal: providerRequests.length + 1, kind: settledKind, ...receipt,
       profileVerified: provider.executionProfile !== undefined && receipt.dispatched === true,
       ...(typed ? { errorCode: typed.code, ...(typed.failurePhase === undefined ? {} : { failurePhase: typed.failurePhase }) } : {}),
       ...(usage === undefined ? {} : { usage: { ...usage } }) });
@@ -908,9 +983,10 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "error",
         title: "participant request cleanup unconfirmed", text: "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted." });
     }
-    if (kind === "interaction" && receipt.dispatched !== false && (!receipt.usageComplete || !completeTurnUsage(usage))) unreportedInteractionUsage = true;
+    if (settledKind === "interaction" && receipt.dispatched !== false && (!receipt.usageComplete || !completeTurnUsage(usage))) unreportedInteractionUsage = true;
+    interactionRequestPending = false;
     if (failed) {
-      if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, kind === "interaction");
+      if (usage) recordUsage({ actions: [], pendingSafetyChecks: [], done: false, usage, providerRequest: receipt }, settledKind === "interaction");
       if (failure instanceof CuaAbortError || failure instanceof CuaDeadlineError) throw failure;
       if (failure instanceof CuaStallError) throw new CuaProviderError("timeout", receipt, usage, typed?.failurePhase);
       throw typed ?? new CuaProviderError("process_failed", receipt, usage);
@@ -1247,6 +1323,14 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
       recordUsage(turn);
+      // A host-authenticated provider may learn its account billing class during
+      // startup. Never price that account usage from an API model rate.
+      if (provider.executionProfile?.billing === "account-unknown" &&
+        (maxUsd !== undefined || overRunBudget !== undefined || estimateTurnCostUsd !== undefined)) {
+        completionReason = "harness_error";
+        reason = "Codex is using a ChatGPT account; API dollar caps cannot bound account usage. Use a finite timeout or the OpenAI API participant.";
+        break;
+      }
       if (turn.interruption !== undefined) {
         // A provider can exhaust its response budget before producing visible text, or midway
         // through an action. Preserve usage and partial narration, but never interpret either as
@@ -1276,7 +1360,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           title: tokenLimit ? "provider token limit reached" : unexpectedStatus ? "unexpected provider response status" : "provider response incomplete", text: reason });
         break;
       }
-      if (requiresUsage && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
+      if (requiresUsage && usageUnavailableForCap()) {
         stopForUnreportedUsage();
         break;
       }
@@ -1775,11 +1859,11 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     else if (signal?.aborted) skip = "the study was cancelled";
     else if (remaining() <= 0) skip = "the session deadline was reached";
     else if (provider.requiresFrame && closingObservation.screenshot === undefined) skip = "the final observation has no required frame";
-    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && (incompleteInteractionUsage || hasUnreportedInteractionUsage())) {
+    if (skip === undefined && (maxUsd !== undefined || overRunBudget !== undefined) && usageUnavailableForCap()) {
       skip = "remaining model budget is unknown because an earlier participant turn did not report complete usage";
     }
     if (skip === undefined && maxUsd !== undefined) {
-      const estimate = sawUsage ? estimateTurnCostUsd?.(runningUsage()) : undefined;
+      const estimate = sawUsage || knownPendingUsage() !== undefined ? estimateTurnCostUsd?.(runningUsage()) : undefined;
       if (estimate === undefined || estimate === null || !Number.isFinite(estimate)) skip = "remaining model budget could not be established";
       else if (estimate >= maxUsd) skip = "the estimated model budget was reached";
     }
@@ -1844,7 +1928,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
             const detail = signal?.aborted ? "cancelled" : controller.signal.aborted || error instanceof CuaDeadlineError || error instanceof CuaStallError
               ? "closing report deadline reached" : error instanceof Error ? error.message : String(error);
             const closingReceipt = provider.requestPolicy === "fail_closed" ? providerRequests.at(-1) : undefined;
-            const usageReported = closingReceipt?.kind === "debrief" && closingReceipt.usageComplete && completeTurnUsage(closingReceipt.usage);
+            const usageReported = closingReceipt?.usageComplete === true && completeTurnUsage(closingReceipt.usage);
             note("failed", `${detail}; closing request usage is ${usageReported ? "reported" : "unreported"}`, usageReported);
           }
         } finally {
@@ -1911,7 +1995,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     ...(affordanceObservations.length > 0 ? { affordanceUse: summarizeAffordanceUse(affordanceObservations) } : {}),
     ...(declaredOutcome === undefined ? {} : { declaredOutcome }),
     ...(debrief === undefined ? {} : { debrief }),
-    ...(hasUnreportedInteractionUsage() || (requiresUsage && incompleteInteractionUsage) ? { interactionUsageIncomplete: true as const } : {}),
+    ...(interactionRequestPending || hasUnreportedInteractionUsage() || (requiresUsage && incompleteInteractionUsage)
+      ? { interactionUsageIncomplete: true as const } : {}),
     // The funnel is present exactly when a protocol was declared — including a session that ended
     // on turn 0, whose funnel honestly reads 0/N. No tasks declared means no funnel, not an empty one.
     ...(taskTracker === undefined ? {} : { taskFunnel: taskTracker.funnel() }),

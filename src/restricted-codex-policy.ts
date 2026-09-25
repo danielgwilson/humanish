@@ -1,3 +1,5 @@
+import type { ReasoningEffort } from "./reasoning-effort.js";
+
 /** Versioned, deliberately narrow profile qualified with an account-backed vision turn.
  * The CLI still advertises code-mode tools: disabling their host is the enforcement
  * boundary. Feature names alone are not proof that a tool has been removed. */
@@ -15,7 +17,7 @@ export type RestrictedCodexAnalysisErrorCode = "invalid_request" | "cancelled" |
   | "codex_process_failed" | "codex_cleanup_failed" | "codex_busy";
 
 export interface RestrictedCodexRequest {
-  model: string;
+  model?: string | undefined;
   instructions: string;
   evidence: string;
   images: { evidenceId: string; dataUrl: string }[];
@@ -30,6 +32,7 @@ export interface RestrictedCodexResult {
   status: "completed" | "incomplete" | "refused" | "failed" | "cancelled" | "timed_out";
   output: unknown;
   usage: RestrictedCodexUsage | null;
+  inferenceUsage?: RestrictedCodexUsage[];
   usageComplete: boolean;
   dispatched: boolean;
   errorCode: RestrictedCodexAnalysisErrorCode | null;
@@ -49,25 +52,36 @@ const count = (value: unknown): value is number => Number.isSafeInteger(value) &
 
 const disabledFeatures = ["apps", "plugins", "hooks", "shell_tool", "shell_snapshot", "view_image", "image_generation",
   "skill_search", "skill_mcp_dependency_install", "multi_agent", "multi_agent_v2", "browser_use", "browser_use_external",
-  "computer_use", "memories", "external_agent_memory_import", "goals", "sleep_tool", "tool_suggest", "code_mode",
-  "code_mode_host", "code_mode_only", "default_mode_request_user_input", "unbounded_connection_retries",
+  "computer_use", "memories", "external_agent_memory_import", "goals", "sleep_tool", "tool_suggest",
+  "default_mode_request_user_input", "unbounded_connection_retries",
   "workspace_dependencies", "remote_plugin", "recommended_plugins", "in_app_local_automation"] as const;
+const codeModeFeatures = ["code_mode", "code_mode_host", "code_mode_only"] as const;
 
-export function restrictedCodexConfig(model: string): { toml: string; overrides: Record<string, unknown> } {
+export interface RestrictedCodexConfigMode {
+  participantCodeMode?: boolean;
+  reasoningEffort?: ReasoningEffort;
+  operatorAuth?: boolean;
+}
+
+export function restrictedCodexConfig(model: string | undefined, mode: RestrictedCodexConfigMode = {}): {
+  toml: string; overrides: Record<string, unknown>;
+} {
+  const reasoningEffort = mode.reasoningEffort ?? "low", codeMode = mode.participantCodeMode === true;
   const overrides: Record<string, unknown> = {
-    model, model_provider: "openai", model_reasoning_effort: "low", approval_policy: "never", sandbox_mode: "read-only",
-    forced_login_method: "chatgpt", project_doc_max_bytes: 0, web_search: "disabled", "history.persistence": "none",
+    model_provider: "openai", model_reasoning_effort: reasoningEffort, approval_policy: "never", sandbox_mode: "read-only",
+    project_doc_max_bytes: 0, web_search: "disabled", "history.persistence": "none",
     "analytics.enabled": false, "features.skip_host_skill_discovery": true, "skills.bundled.enabled": false,
     "agents.enabled": false, "agents.max_threads": 1, "agents.max_depth": 1
   };
+  if (model !== undefined) overrides.model = model;
+  if (!mode.operatorAuth) overrides.forced_login_method = "chatgpt";
   for (const name of disabledFeatures) overrides[`features.${name}`] = false;
-  const toml = `model = ${JSON.stringify(model)}
-model_provider = "openai"
-model_reasoning_effort = "low"
+  for (const name of codeModeFeatures) overrides[`features.${name}`] = codeMode;
+  const toml = `${model === undefined ? "" : `model = ${JSON.stringify(model)}\n`}model_provider = "openai"
+model_reasoning_effort = ${JSON.stringify(reasoningEffort)}
 approval_policy = "never"
 sandbox_mode = "read-only"
-forced_login_method = "chatgpt"
-project_doc_max_bytes = 0
+${mode.operatorAuth ? "" : "forced_login_method = \"chatgpt\"\n"}project_doc_max_bytes = 0
 web_search = "disabled"
 [history]
 persistence = "none"
@@ -76,6 +90,7 @@ enabled = false
 [features]
 skip_host_skill_discovery = true
 ${disabledFeatures.map(name => `${name} = false`).join("\n")}
+${codeModeFeatures.map(name => `${name} = ${codeMode}`).join("\n")}
 [skills.bundled]
 enabled = false
 [agents]
@@ -87,53 +102,71 @@ max_depth = 1
 }
 
 /** Inspect before thread/start, which could otherwise start inherited integrations. */
-export function admitsRestrictedCodexConfig(raw: unknown, configPath: string, model: string): boolean {
+export function admitsRestrictedCodexConfig(raw: unknown, configPath: string, model: string | undefined,
+  mode: RestrictedCodexConfigMode = {}): boolean {
   const root = codexRecord(raw), config = codexRecord(root.config), features = codexRecord(config.features);
   if (!Array.isArray(root.layers) || root.layers.length === 0) return false;
-  let ownLayer = false;
-  for (const rawLayer of root.layers) {
-    const layer = codexRecord(rawLayer), name = codexRecord(layer.name);
-    if (name.type === "user" && name.file === configPath && name.profile === null
-      && (layer.disabledReason === null || layer.disabledReason === undefined)) {
-      if (ownLayer) return false;
-      ownLayer = true;
-    } else if (name.type !== "system" || !empty(layer.config)) return false;
+  if (!mode.operatorAuth) {
+    let ownLayer = false;
+    for (const rawLayer of root.layers) {
+      const layer = codexRecord(rawLayer), name = codexRecord(layer.name);
+      if (name.type === "user" && name.file === configPath && name.profile === null
+        && (layer.disabledReason === null || layer.disabledReason === undefined)) {
+        if (ownLayer) return false;
+        ownLayer = true;
+      } else if (name.type !== "system" || !empty(layer.config)) return false;
+    }
+    if (!ownLayer) return false;
   }
-  if (!ownLayer || config.model !== model || config.model_provider !== "openai" || config.model_reasoning_effort !== "low"
-    || config.forced_login_method !== "chatgpt" || config.sandbox_mode !== "read-only" || config.approval_policy !== "never"
+  const reasoningEffort = mode.reasoningEffort ?? "low", codeMode = mode.participantCodeMode === true;
+  const inheritedModel = config.model;
+  const modelAdmitted = model === undefined && mode.operatorAuth
+    ? inheritedModel === undefined || inheritedModel === null
+      || (typeof inheritedModel === "string" && inheritedModel.length > 0 && inheritedModel.length <= 200)
+    : inheritedModel === model;
+  if (!modelAdmitted
+    || config.model_provider !== "openai" || config.model_reasoning_effort !== reasoningEffort
+    || (!mode.operatorAuth && config.forced_login_method !== "chatgpt") || config.sandbox_mode !== "read-only" || config.approval_policy !== "never"
     || config.project_doc_max_bytes !== 0 || config.web_search !== "disabled" || features.skip_host_skill_discovery !== true
     || codexRecord(config.history).persistence !== "none" || codexRecord(config.analytics).enabled !== false
-    || disabledFeatures.some(name => features[name] !== false)) return false;
+    || disabledFeatures.some(name => features[name] !== false)
+    || codeModeFeatures.some(name => features[name] !== codeMode)) return false;
   const agents = codexRecord(config.agents), skills = codexRecord(config.skills);
   if (agents.enabled !== false || agents.max_concurrent_threads_per_session !== 1 || agents.max_depth !== 1
     || codexRecord(skills.bundled).enabled !== false || Object.keys(skills).some(key => key !== "bundled")) return false;
-  for (const key of ["mcp_servers", "plugins", "hooks", "notify", "instructions", "developer_instructions", "permissions",
-    "profiles", "projects", "model_providers", "experimental_compact_prompt_file", "experimental_model_instructions_file", "model_instructions_file",
-    "model_catalog_json", "openai_base_url", "orchestrator", "experimental_thread_store", "experimental_thread_store_endpoint",
-    "experimental_realtime_ws_base_url", "experimental_realtime_webrtc_call_base_url", "forced_chatgpt_workspace_id",
-    "log_dir", "sqlite_home", "otel", "marketplaces", "js_repl_node_path", "js_repl_node_module_dirs", "responses_api_metadata",
-    "compact_prompt", "profile", "default_permissions", "auto_review", "apps", "browser_use", "computer_use", "desktop", "memories", "realtime"])
-    if (!empty(config[key])) return false;
-  if (Object.values(codexRecord(config.shell_environment_policy)).some(value => !empty(value))) return false;
-  return config.cli_auth_credentials_store === "file" && config.chatgpt_base_url === "https://chatgpt.com/backend-api/";
+  if (!mode.operatorAuth) {
+    for (const key of ["mcp_servers", "plugins", "hooks", "notify", "instructions", "developer_instructions", "permissions",
+      "profiles", "projects", "model_providers", "experimental_compact_prompt_file", "experimental_model_instructions_file", "model_instructions_file",
+      "model_catalog_json", "openai_base_url", "orchestrator", "experimental_thread_store", "experimental_thread_store_endpoint",
+      "experimental_realtime_ws_base_url", "experimental_realtime_webrtc_call_base_url", "forced_chatgpt_workspace_id",
+      "log_dir", "sqlite_home", "otel", "marketplaces", "js_repl_node_path", "js_repl_node_module_dirs", "responses_api_metadata",
+      "compact_prompt", "profile", "default_permissions", "auto_review", "apps", "browser_use", "computer_use", "desktop", "memories", "realtime"])
+      if (!empty(config[key])) return false;
+    if (Object.values(codexRecord(config.shell_environment_policy)).some(value => !empty(value))) return false;
+  }
+  return mode.operatorAuth || (config.cli_auth_credentials_store === "file" && config.chatgpt_base_url === "https://chatgpt.com/backend-api/");
 }
 
-export function admitsRestrictedCodexThread(raw: unknown, model: string, cwd: string): boolean {
+export function admitsRestrictedCodexThread(raw: unknown, model: string, cwd: string, reasoningEffort: ReasoningEffort = "low"): boolean {
   const value = codexRecord(raw), thread = codexRecord(value.thread), sandbox = codexRecord(value.sandbox);
   return typeof thread.id === "string" && thread.id.length > 0 && thread.id.length <= 200
     && thread.ephemeral === true && thread.model === model && thread.modelProvider === "openai"
-    && thread.reasoningEffort === "low" && thread.cliVersion === RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion
+    && thread.reasoningEffort === reasoningEffort && thread.cliVersion === RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion
     && Array.isArray(thread.environments) && thread.environments.length === 0 && thread.path === null
-    && value.model === model && value.modelProvider === "openai" && value.reasoningEffort === "low"
+    && value.model === model && value.modelProvider === "openai" && value.reasoningEffort === reasoningEffort
     && value.cwd === cwd && thread.cwd === cwd && value.approvalPolicy === "never"
     && sandbox.type === "readOnly" && sandbox.networkAccess === false
     && Array.isArray(value.instructionSources) && value.instructionSources.length === 0
     && Array.isArray(value.runtimeWorkspaceRoots) && value.runtimeWorkspaceRoots.length === 0;
 }
 
-export function restrictedCodexRequestError(request: RestrictedCodexRequest): RestrictedCodexAnalysisErrorCode | null {
+export function restrictedCodexRequestError(request: RestrictedCodexRequest,
+  operatorParticipant = false): RestrictedCodexAnalysisErrorCode | null {
   if (request.signal?.aborted) return "cancelled";
-  if (!RESTRICTED_CODEX_ANALYSIS_MODELS.some(model => model === request.model)) return "codex_model_unavailable";
+  if (operatorParticipant) {
+    if (request.model !== undefined && (typeof request.model !== "string" || request.model.length === 0 || request.model.length > 200))
+      return "codex_model_unavailable";
+  } else if (!RESTRICTED_CODEX_ANALYSIS_MODELS.some(model => model === request.model)) return "codex_model_unavailable";
   if (request.maxOutputTokens !== null || !Number.isSafeInteger(request.timeoutMs) || request.timeoutMs < 1 || request.timeoutMs > 600_000
     || typeof request.instructions !== "string" || typeof request.evidence !== "string" || !Array.isArray(request.images)
     || request.images.length > 128 || !request.schema || typeof request.schema !== "object" || Array.isArray(request.schema)) return "invalid_request";

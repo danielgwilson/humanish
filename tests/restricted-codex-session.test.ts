@@ -349,3 +349,167 @@ describe("continuing restricted Codex conversation", () => {
     expect(await session.close()).toBe(true);
   });
 });
+
+describe("restricted Codex Code Mode participant session", () => {
+  it("inherits the operator model, preserves hosted auth, and pauses its deadline while the declared tool runs", async () => {
+    const f = await fixture("participant-success"), calls: unknown[] = [];
+    f.options.env = { ...f.options.env, HOME: f.directory, CODEX_HOME: f.authHome,
+      DBUS_SESSION_BUS_ADDRESS: "unix:path=/synthetic-keyring", OPENAI_API_KEY: "synthetic-hosted-key", NODE_OPTIONS: undefined };
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: {
+      name: "humanish_ui", description: "Observe or act on the assigned synthetic desktop.",
+      inputSchema: { type: "object", additionalProperties: false, properties: { kind: { const: "observe" } } },
+      call: async args => {
+        calls.push(args);
+        await new Promise(resolve => setTimeout(resolve, 900));
+        return JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" });
+      }
+    } };
+    const session = createRestrictedCodexSession(f.options), start = performance.now();
+    try {
+      const result = await session.run({ ...request, model: undefined, timeoutMs: 800 });
+      expect(result).toMatchObject({ status: "completed", output: { observedCode: "BLUE-4821" }, errorCode: null });
+      expect(performance.now() - start).toBeGreaterThanOrEqual(850);
+      expect(calls).toEqual([{ kind: "observe" }]);
+      const appServer = f.spawns.find(entry => entry.args[0] === "app-server")!;
+      expect(appServer.env).toMatchObject({ HOME: f.directory, CODEX_HOME: f.authHome,
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/synthetic-keyring", OPENAI_API_KEY: "synthetic-hosted-key" });
+      expect(appServer.args.some(arg => arg.startsWith("model="))).toBe(false);
+      const entries = await f.entries();
+      const thread = entries.find(entry => entry.method === "thread/start")!.params as Record<string, unknown>;
+      expect(thread).toMatchObject({ model: "operator-configured-model", dynamicTools: [{ type: "function", name: "humanish_ui" }],
+        config: { "features.code_mode": true, "features.code_mode_host": true, "features.code_mode_only": true,
+          "mcp_servers.inherited_synthetic.enabled": false } });
+      expect(session.resolvedModel).toBe("operator-configured-model");
+      expect(session.authentication).toBe("chatgpt-account");
+      expect(entries.find(entry => entry.method === "turn/start")!.params).toMatchObject({ model: "operator-configured-model", effort: "high" });
+      expect(entries.find(entry => entry.toolResponse)?.toolResponse).toEqual({ success: true, contentItems: [{ type: "inputText",
+        text: JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }) }] });
+    } finally { expect(await session.close()).toBe(true); }
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("reports admitted API-key authentication without exposing credentials", async () => {
+    const f = await fixture("participant-api-key-auth");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "completed", dispatched: false });
+    expect(session.resolvedModel).toBe("operator-configured-model");
+    expect(session.authentication).toBe("api-key");
+    expect(await session.close()).toBe(true);
+  });
+
+  it("lets Codex resolve an unconfigured operator default model, then exposes the resolved identity", async () => {
+    const f = await fixture("participant-default-model");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "completed", dispatched: false });
+    expect(session.resolvedModel).toBe("operator-configured-model");
+    const threadParams = (await f.entries()).find(entry => entry.method === "thread/start")!.params as Record<string, unknown>;
+    expect(threadParams).not.toHaveProperty("model");
+    expect(await session.close()).toBe(true);
+  });
+
+  it("rejects inherited MCP names that cannot be addressed by a dotted override", async () => {
+    const f = await fixture("participant-unsafe-mcp-name");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined }, true)).toMatchObject({ status: "failed",
+      errorCode: "codex_unsafe_configuration", dispatched: false });
+    expect(await session.close()).toBe(true);
+  });
+
+  it.each(["participant-wrong-tool", "participant-wrong-namespace", "participant-wrong-thread", "participant-duplicate-call",
+    "participant-raw-wrong-function"])(
+    "rejects undeclared callback authority in %s", async scenario => {
+      const f = await fixture(scenario);
+      delete f.options.env!.NODE_OPTIONS;
+      f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+        inputSchema: { type: "object" }, call: async () => JSON.stringify({ ok: true }) } };
+      const session = createRestrictedCodexSession(f.options);
+      try {
+        expect(await session.run({ ...request, model: undefined })).toMatchObject({ status: "failed", errorCode: "codex_tool_call", dispatched: true });
+      } finally { await session.close(); }
+    });
+
+  it("cancels while a host callback is pending without waiting for that callback", async () => {
+    const f = await fixture("participant-success"), controller = new AbortController();
+    delete f.options.env!.NODE_OPTIONS;
+    let markCalled!: () => void;
+    const called = new Promise<void>(resolve => { markCalled = resolve; });
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => { markCalled(); return new Promise<string>(() => undefined); } } };
+    const session = createRestrictedCodexSession(f.options);
+    const pending = session.run({ ...request, model: undefined, signal: controller.signal });
+    await called;
+    controller.abort();
+    expect(await pending).toMatchObject({ status: "cancelled", errorCode: "cancelled", dispatched: true });
+    expect(await session.close()).toBe(true);
+    expect(await readdir(f.tempRoot)).toEqual([]);
+  });
+
+  it("exposes active-turn usage once and clears it before the terminal result resolves", async () => {
+    const f = await fixture("participant-usage-before-tool");
+    delete f.options.env!.NODE_OPTIONS;
+    let finishTool!: (value: string) => void;
+    const waitingTool = new Promise<string>(resolve => { finishTool = resolve; });
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => waitingTool } };
+    const session = createRestrictedCodexSession(f.options);
+    const pending = session.run({ ...request, model: undefined });
+    await vi.waitFor(() => expect(session.pendingUsage).toEqual({ input: 2957, output: 41, cachedInput: 0, cacheWriteInput: 0 }));
+    finishTool(JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }));
+    expect(await pending).toMatchObject({ status: "completed", usage: { input: 2957, output: 41 } });
+    expect(session.pendingUsage).toBeUndefined();
+    expect(await session.close()).toBe(true);
+  });
+
+  it("keeps each native inference separate while retaining the cumulative turn usage", async () => {
+    const f = await fixture("participant-multi-usage");
+    delete f.options.env!.NODE_OPTIONS;
+    let finishTool!: (value: string) => void;
+    const waitingTool = new Promise<string>(resolve => { finishTool = resolve; });
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => waitingTool } };
+    const session = createRestrictedCodexSession(f.options), pending = session.run({ ...request, model: undefined });
+    const perInference = [
+      { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 },
+      { input: 150000, output: 100, cachedInput: 0, cacheWriteInput: 0 }
+    ];
+    await vi.waitFor(() => expect(session.pendingInferenceUsage).toEqual(perInference));
+    expect(session.pendingUsage).toEqual({ input: 300000, output: 200, cachedInput: 0, cacheWriteInput: 0 });
+    finishTool(JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" }));
+    expect(await pending).toMatchObject({ status: "completed", usage: { input: 300000, output: 200 }, inferenceUsage: perInference });
+    expect(session.pendingInferenceUsage).toBeUndefined();
+    expect(await session.close()).toBe(true);
+  });
+
+  it("rejects turn completion while a host tool response is still outstanding", async () => {
+    const f = await fixture("participant-premature-completion");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: () => new Promise<string>(() => undefined) } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined })).toMatchObject({ status: "failed",
+      errorCode: "codex_protocol_error", dispatched: true });
+    expect(await session.close()).toBe(true);
+  });
+
+  it("starts a fresh inference deadline after a successful host tool response", async () => {
+    const f = await fixture("participant-deadline-reset");
+    delete f.options.env!.NODE_OPTIONS;
+    f.options.participant = { authMode: "operator", reasoningEffort: "high", tool: { name: "humanish_ui", description: "Synthetic UI.",
+      inputSchema: { type: "object" }, call: async () => {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return JSON.stringify({ acknowledgments: [], imageUrl: "data:image/png;base64,c3ludGhldGlj" });
+      } } };
+    const session = createRestrictedCodexSession(f.options);
+    expect(await session.run({ ...request, model: undefined, timeoutMs: 700 })).toMatchObject({ status: "completed", errorCode: null });
+    expect(await session.close()).toBe(true);
+  });
+});

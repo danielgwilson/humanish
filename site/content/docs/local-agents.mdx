@@ -28,8 +28,10 @@ actors:
 ```
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
-separate optional model selection passed to that CLI. Humanish does not change
-an `openai-computer-use` lab merely because you have Codex installed.
+separate optional model selection passed to that CLI. When it is omitted, the
+hosted Codex route retains the operator's configured model selection. Humanish
+does not change an `openai-computer-use` lab merely because you have Codex
+installed.
 
 Check the CLI's sign-in state, then the lab's setup:
 
@@ -57,12 +59,21 @@ of authentication. This supports Codex's `CODEX_HOME` and keyring-backed login
 without assuming an `auth.json` file must exist. Status output is classified
 in memory; Humanish does not include account identifiers or raw status output
 in the result. The coding CLI runs on your host and uses its own sign-in state.
+The hosted Codex route keeps the operator's normal Codex home and configuration;
+it does not substitute the isolated file-backed ChatGPT profile used by
+[local browser studies](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md).
 
-Humanish starts it in a scratch directory with read-only restrictions for Codex
-or `--allowedTools Read` for Claude Code, and supplies a screenshot for each
-turn. The returned desktop actions execute in E2B. The local CLI remains a host
-process under those configured restrictions; they are not a separate sandbox
-for everything the CLI can access.
+Humanish starts Codex in a scratch directory with its general-purpose tools
+disabled and one Humanish UI tool. Codex calls that tool to propose desktop
+inputs; Humanish executes them, records them and returns acknowledgments with
+the next screenshot. The same participant implementation drives local
+Firecracker and hosted E2B desktops. One app-server thread retains the persona
+and conversation through the final feedback.
+
+Claude Code uses `--allowedTools Read` and returns desktop actions through its
+existing conversation adapter. Both CLIs remain host processes under configured
+restrictions, not separate sandboxes for everything the CLI can access. Desktop
+inputs execute in the selected sandbox; credentials stay with the host CLI.
 
 ## Usage and limitations
 
@@ -76,9 +87,8 @@ for everything the CLI can access.
 - **It is slower.** Launching and communicating with a local CLI adds latency. Give the lane
   enough `execution.timeoutMs` for the task and inspect elapsed time in its evidence.
 - **The evidence says which brain ran it.** The trace records
-  `ids.model: "codex app-server (local, operator-authenticated)"` or
-  `"claude (local, operator-authenticated, one session per run)"`, so a
-  local-agent run is never silently compared against an API one.
+  the provider and resolved Codex model. Qualified ChatGPT-account participants
+  additionally record their execution profile with unknown-dollar billing.
 - **Both agents keep one conversation for the whole run.** Codex through an
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
