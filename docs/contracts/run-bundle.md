@@ -140,6 +140,33 @@ first-participant scenario goal and feedback goal copies receive the same known-
 redaction; the actual execution prompt is unchanged. Verification
 accepts absence and rejects malformed assignment fields or extra task fields such as criteria.
 
+## Continuous desktop recording
+
+A stream can add `recording` without changing the screenshot/action contract:
+
+```yaml
+recording:
+  schema: humanish.desktop-recording.v1
+  path: recordings/lane-01/desktop.mp4
+  mimeType: video/mp4
+  startedAt: "2026-09-26T10:00:00.000Z"
+  durationMs: 12000
+  bytes: 240000
+  audioSources: [microphone-input, speaker-output]
+  complete: true
+```
+
+The stream registers the same path as an artifact with `kind: recording`.
+`durationMs` comes from the retained file, not the participant's lifetime.
+`complete: false` means the retained media stopped early. Audio sources describe
+capture points, not remote delivery; an empty list means screen-only. No recording
+field means no retained video, not proof that nothing happened between captures.
+
+Verification checks the local file, declared size, MP4 header and matching artifact
+entry without loading the whole video into memory. Raw continuous media makes the
+run `local_only` regardless of screenshot redaction. Analysis input remains text
+and screenshots. See [desktop recording](../architecture/desktop-recording.md).
+
 ## Hosted Desktop Geometry
 
 Hosted browser streams may carry additive `desktopGeometry` evidence. Its fields keep five

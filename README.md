@@ -54,7 +54,8 @@ For local browsers, install only `humanish` and follow the
 run downloads a verified runtime image; `npx humanish runtime setup` prepares it
 ahead of time. Supported Macs use Lima instead of Docker Desktop.
 [Optional camera and spoken conversation](docs/architecture/participant-media.md)
-use a separate media runtime. Local inboxes remain a follow-up.
+use a separate media runtime. [Optional desktop video/audio](docs/architecture/desktop-recording.md)
+adds continuous Observer playback; screenshots remain the default. Local inboxes remain a follow-up.
 
 For a new local study, initialize with your app URL and task:
 

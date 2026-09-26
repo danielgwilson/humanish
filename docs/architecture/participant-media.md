@@ -18,8 +18,8 @@ policies:
   mediaPermission: prompt
 ```
 
-Omit `media` for ordinary browser studies. They keep the smaller browser image
-and start no audio server, camera producer or speech worker. Camera and speech
+Omit `media` and `recording` for ordinary browser studies. They keep the smaller
+browser image and start no audio server, camera producer or speech worker. Camera and speech
 can also be requested separately. Local media setup uses a separately pinned
 image, prepared by the first live study or `humanish runtime setup --media`.
 
@@ -50,8 +50,8 @@ with interruption handling.
 
 Spoken text and heard observations pass through the existing evidence redaction
 before being retained in the trace. Analysis reads that evidence alongside the
-recording. Raw audio is not saved by default; Observer remains a screenshot
-recording with text evidence, not an audio/video call recording.
+recording. Raw audio is not saved by default. [Optional desktop recording](desktop-recording.md)
+can retain actual screen and audio playback alongside this evidence.
 
 ## Hosted desktops
 
