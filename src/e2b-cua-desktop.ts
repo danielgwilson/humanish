@@ -385,9 +385,13 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
     }
     const requestedRecording = config.execution?.desktop?.recording;
     if (requestedRecording) {
-      recording = await startE2BDesktopRecording({ desktop, width: spec.resolution[0], height: spec.resolution[1],
-        audio: requestedRecording.audio, ...(speech === undefined ? {} : { pulseEnv: speech.env }),
-        requestTimeoutMs: deps.requestTimeoutMs });
+      try {
+        recording = await startE2BDesktopRecording({ desktop, width: spec.resolution[0], height: spec.resolution[1],
+          audio: requestedRecording.audio, ...(speech === undefined ? {} : { pulseEnv: speech.env }),
+          requestTimeoutMs: deps.requestTimeoutMs });
+      } catch (error) {
+        warnings.push(`Desktop recording startup failed; the study continues without video: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+      }
     }
 
     if (!desktopCliRoute) {

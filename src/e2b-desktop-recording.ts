@@ -37,15 +37,20 @@ async function settlesWithin(promise: Promise<unknown>, timeoutMs: number): Prom
 async function preparePulse(desktop: E2BDesktopSandbox, requestTimeoutMs: number): Promise<Readonly<Record<string, string>>> {
   const env = { ...baseEnv, XDG_RUNTIME_DIR: PULSE_RUNTIME, PULSE_SERVER: `unix:${PULSE_RUNTIME}/pulse/native`,
     PULSE_SOURCE: "humanish_input", PULSE_SINK: "humanish_speaker" };
-  await desktop.commands.run("install -d -m 0700 /tmp/humanish-recording-runtime && "
-    + "pulseaudio --daemonize=yes --exit-idle-time=-1 --log-target=stderr && "
-    + "pactl load-module module-null-sink sink_name=humanish_mic sink_properties=device.description=HumanishSyntheticMicrophone >/dev/null && "
-    + "pactl load-module module-remap-source master=humanish_mic.monitor source_name=humanish_input source_properties=device.description=HumanishSyntheticMicrophone >/dev/null && "
-    + "pactl load-module module-null-sink sink_name=humanish_speaker sink_properties=device.description=HumanishSyntheticSpeaker >/dev/null && "
-    + "pactl set-default-source humanish_input && pactl set-default-sink humanish_speaker", {
-    envs: env, timeoutMs: 30_000, requestTimeoutMs
-  });
-  return env;
+  try {
+    await desktop.commands.run("install -d -m 0700 /tmp/humanish-recording-runtime && "
+      + "pulseaudio --daemonize=yes --exit-idle-time=-1 --log-target=stderr && "
+      + "pactl load-module module-null-sink sink_name=humanish_mic sink_properties=device.description=HumanishSyntheticMicrophone >/dev/null && "
+      + "pactl load-module module-remap-source master=humanish_mic.monitor source_name=humanish_input source_properties=device.description=HumanishSyntheticMicrophone >/dev/null && "
+      + "pactl load-module module-null-sink sink_name=humanish_speaker sink_properties=device.description=HumanishSyntheticSpeaker >/dev/null && "
+      + "pactl set-default-source humanish_input && pactl set-default-sink humanish_speaker", {
+      envs: env, timeoutMs: 30_000, requestTimeoutMs
+    });
+    return env;
+  } catch (error) {
+    await desktop.commands.run("pulseaudio --kill", { envs: env, timeoutMs: 5_000, requestTimeoutMs }).catch(() => {});
+    throw error;
+  }
 }
 
 export interface E2BDesktopRecording {
@@ -64,14 +69,14 @@ export async function startE2BDesktopRecording(options: {
 }): Promise<E2BDesktopRecording> {
   if (!options.desktop.files.read) throw new Error("Installed @e2b/desktop does not support streamed recording retrieval.");
   const audioSources: DesktopRecordingAudioSource[] = options.audio ? ["microphone-input", "speaker-output"] : [];
+  const command = buildDesktopRecorderCommand({ display: ":0", width: options.width, height: options.height,
+    outputPath: OUTPUT_PATH, audioSources });
   const ownsPulse = options.audio && options.pulseEnv === undefined;
   const env = options.audio ? options.pulseEnv ?? await preparePulse(options.desktop, options.requestTimeoutMs) : baseEnv;
   const stopOwnedPulse = async (): Promise<void> => {
     if (ownsPulse) await options.desktop.commands.run("pulseaudio --kill", { envs: { ...env }, timeoutMs: 5_000,
       requestTimeoutMs: options.requestTimeoutMs }).catch(() => {});
   };
-  const command = buildDesktopRecorderCommand({ display: ":0", width: options.width, height: options.height,
-    outputPath: OUTPUT_PATH, audioSources });
   const launch = `set -eu; rm -f ${quote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${quote(command.binary)} ${command.args.map(quote).join(" ")} & `
     + `child=$!; printf '%s\\n' "$child" > ${quote(PID_PATH)}; wait "$child"`;
   let handle: E2BCommandResult;

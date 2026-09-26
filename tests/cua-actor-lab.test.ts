@@ -757,6 +757,31 @@ describe("runCuaActorLab", () => {
     }
   });
 
+  it("continues the E2B study with a warning when optional recording cannot start", async () => {
+    const parsed = parseLabConfig({
+      schema: LAB_CONFIG_SCHEMA,
+      id: "cua-recording-startup-failure",
+      title: "Recording startup failure",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore and stop." }],
+      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { recording: { audio: false } } },
+      scenario: { mode: "live" }
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const sandbox = makeFakeSandbox(); // Deliberately lacks files.read, like an older optional peer.
+    const { module, killed } = makeFakeModule(sandbox);
+    const outcome = await runLab(parsed.config, { cwd, cuaHooks: {
+      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+      loadDesktopModule: async () => module,
+      runSession: async options => runCuaActorSession({ ...options,
+        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+    } });
+    if (outcome.backend !== "cua") throw new Error("expected cua backend");
+    expect(outcome.result.ok).toBe(true);
+    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("continues without video"));
+    expect(killed).toEqual(["fake-sandbox-001"]);
+  });
+
   it("mobile emulation (#221): launches Chrome with the mobile UA and touch flags, holds the CDP session, and records what the page reported", async () => {
     const commands: string[] = [];
     const sandbox = makeFakeSandbox({

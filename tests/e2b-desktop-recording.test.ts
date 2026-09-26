@@ -7,7 +7,8 @@ function destination(chunks: Buffer[]): Writable {
   return new Writable({ write(chunk: Buffer, _encoding, callback) { chunks.push(Buffer.from(chunk)); callback(); } });
 }
 
-function recordingDesktop(contents = Buffer.from("abcdef")): { desktop: E2BDesktopSandbox; commands: string[]; kill: ReturnType<typeof vi.fn> } {
+function recordingDesktop(contents = Buffer.from("abcdef")): { desktop: E2BDesktopSandbox; commands: string[];
+  kill: ReturnType<typeof vi.fn>; run: ReturnType<typeof vi.fn> } {
   let finishProcess: ((result: E2BCommandResult) => void) | undefined;
   const processExit = new Promise<E2BCommandResult>(resolve => { finishProcess = resolve; });
   const commands: string[] = [];
@@ -37,7 +38,7 @@ function recordingDesktop(contents = Buffer.from("abcdef")): { desktop: E2BDeskt
     screenshot: vi.fn(),
     stream: { getAuthKey: vi.fn(), getUrl: vi.fn(), start: vi.fn() }
   } as unknown as E2BDesktopSandbox;
-  return { desktop, commands, kill };
+  return { desktop, commands, kill, run };
 }
 
 describe("E2B desktop recording", () => {
@@ -78,5 +79,13 @@ describe("E2B desktop recording", () => {
     await expect(startE2BDesktopRecording({ desktop, width: 960, height: 720, audio: false, requestTimeoutMs: 10_000 }))
       .rejects.toThrow("does not support streamed recording retrieval");
     expect(commands).toEqual([]);
+  });
+
+  it("reclaims partially started owned Pulse when audio setup fails", async () => {
+    const { desktop, commands, run } = recordingDesktop();
+    run.mockRejectedValueOnce(new Error("setup failed"));
+    await expect(startE2BDesktopRecording({ desktop, width: 960, height: 720, audio: true, requestTimeoutMs: 10_000 }))
+      .rejects.toThrow("setup failed");
+    expect(commands.at(-1)).toBe("pulseaudio --kill");
   });
 });
