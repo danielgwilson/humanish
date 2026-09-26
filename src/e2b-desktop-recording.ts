@@ -80,6 +80,9 @@ export async function startE2BDesktopRecording(options: {
   const launch = `set -eu; rm -f ${quote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${quote(command.binary)} ${command.args.map(quote).join(" ")} & `
     + `child=$!; printf '%s\\n' "$child" > ${quote(PID_PATH)}; wait "$child"`;
   let handle: E2BCommandResult;
+  // The host launch boundary is the only clock shared with later run events. Capture it before
+  // the provider RPC so startup transport latency is not silently removed from the timeline.
+  const startedAt = new Date().toISOString();
   try {
     handle = await options.desktop.commands.run(launch, {
       background: true, envs: { ...baseEnv, ...env }, timeoutMs: 0, requestTimeoutMs: options.requestTimeoutMs
@@ -95,7 +98,6 @@ export async function startE2BDesktopRecording(options: {
   }
   const wait = handle.wait.bind(handle);
   const kill = handle.kill.bind(handle);
-  const startedAt = new Date().toISOString();
   let stopping = false, exitedEarly = false;
   const exited = wait().then(result => { if (!stopping) exitedEarly = true; return result; }, error => {
     if (!stopping) exitedEarly = true;
