@@ -119,6 +119,9 @@ describe("observer rendering", () => {
       const screenshotPath = "screenshots/observer-proof.png";
       await attachScreenshotToObserverProofRun(cwd, screenshotPath);
       const rendered = await renderObserver(cwd, "latest");
+      const videoBytes = Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      await mkdir(path.join(cwd, ".humanish/runs/observer-proof/recordings"), { recursive: true });
+      await writeFile(path.join(cwd, ".humanish/runs/observer-proof/recordings/participant.mp4"), videoBytes);
       await writeFile(
         path.join(cwd, ".humanish/runs/observer-proof/observer/observer-data.json"),
         `${JSON.stringify({
@@ -154,6 +157,21 @@ describe("observer rendering", () => {
         expect(screenshotResponse.headers.get("content-type")).toBe("image/png");
         expect(Buffer.from(await screenshotResponse.arrayBuffer()).subarray(0, 8))
           .toEqual(PNG_1X1.subarray(0, 8));
+
+        const videoUrl = new URL("../recordings/participant.mp4", server.url);
+        const head = await fetch(videoUrl, { method: "HEAD" });
+        expect(head.status).toBe(200);
+        expect(head.headers.get("content-type")).toBe("video/mp4");
+        expect(head.headers.get("content-length")).toBe(String(videoBytes.length));
+        expect(head.headers.get("accept-ranges")).toBe("bytes");
+        expect((await head.arrayBuffer()).byteLength).toBe(0);
+        const partial = await fetch(videoUrl, { headers: { range: "bytes=2-5" } });
+        expect(partial.status).toBe(206);
+        expect(partial.headers.get("content-range")).toBe(`bytes 2-5/${videoBytes.length}`);
+        expect(Buffer.from(await partial.arrayBuffer())).toEqual(videoBytes.subarray(2, 6));
+        const invalid = await fetch(videoUrl, { headers: { range: "bytes=40-50" } });
+        expect(invalid.status).toBe(416);
+        expect(invalid.headers.get("content-range")).toBe(`bytes */${videoBytes.length}`);
       } finally {
         await server.close();
       }

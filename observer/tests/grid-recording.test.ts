@@ -117,6 +117,23 @@ describe("Whole-grid recorded capture clock", () => {
     }
   });
 
+  it("extends the shared clock with the actual desktop recording interval", () => {
+    const media = lane("media", [capture("still", 5000)]);
+    media.recording = {
+      schema: "humanish.desktop-recording.v1", path: "recordings/media.mp4", mimeType: "video/mp4",
+      startedAt: new Date(origin + 1000).toISOString(), durationMs: 8000, bytes: 1234,
+      audioSources: ["speaker-output"], complete: false
+    };
+    const recording = buildGridRecording([media]);
+    expect(recording.startMs).toBe(origin + 1000);
+    expect(recording.endMs).toBe(origin + 9000);
+    expect(recording.boundariesMs).toEqual([origin + 1000, origin + 5000, origin + 9000]);
+    expect(recording.lanes.get("media")?.media).toMatchObject({
+      startMs: origin + 1000, endMs: origin + 9000,
+      recording: { path: "recordings/media.mp4", complete: false }
+    });
+  });
+
   it("clamps finite requests and rejects invalid cursors without exposing a future frame", () => {
     const recording = buildGridRecording([lane("recorded", [capture("first", 1000), capture("last", 3000)])]);
     expect(clampGridTime(recording, origin)).toBe(origin + 1000);

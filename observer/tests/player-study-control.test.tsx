@@ -28,7 +28,7 @@ let root: Root;
 function control(index = 1, overrides: Partial<StudyPlayerControl> = {}): StudyPlayerControl {
   return {
     moment: { kind: "capture", frame: model.frames[index]!, ageMs: 0, coverage: "within" },
-    reviewing: true, playing: false, eventId: null,
+    atMs: model.frames[index]!.atMs ?? null, reviewing: true, playing: false, speed: 1, seekRevision: 0, eventId: null,
     onSeekFrame: vi.fn(), onToggle: vi.fn(), onLive: vi.fn(), ...overrides
   };
 }

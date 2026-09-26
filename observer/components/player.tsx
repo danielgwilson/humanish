@@ -18,6 +18,8 @@ import { PlayerStage, type Zoom } from "./player-stage";
 import { PlayerRunNotices } from "./player-run-notices";
 import { ParticipantAssignment } from "./participant-assignment";
 import { recordedParticipantAssignment } from "../lib/participant-assignment";
+import { recordingContains, recordingInterval as streamRecordingInterval } from "@/lib/grid-recording";
+import { RecordingVideo } from "./recording-video";
 import { ParticipantAnalysis } from "./participant-analysis";
 import { ParticipantFeedback } from "./participant-feedback";
 import type { ParticipantAnalysis as AnalysisReview } from "@/lib/study-report";
@@ -135,7 +137,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const notableEnd = endingLabel !== undefined;
   const elapsed = frameElapsedMs(model, Math.max(0, frame));
   const duration = frameElapsedMs(model, Math.max(0, frames.length - 1));
-  const timing = controlled ? "study capture time" : model.paced === "recorded" ? "recorded pace" : "avg-paced";
+  const timing = controlled ? "study timeline" : model.paced === "recorded" ? "recorded pace" : "avg-paced";
   const hold = frameHoldMs(model, Math.max(0, frame));
   const rowIndex = useMemo(() => {
     const pins = new Map<number, typeof model.rows>();
@@ -156,6 +158,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
     return { pins, actions: [...actions], findings: [...findings], waits, thoughtCount, actionCount };
   }, [model, notableEnd, frames.length]);
   const studyCursor = studyPlayback?.moment.kind === "capture" && current?.atMs !== undefined ? current.atMs + studyPlayback.moment.ageMs : null;
+  const recordingInterval = studyPlayback ? streamRecordingInterval(stream) : null;
+  const showRecording = studyPlayback && recordingContains(recordingInterval, studyPlayback.atMs);
   const intervalPins = rowIndex.pins.get(frame) ?? [];
   const currentPins = eventId ? selectedRow?.coord ? [selectedRow] : []
     : controlled ? intervalPins.filter((row) => studyCursor !== null && row.atMs !== undefined && row.atMs <= studyCursor) : intervalPins;
@@ -321,7 +325,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <div className="player-mode"><b className="player-participant">{participantLabels(data.streams).get(stream.id) ?? stream.label}</b><strong>{modeLabel}</strong>
           <span>{live ? "Read-only desktop; connection health is managed by the provider." : following && active && current
             ? captureAge === null ? "Capture time unavailable" : `Captured ${formatDuration(captureAge)} ago`
-            : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : studyPlayback?.moment.kind === "before-first" ? "No capture yet" : "Capture timestamps unavailable"}</span>
+            : showRecording && studyPlayback?.atMs !== null ? `Desktop video · ${new Date(studyPlayback.atMs).toISOString()}`
+              : current?.atMs !== undefined ? `Captured ${new Date(current.atMs).toISOString()}` : studyPlayback?.moment.kind === "before-first" ? "No capture yet" : "Capture timestamps unavailable"}</span>
         </div>
         {live ? <button type="button" className="tbtn" onClick={() => {
           setStreamRevision((value) => value + 1);
@@ -348,8 +353,11 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         </> : eventId ? <span>The selected entry is unavailable in this capture interval. Choose an entry from the activity list.</span>
           : <span>{live ? "Live desktop · select recorded activity to inspect an entry." : `${currentPins.length ? `${currentPins.length} recorded ${currentPins.length === 1 ? "pin" : "pins"} in this capture interval. ` : ""}Select an activity entry to inspect its time and location.`}</span>}
       </div> : null}
-      <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
-        emptyText={emptyText} />
+      {showRecording && recordingInterval && studyPlayback.atMs !== null
+        ? <RecordingVideo interval={recordingInterval} atMs={studyPlayback.atMs} playing={studyPlayback.playing} speed={studyPlayback.speed}
+          seekRevision={studyPlayback.seekRevision} label={stream.label} />
+        : <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
+          emptyText={emptyText} />}
       {!controlled ? <div className="transport">
         <IconButton className="tbtn" label={playing ? "Pause" : "Play"} hint={playing ? "Pause playback" : "Play recording"} onClick={togglePlay} disabled={frames.length === 0}><ReviewIcon name={playing ? "pause" : "play"} /></IconButton>
         <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
@@ -407,7 +415,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
-      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded frame` : "No recorded frames"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
+      <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded screenshot` : "No recorded screenshots"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
+        {stream.recording && studyPlayback?.reviewing && !showRecording ? <span>Desktop video unavailable at this study moment; showing recorded screenshot evidence when available.</span> : null}
         {studyPlayback?.reviewing && current && studyPlayback.moment.kind === "capture" ? <span>{current.atMs === undefined ? "Capture time unavailable; frame selected directly." : <>{studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} · {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.</>}</span> : null}
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
