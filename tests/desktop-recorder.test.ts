@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDesktopRecorderCommand } from "../src/desktop-recorder.js";
+import { buildDesktopRecorderCommand, buildDesktopRecorderProbeCommand, parseDesktopRecorderDuration } from "../src/desktop-recorder.js";
 
 describe("desktop recorder command", () => {
   it("builds one fixed full-desktop H.264/AAC recipe with explicit capture points", () => {
@@ -12,7 +12,7 @@ describe("desktop recorder command", () => {
       "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_speaker.monitor",
       "-filter_complex", "[1:a][2:a]amix=inputs=2:normalize=0[a]", "-map", "0:v", "-map", "[a]",
       "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
-      "-movflags", "+faststart", "/home/humanish/desktop.mp4"
+      "-fs", "535822336", "-movflags", "+faststart", "/home/humanish/desktop.mp4"
     ]);
   });
 
@@ -21,5 +21,14 @@ describe("desktop recorder command", () => {
     expect(() => buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/../desktop.mp4" })).toThrow();
     expect(() => buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4",
       audioSources: ["speaker-output", "speaker-output"] })).toThrow();
+  });
+
+  it("builds a bounded duration probe and parses its result", () => {
+    expect(buildDesktopRecorderProbeCommand("/tmp/desktop.mp4")).toEqual({
+      binary: "/usr/bin/ffprobe",
+      args: ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "/tmp/desktop.mp4"]
+    });
+    expect(parseDesktopRecorderDuration("25.042000\n")).toBe(25_042);
+    expect(() => parseDesktopRecorderDuration("N/A\n")).toThrow();
   });
 });

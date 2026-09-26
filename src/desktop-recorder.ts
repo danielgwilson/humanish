@@ -10,6 +10,7 @@ const PULSE_DEVICE: Readonly<Record<DesktopRecordingAudioSource, string>> = Obje
   "microphone-input": "humanish_mic.monitor",
   "speaker-output": "humanish_speaker.monitor"
 });
+const RECORDING_FILE_LIMIT_BYTES = DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024;
 
 export interface DesktopRecorderCommandOptions {
   display: string;
@@ -60,8 +61,20 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
   } else args.push("-map", "0:v");
   args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
   if (sources.length > 0) args.push("-c:a", "aac");
-  args.push("-movflags", "+faststart", options.outputPath);
+  args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart", options.outputPath);
   return { binary: "/usr/bin/ffmpeg", args };
+}
+
+export function buildDesktopRecorderProbeCommand(outputPath: string): { binary: "/usr/bin/ffprobe"; args: string[] } {
+  validate({ display: ":0", width: 1, height: 1, outputPath });
+  return { binary: "/usr/bin/ffprobe", args: ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", outputPath] };
+}
+
+export function parseDesktopRecorderDuration(output: string): number {
+  if (!/^[0-9]+(?:\.[0-9]+)?\s*$/.test(output)) throw new Error("Desktop recording duration was invalid.");
+  const durationMs = Math.round(Number(output.trim()) * 1000);
+  if (!Number.isSafeInteger(durationMs) || durationMs < 1) throw new Error("Desktop recording duration was invalid.");
+  return durationMs;
 }
 
 function waitForClose(child: ChildProcess): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
@@ -101,10 +114,32 @@ async function startPulse(env: Readonly<Record<string, string>>, signal: AbortSi
     await run("/usr/bin/pactl", ["set-default-sink", "humanish_speaker"], env, signal);
     return { child: pulse, closed };
   } catch (error) {
-    if (pulse.exitCode === null && pulse.signalCode === null) pulse.kill("SIGKILL");
-    await closed.catch(() => {});
+    await stopPulse({ child: pulse, closed });
     throw error;
   }
+}
+
+async function stopPulse(pulse: { child: ChildProcess; closed: Promise<unknown> } | undefined): Promise<void> {
+  if (!pulse) return;
+  if (pulse.child.exitCode === null && pulse.child.signalCode === null) pulse.child.kill("SIGTERM");
+  let settled = false;
+  await Promise.race([pulse.closed.catch(() => {}).finally(() => { settled = true; }), delay(1500)]);
+  if (!settled && pulse.child.exitCode === null && pulse.child.signalCode === null) pulse.child.kill("SIGKILL");
+  await Promise.race([pulse.closed.catch(() => {}), delay(500)]);
+}
+
+async function probeDuration(outputPath: string, env: Readonly<Record<string, string>>): Promise<number> {
+  const command = buildDesktopRecorderProbeCommand(outputPath);
+  const child = spawn(command.binary, command.args, { env, stdio: ["ignore", "pipe", "ignore"] });
+  let output = "";
+  child.stdout!.on("data", (chunk: Buffer) => { if (output.length < 256) output += chunk.toString("utf8").slice(0, 256 - output.length); });
+  let timer: NodeJS.Timeout | undefined;
+  const result = await Promise.race([waitForClose(child), new Promise<never>((_resolve, reject) => { timer = setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    reject(new Error("Desktop recording probe timed out."));
+  }, 3000); })]).finally(() => clearTimeout(timer));
+  if (result.code !== 0) throw new Error("Desktop recording probe failed.");
+  return parseDesktopRecorderDuration(output);
 }
 
 /** Guest-local lifecycle. Recorder faults are reported only when evidence is finalized. */
@@ -123,30 +158,38 @@ export async function startDesktopRecorder(options: DesktopRecorderCommandOption
   const child = spawn(command.binary, command.args, { env, stdio: "ignore" });
   const closed = waitForClose(child);
   void closed.catch(() => {});
-  await Promise.race([closed.then(() => { throw new Error("Desktop recorder exited during startup."); }), delay(150, undefined, { signal: options.signal })]);
   let finishing: Promise<DesktopRecorderResult> | undefined;
+  let abort: (() => void) | undefined;
   const finish = (): Promise<DesktopRecorderResult> => finishing ??= (async () => {
-    let forced = false;
+    let forced = false, requestedStop = false;
     try {
-      if (child.exitCode !== null || child.signalCode !== null) throw new Error("Desktop recorder stopped before finalization.");
-      child.kill("SIGINT");
-      let timer: NodeJS.Timeout | undefined;
-      await Promise.race([closed, new Promise<void>(resolve => { timer = setTimeout(() => {
-        forced = true;
-        if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-        resolve();
-      }, 3000); })]).finally(() => clearTimeout(timer));
-      if (forced) { await closed.catch(() => {}); throw new Error("Desktop recorder did not finalize."); }
+      if (child.exitCode === null && child.signalCode === null) { requestedStop = child.kill("SIGINT"); }
+      let timer: NodeJS.Timeout | undefined, settled = false;
+      await Promise.race([closed.catch(() => undefined).finally(() => { settled = true; }), new Promise<void>(resolve => { timer = setTimeout(resolve, 3000); })])
+        .finally(() => clearTimeout(timer));
+      if (!settled && child.exitCode === null && child.signalCode === null) { forced = true; child.kill("SIGKILL"); }
+      if (!settled) await Promise.race([closed.catch(() => undefined), delay(500)]);
       const file = await stat(outputPath);
       if (!file.isFile() || file.size < 1 || file.size > DESKTOP_RECORDING_MAX_BYTES) throw new Error("Desktop recorder produced invalid output.");
+      const durationMs = await probeDuration(outputPath, env);
       return { outputPath, metadata: { mimeType: "video/mp4", startedAt: new Date(startedAtMs).toISOString(),
-        durationMs: Math.max(1, Date.now() - startedAtMs), bytes: file.size, audioSources: [...sources], complete: true } };
+        durationMs, bytes: file.size, audioSources: [...sources], complete: requestedStop && !forced && file.size < RECORDING_FILE_LIMIT_BYTES } };
     } catch {
       throw new Error("Desktop recording failed.");
     } finally {
-      if (ownedPulse && ownedPulse.child.exitCode === null && ownedPulse.child.signalCode === null) ownedPulse.child.kill("SIGTERM");
-      await ownedPulse?.closed.catch(() => {});
+      if (abort) options.signal.removeEventListener("abort", abort);
+      await stopPulse(ownedPulse);
     }
   })();
+  try {
+    await Promise.race([closed.then(() => { throw new Error("Desktop recorder exited during startup."); }), delay(150, undefined, { signal: options.signal })]);
+  } catch {
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    await Promise.race([closed.catch(() => {}), delay(500)]);
+    await stopPulse(ownedPulse);
+    throw new Error("Desktop recording failed.");
+  }
+  abort = (): void => { void finish().catch(() => {}); };
+  options.signal.addEventListener("abort", abort, { once: true });
   return { env, outputPath, finish };
 }
