@@ -73,7 +73,7 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
 export function buildDesktopRecorderPulseSetupCommands(): Array<{ binary: "/usr/bin/pactl"; args: string[] }> {
   return [
     ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix"],
-    ["set-sink-volume", "humanish_recording", "50%"],
+    ["set-sink-volume", "humanish_recording", "0.5"],
     ["load-module", "module-loopback", "source=humanish_mic.monitor", "sink=humanish_recording", "latency_msec=20"],
     ["load-module", "module-loopback", "source=humanish_speaker.monitor", "sink=humanish_recording", "latency_msec=20"]
   ].map(args => ({ binary: "/usr/bin/pactl" as const, args }));
