@@ -1,11 +1,10 @@
 # Current Goals
 
-Status date: 2026-09-26. Release baseline: `0.101.0`.
+Status date: 2026-09-26. Source baseline: `0.102.0`.
 
-This page guides work on current source. Version `0.102.0` is a candidate;
-its [optional media release note](../release/0.102.0-participant-media.md) records
-Linux acceptance, the passing Mac conversation and its remaining analysis gate. Published behavior is described
-in the [release notes](../release/0.101.0-codex-ui-tools.md).
+This page guides work on current source. Version `0.102.0` adds optional camera
+and speech; its [release note](../release/0.102.0-participant-media.md) records
+Linux and Mac conversations, validated analysis and the remaining media limits.
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -104,8 +103,8 @@ substitute for it.
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links; explicit restricted Codex account analysis on qualified Linux x64 and Apple Silicon Mac profiles | Account dollars/output-token caps are unavailable; Keychain/other CLI profiles are unqualified. Model interpretation needs review; selection limits coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; local-agent, borrowed inboxes and SMS are unsupported |
-| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs; optional media is a candidate addition below; local inbox and automatic onboarding remain follow-ups; larger cohorts and sleep/wake are unqualified |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; candidate optional camera and speech passed two-person Linux and Mac conversations; hosted audio-only uses the same worker | The Mac recording's automatic analysis failed validation and remains a release gate. Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording, forced TURN, physical-device and touch fidelity are unproven |
+| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs; local inbox and automatic onboarding remain follow-ups; larger cohorts and sleep/wake are unqualified |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording, forced TURN, physical-device and touch fidelity are unproven |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
@@ -126,9 +125,10 @@ path; the earlier offline owner/service qualification experiments are historical
 fixtures, not an installation architecture or a prerequisite queue. Explicit
 Linux local labs now use the installed CLI/TUI, with a verified runtime download
 before the first live run. Mac browser support is also shipped; inbox integration remains unfinished.
-Optional media is implemented in this candidate. Linux live acceptance and the
-updated Mac conversation passed. The Mac recording's automatic analysis failed
-validation and must be resolved before release. Existing hosted labs retain their behavior.
+Optional media passed Linux and Mac conversations with receiving-side evidence
+and owned-resource cleanup. The original Mac recording produced validated
+analysis after its citation instructions were clarified. Existing hosted labs
+retain their behavior.
 
 ## Gates And Deferred Work
 
