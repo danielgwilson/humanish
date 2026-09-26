@@ -126,8 +126,9 @@ path; the earlier offline owner/service qualification experiments are historical
 fixtures, not an installation architecture or a prerequisite queue. Explicit
 Linux local labs now use the installed CLI/TUI, with a verified runtime download
 before the first live run. Mac browser support is also shipped; inbox integration remains unfinished.
-Optional media is implemented in this candidate, with Linux live acceptance
-complete and Mac media acceptance still pending. Existing hosted labs retain their behavior.
+Optional media is implemented in this candidate. Linux live acceptance passed;
+Mac demonstrated video and speech transport but needs conversational acceptance
+with the updated speech model. Existing hosted labs retain their behavior.
 
 ## Gates And Deferred Work
 
