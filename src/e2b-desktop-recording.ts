@@ -13,6 +13,7 @@ const OUTPUT_PATH = "/tmp/humanish-desktop-recording.mp4";
 const PID_PATH = "/tmp/humanish-desktop-recording.pid";
 const PULSE_RUNTIME = "/tmp/humanish-recording-runtime";
 const FINALIZE_TIMEOUT_MS = 10_000;
+const FORCE_REAP_TIMEOUT_MS = 5_000;
 
 const baseEnv = Object.freeze({
   PATH: "/usr/local/bin:/usr/bin:/bin",
@@ -24,6 +25,14 @@ const baseEnv = Object.freeze({
 });
 
 function quote(value: string): string { return `'${value.replaceAll("'", `'"'"'`)}'`; }
+
+async function settlesWithin(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    promise.then(() => true),
+    new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), timeoutMs); })
+  ]).finally(() => clearTimeout(timer));
+}
 
 async function preparePulse(desktop: E2BDesktopSandbox, requestTimeoutMs: number): Promise<Readonly<Record<string, string>>> {
   const env = { ...baseEnv, XDG_RUNTIME_DIR: PULSE_RUNTIME, PULSE_SERVER: `unix:${PULSE_RUNTIME}/pulse/native`,
@@ -113,14 +122,18 @@ export async function startE2BDesktopRecording(options: {
       let timer: NodeJS.Timeout | undefined;
       await Promise.race([exited, new Promise<void>(resolve => { timer = setTimeout(() => { forced = true; resolve(); }, FINALIZE_TIMEOUT_MS); })])
         .finally(() => clearTimeout(timer));
-      if (forced) { await kill().catch(() => {}); await exited; }
+      if (forced) {
+        await kill().catch(() => {});
+        if (!await settlesWithin(exited, FORCE_REAP_TIMEOUT_MS)) throw new Error("E2B recorder process did not stop.");
+      }
       const probeCommand = buildDesktopRecorderProbeCommand(OUTPUT_PATH);
       const probe = await options.desktop.commands.run(`${quote(probeCommand.binary)} ${probeCommand.args.map(quote).join(" ")}`, {
         timeoutMs: 30_000, requestTimeoutMs: options.requestTimeoutMs
       });
       const durationMs = parseDesktopRecorderDuration(probe.stdout ?? "");
+      const transferSignal = AbortSignal.timeout(options.requestTimeoutMs);
       const web = await options.desktop.files.read!(OUTPUT_PATH, { format: "stream", requestTimeoutMs: options.requestTimeoutMs,
-        streamIdleTimeoutMs: options.requestTimeoutMs });
+        streamIdleTimeoutMs: options.requestTimeoutMs, signal: transferSignal });
       let transferred = 0;
       const count = new Transform({ transform(chunk: Buffer, _encoding, callback) {
         if (transferred + chunk.length > DESKTOP_RECORDING_MAX_BYTES) {
@@ -130,7 +143,7 @@ export async function startE2BDesktopRecording(options: {
         transferred += chunk.length;
         callback(undefined, chunk);
       } });
-      await pipeline(Readable.fromWeb(web), count, destination);
+      await pipeline(Readable.fromWeb(web), count, destination, { signal: transferSignal });
       if (transferred < 1) throw new Error("E2B desktop recorder produced empty output.");
       return { mimeType: "video/mp4" as const, startedAt, durationMs, bytes: transferred,
         audioSources, complete: !exitedEarly && !forced };
