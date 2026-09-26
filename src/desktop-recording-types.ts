@@ -21,6 +21,5 @@ export interface RunDesktopRecording extends DesktopRecordingMetadata {
   path: string;
 }
 
-export interface DesktopRecordingConfig {
-  audio: boolean;
-}
+export const desktopRecordingConfigSchema = z.strictObject({ audio: z.boolean() });
+export type DesktopRecordingConfig = z.infer<typeof desktopRecordingConfigSchema>;

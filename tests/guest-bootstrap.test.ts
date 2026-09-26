@@ -71,6 +71,18 @@ describe("fixed canonical guest bootstrap", () => {
       expect(() => parseGuestBootstrap(Buffer.from(JSON.stringify({ version: 1, identity, media: invalid })), identity.runtimeRevision)).toThrow();
     }
   });
+  it("admits recording independently from camera/speech and rejects extra settings", async () => {
+    const p = pair(true), reader = new GuestBootstrapReader(p.right, identity.runtimeRevision, new AbortController().signal);
+    p.left.write(encodeGuestBootstrap(identity, false, undefined, undefined, { audio: true }));
+    await reader.identity;
+    expect(reader.recording).toEqual({ audio: true });
+    expect(reader.media).toBeUndefined();
+    expect(() => encodeGuestBootstrap(identity, true, undefined, undefined, { audio: true })).toThrow();
+    reader.close(); p.left.destroy();
+    for (const recording of [{}, { audio: "yes" }, { audio: true, path: "/tmp/arbitrary" }]) {
+      expect(() => parseGuestBootstrap(Buffer.from(JSON.stringify({ version: 1, identity, recording })), identity.runtimeRevision)).toThrow();
+    }
+  });
   it.each(["http://example.com:3000/","http://localhost/","http://localhost:80/","http://localhost:1023/",
     "http://user:password@localhost:3000/","file:///tmp/notes.html","http://[::1]:3000/","http://localhost:65536/",
     "http://localhost:3000/"+"a".repeat(GUEST_BOOTSTRAP_LIMITS.initialUrlBytes)])("refuses unsupported initial URL %# before dispatch", initialUrl => {

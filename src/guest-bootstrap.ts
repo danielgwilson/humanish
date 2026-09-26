@@ -1,3 +1,4 @@
+import { desktopRecordingConfigSchema, type DesktopRecordingConfig } from "./desktop-recording-types.js";
 import type { Duplex } from "node:stream";
 import { validateBrowserControlIdentity, sameBrowserControlIdentity, type BrowserControlIdentity } from "./browser-control-protocol.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
@@ -22,16 +23,17 @@ export function validateGuestInitialUrl(value: string): string {
 export function guestReadyTimeoutMs(initialUrl?: string): number {
   return GUEST_BOOTSTRAP_LIMITS.readyMs + (initialUrl === undefined ? 0 : GUEST_BOOTSTRAP_LIMITS.navigationMs + GUEST_BOOTSTRAP_LIMITS.paintMs);
 }
-function canonical(identity: BrowserControlIdentity, ready: boolean, initialUrl?: string, media?: GuestMediaConfig): string {
+function canonical(identity: BrowserControlIdentity, ready: boolean, initialUrl?: string, media?: GuestMediaConfig, recording?: DesktopRecordingConfig): string {
   const { generation, challenge, runtimeRevision } = validateBrowserControlIdentity(identity);
   const fixed = { generation, challenge, runtimeRevision };
   if (initialUrl !== undefined && (ready || validateGuestInitialUrl(initialUrl) !== initialUrl)) throw refused();
   if (media !== undefined && (ready || !guestMediaConfigSchema.safeParse(media).success)) throw refused();
+  if (recording !== undefined && (ready || !desktopRecordingConfigSchema.safeParse(recording).success)) throw refused();
   return JSON.stringify(ready ? { version: 1, ready: true, identity: fixed }
-    : { version: 1, identity: fixed, ...(initialUrl === undefined ? {} : { initialUrl }), ...(media === undefined ? {} : { media: guestMediaConfigSchema.parse(media) }) });
+    : { version: 1, identity: fixed, ...(initialUrl === undefined ? {} : { initialUrl }), ...(media === undefined ? {} : { media: guestMediaConfigSchema.parse(media) }), ...(recording === undefined ? {} : { recording: desktopRecordingConfigSchema.parse(recording) }) });
 }
-export function encodeGuestBootstrap(identity: BrowserControlIdentity, ready = false, initialUrl?: string, media?: GuestMediaConfig): Buffer {
-  const bytes = Buffer.from(canonical(identity, ready, initialUrl, media));
+export function encodeGuestBootstrap(identity: BrowserControlIdentity, ready = false, initialUrl?: string, media?: GuestMediaConfig, recording?: DesktopRecordingConfig): Buffer {
+  const bytes = Buffer.from(canonical(identity, ready, initialUrl, media, recording));
   if (bytes.length > (ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes)) throw refused();
   const frame = Buffer.alloc(4 + bytes.length);
   frame.writeUInt32BE(bytes.length); bytes.copy(frame, 4);
@@ -40,7 +42,7 @@ export function encodeGuestBootstrap(identity: BrowserControlIdentity, ready = f
 export function parseGuestBootstrap(bytes: Buffer, revision: string, ready = false): BrowserControlIdentity {
   return parseBootstrap(bytes, revision, ready).identity;
 }
-function parseBootstrap(bytes: Buffer, revision: string, ready: boolean): { identity: BrowserControlIdentity; initialUrl?: string; media?: GuestMediaConfig } {
+function parseBootstrap(bytes: Buffer, revision: string, ready: boolean): { identity: BrowserControlIdentity; initialUrl?: string; media?: GuestMediaConfig; recording?: DesktopRecordingConfig } {
   if (!bytes.length || bytes.length > (ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes) || bytes.some(byte => byte > 127)) throw refused();
   try {
     const value: unknown = JSON.parse(bytes.toString("ascii"));
@@ -48,9 +50,10 @@ function parseBootstrap(bytes: Buffer, revision: string, ready: boolean): { iden
     const identity = validateBrowserControlIdentity(value.identity);
     const initialUrl = "initialUrl" in value ? value.initialUrl : undefined;
     const media = "media" in value ? guestMediaConfigSchema.parse(value.media) : undefined;
+    const recording = "recording" in value ? desktopRecordingConfigSchema.parse(value.recording) : undefined;
     if (initialUrl !== undefined && typeof initialUrl !== "string") throw refused();
-    if (identity.runtimeRevision !== revision || canonical(identity, ready, initialUrl, media) !== bytes.toString("ascii")) throw refused();
-    return { identity, ...(initialUrl === undefined ? {} : { initialUrl }), ...(media === undefined ? {} : { media }) };
+    if (identity.runtimeRevision !== revision || canonical(identity, ready, initialUrl, media, recording) !== bytes.toString("ascii")) throw refused();
+    return { identity, ...(initialUrl === undefined ? {} : { initialUrl }), ...(media === undefined ? {} : { media }), ...(recording === undefined ? {} : { recording }) };
   } catch { throw refused(); }
 }
 
@@ -59,6 +62,7 @@ export class GuestBootstrapReader {
   readonly identity: Promise<BrowserControlIdentity>;
   initialUrl: string | undefined;
   media: GuestMediaConfig | undefined;
+  recording: DesktopRecordingConfig | undefined;
   private resolve!: (identity: BrowserControlIdentity) => void;
   private reject!: (error: CuaExecutorError) => void;
   private readonly header = Buffer.alloc(4);
@@ -99,6 +103,7 @@ export class GuestBootstrapReader {
         const parsed = parseBootstrap(this.body, this.revision, this.ready);
         this.initialUrl = parsed.initialUrl;
         this.media = parsed.media;
+        this.recording = parsed.recording;
         this.admitted = true; clearTimeout(this.timer); this.resolve(parsed.identity);
       } catch { this.fail(); }
     }
@@ -130,9 +135,9 @@ export class GuestBootstrapReader {
 }
 
 /** Fixed preface on an already acquired Firecracker stream; no path discovery/retry. */
-export async function connectGuestBootstrap(stream: Duplex, identity: BrowserControlIdentity, signal: AbortSignal, initialUrl?: string, media?: GuestMediaConfig): Promise<ReturnType<typeof createBrowserControlClient>> {
+export async function connectGuestBootstrap(stream: Duplex, identity: BrowserControlIdentity, signal: AbortSignal, initialUrl?: string, media?: GuestMediaConfig, recording?: DesktopRecordingConfig): Promise<ReturnType<typeof createBrowserControlClient>> {
   validateBrowserControlIdentity(identity);
-  const request = encodeGuestBootstrap(identity, false, initialUrl, media);
+  const request = encodeGuestBootstrap(identity, false, initialUrl, media, recording);
   await new Promise<void>((resolve, reject) => {
     let bytes = Buffer.alloc(0), done = false;
     const timer = setTimeout(() => finish(new CuaExecutorError("deadline_exceeded", "not_dispatched")), GUEST_BOOTSTRAP_LIMITS.connectMs);
