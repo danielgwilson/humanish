@@ -44,7 +44,7 @@ Hearing something counts as progress even when the screen stays unchanged.
 Transcription and synthetic speech run inside the Linux desktop, without a
 speech API key or a host Python installation. Codex inference still runs remotely
 using the selected account. The first voice uses espeak-ng and sounds robotic;
-whisper.cpp performs recognition. This is bounded turn-taking, with recognition
+whisper.cpp uses the pinned English `base.en` model for recognition. This is bounded turn-taking, with recognition
 latency and possible transcription errors, not a streaming voice conversation
 with interruption handling.
 

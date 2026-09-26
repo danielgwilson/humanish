@@ -33,7 +33,7 @@ const config: WorkerConfig = {
   camera: process.env.HUMANISH_MEDIA_CAMERA === "1",
   microphone: process.env.HUMANISH_MEDIA_MICROPHONE === "1",
   pulseServer: process.env.PULSE_SERVER ?? "unix:/run/humanish/xdg/pulse/native",
-  whisperModel: process.env.HUMANISH_WHISPER_MODEL ?? "/opt/humanish/media/ggml-tiny.en.bin",
+  whisperModel: process.env.HUMANISH_WHISPER_MODEL ?? "/opt/humanish/media/ggml-base.en.bin",
   whisperServer: process.env.HUMANISH_WHISPER_SERVER ?? "/opt/humanish/media/whisper-server"
 };
 const env = { PATH, HOME: process.env.HOME ?? "/home/humanish", USER: process.env.USER ?? "humanish",

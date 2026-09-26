@@ -27,7 +27,7 @@ const node = {
   sha256: "69b09dba5c8dcb05c4e4273a4340db1005abeafe3927efda2bc5b249e80437ec"
 };
 const whisperSource = mediaInputs.files?.["whisper.cpp-927cfce34f31707e17f2bff35c349632fb9e2c3a.tar.gz"];
-const whisperModel = mediaInputs.files?.["ggml-tiny.en.bin"];
+const whisperModel = mediaInputs.files?.["ggml-base.en.bin"];
 const whisperModelCard = mediaInputs.files?.["whisper-model-README.md"];
 
 if (!/^[a-z0-9][a-z0-9_-]*$/.test(name)) {
@@ -46,7 +46,7 @@ const template = Template({ fileContextPath: repositoryRoot })
     "install -d -m 0755 /opt/humanish/build /opt/humanish/media",
     ...download(node, "/opt/humanish/build/node.tar.xz"),
     ...download(whisperSource, "/opt/humanish/build/whisper.tar.gz"),
-    ...download(whisperModel, "/opt/humanish/media/ggml-tiny.en.bin"),
+    ...download(whisperModel, "/opt/humanish/media/ggml-base.en.bin"),
     ...download(whisperModelCard, "/opt/humanish/media/README.whisper-model.md"),
     "tar -xJf /opt/humanish/build/node.tar.xz --strip-components=1 -C /usr/local",
     "node --version | grep -Fx v22.14.0",

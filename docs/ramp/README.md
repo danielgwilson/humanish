@@ -55,8 +55,9 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 ## Current State
 
 The [0.102.0 candidate note](../release/0.102.0-participant-media.md) describes
-optional native camera and speech. Linux live acceptance is complete; the ARM
-image still needs Mac media execution acceptance before merge and publication.
+optional native camera and speech. Linux live acceptance is complete. Mac video
+and speech transport worked, but question wording drift requires another acceptance
+run with the updated speech model before merge and publication.
 
 The [0.101.0 release note](../release/0.101.0-codex-ui-tools.md) describes native
 Codex UI tools shared by local Firecracker and hosted E2B participants.

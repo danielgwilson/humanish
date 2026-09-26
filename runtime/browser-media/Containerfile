@@ -20,7 +20,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/*
 COPY --from=builder /tmp/whisper/build/bin/whisper-server /opt/humanish/media/whisper-server
 COPY --from=builder /tmp/whisper/LICENSE /opt/humanish/media/LICENSE.whisper.cpp
-COPY --from=media_inputs ggml-tiny.en.bin /opt/humanish/media/ggml-tiny.en.bin
+COPY --from=media_inputs ggml-base.en.bin /opt/humanish/media/ggml-base.en.bin
 COPY --from=media_inputs whisper-model-README.md /opt/humanish/media/README.whisper-model.md
 COPY guest-media-worker.js /opt/humanish/media/guest-media-worker.js
 RUN printf '{"type":"module"}\n' > /opt/humanish/media/package.json \
