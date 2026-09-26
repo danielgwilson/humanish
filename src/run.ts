@@ -1,6 +1,7 @@
 import { contradictsAccountBilling } from "./pricing.js";
 import type { CommsReceivingEvidence } from "./comms-receiving-types.js";
 import { isCommsReceivingEvidence } from "./comms-receiving-evidence.js";
+import { desktopRecordingMetadataSchema, type RunDesktopRecording } from "./desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
@@ -71,6 +72,7 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
+  openContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
   writePreparedRunLatestPointer
@@ -540,10 +542,11 @@ export interface RunStream {
     items: ActorTraceItem[];
   };
   completion?: RunStreamCompletion;
+  recording?: RunDesktopRecording;
   artifacts: Array<{
     label: string;
     path: string;
-    kind: "bundle" | "review" | "observer" | "events" | "screenshot" | "trace" | "log" | "filesystem";
+    kind: "bundle" | "review" | "observer" | "events" | "screenshot" | "trace" | "log" | "filesystem" | "recording";
   }>;
 }
 
@@ -1396,6 +1399,7 @@ export interface VerifyResult {
         | "PUBLIC_SAFETY_FINDINGS"
         | "ANALYSIS_UNVERIFIED"
         | "RAW_SCREENSHOTS"
+        | "CONTINUOUS_MEDIA"
         | "REAL_COMMUNICATIONS";
       message: string;
     }>;
@@ -4404,7 +4408,7 @@ async function verifyPreparedRun(
     message: "review.json and review.md must exist"
   });
   const derivedPublicSafetyFindings: string[] = [];
-  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths, derivedPublicSafetyFindings);
+  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths, derivedPublicSafetyFindings, new Set(isRunBundle(bundle) ? bundle.streams.flatMap(stream => stream.recording ? [stream.recording.path] : []) : []));
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
   if (publicSafetyFindings.length < 50 && bundle !== null && containsSensitivePattern(JSON.stringify(bundle))) {
@@ -5590,6 +5594,7 @@ async function writeRunBundleArtifacts(
 }
 
 async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
+  const recordings = new Map(bundle.streams.flatMap(stream => stream.recording ? [[stream.recording.path, stream.recording] as const] : []));
   const requiredPaths = new Map<string, { screenshot: boolean; allowEmpty: boolean }>();
   const addRequiredPath = (artifactPath: string, options: { screenshot?: boolean; allowEmpty?: boolean } = {}): void => {
     const existing = requiredPaths.get(artifactPath);
@@ -5657,6 +5662,19 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
 
   const missing: string[] = [];
   for (const [artifactPath, requirements] of requiredPaths) {
+    const recording = recordings.get(artifactPath);
+    if (recording) {
+      const handle = await openContainedRegularFile(runPaths, artifactPath);
+      try {
+        if (!handle || (await handle.stat()).size !== recording.bytes) missing.push(artifactPath);
+        else {
+          const header = Buffer.alloc(12);
+          const read = await handle.read(header, 0, header.length, 0);
+          if (read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp") missing.push(`${artifactPath} (invalid MP4 header)`);
+        }
+      } finally { await handle?.close(); }
+      continue;
+    }
     const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
     if (!bytes || (bytes.length === 0 && !requirements.allowEmpty)) {
       missing.push(artifactPath);
@@ -6141,6 +6159,9 @@ function buildShareSafety(args: {
 
   if (args.bundle.publication !== undefined || args.bundle.commsReceiving !== undefined) {
     reasons.push({ code: "REAL_COMMUNICATIONS", message: "This study used real email. Message content may appear in recordings, narration or analysis. Local review is supported; screenshot blurring does not make it public-safe." });
+  }
+  if (args.bundle.streams.some(stream => stream.recording !== undefined)) {
+    reasons.push({ code: "CONTINUOUS_MEDIA", message: "Continuous screen/audio recordings are retained for local review. Screenshot redaction does not redact this media." });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle);
   if (rawStreamIds.length > 0) {
@@ -7107,10 +7128,10 @@ const riskyPublicArtifactPathSegments = new Set([
   "profiles"
 ]);
 
-async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths, derivedFindings: string[]): Promise<string[]> {
+async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths, derivedFindings: string[], recordingPaths: Set<string>): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
-  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings);
+  await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, recordingPaths);
   await validatePreparedRunArtifactPaths(runPaths);
   return findings;
 }
@@ -7119,7 +7140,8 @@ async function scanRunPublicSafetyDirectory(
   runPaths: PreparedRunArtifactPaths,
   relativeDirectory: string,
   findings: string[],
-  derivedFindings: string[]
+  derivedFindings: string[],
+  recordingPaths: Set<string>
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -7148,12 +7170,15 @@ async function scanRunPublicSafetyDirectory(
     if (stats.isDirectory()) {
       // A directory named analysis.json is not an owned record. Its children
       // can contain source evidence even after derived findings are saturated.
-      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings);
+      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings, recordingPaths);
       continue;
     }
 
     if (selectedFindings.length >= 50) continue;
 
+    if (path.extname(relativePath).toLowerCase() === ".mp4" && !recordingPaths.has(relativePath)) {
+      selectedFindings.push(`unregistered continuous media ${relativePath}`);
+    }
     if (!shouldScanTextArtifact(relativePath)) {
       continue;
     }
@@ -7172,7 +7197,7 @@ function isRiskyPublicArtifactPath(relativePath: string): boolean {
 
 function shouldScanTextArtifact(relativePath: string): boolean {
   const extension = path.extname(relativePath).toLowerCase();
-  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".tgz", ".gz", ".zip"].includes(extension);
+  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".tgz", ".gz", ".zip"].includes(extension);
 }
 
 function isLocalEvidenceArtifactPath(value: string): boolean {
@@ -7614,9 +7639,23 @@ function isRunStream(value: unknown): value is RunStream {
     && (value.assignment === undefined || isRunParticipantAssignment(value.assignment))
     && (value.viewport === undefined || isRunViewport(value.viewport))
     && (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry))
+    && (value.recording === undefined || isRunDesktopRecording(value.recording))
     && hasConsistentStreamGeometry(value)
     && Array.isArray(value.artifacts)
-    && value.artifacts.every(isRunStreamArtifact);
+    && value.artifacts.every(isRunStreamArtifact)
+    && hasConsistentRecordingArtifact(value.recording, value.artifacts);
+}
+
+function hasConsistentRecordingArtifact(recording: RunDesktopRecording | undefined, artifacts: RunStream["artifacts"]): boolean {
+  const files = artifacts.filter(artifact => artifact.kind === "recording");
+  return recording ? files.length === 1 && files[0]!.path === recording.path : files.length === 0;
+}
+
+function isRunDesktopRecording(value: unknown): value is RunDesktopRecording {
+  if (!isRecord(value) || value.schema !== "humanish.desktop-recording.v1" || typeof value.path !== "string"
+    || !isLocalEvidenceArtifactPath(value.path) || !/^recordings\/[-A-Za-z0-9_.]+\/desktop\.mp4$/.test(value.path)) return false;
+  const { schema: _schema, path: _path, ...metadata } = value;
+  return desktopRecordingMetadataSchema.safeParse(metadata).success;
 }
 
 function isRunParticipantAssignment(value: unknown): value is RunParticipantAssignment {
@@ -7719,6 +7758,7 @@ function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][nu
       || value.kind === "trace"
       || value.kind === "log"
       || value.kind === "filesystem"
+      || value.kind === "recording"
     );
 }
 

@@ -86,6 +86,7 @@ async function inventory(root: PreparedRunArtifactPaths, maxBytes: number): Prom
       if (info.isDirectory()) {
         await walk(rel);
       } else {
+        if (path.extname(rel).toLowerCase() === ".mp4") throw new Error("Continuous video/audio cannot be redacted by bundle export. Use --local-only HTML export for a snapshot-only copy.");
         if (info.size > BigInt(maxBytes - total)) throw new Error("Source inventory exceeds --max-bytes.");
         const bytes = await readContainedRegularFile(root, rel);
         if (bytes === null) throw new Error("Source artifact could not be read through its bound identity.");

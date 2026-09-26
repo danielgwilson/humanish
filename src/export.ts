@@ -172,6 +172,19 @@ export async function exportRun(
     }
     data = buildObserverData(JSON.parse(source.toString("utf8")) as RunBundle);
   }
+  // Portable HTML keeps the lightweight evidence. Media remains in the source run.
+  let omittedRecording = false;
+  if (data && typeof data === "object" && "streams" in data && Array.isArray(data.streams)) {
+    for (const stream of data.streams) {
+      if (stream && typeof stream === "object" && stream.recording) {
+        omittedRecording = true;
+        delete stream.recording;
+        if (Array.isArray(stream.artifacts)) stream.artifacts = stream.artifacts.filter((artifact: { kind?: string }) => artifact.kind !== "recording");
+      }
+    }
+  }
+  const mediaOmission = "Continuous video/audio is excluded from this HTML export. Open the original run in Humanish to play it.";
+  if (omittedRecording) warnings.push(mediaOmission);
   const cache = new Map<string, Promise<string>>();
   const assets: ObserverExportAssets = {};
   const analysisCaptures = new Map(analysis.state === "ready" ? analysis.analysis?.evidence.flatMap((item) =>
@@ -281,12 +294,13 @@ export async function exportRun(
   }
   warnings.push(...analysis.warnings);
   let output = renderObserverHtml(inlined as unknown as ObserverData, { snapshot: true, analysis, assets });
-  const watermarked = !shareReady;
+  const watermarked = !shareReady || omittedRecording;
   if (watermarked) {
-    const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code));
+    const banner = localOnlyBanner(verified.shareSafety.reasons.map((r) => r.code))
+      + (omittedRecording ? `<p role="status" style="margin:0;padding:8px 16px;background:#fff4d5;color:#352600;font:13px system-ui">${mediaOmission}</p>` : "");
     // The warning and app share the viewport. A full-height app beneath an
     // extra banner would scroll the document when recording controls focus.
-    const layout = `<style id="humanish-export-layout">body[data-humanish-local-export]{display:grid;grid-template-rows:auto minmax(0,1fr);height:100dvh;overflow:hidden}body[data-humanish-local-export]>#root{min-height:0;overflow:hidden}</style>`;
+    const layout = `<style id="humanish-export-layout">body[data-humanish-local-export]{display:grid;grid-template-rows:auto ${omittedRecording ? "auto " : ""}minmax(0,1fr);height:100dvh;overflow:hidden}body[data-humanish-local-export]>#root{min-height:0;overflow:hidden}</style>`;
     output = output.includes("<body>")
       ? output.replace("</head>", `${layout}</head>`).replace("<body>", `<body data-humanish-local-export>${banner}`)
       : `${banner}${output}`;

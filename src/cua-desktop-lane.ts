@@ -12,7 +12,7 @@ export interface ReadyCuaDesktop {
 export type DesktopLaneEvidence = Pick<LaneRunOutcome,
   'sandboxId' | 'desktopDurationMs' | 'desktopResources' | 'killed' | 'streamUrlPresent' |
   'subjectCommit' | 'desktopBrowser' | 'desktopGeometry' | 'stateStepRecords' | 'phaseRecords' |
-  'failureCode' | 'commsArtifactPath'>;
+  'failureCode' | 'commsArtifactPath' | 'recording'>;
 
 /** One lane owns its desktop through preparation failure and final evidence collection.
  * Call methods sequentially: prepare, openSession, then finalize in a finally block.
