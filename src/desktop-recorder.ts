@@ -53,7 +53,9 @@ function validate(options: DesktopRecorderCommandOptions): readonly DesktopRecor
 export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptions, startedAtMs: number): { binary: "/usr/bin/ffmpeg"; args: string[] } {
   const sources = validate(options);
   if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1) throw new Error("Invalid desktop recording start time.");
-  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0",
+  // Both live inputs use wall-clock timestamps; one output origin preserves their offset.
+  // Bound raw video buffering separately from the much smaller audio packets.
+  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0",
     "-f", "x11grab", "-framerate", String(options.frameRate ?? 15),
     "-video_size", `${options.width}x${options.height}`, "-i", options.display];
   const devices = sources.length === 2 ? [COMBINED_PULSE_DEVICE] : sources.map(source => PULSE_DEVICE[source]);

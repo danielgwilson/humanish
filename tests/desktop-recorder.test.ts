@@ -9,7 +9,7 @@ describe("desktop recorder command", () => {
       audioSources: ["microphone-input", "speaker-output"] }, 1_790_457_914_571);
     expect(command.binary).toBe("/usr/bin/ffmpeg");
     expect(command.args).toEqual([
-      "-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0", "-f", "x11grab", "-framerate", "15", "-video_size", "960x720", "-i", ":0",
+      "-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0", "-f", "x11grab", "-framerate", "15", "-video_size", "960x720", "-i", ":0",
       "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0", "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", "humanish_recording.monitor",
       "-map", "0:v", "-map", "1:a",
       "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
