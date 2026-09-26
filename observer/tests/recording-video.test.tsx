@@ -52,10 +52,13 @@ describe("desktop recording playback", () => {
 
     await render(startMs + 1000, 1);
     expect(assignments.at(-1)).toBe(1);
+    currentTime = 0;
+    const video = container.querySelector("video")!;
+    await act(async () => video.dispatchEvent(new Event("loadedmetadata")));
+    expect(assignments.at(-1)).toBe(1);
     const afterInitialSeek = assignments.length;
     await render(startMs + 1500, 1);
     expect(assignments).toHaveLength(afterInitialSeek);
-    const video = container.querySelector("video")!;
     Object.defineProperty(video, "readyState", { configurable: true, value: HTMLMediaElement.HAVE_CURRENT_DATA });
     currentTime = 1;
     await render(startMs + 3000, 1);
@@ -102,5 +105,21 @@ describe("desktop recording playback", () => {
     await act(async () => root.render(view(startMs + 7000)));
     expect(assignments.at(-1)).toBe(7);
     expect(play).toHaveBeenCalled();
+  });
+
+  it("returns to muted playback when the selected participant changes", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const render = async (selected: RecordingInterval) => act(async () => root.render(
+      <RecordingVideo key={selected.recording.path} interval={selected} atMs={selected.startMs + 1000}
+        playing={false} speed={1} seekRevision={1} label="Selected participant" />
+    ));
+    await render(interval);
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Enable recorded audio"]')!.click());
+    const first = container.querySelector("video")!;
+    expect(first.muted).toBe(false);
+
+    await render({ ...interval, recording: { ...interval.recording, path: "recordings/other.mp4" } });
+    expect(container.querySelector("video")).not.toBe(first);
+    expect(container.querySelector("video")?.muted).toBe(true);
   });
 });

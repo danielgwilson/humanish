@@ -102,6 +102,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   const [feedPage, setFeedPage] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [manualLink, setManualLink] = useState<string | null>(null);
+  const [unavailableRecording, setUnavailableRecording] = useState<string | null>(null);
   const [scrubPreview, setScrubPreview] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now);
   const [streamRevision, setStreamRevision] = useState(0);
@@ -159,7 +160,9 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
   }, [model, notableEnd, frames.length]);
   const studyCursor = studyPlayback?.moment.kind === "capture" && current?.atMs !== undefined ? current.atMs + studyPlayback.moment.ageMs : null;
   const recordingInterval = studyPlayback ? streamRecordingInterval(stream) : null;
-  const showRecording = studyPlayback && recordingContains(recordingInterval, studyPlayback.atMs);
+  const recordingKey = recordingInterval ? `${stream.id}:${recordingInterval.recording.path}` : null;
+  const recordingFailed = recordingKey !== null && unavailableRecording === recordingKey;
+  const showRecording = studyPlayback && !recordingFailed && recordingContains(recordingInterval, studyPlayback.atMs);
   const intervalPins = rowIndex.pins.get(frame) ?? [];
   const currentPins = eventId ? selectedRow?.coord ? [selectedRow] : []
     : controlled ? intervalPins.filter((row) => studyCursor !== null && row.atMs !== undefined && row.atMs <= studyCursor) : intervalPins;
@@ -354,8 +357,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           : <span>{live ? "Live desktop · select recorded activity to inspect an entry." : `${currentPins.length ? `${currentPins.length} recorded ${currentPins.length === 1 ? "pin" : "pins"} in this capture interval. ` : ""}Select an activity entry to inspect its time and location.`}</span>}
       </div> : null}
       {showRecording && recordingInterval && studyPlayback.atMs !== null
-        ? <RecordingVideo interval={recordingInterval} atMs={studyPlayback.atMs} playing={studyPlayback.playing} speed={studyPlayback.speed}
-          seekRevision={studyPlayback.seekRevision} label={stream.label} />
+        ? <RecordingVideo key={recordingKey} interval={recordingInterval} atMs={studyPlayback.atMs} playing={studyPlayback.playing} speed={studyPlayback.speed}
+          seekRevision={studyPlayback.seekRevision} label={stream.label} onUnavailable={() => setUnavailableRecording(recordingKey)} />
         : <PlayerStage sandbox={liveEmbedSandbox(stream)} frame={current} count={frames.length} viewport={coordinateSpace} pins={currentPins} zoom={zoom} live={live} streamRevision={streamRevision} label={stream.label}
           emptyText={emptyText} />}
       {!controlled ? <div className="transport">
@@ -419,7 +422,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
       <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded screenshot` : "No recorded screenshots"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
-        {stream.recording && studyPlayback?.reviewing && !showRecording ? <span>Desktop video unavailable at this study moment; showing recorded screenshot evidence when available.</span> : null}
+        {recordingFailed ? <span>Desktop video could not load; showing recorded screenshot evidence when available.</span>
+          : stream.recording && studyPlayback?.reviewing && !showRecording ? <span>Desktop video unavailable at this study moment; showing recorded screenshot evidence when available.</span> : null}
         {studyPlayback?.reviewing && current && studyPlayback.moment.kind === "capture" ? <span>{current.atMs === undefined ? "Capture time unavailable; frame selected directly." : <>{studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} · {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.</>}</span> : null}
         {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}

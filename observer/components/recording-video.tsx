@@ -10,13 +10,14 @@ function audioLabel(sources: RecordingInterval["recording"]["audioSources"]): st
   return sources.map((source) => source === "microphone-input" ? "Microphone input offered" : "Speaker output").join(" · ");
 }
 
-export function RecordingVideo({ interval, atMs, playing, speed, seekRevision, label }: {
+export function RecordingVideo({ interval, atMs, playing, speed, seekRevision, label, onUnavailable }: {
   interval: RecordingInterval;
   atMs: number;
   playing: boolean;
   speed: number;
   seekRevision: number;
   label: string;
+  onUnavailable?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const atMsRef = useRef(atMs);
@@ -73,7 +74,8 @@ export function RecordingVideo({ interval, atMs, playing, speed, seekRevision, l
   if (!href) return <div className="recording-video-unavailable" role="status">Desktop video path is unavailable.</div>;
   return <div className="recording-video-stage">
     <video ref={videoRef} src={href} aria-label={`${label} desktop recording`} playsInline preload="metadata"
-      muted={!hasAudio || !soundEnabled} onCanPlay={() => { if (playing) play(); }} onError={() => setMediaFailed(true)} />
+      muted={!hasAudio || !soundEnabled} onLoadedMetadata={(event) => syncToCursor(event.currentTarget)}
+      onCanPlay={() => { if (playing) play(); }} onError={() => { setMediaFailed(true); onUnavailable?.(); }} />
     <div className="recording-video-meta">
       <span>Desktop video · {formatDuration(interval.recording.durationMs)}</span>
       <span>{audioLabel(interval.recording.audioSources)}</span>

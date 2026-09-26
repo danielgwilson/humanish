@@ -189,4 +189,21 @@ describe("Player projects the shared study clock", () => {
     expect(container.textContent).not.toContain("0 / 0");
     expect(container.querySelector(".player-mode")?.textContent).toContain("Desktop video · 2026-09-01T10:00:05.000Z");
   });
+
+  it("falls back to the selected screenshot when desktop video cannot load", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const recorded = structuredClone(stream);
+    recorded.recording = {
+      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
+      audioSources: ["speaker-output"], complete: true
+    };
+    await render(control(1), { stream: recorded });
+    const video = container.querySelector("video")!;
+    await act(async () => video.dispatchEvent(new Event("error")));
+
+    expect(container.querySelector("video")).toBeNull();
+    expect(frameSource()).toBe("../screenshots/b.png");
+    expect(container.textContent).toContain("Desktop video could not load; showing recorded screenshot evidence when available.");
+  });
 });
