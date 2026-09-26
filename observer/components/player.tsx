@@ -401,18 +401,21 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div> : null}
       <div className="player-review-tools">
         {controlled ? <>
-          <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
-          <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
-          <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
+          {frames.length > 0 ? <>
+            <IconButton className="tbtn" label="Previous frame" onClick={() => seek(frame - 1)} disabled={frame <= 0}><ReviewIcon name="previous-frame" /></IconButton>
+            <IconButton className="tbtn" label="Next frame" onClick={() => seek(frame + 1)} disabled={frame >= frames.length - 1}><ReviewIcon name="next-frame" /></IconButton>
+            <span className="counter">{Math.max(0, frame + 1)} / {frames.length}</span>
+          </> : null}
           <IconButton className="tbtn" label="Fullscreen" onClick={() => { void toggleFullscreen(); }}><ReviewIcon name="fullscreen" /></IconButton>
         </> : <label><Checkbox label="Skip waits" checked={preferences.skipWaits} onCheckedChange={(checked) => setPreferences((value) => ({ ...value, skipWaits: checked }))} /> Skip waits</label>}
         <button type="button" className="tbtn" disabled={nextAction === undefined} onClick={() => { if (nextAction !== undefined) seekEntry(nextAction); }}>Next action</button>
         <button type="button" className="tbtn" disabled={nextFinding === undefined} onClick={() => { if (nextFinding !== undefined) seek(nextFinding); }} title="Frame-linked trace findings or notable completion. Run/setup notices are separate in Warnings & findings.">Next flagged frame</button>
-        <label className="zoom-control">View <Select label="Image zoom" value={String(zoom)} disabled={live !== null} onValueChange={(value) => setZoom(value === "fit" || value === "actual" ? value : Number(value))}
+        {current || live ? <label className="zoom-control">View <Select label="Image zoom" value={String(zoom)} disabled={live !== null} onValueChange={(value) => setZoom(value === "fit" || value === "actual" ? value : Number(value))}
           options={[{ value: "fit", label: "Fit" }, { value: "actual", label: "Actual size" }, { value: "0.5", label: "50%" }, { value: "1.5", label: "150%" }, { value: "2", label: "200%" }, { value: "3", label: "300%" }]} /></label>
-        <button type="button" className="tbtn" disabled={!current || (!!eventId && !selectedRow)} onClick={() => { void copyMoment(); }}>Copy moment link</button>
+          : null}
+        {current ? <button type="button" className="tbtn" disabled={!!eventId && !selectedRow} onClick={() => { void copyMoment(); }}>Copy moment link</button> : null}
         {current ? <a className="tbtn" href={current.href} target="_blank" rel="noopener noreferrer" download>Original frame</a> : null}
-        <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details>
+        {frames.length > 0 ? <details className="player-shortcuts"><summary>Shortcuts</summary><span>Space: play or pause · ← / →: previous or next frame. Zoomed image: drag or scroll to pan. Use Tab to reach controls; shortcuts leave editable fields alone.</span></details> : null}
         {raw ? <span className="rawchip" title="Raw local screenshots. Redact before publishing.">RAW</span> : current?.redaction ? <span className="frame-redaction">{current.redaction}</span> : null}
       </div>
       <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded screenshot` : "No recorded screenshots"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
@@ -424,7 +427,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       </div>
       {notice ? <p className="player-notice" role="status">{notice}</p> : null}
       {manualLink ? <label className="moment-fallback">Moment link<input readOnly value={manualLink} aria-label="Moment link" onFocus={(event) => event.target.select()} /></label> : null}
-      <div className="filmstrip" ref={filmRef} role="group" aria-label="Recorded frames">
+      {frames.length > 0 ? <div className="filmstrip" ref={filmRef} role="group" aria-label="Recorded frames">
         {filmWindow.start > 0 ? <button type="button" className="tbtn film-page" onClick={() => seek(Math.max(0, filmWindow.start - 1))}>Earlier frames</button> : null}
         {frames.slice(filmWindow.start, filmWindow.end).map((f) => <button key={f.itemId} type="button" className="fs" {...(f.index === frame ? { "data-on": "" } : {})}
           aria-label={`Frame ${f.index + 1}, ${formatElapsed(frameElapsedMs(model, f.index))}, ${f.title}`} onClick={() => seek(f.index)}>
@@ -432,7 +435,7 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
           <span className="lab">{formatElapsed(frameElapsedMs(model, f.index))} · {f.index + 1}</span>
         </button>)}
         {filmWindow.end < frames.length ? <button type="button" className="tbtn film-page" onClick={() => seek(filmWindow.end)}>Later frames</button> : null}
-      </div>
+      </div> : null}
     </div>
     {preferences.inspector ? <>
       <div className="inspector-resize" role="separator" aria-label="Inspector width" aria-orientation="vertical" tabIndex={0}

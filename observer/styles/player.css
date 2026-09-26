@@ -25,6 +25,7 @@
 .evidence-player .recording-video-stage { position: relative; flex: 1 1 auto; min-height: 220px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #080a0d; }
 .evidence-player .recording-video-stage video { display: block; width: 100%; height: 100%; max-height: 68dvh; object-fit: contain; }
 .evidence-player .recording-video-meta { position: absolute; inset: auto 12px 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; width: fit-content; max-width: calc(100% - 24px); padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--muted); font: 11px/1.4 var(--sans); }
+.evidence-player .recording-audio-toggle { min-width: 36px; min-height: 36px; margin-block: -6px; color: var(--ink); }
 .evidence-player .recording-video-unavailable { min-height: 220px; display: flex; align-items: center; justify-content: center; padding: 24px; color: var(--muted); text-align: center; }
 .evidence-player .stage-live { flex: none; }
 .evidence-player .stage-live iframe { border-radius: 4px; }

@@ -165,4 +165,28 @@ describe("Player projects the shared study clock", () => {
     expect(request).toHaveBeenCalledOnce();
     expect(main.querySelector("[data-study-dock]")).not.toBeNull();
   });
+
+  it("presents media-only evidence without empty screenshot navigation", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const mediaOnly = structuredClone(stream);
+    mediaOnly.actor!.items = [];
+    mediaOnly.recording = {
+      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
+      audioSources: ["speaker-output"], complete: true
+    };
+    await render(control(0, {
+      moment: { kind: "no-captures" }, atMs: Date.parse(mediaOnly.recording.startedAt) + 5000
+    }), { stream: mediaOnly, model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" } });
+
+    expect(container.querySelector("video")).not.toBeNull();
+    expect(container.textContent).toContain("Desktop video · 25s");
+    expect(container.textContent).toContain("No recorded screenshots");
+    expect(container.querySelector('[aria-label="Previous frame"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Next frame"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Image zoom"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Recorded frames"]')).toBeNull();
+    expect(container.textContent).not.toContain("0 / 0");
+    expect(container.querySelector(".player-mode")?.textContent).toContain("Desktop video · 2026-09-01T10:00:05.000Z");
+  });
 });

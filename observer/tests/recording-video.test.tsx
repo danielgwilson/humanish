@@ -55,6 +55,11 @@ describe("desktop recording playback", () => {
     const afterInitialSeek = assignments.length;
     await render(startMs + 1500, 1);
     expect(assignments).toHaveLength(afterInitialSeek);
+    const video = container.querySelector("video")!;
+    Object.defineProperty(video, "readyState", { configurable: true, value: HTMLMediaElement.HAVE_CURRENT_DATA });
+    currentTime = 1;
+    await render(startMs + 3000, 1);
+    expect(assignments.at(-1)).toBe(3);
     await render(startMs + 4000, 2);
     expect(assignments.at(-1)).toBe(4);
     await render(startMs + 6000, 3, false);
@@ -64,5 +69,38 @@ describe("desktop recording playback", () => {
     expect(container.textContent).toContain("Microphone input offered");
     expect(container.textContent).toContain("Speaker output");
     expect(container.textContent).toContain("Partial desktop recording");
+    expect(container.textContent).toContain("Desktop video · 10s");
+  });
+
+  it("resynchronizes on reentry and retries a blocked play from the explicit audio control", async () => {
+    let currentTime = 0;
+    const assignments: number[] = [];
+    Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
+      configurable: true,
+      get: () => currentTime,
+      set: (value: number) => { currentTime = value; assignments.push(value); }
+    });
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play")
+      .mockRejectedValueOnce(new DOMException("blocked", "NotAllowedError"))
+      .mockResolvedValue(undefined);
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const view = (atMs: number) => <RecordingVideo interval={interval} atMs={atMs} playing speed={1} seekRevision={4} label="Participant 1" />;
+
+    await act(async () => root.render(view(startMs + 2000)));
+    await act(async () => Promise.resolve());
+    expect(container.textContent).toContain("Playback was blocked by the browser");
+    const beforeToggle = assignments.length;
+    const audio = container.querySelector<HTMLButtonElement>('[aria-label="Enable recorded audio"]')!;
+    await act(async () => { audio.click(); await Promise.resolve(); });
+    expect(container.querySelector("video")?.muted).toBe(false);
+    expect(assignments).toHaveLength(beforeToggle);
+    expect(currentTime).toBe(2);
+    expect(container.textContent).not.toContain("Playback was blocked by the browser");
+
+    await act(async () => root.render(null));
+    currentTime = 0;
+    await act(async () => root.render(view(startMs + 7000)));
+    expect(assignments.at(-1)).toBe(7);
+    expect(play).toHaveBeenCalled();
   });
 });
