@@ -76,6 +76,11 @@ def main():
     arm = architecture == 'arm64'
     machine, make_arch = ('aarch64', 'arm64') if arm else ('x86_64', 'x86_64')
     policy = json.loads((WORK / 'policy.json').read_text())
+    media = os.environ.get('HUMANISH_MEDIA_KERNEL') == '1'
+    if media:
+        media_policy = json.loads((WORK / 'media-policy.json').read_text())
+        policy['required'].update(media_policy['required'])
+        policy['forbidden'] += media_policy['forbidden']
     if arm:
         policy['architecture'] = architecture
         for key in ['CONFIG_X86_64', 'CONFIG_KVM_GUEST', 'CONFIG_ACPI']:
@@ -170,7 +175,8 @@ def main():
     jobs = int(os.environ['HUMANISH_KERNEL_JOBS'])
     if not 1 <= jobs <= toolchain['jobsMaximum']:
         raise ValueError('Build concurrency exceeds fixed bound')
-    run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *(['Image'] if arm else ['vmlinux', 'bzImage'])], cwd=kernel)
+    kernel_targets = ['Image'] if arm else ['vmlinux', 'bzImage']
+    run(['make', 'ARCH=' + make_arch, '-j' + str(jobs), *kernel_targets], cwd=kernel)
     binaries = [('arch/arm64/boot/Image', 'kernel.bin')] if arm else [('vmlinux', 'kernel.bin'), ('arch/x86/boot/bzImage', 'bzImage')]
     for src, name in [*binaries,
                       ('.config', 'kernel.config'), ('System.map', 'System.map'), ('COPYING', 'COPYING')]:
@@ -197,6 +203,7 @@ def main():
               'sourceSpecSha256': sha256(spec), 'patchCount': len(patches), 'policy': policy,
               'outputs': outputs, 'jobs': jobs, 'buildEnvironment': {key: os.environ[key] for key in
                   ['KBUILD_BUILD_USER', 'KBUILD_BUILD_HOST', 'KBUILD_BUILD_VERSION', 'KBUILD_BUILD_TIMESTAMP', 'SOURCE_DATE_EPOCH']},
+              'media': media, 'cameraDriver': 'amazon-v4l2loopback-0.15.3-built-in' if media else None,
               'vmBooted': False, 'redistributionApproved': False}
     (OUTPUT / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'status': 'built', 'outputs': outputs}), flush=True)

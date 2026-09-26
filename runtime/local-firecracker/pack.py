@@ -16,7 +16,8 @@ def main():
     recipe = Path(__file__).resolve().parent
     command = ["docker", "build", "-f", str(recipe / "Runtime.Containerfile"), "-t", args.tag,
                "--build-arg", "RUNNER_IMAGE=" + assets["runnerImage"],
-               "--build-arg", "RUNTIME_REVISION=" + assets["runtimeRevision"]]
+               "--build-arg", "RUNTIME_REVISION=" + assets["runtimeRevision"],
+               "--build-arg", "MEDIA=" + ("1" if assets.get("media") is True else "0")]
     for key, context, argument in [("firecracker", "vmm", "VMM_FILE"), ("kernel", "kernel", "KERNEL_FILE"),
                                    ("rootfs", "disks", "ROOT_FILE"), ("stateTemplate", "state", "STATE_FILE")]:
         source = Path(assets[key]).resolve(strict=True)
@@ -24,7 +25,8 @@ def main():
                     "--build-arg", argument + "=" + source.name]
     subprocess.run([*command, str(recipe)], check=True)
     image = subprocess.check_output(["docker", "image", "inspect", "--format", "{{.Id}}", args.tag], text=True).strip()
-    args.output.write_text(json.dumps({"image": image, "runtimeRevision": assets["runtimeRevision"]}, indent=2) + "\n")
+    args.output.write_text(json.dumps({"image": image, "runtimeRevision": assets["runtimeRevision"],
+                                      "media": assets.get("media") is True}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

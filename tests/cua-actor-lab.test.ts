@@ -1056,7 +1056,7 @@ describe("runCuaActorLab", () => {
       runSession: async () => { modelCalls++; throw new Error("must not call model"); }
     } });
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain("microphone.source injection is unsupported");
+    expect(result.error?.message).toContain("Microphone source-file injection is unsupported");
     expect(result.runId).toBe("not-created");
     expect(desktopLoads).toBe(0);
     expect(modelCalls).toBe(0);

@@ -6,7 +6,7 @@ import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { LocalFirecrackerAssets } from "./local-firecracker-desktop.js";
-import { LOCAL_RUNTIME_RELEASES } from "./local-runtime-release.js";
+import { LOCAL_MEDIA_RUNTIME_RELEASES, LOCAL_RUNTIME_RELEASES } from "./local-runtime-release.js";
 import { limaStatus, loadRuntimeArchive, prepareLima, runtimeArchitecture, runtimeDocker, runtimeExec, usesLima, type RuntimeHostOptions } from "./local-runtime-host.js";
 
 export interface LocalRuntimeRelease { url: string; sha256: string; bytes: number; image: string }
@@ -17,6 +17,7 @@ export interface LocalRuntimeStatus {
   assets?: LocalFirecrackerAssets;
 }
 interface RuntimeOptions extends RuntimeHostOptions {
+  media?: boolean;
   progress?: (message: string) => void;
   /** Explicit source-build/test override; never provided by a participant. */
   release?: LocalRuntimeRelease;
@@ -24,7 +25,7 @@ interface RuntimeOptions extends RuntimeHostOptions {
 const docker = async (args: string[], options: RuntimeOptions): Promise<string> =>
   (await runtimeDocker(args, options)).stdout.trim();
 const runtimeRelease = (options: RuntimeOptions): LocalRuntimeRelease | undefined =>
-  options.release ?? LOCAL_RUNTIME_RELEASES[runtimeArchitecture(options) ?? "amd64"];
+  options.release ?? (options.media ? LOCAL_MEDIA_RUNTIME_RELEASES : LOCAL_RUNTIME_RELEASES)[runtimeArchitecture(options) ?? "amd64"];
 
 /** Read-only host and cache inspection. Never pulls an image or starts a container. */
 export async function localRuntimeStatus(options: RuntimeOptions = {}): Promise<LocalRuntimeStatus> {
@@ -63,24 +64,26 @@ export async function localRuntimeStatus(options: RuntimeOptions = {}): Promise<
       : "Docker is unavailable. Install/start Docker Engine and give your account access, then run humanish runtime setup." };
   }
   const release = runtimeRelease(options);
-  const reference = env.HUMANISH_LOCAL_RUNTIME_IMAGE?.trim() || release?.image;
-  if (!reference) return { ok: false, installed: false, message: "This build does not include a published local runtime. Source builds can set HUMANISH_LOCAL_RUNTIME_IMAGE." };
+  const imageVariable = options.media ? "HUMANISH_LOCAL_MEDIA_RUNTIME_IMAGE" : "HUMANISH_LOCAL_RUNTIME_IMAGE";
+  const reference = env[imageVariable]?.trim() || release?.image;
+  if (!reference) return { ok: false, installed: false, message: `This build does not include a published local ${options.media ? "media " : ""}runtime. Source builds can set ${imageVariable}.` };
   let images;
   try { images = JSON.parse(await docker(["image", "inspect", reference], options)); }
   catch {
-    return env.HUMANISH_LOCAL_RUNTIME_IMAGE?.trim()
-      ? { ok: false, installed: false, message: "HUMANISH_LOCAL_RUNTIME_IMAGE must name an already-built local image. Build or load it before running." }
+    return env[imageVariable]?.trim()
+      ? { ok: false, installed: false, message: `${imageVariable} must name an already-built local image. Build or load it before running.` }
       : { ok: true, installed: false, message: "Local runtime will download before the first live run. Run humanish runtime setup to prepare it now." };
   }
   const image = images[0];
   const labels = image?.Config?.Labels ?? {};
   const revision = labels["to.humanish.runtime.revision"];
   if (image?.Os !== "linux" || image.Architecture !== architecture || labels["to.humanish.runtime.api"] !== "1" ||
-    typeof revision !== "string" || !/^guest-api1-[a-f0-9]{64}$/.test(revision)) {
+    typeof revision !== "string" || !/^guest-api1-[a-f0-9]{64}$/.test(revision) ||
+    (options.media === true && labels["to.humanish.runtime.media"] !== "1")) {
     return { ok: false, installed: false, message: "The cached image is not a compatible Humanish local browser runtime." };
   }
-  return { ok: true, installed: true, message: "Local browser runtime is installed. No E2B key is needed.",
-    assets: { image: image.Id, runtimeRevision: revision } };
+  return { ok: true, installed: true, message: `Local ${options.media ? "media" : "browser"} runtime is installed. No E2B key is needed.`,
+    assets: { image: image.Id, runtimeRevision: revision, ...(labels["to.humanish.runtime.media"] === "1" ? { media: true } : {}) } };
 }
 
 /** Docker owns the installed image/cache. The archive is verified before docker load. */

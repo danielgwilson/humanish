@@ -1445,11 +1445,12 @@ function registerRuntimeCommands(parent: Command, io: CliIo): void {
     runtime.command(action)
       .description(action === "status" ? "Check local Docker, virtualization and the cached browser image without downloads." : "Download and install the local browser image. Does not start a study or use model quota.")
       .option("--json", JSON_OPTION_DESCRIPTION)
+      .option("--media", "Prepare or inspect the optional camera and speech runtime.")
       .action(async (_options, command) => {
         const { localRuntimeStatus, prepareLocalRuntime } = await import("./local-runtime.js");
         try {
-          if (action === "setup") await prepareLocalRuntime({ progress: message => io.writeErr(`${message}\n`) });
-          const status = await localRuntimeStatus();
+          if (action === "setup") await prepareLocalRuntime({ media: _options.media === true, progress: message => io.writeErr(`${message}\n`) });
+          const status = await localRuntimeStatus({ media: _options.media === true });
           const result = { schema: "humanish.runtime-result.v1", ...status };
           writeResult(command, io, result, () => `${status.message}\n`);
           io.setExitCode(status.ok ? 0 : 2);

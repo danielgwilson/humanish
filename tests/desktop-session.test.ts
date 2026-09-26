@@ -50,6 +50,14 @@ describe("owned desktop session", () => {
     expect(own(executor())).not.toHaveProperty("stallRecovery");
   });
 
+  it("preserves an admitted speech capability without inventing one", () => {
+    const own = (backend: CuaExecutor) => ownDesktopAllocation({
+      resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" })
+    }).open(backend).executor;
+    expect(own({ ...executor(), speechEnabled: true }).speechEnabled).toBe(true);
+    expect(own(executor())).not.toHaveProperty("speechEnabled");
+  });
+
   it("can release a failed allocation before participant binding and prevents rebinding", async () => {
     const allocation = ownDesktopAllocation({ resourceId: "owned", release: async () => ({ status: "released", reason: "already_gone" }) });
     await allocation.close();

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
@@ -17,8 +17,10 @@ async function fixture(injection=''){
  await writeFile(join(root,'runtime/browser-guest/control/links.json'),'{}');
  await writeFile(join(root,'runtime/browser-guest/control/root/opt/humanish/control/neutral.html'),'synthetic');
  await writeFile(join(root,'src/guest-runtime-main.ts'),'// synthetic compiler input\n');
+ await writeFile(join(root,'src/guest-media-worker.ts'),'// synthetic optional media worker\n');
  await writeFile(join(root,'src/guest-runtime-revision.ts'),'export const revision="unpackaged";\n');
  await writeFile(join(root,'dist/guest-runtime-main.js'),"import './guest-runtime-revision.js';import 'pngjs';\n");
+ await writeFile(join(root,'dist/guest-media-worker.js'),'// synthetic optional media worker\n');
  await writeFile(join(root,'dist/guest-runtime-revision.js'),'export const revision="unpackaged";\n');
  await writeFile(join(root,'node_modules/pngjs/package.json'),'{"name":"pngjs","main":"index.js"}');
  await writeFile(join(root,'node_modules/pngjs/index.js'),'// synthetic dependency\n');
@@ -29,7 +31,7 @@ function canonical(value:unknown):string{
  if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonical((value as Record<string,unknown>)[key])).join(',')+'}';
  return JSON.stringify(value);
 }
-function run(root:string,output:string){return spawnSync(process.execPath,[join(root,'scripts/guest-runtime-package.mjs'),join(root,output)],{encoding:'utf8',timeout:15000});}
+function run(root:string,output:string,media=false){return spawnSync(process.execPath,[join(root,'scripts/guest-runtime-package.mjs'),...(media?['--media']:[]),join(root,output)],{encoding:'utf8',timeout:15000});}
 describe('guest package immutable input binding',()=>{
  it('binds actual compiled bytes and canonical inputs independently',async()=>{
   const root=await fixture();expect(run(root,'first').status).toBe(0);
@@ -41,6 +43,15 @@ describe('guest package immutable input binding',()=>{
   expect(run(root,'second').status).toBe(0);
   const second=JSON.parse(await readFile(join(root,'second/manifest.json'),'utf8'));
   expect(second.runtimeRevision).not.toBe(first.runtimeRevision);
+ });
+ it('adds the media worker only for an explicit media package',async()=>{
+  const root=await fixture();expect(run(root,'plain').status).toBe(0);expect(run(root,'media',true).status).toBe(0);
+  const plain=JSON.parse(await readFile(join(root,'plain/manifest.json'),'utf8'));
+  const media=JSON.parse(await readFile(join(root,'media/manifest.json'),'utf8'));
+  expect(await readdir(join(root,'plain/root/opt/humanish'))).not.toContain('media');
+  expect(plain.files['opt/humanish/media/guest-media-worker.js']).toBeUndefined();
+  expect(media.files['opt/humanish/media/guest-media-worker.js']).toBeTruthy();
+  expect(media.runtimeRevision).not.toBe(plain.runtimeRevision);
  });
  it.each([
   "await writeFile(join(fixed,'opt/humanish/control/neutral.html'),'changed');",

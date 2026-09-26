@@ -1,9 +1,10 @@
 # Current Goals
 
-Status date: 2026-09-25. Release baseline: `0.101.0`.
+Status date: 2026-09-26. Source baseline: `0.102.0`.
 
-This page guides work on current merged source. Published behavior is described
-in the [release notes](../release/0.101.0-codex-ui-tools.md).
+This page guides work on current source. Version `0.102.0` adds optional camera
+and speech; its [release note](../release/0.102.0-participant-media.md) records
+Linux and Mac conversations, validated analysis and the remaining media limits.
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -88,9 +89,9 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.101.0`)
+## Current Program Truth (source `0.102.0`)
 
-| Surface | Available in merged source | Remaining boundary |
+| Surface | Available in source | Remaining boundary |
 | --- | --- | --- |
 | Study authoring | YAML labs, lane/roster composition, model settings and study/per-lane caps | Route support varies; declarations are not promises of engine parity |
 | Actors | Seven first-party descriptors; computer-use, scripted-browser and terminal-product dispatch | No supported public out-of-tree actor-registration API |
@@ -102,8 +103,8 @@ substitute for it.
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links; explicit restricted Codex account analysis on qualified Linux x64 and Apple Silicon Mac profiles | Account dollars/output-token caps are unavailable; Keychain/other CLI profiles are unqualified. Model interpretation needs review; selection limits coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; local-agent, borrowed inboxes and SMS are unsupported |
-| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Browser-only, explicit local labs; local inbox/media and automatic onboarding remain follow-ups; larger cohorts and sleep/wake are unqualified |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; a synthetic video-only call with separate hosted peers is proven | Audio, TURN, provider-specific rooms, physical-device and touch fidelity remain unproven; unsupported media declarations are rejected |
+| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs; local inbox and automatic onboarding remain follow-ups; larger cohorts and sleep/wake are unqualified |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording, forced TURN, physical-device and touch fidelity are unproven |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
@@ -123,8 +124,11 @@ ordinary TAP/NAT networking. Continue managed-local work from this complete stud
 path; the earlier offline owner/service qualification experiments are historical
 fixtures, not an installation architecture or a prerequisite queue. Explicit
 Linux local labs now use the installed CLI/TUI, with a verified runtime download
-before the first live run. Mac support is also shipped; inbox integration and
-optional media remain unfinished. Existing hosted labs retain their behavior.
+before the first live run. Mac browser support is also shipped; inbox integration remains unfinished.
+Optional media passed Linux and Mac conversations with receiving-side evidence
+and owned-resource cleanup. The original Mac recording produced validated
+analysis after its citation instructions were clarified. Existing hosted labs
+retain their behavior.
 
 ## Gates And Deferred Work
 

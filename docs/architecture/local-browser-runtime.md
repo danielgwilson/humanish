@@ -100,8 +100,9 @@ Later participant actions and observations do not use this startup wait.
 - Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
   enclosing memory limit is 3 GiB. Start with a small concurrency for your host;
   these allocations are not a promise of measured peak memory or capacity.
-- Browser-only. Inbox and camera/microphone declarations are rejected until
-  integrated. TAP/NAT networking preserves the path to optional media.
+- Browser-only by default. [Optional camera and spoken conversation](participant-media.md)
+  use a separate media image and the same study loop. Local inbox declarations
+  remain unsupported.
 - A 20-minute default and maximum participant session budget, within the runtime
   image's 30-minute process lifetime. A shorter `execution.timeoutMs` is supported.
 - Codex participants currently use `gpt-6-astra` at low effort. Hosted templates,

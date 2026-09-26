@@ -95,6 +95,7 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
           ...Array.from({ length: vertical }, () => ["click", action.dy > 0 ? "5" : "4"])];
       }
       case "wait": case "screenshot": return [];
+      case "speak": throw new CuaExecutorError("action_rejected", "not_dispatched");
     }
   }
   return {

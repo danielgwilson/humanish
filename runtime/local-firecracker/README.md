@@ -5,7 +5,8 @@ Firecracker desktops, Codex-account participants, normal Observer recordings and
 automatic Codex analysis. Installed users should follow
 [local browser setup](../../docs/architecture/local-browser-runtime.md), which
 downloads a prepared image. The Mac/Lima path passed installed studies and
-public ARM64 image setup on an M5 Max. Inboxes and optional media remain follow-ups.
+public ARM64 image setup on an M5 Max. Inboxes remain a follow-up; media uses a
+separate opt-in build.
 
 ## Run it
 
@@ -55,8 +56,10 @@ controller death can leave a small host socket directory. A 30-minute process
 deadline bounds a guest that stops responding.
 
 The development guest currently uses a 960×720 Chromium desktop, 2 vCPUs and
-2 GiB guest RAM per participant. Media is off. A NIC and loadable-module support
-preserve the path to optional media without changing the study or network model.
+2 GiB guest RAM per participant. Media is off by default. `build.py --media`
+builds the larger optional Linux image with a synthetic V4L2 camera and offline
+speech input/output. Its synthetic `espeak-ng` voice is robotic, and it must pass
+a received-speech acceptance run before a release can claim media qualification.
 
 ## Distribute a runtime
 

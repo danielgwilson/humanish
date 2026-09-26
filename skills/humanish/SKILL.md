@@ -115,8 +115,8 @@ request. Inspect a failed attempt before explicitly retrying `--provider codex
 
 ## Local browser setup
 
-On Linux x64 with a local rootful Docker Engine, KVM and TUN, an `app-url` lab can
-set `execution.target: local` and `actors[0].type: local-agent` with
+On Linux x64 with local rootful Docker, KVM and TUN, or a supported M3-or-newer
+Mac with native ARM64 Node and Lima 2.2+, an `app-url` lab can set `execution.target: local` and `actors[0].type: local-agent` with
 `localAgent: codex`. It uses the supported Codex ChatGPT login, not E2B or an
 OpenAI API key. Inference is remote and consumes account quota. Existing hosted
 labs stay hosted; never silently change their execution or billing provider.
@@ -128,9 +128,12 @@ the pinned runtime; a live local run also prepares it automatically. The normal
 See [the complete example and limits](../../docs/architecture/local-browser-runtime.md).
 
 Local browsers currently require a loopback app URL with an explicit port above
-1023, use a 960×720 Chromium desktop, and reject inbox/media declarations. Mac
-setup is not integrated. Do not claim that installing the CLI also installs
-Docker or makes these prerequisites available.
+1023 and use a 960×720 Chromium desktop. Local inbox declarations remain
+unsupported. Optional camera and spoken conversation require a separate media
+runtime; follow [participant media](../../docs/architecture/participant-media.md)
+for setup and provider limits. Speech uses the same continuing Codex participant,
+not a second conversation. Do not claim that installing the CLI also installs
+Docker or Lima, or qualifies a machine for arbitrary participant counts.
 
 ## Format Stack
 

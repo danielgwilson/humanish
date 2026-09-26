@@ -5,9 +5,9 @@ import { containsSensitive } from "./redaction.js";
 import { scrubTransientCommsText } from "./run-narration-secrets.js";
 import { STUDY_ANALYSIS_SCHEMA, type AnalysisObservation, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput, type StudyAnalysisResult } from "./study-analysis.js";
 import { createStudyAnalysisProvider, type StudyAnalysisProvider } from "./study-analysis-provider.js";
-import { hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
+import { checkAnalysisResult, hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
-export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-5";
+export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-6";
 export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze(["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_STUDY_ANALYSIS_MODELS);
 const IMAGE_DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
@@ -34,7 +34,9 @@ Completed requires affirmative evidence for all essential assigned requirements,
 
 Preserve each participant's structured provenance separately from your interpretation. recordedStatus is the stream's status; provenance.actorStatus is the actor's status and may conflict with it. completionReason and stopCause describe the recorded ending, not a product diagnosis. goalSource=participant_report means a reported endpoint; condition_matched establishes only the declared condition, not every task requirement or visible state. unavailable or null means the source is not established. declaredOutcome is the participant's account, even when structured. For taskOutcomes, completed records a matched task criterion; observable=false means no completion criterion, and inputsObserved=false means the task was never measured. Null fields are unavailable information, not false, failure, or corroboration. Preserve conflicting source accounts, explain evidence limits, and do not turn provenance metadata into visual evidence.
 
-Use only supplied evidence IDs. Review every included participant once. Every participant review must cite that participant's evidence. Quote feedback only from quoteEligible evidence, using exact text. Use no made-up quotes, captures, timestamps, event IDs, or results. A visual observation must cite an actual supplied capture. No capture means no visual finding. Do not infer what happened between captures without supporting actions or statements; record coverage gaps and unreadable text as limitations.
+Use only the supplied evidence entries' id values for citations; eventId identifies a source event and is not a citation ID. Review every included participant once. Within each participant review, every evidenceIds entry must be unique, exist in the packet, and have exactly that participant's streamId. Including some of the participant's own evidence does not permit adding another participant's references. Feedback must likewise cite that participant's quoteEligible evidence using exact text. Check these ownership and uniqueness rules before returning the report.
+
+Shared interactions can need evidence from multiple participants. Put those combined observations in findings or concernReviews, which may cite multiple included participants under their exposure rules. Keep each participant review grounded in that participant's recording and state any resulting limits; another participant's recording does not become their own evidence. Use no made-up quotes, captures, timestamps, event IDs, or results. A visual observation must cite an actual supplied capture. No capture means no visual finding. Do not infer what happened between captures without supporting actions or statements; record coverage gaps and unreadable text as limitations.
 
 An observation labeled action must cite at least one entry whose kind is ui_action, command, tool_call, file_change, or approval. Other kinds, including run_event entries, do not establish an action basis. Participant_statement observations must cite only quoteEligible entries. Use inference with an explicit limitation when interpreting recorded context that does not establish one of these direct evidence bases.
 
@@ -182,6 +184,48 @@ function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResu
   };
 }
 
+const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
+  ANALYSIS_RESULT_SCHEMA_INVALID: "analysis_validation_failed_schema_invalid",
+  ANALYSIS_INPUT_DUPLICATES: "analysis_validation_failed_input_duplicates",
+  ANALYSIS_PARTICIPANT_COVERAGE_INVALID: "analysis_validation_failed_participant_coverage_invalid",
+  ANALYSIS_PARTICIPANT_REFERENCE_INVALID: "analysis_validation_failed_participant_reference_invalid",
+  ANALYSIS_OUTCOME_WITHOUT_EVIDENCE: "analysis_validation_failed_outcome_without_evidence",
+  ANALYSIS_QUOTE_INVALID: "analysis_validation_failed_quote_invalid",
+  ANALYSIS_FINDING_ID_DUPLICATE: "analysis_validation_failed_finding_id_duplicate",
+  ANALYSIS_OBSERVATION_REFERENCE_INVALID: "analysis_validation_failed_observation_reference_invalid",
+  ANALYSIS_VISUAL_WITHOUT_CAPTURE: "analysis_validation_failed_visual_without_capture",
+  ANALYSIS_ACTION_SOURCE_INVALID: "analysis_validation_failed_action_source_invalid",
+  ANALYSIS_STATEMENT_SOURCE_INVALID: "analysis_validation_failed_statement_source_invalid",
+  ANALYSIS_FINDING_MEMBERSHIP_INVALID: "analysis_validation_failed_finding_membership_invalid",
+  ANALYSIS_AFFECTED_WITHOUT_EVIDENCE: "analysis_validation_failed_affected_without_evidence",
+  ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid"
+});
+
+type CheckedProviderAnalysis =
+  | { ok: true; result: StudyAnalysisResult }
+  | { ok: false; error: string };
+
+function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): CheckedProviderAnalysis {
+  try {
+    const parsed = studyAnalysisResponseSchema.safeParse(value);
+    if (!parsed.success) return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
+    let scrubbed: StudyAnalysisResult;
+    try {
+      scrubbed = scrubGeneratedNarrative(parsed.data);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"
+        ? "analysis_validation_failed_scrub_rejected"
+        : "analysis_validation_failed_unexpected" };
+    }
+    const checked = checkAnalysisResult(input, scrubbed);
+    if (!checked.ok) return { ok: false,
+      error: VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected" };
+    return checked;
+  } catch {
+    return { ok: false, error: "analysis_validation_failed_unexpected" };
+  }
+}
+
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
   apiKey?: string;
@@ -278,10 +322,12 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     return finish();
   }
   progress("validating");
-  try {
-    // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
-    // expanded field lengths fail closed under the original validator; source bytes stay intact.
-    artifact.result = validateAnalysisResult(input, scrubGeneratedNarrative(studyAnalysisResponseSchema.parse(response.output)));
+  // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
+  // expanded field lengths fail closed under the original validator; source bytes stay intact.
+  // Only an allowlisted stage or first rule code survives; rejected output and exceptions do not.
+  const checked = checkProviderAnalysis(input, response.output);
+  if (checked.ok) {
+    artifact.result = checked.result;
     artifact.status = input.coverage.complete ? "complete" : "partial";
     artifact.error = null;
     if (config.provider !== "codex" && ((response.usage?.output ?? 0) > config.maxOutputTokens
@@ -290,10 +336,9 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
       artifact.status = "partial";
       artifact.error = "analysis_admission_estimate_exceeded";
     }
-  } catch {
-    // Validation errors may quote model output; only the stable code leaves this boundary.
+  } else {
     artifact.result = null;
-    artifact.error = "analysis_validation_failed";
+    artifact.error = checked.error;
   }
   return finish();
 }

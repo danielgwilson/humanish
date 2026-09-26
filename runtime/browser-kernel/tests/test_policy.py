@@ -32,6 +32,17 @@ class PolicyTests(unittest.TestCase):
     def test_optional_media_modules_do_not_disable_required_browser_features(self):
         builder.check_config({**self.config, 'CONFIG_SND_ALOOP': 'm'}, self.policy)
 
+    def test_media_policy_requires_builtin_camera_driver(self):
+        media = json.loads((ROOT / 'media-policy.json').read_text())
+        policy = {'required': {**self.policy['required'], **media['required']},
+                  'forbidden': [*self.policy['forbidden'], *media['forbidden']]}
+        config = dict(policy['required'])
+        builder.check_config(config, policy)
+        for key in media['required']:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                builder.check_config({**config, key: 'm'}, policy)
+        self.assertEqual(media['required']['CONFIG_V4L2_LOOPBACK'], 'y')
+
     def test_config_reader_preserves_disabled_values_and_strings(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'config'

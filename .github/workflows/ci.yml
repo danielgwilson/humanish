@@ -141,7 +141,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           base="${PR_BASE:-HEAD^}"
-          if git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/frame-signature.ts src/browser-control-protocol.ts src/cua-executor-error.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' package.json tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
+          if git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/frame-signature.ts src/browser-control-protocol.ts src/cua-executor-error.ts src/cua-speech.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' package.json tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"

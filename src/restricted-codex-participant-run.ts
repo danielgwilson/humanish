@@ -44,7 +44,8 @@ export async function runRestrictedParticipantStudy(options: {
       (config.review?.analysis !== false && (!config.review?.analysis || config.review.analysis.provider !== "codex"))) {
       throw new CuaProviderError("request_rejected", { dispatched: false, usageComplete: false, cleanup: "confirmed" });
     }
-    participant = createRestrictedCodexParticipant(options.participant);
+    participant = createRestrictedCodexParticipant({ ...options.participant,
+      ...(options.desktop.executor.speechEnabled === true ? { speechEnabled: true } : {}) });
     const outcome = await runLab(config, { cwd: options.cwd, dryRun: false, open: false,
       ...(options.runId === undefined ? {} : { runId: options.runId }),
       automaticAnalysis: { ...options.automaticAnalysis, onStart: () => {

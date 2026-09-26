@@ -438,7 +438,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
         execution: { ...(validCua.execution as Record<string, unknown>), desktop: { template: "adopter-desktop-with-audio", media: { microphone: { source: "./room.wav" } } } }
       });
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error.message).toContain("including on custom templates");
+      if (!result.ok) expect(result.error.message).toContain("Microphone source-file injection is unsupported");
     });
 
     it("rejects an unknown mediaPermission", () => {

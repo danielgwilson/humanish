@@ -9,6 +9,7 @@ import { localBrowserDefaults, localBrowserUnsupportedReason } from "./local-run
 import { prepareLocalRuntime } from "./local-runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "./restricted-codex-analysis.js";
 import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
+import { guestMediaConfigSchema } from "./guest-media-config.js";
 
 /** Local desktop/provider composition over the shared lab runner. */
 export async function runLocalFirecrackerStudy(options: RunLabOptions & {
@@ -17,6 +18,10 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
+  const declaredMedia = config.execution?.desktop?.media;
+  const media = declaredMedia === undefined ? undefined : guestMediaConfigSchema.parse({
+    ...declaredMedia, permission: config.policies?.mediaPermission ?? "prompt"
+  });
   const account = config.actors[0]?.type === "local-agent";
   let preparing: Promise<LocalFirecrackerAssets> | undefined;
   const assets = (): Promise<LocalFirecrackerAssets> => preparing ??= (async () => {
@@ -25,6 +30,7 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
       if (!readiness.ready) throw new Error(`Codex account is not ready (${readiness.errorCode}). Run humanish doctor --lab <lab> before starting a local study.`);
     }
     return options.assets ?? await prepareLocalRuntime({
+      ...(media === undefined ? {} : { media: true }),
       ...(options.signal ? { signal: options.signal } : {}),
       progress: message => process.stderr.write(`${message}\n`)
     });
@@ -46,9 +52,16 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
           return {
             async prepare() {
               session = await createLocalFirecrackerDesktop({ assets: await assets(),
+                ...(media === undefined ? {} : { media }),
                 appUrl: spec.targetUrl ?? config.subject.appUrl!, outputRoot: path.join(options.cwd, ".humanish", "local-runtime"),
                 ...(options.signal === undefined ? {} : { signal: options.signal }) });
               sessions.push(session);
+              if (media !== undefined) evidence.desktopBrowser = { requested: "chromium", resolved: "chromium", media: {
+                ...(media.camera === undefined ? {} : { camera: { source: "synthetic", file: "/dev/video0" } }),
+                ...(media.microphone === undefined ? {} : { microphone: { source: "speech" } }),
+                permission: media.permission,
+                flags: media.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : []
+              } };
             },
             async openSession() {
               if (!session) throw new Error("The local desktop has not been prepared.");
@@ -65,8 +78,8 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
             snapshot: () => evidence
           };
         },
-        ...(account ? { async buildProvider() {
-          const participant = createRestrictedCodexParticipant();
+        ...(account ? { async buildProvider({ executor }) {
+          const participant = createRestrictedCodexParticipant({ speechEnabled: executor?.speechEnabled === true });
           participants.push(participant);
           return Object.assign(participant.provider, { async close() {
             if ((await participant.close()).status !== "confirmed") {

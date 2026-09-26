@@ -11,6 +11,7 @@ describe("release readiness", () => {
       keywords?: string[];
       license: string;
       dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
       peerDependencies?: Record<string, string>;
       peerDependenciesMeta?: Record<string, { optional?: boolean }>;
       private?: boolean;
@@ -20,12 +21,14 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.101.0");
+    expect(packageJson.version).toBe("0.102.0");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
-    expect(packageJson.peerDependencies?.["@e2b/desktop"]).toBe("^2.2.3");
+    // Desktop 2.3.2 raises its e2b floor to the first verified background handle with stdin methods.
+    expect(packageJson.peerDependencies?.["@e2b/desktop"]).toBe("^2.3.2");
     expect(packageJson.peerDependenciesMeta?.["@e2b/desktop"]).toEqual({ optional: true });
+    expect(packageJson.devDependencies?.["@e2b/desktop"]).toBe("^2.4.0");
     expect(packageJson.homepage).toBe("https://github.com/danielgwilson/humanish#readme");
     expect(packageJson.bugs?.url).toBe("https://github.com/danielgwilson/humanish/issues");
     expect(packageJson.keywords).toContain("persona-simulation");

@@ -27,8 +27,8 @@ describe("study analysis validation", () => {
     input.evidence.push({ ...input.evidence[1]!, id: "e000003", streamId: "participant-b", text: "I could create the item." });
     input.coverage.evidenceCount++; input.inputDigest = digestStudyAnalysisInput(input);
     const result = syntheticResult(input);
-    result.concernReviews = [{ claim: "A second exposed participant reported completing the task.", basis: "participant_statement",
-      evidenceIds: ["e000003"], limitation: "Reported completion alone does not verify the result.", disposition: "finding",
+    result.concernReviews = [{ claim: "The exposed participants reported different task outcomes.", basis: "participant_statement",
+      evidenceIds: ["e000002", "e000003"], limitation: "Reported completion alone does not verify the result.", disposition: "finding",
       findingId: result.findings[0]!.id, reason: "The second account limits claims that the obstacle affected everyone exposed." }];
     expect(checkAnalysisResult(input, result).ok).toBe(true);
     result.findings[0]!.exposedStreamIds = ["participant-a"];
@@ -90,6 +90,18 @@ describe("study analysis validation", () => {
     result.participants[0]!.feedback = [];
     input.evidence[0]!.streamId = "participant-b";
     expect(checkAnalysisResult(input, result).ok).toBe(false);
+  });
+  it.each(["duplicate", "missing", "another-participant"])("rejects a participant review with a %s citation even when its own evidence is also cited", (kind) => {
+    const input = syntheticInput();
+    input.participants.push({ ...input.participants[0]!, streamId: "participant-b", label: "Participant B" });
+    input.coverage.includedStreamIds.push("participant-b");
+    input.evidence.push({ ...input.evidence[1]!, id: "e000003", streamId: "participant-b" });
+    input.coverage.evidenceCount++;
+    input.inputDigest = digestStudyAnalysisInput(input);
+    const result = syntheticResult(input);
+    expect(checkAnalysisResult(input, result).ok).toBe(true);
+    result.participants[0]!.evidenceIds.push(kind === "duplicate" ? "e000001" : kind === "missing" ? "absent" : "e000003");
+    expect(checkAnalysisResult(input, result)).toEqual({ ok: false, errors: ["ANALYSIS_PARTICIPANT_REFERENCE_INVALID"] });
   });
   it("rejects duplicate denominators, omitted participants, and unsupported affected IDs", () => {
     for (const mutate of [

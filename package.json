@@ -1,6 +1,6 @@
 {
   "name": "humanish",
-  "version": "0.101.0",
+  "version": "0.102.0",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [
@@ -50,7 +50,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
+    "check": "pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
@@ -84,7 +84,8 @@
     "observer:chrome:proof": "node scripts/observer-chrome-proof.mjs",
     "observer:reliability:proof": "node scripts/observer-reliability-proof.mjs",
     "tui:connections:proof": "python3 scripts/tui-connections-proof.py",
-    "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs"
+    "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs",
+    "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs"
   },
   "repository": {
     "type": "git",
@@ -105,7 +106,7 @@
   },
   "peerDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.0",
-    "@e2b/desktop": "^2.2.3"
+    "@e2b/desktop": "^2.3.2"
   },
   "peerDependenciesMeta": {
     "@anthropic-ai/claude-agent-sdk": {

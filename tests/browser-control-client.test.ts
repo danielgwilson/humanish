@@ -10,11 +10,18 @@ const click = { kind: "click" as const, x: 12.125, y: 15.75 };
 
 describe("browser control client and dispatcher", () => {
   it("handshakes and transfers PNG/browser state and full fractional actions over fragmented bytes", async () => {
-    const f = setup({ fragment: true });
-    await f.client.ready(); expect(f.execute).not.toHaveBeenCalled(); expect(f.observe).not.toHaveBeenCalled();
-    expect(await f.client.executor.observe()).toEqual(observation()); await f.client.executor.execute(click);
-    expect(f.execute).toHaveBeenCalledWith(click, expect.any(AbortSignal));
-    expect(f.leftWrites.map(bytes => JSON.parse(bytes.subarray(4).toString()).operation)).toEqual(["HELLO", "OBSERVE", "EXECUTE"]);
+    const heardSpeech = [{ id: "utterance-1", source: "speaker_audio" as const, text: "Hello", durationMs: 500 }];
+    const speak = { kind: "speak" as const, text: "I can hear you." };
+    const execute = vi.fn(async () => {}), observe = vi.fn(async () => ({ ...observation(), heardSpeech }));
+    const f = setup({ fragment: true, speechEnabled: true, executor: { speechEnabled: true,
+      observe, execute } });
+    await f.client.ready(); expect(execute).not.toHaveBeenCalled(); expect(observe).not.toHaveBeenCalled();
+    expect(f.client.executor.speechEnabled).toBe(true);
+    expect(await f.client.executor.observe()).toEqual({ ...observation(), heardSpeech }); await f.client.executor.execute(speak);
+    expect(execute).toHaveBeenCalledWith(speak, expect.any(AbortSignal));
+    const sent = f.leftWrites.map(bytes => JSON.parse(bytes.subarray(4).toString()));
+    expect(sent.map(value => value.operation)).toEqual(["HELLO", "OBSERVE", "EXECUTE"]);
+    expect(sent[2].action).toEqual(speak);
     f.close();
   });
   it("rejects concurrent operations including during HELLO rather than queuing", async () => {
@@ -26,6 +33,12 @@ describe("browser control client and dispatcher", () => {
     const f = setup(), signal = AbortSignal.abort();
     await expect(f.client.executor.execute(click, signal)).rejects.toMatchObject({ code: "cancelled", disposition: "not_dispatched" });
     await expect(f.client.executor.execute({ kind: "type", text: "x".repeat(65537) })).rejects.toMatchObject({ code: "invalid_request", disposition: "not_dispatched" });
+    expect(f.leftWrites).toHaveLength(0); expect(f.execute).not.toHaveBeenCalled(); f.close();
+  });
+  it("rejects speech before writing unless the optional media capability was admitted", async () => {
+    const f = setup();
+    await expect(f.client.executor.execute({ kind: "speak", text: "Hello" }))
+      .rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
     expect(f.leftWrites).toHaveLength(0); expect(f.execute).not.toHaveBeenCalled(); f.close();
   });
   it.each(["seq", "generation", "challenge", "revision", "operation", "extra", "version"])("terminally rejects stale or malformed %s replies", async mode => {

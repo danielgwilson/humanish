@@ -3,6 +3,7 @@ name: Browser appliance proof
 on:
   pull_request:
     paths:
+      - runtime/browser-media/**
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
       - runtime/browser-disk/**
@@ -11,6 +12,7 @@ on:
       - src/browser-control-*.ts
       - src/frame-signature.ts
       - src/cua-executor-error.ts
+      - src/cua-speech.ts
       - scripts/guest-runtime-*.mjs
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
@@ -22,6 +24,7 @@ on:
   push:
     branches: [main]
     paths:
+      - runtime/browser-media/**
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
       - runtime/browser-disk/**
@@ -30,6 +33,7 @@ on:
       - src/browser-control-*.ts
       - src/frame-signature.ts
       - src/cua-executor-error.ts
+      - src/cua-speech.ts
       - scripts/guest-runtime-*.mjs
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
@@ -42,6 +46,11 @@ on:
     inputs:
       arm64_candidate:
         description: Build a native ARM64 runtime candidate and corresponding sources
+        type: boolean
+        default: false
+
+      media_candidate:
+        description: Include optional camera and speech in the ARM64 candidate
         type: boolean
         default: false
 
@@ -73,6 +82,7 @@ jobs:
         run: |
           python3 -B -m unittest discover -s runtime/runtime-assets/tests -v
           python3 -B -m unittest discover -s runtime/browser-kernel/tests -v
+          python3 -B -m unittest discover -s runtime/browser-media/tests -v
           python3 -B -m unittest discover -s runtime/browser-disk/tests -v
           python3 -B -m unittest discover -s runtime/browser-guest/control/tests -v
       - name: Compile the fixed runtime payload
@@ -150,20 +160,30 @@ jobs:
           node-version: '22.14.0'
           cache: pnpm
       - name: Build native ARM64 runtime
+        env:
+          MEDIA_CANDIDATE: ${{ inputs.media_candidate }}
         run: |
           pnpm install --frozen-lockfile
           pnpm exec tsc -p tsconfig.build.json
-          python3 runtime/local-firecracker/build.py --output "$RUNNER_TEMP/runtime"
+          media_args=()
+          if [[ "$MEDIA_CANDIDATE" == "true" ]]; then media_args+=(--media); fi
+          python3 runtime/local-firecracker/build.py --output "$RUNNER_TEMP/runtime" "${media_args[@]}"
       - name: Retain matching sources and package candidate
+        env:
+          MEDIA_CANDIDATE: ${{ inputs.media_candidate }}
         run: |
           runtime_image="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "runtime/assets.json")))["image"])')"
           mkdir "$RUNNER_TEMP/candidate"
           docker image save "$runtime_image" | gzip -1 > "$RUNNER_TEMP/candidate/runtime-linux-arm64.tar.gz"
           cp "$RUNNER_TEMP/runtime/assets.json" "$RUNNER_TEMP/candidate/assets.json"
+          media_args=()
+          if [[ "$MEDIA_CANDIDATE" == "true" ]]; then
+            media_args+=(--media-browser "$RUNNER_TEMP/runtime/media-browser" --media-inputs "$RUNNER_TEMP/runtime/media-inputs")
+          fi
           python3 runtime/local-firecracker/sources.py \
             --browser "$RUNNER_TEMP/runtime/browser" --runtime-image "$runtime_image" \
             --boot-inputs "$RUNNER_TEMP/runtime/inputs" --kernel-build "$RUNNER_TEMP/runtime/kernel" \
-            --output "$RUNNER_TEMP/sources"
+            --output "$RUNNER_TEMP/sources" "${media_args[@]}"
           git archive --format=tar HEAD | gzip -1 > "$RUNNER_TEMP/sources/humanish-source.tar.gz"
           tar -C "$RUNNER_TEMP/sources" -czf "$RUNNER_TEMP/candidate/runtime-sources.tar.gz" .
           cd "$RUNNER_TEMP/candidate"
@@ -171,7 +191,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: success()
         with:
-          name: arm64-runtime-candidate
+          name: arm64${{ inputs.media_candidate && '-media' || '' }}-runtime-candidate
           path: ${{ runner.temp }}/candidate/*
           compression-level: 0
           retention-days: 14

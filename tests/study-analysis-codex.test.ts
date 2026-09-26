@@ -109,8 +109,23 @@ describe("explicit Codex account analysis", () => {
       expect(JSON.stringify(artifact)).not.toContain(canary);
       expect(artifact.evidence).toEqual(before.evidence); expect(input).toEqual(before);
       answer.findings[0]!.id = canary;
-      expect(await runStudyAnalysis(input, config(), { codexProvider: run })).toMatchObject({ result: null, error: "analysis_validation_failed" });
+      expect(await runStudyAnalysis(input, config(), { codexProvider: run })).toMatchObject({ result: null, error: "analysis_validation_failed_scrub_rejected" });
     });
+  });
+
+  it("retains only a safe stage code when response validation throws unexpectedly", async () => {
+    const canary = "synthetic-unexpected-validation-secret";
+    const output = Object.defineProperty({}, "summary", {
+      enumerable: true,
+      get() { throw new Error(canary); }
+    });
+    const run = vi.fn<StudyAnalysisProvider>(async () => ({ status: "completed", output,
+      usage: { input: 400, output: 80, cachedInput: 20 }, usageComplete: true, dispatched: true, errorCode: null }));
+    const artifact = await runStudyAnalysis(packet(), config(), { codexProvider: run });
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed_unexpected",
+      usage: { inputTokens: 400, outputTokens: 80, cachedInputTokens: 20, usageComplete: true, dispatched: true } });
+    expect(JSON.stringify(artifact)).not.toContain(canary);
+    expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
   });
 
   it("retains incomplete usage on cancellation without treating it as final or free", async () => {
@@ -126,7 +141,7 @@ describe("explicit Codex account analysis", () => {
     bad.findings[0]!.observations[0]!.basis = "visual";
     run.mockResolvedValue({ status: "completed", output: bad, usage: null, usageComplete: false, dispatched: true, errorCode: null });
     const artifact = await runStudyAnalysis(input, config(), { codexProvider: run });
-    expect(artifact).toMatchObject({ result: null, error: "analysis_validation_failed" });
+    expect(artifact).toMatchObject({ result: null, error: "analysis_validation_failed_visual_without_capture" });
     for (const field of ["transport", "authentication", "billing", "resolvedModel", "reasoningEffort", "toolPolicy", "cliVersion"] as const) {
       const changed = structuredClone(config()); (changed.identity as unknown as Record<string, unknown>)[field] = "unqualified";
       expect(hashStudyAnalysisValue(changed)).not.toBe(hashStudyAnalysisValue(config()));

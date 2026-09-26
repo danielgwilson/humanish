@@ -7,6 +7,7 @@ import { connectGuestBootstrap, validateGuestInitialUrl } from "./guest-bootstra
 import { ownDesktopAllocation, type DesktopSession } from "./desktop-session.js";
 import { runtimeDocker, runtimeExec, usesLima } from "./local-runtime-host.js";
 import { openLimaTunnel } from "./local-runtime-ssh.js";
+import { guestMediaConfigSchema, type GuestMediaConfig } from "./guest-media-config.js";
 
 const docker = async (args: string[]): Promise<string> => (await runtimeDocker(args, {}, 60_000)).stdout.trim();
 const readLogs = async (id: string): Promise<string> => {
@@ -18,12 +19,17 @@ const readLogs = async (id: string): Promise<string> => {
 export interface LocalFirecrackerAssets {
   image: string;
   runtimeRevision: string;
+  media?: boolean;
 }
 
 /** One VM and an opaque TCP forward to the explicitly selected loopback app. */
 export async function createLocalFirecrackerDesktop(options: {
-  assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal;
+  assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal; media?: GuestMediaConfig;
 }): Promise<DesktopSession> {
+  if (options.media !== undefined) {
+    guestMediaConfigSchema.parse(options.media);
+    if (options.assets.media !== true) throw new Error("This local runtime does not include media. Run humanish runtime setup --media.");
+  }
   let url: URL;
   try { url = new URL(validateGuestInitialUrl(options.appUrl)); }
   catch {
@@ -128,7 +134,7 @@ export async function createLocalFirecrackerDesktop(options: {
       if (!stream) await delay(100, undefined, { signal });
     }
     const identity = { generation: randomUUID(), challenge: randomUUID(), runtimeRevision: options.assets.runtimeRevision };
-    try { client = await connectGuestBootstrap(stream, identity, signal, url.href); }
+    try { client = await connectGuestBootstrap(stream, identity, signal, url.href, options.media); }
     catch (error) {
       signal.throwIfAborted();
       throw new Error("Local browser startup or initial page navigation failed or timed out.", { cause: error });

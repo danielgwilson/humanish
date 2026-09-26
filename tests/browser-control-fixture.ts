@@ -33,13 +33,14 @@ export function pair(fragment = false): { left: Duplex; right: Duplex; leftWrite
   left = endpoint(() => right, leftWrites); right = endpoint(() => left, rightWrites);
   return { left, right, leftWrites, rightWrites };
 }
-export function setup(options: { executor?: CuaExecutor; timeoutMs?: number; fragment?: boolean; authorized?: () => boolean } = {}) {
+export function setup(options: { executor?: CuaExecutor; timeoutMs?: number; fragment?: boolean; authorized?: () => boolean; speechEnabled?: boolean } = {}) {
   const pipes = pair(options.fragment);
   const authority = new AbortController();
   const observe = vi.fn(async () => observation()), execute = vi.fn(async () => {});
   const server = attachBrowserControlDispatcher({ transport: pipes.right, identity, executor: options.executor ?? { observe, execute },
     authoritySignal: authority.signal, isAuthorized: options.authorized ?? (() => true) });
-  const client = createBrowserControlClient({ transport: pipes.left, identity, requestTimeoutMs: options.timeoutMs ?? 200 });
+  const client = createBrowserControlClient({ transport: pipes.left, identity, requestTimeoutMs: options.timeoutMs ?? 200,
+    ...(options.speechEnabled === true ? { speechEnabled: true } : {}) });
   return { ...pipes, authority, observe, execute, server, client, close: () => { client.close(); server.close(); } };
 }
 export const tick = () => new Promise<void>(resolve => setImmediate(resolve));

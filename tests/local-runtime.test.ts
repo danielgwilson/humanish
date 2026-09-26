@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ installed: false, daemon: true, kvm: true, endpoint: "unix:///var/run/docker.sock", loads: 0, chip: "Apple M5 Max", lima: "Running", arch: "amd64", commands: [] as string[], calls: [] as string[][] }));
+const state = vi.hoisted(() => ({ installed: false, media: false, daemon: true, kvm: true, endpoint: "unix:///var/run/docker.sock", loads: 0, chip: "Apple M5 Max", lima: "Running", arch: "amd64", commands: [] as string[], calls: [] as string[][] }));
 vi.mock("node:fs/promises", async original => ({
   ...await original<typeof import("node:fs/promises")>(),
   access: async () => { if (!state.kvm) throw new Error("missing device"); }
@@ -27,7 +27,7 @@ vi.mock("node:child_process", async () => {
     if (!state.installed) throw new Error("No such image");
     // Fields read from an actual Docker image inspect response, with synthetic identity.
     return { stdout: JSON.stringify([{ Id: "sha256:" + "a".repeat(64), Os: "linux", Architecture: state.arch,
-      Config: { Labels: { "to.humanish.runtime.api": "1", "to.humanish.runtime.revision": "guest-api1-" + "b".repeat(64) } } }]) };
+      Config: { Labels: { "to.humanish.runtime.api": "1", "to.humanish.runtime.revision": "guest-api1-" + "b".repeat(64), ...(state.media ? { "to.humanish.runtime.media": "1" } : {}) } } }]) };
   } });
   return { execFile };
 });
@@ -40,7 +40,7 @@ const options = { env: {}, release };
 
 describe("local runtime preparation", () => {
   beforeEach(() => {
-    Object.assign(state, { installed: false, daemon: true, kvm: true, endpoint: "unix:///var/run/docker.sock", loads: 0, chip: "Apple M5 Max", lima: "Running", arch: "amd64", commands: [], calls: [] });
+    Object.assign(state, { installed: false, media: false, daemon: true, kvm: true, endpoint: "unix:///var/run/docker.sock", loads: 0, chip: "Apple M5 Max", lima: "Running", arch: "amd64", commands: [], calls: [] });
     vi.stubGlobal("fetch", vi.fn(async () => new Response(bytes)));
   });
   afterEach(() => vi.unstubAllGlobals());
@@ -82,6 +82,23 @@ describe("local runtime preparation", () => {
     await prepareLocalRuntime(options);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(state.loads).toBe(1);
+  });
+  it("requires the optional media image without accepting the browser cache as a substitute", async () => {
+    state.installed = true;
+    expect(await localRuntimeStatus({ ...options, media: true })).toMatchObject({ ok: false, installed: false });
+    state.media = true;
+    expect(await prepareLocalRuntime({ ...options, media: true })).toMatchObject({ media: true, image: release.image });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(state.loads).toBe(0);
+  });
+  it("uses a separate explicit media image without changing the ordinary browser override", async () => {
+    state.installed = true; state.media = true;
+    const env = { HUMANISH_LOCAL_RUNTIME_IMAGE: "browser:example", HUMANISH_LOCAL_MEDIA_RUNTIME_IMAGE: "media:example" };
+    await localRuntimeStatus({ ...options, env, media: true });
+    expect(state.calls).toContainEqual(["image", "inspect", "media:example"]);
+    expect(state.calls).not.toContainEqual(["image", "inspect", "browser:example"]);
+    await localRuntimeStatus({ ...options, env });
+    expect(state.calls).toContainEqual(["image", "inspect", "browser:example"]);
   });
   it.each(["checksum", "size"])("refuses a %s mismatch without invoking Docker load", async mismatch => {
     await expect(prepareLocalRuntime({ ...options, release: { ...release,

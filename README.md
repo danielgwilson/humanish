@@ -52,8 +52,9 @@ your lab; installing Codex does not change an `openai-computer-use` lab.
 For local browsers, install only `humanish` and follow the
 [local study setup](docs/architecture/local-browser-runtime.md). The first live
 run downloads a verified runtime image; `npx humanish runtime setup` prepares it
-ahead of time. Supported Macs use Lima instead of Docker Desktop. Local inboxes
-and local camera/microphone support remain follow-ups.
+ahead of time. Supported Macs use Lima instead of Docker Desktop.
+[Optional camera and spoken conversation](docs/architecture/participant-media.md)
+use a separate media runtime. Local inboxes remain a follow-up.
 
 For a new local study, initialize with your app URL and task:
 

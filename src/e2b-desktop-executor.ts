@@ -3,6 +3,7 @@ export { perceptualSignature } from "./frame-signature.js";
 
 import { commandFailureInfo, tailOf } from "./command-failure.js";
 import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
+import { CuaExecutorError } from "./cua-executor-error.js";
 
 // The DESKTOP side of the computer-use loop: a CuaExecutor (from
 // src/computer-use.ts) backed by an E2B desktop sandbox. It mirrors the
@@ -436,6 +437,8 @@ export function createE2BDesktopExecutor(
           // No-op: the loop calls observe() separately to capture each frame, so
           // capturing here would double-capture. Leave the desktop untouched.
           return;
+        case "speak":
+          throw new CuaExecutorError("action_rejected", "not_dispatched");
       }
     }
   };

@@ -8,7 +8,13 @@ import {
 } from "./browser-control-protocol.js";
 import { BrowserControlTransport } from "./browser-control-transport.js";
 
-export interface BrowserControlClientOptions { transport: Duplex; identity: BrowserControlIdentity; requestTimeoutMs?: number }
+export interface BrowserControlClientOptions {
+  transport: Duplex;
+  identity: BrowserControlIdentity;
+  requestTimeoutMs?: number;
+  /** Set only after the optional media runtime was admitted for this desktop. */
+  speechEnabled?: boolean;
+}
 export interface BrowserControlClient { executor: CuaExecutor; ready(): Promise<void>; close(): void }
 
 export function createBrowserControlClient(options: BrowserControlClientOptions): BrowserControlClient {
@@ -75,6 +81,7 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
   };
   const executor: CuaExecutor & { readonly stallRecovery: "fail_closed" } = {
     stallRecovery: "fail_closed",
+    ...(options.speechEnabled === true ? { speechEnabled: true as const } : {}),
     observe: () => withOperation(async (): Promise<CuaObservation> => {
       await ensureReady();
       const reply = await exchange("OBSERVE");
@@ -85,6 +92,9 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
     }),
     execute: (action, signal) => withOperation(async () => {
       const validAction = validateBrowserControlAction(action);
+      if (validAction.kind === "speak" && options.speechEnabled !== true) {
+        throw new CuaExecutorError("action_rejected", "not_dispatched");
+      }
       if (signal?.aborted) throw new CuaExecutorError("cancelled", "not_dispatched");
       try { await ensureReady(signal); }
       catch (error) {

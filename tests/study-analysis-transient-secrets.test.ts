@@ -132,7 +132,7 @@ describe("analysis scrubbing in the originating run scope", () => {
       registerTransientCommsSecrets([OTP]);
       return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
-    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed",
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed_schema_invalid",
       usage: { dispatched: true, usageComplete: true, outputTokens: 221 } });
     expect(JSON.stringify(artifact)).not.toContain(OTP);
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
@@ -151,7 +151,7 @@ describe("analysis scrubbing in the originating run scope", () => {
       registerTransientCommsSecrets([OTP]);
       return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
-    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed", usage: { dispatched: true, usageComplete: true } });
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed_quote_invalid", usage: { dispatched: true, usageComplete: true } });
     expect(artifact.evidence).toEqual(before.evidence);
     expect(input).toEqual(before);
     expect(await readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
@@ -166,7 +166,7 @@ describe("analysis scrubbing in the originating run scope", () => {
       registerTransientCommsSecrets([secret]);
       return runStudyAnalysis(input, config, { apiKey: "synthetic-key", fetch: transport(answer) });
     });
-    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed", usage: { dispatched: true, usageComplete: true } });
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed_scrub_rejected", usage: { dispatched: true, usageComplete: true } });
     expect(JSON.stringify(artifact)).not.toContain(secret);
   });
 });

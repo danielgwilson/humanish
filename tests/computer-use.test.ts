@@ -153,12 +153,35 @@ function recorder() {
 describe("describeCuaAction", () => {
   it("never includes raw typed text", () => {
     expect(describeCuaAction({ kind: "type", text: "secret@example.test" })).toBe("type [19 chars]");
+    expect(describeCuaAction({ kind: "speak", text: "secret@example.test" })).toBe("speak [19 chars]");
     expect(describeCuaAction({ kind: "click", x: 3, y: 4 })).toBe("click (3, 4)");
     expect(describeCuaAction({ kind: "keypress", keys: ["Control", "a"] })).toBe("keypress Control+a");
   });
 });
 
 describe("runComputerUseLoop", () => {
+  it("delivers redacted speaker evidence and treats new speech as progress on a static screen", async () => {
+    const provider = new ScriptedProvider([
+      { actions: [{ kind: "wait", ms: 1 }], pendingSafetyChecks: [], done: false },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "Done after replying." }
+    ]);
+    const screenshot = frame();
+    const heardSpeech = [{ id: "utterance-1", source: "speaker_audio" as const,
+      text: "My code is PRIVATE", durationMs: 700 }];
+    const executor = new ObservationSequenceExecutor([
+      { screenshot, stateSignature: "same" },
+      { screenshot, stateSignature: "same", heardSpeech }
+    ]);
+    const result = await runComputerUseLoop({ instructions: "join and talk", provider, executor, persona,
+      redaction: defaultRedactionHooks, scrubText: text => text.replaceAll("PRIVATE", "[redacted]"),
+      timeoutMs: 10_000_000, now: monotonicClock(), idleSteps: 1, noProgressSteps: 2 });
+    expect(result.trace.completionReason).toBe("goal_satisfied");
+    expect(provider.seen).toHaveLength(2);
+    expect(provider.seen[1]!.observation.heardSpeech).toEqual(heardSpeech);
+    const speechEvidence = result.trace.items.find(item => item.title === "speech heard");
+    expect(speechEvidence?.text).toContain("[redacted]");
+    expect(JSON.stringify(result.trace)).not.toContain("PRIVATE");
+  });
   it("completes when the model reports a natural endpoint", async () => {
     const provider = new ScriptedProvider([
       { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false, reasoning: "looking", responseId: "r1" },

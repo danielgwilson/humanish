@@ -165,6 +165,20 @@ integrity. Visual claims require retained captures; screenshot-free evidence
 opens its original event. These checks do not prove that every interpretation
 is correct or every consequential issue was found.
 
+A rejected response keeps `result` null and records only an allowlisted code in
+the artifact's existing `error` field. The code distinguishes schema rejection,
+generated-text scrubbing, an unexpected validation exception, or the first
+failed reference rule (for example, an invalid quote or observation reference).
+It never includes provider output, exception text, evidence values or IDs.
+Historical artifacts with the generic `analysis_validation_failed` code remain
+valid and unchanged.
+
+Participant reviews cite distinct packet-local evidence IDs belonging only to
+that participant's stream; source event IDs are not citation IDs. Shared
+interactions can cite multiple included participants in findings and concern
+reviews under the existing exposure rules. The `study-evidence-6` prompt makes
+this distinction explicit without changing the validator or historical reports.
+
 Elapsed replay time starts at the first retained capture. It is not a video
 offset. Nonvisual events retain event identity without invented frame offsets.
 Scripted captures without recorded timestamps keep null analysis times; any

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { browserControlActionSchema, validateBrowserControlAction } from "./browser-control-protocol.js";
+import { browserControlActionSchema, browserOnlyControlActionSchema, validateBrowserControlAction } from "./browser-control-protocol.js";
 import { validClosingReport, type CuaTurn } from "./computer-use.js";
 import type { ActorExecutionProfile, ParticipantClosingReport } from "./actor-contract.js";
 
@@ -9,9 +9,12 @@ export const PARTICIPANT_PROFILE: Readonly<ActorExecutionProfile> = Object.freez
   toolPolicy: "codex-ui-tools-v1", participantSchema: "humanish.codex-ui-tool.v1", memoryPolicy: "continuing-thread-v1"
 });
 export const PARTICIPANT_LIMITS = Object.freeze({ instructions: 64 * 1024, hint: 8 * 1024, narration: 2000, output: 256 * 1024, actions: 4, requestMs: 180_000, cleanupMs: 5000 });
-const toolInput = z.strictObject({ narration: z.string().max(PARTICIPANT_LIMITS.narration),
-  actions: z.array(browserControlActionSchema).min(1).max(PARTICIPANT_LIMITS.actions) });
-export const PARTICIPANT_TOOL_SCHEMA = z.toJSONSchema(toolInput, { io: "input" }) as Record<string, unknown>;
+const toolInput = (speechEnabled: boolean) => z.strictObject({ narration: z.string().max(PARTICIPANT_LIMITS.narration),
+  actions: z.array(speechEnabled ? browserControlActionSchema : browserOnlyControlActionSchema).min(1).max(PARTICIPANT_LIMITS.actions) });
+export function participantToolSchema(speechEnabled = false): Record<string, unknown> {
+  return z.toJSONSchema(toolInput(speechEnabled), { io: "input" }) as Record<string, unknown>;
+}
+export const PARTICIPANT_TOOL_SCHEMA = participantToolSchema();
 export const PARTICIPANT_FINAL_SCHEMA = {
   type: "object", additionalProperties: false, required: ["outcome", "summary", "frictionReports"], properties: {
     outcome: { type: "string", enum: ["reached", "not_reached", "blocked"] },
@@ -20,9 +23,9 @@ export const PARTICIPANT_FINAL_SCHEMA = {
   }
 };
 /** Humanish tool arguments, validated before the shared executor sees a batch. */
-export function parseParticipantTool(value: unknown): CuaTurn {
+export function parseParticipantTool(value: unknown, speechEnabled = false): CuaTurn {
   if (Buffer.byteLength(JSON.stringify(value) ?? "") > PARTICIPANT_LIMITS.output) throw new Error("invalid_response");
-  const v = toolInput.parse(value);
+  const v = toolInput(speechEnabled).parse(value);
   if (Buffer.byteLength(v.narration) > PARTICIPANT_LIMITS.narration) throw new Error("invalid_response");
   return { actions: v.actions.map(validateBrowserControlAction), pendingSafetyChecks: [], done: false,
     ...(v.narration ? { message: v.narration } : {}), providerRequestPending: true };

@@ -9,14 +9,16 @@ describe("browser control closed v1 protocol", () => {
     { kind: "click", x: 0.125, y: -0.75, button: "right" }, { kind: "double_click", x: 0.125, y: 2.25 },
     { kind: "move", x: -0.25, y: 4.5 }, { kind: "scroll", x: 0.2, y: 0.5, dx: -12.75, dy: 400.5 },
     { kind: "type", text: "héllo" }, { kind: "keypress", keys: ["CTRL", "A"] },
-    { kind: "drag", path: [{ x: 0.125, y: 0.25 }, { x: 2.5, y: 3.75 }] }, { kind: "wait", ms: 0.25 }, { kind: "wait" }, { kind: "screenshot" }
+    { kind: "drag", path: [{ x: 0.125, y: 0.25 }, { x: 2.5, y: 3.75 }] }, { kind: "wait", ms: 0.25 }, { kind: "wait" },
+    { kind: "speak", text: "Hello there." }, { kind: "screenshot" }
   ])("preserves admitted action exactly: $kind", action => expect(validateBrowserControlAction(action)).toEqual(action));
   it.each([
     { kind: "click", x: NaN, y: 1 }, { kind: "move", x: Infinity, y: 0 }, { kind: "click", x: 1, y: 2, url: "https://example.test/" },
     { kind: "navigate", url: "https://example.test/" }, { kind: "type", text: "é".repeat(32769) },
     { kind: "keypress", keys: Array(17).fill("A") }, { kind: "keypress", keys: ["x".repeat(65)] },
     { kind: "drag", path: Array(1025).fill({ x: 0, y: 0 }) }, { kind: "drag", path: [] },
-    { kind: "wait", ms: -1 }, { kind: "wait", ms: 30001 }, { kind: "screenshot", args: [] }
+    { kind: "wait", ms: -1 }, { kind: "wait", ms: 30001 }, { kind: "speak", text: "   " },
+    { kind: "speak", text: "x".repeat(401) }, { kind: "screenshot", args: [] }
   ])("rejects invalid or over-limit action $kind", action => expect(() => validateBrowserControlAction(action)).toThrow(CuaExecutorError));
   it("accepts limits rather than rounding or truncating", () => {
     expect(validateBrowserControlAction({ kind: "type", text: "é".repeat(32768) })).toHaveProperty("text.length", 32768);
@@ -32,7 +34,9 @@ describe("browser control closed v1 protocol", () => {
     reply(1, "HELLO", { extra: true }), reply(1, "HELLO", { ok: false, error: { code: "secret text", disposition: "not_dispatched" } })
   ])("rejects inconsistent replies", value => expect(() => parseBrowserControlReply(value)).toThrow(CuaExecutorError));
   it("round trips actual PNG bytes and bounded runtime browser state", () => {
-    const original = observation(); expect(decodeBrowserControlObservation(encodeBrowserControlObservation(original))).toEqual(original);
+    const original = { ...observation(), heardSpeech: [{ id: "utterance-1", source: "speaker_audio" as const,
+      text: "Can you hear me?", durationMs: 850 }] };
+    expect(decodeBrowserControlObservation(encodeBrowserControlObservation(original))).toEqual(original);
   });
   it.each(["signature", "crc", "dimensions", "pixels", "interlaced", "depth", "trailing", "truncated"])("rejects invalid PNG %s before exposing capture", mode => {
     let bytes = png();
@@ -51,6 +55,13 @@ describe("browser control closed v1 protocol", () => {
     expect(() => encodeBrowserControlObservation({ ...observation(), text: "é".repeat(32769) })).toThrow(CuaExecutorError);
     expect(() => encodeBrowserControlObservation({ ...observation(), appState: {} })).toThrow(CuaExecutorError);
     expect(() => decodeBrowserControlObservation({ ...encodeBrowserControlObservation(observation()), png: "AB==" })).toThrow(CuaExecutorError);
+  });
+  it("rejects malformed, duplicate and over-limit speaker transcripts", () => {
+    const utterance = { id: "utterance-1", source: "speaker_audio", text: "Hello", durationMs: 500 };
+    for (const heardSpeech of [
+      [{ ...utterance, source: "microphone_audio" }], [{ ...utterance, text: " " }], [{ ...utterance, durationMs: 0 }],
+      [utterance, utterance], Array.from({ length: 5 }, (_, i) => ({ ...utterance, id: `utterance-${i}` }))
+    ]) expect(() => encodeBrowserControlObservation({ ...observation(), heardSpeech: heardSpeech as never })).toThrow(CuaExecutorError);
   });
   it("never forwards arbitrary exception prose or forged typed errors", () => {
     const error = new Error("Synthetic private text https://example.test/code");

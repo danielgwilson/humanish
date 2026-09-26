@@ -11,6 +11,8 @@ import { createGuestDesktopExecutor } from "./guest-desktop-executor.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import type { GuestRuntimeDesktop } from "./guest-runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
+import type { GuestMediaConfig } from "./guest-media-config.js";
+import { startDesktopMedia } from "./guest-desktop-media.js";
 
 export const GUEST_RUNTIME_PATHS = Object.freeze({ root: "/opt/humanish/control", run: "/run/humanish", home: "/home/humanish" });
 export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/home/humanish", USER: "humanish", LOGNAME: "humanish",
@@ -18,7 +20,7 @@ export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/
   XDG_RUNTIME_DIR: "/run/humanish/xdg", XDG_CACHE_HOME: "/home/humanish/.cache", XDG_CONFIG_HOME: "/home/humanish/.config", TMPDIR: "/tmp" });
 const bad = (): CuaExecutorError => new CuaExecutorError("execution_failed", "not_dispatched");
 const CONFIG_SHA = "4ae1c52eab748a3624b3948ce792647be258caba70c8c72038b9a43be6459552";
-export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "browser" | "sandbox" | "focus" | "fixture" | "navigation";
+export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "media" | "browser" | "sandbox" | "focus" | "fixture" | "navigation";
 
 /** Initial document only: do not wait for app data, subresources or network idle. */
 export async function navigateGuestInitialPage(page: Pick<Page, "goto" | "waitForFunction">, initialUrl: string, signal: AbortSignal): Promise<void> {
@@ -40,6 +42,7 @@ export async function createGuestRuntimeDesktop(options: {
   signal: AbortSignal; onTerminal(): void;
   onPhase?(phase: GuestRuntimePhase): void;
   initialUrl?: string;
+  media?: GuestMediaConfig;
 }): Promise<GuestRuntimeDesktop & { readonly owner: { context: BrowserContext; page: Page; sandboxReport: string; configSha256: string } }> {
   if (options.initialUrl !== undefined) validateGuestInitialUrl(options.initialUrl);
   const controller = new AbortController();
@@ -48,6 +51,7 @@ export async function createGuestRuntimeDesktop(options: {
   let context: BrowserContext | undefined;
   let pendingContext: Promise<BrowserContext> | undefined;
   let content: ReturnType<typeof createGuestChromiumText> | undefined;
+  let media: Awaited<ReturnType<typeof startDesktopMedia>> | undefined;
   let closing: Promise<{ complete: boolean }> | undefined;
   let stopping = false;
   let phase: GuestRuntimePhase = "layout";
@@ -94,6 +98,7 @@ export async function createGuestRuntimeDesktop(options: {
       let complete = true, timer: NodeJS.Timeout | undefined;
       const work = async (): Promise<void> => {
         try { await content?.close(); } catch { complete = false; }
+        try { await media?.close(); } catch { complete = false; }
         try {
           const browser = context ?? await pendingContext?.catch(() => undefined);
           if (browser) await browser.close();
@@ -148,9 +153,18 @@ export async function createGuestRuntimeDesktop(options: {
     if (!displayReady) throw bad();
     progress("window_manager"); child("/usr/bin/openbox", ["--config-file", `${GUEST_RUNTIME_PATHS.root}/openbox.xml`], undefined, true);
     check();
+    if (options.media !== undefined) {
+      progress("media");
+      media = await startDesktopMedia({ media: {
+        ...(options.media.camera === undefined ? {} : { camera: options.media.camera }),
+        ...(options.media.microphone === undefined ? {} : { microphone: options.media.microphone })
+      }, env: GUEST_RUNTIME_ENV, signal, onTerminal: options.onTerminal });
+      check();
+    }
     progress("browser"); pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, { executablePath: "/usr/bin/chromium",
-      headless: false, chromiumSandbox: true, viewport: null, env: GUEST_RUNTIME_ENV, timeout: 25_000,
-      args: ["--window-size=960,680", "--window-position=0,20", "--disable-background-networking", "--disable-component-update", "--no-first-run"] });
+      headless: false, chromiumSandbox: true, viewport: null, env: media?.env ?? GUEST_RUNTIME_ENV, timeout: 25_000,
+      args: ["--window-size=960,680", "--window-position=0,20", "--disable-background-networking", "--disable-component-update", "--no-first-run",
+        ...(options.media?.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : [])] });
     void pendingContext.then(browser => { if (stopping) void browser.close().catch(() => {}); }, () => {});
     context = await pendingContext; check();
     context.setDefaultTimeout(5000); context.setDefaultNavigationTimeout(5000);
@@ -174,7 +188,7 @@ export async function createGuestRuntimeDesktop(options: {
       progress("fixture"); await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`); check();
       await page.locator("#note").waitFor(); check();
     }
-    return { executor, close, owner: { context, page, sandboxReport, configSha256: CONFIG_SHA } };
+    return { executor: media?.wrap(executor) ?? executor, close, owner: { context, page, sandboxReport, configSha256: CONFIG_SHA } };
   } catch {
     await close(); throw Object.assign(bad(), { phase });
   } finally {

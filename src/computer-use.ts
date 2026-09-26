@@ -1,3 +1,5 @@
+import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
+export { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
 import {
   ACTOR_TRACE_SCHEMA,
   type ActorCapabilities,
@@ -60,6 +62,7 @@ export type CuaAction =
   | { kind: "keypress"; keys: string[] }
   | { kind: "drag"; path: Array<{ x: number; y: number }> }
   | { kind: "wait"; ms?: number }
+  | { kind: "speak"; text: string }
   | { kind: "screenshot" };
 
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
@@ -114,6 +117,8 @@ export interface CuaObservation {
   scrollY?: number;
   title?: string;
   text?: string;
+  /** Finalized speech captured from the participant's speaker sink. */
+  heardSpeech?: HeardSpeech[];
 }
 
 /**
@@ -225,6 +230,8 @@ export interface CuaExecutor {
    * legacy observation/idle stall recovery. Wrappers must preserve this value.
    */
   readonly stallRecovery?: "fail_closed";
+  /** True only when this executor can play a `speak` action into the participant microphone. */
+  readonly speechEnabled?: boolean;
   /** Capture the current desktop frame and its state signature. */
   observe(): Promise<CuaObservation>;
   /**
@@ -466,6 +473,8 @@ export function actionFingerprint(actions: readonly CuaAction[]): string {
           return `scroll@${bucket(action.x)},${bucket(action.y)}:${Math.sign(action.dx)},${Math.sign(action.dy)}`;
         case "type":
           return `type:${action.text.length}`;
+        case "speak":
+          return `speak:${action.text.length}`;
         case "keypress":
           return `keypress:${action.keys.join("+")}`;
         case "drag":
@@ -593,6 +602,8 @@ export function describeCuaAction(action: CuaAction): string {
       return `scroll (${action.dx}, ${action.dy}) at (${action.x}, ${action.y})`;
     case "type":
       return `type [${action.text.length} chars]`;
+    case "speak":
+      return `speak [${action.text.length} chars]`;
     case "keypress":
       return `keypress ${action.keys.join("+")}`;
     case "drag":
@@ -1138,6 +1149,23 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         return await raceBounded(`observe (${label}, retry)`, executor.observe(), remaining(), observationTimeoutMs, signal);
       }
     };
+    const seenSpeechIds = new Set<string>();
+    let pendingHeardSpeech: HeardSpeech[] = [];
+    let heardSpeechChanged = false;
+    const collectHeardSpeech = (value: CuaObservation): CuaObservation => {
+      for (const utterance of value.heardSpeech ?? []) {
+        if (seenSpeechIds.has(utterance.id)) continue;
+        seenSpeechIds.add(utterance.id);
+        pendingHeardSpeech.push(utterance);
+        heardSpeechChanged = true;
+        record({ id: nextId("notice"), kind: "notice", lifecycle: "completed", status: "ok",
+          title: "speech heard", text: redactNarration(utterance.text) });
+      }
+      if (pendingHeardSpeech.length > CUA_SPEECH_LIMITS.utterances) {
+        throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+      }
+      return pendingHeardSpeech.length === 0 ? value : { ...value, heardSpeech: pendingHeardSpeech.slice() };
+    };
     // The declared observation window (#510). The harness holds, looks, and takes nothing back to
     // the model: no action, no turn, no tokens. It runs once, cut to whatever session budget is
     // left, and says in the trace that the time was deliberate.
@@ -1173,7 +1201,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         if (signal?.aborted) throw new CuaAbortError();
         await sleep(Math.min(dwell.everyMs, budget - (now() - dwellStartedAtMs)));
         currentPhase = `dwell frame ${frames + 1}`;
-        const frameObservation = await observeBounded(`dwell frame ${frames + 1}`);
+        const frameObservation = collectHeardSpeech(await observeBounded(`dwell frame ${frames + 1}`));
         frames += 1;
         if (frameObservation.screenshot !== undefined) onScreenshot?.(frameObservation.screenshot);
         await maybeRecordScreenshot(frameObservation, `dwell-${frames.toString().padStart(2, "0")}`);
@@ -1195,7 +1223,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       contextHint = `The study held this page under observation for ${Math.round(dwellHeldMs / 1000)} seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.`;
       return "continue";
     };
-    let observation = await observeBounded("initial");
+    let observation = collectHeardSpeech(await observeBounded("initial"));
     // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
     onObservedUrl?.(observation.url);
     if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
@@ -1207,7 +1235,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     observeTasks(observation, 0);
     const initialDwell = await dwellIfDue(observation, 0);
     if (initialDwell !== undefined) {
-      observation = await observeBounded("after dwell");
+      observation = collectHeardSpeech(await observeBounded("after dwell"));
       onObservedUrl?.(observation.url);
       if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
       await maybeRecordScreenshot(observation, "turn-00-after-dwell");
@@ -1320,6 +1348,8 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       }
       }
       bump("turns");
+      pendingHeardSpeech = [];
+      heardSpeechChanged = false;
       previousResponseId = turn.responseId ?? previousResponseId;
       lastResponseId = turn.responseId ?? lastResponseId;
       recordUsage(turn);
@@ -1479,7 +1509,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         if (taskTracker !== undefined) {
           try {
             currentPhase = "observing closing task state";
-            const closing = await observeBounded("closing");
+            const closing = collectHeardSpeech(await observeBounded("closing"));
             observeTasks(closing, turnNumber);
           } catch (error) {
             // Ordinary closing observations remain best-effort. A declared executor failure
@@ -1641,6 +1671,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
           kind: "ui_action",
           lifecycle: "completed",
           title: actionTitle,
+          ...(action.kind === "speak" ? { text: redactNarration(action.text) } : {}),
           // Structured pin coordinates (#441), exactly the click classes the Observer
           // pins render — recorded fact instead of a title re-parse downstream.
           ...(action.kind === "click" || action.kind === "double_click"
@@ -1651,7 +1682,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
 
       if (signal?.aborted) throw new CuaAbortError();
       currentPhase = `observing UI state after turn ${turnNumber}`;
-      observation = await observeBounded(`after turn ${turnNumber}`);
+      observation = collectHeardSpeech(await observeBounded(`after turn ${turnNumber}`));
       // Runtime-only: hand the seat's live location.href back to the orchestrator (never persisted).
       onObservedUrl?.(observation.url);
       if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
@@ -1663,7 +1694,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       observeTasks(observation, turnNumber);
       const dwellOutcome = await dwellIfDue(observation, turnNumber);
       if (dwellOutcome !== undefined) {
-        observation = await observeBounded("after dwell");
+        observation = collectHeardSpeech(await observeBounded("after dwell"));
         onObservedUrl?.(observation.url);
         if (observation.screenshot !== undefined) onScreenshot?.(observation.screenshot);
         await maybeRecordScreenshot(observation, `turn-${turnNumber.toString().padStart(2, "0")}-after-dwell`);
@@ -1711,14 +1742,15 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
       // behavioral signal already (the agent took nothing but screenshots and waits), so it keeps
       // reading the frame on its own — a repeated screenshot is exactly what an idle streak IS, and
       // feeding repetition into it would grant an extra forgiveness step for being idle.
-      const progressed = frameChanged || !repeatingRecentAction;
+      const observedProgress = frameChanged || heardSpeechChanged;
+      const progressed = observedProgress || !repeatingRecentAction;
 
       // A screenshot/wait turn while the UI visibly changes may be patience through loading or a
       // transition, so grant a bounded recovery window. Do not grant infinite immunity: animated
       // pixels or state-executor turn counters can otherwise keep a screenshot/wait loop alive
       // until the wall-clock timeout.
       if (idleThisTurn) {
-        if (frameChanged && idleProgressForgivenessUsed < IDLE_PROGRESS_FORGIVENESS_STEPS) {
+        if (observedProgress && idleProgressForgivenessUsed < IDLE_PROGRESS_FORGIVENESS_STEPS) {
           idleProgressForgivenessUsed += 1;
           consecutiveIdle = 0;
         } else {

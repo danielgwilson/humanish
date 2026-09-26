@@ -16,8 +16,8 @@ try {
   if (!markerFd || !/^[1-9][0-9]{0,3}$/.test(markerFd) || Number(markerFd) < 3 || Number(markerFd) > 4095) throw new Error();
   const runtime = await runGuestRuntime({ transport, revision: GUEST_RUNTIME_REVISION, signal: stop.signal,
     marker: value => { if (writeSync(Number(markerFd), value) !== 1) throw new Error(); },
-    createDesktop: (signal, onTerminal, initialUrl) => createGuestRuntimeDesktop({ signal, onTerminal,
-      ...(initialUrl === undefined ? {} : { initialUrl }) }) });
+    createDesktop: (signal, onTerminal, initialUrl, media) => createGuestRuntimeDesktop({ signal, onTerminal,
+      ...(initialUrl === undefined ? {} : { initialUrl }), ...(media === undefined ? {} : { media }) }) });
   const result = await runtime.closed;
   process.exit(result.complete ? 0 : 1);
 } catch {

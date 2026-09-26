@@ -1,3 +1,4 @@
+import { e2bDesktopTemplate } from "./e2b-desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
@@ -299,7 +300,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * closed against a state-only executor that returns no screenshot. (`buildProvider` ALONE is
    * allowed — that is just a model swap on the normal E2B route.)
    */
-  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; lane?: CuaLaneSpec }) => Promise<CuaProvider>;
+  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; lane?: CuaLaneSpec; executor: CuaExecutor }) => Promise<CuaProvider>;
   /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
   createDesktopLane?: (spec: CuaLaneSpec, warnings: string[]) => CuaDesktopLane;
   env?: Record<string, string | undefined>;
@@ -1504,8 +1505,9 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
   const desktopLane = deps.createDesktopLane?.(spec, warnings) ?? createE2BCuaDesktopLane(spec, deps, warnings);
   try {
     await desktopLane.prepare();
+    const ready = await desktopLane.openSession();
     if (deps.hooks.buildProvider) {
-      localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec });
+      localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec, executor: ready.executor });
     } else if (deps.localAgent === "codex") {
       // Hosted local-agent studies use the same native participant engine as local desktops.
       // Operator auth deliberately retains the operator's Codex home, config and supported auth
@@ -1514,6 +1516,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         authMode: "operator",
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+        ...(ready.executor.speechEnabled === true ? { speechEnabled: true } : {}),
         session: { env }
       });
       localAgentProvider = codexParticipant.provider;
@@ -1546,7 +1549,6 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     provisioned = true;
     signal(true);
 
-    const ready = await desktopLane.openSession();
     // The FAIL-CLOSED spend cap (execution.caps.maxUsd) is wired into the loop as maxUsd + an
     // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
     // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
@@ -1694,7 +1696,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   let provider: CuaProvider | undefined;
   try {
     const executor = await deps.hooks.buildExecutor!({ config: deps.config, actor: deps.descriptor, appUrl: deps.appUrl });
-    provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor, lane: spec });
+    provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor, lane: spec, executor });
     const sessionOptions: CuaActorSessionOptions = {
       instructions: spec.instructions,
       persona: spec.persona,
@@ -3125,6 +3127,7 @@ function buildSingleLaneBundle(args: {
   inProgress?: boolean;
 }): RunBundle {
   const { spec, outcome, config } = args;
+  const desktopTemplate = e2bDesktopTemplate(config);
   return buildCuaBundle({
     realEmail: config.comms?.email?.kind === "real",
     ...(args.lab === undefined ? {} : { lab: args.lab }),
@@ -3163,7 +3166,7 @@ function buildSingleLaneBundle(args: {
     source: args.source,
     ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
     ...(args.subjectProvenance === undefined ? {} : { subjectProvenance: args.subjectProvenance }),
-    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),
     providerResources: providerResourcesForOutcome({
       outcome,
@@ -4378,6 +4381,7 @@ export function buildCuaFanoutBundle(args: {
   const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
   const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
   const configuredBrowser = config.execution?.desktop?.browser;
+  const desktopTemplate = e2bDesktopTemplate(config);
   const resolvedBrowsers = (outcomes ?? [])
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
@@ -4488,8 +4492,8 @@ export function buildCuaFanoutBundle(args: {
             };
           })
         }),
-    // Custom desktop image provenance (every lane launched on it); omitted on the stock default.
-    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    // Selected hosted image, including the optional speech default; omitted on the stock desktop.
+    ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(configuredBrowser === undefined
       ? {}
       : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT.parent / 'runtime-assets'
 RECIPE_FILES = ['Containerfile', '.dockerignore', 'packages.list', 'build_inside.py',
                 'build.py', 'policy.json', 'toolchain.json']
+MEDIA_RECIPE_FILES = ['media-policy.json']
 
 
 def sha256(path):
@@ -41,13 +42,16 @@ def load_asset_module():
     return module
 
 
-def build(inputs, destination, jobs, architecture="amd64"):
+def build(inputs, destination, jobs, architecture="amd64", media=False):
     destination = destination.absolute()
     destination.mkdir(mode=0o700)
     snapshot = destination / 'recipe'
     snapshot.mkdir(mode=0o700)
     for name in RECIPE_FILES:
         shutil.copyfile(ROOT / name, snapshot / name)
+    if media:
+        for name in MEDIA_RECIPE_FILES:
+            shutil.copyfile(ROOT / name, snapshot / name)
     asset_module = load_asset_module()
     if architecture == 'amd64':
         shutil.copyfile(ASSETS / 'inputs.json', snapshot / 'inputs.json')
@@ -98,10 +102,13 @@ def build(inputs, destination, jobs, architecture="amd64"):
         if not re.fullmatch(r'sha256:[a-f0-9]{64}', image):
             raise ValueError('Builder returned an invalid image identity')
         creation_attempted = True
+        environment = ['--env', 'HUMANISH_KERNEL_JOBS=' + str(jobs)]
+        if media:
+            environment += ['--env', 'HUMANISH_MEDIA_KERNEL=1']
         candidate = docker('create', '--cidfile', str(cidfile), '--network', 'none', '--cpus', str(jobs),
                            '--memory', str(toolchain['memoryBytes']),
                            '--pids-limit', str(toolchain['pidsMaximum']),
-                           '--hostname', 'kernel-builder', '--env', 'HUMANISH_KERNEL_JOBS=' + str(jobs),
+                           '--hostname', 'kernel-builder', *environment,
                            image, 'python3', '/work/build_inside.py', capture=True)
         if not re.fullmatch(r'[a-f0-9]{64}', candidate):
             raise ValueError('Builder returned an invalid container identity')
@@ -186,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--jobs', type=int, choices=range(1, 9), default=4)
     parser.add_argument('--architecture', choices=['amd64', 'arm64'], default='amd64')
+    parser.add_argument('--media', action='store_true')
     args = parser.parse_args()
-    result = build(args.inputs.absolute(), args.output, args.jobs, args.architecture)
+    result = build(args.inputs.absolute(), args.output, args.jobs, args.architecture, args.media)
     print(json.dumps({'status': 'built', 'manifest': str(result), 'vmBooted': False}))

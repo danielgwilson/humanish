@@ -51,6 +51,9 @@ export function attachBrowserControlDispatcher(options: BrowserControlDispatcher
         if (closed || signal.aborted || !authorized()) { transport.close("session_revoked"); return; }
         reply = { ...common, ok: true, observation: encodeBrowserControlObservation(observation) };
       } else {
+        if (request.action.kind === "speak" && options.executor.speechEnabled !== true) {
+          throw new CuaExecutorError("action_rejected", "not_dispatched");
+        }
         // No await between the owner gate above and invocation. The physical driver must
         // check this signal again immediately before each actual input after preparation.
         invoked = true;
