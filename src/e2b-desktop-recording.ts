@@ -2,6 +2,7 @@ import { Readable, Transform, type Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import {
   buildDesktopRecorderCommand,
+  buildDesktopRecorderPulseSetupCommands,
   buildDesktopRecorderProbeCommand,
   parseDesktopRecorderDuration,
   type DesktopRecordingAudioSource
@@ -69,20 +70,31 @@ export async function startE2BDesktopRecording(options: {
 }): Promise<E2BDesktopRecording> {
   if (!options.desktop.files.read) throw new Error("Installed @e2b/desktop does not support streamed recording retrieval.");
   const audioSources: DesktopRecordingAudioSource[] = options.audio ? ["microphone-input", "speaker-output"] : [];
-  const command = buildDesktopRecorderCommand({ display: ":0", width: options.width, height: options.height,
-    outputPath: OUTPUT_PATH, audioSources });
   const ownsPulse = options.audio && options.pulseEnv === undefined;
   const env = options.audio ? options.pulseEnv ?? await preparePulse(options.desktop, options.requestTimeoutMs) : baseEnv;
   const stopOwnedPulse = async (): Promise<void> => {
     if (ownsPulse) await options.desktop.commands.run("pulseaudio --kill", { envs: { ...env }, timeoutMs: 5_000,
       requestTimeoutMs: options.requestTimeoutMs }).catch(() => {});
   };
+  try {
+    for (const setup of options.audio ? buildDesktopRecorderPulseSetupCommands() : []) {
+      await options.desktop.commands.run(`${quote(setup.binary)} ${setup.args.map(quote).join(" ")}`, {
+        envs: { ...env }, timeoutMs: 5_000, requestTimeoutMs: options.requestTimeoutMs
+      });
+    }
+  } catch (error) {
+    await stopOwnedPulse();
+    throw error;
+  }
+  const startedAtMs = Date.now();
+  const command = buildDesktopRecorderCommand({ display: ":0", width: options.width, height: options.height,
+    outputPath: OUTPUT_PATH, audioSources }, startedAtMs);
   const launch = `set -eu; rm -f ${quote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${quote(command.binary)} ${command.args.map(quote).join(" ")} & `
     + `child=$!; printf '%s\\n' "$child" > ${quote(PID_PATH)}; wait "$child"`;
   let handle: E2BCommandResult;
   // The host launch boundary is the only clock shared with later run events. Capture it before
   // the provider RPC so startup transport latency is not silently removed from the timeline.
-  const startedAt = new Date().toISOString();
+  const startedAt = new Date(startedAtMs).toISOString();
   try {
     handle = await options.desktop.commands.run(launch, {
       background: true, envs: { ...baseEnv, ...env }, timeoutMs: 0, requestTimeoutMs: options.requestTimeoutMs

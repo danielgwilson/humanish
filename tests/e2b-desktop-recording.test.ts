@@ -52,9 +52,10 @@ describe("E2B desktop recording", () => {
     expect(metadata).toMatchObject({ mimeType: "video/mp4", durationMs: 1250, bytes: 6,
       audioSources: ["microphone-input", "speaker-output"], complete: true });
     const ffmpeg = commands.find(command => command.includes("'/usr/bin/ffmpeg' '-nostdin'"));
-    expect(ffmpeg).toContain("'humanish_mic.monitor'");
-    expect(ffmpeg).toContain("'humanish_speaker.monitor'");
-    expect(ffmpeg).toContain("'[1:a][2:a]amix=inputs=2:normalize=0[a]'");
+    expect(ffmpeg).toContain("'humanish_recording.monitor'");
+    expect(ffmpeg).not.toContain("amix");
+    expect(commands.some(command => command.includes("'module-loopback' 'source=humanish_mic.monitor'"))).toBe(true);
+    expect(commands.some(command => command.includes("'module-loopback' 'source=humanish_speaker.monitor'"))).toBe(true);
     expect(commands).toContain("kill -INT -- 742");
     expect(commands.findIndex(command => command === "kill -INT -- 742"))
       .toBeLessThan(commands.findIndex(command => command.startsWith("'/usr/bin/ffprobe'")));
