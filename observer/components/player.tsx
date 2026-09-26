@@ -424,8 +424,8 @@ export function Player({ data, stream, model, initialFrame = null, initialMode =
       <div className="player-evidence-note">{frames.length === 0 ? <span>{active ? `${lifecycle} · awaiting the first recorded screenshot` : "No recorded screenshots"}</span> : null}<span className="t-meta">{rowIndex.actionCount} {rowIndex.actionCount === 1 ? "action" : "actions"}{rowIndex.thoughtCount > 0 ? ` · ${rowIndex.thoughtCount} ${rowIndex.thoughtCount === 1 ? "thought" : "thoughts"}` : ""} · {timing}</span>
         {recordingFailed ? <span>Desktop video could not load; showing recorded screenshot evidence when available.</span>
           : stream.recording && studyPlayback?.reviewing && !showRecording ? <span>Desktop video unavailable at this study moment; showing recorded screenshot evidence when available.</span> : null}
-        {studyPlayback?.reviewing && current && studyPlayback.moment.kind === "capture" ? <span>{current.atMs === undefined ? "Capture time unavailable; frame selected directly." : <>{studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} · {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.</>}</span> : null}
-        {frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
+        {!showRecording && studyPlayback?.reviewing && current && studyPlayback.moment.kind === "capture" ? <span>{current.atMs === undefined ? "Capture time unavailable; frame selected directly." : <>{studyPlayback.moment.coverage === "after-last" ? "Last capture" : "Capture"} · {formatElapsed(studyPlayback.moment.ageMs)} before study cursor.</>}</span> : null}
+        {!showRecording && frame >= 0 && frame < frames.length - 1 && hold >= 5000 && model.paced === "recorded"
           ? <span>Next capture +{formatDuration(hold)}. Changes between captures are not recorded.{skipDuration > 0 ? ` Playback skips ${formatDuration(skipDuration)} of this capture interval containing recorded waits.` : ""}</span> : null}
         {stream.liveEnded === true ? <span>Desktop stream ended · recorded evidence</span> : null}
       </div>
