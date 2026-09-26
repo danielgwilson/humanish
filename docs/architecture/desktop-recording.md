@@ -16,10 +16,12 @@ do not consume this setting and reject it before execution.
 
 Recording does not enable a camera, speech synthesis or speech recognition.
 Those remain separate [participant media](participant-media.md) options. With
-audio enabled, the recorder captures the desktop's speaker output and, when
-configured, the synthetic microphone input. A recorded microphone signal proves
-what was offered to the browser, not what another person received. Confirm
-reciprocal delivery from the other participant's evidence.
+audio enabled, microphone input and speaker output are mixed into one AAC track.
+`audioSources` identifies the capture points feeding that mix, not separate
+retained tracks. The microphone can be silent when speech is not configured.
+A recorded microphone signal proves what was offered to the browser, not what
+another person received. Confirm reciprocal delivery from the other
+participant's evidence.
 
 ## Capture and playback
 
