@@ -4,7 +4,7 @@ import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
 
 describe("desktop recorder command", () => {
   it("builds one fixed full-desktop H.264/AAC recipe with explicit capture points", () => {
-    const command = buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/home/humanish/desktop.mp4",
+    const command = buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4",
       audioSources: ["microphone-input", "speaker-output"] });
     expect(command.binary).toBe("/usr/bin/ffmpeg");
     expect(command.args).toEqual([
@@ -13,7 +13,7 @@ describe("desktop recorder command", () => {
       "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_speaker.monitor",
       "-filter_complex", "[1:a][2:a]amix=inputs=2:normalize=0[a]", "-map", "0:v", "-map", "[a]",
       "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
-      "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "/home/humanish/desktop.mp4"
+      "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "/tmp/desktop.mp4"
     ]);
   });
 
