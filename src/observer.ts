@@ -951,17 +951,22 @@ async function serveContainedMedia(
     response.end();
     return;
   }
-  const stream = opened.handle.createReadStream({ start, end, autoClose: false });
+  let stream: ReturnType<FileHandle["createReadStream"]> | undefined;
   try {
+    stream = opened.handle.createReadStream({ start, end, autoClose: false });
     await new Promise<void>((resolve, reject) => {
-      stream.once("error", reject);
+      stream!.once("error", reject);
       response.once("finish", resolve);
       response.once("close", resolve);
-      stream.pipe(response);
+      stream!.pipe(response);
     });
+  } catch {
+    // Headers already describe a fixed byte interval. A late disk/read failure
+    // cannot become a second HTTP response; terminate the incomplete body.
+    response.destroy();
   } finally {
-    stream.destroy();
-    await opened.handle.close();
+    stream?.destroy();
+    await opened.handle.close().catch(() => undefined);
   }
 }
 
