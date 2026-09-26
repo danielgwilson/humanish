@@ -53,7 +53,7 @@ does not inspect the MP4.
 
 Video and audio are raw local evidence. `policies.redactScreenshots` does not redact
 them, and verification keeps a run with continuous media `local_only`. The recorder
-has a 512 MiB per-participant file limit; a retained size-limited recording is partial.
+has a 128 MiB per-participant file limit; a retained size-limited recording is partial.
 Encoding consumes additional CPU, memory and disk, so snapshots remain the default.
 
 `humanish export --local-only` produces the existing portable HTML with screenshots

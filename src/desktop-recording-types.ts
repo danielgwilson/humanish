@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-/** Bounds retained evidence; reaching this limit must not end the participant. */
-export const DESKTOP_RECORDING_MAX_BYTES = 512 * 1024 * 1024;
+/** Leaves room for Chromium on the local guest's shared 512 MiB state disk. */
+export const DESKTOP_RECORDING_MAX_BYTES = 128 * 1024 * 1024;
 
 export const desktopRecordingMetadataSchema = z.strictObject({
   mimeType: z.literal("video/mp4"),

@@ -14,7 +14,7 @@ export async function collectDesktopRecording(
   assertSafeOutputPathSegment(laneId, "Recording lane");
   const path = `recordings/${laneId}/desktop.mp4`;
   const target = await prepareContainedOutputFile(root, path);
-  const temporary = await prepareContainedOutputFile(root, `recordings/${laneId}/.${randomUUID()}.tmp`);
+  const temporary = await prepareContainedOutputFile(root, `recordings/${laneId}/.recording-${randomUUID()}.mp4`);
   const handle = await open(temporary, "wx", 0o600);
   let bytes = 0;
   const destination = new Writable({
