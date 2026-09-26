@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runGuestRuntime } from '../src/guest-runtime.js';
+import { Readable, Writable } from 'node:stream';
+import { runGuestRuntime, type GuestRuntimeOptions } from '../src/guest-runtime.js';
 import { GuestBootstrapReader, encodeGuestBootstrap, guestReadyTimeoutMs } from '../src/guest-bootstrap.js';
 import { createBrowserControlClient } from '../src/browser-control-client.js';
 import { identity, pair, observation, tick } from './browser-control-fixture.js';
@@ -59,6 +60,23 @@ describe('one guest runtime lifecycle',()=>{
     finish();await ready.identity;ready.handoff();
     expect(f.marker.mock.calls).toEqual([['A'],['R']]);
     const runtime=await running;f.left.destroy();await runtime.closed;
+  });
+  it('forwards recording config and exposes its finite byte stream',async()=>{
+    const f=fixture(),body=Buffer.from('recording');
+    const metadata={mimeType:'video/mp4' as const,startedAt:'2026-09-26T00:00:00.000Z',durationMs:1000,bytes:body.length,
+      audioSources:['microphone-input' as const,'speaker-output' as const],complete:true};
+    const finishRecording=vi.fn(async()=>({metadata,stream:Readable.from([body])}));
+    const desktop={...f.desktop,finishRecording};
+    const createDesktop=vi.fn(async(..._args:Parameters<GuestRuntimeOptions['createDesktop']>)=>desktop);
+    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
+    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
+    f.left.write(encodeGuestBootstrap(identity,false,undefined,undefined,{audio:true}));await ready.identity;ready.handoff();
+    const client=createBrowserControlClient({transport:f.left,identity});f.left.resume();await client.ready();
+    const chunks:Buffer[]=[];const destination=new Writable({write(chunk,_encoding,done){chunks.push(Buffer.from(chunk));done();}});
+    expect(await client.finishRecording(destination)).toEqual(metadata);
+    expect(Buffer.concat(chunks)).toEqual(body);expect(finishRecording).toHaveBeenCalledOnce();
+    expect(createDesktop.mock.calls[0]?.[4]).toEqual({audio:true});
+    const runtime=await running;await runtime.close();
   });
   it('never acknowledges an initial navigation failure',async()=>{
     const f=fixture();

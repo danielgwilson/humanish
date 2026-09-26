@@ -13,6 +13,8 @@ import type { GuestRuntimeDesktop } from "./guest-runtime.js";
 import { GUEST_BOOTSTRAP_LIMITS, validateGuestInitialUrl } from "./guest-bootstrap.js";
 import type { GuestMediaConfig } from "./guest-media-config.js";
 import { startDesktopMedia } from "./guest-desktop-media.js";
+import type { DesktopRecordingConfig } from "./desktop-recording-types.js";
+import { startDesktopRecorder, type DesktopRecorderHandle } from "./desktop-recorder.js";
 
 export const GUEST_RUNTIME_PATHS = Object.freeze({ root: "/opt/humanish/control", run: "/run/humanish", home: "/home/humanish" });
 export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/home/humanish", USER: "humanish", LOGNAME: "humanish",
@@ -20,7 +22,7 @@ export const GUEST_RUNTIME_ENV = Object.freeze({ PATH: "/usr/bin:/bin", HOME: "/
   XDG_RUNTIME_DIR: "/run/humanish/xdg", XDG_CACHE_HOME: "/home/humanish/.cache", XDG_CONFIG_HOME: "/home/humanish/.config", TMPDIR: "/tmp" });
 const bad = (): CuaExecutorError => new CuaExecutorError("execution_failed", "not_dispatched");
 const CONFIG_SHA = "4ae1c52eab748a3624b3948ce792647be258caba70c8c72038b9a43be6459552";
-export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "media" | "browser" | "sandbox" | "focus" | "fixture" | "navigation";
+export type GuestRuntimePhase = "layout" | "xauthority" | "display" | "window_manager" | "media" | "recording" | "browser" | "sandbox" | "focus" | "fixture" | "navigation";
 
 /** Initial document only: do not wait for app data, subresources or network idle. */
 export async function navigateGuestInitialPage(page: Pick<Page, "goto" | "waitForFunction">, initialUrl: string, signal: AbortSignal): Promise<void> {
@@ -43,6 +45,7 @@ export async function createGuestRuntimeDesktop(options: {
   onPhase?(phase: GuestRuntimePhase): void;
   initialUrl?: string;
   media?: GuestMediaConfig;
+  recording?: DesktopRecordingConfig;
 }): Promise<GuestRuntimeDesktop & { readonly owner: { context: BrowserContext; page: Page; sandboxReport: string; configSha256: string } }> {
   if (options.initialUrl !== undefined) validateGuestInitialUrl(options.initialUrl);
   const controller = new AbortController();
@@ -52,6 +55,8 @@ export async function createGuestRuntimeDesktop(options: {
   let pendingContext: Promise<BrowserContext> | undefined;
   let content: ReturnType<typeof createGuestChromiumText> | undefined;
   let media: Awaited<ReturnType<typeof startDesktopMedia>> | undefined;
+  let recorder: DesktopRecorderHandle | undefined;
+  let recordingFailed = false;
   let closing: Promise<{ complete: boolean }> | undefined;
   let stopping = false;
   let phase: GuestRuntimePhase = "layout";
@@ -98,6 +103,7 @@ export async function createGuestRuntimeDesktop(options: {
       let complete = true, timer: NodeJS.Timeout | undefined;
       const work = async (): Promise<void> => {
         try { await content?.close(); } catch { complete = false; }
+        try { await recorder?.finish(); } catch { /* Recording evidence is optional to desktop teardown. */ }
         try { await media?.close(); } catch { complete = false; }
         try {
           const browser = context ?? await pendingContext?.catch(() => undefined);
@@ -161,8 +167,18 @@ export async function createGuestRuntimeDesktop(options: {
       }, env: GUEST_RUNTIME_ENV, signal, onTerminal: options.onTerminal });
       check();
     }
+    if (options.recording !== undefined) {
+      progress("recording");
+      try {
+        recorder = await startDesktopRecorder({ display: ":0", width: 960, height: 720,
+          outputPath: `${GUEST_RUNTIME_PATHS.home}/desktop-recording.mp4`, env: media?.env ?? GUEST_RUNTIME_ENV, signal,
+          audioSources: options.recording.audio ? ["microphone-input", "speaker-output"] : [],
+          pulseReady: options.recording.audio && options.media?.microphone !== undefined });
+      } catch { recordingFailed = true; }
+      check();
+    }
     progress("browser"); pendingContext = chromium.launchPersistentContext(`${GUEST_RUNTIME_PATHS.home}/browser`, { executablePath: "/usr/bin/chromium",
-      headless: false, chromiumSandbox: true, viewport: null, env: media?.env ?? GUEST_RUNTIME_ENV, timeout: 25_000,
+      headless: false, chromiumSandbox: true, viewport: null, env: recorder?.env ?? media?.env ?? GUEST_RUNTIME_ENV, timeout: 25_000,
       args: ["--window-size=960,680", "--window-position=0,20", "--disable-background-networking", "--disable-component-update", "--no-first-run",
         ...(options.media?.permission === "granted" ? ["--use-fake-ui-for-media-stream"] : [])] });
     void pendingContext.then(browser => { if (stopping) void browser.close().catch(() => {}); }, () => {});
@@ -188,7 +204,20 @@ export async function createGuestRuntimeDesktop(options: {
       progress("fixture"); await page.goto(`file://${GUEST_RUNTIME_PATHS.root}/neutral.html`); check();
       await page.locator("#note").waitFor(); check();
     }
-    return { executor: media?.wrap(executor) ?? executor, close, owner: { context, page, sandboxReport, configSha256: CONFIG_SHA } };
+    const finishRecording = options.recording === undefined ? undefined : async () => {
+      try {
+        if (recordingFailed || !recorder) throw new Error();
+        const result = await recorder.finish();
+        const file = await open(result.outputPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try {
+          const fileStat = await file.stat();
+          if (!fileStat.isFile() || fileStat.size !== result.metadata.bytes) throw new Error();
+          return { metadata: result.metadata, stream: file.createReadStream({ autoClose: true }) };
+        } catch (error) { await file.close().catch(() => {}); throw error; }
+      } catch { throw new Error("Desktop recording failed."); }
+    };
+    return { executor: media?.wrap(executor) ?? executor, close,
+      ...(finishRecording ? { finishRecording } : {}), owner: { context, page, sandboxReport, configSha256: CONFIG_SHA } };
   } catch {
     await close(); throw Object.assign(bad(), { phase });
   } finally {

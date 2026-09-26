@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildDesktopRecorderCommand, buildDesktopRecorderProbeCommand, parseDesktopRecorderDuration } from "../src/desktop-recorder.js";
+import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
 
 describe("desktop recorder command", () => {
   it("builds one fixed full-desktop H.264/AAC recipe with explicit capture points", () => {
@@ -11,8 +12,8 @@ describe("desktop recorder command", () => {
       "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_mic.monitor",
       "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_speaker.monitor",
       "-filter_complex", "[1:a][2:a]amix=inputs=2:normalize=0[a]", "-map", "0:v", "-map", "[a]",
-      "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
-      "-fs", "535822336", "-movflags", "+faststart", "/home/humanish/desktop.mp4"
+      "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
+      "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "/home/humanish/desktop.mp4"
     ]);
   });
 

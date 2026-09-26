@@ -59,7 +59,7 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
     const inputs = sources.map((_source, index) => `[${index + 1}:a]`).join("");
     args.push("-filter_complex", `${inputs}amix=inputs=${sources.length}:normalize=0[a]`, "-map", "0:v", "-map", "[a]");
   } else args.push("-map", "0:v");
-  args.push("-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
+  args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
   if (sources.length > 0) args.push("-c:a", "aac");
   args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart", options.outputPath);
   return { binary: "/usr/bin/ffmpeg", args };
