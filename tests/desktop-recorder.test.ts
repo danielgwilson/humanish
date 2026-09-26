@@ -1,27 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { buildDesktopRecorderCommand, buildDesktopRecorderProbeCommand, parseDesktopRecorderDuration } from "../src/desktop-recorder.js";
+import { buildDesktopRecorderCommand, buildDesktopRecorderProbeCommand, buildDesktopRecorderPulseSetupCommands,
+  parseDesktopRecorderDuration } from "../src/desktop-recorder.js";
 import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
 
 describe("desktop recorder command", () => {
   it("builds one fixed full-desktop H.264/AAC recipe with explicit capture points", () => {
     const command = buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4",
-      audioSources: ["microphone-input", "speaker-output"] });
+      audioSources: ["microphone-input", "speaker-output"] }, 1_790_457_914_571);
     expect(command.binary).toBe("/usr/bin/ffmpeg");
     expect(command.args).toEqual([
-      "-nostdin", "-v", "error", "-y", "-f", "x11grab", "-framerate", "15", "-video_size", "960x720", "-i", ":0",
-      "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_mic.monitor",
-      "-thread_queue_size", "512", "-f", "pulse", "-i", "humanish_speaker.monitor",
-      "-filter_complex", "[1:a][2:a]amix=inputs=2:normalize=0[a]", "-map", "0:v", "-map", "[a]",
+      "-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0", "-f", "x11grab", "-framerate", "15", "-video_size", "960x720", "-i", ":0",
+      "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0", "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", "humanish_recording.monitor",
+      "-map", "0:v", "-map", "1:a",
       "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
-      "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "/tmp/desktop.mp4"
+      "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "-output_ts_offset", "-1790457914.571", "/tmp/desktop.mp4"
+    ]);
+    expect(buildDesktopRecorderPulseSetupCommands().map(command => command.args)).toEqual([
+      ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix"],
+      ["set-sink-volume", "humanish_recording", "50%"],
+      ["load-module", "module-loopback", "source=humanish_mic.monitor", "sink=humanish_recording", "latency_msec=20"],
+      ["load-module", "module-loopback", "source=humanish_speaker.monitor", "sink=humanish_recording", "latency_msec=20"]
     ]);
   });
 
   it("builds video-only output and rejects ambiguous paths or duplicate sources", () => {
-    expect(buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4" }).args).not.toContain("pulse");
-    expect(() => buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/../desktop.mp4" })).toThrow();
+    expect(buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4" }, 1).args).not.toContain("pulse");
+    expect(() => buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/../desktop.mp4" }, 1)).toThrow();
     expect(() => buildDesktopRecorderCommand({ display: ":0", width: 960, height: 720, outputPath: "/tmp/desktop.mp4",
-      audioSources: ["speaker-output", "speaker-output"] })).toThrow();
+      audioSources: ["speaker-output", "speaker-output"] }, 1)).toThrow();
   });
 
   it("builds a bounded duration probe and parses its result", () => {

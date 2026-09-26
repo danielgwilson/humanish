@@ -10,6 +10,7 @@ const PULSE_DEVICE: Readonly<Record<DesktopRecordingAudioSource, string>> = Obje
   "microphone-input": "humanish_mic.monitor",
   "speaker-output": "humanish_speaker.monitor"
 });
+const COMBINED_PULSE_DEVICE = "humanish_recording.monitor";
 const RECORDING_FILE_LIMIT_BYTES = DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024;
 
 export interface DesktopRecorderCommandOptions {
@@ -49,20 +50,31 @@ function validate(options: DesktopRecorderCommandOptions): readonly DesktopRecor
 }
 
 /** One fixed, ordinary FFmpeg recipe. Adapters own process transport and the output path. */
-export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptions): { binary: "/usr/bin/ffmpeg"; args: string[] } {
+export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptions, startedAtMs: number): { binary: "/usr/bin/ffmpeg"; args: string[] } {
   const sources = validate(options);
-  const args = ["-nostdin", "-v", "error", "-y", "-f", "x11grab", "-framerate", String(options.frameRate ?? 15),
+  if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1) throw new Error("Invalid desktop recording start time.");
+  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0",
+    "-f", "x11grab", "-framerate", String(options.frameRate ?? 15),
     "-video_size", `${options.width}x${options.height}`, "-i", options.display];
-  for (const source of sources) args.push("-thread_queue_size", "512", "-f", "pulse", "-i", PULSE_DEVICE[source]);
-  if (sources.length === 1) args.push("-map", "0:v", "-map", "1:a");
-  else if (sources.length > 1) {
-    const inputs = sources.map((_source, index) => `[${index + 1}:a]`).join("");
-    args.push("-filter_complex", `${inputs}amix=inputs=${sources.length}:normalize=0[a]`, "-map", "0:v", "-map", "[a]");
-  } else args.push("-map", "0:v");
+  const devices = sources.length === 2 ? [COMBINED_PULSE_DEVICE] : sources.map(source => PULSE_DEVICE[source]);
+  for (const device of devices) args.push("-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0",
+    "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", device);
+  if (devices.length === 1) args.push("-map", "0:v", "-map", "1:a");
+  else args.push("-map", "0:v");
   args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
   if (sources.length > 0) args.push("-c:a", "aac");
-  args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart", options.outputPath);
+  args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart",
+    "-output_ts_offset", String(-startedAtMs / 1000), options.outputPath);
   return { binary: "/usr/bin/ffmpeg", args };
+}
+
+export function buildDesktopRecorderPulseSetupCommands(): Array<{ binary: "/usr/bin/pactl"; args: string[] }> {
+  return [
+    ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix"],
+    ["set-sink-volume", "humanish_recording", "50%"],
+    ["load-module", "module-loopback", "source=humanish_mic.monitor", "sink=humanish_recording", "latency_msec=20"],
+    ["load-module", "module-loopback", "source=humanish_speaker.monitor", "sink=humanish_recording", "latency_msec=20"]
+  ].map(args => ({ binary: "/usr/bin/pactl" as const, args }));
 }
 
 export function buildDesktopRecorderProbeCommand(outputPath: string): { binary: "/usr/bin/ffprobe"; args: string[] } {
@@ -153,8 +165,12 @@ export async function startDesktopRecorder(options: DesktopRecorderCommandOption
   const pulseServer = `unix:${options.env.XDG_RUNTIME_DIR ?? "/run/humanish/xdg"}/pulse/native`;
   const env = sources.length === 0 ? options.env : { ...options.env, PULSE_SERVER: pulseServer, PULSE_SOURCE: "humanish_input", PULSE_SINK: "humanish_speaker" };
   const ownedPulse = sources.length > 0 && options.pulseReady !== true ? await startPulse(env, options.signal) : undefined;
-  const command = buildDesktopRecorderCommand(options);
+  if (sources.length === 2) {
+    try { for (const setup of buildDesktopRecorderPulseSetupCommands()) await run(setup.binary, setup.args, env, options.signal); }
+    catch (error) { await stopPulse(ownedPulse); throw error; }
+  }
   const startedAtMs = Date.now();
+  const command = buildDesktopRecorderCommand(options, startedAtMs);
   const child = spawn(command.binary, command.args, { env, stdio: "ignore" });
   const closed = waitForClose(child);
   void closed.catch(() => {});
