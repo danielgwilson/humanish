@@ -61,7 +61,7 @@ describe("bounded study analysis engine", () => {
     const answer = result(); delete answer.concernReviews;
     const h = transport(answer);
     const artifact = await runStudyAnalysis(input(), config, { apiKey: "synthetic-key", fetch: h.fetchFn });
-    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed",
+    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed_schema_invalid",
       usage: { dispatched: true, usageComplete: true } });
     expect(h.fetchFn).toHaveBeenCalledTimes(1);
   });
@@ -182,7 +182,14 @@ describe("bounded study analysis engine", () => {
     expect(h.fetchFn).not.toHaveBeenCalled();
   });
 
-  it.each(["unknown-evidence", "foreign-participant", "invented-quote", "visual-without-image", "duplicate-denominator", "extra-field"])("fails closed on %s while preserving reported token usage", async kind => {
+  it.each([
+    ["unknown-evidence", "analysis_validation_failed_observation_reference_invalid"],
+    ["foreign-participant", "analysis_validation_failed_participant_coverage_invalid"],
+    ["invented-quote", "analysis_validation_failed_quote_invalid"],
+    ["visual-without-image", "analysis_validation_failed_visual_without_capture"],
+    ["duplicate-denominator", "analysis_validation_failed_finding_membership_invalid"],
+    ["extra-field", "analysis_validation_failed_schema_invalid"]
+  ] as const)("fails closed on %s with a safe rule code while preserving reported token usage", async (kind, error) => {
     const answer = result();
     if (kind === "unknown-evidence") answer.findings[0]!.observations[0]!.evidenceIds = ["missing"];
     if (kind === "foreign-participant") answer.participants[0]!.streamId = "another-study-participant";
@@ -192,7 +199,7 @@ describe("bounded study analysis engine", () => {
     if (kind === "extra-field") Object.assign(answer, { arbitrary: "synthetic-private-payload" });
     const h = transport(answer);
     const artifact = await runStudyAnalysis(input(), config, { apiKey: "synthetic-key", fetch: h.fetchFn });
-    expect(artifact).toMatchObject({ status: "failed", result: null, error: "analysis_validation_failed", usage: { inputTokens: 13543, outputTokens: 221, dispatched: true } });
+    expect(artifact).toMatchObject({ status: "failed", result: null, error, usage: { inputTokens: 13543, outputTokens: 221, dispatched: true } });
     expect(JSON.stringify(artifact)).not.toContain("synthetic-private-payload");
     expect(validateStudyAnalysisArtifact(artifact)).toEqual(artifact);
   });

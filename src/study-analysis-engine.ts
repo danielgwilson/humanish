@@ -5,7 +5,7 @@ import { containsSensitive } from "./redaction.js";
 import { scrubTransientCommsText } from "./run-narration-secrets.js";
 import { STUDY_ANALYSIS_SCHEMA, type AnalysisObservation, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput, type StudyAnalysisResult } from "./study-analysis.js";
 import { createStudyAnalysisProvider, type StudyAnalysisProvider } from "./study-analysis-provider.js";
-import { hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateAnalysisResult, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
+import { checkAnalysisResult, hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-5";
 export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze(["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
@@ -182,6 +182,48 @@ function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResu
   };
 }
 
+const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
+  ANALYSIS_RESULT_SCHEMA_INVALID: "analysis_validation_failed_schema_invalid",
+  ANALYSIS_INPUT_DUPLICATES: "analysis_validation_failed_input_duplicates",
+  ANALYSIS_PARTICIPANT_COVERAGE_INVALID: "analysis_validation_failed_participant_coverage_invalid",
+  ANALYSIS_PARTICIPANT_REFERENCE_INVALID: "analysis_validation_failed_participant_reference_invalid",
+  ANALYSIS_OUTCOME_WITHOUT_EVIDENCE: "analysis_validation_failed_outcome_without_evidence",
+  ANALYSIS_QUOTE_INVALID: "analysis_validation_failed_quote_invalid",
+  ANALYSIS_FINDING_ID_DUPLICATE: "analysis_validation_failed_finding_id_duplicate",
+  ANALYSIS_OBSERVATION_REFERENCE_INVALID: "analysis_validation_failed_observation_reference_invalid",
+  ANALYSIS_VISUAL_WITHOUT_CAPTURE: "analysis_validation_failed_visual_without_capture",
+  ANALYSIS_ACTION_SOURCE_INVALID: "analysis_validation_failed_action_source_invalid",
+  ANALYSIS_STATEMENT_SOURCE_INVALID: "analysis_validation_failed_statement_source_invalid",
+  ANALYSIS_FINDING_MEMBERSHIP_INVALID: "analysis_validation_failed_finding_membership_invalid",
+  ANALYSIS_AFFECTED_WITHOUT_EVIDENCE: "analysis_validation_failed_affected_without_evidence",
+  ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid"
+});
+
+type CheckedProviderAnalysis =
+  | { ok: true; result: StudyAnalysisResult }
+  | { ok: false; error: string };
+
+function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): CheckedProviderAnalysis {
+  try {
+    const parsed = studyAnalysisResponseSchema.safeParse(value);
+    if (!parsed.success) return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
+    let scrubbed: StudyAnalysisResult;
+    try {
+      scrubbed = scrubGeneratedNarrative(parsed.data);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"
+        ? "analysis_validation_failed_scrub_rejected"
+        : "analysis_validation_failed_unexpected" };
+    }
+    const checked = checkAnalysisResult(input, scrubbed);
+    if (!checked.ok) return { ok: false,
+      error: VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected" };
+    return checked;
+  } catch {
+    return { ok: false, error: "analysis_validation_failed_unexpected" };
+  }
+}
+
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
 export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
   apiKey?: string;
@@ -278,10 +320,12 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     return finish();
   }
   progress("validating");
-  try {
-    // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
-    // expanded field lengths fail closed under the original validator; source bytes stay intact.
-    artifact.result = validateAnalysisResult(input, scrubGeneratedNarrative(studyAnalysisResponseSchema.parse(response.output)));
+  // Parse the bounded shape first, then scrub and validate again. Changed exact quotes or
+  // expanded field lengths fail closed under the original validator; source bytes stay intact.
+  // Only an allowlisted stage or first rule code survives; rejected output and exceptions do not.
+  const checked = checkProviderAnalysis(input, response.output);
+  if (checked.ok) {
+    artifact.result = checked.result;
     artifact.status = input.coverage.complete ? "complete" : "partial";
     artifact.error = null;
     if (config.provider !== "codex" && ((response.usage?.output ?? 0) > config.maxOutputTokens
@@ -290,10 +334,9 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
       artifact.status = "partial";
       artifact.error = "analysis_admission_estimate_exceeded";
     }
-  } catch {
-    // Validation errors may quote model output; only the stable code leaves this boundary.
+  } else {
     artifact.result = null;
-    artifact.error = "analysis_validation_failed";
+    artifact.error = checked.error;
   }
   return finish();
 }
