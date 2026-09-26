@@ -53,6 +53,12 @@ function child(binary: string, args: string[], options: { stdin?: "pipe"; stdout
   children.add(process); process.once("close", () => children.delete(process));
   return process;
 }
+function persistent(childProcess: ChildProcess): ChildProcess {
+  childProcess.once("close", () => {
+    if (!closing) { close(); process.exit(1); }
+  });
+  return childProcess;
+}
 function waitExit(process: ChildProcess): Promise<void> {
   return new Promise((resolve, reject) => {
     process.once("error", reject);
@@ -70,7 +76,7 @@ async function retry(action: () => Promise<boolean>, attempts = 100): Promise<vo
 function run(binary: string, args: string[]): Promise<void> { return waitExit(child(binary, args)); }
 
 async function startPulse(): Promise<ChildProcess> {
-  const pulse = child("/usr/bin/pulseaudio", ["--daemonize=no", "--exit-idle-time=-1", "--disallow-exit", "--log-target=stderr"]);
+  const pulse = persistent(child("/usr/bin/pulseaudio", ["--daemonize=no", "--exit-idle-time=-1", "--disallow-exit", "--log-target=stderr"]));
   await retry(async () => {
     try { await run("/usr/bin/pactl", ["info"]); return true; } catch { return false; }
   });
@@ -84,8 +90,8 @@ async function startPulse(): Promise<ChildProcess> {
 
 async function startCamera(): Promise<ChildProcess | undefined> {
   if (!config.camera) return undefined;
-  const camera = child("/usr/bin/ffmpeg", ["-nostdin", "-v", "error", "-re", "-f", "lavfi", "-i",
-    "testsrc2=size=640x360:rate=10", "-pix_fmt", "yuv420p", "-f", "v4l2", "/dev/video0"]);
+  const camera = persistent(child("/usr/bin/ffmpeg", ["-nostdin", "-v", "error", "-re", "-f", "lavfi", "-i",
+    "testsrc2=size=640x360:rate=10", "-pix_fmt", "yuv420p", "-f", "v4l2", "/dev/video0"]));
   let failed = false; camera.once("close", () => { failed = true; });
   await new Promise(resolve => setTimeout(resolve, 250));
   if (failed) throw new Error("camera producer failed");
@@ -94,8 +100,8 @@ async function startCamera(): Promise<ChildProcess | undefined> {
 
 async function startWhisper(): Promise<ChildProcess | undefined> {
   if (!config.microphone) return undefined;
-  const server = child(config.whisperServer, ["--host", "127.0.0.1", "--port", String(WHISPER_PORT),
-    "--model", config.whisperModel, "--threads", "2", "--language", "en"]);
+  const server = persistent(child(config.whisperServer, ["--host", "127.0.0.1", "--port", String(WHISPER_PORT),
+    "--model", config.whisperModel, "--threads", "2", "--language", "en"]));
   await retry(() => new Promise(resolve => {
     const socket = createConnection({ host: "127.0.0.1", port: WHISPER_PORT });
     socket.once("connect", () => { socket.destroy(); resolve(true); });
@@ -137,7 +143,7 @@ function transcribe(raw: Buffer): Promise<string> {
 
 async function startListening(): Promise<ChildProcess | undefined> {
   if (!config.microphone) return undefined;
-  const capture = child("/usr/bin/parec", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker.monitor"], { stdout: "pipe" });
+  const capture = persistent(child("/usr/bin/parec", ["--raw", "--format=s16le", `--rate=${SAMPLE_RATE}`, "--channels=1", "--device=humanish_speaker.monitor"], { stdout: "pipe" }));
   const captureReady = new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => { cleanup(); reject(new Error("speaker capture was not ready")); }, 5_000);
     const ready = (): void => { cleanup(); resolve(); };
@@ -200,14 +206,10 @@ async function speak(text: string): Promise<void> {
 
 async function main(): Promise<void> {
   await mkdir(env.XDG_RUNTIME_DIR, { recursive: true, mode: 0o700 });
-  const persistent: ChildProcess[] = [];
-  if (config.microphone) persistent.push(await startPulse());
-  const camera = await startCamera(); if (camera) persistent.push(camera);
-  const whisper = await startWhisper(); if (whisper) persistent.push(whisper);
-  const capture = await startListening(); if (capture) persistent.push(capture);
-  for (const child of persistent) child.once("close", () => {
-    if (!closing) { close(); process.exit(1); }
-  });
+  if (config.microphone) await startPulse();
+  await startCamera();
+  await startWhisper();
+  await startListening();
   emit({ type: "ready" });
   let input = Buffer.alloc(0), serial = Promise.resolve();
   process.stdin.on("data", (chunk: Buffer) => {

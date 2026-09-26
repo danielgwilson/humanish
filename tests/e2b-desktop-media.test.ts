@@ -1,6 +1,13 @@
+import type { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { describe, expect, it, vi } from "vitest";
 import { startE2BDesktopMedia } from "../src/e2b-desktop-media.js";
 import type { E2BCommandRunOptions, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+
+function startInstalledBackgroundCommand(desktop: SdkDesktop) {
+  return desktop.commands.run("true", { background: true, stdin: true });
+}
+type InstalledBackgroundCommand = Awaited<ReturnType<typeof startInstalledBackgroundCommand>>;
+const requiredHandleMethods: Array<keyof InstalledBackgroundCommand> = ["sendStdin", "closeStdin", "kill", "wait"];
 
 // SDK 2.4 streaming lifecycle checked against a live disposable desktop: run with
 // background+stdin, onStdout, sendStdin, closeStdin, wait. No provider HTTP fixture.
@@ -27,6 +34,10 @@ function fixture() {
 }
 
 describe("hosted speech transport", () => {
+  it("compiles against the installed SDK's background stdin handle contract", () => {
+    expect(requiredHandleMethods).toEqual(["sendStdin", "closeStdin", "kill", "wait"]);
+  });
+
   it("uses the shared worker with native Pulse and sends text through stdin, then closes it", async () => {
     const f = fixture();
     const media = await startE2BDesktopMedia({ desktop: f.desktop, media: { microphone: { source: "speech" } },

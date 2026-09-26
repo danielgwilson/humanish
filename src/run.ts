@@ -4909,12 +4909,12 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
 }
 
 /**
- * The @e2b/desktop release that stopped holding a background command's event stream open after
- * the command was launched (its 2.3.1 changelog, 2026-06-08). On older releases the CLI process
- * stayed alive minutes past a run's written result on one socket to the provider (#581, measured
- * 2026-09-04 on 2.2.3: twelve minutes).
+ * Version 2.3.1 stopped holding a launched background command's event stream open. Version 2.3.2
+ * also requires an e2b release whose background command handle supports sendStdin and closeStdin,
+ * which the optional speech transport needs. On older releases the CLI could stay alive minutes
+ * past a written result (#581, measured 2026-09-04 on 2.2.3: twelve minutes).
  */
-export const DESKTOP_SDK_FLOOR = "2.3.1";
+export const DESKTOP_SDK_FLOOR = "2.3.2";
 
 /** The advisory `doctor` attaches to an installed desktop SDK older than the floor, else undefined. */
 export function desktopSdkAdvisory(version: string | undefined): string | undefined {
@@ -4926,7 +4926,7 @@ export function desktopSdkAdvisory(version: string | undefined): string | undefi
   const older = have[0]! < floor[0]!
     || (have[0] === floor[0] && (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
   return older
-    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, which stopped holding a background command stream open after a run (the CLI stayed alive minutes past its result, #581). Update with \`npm i -D @e2b/desktop@latest\`.`
+    ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive minutes past its result, #581). Update with \`npm i -D @e2b/desktop@latest\`.`
     : undefined;
 }
 

@@ -3,10 +3,13 @@ import { DESKTOP_SDK_FLOOR, desktopSdkAdvisory, doctor } from "../src/run.js";
 
 describe("doctor: the desktop SDK row names the installed version and a floor (#581)", () => {
   it("an SDK older than the floor gets the advisory, with the version and the fix", () => {
-    const advisory = desktopSdkAdvisory("2.2.3");
-    expect(advisory).toContain("2.2.3 is older than 2.3.1");
-    expect(advisory).toContain("#581");
-    expect(advisory).toContain("npm i -D @e2b/desktop@latest");
+    for (const version of ["2.2.3", "2.3.1"]) {
+      const advisory = desktopSdkAdvisory(version);
+      expect(advisory).toContain(`${version} is older than 2.3.2`);
+      expect(advisory).toContain("stdin handles");
+      expect(advisory).toContain("#581");
+      expect(advisory).toContain("npm i -D @e2b/desktop@latest");
+    }
   });
 
   it("the floor itself, a newer patch, minor and major get no advisory", () => {
