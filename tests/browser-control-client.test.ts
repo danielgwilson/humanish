@@ -1,4 +1,4 @@
-import { Duplex } from "node:stream";
+import { Duplex, Readable, Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { createBrowserControlClient } from "../src/browser-control-client.js";
 import { attachBrowserControlDispatcher } from "../src/browser-control-dispatcher.js";
@@ -7,6 +7,8 @@ import { CuaExecutorError } from "../src/cua-executor-error.js";
 import { frame, identity, observation, pair, reply, request, setup, tick } from "./browser-control-fixture.js";
 
 const click = { kind: "click" as const, x: 12.125, y: 15.75 };
+const recording = { mimeType: "video/mp4" as const, startedAt: "2026-09-26T12:00:00.000Z", durationMs: 1200,
+  bytes: 6, audioSources: ["speaker-output" as const], complete: true };
 
 describe("browser control client and dispatcher", () => {
   it("handshakes and transfers PNG/browser state and full fractional actions over fragmented bytes", async () => {
@@ -28,6 +30,48 @@ describe("browser control client and dispatcher", () => {
     const f = setup(); const first = f.client.ready();
     await expect(f.client.executor.execute(click)).rejects.toMatchObject({ code: "executor_busy", disposition: "not_dispatched" });
     await first; expect(f.execute).not.toHaveBeenCalled(); f.close();
+  });
+  it("terminally streams the declared recording with destination backpressure", async () => {
+    const pipes = pair(), authority = new AbortController(), finishRecording = vi.fn(async () => ({
+      metadata: recording, stream: Readable.from([Buffer.from("abc"), Buffer.from("def")])
+    }));
+    const server = attachBrowserControlDispatcher({ transport: pipes.right, identity,
+      executor: { observe: async () => observation(), execute: async () => {} }, authoritySignal: authority.signal,
+      isAuthorized: () => true, finishRecording });
+    const chunks: Buffer[] = []; let writes = 0;
+    const destination = new Writable({ highWaterMark: 1, write(chunk: Buffer, _encoding, callback) {
+      writes++; setImmediate(() => { chunks.push(Buffer.from(chunk)); callback(); });
+    } });
+    const client = createBrowserControlClient({ transport: pipes.left, identity, requestTimeoutMs: 200 });
+    expect(await client.finishRecording(destination)).toEqual(recording);
+    expect(Buffer.concat(chunks).toString()).toBe("abcdef"); expect(writes).toBeGreaterThan(1);
+    expect(finishRecording).toHaveBeenCalledOnce();
+    await expect(client.executor.observe()).rejects.toMatchObject({ code: "executor_closed", disposition: "not_dispatched" });
+    client.close(); server.close();
+  });
+  it("preserves raw bytes coalesced with the terminal metadata reply", async () => {
+    const pipes = pair(), body = Buffer.from("abcdef"); let peer!: BrowserControlTransport;
+    peer = new BrowserControlTransport(pipes.right, value => {
+      const incoming = value as { operation: string; seq: number };
+      if (incoming.operation === "HELLO") { void peer.send(reply()).catch(() => {}); return; }
+      peer.handoff();
+      const bytes = Buffer.concat([frame(reply(incoming.seq, "FINISH_RECORDING", { recording })), body]);
+      pipes.right.write(bytes, () => pipes.right.destroy());
+    }, () => {});
+    const chunks: Buffer[] = [], destination = new Writable({ write(chunk: Buffer, _encoding, callback) { chunks.push(Buffer.from(chunk)); callback(); } });
+    const client = createBrowserControlClient({ transport: pipes.left, identity, requestTimeoutMs: 200 });
+    expect(await client.finishRecording(destination)).toEqual(recording);
+    expect(Buffer.concat(chunks)).toEqual(body); client.close();
+  });
+  it.each([Buffer.from("abc"), Buffer.from("abcdefg")])("rejects a recording stream whose length differs from its declaration", async body => {
+    const pipes = pair(), authority = new AbortController();
+    const server = attachBrowserControlDispatcher({ transport: pipes.right, identity,
+      executor: { observe: async () => observation(), execute: async () => {} }, authoritySignal: authority.signal,
+      isAuthorized: () => true, finishRecording: async () => ({ metadata: recording, stream: Readable.from([body]) }) });
+    const destination = new Writable({ write(_chunk, _encoding, callback) { callback(); } });
+    const client = createBrowserControlClient({ transport: pipes.left, identity, requestTimeoutMs: 200 });
+    await expect(client.finishRecording(destination)).rejects.toMatchObject({ code: "transport_failed", disposition: "outcome_uncertain" });
+    client.close(); server.close();
   });
   it("validates input and pre-aborted signals before any write", async () => {
     const f = setup(), signal = AbortSignal.abort();

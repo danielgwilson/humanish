@@ -1,4 +1,4 @@
-import type { Duplex } from "node:stream";
+import type { Duplex, Writable } from "node:stream";
 import type { CuaAction, CuaExecutor, CuaObservation } from "./computer-use.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import {
@@ -7,6 +7,8 @@ import {
   type BrowserControlIdentity, type BrowserControlReply, type BrowserControlRequest
 } from "./browser-control-protocol.js";
 import { BrowserControlTransport } from "./browser-control-transport.js";
+import { receiveBrowserControlRecording } from "./browser-control-recording-transfer.js";
+import type { DesktopRecordingMetadata } from "./desktop-recording-types.js";
 
 export interface BrowserControlClientOptions {
   transport: Duplex;
@@ -15,19 +17,27 @@ export interface BrowserControlClientOptions {
   /** Set only after the optional media runtime was admitted for this desktop. */
   speechEnabled?: boolean;
 }
-export interface BrowserControlClient { executor: CuaExecutor; ready(): Promise<void>; close(): void }
+export interface BrowserControlClient {
+  executor: CuaExecutor;
+  ready(): Promise<void>;
+  finishRecording(destination: Writable): Promise<DesktopRecordingMetadata>;
+  close(): void;
+}
 
 export function createBrowserControlClient(options: BrowserControlClientOptions): BrowserControlClient {
   const identity = validateBrowserControlIdentity(options.identity);
   const timeoutMs = options.requestTimeoutMs ?? BROWSER_CONTROL_LIMITS.requestTimeoutMs;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > BROWSER_CONTROL_LIMITS.maxRequestTimeoutMs) throw new CuaExecutorError("invalid_request", "not_dispatched");
-  let seq = 0, busy = false, ready = false, closed = false;
+  let seq = 0, busy = false, ready = false, closed = false, rawStream: Duplex | undefined;
   let pending: { request: BrowserControlRequest; written: boolean; writeComplete: boolean; reply?: BrowserControlReply;
+    destination?: Writable; raw?: Promise<void>;
     resolve: (reply: BrowserControlReply) => void; reject: (error: CuaExecutorError) => void; dispose: () => void } | undefined;
   const finish = (): void => {
     if (!pending?.reply || !pending.writeComplete) return;
     const operation = pending; pending = undefined; operation.dispose();
-    if (operation.reply!.ok) operation.resolve(operation.reply!);
+    if (operation.reply!.ok && operation.raw) {
+      void operation.raw.then(() => operation.resolve(operation.reply!), operation.reject);
+    } else if (operation.reply!.ok) operation.resolve(operation.reply!);
     else {
       const { code, disposition } = operation.reply!.error;
       if (operation.request.operation !== "EXECUTE" || code !== "action_rejected" || disposition !== "not_dispatched") transport.close(code);
@@ -43,13 +53,22 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
       || request.operation !== reply.operation || (request.operation === "EXECUTE" ? request.actionId !== reply.actionId : reply.actionId !== undefined)) {
       transport.close("protocol_mismatch"); return;
     }
+    if (request.operation === "FINISH_RECORDING" && reply.ok) {
+      if (!reply.recording || !pending.destination) { transport.close("invalid_response"); return; }
+      try {
+        rawStream = transport.handoff(); closed = true;
+        pending.raw = receiveBrowserControlRecording(rawStream, pending.destination, reply.recording.bytes);
+        void pending.raw.catch(() => {});
+      } catch { transport.close("transport_failed"); return; }
+    }
     pending.reply = reply; finish();
   }, code => {
     closed = true;
     const operation = pending; pending = undefined;
     if (operation) { operation.dispose(); operation.reject(new CuaExecutorError(code, operation.written ? "outcome_uncertain" : "not_dispatched")); }
   });
-  const exchange = (operation: "HELLO" | "OBSERVE" | "EXECUTE", action?: CuaAction, signal?: AbortSignal): Promise<BrowserControlReply> => {
+  const exchange = (operation: "HELLO" | "OBSERVE" | "EXECUTE" | "FINISH_RECORDING", action?: CuaAction,
+    signal?: AbortSignal, destination?: Writable): Promise<BrowserControlReply> => {
     if (closed) return Promise.reject(new CuaExecutorError("executor_closed", "not_dispatched"));
     if (signal?.aborted) return Promise.reject(new CuaExecutorError("cancelled", "not_dispatched"));
     if (seq >= Number.MAX_SAFE_INTEGER) { transport.close("protocol_mismatch"); return Promise.reject(new CuaExecutorError("protocol_mismatch", "not_dispatched")); }
@@ -60,7 +79,7 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
     return new Promise((resolve, reject) => {
       const abort = (): void => transport.close("cancelled");
       const timer = setTimeout(() => transport.close("deadline_exceeded"), timeoutMs);
-      const slot = { request, written: false, writeComplete: false, resolve, reject,
+      const slot = { request, written: false, writeComplete: false, resolve, reject, ...(destination ? { destination } : {}),
         dispose: () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); } };
       pending = slot; signal?.addEventListener("abort", abort, { once: true });
       void transport.send(request, () => { slot.written = true; }).then(() => {
@@ -104,5 +123,15 @@ export function createBrowserControlClient(options: BrowserControlClientOptions)
       await exchange("EXECUTE", validAction, signal);
     })
   };
-  return { executor, ready: () => withOperation(ensureReady), close: () => transport.close() };
+  return { executor, ready: () => withOperation(ensureReady),
+    finishRecording: destination => withOperation(async () => {
+      if (!destination || destination.destroyed) throw new CuaExecutorError("invalid_request", "not_dispatched");
+      try {
+        await ensureReady();
+        const reply = await exchange("FINISH_RECORDING", undefined, undefined, destination);
+        if (!reply.ok || !reply.recording) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+        return reply.recording;
+      } catch (error) { destination.destroy(); throw error; }
+    }),
+    close: () => { rawStream?.destroy(); transport.close(); } };
 }
