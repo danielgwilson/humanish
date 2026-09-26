@@ -135,6 +135,12 @@ for setup and provider limits. Speech uses the same continuing Codex participant
 not a second conversation. Do not claim that installing the CLI also installs
 Docker or Lima, or qualifies a machine for arbitrary participant counts.
 
+For continuous desktop playback, independent computer-use lanes can opt into
+`execution.desktop.recording: { audio: true }` (`false` for screen-only video).
+Screenshots remain the default. Recording does not enable camera or speech;
+the raw media stays local-only. See [desktop recording](../../docs/architecture/desktop-recording.md)
+for runtime requirements and export limits.
+
 ## Format Stack
 
 When creating or editing Humanish files:
