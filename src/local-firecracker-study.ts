@@ -1,10 +1,10 @@
+import { collectDesktopRecording } from "./desktop-recording-artifact.js";
 import path from "node:path";
 import { runLab, type LabOutcome, type RunLabOptions } from "./lab-engine.js";
 import type { LabConfig } from "./lab-config.js";
-import type { DesktopSession } from "./desktop-session.js";
 import type { DesktopLaneEvidence } from "./cua-desktop-lane.js";
 import { runCuaActorSession } from "./computer-use-actor.js";
-import { createLocalFirecrackerDesktop, type LocalFirecrackerAssets } from "./local-firecracker-desktop.js";
+import { createLocalFirecrackerDesktop, type LocalFirecrackerAssets, type LocalFirecrackerDesktop } from "./local-firecracker-desktop.js";
 import { localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
 import { prepareLocalRuntime } from "./local-runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "./restricted-codex-analysis.js";
@@ -18,6 +18,7 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
   const config = localBrowserDefaults(options.config);
   const unsupported = localBrowserUnsupportedReason(config);
   if (unsupported) throw new Error(unsupported);
+  const recording = config.execution?.desktop?.recording;
   const declaredMedia = config.execution?.desktop?.media;
   const media = declaredMedia === undefined ? undefined : guestMediaConfigSchema.parse({
     ...declaredMedia, permission: config.policies?.mediaPermission ?? "prompt"
@@ -30,12 +31,12 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
       if (!readiness.ready) throw new Error(`Codex account is not ready (${readiness.errorCode}). Run humanish doctor --lab <lab> before starting a local study.`);
     }
     return options.assets ?? await prepareLocalRuntime({
-      ...(media === undefined ? {} : { media: true }),
+      ...(media === undefined && recording === undefined ? {} : { media: true }),
       ...(options.signal ? { signal: options.signal } : {}),
       progress: message => process.stderr.write(`${message}\n`)
     });
   })();
-  const sessions: DesktopSession[] = [];
+  const sessions: LocalFirecrackerDesktop[] = [];
   const participants: ReturnType<typeof createRestrictedCodexParticipant>[] = [];
   let cleanupUnconfirmed = false;
   try {
@@ -45,14 +46,15 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
         return options.automaticAnalysis?.onStart?.();
       } },
       cuaHooks: {
-        createDesktopLane(spec, warnings) {
-          let session: DesktopSession | undefined;
+        createDesktopLane(spec, warnings, artifactRoot) {
+          let session: LocalFirecrackerDesktop | undefined;
           let finalizing: Promise<void> | undefined;
           const evidence: DesktopLaneEvidence = { killed: false, streamUrlPresent: false, stateStepRecords: [], phaseRecords: [] };
           return {
             async prepare() {
               session = await createLocalFirecrackerDesktop({ assets: await assets(),
                 ...(media === undefined ? {} : { media }),
+                ...(recording === undefined ? {} : { recording }),
                 appUrl: spec.targetUrl ?? config.subject.appUrl!, outputRoot: path.join(options.cwd, ".humanish", "local-runtime"),
                 ...(options.signal === undefined ? {} : { signal: options.signal }) });
               sessions.push(session);
@@ -70,6 +72,11 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
             finalize() {
               return finalizing ??= (async () => {
                 if (!session) return;
+                if (recording) {
+                  const desktop = session;
+                  try { evidence.recording = await collectDesktopRecording(artifactRoot, spec.laneId, destination => desktop.finishRecording(destination)); }
+                  catch { warnings.push("Desktop video/audio recording could not be retained. Screenshots and participant evidence remain available."); }
+                }
                 try { evidence.killed = (await session.close()).status === "released"; }
                 catch { evidence.killed = false; }
                 if (!evidence.killed) { cleanupUnconfirmed = true; warnings.push("Local desktop cleanup is unconfirmed."); }

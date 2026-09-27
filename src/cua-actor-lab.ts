@@ -1,3 +1,4 @@
+import type { RunDesktopRecording } from "./desktop-recording-types.js";
 import { e2bDesktopTemplate } from "./e2b-desktop-media.js";
 import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
@@ -302,7 +303,7 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    */
   buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; lane?: CuaLaneSpec; executor: CuaExecutor }) => Promise<CuaProvider>;
   /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
-  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[]) => CuaDesktopLane;
+  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[], artifactRoot: PreparedOutputDirectory) => CuaDesktopLane;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -1093,7 +1094,7 @@ export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
 
 export interface CuaLaneDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
-  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[]) => CuaDesktopLane;
+  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[], artifactRoot: PreparedOutputDirectory) => CuaDesktopLane;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;
@@ -1183,6 +1184,7 @@ export interface LaneRunOutcome {
   desktopBrowser?: DesktopBrowserEvidence;
   /** Requested + measured desktop/browser geometry. Viewport is absent when measurement failed. */
   desktopGeometry?: RunDesktopGeometry;
+  recording?: RunDesktopRecording;
   stateStepRecords: RunSubjectStateStepRecord[];
   /** Completed subject-phase records (clone/upload/extract/install/build/ready/state groups),
    *  folded into bundle.events at build time. Empty on the in-process route (no provisioning). */
@@ -1502,7 +1504,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       deps.signalProvisioned(ok);
     }
   };
-  const desktopLane = deps.createDesktopLane?.(spec, warnings) ?? createE2BCuaDesktopLane(spec, deps, warnings);
+  const desktopLane = deps.createDesktopLane?.(spec, warnings, deps.artifactRoot) ?? createE2BCuaDesktopLane(spec, deps, warnings);
   try {
     await desktopLane.prepare();
     const ready = await desktopLane.openSession();
@@ -2121,6 +2123,9 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   if (inProcessRoute && config.comms?.email?.kind === "real") return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "Real email receiving requires hosted participant desktops.", descriptor.id);
   if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
     return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.", descriptor.id);
+  }
+  if (inProcessRoute && config.execution?.desktop?.recording !== undefined) {
+    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.recording is not provisioned by a caller-supplied executor.", descriptor.id);
   }
   const localAppSubject = config.subject.source === "local-app";
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
@@ -3148,6 +3153,7 @@ function buildSingleLaneBundle(args: {
     desktopRoute: !args.inProcessRoute,
     feedbackSubstrate: args.inProcessRoute ? "local-filesystem" : args.config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
+    ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     isMobile: spec.devicePreset.isMobile,
     runId: args.runId,
     screenshots: outcome?.screenshots ?? [],
@@ -3564,6 +3570,7 @@ export function buildCuaBundle(args: {
   feedbackSubstrate?: RunFeedbackCandidate["substrate"];
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
+  recording?: RunDesktopRecording;
   /** Device-preset touch metadata echoed on the measured stream viewport (a prompt signal on
    *  this route, never a rendered claim); the measured width/height/DPR stay authoritative. */
   isMobile?: boolean;
@@ -3698,6 +3705,7 @@ export function buildCuaBundle(args: {
           }
         }),
     ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
+    ...(args.recording === undefined ? {} : { recording: args.recording }),
     ui: {
       route: publicAppUrl,
       intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
@@ -3717,6 +3725,7 @@ export function buildCuaBundle(args: {
       ...(args.commsArtifactPath
         ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
         : []),
+      ...(args.recording ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }] : []),
       ...args.screenshots.map((screenshot, index) => ({
         label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
         path: screenshot,
@@ -4137,6 +4146,7 @@ export function buildCuaFanoutBundle(args: {
             }
           }),
       desktopGeometry,
+      ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
       ui: {
         route: publicLaneAppUrl,
         intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
@@ -4155,6 +4165,7 @@ export function buildCuaFanoutBundle(args: {
         ...(outcome?.commsArtifactPath
           ? [{ label: `lane ${spec.laneId} comms thread`, path: outcome.commsArtifactPath, kind: "log" as const }]
           : []),
+        ...(outcome?.recording ? [{ label: "desktop recording", path: outcome.recording.path, kind: "recording" as const }] : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `lane ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,

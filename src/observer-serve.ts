@@ -203,7 +203,7 @@ export function createServeRequestHandler(
         }
         // The explicit empty runtimeStreamUrls keeps a future refactor from
         // reintroducing auth-keyed stream injection on the serve surface.
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, []);
+        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, [], request);
         return;
       }
 

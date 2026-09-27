@@ -11,10 +11,10 @@ export function frame(value: unknown): Buffer {
   const body = Buffer.from(JSON.stringify(value)); const result = Buffer.alloc(body.length + 4);
   result.writeUInt32BE(body.length); body.copy(result, 4); return result;
 }
-export function request(seq = 1, operation: "HELLO" | "OBSERVE" | "EXECUTE" = "HELLO", extra = {}): object {
+export function request(seq = 1, operation: "HELLO" | "OBSERVE" | "EXECUTE" | "FINISH_RECORDING" = "HELLO", extra = {}): object {
   return { version: 1, type: "request", identity, seq, requestId: `request-${seq}`, operation, ...extra };
 }
-export function reply(seq = 1, operation: "HELLO" | "OBSERVE" | "EXECUTE" = "HELLO", extra = {}): object {
+export function reply(seq = 1, operation: "HELLO" | "OBSERVE" | "EXECUTE" | "FINISH_RECORDING" = "HELLO", extra = {}): object {
   return { version: 1, type: "reply", identity, seq, requestId: `request-${seq}`, operation, ok: true, ...extra };
 }
 export function pair(fragment = false): { left: Duplex; right: Duplex; leftWrites: Buffer[]; rightWrites: Buffer[] } {

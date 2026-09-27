@@ -3,6 +3,7 @@ import { CuaExecutorError } from "../src/cua-executor-error.js";
 import { BROWSER_CONTROL_LIMITS, decodeBrowserControlObservation, encodeBrowserControlObservation, parseBrowserControlRequest,
   parseBrowserControlReply, safeBrowserControlFailure, validateBrowserControlAction, validateBrowserControlPng } from "../src/browser-control-protocol.js";
 import { observation, png, request, reply } from "./browser-control-fixture.js";
+import { DESKTOP_RECORDING_MAX_BYTES } from "../src/desktop-recording-types.js";
 
 describe("browser control closed v1 protocol", () => {
   it.each([
@@ -33,6 +34,14 @@ describe("browser control closed v1 protocol", () => {
     reply(1, "HELLO", { actionId: "action-1" }), reply(2, "EXECUTE"), reply(2, "OBSERVE"),
     reply(1, "HELLO", { extra: true }), reply(1, "HELLO", { ok: false, error: { code: "secret text", disposition: "not_dispatched" } })
   ])("rejects inconsistent replies", value => expect(() => parseBrowserControlReply(value)).toThrow(CuaExecutorError));
+  it("admits only bounded recording metadata on the terminal owner operation", () => {
+    const metadata = { mimeType: "video/mp4", startedAt: "2026-09-26T12:00:00.000Z", durationMs: 1200,
+      bytes: 5, audioSources: ["speaker-output"], complete: true };
+    expect(parseBrowserControlRequest(request(2, "FINISH_RECORDING"))).toHaveProperty("operation", "FINISH_RECORDING");
+    expect(parseBrowserControlReply(reply(2, "FINISH_RECORDING", { recording: metadata }))).toHaveProperty("recording", metadata);
+    expect(() => parseBrowserControlReply(reply(2, "FINISH_RECORDING", { recording: { ...metadata, bytes: DESKTOP_RECORDING_MAX_BYTES + 1 } }))).toThrow(CuaExecutorError);
+    expect(() => parseBrowserControlReply(reply(2, "HELLO", { recording: metadata }))).toThrow(CuaExecutorError);
+  });
   it("round trips actual PNG bytes and bounded runtime browser state", () => {
     const original = { ...observation(), heardSpeech: [{ id: "utterance-1", source: "speaker_audio" as const,
       text: "Can you hear me?", durationMs: 850 }] };

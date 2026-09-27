@@ -1,10 +1,10 @@
 # Current Goals
 
-Status date: 2026-09-26. Source baseline: `0.102.0`.
+Status date: 2026-09-26. Source baseline: `0.103.0`.
 
-This page guides work on current source. Version `0.102.0` adds optional camera
-and speech; its [release note](../release/0.102.0-participant-media.md) records
-Linux and Mac conversations, validated analysis and the remaining media limits.
+This page guides work on current source. Version `0.103.0` adds optional desktop
+video and audio; its [release note](../release/0.103.0-desktop-recording.md)
+records the supported routes, playback behavior and local-only evidence limits.
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -89,7 +89,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.102.0`)
+## Current Program Truth (source `0.103.0`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |

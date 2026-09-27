@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { CuaAction, CuaObservation } from "./computer-use.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
 import { CuaExecutorError, isCuaExecutorError, type CuaExecutorErrorCode } from "./cua-executor-error.js";
+import { desktopRecordingMetadataSchema } from "./desktop-recording-types.js";
 
 export const BROWSER_CONTROL_VERSION = 1;
 export const BROWSER_CONTROL_LIMITS = Object.freeze({
@@ -62,12 +63,13 @@ const common = {
 const requestSchema = z.discriminatedUnion("operation", [
   z.strictObject({ ...common, type: z.literal("request"), operation: z.literal("HELLO") }),
   z.strictObject({ ...common, type: z.literal("request"), operation: z.literal("OBSERVE") }),
-  z.strictObject({ ...common, type: z.literal("request"), operation: z.literal("EXECUTE"), actionId: token, action: browserControlActionSchema })
+  z.strictObject({ ...common, type: z.literal("request"), operation: z.literal("EXECUTE"), actionId: token, action: browserControlActionSchema }),
+  z.strictObject({ ...common, type: z.literal("request"), operation: z.literal("FINISH_RECORDING") })
 ]);
 const errorCode = z.enum(["executor_closed", "executor_not_ready", "executor_busy", "cancelled", "invalid_request", "invalid_response", "protocol_mismatch", "session_revoked", "transport_failed", "deadline_exceeded", "action_rejected", "execution_failed"]);
-const replyBase = { ...common, type: z.literal("reply"), operation: z.enum(["HELLO", "OBSERVE", "EXECUTE"]), actionId: token.optional() };
+const replyBase = { ...common, type: z.literal("reply"), operation: z.enum(["HELLO", "OBSERVE", "EXECUTE", "FINISH_RECORDING"]), actionId: token.optional() };
 const replySchema = z.discriminatedUnion("ok", [
-  z.strictObject({ ...replyBase, ok: z.literal(true), observation: observationSchema.optional() }),
+  z.strictObject({ ...replyBase, ok: z.literal(true), observation: observationSchema.optional(), recording: desktopRecordingMetadataSchema.optional() }),
   z.strictObject({ ...replyBase, ok: z.literal(false), error: z.strictObject({ code: errorCode, disposition: z.enum(["not_dispatched", "outcome_uncertain"]) }) })
 ]);
 export type BrowserControlRequest = z.infer<typeof requestSchema>;
@@ -92,7 +94,8 @@ export function parseBrowserControlReply(value: unknown): BrowserControlReply {
   if (!parsed.success) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
   const reply = parsed.data;
   if ((reply.operation === "EXECUTE") !== (reply.actionId !== undefined)
-    || (reply.ok && (reply.operation === "OBSERVE") !== (reply.observation !== undefined))) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
+    || (reply.ok && ((reply.operation === "OBSERVE") !== (reply.observation !== undefined)
+      || (reply.operation === "FINISH_RECORDING") !== (reply.recording !== undefined)))) throw new CuaExecutorError("invalid_response", "outcome_uncertain");
   return reply;
 }
 export function validateBrowserControlAction(value: unknown): CuaAction {

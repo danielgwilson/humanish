@@ -10,6 +10,7 @@ export class BrowserControlTransport {
   private payload: Buffer | undefined;
   private payloadUsed = 0;
   private ended = false;
+  private handedOff = false;
   private sending = false;
   private pendingWrite: ((error: CuaExecutorError) => void) | undefined;
   private frameTimer: ReturnType<typeof setTimeout> | undefined;
@@ -51,13 +52,29 @@ export class BrowserControlTransport {
         this.payload = undefined; this.payloadUsed = 0; this.headerUsed = 0;
         try { this.onFrame(JSON.parse(this.decoder.decode(frame))); }
         catch { this.close("invalid_response"); }
+        if (this.handedOff) {
+          if (offset < chunk.length) this.stream.unshift(chunk.subarray(offset));
+          return;
+        }
       }
     }
   };
+  /** Relinquish the live byte stream synchronously after a complete frame. */
+  handoff(): Duplex {
+    if (this.ended || this.handedOff || this.payload !== undefined || this.headerUsed !== 0) {
+      throw new CuaExecutorError("transport_failed", "outcome_uncertain");
+    }
+    this.handedOff = true;
+    clearTimeout(this.frameTimer); this.frameTimer = undefined;
+    this.stream.pause();
+    this.stream.off("data", this.data); this.stream.off("end", this.end); this.stream.off("close", this.end);
+    this.stream.off("error", this.error);
+    return this.stream;
+  }
   private error = (): void => { this.close("transport_failed"); };
   private end = (): void => { this.close(this.payload || this.headerUsed ? "invalid_response" : "transport_failed"); };
   send(value: unknown, beforeWrite: () => void = () => {}): Promise<void> {
-    if (this.ended) return Promise.reject(new CuaExecutorError("executor_closed", "not_dispatched"));
+    if (this.ended || this.handedOff) return Promise.reject(new CuaExecutorError("executor_closed", "not_dispatched"));
     if (this.sending) return Promise.reject(new CuaExecutorError("executor_busy", "not_dispatched"));
     let payload: Buffer;
     try {
@@ -86,7 +103,7 @@ export class BrowserControlTransport {
     });
   }
   close(code: CuaExecutorErrorCode = "executor_closed"): void {
-    if (this.ended) return;
+    if (this.ended || this.handedOff) return;
     this.ended = true; this.payload = undefined; this.headerUsed = 0; this.payloadUsed = 0;
     clearTimeout(this.frameTimer); this.frameTimer = undefined;
     this.stream.off("data", this.data); this.stream.off("end", this.end); this.stream.off("close", this.end);

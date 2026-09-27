@@ -253,6 +253,22 @@ describe("serve: loopback mode", () => {
     await writeFile(path.join(cwd, ".humanish", "outside.txt"), "outside-proof-root marker\n", "utf8");
   });
 
+  it("streams a single byte range from run-contained video through the library route", async () => {
+    const bytes = Buffer.from([10, 11, 12, 13, 14, 15]);
+    const recordings = path.join(cwd, ".humanish", "runs", "run-alpha", "recordings");
+    await mkdir(recordings, { recursive: true });
+    await writeFile(path.join(recordings, "participant.mp4"), bytes);
+    const server = await startLibrary(cwd);
+    const response = await rawRequest(server.port, "/_humanish/runs/run-alpha/recordings/participant.mp4", {
+      headers: { range: "bytes=-3" }
+    });
+    expect(response.status).toBe(206);
+    expect(response.headers["content-type"]).toBe("video/mp4");
+    expect(response.headers["accept-ranges"]).toBe("bytes");
+    expect(response.headers["content-range"]).toBe("bytes 3-5/6");
+    expect(response.bodyBytes).toEqual(bytes.subarray(3));
+  });
+
   it("(6) GET / serves the library HTML listing fixture runs with the latest highlighted", async () => {
     const server = await startLibrary(cwd);
     expect(server.mode).toBe("loopback");

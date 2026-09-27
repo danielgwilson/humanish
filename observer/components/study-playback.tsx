@@ -14,7 +14,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
   const duration = Math.max(0, (recording.endMs ?? start) - start);
   const unavailable = reviewing && atMs !== null && (recording.startMs === null || recording.endMs === null || atMs < recording.startMs || atMs > recording.endMs);
   const elapsed = Math.max(0, Math.min(duration, (atMs ?? start) - start));
-  const timed = [...recording.lanes.values()].filter((lane) => lane.times?.length).length;
+  const timed = [...recording.lanes.values()].filter((lane) => lane.times?.length || lane.media).length;
   return <div className="study-playback" role="region" aria-label="Study playback">
     <div className="study-playback-controls">
       <IconButton className="tbtn" label={playing ? "Pause study" : "Play study"} hint={playing ? "Pause study recording" : "Play all recorded participants"}
@@ -43,7 +43,7 @@ export function StudyPlayback({ recording, atMs, reviewing, playing, speed, canF
           <label className="study-playback-speed"><span>Speed</span><Select label="Study playback speed" value={String(speed)} onValueChange={(value) => onSpeed(Number(value))}
             options={[.5, 1, 2, 4, 8].map((value) => ({ value: String(value), label: `${value}×` }))} /></label>
           <button type="button" className="review-tool study-playback-latest" disabled={!reviewing} onClick={onLatest}>{canFollow ? "Follow live" : "Latest captures"}</button>
-          <p className="study-playback-note">{timed ? <>{reviewing ? "Study capture time" : "Latest previews"} · {timed} of {recording.lanes.size} participants with capture timestamps. Screens hold until the next capture.</>
+          <p className="study-playback-note">{timed ? <>{reviewing ? "Study timeline" : "Latest previews"} · {timed} of {recording.lanes.size} participants with timed screenshots or desktop video. Screens hold until the next capture.</>
             : "Capture timing unavailable. Open a participant to review their recorded evidence."}</p>
         </div>
       </Popover>

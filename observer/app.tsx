@@ -160,7 +160,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
     };
     window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
   }, [selected, comparison, monitoring, source]);
-  const model = useMemo(() => selected && !(route.eventId && route.frame === null) ? buildPlayerModel(selected) ?? ((isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected, route.eventId, route.frame]);
+  const model = useMemo(() => selected && !(route.eventId && route.frame === null) ? buildPlayerModel(selected) ?? (selected.recording || (isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) || (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null) ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const } : null) : null, [selected, route.eventId, route.frame]);
   const selectedLane = selected ? studyPlayback.recording.lanes.get(selected.id) : undefined;
   // A poll may add or remove timestamps. Only deliberate navigation changes
   // clock ownership; switching mid-review would expose another clock's state.
@@ -169,7 +169,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const eligiblePlayer = !!selected && !!model && source.kind === "participants";
   const [playerOwnership, setPlayerOwnership] = useState<{ key: string; shared: boolean } | null>(null);
   const ownership = playerOwnership?.key === ownershipKey ? playerOwnership
-    : { key: ownershipKey, shared: selectedLane?.times !== null || !selectedLane?.model };
+    : { key: ownershipKey, shared: selectedLane?.media !== null || selectedLane?.times !== null || !selectedLane?.model };
   if (eligiblePlayer && playerOwnership !== ownership) setPlayerOwnership(ownership);
   const sharedPlayer = eligiblePlayer && ownership.shared;
   const appliedNavigation = useRef("");

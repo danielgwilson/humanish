@@ -1,18 +1,24 @@
-import type { Duplex } from "node:stream";
+import type { Duplex, Readable } from "node:stream";
 import type { CuaExecutor } from "./computer-use.js";
 import { attachBrowserControlDispatcher } from "./browser-control-dispatcher.js";
 import { encodeGuestBootstrap, GuestBootstrapReader, GUEST_BOOTSTRAP_LIMITS, guestReadyTimeoutMs } from "./guest-bootstrap.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import type { GuestMediaConfig } from "./guest-media-config.js";
+import type { DesktopRecordingConfig, DesktopRecordingMetadata } from "./desktop-recording-types.js";
 
-export interface GuestRuntimeDesktop { executor: CuaExecutor; close(): Promise<{ complete: boolean }> }
+export interface GuestRuntimeDesktop {
+  executor: CuaExecutor;
+  finishRecording?(): Promise<{ metadata: DesktopRecordingMetadata; stream: Readable }>;
+  close(): Promise<{ complete: boolean }>;
+}
 export interface GuestRuntimeOptions {
   transport: Duplex;
   revision: string;
   signal: AbortSignal;
   /** Fixed private supervision channel, not browser-control output. */
   marker(value: "A" | "R"): void;
-  createDesktop(signal: AbortSignal, onTerminal: () => void, initialUrl?: string, media?: GuestMediaConfig): Promise<GuestRuntimeDesktop>;
+  createDesktop(signal: AbortSignal, onTerminal: () => void, initialUrl?: string, media?: GuestMediaConfig,
+    recording?: DesktopRecordingConfig): Promise<GuestRuntimeDesktop>;
 }
 
 /** One admitted desktop and one dispatcher. The owner retains physical teardown. */
@@ -65,7 +71,7 @@ export async function runGuestRuntime(options: GuestRuntimeOptions): Promise<{ c
     clearTimeout(timer);
     timer = setTimeout(() => { void close(); }, guestReadyTimeoutMs(reader.initialUrl));
     options.marker("A");
-    preparing = options.createDesktop(authority, terminal, reader.initialUrl, reader.media);
+    preparing = options.createDesktop(authority, terminal, reader.initialUrl, reader.media, reader.recording);
     desktop = await Promise.race([preparing, new Promise<never>((_, reject) => {
       const stop = (): void => reject(new CuaExecutorError("session_revoked", "not_dispatched"));
       authority.addEventListener("abort", stop, { once: true });
@@ -75,7 +81,8 @@ export async function runGuestRuntime(options: GuestRuntimeOptions): Promise<{ c
     if (authority.aborted) throw new CuaExecutorError("session_revoked", "not_dispatched");
     reader.handoff();
     dispatcher = attachBrowserControlDispatcher({ transport: options.transport, identity, executor: desktop.executor,
-      authoritySignal: authority, isAuthorized: () => !authority.aborted });
+      authoritySignal: authority, isAuthorized: () => !authority.aborted,
+      ...(desktop.finishRecording ? { finishRecording: desktop.finishRecording } : {}) });
     // No await in this handoff: an immediate HELLO already has its sole receiver.
     options.transport.write(encodeGuestBootstrap(identity, true), error => { if (error) terminal(); });
     options.transport.resume();

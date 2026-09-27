@@ -28,7 +28,7 @@ let root: Root;
 function control(index = 1, overrides: Partial<StudyPlayerControl> = {}): StudyPlayerControl {
   return {
     moment: { kind: "capture", frame: model.frames[index]!, ageMs: 0, coverage: "within" },
-    reviewing: true, playing: false, eventId: null,
+    atMs: model.frames[index]!.atMs ?? null, reviewing: true, playing: false, speed: 1, seekRevision: 0, eventId: null,
     onSeekFrame: vi.fn(), onToggle: vi.fn(), onLive: vi.fn(), ...overrides
   };
 }
@@ -164,5 +164,46 @@ describe("Player projects the shared study clock", () => {
     await click('[aria-label="Fullscreen"]');
     expect(request).toHaveBeenCalledOnce();
     expect(main.querySelector("[data-study-dock]")).not.toBeNull();
+  });
+
+  it("presents media-only evidence without empty screenshot navigation", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const mediaOnly = structuredClone(stream);
+    mediaOnly.actor!.items = [];
+    mediaOnly.recording = {
+      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
+      audioSources: ["speaker-output"], complete: true
+    };
+    await render(control(0, {
+      moment: { kind: "no-captures" }, atMs: Date.parse(mediaOnly.recording.startedAt) + 5000
+    }), { stream: mediaOnly, model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" } });
+
+    expect(container.querySelector("video")).not.toBeNull();
+    expect(container.textContent).toContain("Desktop video · 25s");
+    expect(container.textContent).toContain("No recorded screenshots");
+    expect(container.querySelector('[aria-label="Previous frame"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Next frame"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Image zoom"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Recorded frames"]')).toBeNull();
+    expect(container.textContent).not.toContain("0 / 0");
+    expect(container.querySelector(".player-mode")?.textContent).toContain("Desktop video · 2026-09-01T10:00:05.000Z");
+  });
+
+  it("falls back to the selected screenshot when desktop video cannot load", async () => {
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+    const recorded = structuredClone(stream);
+    recorded.recording = {
+      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
+      audioSources: ["speaker-output"], complete: true
+    };
+    await render(control(1), { stream: recorded });
+    const video = container.querySelector("video")!;
+    await act(async () => video.dispatchEvent(new Event("error")));
+
+    expect(container.querySelector("video")).toBeNull();
+    expect(frameSource()).toBe("../screenshots/b.png");
+    expect(container.textContent).toContain("Desktop video could not load; showing recorded screenshot evidence when available.");
   });
 });

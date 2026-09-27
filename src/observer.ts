@@ -1,8 +1,8 @@
 import { listenOnLoopback } from "./listen.js";
 import { execSync, spawn } from "node:child_process";
 import { constants as fsConstants, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
-import { createServer, type Server, type ServerResponse } from "node:http";
-import { lstat, open, realpath } from "node:fs/promises";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -382,11 +382,11 @@ export async function serveObserver(
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runRoute.runId === result.run ? runtimeStreamUrls() : []);
+        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runRoute.runId === result.run ? runtimeStreamUrls() : [], request);
         return;
       }
 
-      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls());
+      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls(), request);
     } catch {
       writeResponse(response, 500, "Observer request failed", "text/plain; charset=utf-8");
     }
@@ -637,7 +637,8 @@ export async function serveRunPath(
   runRoot: PinnedDirectory,
   relativePath: string,
   response: ServerResponse,
-  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
+  request?: Pick<IncomingMessage, "method" | "headers">
 ): Promise<void> {
   const root = runRoot.physicalPath;
   const filePath = path.resolve(root, relativePath === "" ? "observer/index.html" : relativePath);
@@ -683,6 +684,11 @@ export async function serveRunPath(
 
   if (cleanedRelativePath === "observer/study-analysis.json") {
     writeResponse(response, 200, JSON.stringify(await readObserverAnalysis(runRoot)), "application/json; charset=utf-8");
+    return;
+  }
+
+  if (path.extname(filePath).toLowerCase() === ".mp4") {
+    await serveContainedMedia(runRoot, filePath, response, request);
     return;
   }
 
@@ -856,46 +862,111 @@ export function matchRunRoute(pathname: string): { runId: string; relativePath: 
 }
 
 async function readContainedFile(root: PinnedDirectory, filePathInput: string): Promise<Buffer | null> {
-  const filePath = path.resolve(filePathInput);
-  if (!isPathInside(root.physicalPath, filePath)) {
+  const opened = await openContainedFile(root, filePathInput);
+  if (!opened) return null;
+  try {
+    const body = await opened.handle.readFile();
+    await assertPinnedDirectory(root);
+    return body;
+  } catch {
     return null;
+  } finally {
+    await opened.handle.close();
   }
+}
 
+async function openContainedFile(root: PinnedDirectory, filePathInput: string): Promise<{ handle: FileHandle; size: number } | null> {
+  const filePath = path.resolve(filePathInput);
+  if (!isPathInside(root.physicalPath, filePath)) return null;
+  let handle: FileHandle | null = null;
   try {
     await assertPinnedDirectory(root);
     const expectedStats = await inspectContainedRegularFile(root, filePath);
-    if (!expectedStats) {
+    if (!expectedStats) return null;
+    handle = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    const openedStats = await handle.stat({ bigint: true });
+    if (!openedStats.isFile() || openedStats.nlink !== 1n || openedStats.dev !== expectedStats.dev || openedStats.ino !== expectedStats.ino) {
+      await handle.close();
       return null;
     }
-
-    const handle = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
-    try {
-      const openedStats = await handle.stat({ bigint: true });
-      if (
-        !openedStats.isFile()
-        || openedStats.nlink !== 1n
-        || openedStats.dev !== expectedStats.dev
-        || openedStats.ino !== expectedStats.ino
-      ) {
-        return null;
-      }
-      const recheckedStats = await inspectContainedRegularFile(root, filePath);
-      if (
-        !recheckedStats
-        || recheckedStats.dev !== expectedStats.dev
-        || recheckedStats.ino !== expectedStats.ino
-      ) {
-        return null;
-      }
-      await assertPinnedDirectory(root);
-      const body = await handle.readFile();
-      await assertPinnedDirectory(root);
-      return body;
-    } finally {
+    const recheckedStats = await inspectContainedRegularFile(root, filePath);
+    if (!recheckedStats || recheckedStats.dev !== expectedStats.dev || recheckedStats.ino !== expectedStats.ino) {
       await handle.close();
+      return null;
     }
+    await assertPinnedDirectory(root);
+    return { handle, size: Number(openedStats.size) };
   } catch {
+    if (handle) await handle.close().catch(() => undefined);
     return null;
+  }
+}
+
+function byteRange(value: string | string[] | undefined, size: number): { start: number; end: number } | "invalid" | null {
+  if (value === undefined) return null;
+  if (Array.isArray(value) || value.includes(",")) return "invalid";
+  const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
+  if (!match || (!match[1] && !match[2]) || size <= 0) return "invalid";
+  if (!match[1]) {
+    const suffix = Number(match[2]);
+    if (!Number.isSafeInteger(suffix) || suffix <= 0) return "invalid";
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+  const start = Number(match[1]);
+  const requestedEnd = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd) || start < 0 || requestedEnd < start || start >= size) return "invalid";
+  return { start, end: Math.min(requestedEnd, size - 1) };
+}
+
+async function serveContainedMedia(
+  root: PinnedDirectory,
+  filePath: string,
+  response: ServerResponse,
+  request?: Pick<IncomingMessage, "method" | "headers">
+): Promise<void> {
+  const opened = await openContainedFile(root, filePath);
+  if (!opened) {
+    writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
+    return;
+  }
+  const range = byteRange(request?.headers.range, opened.size);
+  if (range === "invalid") {
+    await opened.handle.close();
+    response.writeHead(416, { ...buildArtifactSecurityHeaders(), "accept-ranges": "bytes", "content-range": `bytes */${opened.size}`, "content-length": "0" });
+    response.end();
+    return;
+  }
+  const start = range?.start ?? 0;
+  const end = range?.end ?? Math.max(0, opened.size - 1);
+  const status = range ? 206 : 200;
+  response.writeHead(status, {
+    ...buildArtifactSecurityHeaders(),
+    "accept-ranges": "bytes",
+    "content-type": "video/mp4",
+    "content-length": String(opened.size === 0 ? 0 : end - start + 1),
+    ...(range ? { "content-range": `bytes ${start}-${end}/${opened.size}` } : {})
+  });
+  if (request?.method === "HEAD" || opened.size === 0) {
+    await opened.handle.close();
+    response.end();
+    return;
+  }
+  let stream: ReturnType<FileHandle["createReadStream"]> | undefined;
+  try {
+    stream = opened.handle.createReadStream({ start, end, autoClose: false });
+    await new Promise<void>((resolve, reject) => {
+      stream!.once("error", reject);
+      response.once("finish", resolve);
+      response.once("close", resolve);
+      stream!.pipe(response);
+    });
+  } catch {
+    // Headers already describe a fixed byte interval. A late disk/read failure
+    // cannot become a second HTTP response; terminate the incomplete body.
+    response.destroy();
+  } finally {
+    stream?.destroy();
+    await opened.handle.close().catch(() => undefined);
   }
 }
 

@@ -575,6 +575,8 @@ export interface LabExecutionDesktop {
   fidelity?: LabDesktopFidelity;
   /** Synthetic media devices behind the browser's own permission prompt (#509). */
   media?: LabDesktopMedia;
+  /** Optional retained screen video. Capture is independent of participant media input. */
+  recording?: { audio: boolean };
 }
 
 /**
@@ -1497,6 +1499,10 @@ export function desktopMediaValidationReason(
   config: LabConfig,
   supportsMedia = routesToComputerUse(config)
 ): string | undefined {
+  if (config.execution?.desktop?.recording !== undefined
+    && (!supportsMedia || config.subject.topology === "shared-world" || config.subject.source === "local-app")) {
+    return "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route.";
+  }
   const media = config.execution?.desktop?.media;
   if (media === undefined) return undefined;
   if (media.microphone !== undefined && media.microphone.source !== "speech") {
@@ -3045,6 +3051,13 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
     return { ok: true, value: undefined };
   }
   const desktop: LabExecutionDesktop = {};
+  if (raw.recording !== undefined) {
+    if (!isRecord(raw.recording) || typeof raw.recording.audio !== "boolean"
+      || Object.keys(raw.recording).some(key => key !== "audio")) {
+      return invalid("`execution.desktop.recording` must be { audio: true|false }; omit it for snapshots only.");
+    }
+    desktop.recording = { audio: raw.recording.audio };
+  }
   if (raw.device !== undefined) {
     const device = str(raw.device);
     if (!device || !isDevicePresetName(device)) {

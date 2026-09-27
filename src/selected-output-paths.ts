@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, mkdir, open, realpath, rename, unlink } from "node:fs/promises";
+import { lstat, mkdir, open, realpath, rename, unlink, type FileHandle } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -228,6 +228,19 @@ export async function readContainedRegularFile(
   rootInput: PreparedOutputRoot,
   relativePath: string
 ): Promise<Buffer | null> {
+  const handle = await openContainedRegularFile(rootInput, relativePath);
+  if (!handle) return null;
+  try { return await handle.readFile(); }
+  catch { return null; }
+  finally { await handle.close().catch(() => {}); }
+}
+
+/** The caller owns this checked descriptor and must close it after reading/streaming. */
+export async function openContainedRegularFile(
+  rootInput: PreparedOutputRoot,
+  relativePath: string
+): Promise<FileHandle | null> {
+  let handle: FileHandle | undefined;
   try {
     assertSafeRelativeOutputPath(relativePath, false);
     const root = await resolveOutputRoot(rootInput);
@@ -244,27 +257,24 @@ export async function readContainedRegularFile(
     if (!isPathInside(root, physicalFile)) {
       return null;
     }
-    const handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
-    try {
-      const after = await handle.stat({ bigint: true });
-      if (
-        !after.isFile()
-        || after.nlink > 1n
-        || after.dev !== before.dev
-        || after.ino !== before.ino
-      ) {
-        return null;
-      }
-      const revalidatedRoot = await resolveOutputRoot(rootInput);
-      if (revalidatedRoot !== root) {
-        return null;
-      }
-      await assertContainedDirectoryChain(root, path.dirname(candidate));
-      return await handle.readFile();
-    } finally {
-      await handle.close();
+    handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const after = await handle.stat({ bigint: true });
+    if (
+      !after.isFile()
+      || after.nlink > 1n
+      || after.dev !== before.dev
+      || after.ino !== before.ino
+    ) {
+      throw new Error("Artifact identity changed.");
     }
+    const revalidatedRoot = await resolveOutputRoot(rootInput);
+    if (revalidatedRoot !== root) {
+      throw new Error("Artifact root changed.");
+    }
+    await assertContainedDirectoryChain(root, path.dirname(candidate));
+    return handle;
   } catch {
+    await handle?.close().catch(() => {});
     return null;
   }
 }

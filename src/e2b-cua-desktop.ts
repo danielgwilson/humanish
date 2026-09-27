@@ -16,6 +16,8 @@ import type { CuaActorLabErrorCode, CuaLaneDeps, CuaLaneSpec } from "./cua-actor
 import type { CuaDesktopLane, DesktopLaneEvidence, ReadyCuaDesktop } from "./cua-desktop-lane.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 import type { OwnedDesktopAllocation } from "./desktop-session.js";
+import { collectDesktopRecording } from "./desktop-recording-artifact.js";
+import type { RunDesktopRecording } from "./desktop-recording-types.js";
 import {
   BROWSER_SETTLE_MS,
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -41,6 +43,7 @@ import {
 } from "./e2b-cua-provisioning.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "./e2b-desktop-executor.js";
 import { e2bDesktopTemplate, startE2BDesktopMedia } from "./e2b-desktop-media.js";
+import { startE2BDesktopRecording } from "./e2b-desktop-recording.js";
 import {
   loadE2BDesktopModule,
   type E2BDesktopSandbox
@@ -161,6 +164,8 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
   let allocation: OwnedDesktopAllocation | undefined;
   let desktop: E2BDesktopSandbox | undefined;
   let speech: Awaited<ReturnType<typeof startE2BDesktopMedia>> | undefined;
+  let recording: Awaited<ReturnType<typeof startE2BDesktopRecording>> | undefined;
+  let recordingEvidence: RunDesktopRecording | undefined;
   const mediaStop = new AbortController();
   let preparationStarted = false;
   let prepared = false;
@@ -372,15 +377,26 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       });
     }
 
+    const requestedFidelity = config.execution?.desktop?.fidelity;
+    const requestedMedia = config.execution?.desktop?.media;
+    if (!desktopCliRoute && requestedMedia?.microphone?.source === "speech") {
+      speech = await startE2BDesktopMedia({ desktop, media: requestedMedia, signal: mediaStop.signal,
+        onTerminal: () => mediaStop.abort(), requestTimeoutMs: deps.requestTimeoutMs });
+    }
+    const requestedRecording = config.execution?.desktop?.recording;
+    if (requestedRecording) {
+      try {
+        recording = await startE2BDesktopRecording({ desktop, width: spec.resolution[0], height: spec.resolution[1],
+          audio: requestedRecording.audio, ...(speech === undefined ? {} : { pulseEnv: speech.env }),
+          requestTimeoutMs: deps.requestTimeoutMs });
+      } catch (error) {
+        warnings.push(`Desktop recording startup failed; the study continues without video: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+      }
+    }
+
     if (!desktopCliRoute) {
-      const requestedFidelity = config.execution?.desktop?.fidelity;
       // A declared camera (#509) is in place before the browser starts: the feed is generated or
       // uploaded first, and a feed that cannot be produced fails the lane closed here.
-      const requestedMedia = config.execution?.desktop?.media;
-      if (requestedMedia?.microphone?.source === "speech") {
-        speech = await startE2BDesktopMedia({ desktop, media: requestedMedia, signal: mediaStop.signal,
-          onTerminal: () => mediaStop.abort(), requestTimeoutMs: deps.requestTimeoutMs });
-      }
       const mediaEvidence = requestedMedia === undefined
         ? undefined
         : await prepareDesktopMedia(desktop, requestedMedia, config.policies?.mediaPermission ?? "prompt", deps.labCwd, deps.requestTimeoutMs);
@@ -398,7 +414,7 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
             : []),
           ...(mediaEvidence?.flags ?? [])
         ],
-        speech?.env
+        speech?.env ?? recording?.env
       );
       desktopBrowser = mediaEvidence === undefined
         ? browserLaunch.evidence
@@ -673,6 +689,14 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       } catch (error) {
         warnings.push(`Desktop final evidence collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
       } finally {
+        if (recording) {
+          try {
+            recordingEvidence = await collectDesktopRecording(deps.artifactRoot, spec.laneId,
+              destination => recording!.finish(destination));
+          } catch (error) {
+            warnings.push(`Desktop recording collection failed: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`);
+          }
+        }
         mediaStop.abort();
         await speech?.close().catch(() => { warnings.push("Speech worker cleanup was interrupted; desktop teardown will reclaim it."); });
         // Each route's own keep flag gates its own lane only: a clone.keep can never leak into
@@ -732,6 +756,7 @@ export function createE2BCuaDesktopLane(spec: CuaLaneSpec, deps: CuaLaneDeps, wa
       streamUrlPresent: streamUrl !== undefined,
       ...(subjectCommit === undefined ? {} : { subjectCommit }),
       ...(desktopBrowser === undefined ? {} : { desktopBrowser }),
+      ...(recordingEvidence === undefined ? {} : { recording: recordingEvidence }),
       desktopGeometry,
       stateStepRecords,
       phaseRecords,

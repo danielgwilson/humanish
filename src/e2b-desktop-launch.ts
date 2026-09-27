@@ -110,6 +110,8 @@ export interface E2BCommandRunOptions {
 }
 
 export interface E2BCommandResult {
+  /** Present on the installed SDK's background CommandHandle. */
+  pid?: number;
   error?: string;
   exitCode?: number;
   stderr?: string;
@@ -129,6 +131,12 @@ export interface E2BDesktopSandbox {
     run(command: string, options?: E2BCommandRunOptions): Promise<E2BCommandResult>;
   };
   files: {
+    read?(path: string, options: {
+      format: "stream";
+      requestTimeoutMs?: number;
+      streamIdleTimeoutMs?: number;
+      signal?: AbortSignal;
+    }): Promise<import("node:stream/web").ReadableStream<Uint8Array>>;
     write(path: string, data: string | ArrayBuffer, options?: {
       requestTimeoutMs?: number;
       useOctetStream?: boolean;

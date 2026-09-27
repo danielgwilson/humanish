@@ -1,3 +1,5 @@
+import type { Writable } from "node:stream";
+import { desktopRecordingConfigSchema, type DesktopRecordingConfig, type DesktopRecordingMetadata } from "./desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
@@ -22,13 +24,21 @@ export interface LocalFirecrackerAssets {
   media?: boolean;
 }
 
+export interface LocalFirecrackerDesktop extends DesktopSession {
+  finishRecording(destination: Writable): Promise<DesktopRecordingMetadata>;
+}
+
 /** One VM and an opaque TCP forward to the explicitly selected loopback app. */
 export async function createLocalFirecrackerDesktop(options: {
-  assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal; media?: GuestMediaConfig;
-}): Promise<DesktopSession> {
+  assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal; media?: GuestMediaConfig; recording?: DesktopRecordingConfig;
+}): Promise<LocalFirecrackerDesktop> {
   if (options.media !== undefined) {
     guestMediaConfigSchema.parse(options.media);
     if (options.assets.media !== true) throw new Error("This local runtime does not include media. Run humanish runtime setup --media.");
+  }
+  if (options.recording !== undefined) {
+    desktopRecordingConfigSchema.parse(options.recording);
+    if (options.assets.media !== true) throw new Error("This runtime does not include the recorder. Run humanish runtime setup --media.");
   }
   let url: URL;
   try { url = new URL(validateGuestInitialUrl(options.appUrl)); }
@@ -134,7 +144,7 @@ export async function createLocalFirecrackerDesktop(options: {
       if (!stream) await delay(100, undefined, { signal });
     }
     const identity = { generation: randomUUID(), challenge: randomUUID(), runtimeRevision: options.assets.runtimeRevision };
-    try { client = await connectGuestBootstrap(stream, identity, signal, url.href, options.media); }
+    try { client = await connectGuestBootstrap(stream, identity, signal, url.href, options.media, options.recording); }
     catch (error) {
       signal.throwIfAborted();
       throw new Error("Local browser startup or initial page navigation failed or timed out.", { cause: error });
@@ -142,10 +152,12 @@ export async function createLocalFirecrackerDesktop(options: {
     await client.ready();
     signal.throwIfAborted();
     options.signal?.addEventListener("abort", aborted, { once: true });
-    return ownDesktopAllocation({ resourceId: container, release: async () => {
+    const session = ownDesktopAllocation({ resourceId: container, release: async () => {
       const result = await close();
       return result.status === "retained" ? { status: "unconfirmed", reason: "invalid_result" } : result;
     } }).open(client.executor);
+    const recorderClient = client;
+    return { ...session, finishRecording: destination => recorderClient.finishRecording(destination) };
   } catch (error) {
     if (container) {
       const logs = await readLogs(container).catch(() => "");

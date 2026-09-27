@@ -456,7 +456,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await mount(<App data={data} />);
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector(".stage-live iframe")?.getAttribute("src")).toBe("https://live.example/desktop");
-    expect(container.textContent).toContain("awaiting the first recorded frame");
+    expect(container.textContent).toContain("awaiting the first recorded screenshot");
     expect(container.querySelector(".stub")).toBeNull();
   });
 

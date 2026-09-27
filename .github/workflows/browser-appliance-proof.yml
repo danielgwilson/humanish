@@ -13,6 +13,8 @@ on:
       - src/frame-signature.ts
       - src/cua-executor-error.ts
       - src/cua-speech.ts
+      - src/desktop-recorder.ts
+      - src/desktop-recording-types.ts
       - scripts/guest-runtime-*.mjs
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
@@ -34,6 +36,8 @@ on:
       - src/frame-signature.ts
       - src/cua-executor-error.ts
       - src/cua-speech.ts
+      - src/desktop-recorder.ts
+      - src/desktop-recording-types.ts
       - scripts/guest-runtime-*.mjs
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts

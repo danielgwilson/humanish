@@ -1,4 +1,4 @@
-import type { Duplex } from "node:stream";
+import type { Duplex, Readable } from "node:stream";
 import type { CuaExecutor } from "./computer-use.js";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import {
@@ -7,15 +7,18 @@ import {
   type BrowserControlIdentity, type BrowserControlReply, type BrowserControlRequest
 } from "./browser-control-protocol.js";
 import { BrowserControlTransport } from "./browser-control-transport.js";
+import { sendBrowserControlRecording } from "./browser-control-recording-transfer.js";
+import { desktopRecordingMetadataSchema, type DesktopRecordingMetadata } from "./desktop-recording-types.js";
 
 export interface BrowserControlDispatcherOptions {
   transport: Duplex; identity: BrowserControlIdentity; executor: CuaExecutor;
   isAuthorized: () => boolean; authoritySignal: AbortSignal;
+  finishRecording?: () => Promise<{ metadata: DesktopRecordingMetadata; stream: Readable }>;
 }
 /** Caller retains physical runtime ownership. Closing this channel does not claim the browser stopped. */
 export function attachBrowserControlDispatcher(options: BrowserControlDispatcherOptions): { close(): void } {
   const identity = validateBrowserControlIdentity(options.identity);
-  let lastSeq = 0, busy = false, ready = false, closed = false;
+  let lastSeq = 0, busy = false, ready = false, closed = false, rawStream: Duplex | undefined;
   let active: AbortController | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const dispose = (): void => { clearTimeout(timer); timer = undefined; active?.abort(); active = undefined; };
@@ -50,7 +53,7 @@ export function attachBrowserControlDispatcher(options: BrowserControlDispatcher
         const observation = await options.executor.observe();
         if (closed || signal.aborted || !authorized()) { transport.close("session_revoked"); return; }
         reply = { ...common, ok: true, observation: encodeBrowserControlObservation(observation) };
-      } else {
+      } else if (request.operation === "EXECUTE") {
         if (request.action.kind === "speak" && options.executor.speechEnabled !== true) {
           throw new CuaExecutorError("action_rejected", "not_dispatched");
         }
@@ -60,6 +63,21 @@ export function attachBrowserControlDispatcher(options: BrowserControlDispatcher
         await options.executor.execute(request.action, signal);
         if (closed || signal.aborted || !authorized()) { transport.close("session_revoked"); return; }
         reply = { ...common, ok: true };
+      } else {
+        invoked = true;
+        if (!options.finishRecording) throw new CuaExecutorError("action_rejected", "not_dispatched");
+        const recording = await options.finishRecording();
+        let metadata: DesktopRecordingMetadata;
+        try { metadata = desktopRecordingMetadataSchema.parse(recording.metadata); }
+        catch (error) { recording.stream.destroy(); throw error; }
+        if (closed || signal.aborted || !authorized()) { recording.stream.destroy(); transport.close("session_revoked"); return; }
+        reply = { ...common, ok: true, recording: metadata };
+        try { await transport.send(reply); rawStream = transport.handoff(); }
+        catch (error) { recording.stream.destroy(); throw error; }
+        closed = true; dispose();
+        options.authoritySignal.removeEventListener("abort", revoke);
+        await sendBrowserControlRecording(recording.stream, rawStream, metadata.bytes).catch(() => {});
+        return;
       }
     } catch (error) { reply = { ...common, ok: false, error: safeBrowserControlFailure(error, invoked) }; }
     if (closed) return;
@@ -73,5 +91,5 @@ export function attachBrowserControlDispatcher(options: BrowserControlDispatcher
   }
   options.authoritySignal.addEventListener("abort", revoke, { once: true });
   if (!authorized()) transport.close("session_revoked");
-  return { close: () => transport.close() };
+  return { close: () => { rawStream?.destroy(); transport.close(); } };
 }
