@@ -1,6 +1,6 @@
 import CopyButton from "./copy-button";
-import CoverCanvas from "./cover-canvas";
 import HeroCrowd from "./hero-crowd";
+import HeroObserver from "./hero-observer";
 import { Ish } from "./wordmark";
 
 export default function Hero() {
@@ -33,11 +33,7 @@ export default function Hero() {
       </div>
       <div className="hero-art" id="heroArt">
         <HeroCrowd />
-        <figure className="hero-tile rev" style={{ "--d": ".3s" } as React.CSSProperties}>
-          <div className="tile-bar"><span className="lane-id"><b>Participant 01 ·</b> drawDB</span><span className="chip chip-pass">Reached</span></div>
-          <div className="tile-shot"><img src="/runs/try-live/poster.jpg" alt="Participant 01 capture: drawDB in Chrome on the hosted desktop with two tables named customers and orders" /><CoverCanvas n="01" resolveAfter={1100} /></div>
-          <figcaption className="tile-foot"><span className="fl">Closing report</span><span className="fq">{'"The tables appeared to overlap on the canvas."'}</span></figcaption>
-        </figure>
+        <HeroObserver slug="lobby-0927" participants={8} title="Eight participants in one lobby of a multiplayer movie-guessing game" />
       </div>
     </section>
   );
