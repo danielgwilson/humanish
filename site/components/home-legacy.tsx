@@ -6,8 +6,8 @@ import Reveals from "@/components/reveals";
 import Study from "@/components/study";
 import Trust from "@/components/trust";
 
-/** The homepage as it shipped on 2026-09-14. Variant `current`, and the flag's default. */
-export default function HomeCurrent() {
+/** The homepage as it shipped on 2026-09-14 (flag value `current`). Served at /legacy for reference. */
+export default function HomeLegacy() {
   return (
     <>
       <Nav links={[

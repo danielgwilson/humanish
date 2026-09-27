@@ -1,5 +1,5 @@
-import HomeCurrent from "@/components/home-current";
-import HomeOption1 from "@/components/home-option-1";
+import Home from "@/components/home";
+import HomeLegacy from "@/components/home-legacy";
 import PostHogClient from "@/components/analytics/posthog-client";
 import { homepageFlags, homepageVariant } from "@/flags";
 
@@ -12,12 +12,12 @@ type Params = Promise<{ code: string }>;
  * visitor cookie itself and reports the exposure to PostHog under that id, which is what the
  * experiment counts.
  */
-export default async function Home({ params }: { params: Params }) {
+export default async function Page({ params }: { params: Params }) {
   const { code } = await params;
   const variant = await homepageVariant(code, homepageFlags);
   return (
     <>
-      {variant === "option-1" ? <HomeOption1 /> : <HomeCurrent />}
+      {variant === "current" ? <HomeLegacy /> : <Home />}
       <PostHogClient flags={{ "homepage-variant": variant }} />
     </>
   );
