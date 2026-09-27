@@ -31,7 +31,7 @@ import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-anal
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
 import { useStudyPlayback } from "./lib/use-study-playback";
-import { AUTOPLAY_LOOP_DELAY_MS, parseAutoplay } from "./lib/autoplay";
+import { AUTOPLAY_LOOP_DELAY_MS, parseAutoplay, sidebarClosedByUrl } from "./lib/autoplay";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object" && ["status", "kind", "query"].every((k) => typeof (v as Record<string, unknown>)[k] === "string" && ((v as Record<string, string>)[k]?.length ?? 0) < 256);
@@ -68,7 +68,7 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const [now, setNow] = useState(Date.now);
   const automaticNotice = analysis.automatic ? automaticAnalysisNotice(analysis.automatic, snapshot, now) : undefined;
   const autoplay = useMemo(() => parseAutoplay(window.location.search), []);
-  const [sideOpen, setSideOpen] = useState(() => { if (autoplay?.sidebarClosed) return false; try { const saved = window.localStorage.getItem("humanish-sidebar"); return saved === "open" || (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1)); } catch { return true; } });
+  const [sideOpen, setSideOpen] = useState(() => { if (sidebarClosedByUrl(window.location.search)) return false; try { const saved = window.localStorage.getItem("humanish-sidebar"); return saved === "open" || (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1)); } catch { return true; } });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [phone, setPhone] = useState(() => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 880px)").matches);
   useEffect(() => {

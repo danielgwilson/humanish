@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import live from "../../tests/golden/observer-data/live.json";
 import { App } from "../app";
-import { parseAutoplay } from "../lib/autoplay";
+import { parseAutoplay, sidebarClosedByUrl } from "../lib/autoplay";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 
 const feed = vi.hoisted(() => ({ data: null as ObserverData | null }));
@@ -60,6 +60,12 @@ describe("parseAutoplay", () => {
     expect(parseAutoplay("?loop=1")).toBeNull();
     expect(parseAutoplay("?autoplay")).toEqual({ speed: 8, loop: false, sidebarClosed: false });
     expect(parseAutoplay("?autoplay=on&loop=1&sidebar=closed")).toEqual({ speed: 8, loop: true, sidebarClosed: true });
+  });
+  it("reads the sidebar switch with or without autoplay", () => {
+    expect(sidebarClosedByUrl("?sidebar=closed")).toBe(true);
+    expect(sidebarClosedByUrl("?autoplay=8&sidebar=closed")).toBe(true);
+    expect(sidebarClosedByUrl("?sidebar=open")).toBe(false);
+    expect(sidebarClosedByUrl("")).toBe(false);
   });
   it("clamps the speed to 1..64 and ignores a zero", () => {
     expect(parseAutoplay("?autoplay=4")?.speed).toBe(4);
