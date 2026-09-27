@@ -31,6 +31,7 @@ import { projectStudyAnalysis, type LoadedStudyAnalysis } from "./lib/study-anal
 import { useObserverFeed } from "./lib/use-observer-feed";
 import { automaticAnalysisNotice } from "./lib/automatic-analysis";
 import { useStudyPlayback } from "./lib/use-study-playback";
+import { AUTOPLAY_LOOP_DELAY_MS, parseAutoplay } from "./lib/autoplay";
 
 const NO_FILTERS: GridFilters = { status: "", kind: "", query: "" };
 const isFilters = (v: unknown): v is GridFilters => !!v && typeof v === "object" && ["status", "kind", "query"].every((k) => typeof (v as Record<string, unknown>)[k] === "string" && ((v as Record<string, string>)[k]?.length ?? 0) < 256);
@@ -66,7 +67,8 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   const [monitoring, setMonitoring] = useState(false);
   const [now, setNow] = useState(Date.now);
   const automaticNotice = analysis.automatic ? automaticAnalysisNotice(analysis.automatic, snapshot, now) : undefined;
-  const [sideOpen, setSideOpen] = useState(() => { try { const saved = window.localStorage.getItem("humanish-sidebar"); return saved === "open" || (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1)); } catch { return true; } });
+  const autoplay = useMemo(() => parseAutoplay(window.location.search), []);
+  const [sideOpen, setSideOpen] = useState(() => { if (autoplay?.sidebarClosed) return false; try { const saved = window.localStorage.getItem("humanish-sidebar"); return saved === "open" || (saved !== "closed" && (!snapshot || (library?.entries.length ?? 0) > 1)); } catch { return true; } });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [phone, setPhone] = useState(() => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 880px)").matches);
   useEffect(() => {
@@ -92,6 +94,20 @@ export function App({ data: initialData, snapshot = false, report: suppliedRepor
   }, []);
   const streams = data?.streams ?? [];
   const studyPlayback = useStudyPlayback(data?.run.runId ?? "", streams);
+  // `?autoplay`: press play once the recording has a time range; `&loop=1`: press it again after the end.
+  const autoplayStarted = useRef(false);
+  const { startMs: recordingStartMs, endMs: recordingEndMs } = studyPlayback.recording;
+  const { setSpeed: setPlaybackSpeed, toggle: togglePlayback, playing: playbackPlaying, reviewing: playbackReviewing, atMs: playbackAtMs } = studyPlayback;
+  useEffect(() => {
+    if (!autoplay || autoplayStarted.current || recordingStartMs === null || recordingEndMs === null || recordingStartMs === recordingEndMs) return;
+    autoplayStarted.current = true;
+    setPlaybackSpeed(autoplay.speed); togglePlayback();
+  }, [autoplay, recordingStartMs, recordingEndMs, setPlaybackSpeed, togglePlayback]);
+  useEffect(() => {
+    if (!autoplay?.loop || !autoplayStarted.current || playbackPlaying || !playbackReviewing || playbackAtMs === null || recordingEndMs === null || playbackAtMs < recordingEndMs) return;
+    const timer = window.setTimeout(togglePlayback, AUTOPLAY_LOOP_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [autoplay, playbackPlaying, playbackReviewing, playbackAtMs, recordingEndMs, togglePlayback]);
   const entryLabels = useMemo(() => savedEntryLabels(streams), [streams]);
   const selected = streams.find((s) => s.id === route.laneId) ?? null;
   // The viewport and explicit preference own the shell, never the selected view.
