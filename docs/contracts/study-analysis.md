@@ -116,7 +116,9 @@ The packet currently admits up to 16 participants, 800 evidence items, 40 PNG
 captures, 160 KiB of text and 20 MiB of images. Individual source files, image
 dimensions and result sizes have separate limits. Count and text budgets are
 distributed across included participants, with unused capacity from short
-sessions available to longer ones. Capture selection prioritizes session endings
+sessions available to longer ones. Reclaimed capture slots go first to eligible
+participants with fewer admitted images, including those deferred by their
+initial image-byte reservation. Capture selection prioritizes session endings
 and beginnings, context around recorded failures, and spread across each whole
 session. Failure priority uses structured source status, not application-specific
 keywords or image interpretation. Unflagged visual errors may still be omitted.

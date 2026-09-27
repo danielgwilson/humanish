@@ -1,8 +1,12 @@
 # Current Goals
 
-Status date: 2026-09-26. Source baseline: `0.103.0`.
+Status date: 2026-09-27. Source baseline: `0.103.1`.
 
-This page guides work on current source. Version `0.103.0` adds optional desktop
+This page guides work on current source. Version `0.103.1` fixes capture
+redistribution after image-byte reservations; its
+[release note](../release/0.103.1-analysis-capture-allocation.md) describes the
+bounded selection change and remaining outcome-evidence investigation.
+Version `0.103.0` adds optional desktop
 video and audio; its [release note](../release/0.103.0-desktop-recording.md)
 records the supported routes, playback behavior and local-only evidence limits.
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
@@ -89,7 +93,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.103.0`)
+## Current Program Truth (source `0.103.1`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |
