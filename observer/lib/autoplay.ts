@@ -17,6 +17,11 @@ export const AUTOPLAY_MAX_SPEED = 64;
 /** Pause between the last capture and the restart, so the end state is readable. */
 export const AUTOPLAY_LOOP_DELAY_MS = 2000;
 
+/** `?sidebar=closed` on its own, for a still embed (reduced motion) that should still fill the frame. */
+export function sidebarClosedByUrl(search: string): boolean {
+  try { return new URLSearchParams(search).get("sidebar") === "closed"; } catch { return false; }
+}
+
 export function parseAutoplay(search: string): AutoplayIntent | null {
   let params: URLSearchParams;
   try { params = new URLSearchParams(search); } catch { return null; }
