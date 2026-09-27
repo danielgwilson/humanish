@@ -471,9 +471,21 @@ export async function captureStudyEvidence(
       // Zero-share lanes can now compete for reclaimed slots, with two attempts.
       reserved = false;
       attemptShares.forEach((share, index) => { if (share === 0 && evidenceShares[index]! > 0) attemptShares[index] = 2; });
-      const extra = fairShares(limits.captures - captureCount, lanes.map((lane, index) =>
+      const available = lanes.map((lane, index) =>
         lane.attempts < attemptShares[index]! ? Math.min(evidenceShares[index]! - lane.captures.size,
-          captureOrders[index]!.length - lane.captureCursor, attemptShares[index]! - lane.attempts) : 0));
+          captureOrders[index]!.length - lane.captureCursor, attemptShares[index]! - lane.attempts) : 0);
+      const extra = lanes.map(() => 0);
+      // Count earlier admissions when reclaiming slots: a byte-deferred lane
+      // must catch up before better-covered lanes receive additional captures.
+      for (let remaining = limits.captures - captureCount; remaining > 0; remaining--) {
+        let next = -1;
+        for (const [index, lane] of lanes.entries()) {
+          if (extra[index]! < available[index]! && (next === -1
+            || lane.captures.size + extra[index]! < lanes[next]!.captures.size + extra[next]!)) next = index;
+        }
+        if (next === -1) break;
+        extra[next]!++;
+      }
       if (!extra.some((share) => share > 0) || imageBytes >= limits.totalImageBytes
         || returnedImageBytes >= 2 * limits.totalImageBytes || attemptedReads >= maxAttempts) break;
       extra.forEach((share, index) => { captureShares[index]! = lanes[index]!.captures.size + share; });

@@ -214,6 +214,34 @@ describe("fair bounded study evidence selection", () => {
     expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
   });
 
+  it.each([false, true])("restores a byte-deferred participant's beginning before extra captures (reversed: %s)", async reversed => {
+    const image = new PNG({ width: 32, height: 32 });
+    let noise = 123456789;
+    for (let index = 0; index < image.data.length; index++) {
+      noise ^= noise << 13; noise ^= noise >>> 17; noise ^= noise << 5;
+      image.data[index] = noise & 255;
+    }
+    const large = PNG.sync.write(image);
+    expect(large.length).toBeGreaterThan(3 * png.length);
+    const streams = await Promise.all(Array.from({ length: 16 }, (_, index) => captures(`p${String(index).padStart(2, "0")}`, 3)));
+    for (const item of streams[15]!.actor.items) {
+      await fs.writeFile(path.join(prepared.physicalRunRoot, item.screenshotRef!.path), large);
+    }
+    const source = await save(reversed ? [...streams].reverse() : streams);
+    const input = await captureStudyEvidence(prepared, source, { totalImageBytes: 16 * large.length });
+    expect(input.images).toHaveLength(40);
+    for (const participant of streams) {
+      const frames = input.evidence.filter((entry) => entry.streamId === participant.id && entry.capture).map((entry) => entry.frame);
+      expect(frames).toEqual(expect.arrayContaining([0, 2]));
+      expect(frames.length).toBeLessThanOrEqual(3);
+    }
+    const imageBytes = input.images.reduce((total, entry) => total + Buffer.from(entry.dataUrl.split(",")[1]!, "base64").length, 0);
+    expect(imageBytes).toBeLessThanOrEqual(16 * large.length);
+    expect(input.coverage.complete).toBe(false);
+    await expect(validateStudyAnalysisEvidence(prepared, syntheticArtifact(input), source)).resolves.toBeUndefined();
+    expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
+  });
+
   it("attributes a nonzero global byte remainder to the byte limit instead of invalid evidence", async () => {
     const source = await save([await captures("a", 2)]);
     const opened = vi.mocked(fs.open).mockClear();
