@@ -1,9 +1,12 @@
 # Current Goals
 
-Status date: 2026-09-28. Source baseline: `0.103.2`.
+Status date: 2026-09-28. Source baseline: `0.104.0`.
 
-This page guides work on current source. Version `0.103.2` retains adjacent
-ending views for outcome review within the existing capture budget; see the
+This page guides work on current source. Version `0.104.0` connects local browser
+participants to captured email inboxes; see its
+[release note](../release/0.104.0-local-captured-inboxes.md).
+Version `0.103.2` retains adjacent ending views for outcome review within the
+existing capture budget; see its
 [release note](../release/0.103.2-analysis-ending-context.md).
 Version `0.103.1` fixes capture
 redistribution after image-byte reservations; its
@@ -96,7 +99,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.103.2`)
+## Current Program Truth (source `0.104.0`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |
@@ -110,8 +113,8 @@ substitute for it.
 | Study findings | Default post-run analysis on supported live routes with a separate disclosed $3 admission estimate limit and opt-out; explicit `analyze`, fairer evidence selection, concern review and versioned findings with exact source links; explicit restricted Codex account analysis on qualified Linux x64 and Apple Silicon Mac profiles | Account dollars/output-token caps are unavailable; Keychain/other CLI profiles are unqualified. Model interpretation needs review; selection limits coverage; opening Observer never dispatches analysis |
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; local-agent, borrowed inboxes and SMS are unsupported |
-| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs; local inbox and automatic onboarding remain follow-ups; larger cohorts and sleep/wake are unqualified |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording, forced TURN, physical-device and touch fidelity are unproven |
+| Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs support recipient-scoped captured inboxes; real receiving on local desktops, automatic onboarding, larger cohorts and sleep/wake remain unqualified |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); startup gaps remain under investigation (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
@@ -131,7 +134,8 @@ ordinary TAP/NAT networking. Continue managed-local work from this complete stud
 path; the earlier offline owner/service qualification experiments are historical
 fixtures, not an installation architecture or a prerequisite queue. Explicit
 Linux local labs now use the installed CLI/TUI, with a verified runtime download
-before the first live run. Mac browser support is also shipped; inbox integration remains unfinished.
+before the first live run. Mac browser support is also shipped. Captured inbox integration reuses the existing
+catch and evidence contracts; local provider-backed receiving remains unsupported.
 Optional media passed Linux and Mac conversations with receiving-side evidence
 and owned-resource cleanup. The original Mac recording produced validated
 analysis after its citation instructions were clarified. Existing hosted labs

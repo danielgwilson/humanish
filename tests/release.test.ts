@@ -21,7 +21,7 @@ describe("release readiness", () => {
     };
 
     expect(packageJson.private).toBeUndefined();
-    expect(packageJson.version).toBe("0.103.2");
+    expect(packageJson.version).toBe("0.104.0");
     expect(packageJson.license).toBe("MIT");
     expect(packageJson.publishConfig?.access).toBe("public");
     expect(packageJson.dependencies).not.toHaveProperty("@e2b/desktop");
