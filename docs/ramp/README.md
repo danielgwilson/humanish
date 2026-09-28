@@ -54,7 +54,10 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
 
-The [0.104.0 release note](../release/0.104.0-analysis-ending-context.md)
+The [0.104.0 release note](../release/0.104.0-local-captured-inboxes.md)
+describes captured inboxes for local browser studies.
+
+The [0.103.2 release note](../release/0.103.2-analysis-ending-context.md)
 describes adjacent ending captures for outcome review within the existing budget.
 
 The [0.103.1 release note](../release/0.103.1-analysis-capture-allocation.md)
