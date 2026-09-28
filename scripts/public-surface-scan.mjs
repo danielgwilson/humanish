@@ -16,7 +16,8 @@ const skippedExtensions = new Set([
   ".gif",
   ".ico",
   ".pdf",
-  ".tgz"
+  ".tgz",
+  ".woff2"
 ]);
 
 const secretPatterns = [
@@ -105,6 +106,10 @@ const allowedEmailDomains = new Set([
 // The rebranded Observer hero was captured from a synthetic four-lane run and
 // manually reviewed before its exact bytes were approved for publication.
 const approvedBinaryAssets = new Map([
+  // Headline and wordmark font subsets (site/scripts/subset-display-fonts.py regenerates them).
+  ["site/app/fonts/0-display-newsreader.woff2", "fff427d8f05ea788a250a445d7bb7c3eb5994b7849a05c7093025012c8177188"],
+  ["site/app/fonts/0-display-newsreader-italic.woff2", "6275671ee20e5f8d09aa8e3f45a2e08227454df45962b7bfd1d32a414e6ec716"],
+  ["site/app/fonts/0-display-geist-600.woff2", "1cba40e360183117988926de0f2cea6504c9cc3ed8afaa20309045853257607b"],
   ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"],
   ["docs/assets/humanish-drawdb-hero.png", "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983"],
   // The humanish.dev landing page's study keyframes: crops from the live

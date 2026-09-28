@@ -49,6 +49,8 @@
   --show-sun: none;
   --show-moon: inline;
   --serif: var(--font-newsreader), Georgia, 'Times New Roman', serif;
+  --serif-display: var(--font-newsreader-display), Georgia, 'Times New Roman', serif;
+  --sans-display: var(--font-geist-display), 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --sans: var(--font-geist), 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --pad: clamp(20px, 4vw, 44px);
