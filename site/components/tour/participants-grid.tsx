@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { TourLane } from "@/lib/tour-types";
 import { elapsed } from "@/lib/tour-types";
@@ -44,7 +45,7 @@ export default function ParticipantsGrid({ slug, lanes, frameSize, names, stepMs
             </header>
             <div className="pg-shot" style={{ aspectRatio: `${frameSize.w} / ${frameSize.h}` }}>
               {lane.frames.map((fr, idx) => (
-                <img key={fr.id} src={`/runs/${slug}/${fr.file}`} alt={idx === k ? `${names[lane.laneId ?? ""] ?? lane.laneId}, ${fr.title}` : ""} className={idx === k ? "on" : ""} loading="lazy" decoding="async" />
+                <Image key={fr.id} src={`/runs/${slug}/${fr.file}`} alt={idx === k ? `${names[lane.laneId ?? ""] ?? lane.laneId}, ${fr.title}` : ""} className={idx === k ? "on" : ""} width={frameSize.w} height={frameSize.h} sizes="(max-width: 900px) 100vw, 420px" quality={60} />
               ))}
             </div>
             <footer>

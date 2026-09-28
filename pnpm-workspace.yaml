@@ -6,6 +6,8 @@ allowBuilds:
   # posthog-js pulls core-js; its postinstall only prints a funding note.
   core-js: false
   esbuild: true
+  # sharp ships prebuilt binaries as optional dependencies; its install script only checks them.
+  sharp: false
 minimumReleaseAgeExclude:
   - fumadocs-core@16.15.7
   - fumadocs-ui@16.15.7

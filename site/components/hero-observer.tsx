@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { reducedMotion, useInView } from "./tour/use-in-view";
 
@@ -97,7 +98,7 @@ export default function HeroObserver({ slug, participants, title, speed = 6 }: {
             onLoad={() => setReady(true)}
           />
         ) : null}
-        <img className="ho-poster" src={`/runs/${slug}/poster.jpg`} alt={`${title}: the Observer grid of the saved run`} hidden={!showPoster} />
+        <Image className="ho-poster" src={`/runs/${slug}/poster.jpg`} alt={`${title}: the Observer grid of the saved run`} width={1440} height={950} sizes="(max-width: 900px) 100vw, 720px" quality={70} loading="eager" hidden={!showPoster} />
         {!expanded && phone === false ? (
           <button type="button" className="ho-catch" ref={catchRef} onClick={open} aria-label="Expand the Observer replay">
             <span className="ho-hint">Click to expand</span>

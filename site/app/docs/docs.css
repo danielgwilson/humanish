@@ -1,0 +1,19 @@
+/* Loaded by app/docs/layout.tsx only: the fumadocs stylesheet and the docs overrides. The
+   marketing pages keep app/globals.css alone, which halves their CSS. */
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+.humanish-docs { --fd-layout-width: 1380px; min-height: 100svh; }
+.humanish-docs h1 { font: 500 clamp(30px, 4vw, 42px)/1.15 var(--sans); letter-spacing: -.04em; }
+.humanish-docs h2 { font-family: var(--sans); letter-spacing: -.025em; }
+.humanish-docs h3 { font-family: var(--sans); }
+.humanish-docs .prose { font-size: 15px; line-height: 1.8; color: var(--body-c); }
+.humanish-docs .prose :is(h2, h3) { color: var(--ink); }
+.humanish-docs .prose a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.humanish-docs .prose :is(pre, code) { font-family: var(--mono); font-size: 12px; }
+.humanish-docs .prose pre { line-height: 1.75; }
+.humanish-docs .prose table { font-size: 13px; }
+.humanish-docs .docs-edit { color: var(--muted); font: 11px var(--mono); }
+.humanish-docs .docs-edit:hover { color: var(--accent); }
+.humanish-docs .tbtn { margin-inline: 4px; }

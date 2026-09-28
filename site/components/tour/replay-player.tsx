@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { TourLane } from "@/lib/tour-types";
 import { elapsed } from "@/lib/tour-types";
@@ -47,7 +48,7 @@ export default function ReplayPlayer({
       <div className="rp-body">
         <div className="rp-stage" style={{ aspectRatio: `${frameSize.w} / ${frameSize.h}` }}>
           {frames.map((f, k) => (
-            <img key={f.id} src={`/runs/${slug}/${f.file}`} alt={k === i ? `${f.title}: capture from the hosted desktop` : ""} className={k === i ? "on" : ""} loading={k === 0 ? "eager" : "lazy"} decoding="async" />
+            <Image key={f.id} src={`/runs/${slug}/${f.file}`} alt={k === i ? `${f.title}: capture from the hosted desktop` : ""} className={k === i ? "on" : ""} width={frameSize.w} height={frameSize.h} sizes="(max-width: 900px) 100vw, 720px" quality={70} loading={k === 0 ? "eager" : "lazy"} />
           ))}
           {pins.filter((a) => a.coord).map((a) => (
             <span key={a.id} className="rp-pin" style={{ left: `${(a.coord!.x / frameSize.w) * 100}%`, top: `${(a.coord!.y / frameSize.h) * 100}%` }} title={a.title}>

@@ -16,7 +16,7 @@ export default function HomeLegacy() {
         { label: "Trust", href: "#trust" },
         { label: "Docs", href: "/docs" }
       ]} />
-      <main>
+      <main id="main">
         <Hero />
         <Study />
         <Commands />

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -31,7 +31,14 @@ const TITLE = "humanish — instant feedback from real human(ish) users";
 // Verbatim hero lede minus its <code> marks. Mirrors: components/hero.tsx
 // (.lede) and public/llms.txt (description block). All three move together.
 const DESCRIPTION =
-  "Personas use your app in a real browser on a hosted sandbox desktop. Each run is written to your repo under .humanish/: screenshots, action traces, lifecycle events, estimated cost at dated rates. humanish verify checks the bundle and fails closed.";
+  "Personas use your app in a real browser on a hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.";
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#171512" }
+  ]
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
