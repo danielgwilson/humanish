@@ -55,7 +55,9 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
   if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1) throw new Error("Invalid desktop recording start time.");
   // Both live inputs use wall-clock timestamps; one output origin preserves their offset.
   // Bound raw video buffering separately from the much smaller audio packets.
-  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0",
+  // The shared spelling supports E2B's FFmpeg 4.4 as well as the local runtime.
+  // Explicit VFR prevents older FFmpeg defaults from filling gaps with duplicates.
+  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-vsync", "vfr", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0",
     "-f", "x11grab", "-framerate", String(options.frameRate ?? 15),
     "-video_size", `${options.width}x${options.height}`, "-i", options.display];
   const devices = sources.length === 2 ? [COMBINED_PULSE_DEVICE] : sources.map(source => PULSE_DEVICE[source]);
@@ -63,7 +65,10 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
     "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", device);
   if (devices.length === 1) args.push("-map", "0:v", "-map", "1:a");
   else args.push("-map", "0:v");
-  args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
+  // X11 timestamps are microseconds. The encoder's default 1/framerate grid
+  // rounds those times and drops distinct captures after an input stall.
+  args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-enc_time_base:v", "1:1000000",
+    "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
   if (sources.length > 0) args.push("-c:a", "aac");
   args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart",
     "-output_ts_offset", String(-startedAtMs / 1000), options.outputPath);

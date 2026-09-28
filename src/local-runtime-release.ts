@@ -22,15 +22,15 @@ export const LOCAL_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRunt
 /** Media assets are separate so ordinary browser studies keep the smaller download. */
 export const LOCAL_MEDIA_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {
   amd64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.5/runtime-linux-amd64.tar.gz",
-    sha256: "912361889503f011ef1a255e3138fc51ff67ba686529715aa4c0b79744e18d21",
-    bytes: 846951548,
-    image: "sha256:34d41e8345739ecb18348bb6acadcd10a8854b79528127704a704d7a4a2080ff"
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.7/runtime-linux-amd64.tar.gz",
+    sha256: "f4758b39cb26c819c7f952eb329d5096fcfe9f05f7381bd37d205b2f6e51826c",
+    bytes: 846986597,
+    image: "sha256:91b132c72cdcb750fba3b48ee78ea8087c794d515d970a273b6f5ee22d443b9f"
   },
   arm64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.6/runtime-linux-arm64.tar.gz",
-    sha256: "59c6321878bb392949507d1325ae39ab462462ff473da24d52b2eedf8bccd014",
-    bytes: 828229067,
-    image: "sha256:9e6c29bb56139204efb618e3b89fb0fc30f96db8502a05102788d3c610fa019a"
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.8/runtime-linux-arm64.tar.gz",
+    sha256: "77f65fd945b582067cfde7740c26f4c06c2727afffcb0025720652c168377a01",
+    bytes: 828200616,
+    image: "sha256:68dd2c00f713bd8be03e209011531bbd4da5b840819cd2de203c11ece29aa255"
   }
 };

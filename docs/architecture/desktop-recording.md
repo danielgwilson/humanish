@@ -27,7 +27,11 @@ participant's evidence.
 
 The desktop runs FFmpeg against its X display. MP4 carries H.264 video and optional
 AAC audio. Recording stops and streams to the run directory before desktop cleanup.
-Both providers use the same encoding settings and artifact metadata. The recording
+Both providers use the same encoding settings and artifact metadata. Video encoding
+uses the capture input’s microsecond time base, preserving closely spaced captures
+and their offsets rather than rounding them to the nominal frame interval.
+Explicit variable-frame-rate output preserves gaps without filling them with
+duplicate frames across the supported FFmpeg versions. The recording
 mix disables playback rewinds to avoid the null sink's initial two-second buffer. The local
 runtime transfers one bounded file over its existing owner connection; E2B uses
 the SDK's streaming file download. Participant tools cannot request arbitrary files.
@@ -50,7 +54,10 @@ silence before a cold source delivers sound; early dispatch of speech or playbac
 does not itself prove audible capture. Preserve these offsets when reviewing early
 events. The startup correction does not reconstruct missing frames or audio in
 existing files. Variable guest execution stalls can still leave frame gaps; the
-recorded timestamps preserve those gaps. See #854 for the remaining investigation.
+recorded timestamps preserve those gaps. A regularly timestamped video can also
+show an unchanged screen while the application stalls. Visual/audio event timing
+depends on source delivery and guest execution; timestamp precision does not
+guarantee simultaneous delivery. See #854 for the remaining investigation.
 
 The file and its measured interval are recorded in `streams[].recording` and a
 `recording` artifact entry. A recorder failure warns and preserves screenshots,
