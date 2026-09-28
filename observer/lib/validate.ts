@@ -95,6 +95,11 @@ function validStream(value: unknown): boolean {
     if (estimate !== undefined && (!object(estimate) || !(estimate.estimatedCostUsd === null || finite(estimate.estimatedCostUsd))
       || !(estimate.ratesAsOf === null || typeof estimate.ratesAsOf === "string"))) return false;
   }
+  if (object(actor) && object(actor.persona) && actor.persona.brief !== undefined) {
+    const brief = actor.persona.brief;
+    if (!object(brief) || !strings(brief, ["text", "digest"]) || !finite(brief.compilerVersion)
+      || typeof brief.redacted !== "boolean" || (brief.sourceDigest !== undefined && typeof brief.sourceDigest !== "string")) return false;
+  }
   const live = value.liveActor;
   for (const trace of [actor, live]) {
     if (object(trace) && trace.executionProfile !== undefined) {

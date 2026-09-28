@@ -41,7 +41,7 @@ import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
-import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { personaBrief, parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { round6 } from "./pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./study-analysis-store.js";
 import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
@@ -3067,6 +3067,7 @@ function buildLocalCodexAppServerBundle(args: {
         ? getActor("codex-app-server").toActorTrace(result, {
             id: args.persona.id,
             traitsApplied: personaToDirectives(args.resolvedPersona).traitsApplied,
+            brief: personaBrief(args.resolvedPersona),
             promptDigest: result.trace.promptDigest
           })
         : undefined;
@@ -5304,7 +5305,8 @@ async function loadDryRunSelection(
     resolvedPersona = parseResolvedPersona(parsedPersona.value, {
       id: "synthetic-new-user",
       name: "Synthetic New User"
-    });
+    }, warnings);
+    resolvedPersona.sourceDigest = digestText(personaText ?? "");
   }
 
   return {

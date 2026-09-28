@@ -108,7 +108,6 @@ summary: A privacy-safe first-time user evaluating the app with realistic but sy
 traits:
   patience: medium
   technical_confidence: medium
-  accessibility_needs: none_declared
 constraints:
   - Do not use real personal data.
   - Do not use production accounts.

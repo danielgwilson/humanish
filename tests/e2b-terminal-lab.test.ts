@@ -1278,7 +1278,7 @@ describe("terminal persona traits (#308)", () => {
   it("resolveTerminalPersona returns null (truthful empty traits) when no persona file is committed", async () => {
     const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "autonomous-terminal-agent");
     expect(persona).toBeNull();
-    expect(warnings).toEqual([]);
+    expect(warnings.join(" ")).toContain("no readable file");
   });
 
   it("resolveTerminalPersona never builds a path from an unsafe persona id", async () => {

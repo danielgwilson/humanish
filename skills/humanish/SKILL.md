@@ -167,25 +167,53 @@ or JSON does not serve.
 
 Create or edit only synthetic files under `humanish/`.
 
-Personas should describe motivations, accessibility needs, experience level,
-device assumptions, and risk tolerance. Avoid names, emails, addresses,
-accounts, screenshots, logs, tickets, transcripts, analytics rows, or anything
-copied from a real user.
+Personas describe the participant's relevant experience, motivations, habits and
+access needs. A short profile is enough; use optional multiline `background` for
+richer context (up to 32 KiB of UTF-8 text, never silently truncated). `summary` is
+a short description, capped at 280 characters with a warning. Unknown fields such
+as `backstory` are ignored with a warning; put that material in `background`.
+Use synthetic or de-identified research synthesis, never raw customer interviews
+or personal data in committed files.
 
-Scenarios should define the target app surface, start URL, task intent,
-success signals, and failure signals. Keep app-specific truth in the target
-repo's `humanish/` files, not in the package or this skill.
+```yaml
+schema: humanish.persona.v1
+id: volunteer-organizer
+name: Morgan
+summary: A volunteer organizer trying an unfamiliar planning app.
+background: |
+  Morgan coordinates twelve volunteers using spreadsheets and email.
+  They know those tools well but have never used this product.
+  Reconciling replies takes time. They worry about making the roster
+  public and want to keep a usable copy if the group changes tools.
+```
 
-When the app can run locally, make at least one scenario executable with a
-`browser.steps` manifest so `humanish run --app-url` can drive the app instead
-of falling back to the generic two-step proof:
+A profile with `background` receives only explicitly declared trait directives.
+Legacy profiles without it retain medium defaults for missing patience and
+technical confidence. Avoid contradictory prose and traits; inspect the compiled
+brief with `humanish lab inspect <lab> --json` before running.
+
+For an autonomous participant study, use a computer-use/local-agent lab and write
+its `mission` as a believable situation and desired outcome. Supply fixture facts
+needed to act, but do not supply selectors, click sequences, hidden success rules,
+expected defects or recovery tricks. For example: “Saturday's event needs two
+setup volunteers and one cleanup volunteer. See whether this app helps you
+organize the event and keep people informed.” Do not instruct a participant to
+find a specific UI control merely to make the study succeed. Allow discovery,
+recovery and stopping appropriate to the participant. Keep researcher criteria in
+`tasks[].success`, separate from participant-facing `tasks[].goal`.
+
+Scripted regression checks are a different use of scenarios. When the requested
+work is deterministic verification of a known path, a `browser.steps` manifest
+can drive it with explicit selectors and assertions. It does not establish
+independent persona behavior or discoverability. Keep app-specific paths and
+fixtures in the target repo's `humanish/` files.
 
 ```yaml
 schema: humanish.scenario.v1
 id: product-core-flow
-title: Product core flow
+title: Scripted product regression
 persona: synthetic-new-user
-goal: Reach and verify the first meaningful app state with synthetic data.
+goal: Verify a known path with synthetic data.
 mode: browser
 browser:
   startPath: /
@@ -196,17 +224,6 @@ browser:
       path: /
       expect:
         text: "Get started"
-    - id: enter-synthetic-input
-      label: Enter synthetic fixture input
-      action: fill
-      selector: "input[name='query']"
-      value: "synthetic fixture"
-    - id: submit-primary-action
-      label: Submit the primary action
-      action: click
-      selector: "button[type='submit']"
-      expect:
-        stateChanged: true
 ```
 
 Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,

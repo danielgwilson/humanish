@@ -3,7 +3,7 @@
 Date: 2026-06-02 (current-state note updated 2026-07-14)
 
 Status: reference map for the major contracts shipped through source version
-`0.104.3`; it is not an exhaustive inventory of command/result envelopes. Exported types,
+`0.105.0`; it is not an exhaustive inventory of command/result envelopes. Exported types,
 schema constants, parsers, and validators in `src/` are authoritative. Rows
 marked "reserved" name layering intent only — no code emits or validates them
 yet. Do not emit a reserved schema.
@@ -765,6 +765,37 @@ scenario:
     - name: Verify bundle
       expectation: Verification passes without private data.
 ```
+
+### Rich persona context
+
+`humanish.persona.v1` supports optional multiline `background` (maximum 32,768
+UTF-8 bytes). It preserves paragraph breaks and is included in autonomous
+participant prompts. Invalid, empty or oversized backgrounds reject execution;
+existing marker/control-character sanitization still applies. Unknown persona
+fields and shortened legacy fields produce diagnostics. `summary` remains a
+280-character description; constraints retain their eight-item/160-character
+bounds with warnings.
+
+Profiles with background do not acquire implicit patience or skill directives.
+Explicit traits still apply, with a reminder to review possible prose conflicts.
+Legacy profiles retain medium defaults. `none_declared`/`none` access needs are
+omitted. `keyboard_first` allows pointer fallback; `keyboard_only` does not.
+These are prompt instructions, not evidence that a participant complied.
+
+`humanish lab inspect` adds `personas: [{ id, resolved, brief? }]`. A brief contains
+`compilerVersion`, persona-section `text`, its pre-redaction `digest`, `redacted`,
+and an optional source-file `sourceDigest`. It excludes task criteria and runtime
+grants. This is authored context; whether a selected actor consumes it depends on
+that route. Scripted checks do not become autonomous studies by declaring a persona.
+
+Supported autonomous traces retain the same optional `persona.brief`; old traces
+remain readable without it. Known provisioned values and recognized secret/path
+patterns are scrubbed before persistence. The redacted projection is not an exact
+prompt, and pattern scanning is not a personal-information detector. Recorded
+computer-use context hints are notice items titled `Participant context hint`.
+These disclose guidance supplied on turns that returned a provider response.
+Failed requests may have uncertain delivery and are not included in this list.
+Hints are not participant observations or proof of friction.
 
 ## Actor Trace
 

@@ -4300,6 +4300,7 @@ function formatLabInspectHuman(result: LabInspectResult): string {
     ...(result.path ? [`path: ${result.path}`] : []),
     ...(result.origin ? [`origin: ${result.origin}`] : []),
     ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
+    ...(result.personas ?? []).map(persona => `persona ${persona.id}: ${persona.brief ? `authored context (before runtime additions)\n${persona.brief.text}` : "unresolved; id only"}`),
     ...result.warnings.map((warning) => `warning: ${warning}`)
   ].join("\n") + "\n";
 }

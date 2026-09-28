@@ -50,7 +50,8 @@ import { isReasoningEffort } from "./reasoning-effort.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { parse as parseYaml } from "yaml";
+import { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
+export { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
 
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
 import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
@@ -67,16 +68,14 @@ import {
   type E2BDesktopSandbox
 } from "./e2b-desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
-import { parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./persona.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
 import {
   prepareSelectedOutputDirectory,
-  readContainedRegularFile,
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
-  type PreparedSelectedOutputDirectory
 } from "./selected-output-paths.js";
 import {
   buildRunSource,
@@ -408,7 +407,8 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // is recorded as a DIGEST (the safety contract's mission ruling).
   const composedPrompt = composePrompt({ mission, personaLine, productName: product.name, publicSurfaces: product.publicSurfaces });
   const promptDigest = digestText(composedPrompt);
-  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest };
+  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest,
+    ...(resolvedPersona.persona ? { brief: personaBrief(resolvedPersona.persona, text => knownSecretValues.reduce((out, value) => out.split(value).join("[REDACTED_SECRET]"), text)) } : {}) };
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
@@ -1053,7 +1053,6 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     verdictNonce
   });
   const promptDigest = digestText(composedPrompt);
-  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest };
 
   // --- Safety contract item 5: literal-scrub EVERY known value, then pattern-redact, at the source. ---
   // The runtime key value (+ any other provisioned value) is scrubbed by LITERAL match before
@@ -1064,6 +1063,8 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   const scrubKnownValues = (text: string): string =>
     knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
+  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest,
+    ...(resolvedPersona.persona ? { brief: personaBrief(resolvedPersona.persona, scrubKnownValues) } : {}) };
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
@@ -2566,55 +2567,6 @@ function describeCaps(caps: LabScenarioCaps | undefined): string {
 /** The default mission when the lab omits one. Public-safe, product-neutral author text. */
 function defaultMission(productName: string): string {
   return `You are an autonomous agent. Discover ${productName} from its public surfaces and determine whether it can help with a durable real task. Stay within the declared no-spend caps. Leave feedback if the workflow is confusing.`;
-}
-
-const TERMINAL_PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-
-/** Title-case a persona id for a fallback display name, e.g. "first-time-visitor" -> "First Time Visitor". */
-function personaTitleFromId(personaId: string): string {
-  const title = personaId
-    .split(/[-_]/)
-    .filter((part) => part.length > 0)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  return title.length > 0 ? title : personaId;
-}
-
-/**
- * Resolve a committed persona (humanish/personas/<id>.yaml) into behavioral directives so the
- * terminal agent runs IN CHARACTER (#308). Fail-SAFE, never fail-closed: an unsafe id, a missing
- * file, or unparseable YAML returns `persona: null`, and the caller keeps the legacy bare-id prompt
- * with a truthful empty traitsApplied — a persona that DECLARED nothing must not receive fabricated
- * traits. Reads are containment-guarded exactly like scenario.ref (readContainedRegularFile).
- */
-export async function resolveTerminalPersona(
-  projectRoot: PreparedSelectedOutputDirectory,
-  personaId: string
-): Promise<{ persona: ResolvedPersona | null; warnings: string[] }> {
-  if (!TERMINAL_PERSONA_ID_PATTERN.test(personaId)) {
-    return { persona: null, warnings: [] };
-  }
-  const candidates = [
-    path.posix.join("humanish", "personas", `${personaId}.yaml`),
-    path.posix.join("humanish", "personas", `${personaId}.yml`)
-  ];
-  for (const candidate of candidates) {
-    const bytes = await readContainedRegularFile(projectRoot, candidate);
-    if (!bytes) {
-      continue;
-    }
-    let raw: unknown;
-    try {
-      raw = parseYaml(bytes.toString("utf8"));
-    } catch {
-      return {
-        persona: null,
-        warnings: [`${candidate} could not be parsed as YAML; the terminal agent ran with the persona id only (no traits applied).`]
-      };
-    }
-    return { persona: parseResolvedPersona(raw, { id: personaId, name: personaTitleFromId(personaId) }), warnings: [] };
-  }
-  return { persona: null, warnings: [] };
 }
 
 /** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */

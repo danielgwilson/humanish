@@ -1521,24 +1521,32 @@ try {
     await snap("capture-interval-restored");
   });
   await runCase("participant-assignment", { phone: true, touch: true, prepare() {
+    data.streams[0].actor.persona.brief = { compilerVersion: 2, text: "Coordinates volunteers.\nConcerned about public rosters.", digest: "synthetic", redacted: false };
     data.streams[0].assignment = { mission: "Create a short task list.", focus: "Use the keyboard throughout.", tasks: [{ id: "rename", goal: "Rename the first task." }] };
     data.streams[1].assignment = { mission: "Create a short task list.", focus: "Use the visible pointer controls." };
     data.run.scenario.goal = "FIRST PARTICIPANT COMPILED PROMPT MUST NOT BECOME ANOTHER ASSIGNMENT";
   } }, async ({ page, record, snap }) => {
     await openLane(page);
-    await page.locator('.participant-assignment summary').click();
-    assert((await page.locator('.assignment-body').innerText()).includes("Rename the first task."));
+    const assignment = page.locator('.participant-assignment').filter({ has: page.locator('summary', { hasText: "Assigned task" }) });
+    const background = page.locator('.participant-assignment').filter({ has: page.locator('summary', { hasText: "Participant background" }) });
+    await assignment.locator('summary').click();
+    assert((await assignment.locator('.assignment-body').innerText()).includes("Rename the first task."));
+    await background.locator('summary').click();
+    assert((await background.innerText()).includes("Concerned about public rosters."));
     await snap("first-participant-assignment");
     await page.getByRole("button", { name: "Next participant", exact: true }).click();
-    await page.locator('.participant-assignment summary').click();
-    assert((await page.locator('.assignment-body').innerText()).includes("Use the visible pointer controls."));
+    await assignment.locator('summary').click();
+    assert((await assignment.locator('.assignment-body').innerText()).includes("Use the visible pointer controls."));
+    await background.locator('summary').click();
+    assert((await background.innerText()).includes("Background was not recorded"));
+    assert(!(await page.locator('main').innerText()).includes("Concerned about public rosters."));
     assert(!(await page.locator('main').innerText()).includes("Use the keyboard throughout."));
     await page.getByRole("button", { name: "Next participant", exact: true }).click();
     await page.getByRole("tab", { name: "details", exact: true }).click();
     assert((await page.locator('.assignment-missing').innerText()).includes("not recorded"));
     assert(!(await page.locator('main').innerText()).includes("FIRST PARTICIPANT COMPILED PROMPT"));
     const width = await pageWidth(page); assert(width.page <= width.viewport + 1);
-    record.checks = { distinctAssignments: true, legacyUnrecorded: true, width };
+    record.checks = { distinctAssignments: true, distinctBackgrounds: true, legacyUnrecorded: true, width };
     await snap("older-assignment-absent");
   });
   await runCase("missing-moment", {}, async ({ page, record, snap }) => {

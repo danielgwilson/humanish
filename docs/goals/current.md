@@ -1,8 +1,12 @@
 # Current Goals
 
-Status date: 2026-09-28. Source baseline: `0.104.3`.
+Status date: 2026-09-28. Source baseline: `0.105.0`.
 
-This page guides work on current source. Version `0.104.3` exposes the documented
+This page guides work on current source. Version `0.105.0` preserves optional rich
+persona backgrounds, diagnoses dropped context and retains the compiled persona
+brief for inspection in Participants; see the
+[release note](../release/0.105.0-participant-backgrounds.md).
+Version `0.104.3` exposes the documented
 loopback SMTP catch for operator-hosted apps and fails startup if its port is busy; see the
 [release note](../release/0.104.3-local-smtp-catch.md). Version `0.104.2` preserves video
 capture timestamp precision through encoding; see its
@@ -106,7 +110,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.104.3`)
+## Current Program Truth (source `0.105.0`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |

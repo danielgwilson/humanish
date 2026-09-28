@@ -1,3 +1,4 @@
+import { scrubPersonaBrief } from "./persona.js";
 // The shared-world lab backend (#164): the SEQUENTIAL deterministic proof-of-concept of the
 // shared-world topology. ONE sandbox provisions a mutable service plane ONCE (clone or packed
 // working tree + serve + seed), then N role SEATS take turns IN DECLARED ORDER (each an isolated browser
@@ -705,6 +706,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   for (const spec of roleSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+    spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
   }
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");

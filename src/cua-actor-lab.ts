@@ -140,7 +140,7 @@ import {
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
-import { personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import { personaBrief, scrubPersonaBrief, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
 import { MODEL_RATES, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
@@ -687,6 +687,7 @@ export function composeLaneInstructions(args: {
     persona: {
       id: args.persona ?? "cua-operator",
       traitsApplied,
+      ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
       promptDigest: digestText(instructions, 16)
     }
   };
@@ -699,20 +700,16 @@ export function composeLaneInstructions(args: {
 export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string, receiving = false): CuaLaneSpec {
   // No assigned identity means no participant inbox; never fall back to the shared operator view.
   if (!address?.trim()) return spec;
-  // The address is half the handoff (#351): the drain matches captured mail against the DECLARED
-  // address, so an actor that invents its own at signup gets an inbox that stays empty forever.
-  // Telling it which address to use is what makes the funnel deterministic end to end. The
-  // wait-steering sentence exists because a mid-flow model treats "we emailed you" as a blocker
-  // and ends its session — the exact give-up class a live run documented — unless told the wait
-  // is expected and the inbox is the next step.
+  // Captured mail is routed to the assigned identity. Supply that identity and inbox
+  // access without requiring the participant to wait or complete the email flow.
   const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
   if (receiving) return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Read the original email and use its verification link or code. Delivery may take a little time; refresh if needed. If mail remains missing or unavailable, report what you observed rather than assuming the app failed to send. The inbox may block remote images or undeclared destinations; those are harness limitations.`
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may block remote images or undeclared destinations; those are harness limitations.`
   };
   return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} When the app tells you it has emailed you (a verification link, confirmation code, or magic link), open ${recipientInboxUrl(inboxUrl, address)} in the browser to read that email and follow its link or enter its code. All email the app sends you arrives there. Waiting for an email is normal, not a blocker — do not end your session while waiting; open the inbox and refresh it until the email appears.`
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It contains captured email addressed to your test identity. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`
   };
 }
 
@@ -2313,6 +2310,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   for (const spec of laneSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+    spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
   }
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");

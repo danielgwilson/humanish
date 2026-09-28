@@ -1,19 +1,24 @@
-// Compiles a committed persona (humanish/personas/*.yaml) into actor-neutral
-// behavioral directives so persona traits actually drive how the actor uses the
-// product, instead of being inert metadata. See docs/architecture/actor-contract.md.
-//
-// Patience is modeled as FRICTION TOLERANCE, never a turn/tool-call budget: the
-// directive tells the actor when, in character, to stop and report the friction.
+import { digestText, redactText } from "./redaction.js";
+import type { ActorPersonaRef } from "./actor-contract.js";
 
 export type PersonaLevel = "low" | "medium" | "high";
+export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;
+export const PERSONA_COMPILER_VERSION = 2;
+
+export class PersonaConfigError extends Error {
+  constructor(message: string) { super(message); this.name = "PersonaConfigError"; }
+}
 
 export interface ResolvedPersona {
   id: string;
   name: string;
   summary?: string;
+  background?: string;
+  /** Digest of the source file, when resolved from disk. */
+  sourceDigest?: string;
   traits: {
-    patience: PersonaLevel;
-    skill: PersonaLevel;
+    patience?: PersonaLevel;
+    skill?: PersonaLevel;
     accessibilityNeeds?: string;
   };
   constraints: string[];
@@ -24,152 +29,129 @@ export interface PersonaDirectives {
   skillBias: string;
   accessibilityBehavior?: string;
   constraints: string[];
-  // The directive keys that were actually applied, for trace/fidelity proof.
+  /** Directives included in the prompt, not proof of behavioral adherence. */
   traitsApplied: string[];
 }
 
 const LEVELS: PersonaLevel[] = ["low", "medium", "high"];
-
-function normalizeLevel(value: unknown, fallback: PersonaLevel = "medium"): PersonaLevel {
-  if (typeof value === "string") {
-    const lowered = value.trim().toLowerCase();
-    if ((LEVELS as string[]).includes(lowered)) {
-      return lowered as PersonaLevel;
-    }
-  }
-  return fallback;
-}
-
-// Persona files are committed public-safe source, but they still flow into an
-// actor prompt, so replace control characters with spaces and cap length to
-// limit prompt-injection surface from a hand-authored persona.
-function stripControlChars(value: string): string {
-  let out = "";
-  for (const ch of value) {
-    const code = ch.codePointAt(0) ?? 0;
-    out += code < 0x20 || code === 0x7f ? " " : ch;
-  }
-  return out;
-}
-
-function sanitizePersonaText(value: unknown, maxLength: number): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const cleaned = stripControlChars(value)
-    // Neutralize the actor verdict/nonce markers so persona text injected into a
-    // prompt cannot forge a verdict line an actor might echo back.
-    .replace(/HUMANISH_ACTOR_(?:VERDICT|NONCE)/gi, "HUMANISH_ACTOR_[neutralized]")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (cleaned.length === 0) {
-    return undefined;
-  }
-  return cleaned.length > maxLength ? `${cleaned.slice(0, maxLength - 1)}…` : cleaned;
-}
+const PERSONA_FIELDS = new Set(["schema", "id", "name", "summary", "background", "traits", "constraints"]);
+const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * Parse a YAML-parsed persona object into a normalized ResolvedPersona. `fallback`
- * supplies id/name when the document omits them (or is not a record at all).
- */
-export function parseResolvedPersona(raw: unknown, fallback: { id: string; name: string }): ResolvedPersona {
+function cleanText(value: string): string {
+  return value.replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, " ")
+    .replace(/HUMANISH_ACTOR_(?:VERDICT|NONCE)/gi, "HUMANISH_ACTOR_[neutralized]").trim();
+}
+
+/** Legacy short fields keep their bounds, but every discarded value is diagnosed. */
+export function parseResolvedPersona(
+  raw: unknown, fallback: { id: string; name: string }, warnings: string[] = []
+): ResolvedPersona {
   const record = isRecord(raw) ? raw : {};
   const traits = isRecord(record.traits) ? record.traits : {};
-  const id = sanitizePersonaText(record.id, 120) ?? fallback.id;
-  const name = sanitizePersonaText(record.name, 120) ?? fallback.name;
-  const summary = sanitizePersonaText(record.summary, 280);
-  const accessibilityNeeds = sanitizePersonaText(traits.accessibility_needs, 80);
-  const constraints = Array.isArray(record.constraints)
-    ? record.constraints
-        .map((entry) => sanitizePersonaText(entry, 160))
-        .filter((entry): entry is string => entry !== undefined)
-        .slice(0, 8)
-    : [];
-
+  if (!isRecord(raw)) warnings.push("Persona must be a mapping; using the legacy defaults.");
+  for (const field of Object.keys(record)) {
+    if (!PERSONA_FIELDS.has(field)) warnings.push(`Unsupported persona field ${redactText(JSON.stringify(field))}; it is not sent to the participant. Use background for relevant context.`);
+  }
+  for (const field of Object.keys(traits)) {
+    if (!TRAIT_FIELDS.has(field)) warnings.push(`Unsupported persona trait ${redactText(JSON.stringify(field))}; it is not sent to the participant.`);
+  }
+  const short = (value: unknown, max: number, field: string): string | undefined => {
+    if (value === undefined) return undefined;
+    if (typeof value !== "string") { warnings.push(`${field} must be text; ignored.`); return undefined; }
+    const cleaned = cleanText(value).replace(/\s+/g, " ");
+    if (!cleaned) return undefined;
+    if (cleaned.length > max) warnings.push(`${field} exceeds ${max} characters and was shortened; move detailed context to background.`);
+    return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
+  };
+  let background: string | undefined;
+  if (record.background !== undefined) {
+    if (typeof record.background !== "string") throw new PersonaConfigError("Persona background must be text.");
+    background = cleanText(record.background);
+    if (!background) throw new PersonaConfigError("Persona background must not be empty.");
+    if (Buffer.byteLength(record.background, "utf8") > PERSONA_BACKGROUND_MAX_BYTES || Buffer.byteLength(background, "utf8") > PERSONA_BACKGROUND_MAX_BYTES) {
+      throw new PersonaConfigError(`Persona background exceeds ${PERSONA_BACKGROUND_MAX_BYTES} UTF-8 bytes; shorten it explicitly. No background was truncated.`);
+    }
+  }
+  const level = (field: string): PersonaLevel | undefined => {
+    const value = traits[field];
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : undefined;
+    if (LEVELS.includes(normalized as PersonaLevel)) return normalized as PersonaLevel;
+    if (value !== undefined) warnings.push(`traits.${field} must be low, medium or high; ${background ? "ignored" : "using medium"}.`);
+    return background ? undefined : "medium";
+  };
+  if (record.traits !== undefined && !isRecord(record.traits)) warnings.push("Persona traits must be a mapping; invalid traits ignored.");
+  if (background && Object.keys(traits).some(field => field === "patience" || field === "technical_confidence")) {
+    warnings.push("Background and explicit trait directives are both sent to the participant. Review the brief for conflicting instructions; prose conflicts are not automatically detected.");
+  }
+  let accessibilityNeeds = short(traits.accessibility_needs, 80, "traits.accessibility_needs");
+  if (accessibilityNeeds && /^(none[ _-]declared|none|not[ _-]applicable)$/i.test(accessibilityNeeds)) accessibilityNeeds = undefined;
+  if (record.constraints !== undefined && !Array.isArray(record.constraints)) warnings.push("Persona constraints must be a list; ignored.");
+  const allConstraints = Array.isArray(record.constraints) ? record.constraints : [];
+  if (allConstraints.length > 8) warnings.push("Only the first eight persona constraints are used; move detailed context to background.");
+  const constraints = allConstraints.slice(0, 8).map(value => short(value, 160, "constraint")).filter((value): value is string => value !== undefined);
+  const patience = level("patience"), skill = level("technical_confidence");
+  const summary = short(record.summary, 280, "summary");
   return {
-    id,
-    name,
+    id: short(record.id, 120, "id") ?? fallback.id,
+    name: short(record.name, 120, "name") ?? fallback.name,
     ...(summary === undefined ? {} : { summary }),
-    traits: {
-      patience: normalizeLevel(traits.patience),
-      // Persona YAML uses `technical_confidence`; the directive model calls it skill.
-      skill: normalizeLevel(traits.technical_confidence),
-      ...(accessibilityNeeds === undefined ? {} : { accessibilityNeeds })
-    },
+    ...(background === undefined ? {} : { background }),
+    traits: { ...(patience === undefined ? {} : { patience }), ...(skill === undefined ? {} : { skill }), ...(accessibilityNeeds === undefined ? {} : { accessibilityNeeds }) },
     constraints
   };
 }
 
 const FRICTION_TOLERANCE: Record<PersonaLevel, string> = {
-  low: "You are impatient: if you hit repeated friction (errors, dead-ends, confusing UI) or stop making progress toward your goal, stop and report exactly what blocked you instead of pushing through.",
-  medium: "You have moderate patience: work through some friction, but if you repeatedly fail to make progress toward your goal, stop and report what blocked you.",
-  high: "You are determined: push through friction and try recovery paths, but if you reach an unrecoverable dead-end, stop and report it."
+  low: "You are impatient: if you hit repeated friction or stop making progress toward your goal, you are likely to stop. Describe what you actually encountered.",
+  medium: "You have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.",
+  high: "You are determined: you are willing to spend effort on recovery when the goal matters to you, but may stop at an unrecoverable dead-end."
 };
-
-// Skill describes how COMPETENTLY an actor works the surfaces its population actually uses — it
-// must not name an affordance that escapes those surfaces. The `high` directive used to say
-// "inspect configuration, and try the recovery paths an expert would", which a computer-use actor
-// can honestly read as license to open devtools or type a `javascript:` URL: a human-persona run
-// then routes around the very friction the study exists to measure and still returns green. Skill
-// is now modality-neutral (an expert human uses advanced UI and settings; an expert agent uses the
-// documented API), so which affordances are in scope is a property of the declared population,
-// not a side effect of a trait table.
 const SKILL_BIAS: Record<PersonaLevel, string> = {
-  low: "You are not technically confident: prefer obvious UI affordances over CLI flags or config, and narrate your confusion whenever the interface is ambiguous.",
-  medium: "You have moderate technical confidence: use straightforward paths and try one recovery step before giving up.",
-  high: "You are technically confident: use keyboard shortcuts, the product's own advanced options and settings, and the recovery paths an expert would try on the surfaces this product gives you."
+  low: "You are not technically confident and generally rely on familiar, visible controls. Describe confusion only when you actually encounter it.",
+  medium: "You have moderate technical confidence and generally use straightforward paths through the product.",
+  high: "You are technically confident and comfortable with keyboard shortcuts and advanced options on the surfaces this product gives you."
 };
-
 function accessibilityBehavior(needs: string): string {
-  const lowered = needs.toLowerCase();
-  if (lowered.includes("keyboard")) {
-    return "Navigate using the keyboard; treat a control that requires a mouse and offers no keyboard path as a defect and report it.";
-  }
-  if (lowered.includes("terminal") || lowered.includes("output")) {
-    return "You rely on clear terminal output; flag noisy, unreadable, or ambiguous output as a defect.";
-  }
-  return `You have the accessibility need "${needs}"; treat violations of it as defects and report them.`;
+  if (/keyboard[ _-]first/i.test(needs)) return "You prefer keyboard navigation, but can use a pointer when needed. Describe any difficulty you encounter switching between them.";
+  if (/keyboard[ _-]only/i.test(needs)) return "You can only use the keyboard. If an essential control has no discoverable keyboard path, describe where you could not proceed.";
+  if (/terminal|output/i.test(needs)) return "You rely on clear terminal output. Describe any difficulty understanding the output you actually encounter.";
+  return `Your accessibility requirement is: ${needs}. Use the available interface within this requirement and describe any difficulty you encounter.`;
 }
-
 export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives {
-  const traitsApplied = [`patience:${persona.traits.patience}`, `skill:${persona.traits.skill}`];
-  const accessibility = persona.traits.accessibilityNeeds
-    ? accessibilityBehavior(persona.traits.accessibilityNeeds)
-    : undefined;
-  if (persona.traits.accessibilityNeeds) {
-    traitsApplied.push(`accessibility:${persona.traits.accessibilityNeeds}`);
-  }
-  if (persona.constraints.length > 0) {
-    traitsApplied.push(`constraints:${persona.constraints.length}`);
-  }
+  const { patience, skill, accessibilityNeeds } = persona.traits;
+  const traitsApplied = [ ...(patience ? [`patience:${patience}`] : []), ...(skill ? [`skill:${skill}`] : []) ];
+  if (accessibilityNeeds) traitsApplied.push(`accessibility:${accessibilityNeeds}`);
+  if (persona.constraints.length) traitsApplied.push(`constraints:${persona.constraints.length}`);
   return {
-    frictionTolerance: FRICTION_TOLERANCE[persona.traits.patience],
-    skillBias: SKILL_BIAS[persona.traits.skill],
-    ...(accessibility === undefined ? {} : { accessibilityBehavior: accessibility }),
-    constraints: persona.constraints,
-    traitsApplied
+    frictionTolerance: patience ? FRICTION_TOLERANCE[patience] : "",
+    skillBias: skill ? SKILL_BIAS[skill] : "",
+    ...(accessibilityNeeds ? { accessibilityBehavior: accessibilityBehavior(accessibilityNeeds) } : {}),
+    constraints: persona.constraints, traitsApplied
   };
 }
-
-/**
- * Render the persona section injected into an actor prompt. Replaces the bare
- * `Persona: <name>.` line so the persona's friction tolerance, skill, and
- * accessibility behavior actually shape the run. Returns a single space-joined
- * string to match the existing prompt-builder style.
- */
 export function renderPersonaPromptSection(persona: ResolvedPersona): string {
   const directives = personaToDirectives(persona);
-  const parts = [
-    `Persona: ${persona.name}.`,
-    ...(persona.summary ? [persona.summary] : []),
-    directives.frictionTolerance,
-    directives.skillBias,
-    ...(directives.accessibilityBehavior ? [directives.accessibilityBehavior] : []),
-    ...(directives.constraints.length > 0 ? [`Honor these constraints: ${directives.constraints.join("; ")}.`] : [])
-  ];
-  return parts.join(" ");
+  return [
+    `Persona: ${persona.name}.`, persona.summary,
+    persona.background ? `Background:\n${persona.background}` : undefined,
+    directives.frictionTolerance, directives.skillBias, directives.accessibilityBehavior,
+    persona.constraints.length ? `Honor these constraints: ${persona.constraints.join("; ")}.` : undefined
+  ].filter(Boolean).join("\n\n");
+}
+
+/** Only the authored persona section; excludes task criteria, runtime grants and inbox URLs. */
+export function personaBrief(persona: ResolvedPersona, scrub: (text: string) => string = text => text): NonNullable<ActorPersonaRef["brief"]> {
+  const original = renderPersonaPromptSection(persona), text = redactText(scrub(original));
+  return { compilerVersion: PERSONA_COMPILER_VERSION, text, digest: digestText(original), redacted: text !== original,
+    ...(persona.sourceDigest ? { sourceDigest: persona.sourceDigest } : {}) };
+}
+
+export function scrubPersonaBrief(persona: ActorPersonaRef, scrub: (text: string) => string): ActorPersonaRef {
+  if (!persona.brief) return persona;
+  const text = redactText(scrub(persona.brief.text));
+  return { ...persona, brief: { ...persona.brief, text, redacted: persona.brief.redacted || text !== persona.brief.text } };
 }

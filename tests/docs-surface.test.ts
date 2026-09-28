@@ -70,7 +70,7 @@ describe("website documentation examples", () => {
     expect(result.config.policies?.allowPublicTargets).toBe(true);
     const blocks = [...page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)];
     const isolated = parse(yaml);
-    isolated.subject = parse(blocks[1]![1]!).subject;
+    isolated.subject = blocks.map(block => parse(block[1]!)).find(block => block.subject?.source === "clone").subject;
     isolated.actors[0].count = 2;
     delete isolated.policies.allowPublicTargets;
     const panel = parseLabConfig(isolated);

@@ -108,6 +108,7 @@ describe("committed persona resolution", () => {
       "no-such-persona"
     ]);
     expect(resolved.personas.size).toBe(0);
-    expect(resolved.warnings).toEqual([]);
+    expect(resolved.warnings).toHaveLength(3);
+    expect(resolved.warnings.join(" ")).toContain("no persona context");
   });
 });
