@@ -16,7 +16,7 @@ describe("desktop recorder command", () => {
       "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "-output_ts_offset", "-1790457914.571", "/tmp/desktop.mp4"
     ]);
     expect(buildDesktopRecorderPulseSetupCommands().map(command => command.args)).toEqual([
-      ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix"],
+      ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix", "norewinds=true"],
       ["set-sink-volume", "humanish_recording", "0.5"],
       ["load-module", "module-loopback", "source=humanish_mic.monitor", "sink=humanish_recording", "latency_msec=20"],
       ["load-module", "module-loopback", "source=humanish_speaker.monitor", "sink=humanish_recording", "latency_msec=20"]

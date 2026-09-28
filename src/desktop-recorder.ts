@@ -71,8 +71,10 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
 }
 
 export function buildDesktopRecorderPulseSetupCommands(): Array<{ binary: "/usr/bin/pactl"; args: string[] }> {
+  // The capture mix needs no playback rewinds. Bound its cold buffer to 50 ms
+  // instead of the null sink's default two seconds, which stalls initial capture.
   return [
-    ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix"],
+    ["load-module", "module-null-sink", "sink_name=humanish_recording", "sink_properties=device.description=HumanishRecordingMix", "norewinds=true"],
     ["set-sink-volume", "humanish_recording", "0.5"],
     ["load-module", "module-loopback", "source=humanish_mic.monitor", "sink=humanish_recording", "latency_msec=20"],
     ["load-module", "module-loopback", "source=humanish_speaker.monitor", "sink=humanish_recording", "latency_msec=20"]
