@@ -1,8 +1,10 @@
 # Current Goals
 
-Status date: 2026-09-28. Source baseline: `0.104.1`.
+Status date: 2026-09-28. Source baseline: `0.104.2`.
 
-This page guides work on current source. Version `0.104.1` bounds the recording
+This page guides work on current source. Version `0.104.2` preserves video
+capture timestamp precision through encoding; see its
+[release note](../release/0.104.2-recording-timestamps.md). Version `0.104.1` bounds the recording
 mix buffer to remove the reproduced initial video gap; see its
 [release note](../release/0.104.1-recording-startup.md).
 Version `0.104.0` connects local browser
@@ -102,7 +104,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.104.1`)
+## Current Program Truth (source `0.104.2`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |
