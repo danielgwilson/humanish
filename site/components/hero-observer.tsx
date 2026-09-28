@@ -1,67 +1,108 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { reducedMotion, useInView } from "./tour/use-in-view";
 
-/** The Observer's logical viewport inside the frame; scaled down to the hero column. */
+/** The Observer's logical viewport inside the frame; scaled to the hero column or the lightbox. */
 const STAGE_W = 1600;
 const STAGE_H = 900;
 
 /**
  * HeroObserver — the real Observer artifact of a saved run, in a frame, replaying itself.
- * The bundle under /runs/<slug>/observer/ is the same file humanish writes into a
- * repo; the URL parameters press play at 8x, loop, and collapse the library. It
- * loads only when the hero is on screen, shows the run's poster until the page is
- * ready, and stays a still under reduced motion (the viewer can press play).
+ * The bundle under /runs/<slug>/observer/ is the same file humanish writes into a repo;
+ * the URL parameters press play, loop, and collapse the library. In the hero the frame
+ * is a picture: a click-catcher covers it and a click expands the same iframe into a
+ * full-viewport lightbox, where the Observer is interactive. The iframe never remounts,
+ * so playback continues across expand, collapse and window resizes. It loads only when
+ * the hero is on screen, shows the run's poster until the page is ready, and stays a
+ * still under reduced motion (the viewer can press play). Phones get the poster and the
+ * link: a scaled eight-participant grid is unreadable there and the replay streams
+ * captures for as long as it plays.
  */
-export default function HeroObserver({ slug, participants, title, speed = 8 }: { slug: string; participants: number; title: string; speed?: number }) {
+export default function HeroObserver({ slug, participants, title, speed = 6 }: { slug: string; participants: number; title: string; speed?: number }) {
   const frameRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.5);
+  const catchRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [fit, setFit] = useState({ scale: 0.5, left: 0, top: 0 });
   const [ready, setReady] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  // Reveals adds `.in` to `.rev` once; React rewrites the class list when it changes, so
+  // after a collapse the element keeps its revealed state explicitly.
+  const [revealed, setRevealed] = useState(false);
   const { ref, inView } = useInView<HTMLDivElement>("200px");
   const [armed, setArmed] = useState(false);
-  useEffect(() => { if (inView) setArmed(true); }, [inView]);
-  // Decided after hydration so the server and first client render agree. Phones get the
-  // poster and the link: a scaled 8-participant grid is unreadable there and the replay
-  // streams captures for as long as it plays.
+  // Decided once after hydration so the server and first client render agree.
   const [play, setPlay] = useState(true);
-  const [phone, setPhone] = useState(false);
+  const [phone, setPhone] = useState<boolean | null>(null);
   useEffect(() => {
     setPlay(!reducedMotion());
-    const media = window.matchMedia("(max-width: 900px)");
-    const sync = () => setPhone(media.matches);
-    sync(); media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
+    setPhone(window.matchMedia("(max-width: 900px)").matches);
   }, []);
+  useEffect(() => { if (inView && phone === false) setArmed(true); }, [inView, phone]);
+
+  // Collapsed: the stage scales to the column width. Expanded: it scales to fit the
+  // frame's width and height and sits centered.
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    const fit = () => setScale(Math.min(1, frame.clientWidth / STAGE_W));
-    fit();
-    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(fit) : null;
+    const measure = () => {
+      const w = frame.clientWidth, h = frame.clientHeight;
+      if (!expanded) { setFit({ scale: Math.min(1, w / STAGE_W), left: 0, top: 0 }); return; }
+      const scale = Math.min(1, w / STAGE_W, h / STAGE_H);
+      setFit({ scale, left: Math.max(0, (w - STAGE_W * scale) / 2), top: Math.max(0, (h - STAGE_H * scale) / 2) });
+    };
+    measure();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
     ro?.observe(frame);
-    return () => ro?.disconnect();
-  }, []);
+    window.addEventListener("resize", measure);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+  }, [expanded]);
+
+  const open = useCallback(() => { setExpanded(true); setRevealed(true); }, []);
+  const close = useCallback(() => { setExpanded(false); }, []);
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
+    return () => {
+      document.documentElement.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+      catchRef.current?.focus({ preventScroll: true });
+    };
+  }, [expanded, close]);
+
   const src = `/runs/${slug}/observer/index.html?${play ? `autoplay=${speed}&loop=1&` : ""}sidebar=closed`;
   const full = `/runs/${slug}/observer/index.html`;
+  const showPoster = !(ready && phone === false);
   return (
-    <figure className="hero-observer rev" ref={ref} style={{ "--d": ".3s" } as React.CSSProperties}>
+    <figure className={expanded ? "hero-observer expanded" : revealed ? "hero-observer rev in" : "hero-observer rev"} ref={ref} style={{ "--d": ".3s" } as React.CSSProperties}
+      role={expanded ? "dialog" : undefined} aria-modal={expanded ? true : undefined} aria-label={expanded ? `${title}, Observer replay` : undefined}>
       <div className="ho-bar">
         <span className="lane-id"><b>Observer ·</b> {participants} participants · one lobby</span>
-        <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>
+        <span className="ho-bar-end">
+          <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>
+          {expanded ? <button type="button" className="ho-close" ref={closeRef} onClick={close}>Close ✕</button> : null}
+        </span>
       </div>
-      <div className="ho-frame" ref={frameRef} style={{ height: Math.round(STAGE_H * scale) }}>
-        {armed && !phone ? (
+      <div className="ho-frame" ref={frameRef} style={expanded ? undefined : { height: Math.round(STAGE_H * fit.scale) }}>
+        {armed ? (
           <iframe
             className="ho-iframe"
             src={src}
             title={title}
-            loading="lazy"
-            style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${scale})` }}
+            style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${fit.scale})`, left: fit.left, top: fit.top }}
             onLoad={() => setReady(true)}
           />
         ) : null}
-        <img className="ho-poster" src={`/runs/${slug}/poster.jpg`} alt={`${title}: the Observer grid of the saved run`} hidden={ready && !phone} />
+        <img className="ho-poster" src={`/runs/${slug}/poster.jpg`} alt={`${title}: the Observer grid of the saved run`} hidden={!showPoster} />
+        {!expanded && phone === false ? (
+          <button type="button" className="ho-catch" ref={catchRef} onClick={open} aria-label="Expand the Observer replay">
+            <span className="ho-hint">Click to expand</span>
+          </button>
+        ) : null}
       </div>
       <figcaption className="ho-foot">
         <span className="fl">Saved run</span>
