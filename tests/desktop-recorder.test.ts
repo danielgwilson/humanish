@@ -12,7 +12,7 @@ describe("desktop recorder command", () => {
       "-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0", "-f", "x11grab", "-framerate", "15", "-video_size", "960x720", "-i", ":0",
       "-thread_queue_size", "512", "-probesize", "32", "-analyzeduration", "0", "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", "humanish_recording.monitor",
       "-map", "0:v", "-map", "1:a",
-      "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
+      "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-enc_time_base:v", "1:1000000", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-c:a", "aac",
       "-fs", String(DESKTOP_RECORDING_MAX_BYTES - 1024 * 1024), "-movflags", "+faststart", "-output_ts_offset", "-1790457914.571", "/tmp/desktop.mp4"
     ]);
     expect(buildDesktopRecorderPulseSetupCommands().map(command => command.args)).toEqual([

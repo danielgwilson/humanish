@@ -63,7 +63,10 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
     "-fflags", "nobuffer", "-f", "pulse", "-sample_rate", "48000", "-channels", "2", "-i", device);
   if (devices.length === 1) args.push("-map", "0:v", "-map", "1:a");
   else args.push("-map", "0:v");
-  args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
+  // X11 timestamps are microseconds. The encoder's default 1/framerate grid
+  // rounds those times and drops distinct captures after an input stall.
+  args.push("-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-c:v", "libx264", "-enc_time_base:v", "1:1000000",
+    "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p");
   if (sources.length > 0) args.push("-c:a", "aac");
   args.push("-fs", String(RECORDING_FILE_LIMIT_BYTES), "-movflags", "+faststart",
     "-output_ts_offset", String(-startedAtMs / 1000), options.outputPath);
