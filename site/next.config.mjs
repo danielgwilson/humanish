@@ -18,6 +18,10 @@ const SECURITY_HEADERS = [
 const nextConfig = {
   env: { NEXT_PUBLIC_HUMANISH_VERSION: HUMANISH_VERSION },
   images: { formats: ["image/avif", "image/webp"], qualities: [60, 70, 75] },
+  async redirects() {
+    // The homepage sections are anchors; the natural paths lead to them instead of a 404.
+    return ["study", "commands", "trust", "faq"].map((section) => ({ source: `/${section}`, destination: `/#${section}`, permanent: false }));
+  },
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
