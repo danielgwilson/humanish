@@ -3,9 +3,9 @@ title: Run your first study
 description: Install Humanish, send a synthetic participant into a real app, and inspect what happened.
 ---
 
-Humanish runs synthetic user research. Participants use an app on hosted desktops and leave screenshots, action traces, and their own account of what worked or got confusing.
+Humanish runs synthetic user research. Participants use an app in isolated local or hosted desktops and leave screenshots, action traces, and their own account of what worked or got confusing.
 
-Start with the included drawDB study. It runs against a public open-source diagram editor, so you can see real evidence before configuring your app. Then [study your own app](/docs/your-app).
+If your app is running locally and you use Codex, start with [a local browser study](/docs/your-app#study-your-running-local-app). To try a hosted study before configuring your app, use the included drawDB example below.
 
 ## Install
 
@@ -13,11 +13,13 @@ Use **Node.js 20 or newer**, in a project directory:
 
 ```bash
 node --version
-npm install --save-dev humanish @e2b/desktop
+npm install --save-dev humanish
 npx humanish init --yes
 ```
 
-`humanish` is the CLI. `@e2b/desktop` is its optional peer for live hosted desktops. Install them together in the project; a one-shot `npx humanish@latest` can miss the desktop dependency even if you installed it elsewhere.
+`humanish` is enough for the preview and local browser route. Hosted desktops also
+need `npm install --save-dev @e2b/desktop` in the same project; a one-shot
+`npx humanish@latest` can miss the desktop dependency even if you installed it elsewhere.
 
 `init` creates editable labs and personas under `humanish/`, adds package scripts, and ignores `.humanish/`, where run evidence goes. It tells you the next command for your machine.
 
@@ -27,15 +29,20 @@ A live run needs both a desktop and a participant model. Automatic findings use 
 
 | Route | Participant model | Desktop | Automatic findings |
 | --- | --- | --- | --- |
+| [Local browser](/docs/your-app#study-your-running-local-app) | Supported Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM/TUN, or M3+ Mac + Lima | Separate Codex account analyst by default |
 | `openai-computer-use` | OpenAI API with `OPENAI_API_KEY` | `E2B_API_KEY` and `@e2b/desktop` | OpenAI API, separate budget |
-| [`local-agent`](/docs/local-agents) | Your signed-in Codex or Claude Code | `E2B_API_KEY` and `@e2b/desktop` | Still needs `OPENAI_API_KEY`; skipped without it |
+| [Account participant on E2B](/docs/local-agents) | Your signed-in Codex or Claude Code | `E2B_API_KEY` and `@e2b/desktop` | OpenAI API by default; skipped without its key |
 | `first-run` preview | None; synthetic evidence only | None | None |
 
-Codex's ChatGPT login and an OpenAI API key are separate authentication paths. A local login only applies when the lab chooses `type: local-agent`; it does not authorize the default API participant or analysis.
+Codex's ChatGPT login and an OpenAI API key are separate authentication paths.
+The local-browser starter explicitly selects account participants and analysis;
+installing Codex does not switch an existing API lab. Account inference consumes
+plan quota and is not offline or free.
 
 For the default API route, set your keys with the hidden prompts:
 
 ```bash
+npm install --save-dev @e2b/desktop
 npx humanish keys set e2b
 npx humanish keys set openai
 npx humanish doctor --lab try-live
@@ -43,7 +50,7 @@ npx humanish doctor --lab try-live
 
 Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work. If you use a local env file, pass the same `--env-file <path>` to `doctor` and `run`. `doctor --lab` checks the selected route without creating a desktop or making a model request. It reports key presence and CLI-reported login status without printing credentials or account details; remote key validity, model access and quota remain untested. See [budgets and privacy](/docs/budgets-and-privacy) for storage and costs.
 
-## Run a live study
+## Run the hosted example
 
 ```bash
 npx humanish lab inspect try-live
@@ -97,7 +104,7 @@ npx humanish watch try-live
 
 ## Set up your own study
 
-[Your own app](/docs/your-app) gives you a complete lab for a preview or staging URL, plus an isolated two-participant clone-and-build path.
+[Your own app](/docs/your-app) covers a running local app, a hosted preview or staging URL, and an isolated clone-and-build path.
 
 If a coding agent is setting up Humanish for you, install the companion skill:
 
