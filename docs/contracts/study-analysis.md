@@ -119,8 +119,9 @@ distributed across included participants, with unused capacity from short
 sessions available to longer ones. Reclaimed capture slots go first to eligible
 participants with fewer admitted images, including those deferred by their
 initial image-byte reservation. Capture selection prioritizes session endings
-and beginnings, context around recorded failures, and spread across each whole
-session. Failure priority uses structured source status, not application-specific
+and beginnings, context around recorded failures, the capture preceding the
+ending, and spread across each whole session. Adjacent ending context can retain
+results moved out of view by a final scroll or navigation. Failure priority uses structured source status, not application-specific
 keywords or image interpretation. Unflagged visual errors may still be omitted.
 Bounded reads and the total image byte limit can reduce coverage further.
 Selected entries retain their original source order, frame and event identities;
