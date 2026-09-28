@@ -13,15 +13,38 @@ public-safe feedback draft you can turn into a real issue. Committed study
 source lives under `humanish/`; run evidence lands under gitignored
 `.humanish/`.
 
+[![The Observer grid of a saved eight-participant study: eight desktops in one multiplayer lobby, each tile a participant's live screen](https://humanish.dev/runs/lobby-0927/poster.jpg)](https://humanish.dev/demo)
+
+**[Watch a saved run](https://humanish.dev/demo).** Eight synthetic participants
+joined one lobby of a multiplayer game on its live deployment, each on its own
+hosted desktop, and played five rounds. Six reached the final standings, two were
+blocked, and `humanish analyze` turned the 13-minute recording into seven
+findings, each linked to the capture behind it. The page replays the real
+Observer; nothing runs from it.
+
+**Numbers so far, every one with its run ids.** Recall on five planted defects
+in a small task app: 15 of 15 across three live runs
+([benchmark](bench/RESULTS-2026-09-04-0.76.0.md)). Precision on apps the
+maintainer did not write: TodoMVC 5 of 6 findings confirmed against the source,
+drawDB 11 of 12, none invented
+([TodoMVC](bench/RESULTS-TODOMVC-2026-09-01.md)). Cold install to a live study:
+9 of 9 fresh directories in under three minutes at $0.16 to $0.35 each
+([receipt](docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md)).
+Same mission, different personas: keyboard-first participants blocked at drawDB's
+database modal 5 of 5 times and at TodoMVC's rename 6 of 6; mouse newcomers 0 of 5
+and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-2026-09-03.md)).
+Planted defects are more legible than real ones and the largest cell is six runs;
+read these as what the machinery found, not as rates for your users.
+
 ![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
 
-A live four-persona study of [drawDB](https://github.com/drawdb-io/drawdb), a
-public open-source database diagram editor, driven against a commit-pinned
-local checkout. Every lane is a real computer-use session on a hosted desktop;
-the captions are each persona's own final report. drawDB is the application
-studied; it is not a Humanish adopter or endorser.
+An earlier study, kept here because the image ships in the npm package: four
+personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
+database diagram editor, driven against a commit-pinned local checkout. Every lane
+is a real computer-use session on a hosted desktop; the captions are each persona's
+own final report. drawDB is the application studied; it is not a Humanish adopter or endorser.
 
-[Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
+[Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
 
 ## Install
 
