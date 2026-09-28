@@ -23,12 +23,15 @@ function readVisitorId(): string | null {
   return m?.[1] ? decodeURIComponent(m[1]) : null;
 }
 
+// A long timeout: the 4 s one forced posthog-js to initialise while a throttled phone was still
+// busy hydrating (a 470 ms task in the trace), which is exactly the window it should stay out of.
+// On an idle main thread the callback still runs within a second of load.
 function whenIdle(task: () => void): () => void {
   if (typeof window.requestIdleCallback === "function") {
-    const id = window.requestIdleCallback(task, { timeout: 4000 });
+    const id = window.requestIdleCallback(task, { timeout: 15000 });
     return () => window.cancelIdleCallback(id);
   }
-  const id = window.setTimeout(task, 1500);
+  const id = window.setTimeout(task, 3000);
   return () => window.clearTimeout(id);
 }
 
