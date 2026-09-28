@@ -71,7 +71,9 @@
 
 /* Loading retains original pixels; the notice explicitly distinguishes them
    from the requested recording moment. Keep this outside capture geometry. */
-.card .capture-loading { position: absolute; inset: auto 0 44px; z-index: 3; pointer-events: none; padding: 4px 6px; background: var(--panel); color: var(--body-c); font: 10px/1.4 var(--sans); }
+.card .capture-loading { position: absolute; inset: auto 0 44px; z-index: 3; pointer-events: none; padding: 4px 6px; background: var(--panel); color: var(--body-c); font: 10px/1.4 var(--sans); animation: capture-loading-in .18s ease-out both; }
+@keyframes capture-loading-in { from { opacity: 0 } to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .card .capture-loading { animation: none; } }
 .evidence-player .evidence-image[data-retained-image] .evidence-message { inset: auto 0 0; padding: 6px 10px; gap: 3px; font-size: 11px; }
 /* Pending images decode in place; swapping the existing node avoids a second
    fetch for no-store recordings. They never participate in layout or hit tests. */

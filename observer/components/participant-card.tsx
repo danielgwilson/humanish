@@ -5,6 +5,7 @@ import type { ObserverStream } from "@/lib/observer-data";
 import type { GridMoment } from "@/lib/grid-recording";
 import { formatElapsed } from "@/lib/player-model";
 import { useDecodedImage } from "@/lib/use-decoded-image";
+import { useSettled } from "@/lib/use-settled";
 import { completionLabel, signalFor } from "@/lib/signal";
 import { Popover } from "./ui/popover";
 import { IconButton } from "./ui/icon-button";
@@ -15,6 +16,9 @@ import TerminalCast, { type TerminalLine } from "./terminal-cast";
 function terminalLines(plain: string): TerminalLine[] {
   return plain.split("\n").filter(Boolean).slice(-6).map((text) => text.startsWith("$ ") ? { kind: "cmd", text } : { kind: "dim", text });
 }
+
+/** A decode shorter than this shows nothing; see useSettled. */
+const LOADING_AFFORDANCE_DELAY_MS = 400;
 
 export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinned = false, compared = false, comparisonFull = false, onPin, onCompare, now = Date.now(), updating = true, reviewOutcome, replay }: {
   replay?: GridMoment | undefined;
@@ -50,6 +54,8 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
   const detailsLabel = `Participant details: ${name}`;
   const failed = keyframe !== null && capture.status === "error";
   const pending = keyframe !== null && capture.status === "loading" && !liveThumb;
+  // Only a slow decode earns the loading bar and caption; a fast one keeps the previous capture and label.
+  const slowLoad = useSettled(pending, LOADING_AFFORDANCE_DELAY_MS);
   const sourceLabel = liveThumb && liveUrl ? "Live" : active ? "Capture" : !canUpdate && isActiveStream(stream) ? "Snapshot" : null;
   const previewLabel = liveThumb && liveUrl ? "Live desktop preview" : active ? `Latest capture · ${ageLabel(frameUpdatedAt(stream), now)}` : null;
   const captureLabel = replay?.kind === "capture" ? `${replay.coverage === "after-last" ? "Last capture" : "Capture"} · ${formatElapsed(replay.ageMs)} before cursor`
@@ -70,11 +76,11 @@ export function ParticipantCard({ stream, name, onOpen, liveThumb = false, pinne
         <button type="button" className="open-overlay" aria-label={openLabel} onClick={() => onOpen(stream.id)} />
       </div>
     </div>
-    {pending ? <p className="capture-loading" role="status">Loading selected capture…{capture.decoded ? " Previous capture shown." : ""}</p> : null}
+    {slowLoad ? <p className="capture-loading" role="status">Loading selected capture…{capture.decoded ? " Previous capture shown." : ""}</p> : null}
     <div className="card-caption" data-direct-pin={onPin ? "" : undefined}>
       {pinned && !onPin ? <span className="card-pin" role="img" aria-label="Pinned participant" title="Pinned participant"><ReviewIcon name="pin" /></span> : null}
       <div className="card-identity"><button type="button" className="card-name" title={name} onClick={() => onOpen(stream.id)}>{name}</button>
-        {replay ? <span className="card-capture-time" title={pending ? `Loading the selected capture.${capture.decoded ? " The previous capture remains visible." : ""}` : captureLabel}>{pending ? "Loading capture…" : replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
+        {replay ? <span className="card-capture-time" title={slowLoad ? `Loading the selected capture.${capture.decoded ? " The previous capture remains visible." : ""}` : captureLabel}>{slowLoad ? "Loading capture…" : replay.kind === "capture" ? <span className="card-capture-age">{formatDuration(Math.floor(replay.ageMs / 1000) * 1000)} ago</span> : captureLabel}</span>
           : <span className={`card-outcome${reviewOutcome ? " reviewed-outcome" : ""}${active ? " active" : ""}${flagged ? " flagged" : ""}`} title={reviewOutcome ? `Independent analysis: ${reviewOutcome}. Recorded actor: ${stream.actor?.status ?? "not retained"}.` : previewLabel ?? outcome}>{reviewOutcome ? `Analysis: ${reviewOutcome}` : sourceLabel ?? outcome}</span>}
       </div>
       {onPin ? <IconButton className="card-icon card-pin-toggle" label={`${pinned ? "Unpin" : "Pin"} participant ${name} ${pinned ? "from" : "to"} top`}
