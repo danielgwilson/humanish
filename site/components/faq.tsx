@@ -20,7 +20,7 @@ const ITEMS = [
   },
   {
     q: "What is it not for?",
-    a: <>Load, security or pixel-exact regression testing. <a href="#trust">The four things it cannot do</a> are listed above with the reason for each.</>
+    a: <>Load, security or pixel-exact regression testing, and it supplements real-user research rather than replacing it. <a href="#trust">The section above</a> lists four things it never does with your keys and evidence.</>
   }
 ];
 
