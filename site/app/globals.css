@@ -1,6 +1,5 @@
 @import "tailwindcss";
-@import "fumadocs-ui/css/neutral.css";
-@import "fumadocs-ui/css/preset.css";
+/* The docs stylesheet (fumadocs) loads only under /docs: app/docs/docs.css. */
 
 /* ============================================================
    humanish.dev — "Mineral Ledger" token system.
@@ -204,6 +203,11 @@ code, kbd { font-family: var(--mono) }
 /* ---------- reveals ---------- */
 .js .rev { opacity: 0; transform: translateY(16px); transition: opacity .8s cubic-bezier(.22, 1, .36, 1), transform .8s cubic-bezier(.22, 1, .36, 1); transition-delay: var(--d, 0s) }
 .js .rev.in { opacity: 1; transform: none }
+/* Above the fold never waits for JavaScript: the hero runs a short CSS entrance from the
+   first paint instead of the observer-gated reveal (mobile LCP was 6.4 s behind it). */
+.js .hero .rev { opacity: 1; transform: none; transition: none; animation: hero-rise .45s cubic-bezier(.22, 1, .36, 1) both; animation-delay: var(--d, 0s) }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@media (prefers-reduced-motion: reduce) { .js .hero .rev { animation: none } }
 /* Safety valve: if hydration hasn't cancelled the inline fallback timer
    (slow/failed chunks), rev-all unhides everything without animation. */
 .js.rev-all .rev { opacity: 1; transform: none; transition: none }
@@ -213,6 +217,8 @@ code, kbd { font-family: var(--mono) }
 }
 
 /* ---------- nav ---------- */
+.skip { position: absolute; left: 16px; top: -48px; z-index: 50; padding: 8px 12px; border-radius: 8px; background: var(--ink); color: var(--panel); font: 500 13px var(--sans); text-decoration: none }
+.skip:focus { top: 12px }
 .nav { position: relative; z-index: 5 }
 .nav-in {
   display: flex; align-items: center; gap: 34px;
@@ -415,6 +421,17 @@ h1:where(:not(.humanish-docs h1)) {
   .tile-bar { flex-wrap: wrap; row-gap: 2px }
   .tile-bar .lane-id { white-space: normal; overflow: visible; text-overflow: clip }
 }
+
+/* ---------- faq ---------- */
+.faq h2 { max-width: 24ch; margin-bottom: 28px }
+.faq-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 26px 40px; margin: 0; max-width: 1080px }
+.faq-item { min-width: 0 }
+.faq-item dt { font: 500 16px/1.35 var(--sans); color: var(--ink); margin-bottom: 8px }
+.faq-item dd { margin: 0; font-size: 14.5px; line-height: 1.65; color: var(--body-c) }
+.faq-item dd code { font-size: 12.5px; color: var(--ink) }
+.faq-item dd a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px }
+.cta-link { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 4px }
+.cta-link:hover { color: var(--ink) }
 
 /* ---------- bands ---------- */
 .band { padding: clamp(72px, 10vh, 128px) var(--gutter) }
@@ -793,19 +810,7 @@ h1 em { font-style: italic; font-weight: 400 }
     --color-fd-ring: var(--accent);
   }
 }
-.humanish-docs { --fd-layout-width: 1380px; min-height: 100svh; }
-.humanish-docs h1 { font: 500 clamp(30px, 4vw, 42px)/1.15 var(--sans); letter-spacing: -.04em; }
-.humanish-docs h2 { font-family: var(--sans); letter-spacing: -.025em; }
-.humanish-docs h3 { font-family: var(--sans); }
-.humanish-docs .prose { font-size: 15px; line-height: 1.8; color: var(--body-c); }
-.humanish-docs .prose :is(h2, h3) { color: var(--ink); }
-.humanish-docs .prose a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.humanish-docs .prose :is(pre, code) { font-family: var(--mono); font-size: 12px; }
-.humanish-docs .prose pre { line-height: 1.75; }
-.humanish-docs .prose table { font-size: 13px; }
-.humanish-docs .docs-edit { color: var(--muted); font: 11px var(--mono); }
-.humanish-docs .docs-edit:hover { color: var(--accent); }
-.humanish-docs .tbtn { margin-inline: 4px; }
+/* .humanish-docs rules live in app/docs/docs.css. */
 :where(:root[data-theme="dark"]) .humanish-docs .shiki code span { color: var(--shiki-dark); font-style: var(--shiki-dark-font-style); }
 @media (prefers-color-scheme: dark) {
   :where(:root:not([data-theme="light"])) .humanish-docs .shiki code span { color: var(--shiki-dark); font-style: var(--shiki-dark-font-style); }

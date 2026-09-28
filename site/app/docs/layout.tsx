@@ -1,3 +1,4 @@
+import "./docs.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { docsSource } from "@/lib/docs-source";

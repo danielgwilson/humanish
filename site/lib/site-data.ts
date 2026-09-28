@@ -6,8 +6,8 @@
 export const GITHUB = "https://github.com/danielgwilson/humanish";
 export const RECEIPTS = `${GITHUB}/blob/main/docs/goals/computer-use-actor/receipts`;
 export const BENCH = `${GITHUB}/blob/main/bench`;
-/** Mirrors the root package.json version at the time of this build. */
-export const VERSION = "0.91.1";
+/** The root package.json version, read at build time by next.config.mjs. */
+export const VERSION = process.env.NEXT_PUBLIC_HUMANISH_VERSION ?? "0.0.0";
 
 export interface EmbeddedRun {
   /** Directory under /public/runs/. */

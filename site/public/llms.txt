@@ -1,9 +1,7 @@
 # humanish
 
 > Open-source (MIT) TypeScript CLI. Personas use your app in a real browser on a hosted
-> sandbox desktop. Each run is written to your repo under `.humanish/`: screenshots, action
-> traces, lifecycle events, estimated cost at dated rates. `humanish verify` checks the
-> bundle and fails closed.
+> desktop. What they did lands in your repo: captures, actions, findings, and what it cost.
 
 ## When to use humanish
 
