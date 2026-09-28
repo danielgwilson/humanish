@@ -11,7 +11,7 @@ existing capture budget; see its
 Version `0.103.1` fixes capture
 redistribution after image-byte reservations; its
 [release note](../release/0.103.1-analysis-capture-allocation.md) describes the
-bounded selection change and remaining outcome-evidence investigation.
+bounded allocation correction, separate from the 0.103.2 ending-context fix.
 Version `0.103.0` adds optional desktop
 video and audio; its [release note](../release/0.103.0-desktop-recording.md)
 records the supported routes, playback behavior and local-only evidence limits.
@@ -114,7 +114,7 @@ substitute for it.
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; local-agent, borrowed inboxes and SMS are unsupported |
 | Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs support recipient-scoped captured inboxes; real receiving on local desktops, automatic onboarding, larger cohorts and sleep/wake remain unqualified |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); startup gaps remain under investigation (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker; optional screen/mixed-audio MP4 capture shipped with Linux/E2B and Mac acceptance | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); startup gaps remain under investigation (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
