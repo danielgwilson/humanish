@@ -28,6 +28,7 @@ export default function Footer({ base = "" }: { base?: string }) {
             <a href="/docs/save-button-study">Save-button study</a>
             <a href={`${RECEIPTS}/persona-axis-phone-2026-09-03.md`}>Persona axis receipts</a>
             <a href={`${BENCH}/RESULTS-2026-09-04-0.76.0.md`}>Planted-defect benchmark</a>
+            <a href="/demo">Eight-participant lobby replay</a>
             <a href={`${base}#study`}>drawDB and the lobby game runs</a>
             <a href="/failure-modes">Known failure modes</a>
           </nav>

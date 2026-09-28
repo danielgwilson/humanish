@@ -8,6 +8,7 @@ const DEFAULT_LINKS: NavLink[] = [
   { label: "Study", href: "#study" },
   { label: "Commands", href: "#commands" },
   { label: "Trust", href: "#trust" },
+  { label: "Demo", href: "/demo" },
   { label: "Docs", href: "/docs" }
 ];
 

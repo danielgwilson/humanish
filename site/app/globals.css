@@ -433,6 +433,23 @@ h1:where(:not(.humanish-docs h1)) {
 .notfound-links { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 18px }
 .notfound-links a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px }
 
+/* ---------- demo page ---------- */
+.demo-head { padding-bottom: 0 }
+.demo-head .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--label); margin-bottom: 14px }
+.demo-head h1 { max-width: 20ch; margin-bottom: 18px }
+.demo-head .lede { max-width: 66ch }
+.demo-stage { padding-top: 28px; padding-bottom: 28px }
+.demo .hero-observer { width: 100%; max-width: 1280px }
+.demo-hint { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--label); margin-top: 12px }
+.demo-findings h2, .demo-how h2 { max-width: 26ch; margin-bottom: 22px }
+.finding-list { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 12px; max-width: 880px }
+.finding-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line-soft) }
+.finding-list .finding-id { font-family: var(--mono); font-size: 11px; color: var(--muted) }
+.finding-list p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--body-c) }
+.demo-note { max-width: 66ch; font-size: 14.5px; color: var(--muted) }
+.demo-how p { max-width: 66ch; margin-bottom: 20px; color: var(--body-c) }
+@media (max-width: 600px) { .finding-list li { grid-template-columns: auto minmax(0, 1fr) } .finding-list .finding-id { display: none } }
+
 /* ---------- faq ---------- */
 .faq h2 { max-width: 24ch; margin-bottom: 28px }
 .faq-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 26px 40px; margin: 0; max-width: 1080px }
