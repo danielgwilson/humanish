@@ -16,6 +16,7 @@ export default function Hero() {
           <a className="btn btn-primary" href="/docs">Get started</a>
           <a className="cta-link" href="/docs/todomvc-edit-study">Read the TodoMVC study →</a>
         </div>
+        <p className="hero-limits rev" style={{ "--d": ".15s" } as React.CSSProperties}>Synthetic participants give you directional evidence, not a human panel. <a href="/failure-modes">What it cannot tell you</a></p>
         <div className="console rev" id="install" style={{ "--d": ".18s" } as React.CSSProperties}>
           <div className="c-run">
             <code><span className="ps">$</span>npx humanish<span className="caret" aria-hidden="true"></span></code>
