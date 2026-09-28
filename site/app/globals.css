@@ -764,7 +764,7 @@ html:not(.js) .stage { display: grid; gap: 16px }
   margin-top: 44px; padding-top: 22px; border-top: 1px solid rgba(240, 237, 229, .08);
   display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; align-items: baseline;
 }
-.provenance p { font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: #8f8b81; max-width: 92ch }
+.provenance p { font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: #8f8b81; max-width: 92ch }
 .provenance p code { font-size: inherit; color: #98948b }
 .provenance .lic { font-family: var(--mono); font-size: 10.5px; color: #767268; white-space: nowrap }
 
