@@ -1050,6 +1050,8 @@ describe("runComputerUseLoop", () => {
     expect(result.trace.counts.materialActions).toBe(1);
     const hints = seen.flatMap((request) => request.contextHint === undefined ? [] : [request.contextHint]);
     expect(hints.some((hint) => hint.includes("No visible progress"))).toBe(true);
+    expect(result.trace.items.filter(item => item.title === "Participant context hint").map(item => item.text)).toEqual(hints);
+    expect(hints.every(hint => !hint.includes("try a different visible control"))).toBe(true);
     expect(hints.some((hint) => hint.includes("only waiting or taking screenshots"))).toBe(true);
     expect(hints.every((hint) => !/stop with (?:a final|a blocker) summary/.test(hint))).toBe(true);
   });

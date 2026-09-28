@@ -142,6 +142,8 @@ export interface ActorPersonaRef {
   id: string;
   traitsApplied: string[];
   promptDigest: string;
+  /** Authored persona section only. Redacted evidence is not a byte-exact prompt. */
+  brief?: { compilerVersion: number; text: string; digest: string; redacted: boolean; sourceDigest?: string };
 }
 
 export interface ActorTokenUsage {

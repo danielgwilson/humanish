@@ -1,3 +1,4 @@
+import { scrubPersonaBrief } from "./persona.js";
 import { withTransientCommsSecrets } from "./run-narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms-receiving.js";
@@ -876,6 +877,7 @@ async function runConcurrentSharedWorldInScope(options: RunConcurrentSharedWorld
   for (const spec of actorSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
+    spec.persona = scrubPersonaBrief(spec.persona, scrubKnownValues);
   }
   let actorResults: ActorLaneResult[] = [];
   let subjectCommit: string | undefined;

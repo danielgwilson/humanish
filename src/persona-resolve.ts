@@ -1,29 +1,14 @@
-// Resolve committed persona files into compiled personas, for EVERY lane (#381).
-//
-// #308 gave the terminal lane this: read `humanish/personas/<id>.yaml`, compile the traits into
-// behavioral directives, and record truthfully which traits were applied. The computer-use lanes
-// never got it — they composed a bare `Persona: <id>.` line and hardcoded `traitsApplied: []`, so
-// on browser routes the persona axis was a label rather than a behavior. A live two-lane contrast
-// (an impatient expert vs a patient newcomer, same app, same mission) came back with near-identical
-// action profiles, which read like evidence that personas do not matter and was actually evidence
-// that personas were never applied.
-//
-// This module is the shared implementation so the two routes cannot drift again: one containment
-// rule, one compiler, one fallback polarity.
-//
-// FAIL-SAFE, not fail-closed — deliberately the opposite polarity to the scorer loader. A persona
-// that declared nothing must never be given fabricated traits, so an unsafe id, a missing file, or
-// unparseable YAML falls back to the bare id line with a truthful EMPTY traitsApplied (warning only
-// when the file existed but could not be read). Silence here is honest; invention would not be.
+// Shared contained persona resolution for browser and terminal participants.
 import { parse as parseYaml } from "yaml";
 import path from "node:path";
 
-import { parseResolvedPersona, type ResolvedPersona } from "./persona.js";
+import { parseResolvedPersona, PersonaConfigError, type ResolvedPersona } from "./persona.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory
 } from "./selected-output-paths.js";
+import { digestText, redactText } from "./redaction.js";
 import { realpath } from "node:fs/promises";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal lane enforces. */
@@ -39,15 +24,15 @@ export function personaTitleFromId(personaId: string): string {
 }
 
 /**
- * Resolve ONE committed persona. Returns `null` (never a throw, never a guess) when the id is
- * unsafe or no file exists, so a lane always runs.
+ * Resolve ONE committed persona. Returns `null` with a warning when the id is
+ * unsafe or no file exists. Invalid rich backgrounds reject the study before execution.
  */
 export async function resolveCommittedPersona(
   projectRoot: PreparedSelectedOutputDirectory,
   personaId: string
 ): Promise<{ persona: ResolvedPersona | null; warnings: string[] }> {
   if (!PERSONA_ID_PATTERN.test(personaId)) {
-    return { persona: null, warnings: [] };
+    return { persona: null, warnings: ["Persona id is not a safe filename; using the id only (no persona context)."] };
   }
   for (const candidate of [
     path.posix.join("humanish", "personas", `${personaId}.yaml`),
@@ -64,9 +49,12 @@ export async function resolveCommittedPersona(
         warnings: [`${candidate} could not be parsed as YAML; the lane ran with the persona id only (no traits applied).`]
       };
     }
-    return { persona: parseResolvedPersona(raw, { id: personaId, name: personaTitleFromId(personaId) }), warnings: [] };
+    const warnings: string[] = [];
+    const persona = parseResolvedPersona(raw, { id: personaId, name: personaTitleFromId(personaId) }, warnings);
+    persona.sourceDigest = digestText(bytes.toString("utf8"));
+    return { persona, warnings: warnings.map(warning => `${candidate}: ${warning}`) };
   }
-  return { persona: null, warnings: [] };
+  return { persona: null, warnings: [`Persona ${redactText(personaId)} has no readable file under humanish/personas; using the id only (no persona context).`] };
 }
 
 /**
@@ -118,7 +106,8 @@ export async function resolveCommittedPersonasForCwd(
     const physical = await realpath(path.resolve(cwd));
     const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physical), physical);
     return await resolveCommittedPersonas(projectRoot, personaIds);
-  } catch {
-    return { personas: new Map(), warnings: [] };
+  } catch (error) {
+    if (error instanceof PersonaConfigError) throw error;
+    return { personas: new Map(), warnings: ["Persona directory could not be read; no persona context was loaded."] };
   }
 }

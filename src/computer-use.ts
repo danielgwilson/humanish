@@ -1347,6 +1347,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         requestController?.abort();
       }
       }
+      if (request.contextHint) record({ id: nextId("notice"), kind: "notice", title: "Participant context hint", text: redactNarration(request.contextHint), lifecycle: "completed" });
       bump("turns");
       pendingHeardSpeech = [];
       heardSpeechChanged = false;
@@ -1775,7 +1776,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
         contextHints.push(
           `No visible progress for ${consecutiveNoProgress} step(s). ` +
           "If your task calls for waiting for another participant or a pending transition, you may continue waiting. " +
-          "Otherwise, try a different visible control or scroll within a panel; describe any blocker you actually encounter."
+          "Choose whether to continue or stop based on your situation and what you observe."
         );
       }
       if (consecutiveIdle >= idleRecoverySteps && consecutiveIdle < idleSteps) {

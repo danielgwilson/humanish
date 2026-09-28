@@ -1931,9 +1931,8 @@ describe("runCuaActorLab", () => {
     expect(prompt).toContain("signup-a@example.test");
     // The inbox URL, because otherwise there is nowhere to go when the app says "we emailed you".
     expect(prompt).toContain(`http://127.0.0.1:${commsPort}`);
-    // And the wait steering, because a mid-flow model reads "we emailed you" as a blocker and ends
-    // its session — the exact give-up a live run documented.
-    expect(prompt.toLowerCase()).toContain("waiting for an email is normal");
+    // Delivery context is supplied without commanding persistence.
+    expect(prompt.toLowerCase()).toContain("delivery may take a little time");
     const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
     expect(bundle.streams[0].assignment).toEqual({ mission: config.actors[0]!.mission });
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
@@ -2052,9 +2051,9 @@ describe("runCuaActorLab", () => {
     expect(seenInstructions).toContain(`http://127.0.0.1:${commsPort}/inbox`);
     // The full handoff (#351): the persona is told WHICH address to sign up with (the drain matches
     // the declared address, so an invented one would leave the inbox empty forever) and that
-    // waiting for an email is a next step, never a give-up state.
+    // delivery can take time while stopping remains the participant's decision.
     expect(seenInstructions).toContain("Your email address is user@example.test");
-    expect(seenInstructions).toContain("do not end your session while waiting");
+    expect(seenInstructions).toContain("stop based on your situation and what you observe");
     // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
     expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
     // #357 lifecycle: the lane announced its live stream while the sandbox lived, and announced

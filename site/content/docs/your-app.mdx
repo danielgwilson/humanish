@@ -106,6 +106,54 @@ The `$4` participant-model budget and `$2` per-participant backstop are checked 
 
 Keep the mission in the participant's language. “Create a project and find it again” leaves room for discovery. “Click the plus icon in the top right” tells the participant the answer and hides the navigation problem you wanted to study.
 
+## Give the participant a background
+
+`humanish init` creates editable profiles under `humanish/personas/`. Set the
+actor's `persona` to the file's ID. A profile can be a few sentences or a longer
+account of relevant experiences:
+
+```yaml title="humanish/personas/volunteer-organizer.yaml"
+schema: humanish.persona.v1
+id: volunteer-organizer
+name: Morgan
+summary: A volunteer organizer trying an unfamiliar planning app.
+background: |
+  Morgan coordinates twelve volunteers using spreadsheets and email.
+  They know those tools well but have never used this product.
+  They spend Sunday evening reconciling replies and worry about
+  making the roster public or losing their own copy.
+```
+
+Use the mission for today's situation and goal. Give the participant enough
+context to make choices without telling them which controls to use. Keep expected
+defects and hidden completion rules out of the background and mission.
+
+Backgrounds preserve paragraphs up to 32 KiB of UTF-8 text. Oversized or invalid
+backgrounds stop the run before execution. Missing files and unsupported fields
+produce warnings; `backstory` is not a supported alias. The short `summary` still
+has a 280-character limit, with a warning when shortened.
+
+Rich profiles receive only explicitly declared trait directives. Legacy profiles
+without a background retain the existing medium defaults. `keyboard_first` means
+a preference that permits pointer fallback; `keyboard_only` describes a condition
+that does not. These instructions do not enforce input restrictions or certify
+accessibility. Avoid conflicts between the background and optional traits.
+
+Inspect the resolved persona text before spending on a study:
+
+```bash
+npx humanish lab inspect .humanish/labs/your-app.yaml --json
+```
+
+The `personas` field contains authored persona context, separate from task goals,
+route instructions and runtime additions such as inbox access. Participants
+details retain that context on supported autonomous runs; older bundles state
+when it was not recorded. Recorded context hints are listed separately. A brief
+shows what was supplied, not proof that the participant followed it.
+
+Keep profiles synthetic or de-identified and review them before committing or
+sharing. Pattern redaction cannot certify that a personal story is safe to publish.
+
 ## Check, then run
 
 Inspect the lab, then check the selected route's local setup. These commands create no desktop and make no model request:

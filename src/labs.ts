@@ -1,3 +1,6 @@
+import { labPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
+import { personaBrief, PersonaConfigError } from "./persona.js";
+import type { ActorPersonaRef } from "./actor-contract.js";
 import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
@@ -66,6 +69,8 @@ export interface LabListResult {
 }
 
 export interface LabInspectResult {
+  /** Persona context only, before route instructions and runtime grants. */
+  personas?: Array<{ id: string; resolved: boolean; brief?: ActorPersonaRef["brief"] }>;
   schema: typeof LAB_INSPECT_SCHEMA;
   ok: boolean;
   cwd: string;
@@ -263,15 +268,26 @@ export async function inspectLabManifest(cwd: string, lab: string): Promise<LabI
     };
   }
 
+  let personaResolution;
+  try { personaResolution = await resolveCommittedPersonasForCwd(cwd, labPersonaIds(resolved.config)); }
+  catch (error) {
+    if (!(error instanceof PersonaConfigError)) throw error;
+    return { schema: LAB_INSPECT_SCHEMA, ok: false, cwd: path.resolve(cwd), lab,
+      error: { code: "HUMANISH_LAB_INVALID", message: error.message }, warnings: resolved.warnings };
+  }
   return {
     schema: LAB_INSPECT_SCHEMA,
+    personas: labPersonaIds(resolved.config).map(id => {
+      const persona = personaResolution.personas.get(id);
+      return { id, resolved: !!persona, ...(persona ? { brief: personaBrief(persona) } : {}) };
+    }),
     ok: true,
     cwd: path.resolve(cwd),
     lab,
     config: resolved.config,
     origin: resolved.origin,
     path: resolved.path,
-    warnings: resolved.warnings
+    warnings: [...resolved.warnings, ...personaResolution.warnings]
   };
 }
 
