@@ -4,6 +4,15 @@ import { createMDX } from "fumadocs-mdx/next";
 const require = createRequire(import.meta.url);
 /** The CLI's version, shown in the nav; the site builds from the monorepo so the root package.json is present. */
 const { version: HUMANISH_VERSION } = require("../package.json");
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+/** A short hash of the hero's Observer artifact, so its URL changes when the file does. */
+const OBSERVER_ARTIFACT_V = createHash("sha256")
+  .update(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "public/runs/lobby-0927/observer/index.html")))
+  .digest("hex").slice(0, 8);
 
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -16,7 +25,7 @@ const SECURITY_HEADERS = [
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  env: { NEXT_PUBLIC_HUMANISH_VERSION: HUMANISH_VERSION },
+  env: { NEXT_PUBLIC_HUMANISH_VERSION: HUMANISH_VERSION, NEXT_PUBLIC_OBSERVER_ARTIFACT_V: OBSERVER_ARTIFACT_V },
   images: { formats: ["image/avif", "image/webp"], qualities: [60, 70, 75] },
   async redirects() {
     // The homepage sections are anchors; the natural paths lead to them instead of a 404.
@@ -30,9 +39,19 @@ const nextConfig = {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
       {
-        // Run bundles are pinned by content in ASSETS.sha256.json and a new run gets a new slug.
-        source: "/runs/:path*",
+        // Captures and posters are pinned by content in ASSETS.sha256.json; a new run gets a new slug.
+        source: "/runs/:slug/screenshots/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }]
+      },
+      {
+        source: "/runs/:slug/poster.jpg",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }]
+      },
+      {
+        // The Observer artifact and its JSON change when the Observer or the analysis does, at the
+        // same path. A year of "immutable" here kept browsers on the old artifact after a fix.
+        source: "/runs/:slug/observer/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }]
       },
       {
         // The homepage negotiates on Accept (see proxy.ts) and advertises its markdown twin.
