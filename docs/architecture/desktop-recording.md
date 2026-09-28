@@ -49,7 +49,8 @@ Capture still begins after device and transport startup. An audio track can cont
 silence before a cold source delivers sound; early dispatch of speech or playback
 does not itself prove audible capture. Preserve these offsets when reviewing early
 events. The startup correction does not reconstruct missing frames or audio in
-existing files.
+existing files. Variable guest execution stalls can still leave frame gaps; the
+recorded timestamps preserve those gaps. See #854 for the remaining investigation.
 
 The file and its measured interval are recorded in `streams[].recording` and a
 `recording` artifact entry. A recorder failure warns and preserves screenshots,
