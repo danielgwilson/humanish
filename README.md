@@ -36,6 +36,14 @@ and 0 of 6 ([receipt](docs/goals/computer-use-actor/receipts/persona-axis-phone-
 Planted defects are more legible than real ones and the largest cell is six runs;
 read these as what the machinery found, not as rates for your users.
 
+![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome](https://unpkg.com/humanish@0.16.0/docs/assets/humanish-drawdb-hero.png)
+
+An earlier study, kept here because the image ships in the npm package: four
+personas on [drawDB](https://github.com/drawdb-io/drawdb), a public open-source
+database diagram editor, driven against a commit-pinned local checkout. Every lane
+is a real computer-use session on a hosted desktop; the captions are each persona's
+own final report. drawDB is the application studied; it is not a Humanish adopter or endorser.
+
 [Quickstart](https://humanish.dev/docs) · [Study your app](https://humanish.dev/docs/your-app) · [What a study costs](https://humanish.dev/docs/what-a-study-costs) · [Trust boundaries](https://humanish.dev/docs/trust-boundaries) · [CLI reference](https://humanish.dev/docs/cli) · [Limits and evidence](https://humanish.dev/failure-modes)
 
 ## Install
