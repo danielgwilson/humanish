@@ -29,6 +29,46 @@ A standalone catch tracks its generated files. Reusing its directory with a chan
 `--recipient` roster or an emptied delivery log removes obsolete message, latest and
 recipient routes; unrelated files are untouched.
 
+## Local browser studies
+
+Run a catch on the same host as the local study:
+
+```bash
+humanish comms catch --port 8025 --dir .humanish/mail-catch
+```
+
+Configure your **app's** email transport to send to `http://127.0.0.1:8025`
+using its supported HTTP send configuration, or add `--smtp-port 1025` and
+point its SMTP transport at `127.0.0.1:1025`. Humanish does not change an
+already-running app's environment. No real mailbox-provider credentials are
+needed. This captures mail sent by that app; it does not receive arbitrary
+internet email.
+
+Add this to an existing local `app-url` lab:
+
+```yaml
+comms:
+  email:
+    external:
+      catchBaseUrl: http://127.0.0.1:8025
+```
+
+Then run `humanish doctor --lab <lab>` and `humanish run <lab>`. Omit
+`recipients` to assign an address per lane automatically, or declare explicit
+`{ lane, address }` entries for an existing roster. The participant receives its
+address and inbox URL in its mission. Verification links keep their original
+app origin; ensure they target the loopback app port selected by the lab.
+
+Each local desktop forwards a separate host-owned read-only proxy for its
+assigned recipient. Other recipient routes, the operator inbox, mail sends and
+the private delivery drain are unavailable through that proxy. The study closes
+these proxies with its desktops and leaves your catch running. Host-side
+collection uses the existing digest-only comms evidence. Supported captured
+images and explicit unavailable-image placeholders work as described below.
+
+The local path supports captured email only. Provider-backed real receiving
+retains its separate hosted-route and management-credential requirements.
+
 ## Existing external catches
 
 Upgrade the Humanish installation that runs `humanish comms catch` and **restart that

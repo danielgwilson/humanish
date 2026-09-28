@@ -7,6 +7,7 @@ import { hostExec, LIMA_INSTANCE } from "./local-runtime-host.js";
 export async function openRuntimeSshTunnel(options: {
   config: string; destination: string; localSocket: string; remoteSocket: string;
   appSocket: string; appHost: string; appPort: number; signal: AbortSignal;
+  inbox?: { socket: string; host: string; port: number };
 }): Promise<{ close(): Promise<boolean> }> {
   options.signal.throwIfAborted();
   const child = spawn("ssh", ["-F", options.config, "-T", "-a", "-o", "BatchMode=yes",
@@ -14,6 +15,7 @@ export async function openRuntimeSshTunnel(options: {
     "-o", "ConnectTimeout=15", "-o", "StreamLocalBindMask=0177",
     "-L", `${options.localSocket}:${options.remoteSocket}`,
     "-R", `${options.appSocket}:${options.appHost}:${options.appPort}`,
+    ...(options.inbox ? ["-R", `${options.inbox.socket}:${options.inbox.host}:${options.inbox.port}`] : []),
     options.destination, "sh -c 'printf \"HUMANISH_SSH_READY\\n\"; exec cat'"],
   { stdio: ["pipe", "pipe", "pipe"] });
   let exited = false;
@@ -61,7 +63,7 @@ export async function openRuntimeSshTunnel(options: {
 }
 
 export async function openLimaTunnel(options: {
-  work: string; socketRoot: string; appUrl: URL; signal: AbortSignal;
+  work: string; socketRoot: string; appUrl: URL; inboxUrl?: URL; signal: AbortSignal;
 }): Promise<{ close(): Promise<boolean> }> {
   const settings = await hostExec("limactl", ["list", "--format={{.SSHConfigFile}}", LIMA_INSTANCE], { signal: options.signal });
   const config = settings.stdout.trim();
@@ -69,5 +71,6 @@ export async function openLimaTunnel(options: {
   return openRuntimeSshTunnel({ config, destination: `lima-${LIMA_INSTANCE}`,
     localSocket: path.join(options.work, "vsock.sock"), remoteSocket: `${options.socketRoot}/vsock.sock`,
     appSocket: `${options.socketRoot}/vsock.sock_8000`, appHost: options.appUrl.hostname,
+    ...(options.inboxUrl ? { inbox: { socket: `${options.socketRoot}/vsock.sock_8001`, host: options.inboxUrl.hostname, port: Number(options.inboxUrl.port) } } : {}),
     appPort: Number(options.appUrl.port), signal: options.signal });
 }

@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import { labSetupChecks } from "../src/doctor-lab.js";
 import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -29,6 +30,35 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
 }
 
 describe("selected lab setup without paid dispatch", () => {
+  it("checks a local catch before participants and explains unavailable recipient routes", async () => {
+    let compatible = true;
+    const server = createServer((_request, response) => {
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ ok: true, service: "humanish-comms-catch", capabilities: compatible ? ["recipient-inbox-v1"] : [] }));
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+      const manifest = lab("local-agent").replace("https://preview.example.test/", "http://localhost:3000/")
+        .replace("target: e2b-desktop", "target: local") + `\nreview:\n  analysis: false\ncomms:\n  email:\n    external:\n      catchBaseUrl: ${url}\n`;
+      await project(manifest, async cwd => {
+        for (const ready of [true, false]) {
+          compatible = ready;
+          const result = await labSetupChecks({ cwd, lab: "preview", env: keyless, agents: [], keyPresent: () => false,
+            localRuntimeReadiness: async () => ({ ok: true, installed: true, message: "Ready" }),
+            codexAnalysisReadiness: async () => ({ ready: true, errorCode: null }) });
+          const check = result.checks.find(item => item.name === "local captured inbox")!;
+          expect(check.ok).toBe(ready);
+          expect(check.message).toContain(ready ? "does not receive arbitrary internet mail" : "restart humanish comms catch");
+          expect(result.keys).toEqual([]);
+        }
+      });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+
   it("checks the qualified local participant even when analysis is disabled", async () => {
     const manifest = lab("local-agent").replace("https://preview.example.test/", "http://localhost:3000/")
       .replace("target: e2b-desktop", "target: local") + "\nreview:\n  analysis: false\n";
