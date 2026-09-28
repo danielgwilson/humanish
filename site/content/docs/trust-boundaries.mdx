@@ -1,0 +1,51 @@
+---
+title: Trust boundaries and threat model
+description: Who sees what during a study, what Humanish protects, what it does not, and the threats worth planning for.
+---
+
+A study moves your app's screen through several parties. This page names them, says what each receives, and lists the threats the design does and does not cover. Where a behaviour is enforced by code, the sentence links the command or document that proves it; where it depends on a provider's terms, it says so.
+
+## Who sees what
+
+| Party | What it receives | When | Your control |
+| --- | --- | --- | --- |
+| Your machine | Keys, the lab manifest, every bundle under `.humanish/` | Always | Keys live in a user store with mode `0600` or in an ignored env file; `keys list` prints names only |
+| E2B, hosted desktop | A disposable Linux desktop running a browser on your target app; the screen; anything you place in that desktop | `execution.target: e2b-desktop` | The computer-use participant's model key never enters the desktop. Terminal studies receive a runtime key by default; `execution.runtimeAuth: openai-egress` keeps it on E2B's proxy instead |
+| OpenAI, participant model | Each screenshot, the persona, the mission, and the actions so far, once per step | `openai-computer-use` | Choose the model; caps and timeouts bound the number of requests |
+| OpenAI, analyst | Selected retained text and captures from the finished bundle | Automatic after supported live runs, or `humanish analyze` | `review.analysis: false` disables it; the admission estimate is printed and limited |
+| Codex or Claude Code, local-agent route | The same screenshots and prompts, through your signed-in agent | `actors[0].type: local-agent` | Your plan's terms; the bundle marks usage unpriced |
+| Local browser runtime | Nothing leaves your machine except your agent's own traffic | Firecracker guest on Linux, Lima on an M3+ Mac | The guest is disposable; Docker removes it after the run |
+| Your target app | Real requests from the desktop's network address, real records the participant creates | Every live study | Use synthetic accounts and data; public targets need `policies.allowPublicTargets` and an owner attestation |
+| Humanish telemetry | Command name, version, OS, outcome category, error code | Default on | `npx humanish telemetry disable` or `DO_NOT_TRACK=1`; [every field](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) |
+
+Humanish itself uploads nothing. No command publishes a bundle; `feedback issue` renders a draft and makes no GitHub API call.
+
+## What the design protects
+
+- **Keys.** The computer-use model key stays on the host and the desktop receives actions. Provisioned variable names are recorded, values are not, and known secret values are scrubbed from persisted text.
+- **Evidence at rest.** Bundles land in gitignored `.humanish/`. Screenshots are full fidelity by default; `policies.redactScreenshots: true` blurs frames at capture, and `humanish export --redact-screenshots` produces a separately verified redacted copy.
+- **Sharing.** `humanish verify` grades a bundle `share_ready`, `local_only` or `blocked` and fails closed: a bundle that cannot pass every gate is never `share_ready`. The gate detects secret and path patterns.
+- **Spend.** Per-participant and per-study caps stop runs on the estimate; desktops stop at their timeout; analysis is refused above its admission limit. See [what a study costs](/docs/what-a-study-costs).
+- **Resources.** Every desktop is journaled by id; `humanish reclaim --run <id>` stops the ones a crashed run left, and `humanish cleanup` writes an inspection receipt.
+- **The repository.** Every release runs a public-surface scan that fails on secret shapes, private names and unapproved binaries, and the package is MIT under `danielgwilson/humanish`.
+
+## What it does not protect
+
+- **Free-form sensitive content in pixels or text.** `verify` finds patterns, not meaning. A screenshot can contain anything your app displayed; review it before sharing.
+- **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Humanish does not control retention, region or training use; read those terms before pointing a participant at anything private.
+- **Egress from the hosted desktop.** The desktop has internet access; the participant can reach any site the mission or the page leads it to.
+- **Billing limits.** Caps act on estimates after usage is reported. Your provider dashboard is the only hard limit.
+- **Release provenance.** The npm package is published from CI without provenance attestations today; pin versions and audit the tarball if that matters to you.
+
+## Threats worth planning for
+
+1. **Prompt injection from the page under test.** The participant reads the screen and follows it. A hostile page can steer it. Humanish does not detect injection. The blast radius is what the desktop holds: no credentials on the computer-use route by default, a timeout, a spend cap, and a desktop that is destroyed afterwards. Do not place credentials in a desktop that will visit pages you do not control; on terminal studies prefer `openai-egress`.
+2. **Sensitive data captured into evidence.** Use synthetic accounts; enable `redactScreenshots` for studies meant to be shared as-is; keep private labs in ignored files; verify and read before sharing.
+3. **A leaked key.** Keys come from the `0600` store, the environment, or an explicitly ignored env file, never from the lab. Values are scrubbed from persisted text. Rotate at the provider if a bundle ever shows one.
+4. **Runaway spend.** Set both caps and a timeout; they stop on the estimate, so budget the panel with the [worksheet](/docs/what-a-study-costs) and watch the first live run.
+5. **An orphaned desktop.** After a crash, `runs`, then `cleanup --run <id>`, then `reclaim --run <id>`. If cleanup cannot be confirmed, the receipt says so and you check the E2B console.
+6. **A study that is not what it claims.** Every number in a bundle carries its denominator and its rates' date; subjects cloned from a repository are pinned to a commit; public targets carry an owner attestation. Studies published on this site name the Humanish version they ran on.
+
+## Reporting a vulnerability
+
+Follow [SECURITY.md](https://github.com/danielgwilson/humanish/blob/main/SECURITY.md): a minimal public issue when it discloses nothing exploitable, otherwise a private message to the maintainer through the repository owner profile. Include the version, the command, safe reproduction steps and a redacted evidence path.
