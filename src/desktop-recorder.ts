@@ -55,7 +55,9 @@ export function buildDesktopRecorderCommand(options: DesktopRecorderCommandOptio
   if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1) throw new Error("Invalid desktop recording start time.");
   // Both live inputs use wall-clock timestamps; one output origin preserves their offset.
   // Bound raw video buffering separately from the much smaller audio packets.
-  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0",
+  // The shared spelling supports E2B's FFmpeg 4.4 as well as the local runtime.
+  // Explicit VFR prevents older FFmpeg defaults from filling gaps with duplicates.
+  const args = ["-nostdin", "-v", "error", "-y", "-copyts", "-vsync", "vfr", "-thread_queue_size", "32", "-probesize", "32", "-analyzeduration", "0",
     "-f", "x11grab", "-framerate", String(options.frameRate ?? 15),
     "-video_size", `${options.width}x${options.height}`, "-i", options.display];
   const devices = sources.length === 2 ? [COMBINED_PULSE_DEVICE] : sources.map(source => PULSE_DEVICE[source]);
