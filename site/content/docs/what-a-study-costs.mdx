@@ -1,0 +1,62 @@
+---
+title: What a study costs
+description: The three lines you pay, to whom, with the maintainer's own measured numbers, and what the caps do and do not do.
+---
+
+There is no Humanish price. A live study is billed by the providers you bring: a model for the participant, a hosted desktop, and a separate analysis call. This page puts numbers on each line from the maintainer's own kept runs. Every amount below is an estimate at dated rates, read from a run bundle or the [rate table](https://github.com/danielgwilson/humanish/blob/main/src/pricing.ts); your provider bill is authoritative.
+
+## Three lines, three providers
+
+| Line | Who bills you | How it is metered | Typical size |
+| --- | --- | --- | --- |
+| Participant model | OpenAI, by token, for `openai-computer-use` | Every screenshot step is a model request; the bundle records tokens and prices them at the table rate | $0.13 to $1.10 per participant on the runs below |
+| Participant model, local-agent route | Nobody per run: your Codex or Claude Code plan | Plan limits apply; the bundle marks model usage unpriced | $0 marginal, unpriced |
+| Hosted desktop | E2B, by CPU-second and GiB-second | Host-measured span from acquired handle to cleanup, priced at the allocation's resources | $0.009 per minute for the 8 vCPU / 8 GiB desktop the runs used |
+| Analysis | OpenAI, by token, one request per study | Selected retained text and captures; refused when the admission estimate exceeds the limit | $2.29 for an eight-participant study; default limit $3 |
+| Local browser runtime | Nobody: Firecracker on Linux or Lima on an M3+ Mac | Your machine; the participant is your signed-in Codex | $0 desktop, model under your plan |
+
+Rates in the table carry an `asOf` date and a source. On 2026-09-05 the desktop rate was $0.000014 per CPU-second and $0.0000045 per GiB-second (e2b.dev/pricing); on 2026-08-01 the default model `gpt-5.6-sol` was $4 per million input tokens and $20 per million output tokens (developers.openai.com/api/docs/pricing). A model without a table rate makes a capped run refuse to start rather than run unpriced.
+
+## Measured, from kept bundles
+
+`npx humanish stats --json` over the maintainer's project on 2026-09-28: 136 runs, 129 live, 152 participants, $61.63 of estimated run spend plus $2.29 of analysis. 23 runs are unpriced because they used the local-agent route.
+
+| Study | Participants per run | Median estimated cost per run | Median duration |
+| --- | --- | --- | --- |
+| `try-live` starter lab, one participant on drawDB | 1 | $0.13 | 1 min 51 s |
+| Planted-defect detection, one participant on a small task app | 1 | $0.16 clean, $0.22 planted | 1 min 24 s, 1 min 51 s |
+| Observer live check, one participant | 1 | $0.71 | 4 min 27 s |
+| Persona contrast on drawDB, two participants | 2 | $1.11 | 5 min 31 s |
+| Persona axis on drawDB with phone emulation, two participants | 2 | $1.10 | 7 min 25 s |
+| Persona contrast with a local Claude Code participant, two participants | 2 | $0.03 desktop only, model unpriced | 7 min |
+
+Two single runs, line by line:
+
+- A site-reading participant on 2026-09-28: 101 seconds, 20 actions, $0.325 model (`gpt-5.6-sol`, rates as of 2026-09-03) plus $0.017 desktop (1.96 minutes of an 8 vCPU / 8 GiB desktop, rates as of 2026-09-05). Total $0.34.
+- The three-participant lobby study on 2026-09-16: about $3.14 estimated model spend across three desktops for a five-round game. The eight-participant study of 2026-09-27 ran about 13 minutes per desktop; its analysis was admitted at an $11.38 estimate and came to $2.29.
+
+Three fresh installs on 2026-09-01 completed the starter study in 108 to 111 seconds at about $0.16 per run; the [dated receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md) has the run ids.
+
+## Estimate your own study
+
+Add the lines for one participant, then multiply by the panel:
+
+1. Desktop: minutes you allow (`execution.timeoutMs`) times $0.009 for the default template. A 10-minute cap is at most $0.09 per participant.
+2. Model: the runs above spent $0.10 to $0.55 per participant-minute of active use on `gpt-5.6-sol`; a quiet waiting-room participant spends far less than one that reads and types. Budget $0.30 per minute for a busy participant and you will be high.
+3. Analysis: one request per study. The estimate is printed before the request; the default limit is $3, and the eight-participant study cost $2.29.
+
+A six-participant, ten-minute study on the hosted route therefore lands between about $3 and $20 in model spend, under $0.60 in desktop time, and up to $3 in analysis. Run it once with `--dry-run` for the contract and once live with caps before scaling the panel.
+
+## What the caps do
+
+`execution.caps.maxUsd` stops a participant and `maxTotalUsd` stops the study when the *estimate* reaches the number. Both are checked after each model response reports usage, so an in-flight request and concurrent participants can cross the line before stopping; they do not reserve the next request and they are not a provider billing limit. Desktop time and analysis have their own accounting: desktops stop at `timeoutMs`, analysis at its admission limit. `maxUsd: 0` still permits one paid request. The [budgets page](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules.
+
+## What is not in these numbers
+
+- Anything your target app charges for, and any traffic it makes.
+- Desktop allocation and startup time before Humanish holds the handle, plan fees, credits and negotiated prices.
+- Retries after provider interruptions, which appear as separate priced sessions in the bundle.
+- A desktop kept for debugging or with unconfirmed cleanup: its line is marked incomplete and you should check the provider console.
+- Model usage on the local-agent route, which stays unpriced by design.
+
+Every kept bundle carries its own `cost` block with the same breakdown, and `npx humanish stats --lab <id> --json` rolls them up per lab.

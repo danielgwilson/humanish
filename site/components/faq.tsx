@@ -4,7 +4,7 @@ import { GITHUB } from "@/lib/site-data";
 const ITEMS = [
   {
     q: "What does a run cost?",
-    a: <>Three things, each on your own account. Model spend: three fresh installs measured on September 1, 2026 finished the TodoMVC edit study in 108 to 111 seconds at about $0.16 per run. Desktop time: E2B bills the hosted desktop by the minute. Analysis: <code>humanish analyze</code> is a separate call with its own estimate and ceiling. A lab&apos;s <code>maxUsd</code> stops a run when the estimate reaches it; it is an estimate at dated rates, not a provider billing limit, and every bundle records what it came to. <a href="/docs/budgets-and-privacy">How budgets work</a></>
+    a: <>Three things, each on your own account. Model spend: three fresh installs measured on September 1, 2026 finished the TodoMVC edit study in 108 to 111 seconds at about $0.16 per run. Desktop time: E2B bills the hosted desktop by the minute. Analysis: <code>humanish analyze</code> is a separate call with its own estimate and ceiling. A lab&apos;s <code>maxUsd</code> stops a run when the estimate reaches it; it is an estimate at dated rates, not a provider billing limit, and every bundle records what it came to. <a href="/docs/what-a-study-costs">What a study costs, with measured numbers</a></>
   },
   {
     q: "What do I need to run one?",
@@ -12,7 +12,7 @@ const ITEMS = [
   },
   {
     q: "Where does the evidence go?",
-    a: <>Into your repo under <code>.humanish/runs/</code>: captures, the action trace, the event log, the review, the cost. humanish itself uploads nothing; the model provider you chose sees what the participant sees, and <code>humanish analyze</code> sends selected text and captures to the analyst you name. Telemetry is anonymous command usage, never labs, subjects or personas; <a href={`${GITHUB}/blob/main/TELEMETRY.md`} rel="noopener">the telemetry document</a> lists every field, and <code>npx humanish telemetry disable</code> turns it off. <a href="/docs/budgets-and-privacy">Budgets and privacy</a></>
+    a: <>Into your repo under <code>.humanish/runs/</code>: captures, the action trace, the event log, the review, the cost. humanish itself uploads nothing; the model provider you chose sees what the participant sees, and <code>humanish analyze</code> sends selected text and captures to the analyst you name. Telemetry is anonymous command usage, never labs, subjects or personas; <a href={`${GITHUB}/blob/main/TELEMETRY.md`} rel="noopener">the telemetry document</a> lists every field, and <code>npx humanish telemetry disable</code> turns it off. <a href="/docs/trust-boundaries">Who sees what, and the threat model</a></>
   },
   {
     q: "Is it open source?",
