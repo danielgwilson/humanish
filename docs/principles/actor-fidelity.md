@@ -134,8 +134,8 @@ a green run proves nothing.
    different population: their production model and tool settings belong in the
    declared study conditions.
 
-   A supplied persona brief proves context delivery, not adherence. Rich background
-   support and repeated decision controls can establish a narrow behavioral effect;
+   A retained persona brief records the compiled context, not proof of provider
+   receipt or adherence. Repeated decision controls can establish a narrow effect;
    correspondence with real people requires relevant human evidence.
 
 6. **Fail closed only on harness integrity, never on product semantics** — a lane that

@@ -14,7 +14,7 @@ export function ParticipantAssignment({ stream }: { stream: ObserverStream }) {
       <summary><span className="assignment-label">Participant background</span></summary>
       <div className="assignment-body">{brief ? <>
         <p>{brief.text}</p>
-        <p>Background supplied to this participant{brief.redacted ? "; sensitive values removed" : ""}. Task and runtime instructions are separate.</p>
+        <p>Recorded persona context{brief.redacted ? "; sensitive values removed" : ""}. Task and runtime instructions are separate.</p>
       </> : <p>Background was not recorded for this participant.</p>}</div>
     </details>
     {hints.length ? <details className="participant-assignment">
