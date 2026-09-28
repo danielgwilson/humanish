@@ -1,8 +1,11 @@
 # Current Goals
 
-Status date: 2026-09-27. Source baseline: `0.103.1`.
+Status date: 2026-09-28. Source baseline: `0.103.2`.
 
-This page guides work on current source. Version `0.103.1` fixes capture
+This page guides work on current source. Version `0.103.2` retains adjacent
+ending views for outcome review within the existing capture budget; see the
+[release note](../release/0.103.2-analysis-ending-context.md).
+Version `0.103.1` fixes capture
 redistribution after image-byte reservations; its
 [release note](../release/0.103.1-analysis-capture-allocation.md) describes the
 bounded selection change and remaining outcome-evidence investigation.
@@ -93,7 +96,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.103.1`)
+## Current Program Truth (source `0.103.2`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |

@@ -71,6 +71,21 @@ describe("fair bounded study evidence selection", () => {
     expect(await fs.readFile(path.join(prepared.physicalRunRoot, "run.json"))).toEqual(source);
   });
 
+  it("retains adjacent ending views without increasing the shared capture budget", async () => {
+    // A final scroll can leave the result rows in the preceding viewport.
+    const streams = await Promise.all([captures("host", 40), captures("guest", 36)]);
+    for (const lane of streams) lane.actor.items.push(message("ending-account", "I reached the result."));
+    const input = await captureStudyEvidence(prepared, await save(streams));
+    expect(input.images).toHaveLength(40);
+    for (const lane of streams) {
+      const count = lane.id === "host" ? 40 : 36;
+      const frames = input.evidence.filter(entry => entry.streamId === lane.id && entry.capture).map(entry => entry.frame);
+      expect(frames).toHaveLength(20);
+      expect(frames).toEqual(expect.arrayContaining([0, count - 2, count - 1]));
+    }
+    expect(input.coverage.complete).toBe(false);
+  });
+
   it("redistributes a short session's unused capture slots and includes the long session's ending", async () => {
     const source = await save([await captures("long", 80), await captures("short", 4)]);
     const input = await captureStudyEvidence(prepared, source);

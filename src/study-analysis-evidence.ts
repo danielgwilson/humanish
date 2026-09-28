@@ -360,6 +360,9 @@ function sourceOrder(entries: SourceEntry[], capturesOnly: boolean): SourceEntry
   // Explicit failure status/level is source metadata, not a keyword diagnosis.
   // Spread among failures as well: many early failures cannot hide the last one.
   for (const entry of spreadOrder(failureContext)) admit(entry);
+  // A final scroll or navigation can move the result out of view. Keep its
+  // preceding capture as ending context, regardless of the reported outcome.
+  if (capturesOnly) admit(candidates.at(-2));
   for (const entry of spreadOrder(candidates)) admit(entry);
   return [...ordered];
 }
