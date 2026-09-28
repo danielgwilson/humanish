@@ -75,8 +75,11 @@ export default function HeroObserver({ slug, participants, title, speed = 6 }: {
     };
   }, [expanded, close]);
 
-  const src = `/runs/${slug}/observer/index.html?${play ? `autoplay=${speed}&loop=1&` : ""}sidebar=closed`;
-  const full = `/runs/${slug}/observer/index.html`;
+  // The artifact's URL carries a hash of the file, so a browser that cached an older artifact
+  // (they were served immutable for a while) fetches the current one.
+  const v = process.env.NEXT_PUBLIC_OBSERVER_ARTIFACT_V ?? "0";
+  const src = `/runs/${slug}/observer/index.html?v=${v}&${play ? `autoplay=${speed}&loop=1&` : ""}sidebar=closed`;
+  const full = `/runs/${slug}/observer/index.html?v=${v}`;
   const showPoster = !(ready && phone === false);
   return (
     <figure className={expanded ? "hero-observer expanded" : revealed ? "hero-observer rev in" : "hero-observer rev"} ref={ref} style={{ "--d": ".3s" } as React.CSSProperties}
