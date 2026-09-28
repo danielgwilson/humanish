@@ -1574,6 +1574,7 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--port <port>", "Port for capture + inbox (default 8025).", String(DEFAULT_SANDBOX_CATCH_PORT))
     .option("--dir <path>", "Directory for the deliveries log and rendered inbox.", ".humanish/comms-catch")
     .option("--token <value>", "Require this bearer token on GET /deliveries (recommended when reachable off-host).")
+    .option("--smtp-port <port>", "Also capture SMTP mail on 127.0.0.1:<port>. Point your app's SMTP transport here.")
     .option(
       "--inbox-port <port>",
       "Also serve a READ-ONLY inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only."
@@ -1583,7 +1584,7 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
       "Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed.",
       (value: string, previous: string[] = []) => [...previous, value]
     )
-    .action(async (options: { port: string; dir: string; token?: string; inboxPort?: string; recipient?: string[] }) => {
+    .action(async (options: { port: string; dir: string; token?: string; smtpPort?: string; inboxPort?: string; recipient?: string[] }) => {
       const port = Number.parseInt(options.port, 10);
       if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
         io.writeErr("--port must be an integer between 1 and 65534.\n");
@@ -1604,12 +1605,27 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
           return;
         }
       }
+      let smtpPort: number | undefined;
+      if (options.smtpPort !== undefined) {
+        smtpPort = Number(options.smtpPort);
+        if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_534) {
+          io.writeErr("--smtp-port must be an integer between 1 and 65534.\n");
+          io.setExitCode(2);
+          return;
+        }
+        if (smtpPort === port || smtpPort === inboxPort) {
+          io.writeErr("--smtp-port must differ from --port and --inbox-port.\n");
+          io.setExitCode(2);
+          return;
+        }
+      }
       await runCommsCatchHost(
         {
           port,
           dir: options.dir,
           ...(options.token ? { token: options.token } : {}),
           ...(inboxPort === undefined ? {} : { inboxPort }),
+          ...(smtpPort === undefined ? {} : { smtpPort }),
           ...(options.recipient && options.recipient.length > 0 ? { recipients: options.recipient } : {})
         },
         io

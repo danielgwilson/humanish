@@ -333,20 +333,22 @@ def smtp_session(conn):
         pass
 
 
-def smtp_serve(port):
-    import socket
-
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(("127.0.0.1", port))
-    server.listen(16)
+def smtp_serve(server):
     while True:
         conn, _ = server.accept()
         threading.Thread(target=smtp_session, args=(conn,), daemon=True).start()
 
 
 if SMTP_PORT:
-    threading.Thread(target=lambda: smtp_serve(SMTP_PORT), daemon=True).start()
+    import socket
+
+    # Bind before serving HTTP health: a busy SMTP port must fail startup, not
+    # leave a healthy-looking catch that silently cannot receive the app's mail.
+    smtp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    smtp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    smtp_server.bind(("127.0.0.1", SMTP_PORT))
+    smtp_server.listen(16)
+    threading.Thread(target=lambda: smtp_serve(smtp_server), daemon=True).start()
 
 ThreadingHTTPServer(("127.0.0.1", PORT), CaptureHandler).serve_forever()
 `;
