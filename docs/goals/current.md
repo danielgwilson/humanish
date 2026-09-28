@@ -1,8 +1,11 @@
 # Current Goals
 
-Status date: 2026-09-28. Source baseline: `0.104.0`.
+Status date: 2026-09-28. Source baseline: `0.104.1`.
 
-This page guides work on current source. Version `0.104.0` connects local browser
+This page guides work on current source. Version `0.104.1` bounds the recording
+mix buffer to remove the reproduced initial video gap; see its
+[release note](../release/0.104.1-recording-startup.md).
+Version `0.104.0` connects local browser
 participants to captured email inboxes; see its
 [release note](../release/0.104.0-local-captured-inboxes.md).
 Version `0.103.2` retains adjacent ending views for outcome review within the
@@ -99,7 +102,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.104.0`)
+## Current Program Truth (source `0.104.1`)
 
 | Surface | Available in source | Remaining boundary |
 | --- | --- | --- |
@@ -114,7 +117,7 @@ substitute for it.
 | TUI and serving | Detached starts, run stopping, reclamation, Observer attachment, loopback serving, run library and AgentMail setup, authentication and lab configuration | Stopping a process does not itself prove sandbox cleanup; TUI views over CLI `stats`/`export` remain follow-ups |
 | Off-app communication | Recipient-scoped local capture and fresh real AgentMail receiving, supported inline raster images, bounded collection and host-owned recovery | Real mail uses isolated participant surfaces and remains local-only for publication. Hosted mail/model processing, bounded fidelity and interrupted-run recovery are explicit; real receiving through local-agent, borrowed inboxes and SMS are unsupported |
 | Local browsers | Shared study loop on Linux x64/Docker/KVM and M3-or-newer Mac/Lima; pinned runtime download, Codex account participants and automatic analysis | Explicit local labs support recipient-scoped captured inboxes; real receiving on local desktops, automatic onboarding, larger cohorts and sleep/wake remain unqualified |
-| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker; optional screen/mixed-audio MP4 capture shipped with Linux/E2B and Mac acceptance | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); startup gaps remain under investigation (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
+| Mobile and media | Hosted viewport/emulation, desktop geometry checks, bounded dwell and declared camera feed; optional camera and speech passed two-person Linux and Mac conversations with validated analysis; hosted audio-only uses the same worker; optional screen/mixed-audio MP4 capture shipped with Linux/E2B and Mac acceptance | Hosted camera+speech is unsupported; English recognition and robotic voice have fidelity limits; raw AV recording is shipped but local-only, excluded from HTML export and analysis (screenshots/text only); the reproduced recording-mix startup video gap is corrected; variable guest capture stalls, initial device/transport availability and cold audio-source delivery remain limits (#854); forced TURN, larger-cohort capacity, physical-device and touch fidelity remain unqualified |
 
 Use the [task support matrix](../architecture/task-protocol-support.md),
 [actor registry](https://github.com/danielgwilson/humanish/blob/main/src/actor-registry.ts)
