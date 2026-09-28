@@ -24,7 +24,9 @@ export default function HeroCrowd() {
     const octx = off.getContext("2d", { willReadFrequently: true });
     if (!octx) return;
 
-    const rm = prefersReducedMotion();
+    // A still frame where motion is not wanted or affordable: reduced motion, touch screens and
+    // phone widths. The loop cost 1.8 s of a throttled phone's main thread and never earned it there.
+    const rm = prefersReducedMotion() || window.matchMedia("(hover: none), (max-width: 900px)").matches;
     const hasIO = "IntersectionObserver" in window;
     const CELL = 9;
     let W = 0;
@@ -166,24 +168,38 @@ export default function HeroCrowd() {
       window.addEventListener("resize", onResize);
       cleanups.push(() => window.removeEventListener("resize", onResize));
     } else {
+      // First paint is a still; the loop starts once the page is idle so it never competes with
+      // hydration or the largest paint, and it draws every other frame (30 fps reads the same).
+      draw(t0 + 900);
+      let tick = 0;
       const loop = (now: number) => {
         if (disposed) return;
-        draw(now);
+        if ((tick++ & 1) === 0) draw(now);
         raf = running ? requestAnimationFrame(loop) : 0;
       };
-      if (hasIO) {
-        const io = new IntersectionObserver(
-          (e) => {
-            running = e[0]?.isIntersecting ?? false;
-            if (running && !raf) raf = requestAnimationFrame(loop);
-          },
-          { rootMargin: "80px" }
-        );
-        io.observe(cnv);
-        cleanups.push(() => io.disconnect());
+      const start = () => {
+        if (disposed) return;
+        if (hasIO) {
+          const io = new IntersectionObserver(
+            (e) => {
+              running = e[0]?.isIntersecting ?? false;
+              if (running && !raf) raf = requestAnimationFrame(loop);
+            },
+            { rootMargin: "80px" }
+          );
+          io.observe(cnv);
+          cleanups.push(() => io.disconnect());
+        } else {
+          running = true;
+          raf = requestAnimationFrame(loop);
+        }
+      };
+      if (typeof window.requestIdleCallback === "function") {
+        const idle = window.requestIdleCallback(start, { timeout: 2500 });
+        cleanups.push(() => window.cancelIdleCallback(idle));
       } else {
-        running = true;
-        raf = requestAnimationFrame(loop);
+        const timer = window.setTimeout(start, 1200);
+        cleanups.push(() => window.clearTimeout(timer));
       }
       cleanups.push(onThemeRedraw(() => {
         if (!running) draw(performance.now());
