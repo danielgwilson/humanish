@@ -1,7 +1,7 @@
 # humanish
 
-> Open-source (MIT) TypeScript CLI. Personas use your app in a real browser on a hosted
-> desktop. What they did lands in your repo: captures, actions, findings, and what it cost.
+> Open-source (MIT) TypeScript CLI. Synthetic personas use your app in a real browser on a
+> hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.
 
 ## When to use humanish
 

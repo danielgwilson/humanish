@@ -11,7 +11,7 @@ export default function Hero() {
         {/* Mirror obligation: this lede is the site description. Any edit here
             moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
             llms.txt description block in the same commit. */}
-        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Personas use your app in a real browser on a hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.</p>
+        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Synthetic personas use your app in a real browser on a hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.</p>
         <div className="cta-row rev" style={{ "--d": ".12s" } as React.CSSProperties}>
           <a className="btn btn-primary" href="/docs">Get started</a>
           <a className="cta-link" href="/docs/todomvc-edit-study">Read the TodoMVC study →</a>
