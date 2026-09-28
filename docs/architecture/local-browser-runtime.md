@@ -95,14 +95,15 @@ Later participant actions and observations do not use this startup wait.
 - On Linux, a local Docker Engine; remote contexts, rootless Docker and Docker
   Desktop are unsupported. The Mac adapter uses Docker inside its own Lima host.
 - Loopback HTTP(S) app URLs on explicit ports above 1023. Each participant can
-  reach its selected app port, plus public destinations over ordinary TCP/UDP.
+  reach its selected app port, its assigned captured inbox when declared, and public destinations over ordinary TCP/UDP.
   Other private host/LAN destinations and cloud metadata are blocked.
 - Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
   enclosing memory limit is 3 GiB. Start with a small concurrency for your host;
   these allocations are not a promise of measured peak memory or capacity.
 - Browser-only by default. [Optional camera and spoken conversation](participant-media.md)
-  use a separate media image and the same study loop. Local inbox declarations
-  remain unsupported.
+  use a separate media image and the same study loop.
+- [Captured inboxes](comms-inbox.md#local-browser-studies) use an operator-run mail catch.
+  Real email receiving remains unsupported on the local route.
 - A 20-minute default and maximum participant session budget, within the runtime
   image's 30-minute process lifetime. A shorter `execution.timeoutMs` is supported.
 - Codex participants currently use `gpt-6-astra` at low effort. Hosted templates,

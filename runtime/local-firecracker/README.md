@@ -5,8 +5,8 @@ Firecracker desktops, Codex-account participants, normal Observer recordings and
 automatic Codex analysis. Installed users should follow
 [local browser setup](../../docs/architecture/local-browser-runtime.md), which
 downloads a prepared image. The Mac/Lima path passed installed studies and
-public ARM64 image setup on an M5 Max. Inboxes remain a follow-up; media uses a
-separate opt-in build.
+public ARM64 image setup on an M5 Max. Captured inboxes use a per-participant
+read-only forward to an operator-run catch; media uses a separate opt-in build.
 
 ## Run it
 

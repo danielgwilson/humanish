@@ -14,6 +14,9 @@ def launch():
     app_port = int(sys.argv[1])
     if not 1024 <= app_port <= 65535:
         raise ValueError("local application port must be between 1024 and 65535")
+    inbox_port = int(sys.argv[4]) if len(sys.argv) > 4 else None
+    if inbox_port is not None and (not 1024 <= inbox_port <= 65535 or inbox_port == app_port):
+        raise ValueError("local inbox needs a separate port between 1024 and 65535")
     uid, gid = int(sys.argv[2]), int(sys.argv[3])
     if uid <= 0 or gid <= 0:
         raise ValueError("the VMM must run as an unprivileged user")
@@ -59,7 +62,8 @@ table ip humanish {
             "kernel_image_path": "/kernel",
             "boot_args": "console=ttyS0 reboot=k panic=1 root=/dev/vda ro "
             "ip=192.0.2.2::192.0.2.1:255.255.255.252::eth0:off "
-            f"humanish.app_port={app_port}{media_args}",
+            f"humanish.app_port={app_port}"
+            + (f" humanish.inbox_port={inbox_port}" if inbox_port is not None else "") + media_args,
         },
         "machine-config": {"vcpu_count": 2, "mem_size_mib": 2048},
         "drives": [

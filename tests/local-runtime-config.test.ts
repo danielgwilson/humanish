@@ -20,6 +20,15 @@ describe("local browser lab configuration", () => {
     expect(labKeyRequirements(parsed.config, "cua", false, () => false)).toEqual({ desktop: false, keys: ["OPENAI_API_KEY"] });
     expect(parsed.config.review?.analysis).toBeUndefined();
   });
+  it("admits an external captured inbox without mailbox-provider credentials", () => {
+    const parsed = parseLabConfig({ ...base, comms: { email: { external: { catchBaseUrl: "http://127.0.0.1:8025" } } } });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    expect(parsed.config.comms?.email?.kind).toBe("fake");
+    expect(labKeyRequirements(parsed.config, "cua", false, () => false).keys).toEqual([]);
+    for (const email of [{ injectEnv: "MAIL_BASE_URL" }, { kind: "real", connection: "agentmail" }]) {
+      expect(parseLabConfig({ ...base, comms: { email } }).ok).toBe(false);
+    }
+  });
   it("admits optional native camera and conversation without adding provider keys", () => {
     const media = { camera: { source: "synthetic" }, microphone: { source: "speech" } };
     const parsed = parseLabConfig({ ...base, execution: { target: "local", desktop: { media } } });

@@ -49,8 +49,8 @@ latency and possible transcription errors, not a streaming voice conversation
 with interruption handling.
 
 Spoken text and heard observations pass through the existing evidence redaction
-before being retained in the trace. Analysis reads that evidence alongside the
-recording. Raw audio is not saved by default. [Optional desktop recording](desktop-recording.md)
+before being retained in the trace. Analysis reads that evidence alongside screenshots and actions; it does not
+inspect raw audio or video. Raw audio is not saved by default. [Optional desktop recording](desktop-recording.md)
 can retain actual screen and audio playback alongside this evidence.
 
 ## Hosted desktops

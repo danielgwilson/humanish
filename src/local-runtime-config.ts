@@ -35,7 +35,9 @@ export function localBrowserUnsupportedReason(config: LabConfig): string | undef
     actor.lanes?.some(lane => lane.device !== undefined) || desktop.template !== undefined || desktop.sandboxTimeoutMs !== undefined) {
     return "The local browser runtime currently uses a 960×720 Chromium desktop. Omit hosted templates, device presets and sandboxTimeoutMs.";
   }
-  if (config.comms !== undefined) return "Local browser inboxes are not integrated yet. Remove comms declarations or select a supported hosted route.";
+  if (config.comms !== undefined && (config.comms.email?.kind !== "fake" || !config.comms.email.external)) {
+    return "Local browser inboxes require captured email with comms.email.external.catchBaseUrl. Run humanish comms catch and point your app's email sends at it. Real receiving requires a supported hosted route.";
+  }
   if (desktop.media?.camera !== undefined && desktop.media.camera.source !== "synthetic") {
     return "Local cameras currently use source: synthetic. Camera files remain supported on hosted desktops.";
   }

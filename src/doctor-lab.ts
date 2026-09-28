@@ -5,6 +5,7 @@ import type { LabBackend } from "./lab-engine.js";
 import type { DetectedLocalAgent } from "./local-agent-cli.js";
 import type { DoctorResult } from "./run.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { externalCatchHealthy } from "./comms-sandbox-catch.js";
 import { receivingRequiredKey } from "./comms-setup.js";
 
 type Check = DoctorResult["checks"][number];
@@ -50,6 +51,13 @@ export async function labSetupChecks(args: {
   if (local) {
     const runtime = await (args.localRuntimeReadiness ?? (() => localRuntimeStatus({ env: args.env, media: config.execution?.desktop?.media !== undefined || config.execution?.desktop?.recording !== undefined })))();
     checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
+    const email = config.comms?.email;
+    if (email?.kind === "fake" && email.external) {
+      const healthy = await externalCatchHealthy(email.external, { timeoutMs: 5000 });
+      checks.push({ name: "local captured inbox", ok: healthy, message: healthy
+        ? "Recipient inbox routes are ready. Point your app's email sends at this catch; delivery remains untested. No mailbox-provider credentials are needed, and this does not receive arbitrary internet mail."
+        : "Captured inbox is unavailable or outdated. Start or upgrade and restart humanish comms catch, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated." });
+    }
   }
   if (config.comms?.email?.kind === "real") {
     const name = await receivingRequiredKey(args.cwd, config.comms.email.connection);

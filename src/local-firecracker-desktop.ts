@@ -28,9 +28,10 @@ export interface LocalFirecrackerDesktop extends DesktopSession {
   finishRecording(destination: Writable): Promise<DesktopRecordingMetadata>;
 }
 
-/** One VM and an opaque TCP forward to the explicitly selected loopback app. */
+/** One VM with opaque TCP forwards to the selected app and optional scoped inbox. */
 export async function createLocalFirecrackerDesktop(options: {
   assets: LocalFirecrackerAssets; appUrl: string; outputRoot: string; signal?: AbortSignal; media?: GuestMediaConfig; recording?: DesktopRecordingConfig;
+  inboxUrl?: string;
 }): Promise<LocalFirecrackerDesktop> {
   if (options.media !== undefined) {
     guestMediaConfigSchema.parse(options.media);
@@ -44,6 +45,10 @@ export async function createLocalFirecrackerDesktop(options: {
   try { url = new URL(validateGuestInitialUrl(options.appUrl)); }
   catch {
     throw new Error("Local Firecracker requires a loopback HTTP(S) app on a port above 1023.");
+  }
+  const inbox = options.inboxUrl === undefined ? undefined : new URL(validateGuestInitialUrl(options.inboxUrl));
+  if (inbox && (inbox.protocol !== "http:" || inbox.port === url.port)) {
+    throw new Error("The local inbox requires its own loopback HTTP port.");
   }
   options.signal?.throwIfAborted();
   await mkdir(options.outputRoot, { recursive: true, mode: 0o700 });
@@ -59,22 +64,23 @@ export async function createLocalFirecrackerDesktop(options: {
   let tunnel: Awaited<ReturnType<typeof openLimaTunnel>> | undefined;
   let socketRoot = path.join(work, "vm"), cidfile = path.join(work, "container-id");
   let controlSocket = path.join(socketRoot, "vsock.sock");
-  const forward = createServer(incoming => {
-    if (signal.aborted) { incoming.destroy(); return; }
-    const target = connect({ host: url.hostname, port: Number(url.port), autoSelectFamily: true });
-    for (const socket of [incoming, target]) {
-      sockets.add(socket);
-      socket.once("close", () => sockets.delete(socket));
-      socket.on("error", () => { incoming.destroy(); target.destroy(); });
-    }
-    incoming.pipe(target); target.pipe(incoming);
-    incoming.once("close", () => target.destroy()); target.once("close", () => incoming.destroy());
-  });
+  const forwards = [{ url, port: 8000 }, ...(inbox ? [{ url: inbox, port: 8001 }] : [])].map(endpoint => ({
+    port: endpoint.port, server: createServer(incoming => {
+      if (signal.aborted) { incoming.destroy(); return; }
+      const target = connect({ host: endpoint.url.hostname, port: Number(endpoint.url.port), autoSelectFamily: true });
+      for (const socket of [incoming, target]) {
+        sockets.add(socket);
+        socket.once("close", () => sockets.delete(socket));
+        socket.on("error", () => { incoming.destroy(); target.destroy(); });
+      }
+      incoming.pipe(target); target.pipe(incoming);
+      incoming.once("close", () => target.destroy()); target.once("close", () => incoming.destroy());
+  }) }));
   let closing: ReturnType<DesktopSession["close"]> | undefined;
   const close: DesktopSession["close"] = () => closing ??= (async () => {
     stop.abort(); client?.close();
     for (const socket of sockets) socket.destroy();
-    if (forward.listening) forward.close();
+    for (const forward of forwards) if (forward.server.listening) forward.server.close();
     options.signal?.removeEventListener("abort", aborted);
     // Docker can create the container before its command's reply is interrupted.
     // Only this invocation's private cidfile is cleanup authority.
@@ -105,13 +111,13 @@ export async function createLocalFirecrackerDesktop(options: {
       controlSocket = path.join(work, "vsock.sock");
       uid = Number((await runtimeExec("id", ["-u"])).stdout.trim());
       gid = Number((await runtimeExec("id", ["-g"])).stdout.trim());
-      tunnel = await openLimaTunnel({ work, socketRoot, appUrl: url, signal });
+      tunnel = await openLimaTunnel({ work, socketRoot, appUrl: url, ...(inbox ? { inboxUrl: inbox } : {}), signal });
     } else {
       await mkdir(socketRoot, { mode: 0o700 });
     }
-    if (!lima) await new Promise<void>((resolve, reject) => {
-      forward.once("error", reject);
-      forward.listen(path.join(socketRoot, "vsock.sock_8000"), () => { forward.off("error", reject); resolve(); });
+    if (!lima) for (const { server, port } of forwards) await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(path.join(socketRoot, `vsock.sock_${port}`), () => { server.off("error", reject); resolve(); });
     });
     const created = await docker(["create", "--rm", "--cidfile", cidfile, "--init", "--user", "0:0", "--read-only", "--cap-drop", "ALL",
       "--cap-add", "NET_ADMIN", "--cap-add", "SETUID", "--cap-add", "SETGID", "--cap-add", "CHOWN",
@@ -120,7 +126,7 @@ export async function createLocalFirecrackerDesktop(options: {
       "--tmpfs", "/tmp:rw,nosuid,nodev,size=16m", "--stop-timeout", "5",
       "--mount", `type=bind,src=${socketRoot},dst=/run/vm`,
       "--mount", "type=volume,dst=/run/state,volume-nocopy",
-      options.assets.image, url.port, String(uid), String(gid)]);
+      options.assets.image, url.port, String(uid), String(gid), ...(inbox ? [inbox.port] : [])]);
     if (!/^[a-f0-9]{64}$/.test(created)) throw new Error("Docker did not return a container ID.");
     container = created;
     signal.throwIfAborted();

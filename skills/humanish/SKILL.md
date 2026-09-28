@@ -128,8 +128,14 @@ the pinned runtime; a live local run also prepares it automatically. The normal
 See [the complete example and limits](../../docs/architecture/local-browser-runtime.md).
 
 Local browsers currently require a loopback app URL with an explicit port above
-1023 and use a 960×720 Chromium desktop. Local inbox declarations remain
-unsupported. Optional camera and spoken conversation require a separate media
+1023 and use a 960×720 Chromium desktop. For email-gated local apps, start
+`humanish comms catch`, point the app's email sends at it, and declare
+`comms.email.external.catchBaseUrl`. Use `doctor --lab` to check its recipient
+routes. This captures app sends without mailbox-provider credentials; it does
+not receive arbitrary internet email. Each participant gets only its assigned
+inbox through the local desktop. Real receiving still needs a supported hosted
+route. See [captured inbox setup](../../docs/architecture/comms-inbox.md#local-browser-studies).
+Optional camera and spoken conversation require a separate media
 runtime; follow [participant media](../../docs/architecture/participant-media.md)
 for setup and provider limits. Speech uses the same continuing Codex participant,
 not a second conversation. Do not claim that installing the CLI also installs

@@ -2,7 +2,7 @@ import { collectDesktopRecording } from "./desktop-recording-artifact.js";
 import path from "node:path";
 import { runLab, type LabOutcome, type RunLabOptions } from "./lab-engine.js";
 import type { LabConfig } from "./lab-config.js";
-import type { DesktopLaneEvidence } from "./cua-desktop-lane.js";
+import { inboxRecipientFor, type DesktopLaneEvidence } from "./cua-desktop-lane.js";
 import { runCuaActorSession } from "./computer-use-actor.js";
 import { createLocalFirecrackerDesktop, type LocalFirecrackerAssets, type LocalFirecrackerDesktop } from "./local-firecracker-desktop.js";
 import { localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
@@ -10,6 +10,7 @@ import { prepareLocalRuntime } from "./local-runtime.js";
 import { checkRestrictedCodexAnalysisReadiness } from "./restricted-codex-analysis.js";
 import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
 import { guestMediaConfigSchema } from "./guest-media-config.js";
+import { startLocalCapturedInbox } from "./local-captured-inbox.js";
 
 /** Local desktop/provider composition over the shared lab runner. */
 export async function runLocalFirecrackerStudy(options: RunLabOptions & {
@@ -48,11 +49,17 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
       cuaHooks: {
         createDesktopLane(spec, warnings, artifactRoot) {
           let session: LocalFirecrackerDesktop | undefined;
+          let inbox: Awaited<ReturnType<typeof startLocalCapturedInbox>> | undefined;
+          const email = config.comms?.email;
+          const address = email?.kind === "fake" ? inboxRecipientFor(email, spec.laneId)?.address : undefined;
           let finalizing: Promise<void> | undefined;
           const evidence: DesktopLaneEvidence = { killed: false, streamUrlPresent: false, stateStepRecords: [], phaseRecords: [] };
           return {
             async prepare() {
-              session = await createLocalFirecrackerDesktop({ assets: await assets(),
+              const runtime = await assets();
+              if (address && email?.kind === "fake" && email.external) inbox = await startLocalCapturedInbox(email.external, address);
+              session = await createLocalFirecrackerDesktop({ assets: runtime,
+                ...(inbox ? { inboxUrl: inbox.url } : {}),
                 ...(media === undefined ? {} : { media }),
                 ...(recording === undefined ? {} : { recording }),
                 appUrl: spec.targetUrl ?? config.subject.appUrl!, outputRoot: path.join(options.cwd, ".humanish", "local-runtime"),
@@ -67,10 +74,12 @@ export async function runLocalFirecrackerStudy(options: RunLabOptions & {
             },
             async openSession() {
               if (!session) throw new Error("The local desktop has not been prepared.");
-              return { executor: session.executor };
+              return { executor: session.executor, ...(inbox && address ? { inbox: { url: inbox.url, address } } : {}) };
             },
             finalize() {
               return finalizing ??= (async () => {
+                try { await inbox?.close(); }
+                catch { cleanupUnconfirmed = true; warnings.push("Local inbox cleanup is unconfirmed."); }
                 if (!session) return;
                 if (recording) {
                   const desktop = session;
