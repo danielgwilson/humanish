@@ -85,7 +85,7 @@ export default function HeroObserver({ slug, participants, title, speed = 6 }: {
         <span className="lane-id"><b>Observer ·</b> {participants} participants · one lobby</span>
         <span className="ho-bar-end">
           <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>
-          {expanded ? <button type="button" className="ho-close" ref={closeRef} onClick={close}>Close ✕</button> : null}
+          {expanded ? <><span className="ho-esc">Esc closes</span><button type="button" className="ho-close" ref={closeRef} onClick={close}>Close ✕</button></> : null}
         </span>
       </div>
       <div className="ho-frame" ref={frameRef} style={expanded ? undefined : { height: Math.round(STAGE_H * fit.scale) }}>
@@ -94,6 +94,9 @@ export default function HeroObserver({ slug, participants, title, speed = 6 }: {
             className="ho-iframe"
             src={src}
             title={title}
+            // In the hero the frame is a picture: inert keeps Tab and the arrow keys on the page
+            // (a keyboard-first participant lost document scrolling to the embed). The lightbox lifts it.
+            inert={!expanded}
             style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${fit.scale})`, left: fit.left, top: fit.top }}
             onLoad={() => setReady(true)}
           />
