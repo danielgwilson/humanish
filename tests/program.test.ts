@@ -83,6 +83,27 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 describe("humanish CLI scaffold", () => {
+  it.each(["0", "65535", "2525.5", "2525oops", "NaN"])("rejects invalid catch SMTP port %s before creating files", async smtpPort => {
+    await withTempApp({}, async cwd => {
+      const result = await runCli(["comms", "catch", "--smtp-port", smtpPort, "--dir", path.join(cwd, "catch")]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("--smtp-port must be an integer");
+      expect(await readdir(cwd)).toEqual([]);
+    });
+  });
+
+  it.each([
+    ["--port", "2525"],
+    ["--inbox-port", "2525"]
+  ])("rejects an SMTP port shared with %s before creating files", async (flag, port) => {
+    await withTempApp({}, async cwd => {
+      const result = await runCli(["comms", "catch", flag, port, "--smtp-port", "2525", "--dir", path.join(cwd, "catch")]);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("--smtp-port must differ");
+      expect(await readdir(cwd)).toEqual([]);
+    });
+  });
+
   it.each([
     ["run", "lanes"], ["run", "roster"], ["lab run", "lanes"], ["lab run", "roster"]
   ] as const)("%s rejects unknown %s fields in JSON before creating run evidence (#343)", async (command, field) => {

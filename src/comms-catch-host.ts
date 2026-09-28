@@ -44,6 +44,8 @@ export interface CommsCatchHostOptions {
   /** SECOND port for the READ-ONLY inbox listener bound to 0.0.0.0, so a persona on another machine
    *  (or in a per-lane desktop) can reach the inbox. Omit to stay loopback-only. */
   inboxPort?: number;
+  /** Optional loopback SMTP listener sharing the HTTP capture and inbox pipeline. */
+  smtpPort?: number;
   /** Restrict the rendered inbox to these addresses. Omit to render whatever the app actually mailed
    *  — a standalone catch has no lab roster to read recipients from, and an operator who forgets to
    *  name one should not get a healthy catch that renders an empty inbox forever (#380). */
@@ -144,11 +146,13 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
     deliveriesPath,
     surfaceDir,
     String(inboxPort ?? 0),
-    options.token ?? ""
+    options.token ?? "",
+    String(options.smtpPort ?? 0)
   ];
   io.writeOut(
     [
-      `humanish comms catch listening on http://127.0.0.1:${options.port}`,
+      `Starting humanish comms catch on http://127.0.0.1:${options.port}`,
+      ...(options.smtpPort === undefined ? [] : [`  SMTP 127.0.0.1:${options.smtpPort} <- point your app's SMTP transport here`]),
       ...(inboxPort === undefined
         ? []
         : [`  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; expose THIS to personas)`]),

@@ -153,4 +153,30 @@ describe("sandbox catch: SMTP transport", () => {
       sendMail(smtpPort, "Subject: x", { from: "no-reply@example.test", to: "ada@example.test" })
     ).rejects.toThrow();
   });
+
+  it("fails before HTTP health when the requested SMTP port is occupied", async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "humanish-smtp-busy-"));
+    const scriptPath = path.join(dir, "catch.py");
+    await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
+    const occupied = createServer();
+    await new Promise<void>(resolve => occupied.listen(0, "127.0.0.1", resolve));
+    const address = occupied.address();
+    if (!address || typeof address === "string") throw new Error("No occupied port");
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      const httpPort = await freePort();
+      child = spawn("python3", [scriptPath, String(httpPort), path.join(dir, "deliveries.ndjson"),
+        path.join(dir, "surface"), "0", "", String(address.port)], { stdio: "ignore" });
+      const exitCode = await Promise.race([
+        new Promise<number | null>(resolve => child!.once("exit", resolve)),
+        new Promise<"still-running">(resolve => { timer = setTimeout(() => resolve("still-running"), 2_000); })
+      ]);
+      expect(exitCode).toBe(1);
+      await expect(fetch(`http://127.0.0.1:${httpPort}/health`)).rejects.toThrow();
+      expect(occupied.listening).toBe(true);
+    } finally {
+      clearTimeout(timer);
+      await new Promise<void>(resolve => occupied.close(() => resolve()));
+    }
+  });
 });
