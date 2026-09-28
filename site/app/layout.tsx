@@ -1,12 +1,46 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
+/**
+ * The headline and the wordmark are the largest paint on a phone, and Chrome counts a text
+ * element once its web font is in. So the glyphs they use, and only those, ship as tiny
+ * self-hosted subsets of the same Newsreader (both axes kept, so the display optical size is
+ * identical) and of Geist at 600: about 15 KB. The file names start with "0-" because Next
+ * emits font preloads in file-name order and these must sit ahead of the full faces in the
+ * HTML, or a slow connection queues them behind 271 KB. Regenerate with
+ * scripts/subset-display-fonts.py.
+ */
+const newsreaderDisplay = localFont({
+  src: [
+    { path: "./fonts/0-display-newsreader.woff2", style: "normal" },
+    { path: "./fonts/0-display-newsreader-italic.woff2", style: "italic" }
+  ],
+  weight: "300 400",
+  display: "swap",
+  preload: true,
+  adjustFontFallback: "Times New Roman",
+  variable: "--font-newsreader-display"
+});
+
+const geistDisplay = localFont({
+  src: "./fonts/0-display-geist-600.woff2",
+  weight: "600",
+  display: "swap",
+  preload: true,
+  adjustFontFallback: "Arial",
+  variable: "--font-geist-display"
+});
+
+// The full face stays preloaded, after the subsets in document order: discovered from CSS
+// instead it fetches at "VeryHigh" and the simulated slow network then holds the stylesheet
+// behind 271 KB of font (FCP 1.3 s -> 3.0 s in Lighthouse). Preloaded, it fetches at "High"
+// and no longer gates anything the hero paints.
 const newsreader = Newsreader({
   subsets: ["latin"],
   style: ["normal", "italic"],
-  axes: ["opsz"],
   display: "swap",
   variable: "--font-newsreader"
 });
@@ -97,7 +131,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${newsreader.variable} ${geist.variable} ${geistMono.variable}`}
+      className={`${newsreaderDisplay.variable} ${geistDisplay.variable} ${newsreader.variable} ${geist.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <head>
