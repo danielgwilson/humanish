@@ -11,15 +11,19 @@ const newsreader = Newsreader({
   variable: "--font-newsreader"
 });
 
+// Only the headline face is preloaded: Chrome counts the largest paint once its web font is in,
+// and four preloads (325 KB) shared the first seconds of a phone connection with it.
 const geist = Geist({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-geist"
 });
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
+  preload: false,
   variable: "--font-geist-mono"
 });
 
