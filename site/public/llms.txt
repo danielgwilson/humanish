@@ -1,7 +1,7 @@
 # humanish
 
 > Open-source (MIT) TypeScript CLI. Synthetic personas use your app in a real browser on a
-> hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.
+> local or hosted desktop. What they did lands in your repo: captures, actions, findings, and usage evidence.
 
 ## When to use humanish
 
@@ -130,16 +130,23 @@ Details: https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts
 
 ## Credentials
 
-A live study needs two things in the environment:
+Choose the execution route before requesting credentials. Local browser studies
+use a supported Codex CLI with file-backed ChatGPT login on Linux x64 with
+Docker/KVM/TUN or M3+ Mac with Lima. They need neither E2B nor an OpenAI API key;
+participants and the separate default analyst use account quota and remote
+inference. Setup: https://humanish.dev/docs/your-app#study-your-running-local-app
+
+The hosted API route needs:
 
 - `E2B_API_KEY`: the hosted sandbox the persona works in. Set it with
   `npx humanish keys set e2b`, or `e2b auth login`.
 - `OPENAI_API_KEY`: the model driving the persona. Set it with `npx humanish keys set openai`.
   Alternatively a signed-in local agent (Codex, Claude Code) can supply the participant, but
-  `E2B_API_KEY` is still required.
+  `E2B_API_KEY` is still required for that hosted desktop. Analysis defaults to
+  the OpenAI API separately; an account participant does not change that default.
 
-`humanish doctor --json` reports which of these were found and names the exact command to fix
-each missing one without printing key values. Persisted text is scrubbed for known
+`humanish doctor --lab <lab> --json` checks the selected route's setup and names
+the command to fix missing prerequisites without printing key values. Persisted text is scrubbed for known
 secret values and patterns; this is not a guarantee that all sensitive content is detected.
 
 Node 20 or newer for the CLI; the human TUI requires Node 22 or newer.

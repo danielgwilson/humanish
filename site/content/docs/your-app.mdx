@@ -1,13 +1,68 @@
 ---
 title: Study your own app
-description: Give a participant one concrete job on a preview URL, or build your app inside an isolated sandbox.
+description: Study your running local app with a Codex account, or use a hosted desktop for a preview URL.
 ---
 
 You have a preview build and want to know where a newcomer gets stuck. Give participants one concrete job, let them try it, and keep the evidence for the next change.
 
-Finish the [installation and provider setup](/docs#install) first. Use an app you own or have permission to study, with synthetic accounts and data.
+Use an app you own or have permission to study, with synthetic accounts and data. Choose the route that fits where your app runs:
+
+- **Local app and Codex account:** use the commands below. No E2B or OpenAI API key is required.
+- **Public preview or staging URL:** use the [hosted lab](#create-a-lab-for-your-preview-url).
+- **App built inside a sandbox:** use the [clone route](#build-the-app-inside-the-sandbox).
+
+## Study your running local app
+
+Install `humanish` with Node.js 20+ in your project. This route needs a supported
+Codex CLI with a file-backed ChatGPT login. Linux x64 needs a local rootful Docker
+Engine, KVM and TUN; M3-or-newer Macs need native ARM64 Node and Lima 2.2+.
+Check the [qualified account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md)
+and [platform setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md)
+before running. Docker Desktop is not the supported runtime for this route.
+
+Start your app, then replace the loopback URL and task with yours. If you already
+ran `init`, edit `subject.appUrl` and the actor's `mission` in
+`humanish/labs/local-browser.yaml` before running: initialization preserves
+existing files and warns when these options are skipped.
+
+```bash
+npm install --save-dev humanish
+npx humanish init --yes \
+  --local-browser http://127.0.0.1:3000 \
+  --local-mission "Create a project named Weekend plan, find it again, and rename it Saturday plan. Stop when you finish or get stuck, and explain anything confusing."
+npx humanish doctor --lab local-browser
+npx humanish run local-browser
+```
+
+The starter creates one participant with a two-minute task budget. For a longer
+journey, edit `execution.timeoutMs` in `humanish/labs/local-browser.yaml` before
+running, up to 1,200,000 ms (20 minutes). Use an explicit loopback port above 1023.
+
+`doctor` checks setup without launching a participant or downloading the runtime.
+The first live run prepares the pinned browser image; later runs reuse it.
+Participants and the separate automatic analyst use your Codex account quota
+and remote model inference. Dollar cost is unknown, not zero. This local route
+does not need `@e2b/desktop`; it does not fall back to a hosted desktop if setup
+fails.
+
+Open the result and check its evidence:
+
+```bash
+npx humanish observe --run latest --open
+# In another terminal while Observer is open:
+npx humanish verify --run latest --json
+```
+
+For signup flows, configure your test app to send email to the
+[local captured inbox](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/comms-inbox.md#local-browser-studies).
+The catch accepts HTTP mail or optional SMTP; it does not receive mail sent to a
+real external mailbox. Review [outcomes and sharing limits](/docs/read-results)
+before acting on or sharing the report.
 
 ## Create a lab for your preview URL
+
+For hosted desktops, finish the [API provider setup](/docs#connect-a-desktop-and-a-model),
+including the `@e2b/desktop` peer.
 
 Create `.humanish/labs/your-app.yaml`. This ignored directory is a good place for local preview URLs and experiments. Replace the example URL and mission with your app and a task it actually supports.
 
@@ -43,9 +98,9 @@ defaults:
 
 This sends one participant into your deployed app. For a second observation, reset the test data or use a separate test account, then run the lab again. Keep both run IDs so the first result is not lost behind `latest`.
 
-This example uses `OPENAI_API_KEY` for the participant and `E2B_API_KEY` for the desktop. To use your Codex or Claude Code login for the participant, replace the actor with the [local-agent fragment](/docs/local-agents). Automatic findings still require an OpenAI API key and are skipped without it.
+This hosted example uses `OPENAI_API_KEY` for the participant and `E2B_API_KEY` for the desktop. To use your Codex or Claude Code login for the participant on E2B, replace the actor with the [local-agent fragment](/docs/local-agents). That hosted route defaults to OpenAI API analysis, skipped without its key. The local-browser route above defaults to a separate Codex account analyst.
 
-A single public URL is limited to one participant per independent-world run. A simultaneous multi-user study needs the explicit shared-world route. To give multiple newcomers separate copies of the app, use the clone route below.
+On this hosted route, a single public URL is limited to one participant per independent-world run. A simultaneous multi-user study needs the explicit shared-world route. To give multiple newcomers separate copies of the app, use the clone route below.
 
 The `$4` participant-model budget and `$2` per-participant backstop are checked for each run; budgets do not carry across separate invocations. E2B desktop time is additional. Supported live studies also run analysis on completion by default, with a separate `$3` analysis budget. See [budget limits](/docs/budgets-and-privacy#set-a-study-budget) for caps and opt-outs.
 
