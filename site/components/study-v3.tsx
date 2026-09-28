@@ -67,9 +67,9 @@ export default function StudyV3() {
             <tbody>
               <tr><th scope="row">drawDB · two related tables</th><td>5<span> / 5</span></td><td>0<span> / 5</span></td></tr>
               <tr><th scope="row">TodoMVC · add, rename, filter</th><td>6<span> / 6</span></td><td>0<span> / 6</span></td></tr>
-              <tr className="axis-control"><th scope="row">Excalidraw · two boxes, an arrow</th><td colSpan={2}>12<span> / 12 reached, both kinds. The control.</span></td></tr>
             </tbody>
           </table>
+          <p className="axis-note"><b>The control:</b> Excalidraw, two boxes and an arrow. 12 of 12 participants of every kind reached the goal.</p>
           <p className="repair-copy">Keyboard-first participants reported drawDB&rsquo;s database modal 5 of 5 times and were blocked at TodoMVC&rsquo;s double-click rename 6 of 6 times; no mouse newcomer was. Two to six runs per cell. A blocked synthetic participant identifies a place in the app to check; it does not estimate how many people would be blocked.</p>
           <div className="repair-links">
             <a href={`${RECEIPTS}/persona-contrast-live-2026-09-01.md`} rel="noopener">drawDB receipt →</a>

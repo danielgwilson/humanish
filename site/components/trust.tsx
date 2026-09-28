@@ -3,7 +3,7 @@ const GITHUB = "https://github.com/danielgwilson/humanish";
 export default function Trust() {
   return (
     <section id="trust" className="band band-dark">
-      <h2 className="rev">Four things humanish <em>cannot do</em></h2>
+      <h2 className="rev">Four things humanish <em>never does</em> with your keys and evidence</h2>
 
       <div className="trust-grid">
         <div className="tcard rev">
