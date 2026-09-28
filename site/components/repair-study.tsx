@@ -2,7 +2,7 @@ export default function RepairStudy() {
   return (
     <section className="repair-study" aria-labelledby="repair-study-title">
       <div>
-        <p className="repair-kicker">TodoMVC · September 5, 2026 · 12 synthetic attempts</p>
+        <p className="repair-kicker">TodoMVC · September 5, 2026 · 12 synthetic attempts · humanish 0.81.0</p>
         <h2 id="repair-study-title">Keyboard rename worked after a <em>local patch</em></h2>
         <blockquote className="repair-quote">
           <p>“I stopped without using the pointer; Draft proposal remains saved instead of Send proposal.”</p>

@@ -203,10 +203,11 @@ code, kbd { font-family: var(--mono) }
 /* ---------- reveals ---------- */
 .js .rev { opacity: 0; transform: translateY(16px); transition: opacity .8s cubic-bezier(.22, 1, .36, 1), transform .8s cubic-bezier(.22, 1, .36, 1); transition-delay: var(--d, 0s) }
 .js .rev.in { opacity: 1; transform: none }
-/* Above the fold never waits for JavaScript: the hero runs a short CSS entrance from the
-   first paint instead of the observer-gated reveal (mobile LCP was 6.4 s behind it). */
+/* Above the fold never waits for JavaScript, and never starts transparent: Chrome drops an
+   element that first paints at opacity 0 from the LCP candidates, so a fade-in hid the headline
+   from the metric and the nav wordmark became the LCP at 5.4 s. The hero entrance moves only. */
 .js .hero .rev { opacity: 1; transform: none; transition: none; animation: hero-rise .45s cubic-bezier(.22, 1, .36, 1) both; animation-delay: var(--d, 0s) }
-@keyframes hero-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes hero-rise { from { transform: translateY(10px) } to { transform: none } }
 @media (prefers-reduced-motion: reduce) { .js .hero .rev { animation: none } }
 /* Safety valve: if hydration hasn't cancelled the inline fallback timer
    (slow/failed chunks), rev-all unhides everything without animation. */
@@ -280,7 +281,7 @@ h1:where(:not(.humanish-docs h1)) {
 .cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 26px }
 .console {
   max-width: 444px; border: 1px solid var(--console-line); border-radius: 14px;
-  background: var(--panel); overflow: hidden;
+  background: var(--panel); overflow: clip; /* clip, not hidden: a focused copy button must not swallow Page Down */
 }
 .c-run {
   display: flex; align-items: center; column-gap: 12px; row-gap: 4px; flex-wrap: wrap;
@@ -344,13 +345,13 @@ h1:where(:not(.humanish-docs h1)) {
   position: relative; z-index: 2; margin: 0;
   /* The same right inset the floating tile had, so the frame never touches the viewport edge. */
   width: min(calc(100% - clamp(14px, 3vw, 54px)), 720px);
-  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: clip;
   box-shadow: var(--sh-tile);
 }
 .ho-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 13px; border-bottom: 1px solid var(--line-soft) }
 .ho-bar .lane-id { font-size: 11px; letter-spacing: .1em }
 .ho-bar-end { display: inline-flex; align-items: center; gap: 10px; flex: none }
-.ho-frame { position: relative; overflow: hidden; background: var(--mineral) }
+.ho-frame { position: relative; overflow: clip; background: var(--mineral) }
 .ho-iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: var(--panel) }
 /* In the hero the frame is a picture: the catcher takes every click and expands it. */
 .ho-catch { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; border: 0; padding: 0; cursor: zoom-in; display: flex; align-items: flex-end; justify-content: flex-end }
@@ -490,9 +491,11 @@ h2 em { font-style: italic; font-weight: 400 }
 .repair-links a { font-size: 15px; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 4px }
 @media (max-width: 900px) {
   .repair-study { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-bottom: 48px; margin-bottom: 48px }
-  /* The control row spans both persona columns; on a phone its note sits under the number so nothing reads across columns. */
-  .axis-control td[colspan] span { display: block; font-size: 12px; line-height: 1.4; margin-top: 2px }
 }
+
+/* The control app sits under the table as a sentence, not as a row spanning two persona columns. */
+.axis-note { font-size: 14px; line-height: 1.55; color: var(--body-c); margin: -8px 0 22px }
+.axis-note b { font-weight: 500; color: var(--ink) }
 
 /* ---------- facts strip ---------- */
 .manifest {
@@ -676,6 +679,7 @@ html:not(.js) .stage { display: grid; gap: 16px }
 .cmd-row > code { font-size: 14px; color: var(--ink); font-weight: 500 }
 .cmd-row > code::before { content: "$ "; color: var(--muted); font-weight: 400 }
 .cmd-row p { font-size: 14.5px; color: var(--body-c); max-width: 64ch }
+.cmd-row p code { white-space: nowrap }
 .cmd-row p code { font-size: .92em; background: var(--accent-wash); padding: 1px 5px; border-radius: 5px }
 /* The ledger's closing fact (no staging URL required). It declared the same
    color and size as the row prose, yet rendered as the faintest text on the
@@ -740,7 +744,7 @@ html:not(.js) .stage { display: grid; gap: 16px }
 .band-dark .btn-primary { background: var(--dz-ink); color: #14120e }
 .band-dark .btn-ghost { border-color: var(--dz-ghost); color: var(--dz-ink) }
 .band-dark .btn-ghost:hover { border-color: var(--dz-ink) }
-.closer .cmdline { font-family: var(--mono); font-size: 12.5px; color: var(--dz-label); margin-top: 24px; line-height: 2 }
+.closer .cmdline { font-family: var(--mono); font-size: 13.5px; color: var(--dz-body); margin-top: 24px; line-height: 2 }
 .closer .cmdline code { color: var(--dz-body) }
 
 /* ---------- footer ---------- */
@@ -751,14 +755,14 @@ html:not(.js) .stage { display: grid; gap: 16px }
 .site-foot .ish .p { color: var(--accent-dz) }
 .foot-cols { display: flex; gap: clamp(32px, 5vw, 80px); flex-wrap: wrap }
 .foot-block { display: grid; gap: 10px; align-content: start }
-.foot-block .fl { color: #767268 }
+.foot-block .fl { color: #8f8b81 }
 .foot-block a { font-size: 13.5px; color: #c6c2b8; text-decoration: none; width: fit-content }
 .foot-block a:hover { color: #fff }
 .provenance {
   margin-top: 44px; padding-top: 22px; border-top: 1px solid rgba(240, 237, 229, .08);
   display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; align-items: baseline;
 }
-.provenance p { font-family: var(--mono); font-size: 10.5px; line-height: 1.7; color: #767268; max-width: 92ch }
+.provenance p { font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: #8f8b81; max-width: 92ch }
 .provenance p code { font-size: inherit; color: #98948b }
 .provenance .lic { font-family: var(--mono); font-size: 10.5px; color: #767268; white-space: nowrap }
 
