@@ -2,35 +2,35 @@ import type { LocalRuntimeRelease } from "./local-runtime.js";
 
 /** Updated with the verified, public runtime artifact before release. */
 export const LOCAL_RUNTIME_RELEASE: LocalRuntimeRelease = {
-  url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.25.1/runtime-linux-amd64.tar.gz",
-  sha256: "1a70b2606d3c039dda0c850f934186b23843ee8ae3fe0058cb50061332cfa0b5",
-  bytes: 596160858,
-  image: "sha256:4c81172f876fc522a4a5fb03e5604486c35e74bb8ae91552f605492ed311111e"
+  url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.1/runtime-linux-amd64.tar.gz",
+  sha256: "224be52467d6a808c79f156c6537d8a34c2dfb7b71daa836d34c8611fbbb6647",
+  bytes: 596142100,
+  image: "sha256:89cec77ea8097d32f3ef14bf2bdb0a93ffd25c3975913f8c5ffc6a2f360482a2"
 };
 
 /** Architecture-specific artifacts; each retains matching sources and notices. */
 export const LOCAL_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {
   amd64: LOCAL_RUNTIME_RELEASE,
   arm64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.25.2/runtime-linux-arm64.tar.gz",
-    sha256: "3e208e432b7df1cac41e0d6935dc8c8c7cf691490f7e66700408c4be82927417",
-    bytes: 582638498,
-    image: "sha256:fcb7e1e8e5641fa39c7b74016648f2f0da50760546753e5835f6e93f4d50834f"
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.2/runtime-linux-arm64.tar.gz",
+    sha256: "d03e1b6335bea76a22bf88ca9aa8dc1f4fe0af16fba02c654a333766e27cd2ea",
+    bytes: 582661785,
+    image: "sha256:c3d584d9586d2e86833ee8d050c43774d456c6c4f8f3c9a53194bd90910fa938"
   }
 };
 
 /** Media assets are separate so ordinary browser studies keep the smaller download. */
 export const LOCAL_MEDIA_RUNTIME_RELEASES: Partial<Record<"amd64" | "arm64", LocalRuntimeRelease>> = {
   amd64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.26.3/runtime-linux-amd64.tar.gz",
-    sha256: "7d88977a159b107f4f2081de5cc7f5bfc4ed5989f5d091ea7dcc0f575c2094e6",
-    bytes: 846965794,
-    image: "sha256:f578c0b3ce6d4095563727f2d6ccc1be44a935780e1f8238c883ade27981858d"
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.3/runtime-linux-amd64.tar.gz",
+    sha256: "2282f499430c1db582592dab32222b76f7f55a3e62a5d6410b74b2fb9ced65f8",
+    bytes: 846965535,
+    image: "sha256:bf24c22eef04da133265a0511fb80f88958693a2b65a2199bb25a96be23471e0"
   },
   arm64: {
-    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.26.4/runtime-linux-arm64.tar.gz",
-    sha256: "ea23a2707efe9498aefc4aa8aa69f51bf844625a78baa6a3f26164f9c2f1233a",
-    bytes: 828212084,
-    image: "sha256:6018709a97259749994688580f4384f1463ef6d45ebb717a7841410692d9b748"
+    url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.4/runtime-linux-arm64.tar.gz",
+    sha256: "aff7675e6f60cc3fd9637f0fd8be5a80d8c018b8f825081c9a5e1a860aa8b993",
+    bytes: 828203919,
+    image: "sha256:5725814350e213fd8775d10a0895ca92018037ebf53ad805304ffc897e210510"
   }
 };
