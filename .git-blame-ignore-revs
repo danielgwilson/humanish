@@ -1,0 +1,5 @@
+# Mechanical reformat commits. `git blame` skips them when configured with
+# `git config blame.ignoreRevsFile .git-blame-ignore-revs`; GitHub applies this file automatically.
+
+# Format the codebase with oxfmt (#893)
+21d4a97e220642c4c8abbedc753938eb03f23f90
