@@ -95,27 +95,27 @@
     "lint": "oxlint --max-warnings=590"
   },
   "dependencies": {
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "parse5": "^8.0.1",
-    "playwright-core": "^1.60.0",
+    "playwright-core": "^1.63.0",
     "pngjs": "^7.0.0",
-    "undici": "^6.28.1",
-    "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "undici": "^8.11.2",
+    "yaml": "^2.9.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.3.284",
     "@e2b/desktop": "^2.4.0",
-    "@types/node": "^20.19.41",
+    "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
     "axe-core": "4.13.0",
-    "oxc-parser": "0.151.0",
+    "oxc-parser": "catalog:",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
-    "tsx": "^4.22.4",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.7"
+    "tsx": "^4.23.15",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.0",
@@ -130,7 +130,7 @@
     }
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19.0"
   },
-  "packageManager": "pnpm@11.5.2"
+  "packageManager": "pnpm@12.8.1"
 }

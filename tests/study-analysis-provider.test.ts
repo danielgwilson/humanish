@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import {
   createStudyAnalysisProvider,
   parseStudyAnalysisResponse,
@@ -39,7 +40,7 @@ function wire(text = JSON.stringify({ summary: "The synthetic task was saved." }
 
 describe("study analysis provider boundary", () => {
   it("sends one stateless strict request to a fixed origin, with tools and redirects disabled", async () => {
-    const fetchFn = vi.fn<typeof fetch>(async () => response(wire()));
+    const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(result).toMatchObject({
       status: "completed",
@@ -65,7 +66,7 @@ describe("study analysis provider boundary", () => {
   });
 
   it("sends local image data with explicit high detail and its evidence key", async () => {
-    const fetchFn = vi.fn<typeof fetch>(async () => response(wire()));
+    const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
     const dataUrl = "data:image/png;base64,c3ludGhldGlj";
     await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
@@ -88,7 +89,7 @@ describe("study analysis provider boundary", () => {
     "file:///private/capture.png",
     "data:image/svg+xml;base64,c3ludGhldGlj",
   ])("refuses nonlocal/unsupported image %s before dispatch", async (dataUrl) => {
-    const fetchFn = vi.fn<typeof fetch>();
+    const fetchFn = vi.fn<AnalysisFetch>();
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
       images: [{ evidenceId: "e1", dataUrl }],
@@ -104,7 +105,7 @@ describe("study analysis provider boundary", () => {
   it.each([429, 500, 503])(
     "never retries HTTP %i and never returns provider error prose",
     async (status) => {
-      const fetchFn = vi.fn<typeof fetch>(async () =>
+      const fetchFn = vi.fn<AnalysisFetch>(async () =>
         response({ error: { message: "synthetic-private-payload" } }, status),
       );
       const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(
@@ -123,7 +124,7 @@ describe("study analysis provider boundary", () => {
   );
 
   it("retains uncertain usage after a single network failure without echoing its message", async () => {
-    const fetchFn = vi.fn<typeof fetch>(async () => {
+    const fetchFn = vi.fn<AnalysisFetch>(async () => {
       throw new Error("synthetic-private-payload");
     });
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
@@ -145,7 +146,7 @@ describe("study analysis provider boundary", () => {
     ["synthetic-private-code", "provider_network_error"],
   ])("retains only the safe transport classification for %s", async (code, expected) => {
     const cause = Object.assign(new Error("synthetic-private-payload"), { code });
-    const fetchFn = vi.fn<typeof fetch>(async () => {
+    const fetchFn = vi.fn<AnalysisFetch>(async () => {
       throw new TypeError("synthetic-private-url", { cause });
     });
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
@@ -155,7 +156,7 @@ describe("study analysis provider boundary", () => {
   });
 
   it("honors cancellation before dispatch", async () => {
-    const fetchFn = vi.fn<typeof fetch>();
+    const fetchFn = vi.fn<AnalysisFetch>();
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({
       ...request,
       signal: AbortSignal.abort(),
@@ -168,7 +169,7 @@ describe("study analysis provider boundary", () => {
     "bounds an in-flight request by %s cancellation without retry",
     async (kind) => {
       const controller = new AbortController();
-      const fetchFn = vi.fn<typeof fetch>(
+      const fetchFn = vi.fn<AnalysisFetch>(
         async (_url, init) =>
           new Promise((_resolve, reject) => {
             init?.signal?.addEventListener(
@@ -194,7 +195,7 @@ describe("study analysis provider boundary", () => {
   );
 
   it("bounds response bytes", async () => {
-    const fetchFn = vi.fn<typeof fetch>(async () => new Response("x".repeat(2 * 1024 * 1024 + 1)));
+    const fetchFn = vi.fn<AnalysisFetch>(async () => new Response("x".repeat(2 * 1024 * 1024 + 1)));
     const result = await createStudyAnalysisProvider({ apiKey: "synthetic-key", fetchFn })(request);
     expect(result).toMatchObject({
       status: "failed",

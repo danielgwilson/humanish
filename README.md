@@ -48,7 +48,7 @@ own final report. drawDB is the application studied; it is not a Humanish adopte
 
 ## Install
 
-Use **Node.js 20 or newer**, in a project directory:
+Use **Node.js 22.19 or newer**, in a project directory:
 
 ```bash
 npm install --save-dev humanish
@@ -268,7 +268,7 @@ from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
 ## The Terminal Surface
 
-`humanish tui` is for a person browsing labs and runs. It needs Node 22+ and an
+`humanish tui` is for a person browsing labs and runs. It needs an
 interactive stdin/stdout, and refuses detected coding-agent sessions even with
 a TTY. Agents should use `lab list --json`, `lab inspect <lab> --json`, and
 `runs --json`. Read [TUI behavior and JSON alternatives](https://humanish.dev/docs/review-surfaces#for-coding-agents-and-scripts).

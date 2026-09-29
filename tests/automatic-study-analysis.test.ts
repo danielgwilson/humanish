@@ -14,6 +14,7 @@ import {
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import {
   runAutomaticStudyAnalysis,
   readAutomaticStudyAnalysis,
@@ -85,7 +86,7 @@ describe("opted-in automatic analysis ownership", () => {
   async function transport() {
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
-    return { wire, fetch: vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire))) };
+    return { wire, fetch: vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire))) };
   }
   it.each(["default", "explicit"] as const)(
     "keeps setup-only evidence request-free for %s eligibility",

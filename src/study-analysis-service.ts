@@ -1,5 +1,5 @@
 import { validCodexAnalysisConfig } from "./study-analysis-codex-config.js";
-import type { StudyAnalysisProvider } from "./study-analysis-provider.js";
+import type { AnalysisFetch, StudyAnalysisProvider } from "./study-analysis-provider.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
@@ -70,7 +70,7 @@ export interface AnalyzeDeps {
   signal?: AbortSignal;
   onProgress?: (progress: StudyAnalysisProgress) => void;
   /** Request boundary only: evidence capture, admission, validation and writes remain real. */
-  fetch?: typeof fetch;
+  fetch?: AnalysisFetch;
   /** Internal producer pin: use this original run identity without resolving a replacement. */
   expectedRun?: PreparedRunArtifactPaths;
   /** Internal post-run orchestration; never populated from an Observer request. */

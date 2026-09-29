@@ -2,6 +2,27 @@ packages:
   - site
   - observer
   - tui
+
+# One version for every dependency shared across workspaces. Keep each at its latest release; a
+# comment beside an entry gives the reason when it is not.
+catalog:
+  # @base-ui/react 1.8.0 (the renamed package) fails 11 Observer browser-proof cases on phone overlays,
+  # rich controls and review checkboxes (bisected 2026-09-29). Migrate in its own PR, gated on those proofs.
+  "@base-ui-components/react": 1.0.0-rc.0
+  "@types/node": ^22.20.4 # tracks the engines.node floor (22), so code cannot use newer Node APIs
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
+  clsx: ^2.1.1
+  oxc-parser: 0.151.0 # 0.152.0 is under pnpm's one-day minimumReleaseAge
+  react: ^19.3.0
+  react-dom: ^19.3.0
+  shadcn: ^4.21.0
+  tailwind-merge: ^3.7.0
+  tailwindcss: ^4.3.3
+  typescript: ^7.0.2
+  vitest: ^5.0.2
+  zod: ^4.6.5
+
 allowBuilds:
   # posthog-js pulls core-js; its postinstall only prints a funding note.
   core-js: false
@@ -9,8 +30,5 @@ allowBuilds:
   # sharp ships prebuilt binaries as optional dependencies; its install script only checks them.
   sharp: false
 minimumReleaseAgeExclude:
-  - fumadocs-core@16.15.7
-  - fumadocs-ui@16.15.7
   # Reviewed public-peer compatibility: real-SDK startup/cleanup conformance (#734).
   - "@e2b/desktop@2.4.0"
-  - e2b@2.49.0

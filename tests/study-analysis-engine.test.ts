@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
@@ -130,7 +131,7 @@ function result(): StudyAnalysisResult {
 function transport(output: unknown = result()) {
   const wire = structuredClone(captured);
   wire.output[0].content[0].text = JSON.stringify(output);
-  const fetchFn = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire)));
+  const fetchFn = vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
   return { wire, fetchFn };
 }
 
@@ -510,7 +511,7 @@ describe("bounded study analysis engine", () => {
     expect(body.input[0].content[0].text).not.toContain("artifacts/synthetic/capture.png");
     expect(JSON.stringify(good)).not.toContain("data:image/");
     packet.images[0]!.dataUrl = "data:image/png;base64,dGFtcGVyZWQ=";
-    const badFetch = vi.fn<typeof fetch>();
+    const badFetch = vi.fn<AnalysisFetch>();
     const bad = await runStudyAnalysis(packet, config, {
       apiKey: "synthetic-key",
       fetch: badFetch,
