@@ -5,8 +5,8 @@ import type { LabBackend } from "./lab-engine.js";
 import type { DetectedLocalAgent } from "./local-agent-cli.js";
 import type { DoctorResult } from "./run.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
-import { externalCatchHealthy } from "./comms-sandbox-catch.js";
-import { receivingRequiredKey } from "./comms-setup.js";
+import { externalCatchHealthy } from "./comms/sandbox-catch.js";
+import { receivingRequiredKey } from "./comms/setup.js";
 
 type Check = DoctorResult["checks"][number];
 

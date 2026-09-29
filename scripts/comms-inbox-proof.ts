@@ -22,10 +22,10 @@ const output = path.join(
 );
 await mkdir(output, { recursive: true });
 const { SANDBOX_CATCH_SCRIPT } = await import(
-  pathToFileURL(path.join(source, "src/comms-sandbox-catch.ts")).href
+  pathToFileURL(path.join(source, "src/comms/sandbox-catch.ts")).href
 );
 const { renderInboxSurfaceLocally } = await import(
-  pathToFileURL(path.join(source, "src/comms-catch-host.ts")).href
+  pathToFileURL(path.join(source, "src/comms/catch-host.ts")).href
 );
 const ports: number[] = [];
 while (ports.length < 3) {

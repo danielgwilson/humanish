@@ -1,8 +1,8 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port.
 import { toErrorMessage } from "./command-failure.js";
-import { FakeInbox } from "./comms-fake-inbox.js";
-import { buildOriginMap } from "./comms-inbox.js";
-import { deployReceivingInbox } from "./comms-receiving-inbox.js";
+import { FakeInbox } from "./comms/fake-inbox.js";
+import { buildOriginMap } from "./comms/inbox.js";
+import { deployReceivingInbox } from "./comms/receiving-inbox.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
@@ -10,8 +10,8 @@ import {
   refreshInboxSurface,
   writeInboxSurface,
   type DeployedCommsCatch,
-} from "./comms-sandbox-catch.js";
-import type { CommsAddress } from "./comms-types.js";
+} from "./comms/sandbox-catch.js";
+import type { CommsAddress } from "./comms/types.js";
 import type { CuaActorLabErrorCode, CuaLaneDeps, CuaLaneSpec } from "./cua-actor-lab.js";
 import type { CuaDesktopLane, DesktopLaneEvidence, ReadyCuaDesktop } from "./cua-desktop-lane.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";

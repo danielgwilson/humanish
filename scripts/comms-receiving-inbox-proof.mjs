@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 import { PNG } from "pngjs";
-import { deployReceivingInbox, renderReceivingInbox } from "../src/comms-receiving-inbox.ts";
+import { deployReceivingInbox, renderReceivingInbox } from "../src/comms/receiving-inbox.ts";
 import {
   localInboxDesktop,
   unusedInboxPort,

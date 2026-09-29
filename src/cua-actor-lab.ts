@@ -22,8 +22,8 @@ export {
   type DesktopBrowserLaunchResult,
   type SubjectPhaseEvent,
 } from "./e2b-cua-provisioning.js";
-import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
-import type { CommsReceivingRun } from "./comms-receiving.js";
+import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
+import type { CommsReceivingRun } from "./comms/receiving.js";
 import { laneHasInboxRecipient, type CuaDesktopLane } from "./cua-desktop-lane.js";
 import { createE2BCuaDesktopLane } from "./e2b-cua-desktop.js";
 import { isLocalBrowserLab, LOCAL_BROWSER_LIFETIME_MS } from "./local-runtime-config.js";
@@ -97,14 +97,14 @@ import {
   applyBrowserAdapterHooks,
   type BrowserLabAdapterHooks,
 } from "./adapter-extension.js";
-import { FakeInbox } from "./comms-fake-inbox.js";
-import { recipientInboxUrl } from "./comms-inbox.js";
+import { FakeInbox } from "./comms/fake-inbox.js";
+import { recipientInboxUrl } from "./comms/inbox.js";
 import {
   collectExternalCommsThread,
   externalCatchHealthy,
   externalInboxUrl,
-} from "./comms-sandbox-catch.js";
-import type { CommsAddress } from "./comms-types.js";
+} from "./comms/sandbox-catch.js";
+import type { CommsAddress } from "./comms/types.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
 import { mapWithConcurrency } from "./concurrency.js";

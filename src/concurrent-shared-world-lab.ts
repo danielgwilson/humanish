@@ -1,7 +1,7 @@
 import { scrubPersonaBrief } from "./persona.js";
 import { withTransientCommsSecrets } from "./run-narration-secrets.js";
-import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
-import type { CommsReceivingRun } from "./comms-receiving.js";
+import { prepareReceivingRun, receivingPublication } from "./comms/receiving-runtime.js";
+import type { CommsReceivingRun } from "./comms/receiving.js";
 import { receivingEmailValidationReason } from "./lab-config.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
@@ -96,10 +96,10 @@ import {
   refreshInboxSurface,
   writeInboxSurface,
   type DeployedCommsCatch,
-} from "./comms-sandbox-catch.js";
-import { FakeInbox } from "./comms-fake-inbox.js";
-import { buildOriginMap, type OriginMap } from "./comms-inbox.js";
-import type { CommsAddress } from "./comms-types.js";
+} from "./comms/sandbox-catch.js";
+import { FakeInbox } from "./comms/fake-inbox.js";
+import { buildOriginMap, type OriginMap } from "./comms/inbox.js";
+import type { CommsAddress } from "./comms/types.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
