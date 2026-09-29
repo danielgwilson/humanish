@@ -18,9 +18,9 @@ export default function StudyV3() {
   return (
     <section id="study" className="band band-mineral">
       <div className="study-block">
-      <p className="repair-kicker rev">One run, start to finish · drawDB · 2026-09-16 · starter study</p>
-      <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>See what a first-time user did, <em>click by click</em></h2>
-      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>The starter study from a fresh install. One participant, driven by Codex signed in on the operator&rsquo;s machine, got a hosted desktop, a commit-pinned clone of drawDB and one task: add two tables and name them. Every frame below comes from that run&rsquo;s bundle.</p>
+      <p className="repair-kicker rev">Example 1 of 3 · drawDB · 2026-09-16 · one participant</p>
+      <h2 className="rev" style={{ "--d": ".05s" } as React.CSSProperties}>Watch one study, <em>start to finish</em></h2>
+      <p className="sec-sub rev" style={{ "--d": ".1s" } as React.CSSProperties}>You&rsquo;ve built something, nobody outside the team has used it, and you&rsquo;d still like to know where a first-time user gets stuck. That is the situation humanish is for. So we did what you would do: pointed it at an app we don&rsquo;t maintain, drawDB, an open-source database diagram editor, gave one participant a persona and a single task (add two tables and name them), and ran it. Below is that run: every screen, every click, what the participant was thinking, and what came back.</p>
 
       <dl className="manifest rev" style={{ "--d": ".15s" } as React.CSSProperties}>
         <div><dt>Source</dt><dd>.humanish/runs/{tryLive.runId}</dd><dd className="dd-sub">gitignored · the same directory your own runs write to</dd></div>
@@ -35,7 +35,7 @@ export default function StudyV3() {
 
       <div className="study-stage rev">
         <ReplayPlayer slug="try-live" lane={lane} frameSize={{ w: 1440, h: 950 }} label={`Participant 01 · drawDB · ${lane.counts?.screenshots ?? 8} captures · ${lane.counts?.actions ?? 14} actions`} />
-        <p className="study-open"><a href="/runs/try-live/observer/index.html#/lane/stream-001/f/1" target="_blank" rel="noopener">Open this run in Observer ↗</a><span>Participants, the three findings from <code>humanish analyze</code>, every frame addressable.</span></p>
+        <p className="study-open"><a href="/runs/try-live/observer/index.html#/lane/stream-001/f/1" target="_blank" rel="noopener">Open this run in Observer ↗</a><span>The full replay, the three findings, and a link to every frame.</span></p>
       </div>
 
       </div>
@@ -43,13 +43,13 @@ export default function StudyV3() {
       <div className="study-block">
       <section className="repair-study study-axis" aria-labelledby="axis-title">
         <div>
-          <p className="repair-kicker">The finding · drawDB · TodoMVC · Excalidraw · September 1 to 4, 2026</p>
+          <p className="repair-kicker">Example 2 of 3 · drawDB, TodoMVC, Excalidraw · September 1 to 4, 2026</p>
           <h2 id="axis-title">Find out which kind of user <em>your app blocks</em></h2>
           <blockquote className="repair-quote">
             <p>&ldquo;no keyboard-accessible database options &hellip; Confirm remains disabled&rdquo;</p>
             <footer>drawDB · keyboard-first participant · run cua-2026-09-03T21-17-11-267Z-bde2251d</footer>
           </blockquote>
-          <p className="repair-copy">The same mission went to a keyboard-first power user and a mouse-driving newcomer. The persona is a declared trait; the trace records which actions used the keyboard and which used the pointer.</p>
+          <p className="repair-copy">One run tells you what one person hit. The useful question is who gets stuck. So we gave the same task to two different people: a power user who lives on the keyboard, and a newcomer who has never seen the app and reaches for the mouse. Three apps, two to six runs each. The persona is what you declare; whether a run really stayed on the keyboard is what the trace records, action by action.</p>
         </div>
         <div className="repair-results">
           <table>

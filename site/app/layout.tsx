@@ -69,7 +69,7 @@ const TITLE = "humanish — instant feedback from real human(ish) users";
 // Verbatim hero lede minus its <code> marks. Mirrors: components/hero.tsx
 // (.lede) and public/llms.txt (description block). All three move together.
 const DESCRIPTION =
-  "Synthetic personas use your app in a real browser on a hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.";
+  "You can’t run a user study on an app that has no users yet. humanish runs one anyway. One command puts a synthetic participant with a persona and a task in front of your app in a real browser; what comes back is what they did, where they got stuck, and what it cost.";
 
 export const viewport: Viewport = {
   themeColor: [

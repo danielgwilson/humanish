@@ -1,7 +1,8 @@
 # humanish
 
-> Open-source (MIT) TypeScript CLI. Synthetic personas use your app in a real browser on a
-> local or hosted desktop. What they did lands in your repo: captures, actions, findings, and usage evidence.
+> Open-source (MIT) TypeScript CLI for running a user study before you have users. One command puts
+> a synthetic participant with a persona and a task in front of your app in a real browser, on a local
+> or hosted desktop. What comes back lands in your repo: captures, actions, findings, and usage evidence.
 
 ## When to use humanish
 
