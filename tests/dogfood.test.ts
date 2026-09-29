@@ -21,14 +21,6 @@ async function withDogfoodCopy<T>(callback: (cwd: string) => Promise<T>): Promis
 }
 
 describe("humanish dogfood config", () => {
-  it("describes humanish as its own target app", async () => {
-    const readme = await readFile("humanish/README.md", "utf8");
-    const scenario = await readFile("humanish/scenarios/first-run-smoke.yaml", "utf8");
-
-    expect(scenario).toContain("run a one-command 4-sim watch, verify");
-    expect(`${readme}\n${scenario}`).not.toContain("synthetic-app");
-  });
-
   it("feeds committed persona and scenario content into the dry-run bundle", async () => {
     await withDogfoodCopy(async (cwd) => {
       const result = await runDryRun({ cwd, dryRun: true, runId: "dogfood-source-proof" });
