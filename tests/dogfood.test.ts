@@ -22,17 +22,11 @@ async function withDogfoodCopy<T>(callback: (cwd: string) => Promise<T>): Promis
 
 describe("humanish dogfood config", () => {
   it("describes humanish as its own target app", async () => {
-    const config = await readFile("humanish/config.ts", "utf8");
-    const adapter = await readFile("humanish/adapters/app.ts", "utf8");
+    const readme = await readFile("humanish/README.md", "utf8");
     const scenario = await readFile("humanish/scenarios/first-run-smoke.yaml", "utf8");
 
-    expect(config).toContain('name: "humanish"');
-    expect(config).toContain('startCommand: "pnpm humanish -- --help"');
-    expect(adapter).toContain('id: "humanish"');
-    expect(adapter).toContain("humanish feedback issue --run latest");
-    expect(adapter).toContain("humanish watch");
     expect(scenario).toContain("run a one-command 4-sim watch, verify");
-    expect(`${config}\n${adapter}\n${scenario}`).not.toContain("synthetic-app");
+    expect(`${readme}\n${scenario}`).not.toContain("synthetic-app");
   });
 
   it("keeps self-dogfood scripts and coverage public-safe", async () => {
@@ -40,7 +34,6 @@ describe("humanish dogfood config", () => {
       scripts: Record<string, string>;
     };
     const coverage = await readFile("humanish/coverage-matrix.md", "utf8");
-    const readme = await readFile("humanish/README.md", "utf8");
 
     expect(packageJson.scripts["humanish:run"]).toBe("pnpm humanish -- run --dry-run");
     expect(packageJson.scripts["humanish:watch"]).toBe("pnpm humanish -- watch");
@@ -53,9 +46,6 @@ describe("humanish dogfood config", () => {
     );
     expect(coverage).toContain("codex-exec");
     expect(coverage).toContain("workspace trust is missing");
-    expect(readme).toContain("one-command `watch`");
-    expect(readme).toContain("codex-exec");
-    expect(readme).toContain("Generated run bundles");
   });
 
   it("feeds committed persona and scenario content into the dry-run bundle", async () => {

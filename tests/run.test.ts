@@ -1998,7 +1998,7 @@ describe("dry-run bundles", () => {
         fakeActor,
         [
           'process.stdout.write(\'{"type":"turn.started"}\\n\');',
-          "process.stdout.write('exec actor inspected humanish/config.ts\\n');",
+          "process.stdout.write('exec actor inspected humanish/README.md\\n');",
           "process.stdout.write('secret-like value ' + 'sk-' + 'execsecretvalue1234567890' + '\\n');",
           'process.stdout.write(\'{"type":"turn.completed"}\\n\');',
         ].join("\n"),
@@ -2045,7 +2045,7 @@ describe("dry-run bundles", () => {
           transport: "snapshot",
         }),
       ]);
-      expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected humanish/config.ts");
+      expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected humanish/README.md");
       expect(bundle.streams[0]?.terminal.tail).toContain("[REDACTED_SECRET]");
       expect(bundle.streams[0]?.terminal.tail).not.toContain(`sk-${"execsecretvalue"}`);
       expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");

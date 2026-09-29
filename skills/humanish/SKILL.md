@@ -151,10 +151,8 @@ for runtime requirements and export limits.
 
 When creating or editing Humanish files:
 
-- use `.yaml` for human-authored Humanish source: personas, scenarios,
-  policies, labs, review vocabulary, and milestones;
-- use `.ts` for executable integration: `humanish/config.ts`, adapters, route
-  catalogs, and app launch logic;
+- use `.yaml` for human-authored Humanish source: labs, personas and scenarios;
+- use `.mjs` for executable adopter scorers named by `review.scorer.ref`;
 - use `.json` or `.ndjson` for generated machine artifacts, Observer data, run
   bundles, event streams, and synthetic fixtures.
 

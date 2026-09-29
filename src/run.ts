@@ -4503,7 +4503,7 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
         "audit whether a new user can understand the committed Humanish dogfood setup quickly",
       suggestedCommands: [
         "test -r humanish/README.md && sed -n '1,40p' humanish/README.md",
-        "test -r humanish/config.ts && wc -l humanish/config.ts",
+        "ls humanish/labs",
       ],
     },
     {
@@ -4584,7 +4584,7 @@ function buildLocalCodexExecPrompt(
   },
 ): string {
   const suggestedCommands: [string, string] = lane?.focus.suggestedCommands ?? [
-    "test -r humanish/config.ts && wc -l humanish/config.ts",
+    "ls humanish/labs",
     "test -r humanish/README.md && sed -n '1,40p' humanish/README.md",
   ];
 

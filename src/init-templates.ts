@@ -79,26 +79,8 @@ Labs:
 Format standard:
 
 - human-authored Humanish source uses .yaml;
-- executable integration uses .ts;
 - generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
 - .yml is reserved for outside ecosystem files such as GitHub Actions, not Humanish source.
-`,
-  },
-  {
-    path: "humanish/config.ts",
-    plane: "source",
-    contents: `export default {
-  schema: "humanish.config.v1",
-  app: {
-    name: "synthetic-app",
-    baseUrl: "http://localhost:3000",
-    startCommand: "npm run dev"
-  },
-  personasDir: "humanish/personas",
-  scenariosDir: "humanish/scenarios",
-  policiesDir: "humanish/policies",
-  artifactsDir: ".humanish/runs"
-};
 `,
   },
   {
@@ -373,113 +355,6 @@ defaults:
 `,
   },
   {
-    path: "humanish/policies/redaction.yaml",
-    plane: "source",
-    contents: `schema: humanish.redaction-policy.v1
-# Public-safety policy of intent for this project.
-#
-# Enforcement scope: \`humanish verify\` detects the classes under \`enforced\`
-# (secret/key/token shapes and known local-path shapes) and fails closed on a
-# match. It does NOT detect free-form PII/PHI (names, emails, DOBs, MRNs). The
-# classes under \`author_responsibility\` are forbidden in public output but rely
-# on using synthetic data and on review, not automated detection. So
-# \`redaction: passed\` means the secret/path scan found no matches, not that the
-# artifact was certified free of PII/PHI.
-deny:
-  - pii
-  - phi
-  - secrets
-  - tokens
-  - raw_private_transcripts
-  - private_screenshots
-  - customer_data
-  - patient_data
-enforced:
-  - secret_key_token_shapes
-  - known_local_path_shapes
-author_responsibility:
-  - pii
-  - phi
-  - patient_data
-  - customer_data
-  - names_emails_and_other_identifiers
-allow:
-  - synthetic_personas
-  - synthetic_fixtures
-  - env_var_names
-`,
-  },
-  {
-    path: "humanish/policies/network.yaml",
-    plane: "source",
-    contents: `schema: humanish.network-policy.v1
-default: local_only
-allowed_hosts:
-  - localhost
-  - 127.0.0.1
-notes:
-  - Add external hosts only after confirming they are safe for public proof artifacts.
-`,
-  },
-  {
-    path: "humanish/policies/credentials.example.yaml",
-    plane: "source",
-    contents: `schema: humanish.credentials-policy.v1
-env_names:
-  openai: OPENAI_API_KEY
-  e2b: E2B_API_KEY
-rules:
-  - Store values outside the repository.
-  - Commit env var names only.
-  - Do not paste keys into personas, scenarios, issue drafts, or run bundles.
-`,
-  },
-  {
-    path: "humanish/adapters/app.ts",
-    plane: "source",
-    contents: `export const appAdapter = {
-  schema: "humanish.adapter.v1",
-  id: "synthetic-app",
-  name: "Synthetic App",
-  routes: [
-    {
-      id: "home",
-      path: "/",
-      description: "Synthetic app entry point"
-    }
-  ]
-};
-`,
-  },
-  {
-    path: "humanish/review/vocabulary.yaml",
-    plane: "source",
-    contents: `schema: humanish.review-vocabulary.v1
-verdicts:
-  - pass
-  - fail
-  - blocked
-  - needs_evidence
-labels:
-  friction: User-visible friction.
-  gap: Missing evidence or missing coverage.
-  public_safety: Potential privacy, secret, or public-boundary issue.
-`,
-  },
-  {
-    path: "humanish/review/milestones.yaml",
-    plane: "source",
-    contents: `schema: humanish.milestones.v1
-milestones:
-  - id: first-visible-state
-    description: The first meaningful app state is visible.
-  - id: synthetic-action-complete
-    description: A synthetic user action reaches an expected state.
-  - id: review-ready
-    description: Public-safe evidence is ready for review.
-`,
-  },
-  {
     path: "humanish/coverage-map.md",
     plane: "source",
     contents: `# Coverage Map
@@ -500,23 +375,6 @@ Current starter coverage is intentionally minimal and synthetic.
 | Onboarding | skeptical-power-user | planned | planned | starter |
 `,
   },
-  {
-    path: "humanish/fixtures/synthetic-login-state.json",
-    plane: "source",
-    contents: `{
-  "schema": "humanish.synthetic-fixture.v1",
-  "kind": "login-state",
-  "user": {
-    "id": "synthetic-user-001",
-    "email": "synthetic.user@example.test"
-  },
-  "notes": [
-    "Synthetic fixture only.",
-    "Do not replace with real user data."
-  ]
-}
-`,
-  },
 ];
 
 export const runtimeDirectories: RuntimeDirectory[] = [
@@ -527,8 +385,6 @@ export const runtimeDirectories: RuntimeDirectory[] = [
   { path: ".humanish/labs", plane: "runtime" },
   { path: ".humanish/local/labs", plane: "runtime" },
   { path: ".humanish/local/personas", plane: "runtime" },
-  { path: ".humanish/local/policies", plane: "runtime" },
-  { path: ".humanish/secrets", plane: "runtime" },
 ];
 
 export const humanishScripts: Record<string, string> = {
