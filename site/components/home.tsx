@@ -6,6 +6,7 @@ import Reveals from "@/components/reveals";
 import StudyV3 from "@/components/study-v3";
 import Trust from "@/components/trust";
 import Faq from "@/components/faq";
+import Closer from "@/components/closer";
 
 /** The homepage: the 2026-09-20 refinement, released to all visitors on 2026-09-27 (flag value `option-1`). */
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
         <Commands />
         <Trust />
         <Faq />
+        <Closer />
       </main>
       <Footer />
       <Reveals />

@@ -2,18 +2,18 @@ export default function RepairStudy() {
   return (
     <section className="repair-study" aria-labelledby="repair-study-title">
       <div>
-        <p className="repair-kicker">TodoMVC · September 5, 2026 · 12 synthetic attempts · humanish 0.81.0</p>
-        <h2 id="repair-study-title">Keyboard rename worked after a <em>local patch</em></h2>
+        <p className="repair-kicker">The fix · TodoMVC · September 5, 2026 · 12 synthetic attempts · humanish 0.81.0</p>
+        <h2 id="repair-study-title">Fix a blocker, rerun the same task, <em>compare</em></h2>
         <blockquote className="repair-quote">
           <p>“I stopped without using the pointer; Draft proposal remains saved instead of Send proposal.”</p>
           <footer>Original app · keyboard-only participant</footer>
         </blockquote>
-        <p className="repair-copy">The original editor required a double-click to rename a todo. We added a visible Edit button with keyboard focus handling, then repeated the same task.</p>
+        <p className="repair-copy">The original TodoMVC needed a double-click to rename a todo, and keyboard-only participants stopped there. We added a visible Edit button with keyboard focus handling and ran the same task again.</p>
       </div>
 
       <div className="repair-results">
         <table>
-          <caption>Completed same-item renames</caption>
+          <caption>Renames completed, before and after the patch</caption>
           <thead>
             <tr>
               <th scope="col">Input</th>
