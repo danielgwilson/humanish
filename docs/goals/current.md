@@ -189,7 +189,7 @@ and the [public-readiness standard](../release/public-readiness-standard.md).
 
 ## Proof Before Shipping
 
-Use the [verification guidance](../../AGENTS.md#verification): check the changed
+Use the [verification guidance](../principles/engineering.md#verification): check the changed
 behavior and material risks, then stop unless new evidence warrants more work.
 Required CI remains the merge gate. For a release, run the full release gates
 from a clean contributor worktree:

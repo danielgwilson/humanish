@@ -4,7 +4,7 @@ Thanks for helping make Humanish better.
 
 ## Ground Rules
 
-- Follow [engineering judgment](AGENTS.md#engineering-judgment): prefer simple,
+- Follow [engineering principles](docs/principles/engineering.md): prefer simple,
   idiomatic implementations and reuse established components. Validate the changed
   behavior and material risks; keep required CI and release gates.
 - Keep examples synthetic and public-safe.
