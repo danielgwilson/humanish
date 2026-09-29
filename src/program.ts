@@ -29,10 +29,10 @@ import {
   unsetUserKey,
   userKeyStorePath,
 } from "./key-resolution.js";
-import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "./comms-connections.js";
-import { checkCommsConnection, configureCommsLab, type CommsCheckResult } from "./comms-setup.js";
-import { inspectCommsRecovery, recoverCommsReceiving } from "./comms-receiving.js";
-import { resolveReceivingConnection } from "./comms-receiving-runtime.js";
+import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "./comms/connections.js";
+import { checkCommsConnection, configureCommsLab, type CommsCheckResult } from "./comms/setup.js";
+import { inspectCommsRecovery, recoverCommsReceiving } from "./comms/receiving.js";
+import { resolveReceivingConnection } from "./comms/receiving-runtime.js";
 import { promptSecret } from "./secret-prompt.js";
 import type { EnvFileLoadResult } from "./env-file.js";
 import { redactText } from "./redaction.js";
@@ -109,8 +109,8 @@ import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./study-a
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "./study-analysis-store.js";
 import { resolveRunPath } from "./run.js";
 import { detectAgentSession } from "./agent-session.js";
-import { runCommsCatchHost } from "./comms-catch-host.js";
-import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
+import { runCommsCatchHost } from "./comms/catch-host.js";
+import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms/sandbox-catch.js";
 import type { DoctorResult, CleanupResult, RunsResult, RunResult, VerifyResult } from "./run.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";

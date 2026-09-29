@@ -1,4 +1,4 @@
-import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms-receiving-evidence.js";
+import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms/receiving-evidence.js";
 import { cuaGoalSource } from "./actor-goal-source.js";
 import { createHash } from "node:crypto";
 import { screenshotEvidenceError } from "./image-evidence.js";

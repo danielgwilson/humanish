@@ -11,7 +11,7 @@
 // a Node subject, where the probe happened to work.
 //
 // The same lesson was learned once already: the comms catch was rewritten from node to python3 in
-// 0.29.0 (comms-sandbox-catch.ts). This is the third in-sandbox runtime dependency to move.
+// 0.29.0 (comms/sandbox-catch.ts). This is the third in-sandbox runtime dependency to move.
 //
 // The script takes ONE JSON argument and prints ONE JSON line. Failures print
 // `{"unavailable": "<reason>"}` with exit 0 so the caller can say WHY the channel is dark instead

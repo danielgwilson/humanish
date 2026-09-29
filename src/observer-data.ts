@@ -1,5 +1,5 @@
 import { actorEnding, type ActorEnding } from "./actor-stop-cause.js";
-import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms-receiving-evidence.js";
+import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms/receiving-evidence.js";
 import {
   formatParticipantOutcomes,
   formatStudyTaskFunnel,

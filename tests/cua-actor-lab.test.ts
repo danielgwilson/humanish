@@ -41,8 +41,8 @@ import type {
   E2BDesktopSandbox,
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
-import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms-sandbox-catch.js";
-import { recipientInboxUrl } from "../src/comms-inbox.js";
+import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms/sandbox-catch.js";
+import { recipientInboxUrl } from "../src/comms/inbox.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import {
   renderObserver,

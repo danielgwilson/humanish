@@ -21,9 +21,9 @@ import type { TuiActionResult } from "./tui-actions.js";
 import type { TuiProjectState } from "./tui-project.js";
 import type { ReadRunIndexOptions, RunIndexResult } from "./run-index.js";
 import type { LaunchRunOptions, LaunchRunResult } from "./tui-launch.js";
-import type { CommsSetupResult, CommsSetupStatus } from "./comms-connections.js";
-import type { CommsCheckResult, CommsConfigureResult } from "./comms-setup.js";
-import type { CommsRecoveryEntry } from "./comms-receiving.js";
+import type { CommsSetupResult, CommsSetupStatus } from "./comms/connections.js";
+import type { CommsCheckResult, CommsConfigureResult } from "./comms/setup.js";
+import type { CommsRecoveryEntry } from "./comms/receiving.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
 interface TuiVersionInfo {

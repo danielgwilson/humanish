@@ -1,6 +1,6 @@
 import { contradictsAccountBilling } from "./pricing.js";
-import type { CommsReceivingEvidence } from "./comms-receiving-types.js";
-import { isCommsReceivingEvidence } from "./comms-receiving-evidence.js";
+import type { CommsReceivingEvidence } from "./comms/receiving-types.js";
+import { isCommsReceivingEvidence } from "./comms/receiving-evidence.js";
 import {
   desktopRecordingMetadataSchema,
   type RunDesktopRecording,
@@ -3235,7 +3235,7 @@ export async function doctor(
     const { resolveLabManifest } = await import("./labs.js");
     const resolved = await resolveLabManifest(cwd, options.lab);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
-      const { receivingRequiredKey } = await import("./comms-setup.js");
+      const { receivingRequiredKey } = await import("./comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);
       if (receivingKey) keyNames.add(receivingKey);
     }

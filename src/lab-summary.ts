@@ -18,7 +18,7 @@ import {
 } from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
-import { receivingRequiredKey } from "./comms-setup.js";
+import { receivingRequiredKey } from "./comms/setup.js";
 
 export const LAB_SUMMARY_SCHEMA = "humanish.lab-summary.v1";
 
