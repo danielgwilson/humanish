@@ -20,6 +20,37 @@ A study moves your app's screen through several parties. This page names them, s
 
 Humanish itself uploads nothing. No command publishes a bundle; `feedback issue` renders a draft and makes no GitHub API call.
 
+## Provider terms
+
+Humanish does not control what a provider keeps. These are the providers' own statements, read on 2026-09-29, with the humanish behaviour that decides what reaches them.
+
+- **OpenAI (participant model and analyst).** Each step sends the current screenshot, the persona, the mission and the actions so far; `humanish analyze` sends selected text and captures from a finished bundle. OpenAI's [data controls page](https://developers.openai.com/api/docs/guides/your-data) states that data sent to the API is not used to train or improve OpenAI models unless you opt in, that abuse-monitoring logs are retained for up to 30 days, that approved customers can exclude content from those logs under Zero Data Retention, and that regional processing is available on request. `humanish doctor` cannot tell whether your organization has those controls; check your OpenAI organization settings.
+- **E2B (hosted desktop).** Each participant gets its own sandbox, created with a timeout and killed by id when the lane ends; humanish never pauses a sandbox, and E2B's docs say only paused sandboxes are kept. E2B's [privacy policy](https://e2b.dev/privacy) governs what it retains about your account and traffic; it does not state a retention period for a killed sandbox's filesystem, so treat anything placed in a desktop as visible to E2B for as long as their policy allows.
+- **Codex or Claude Code (local-agent route).** The same screenshots and prompts flow through your signed-in agent under that plan's terms. Humanish records that the usage is unpriced and nothing else about the account.
+- **Humanish telemetry.** [TELEMETRY.md](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md) lists every field sent and every field excluded; `npx humanish telemetry disable` or `DO_NOT_TRACK=1` stops it.
+
+## The key store
+
+`humanish keys set <vendor>` writes to `$XDG_CONFIG_HOME/humanish/keys.env`, by default `~/.config/humanish/keys.env`. The directory is created with mode `0700` and the file with `0600`, opened without following symlinks, and only allowlisted provider names are accepted. The values are plain text; file permissions are the whole protection, and nothing is encrypted at rest. `keys list` prints names only, `keys unset <vendor>` removes an entry, and the E2B CLI's own `~/.e2b/config.json` is read when present. To rotate a key, revoke it at the provider, then run `keys set` again; every persisted humanish text has known secret values scrubbed, so a rotated key does not need a bundle sweep.
+
+## Knowing that cleanup happened
+
+Three receipts say what happened to each desktop, and none of them enumerates your account:
+
+- `run.json` lists every sandbox the run created under `providerResources`, with `status` `killed`, `running` or `unknown` and a `cleanup.reason`.
+- `humanish cleanup --run <id>` re-checks and writes `cleanup.json` with `killed`, `already_clean`, `failed` or `skipped` per resource.
+- `humanish reclaim --run <id>` kills the sandboxes an interrupted run journaled in `sandbox-receipts.ndjson` and writes `reclaim-receipt.json` with `killed`, `already-gone` or `kill-failed` for each.
+
+The create-time timeout on every sandbox is the backstop when a kill cannot be confirmed: E2B stops the sandbox, and its metering, when that timeout elapses.
+
+## Reproducibility
+
+A rerun is a new sample, not a replay. What is pinned: the model (`actors[].model`, default `gpt-5.6-sol`), the reasoning effort (`reasoningEffort` per actor or per lane, recorded in the bundle), the subject commit for cloned repositories, the humanish version, and the rate sheet date behind every cost figure. What is not pinned: sampling (humanish sets no temperature, so the provider's default applies), the desktop's timing, and the page under test. Transport retries are automatic and bounded: a model request is retried up to three times on `408`, `409`, `429` and `5xx` responses, honouring `Retry-After` up to a cap, and a sandbox create is retried once on a transient E2B error. Every retry stays inside the run's spend cap. The only variance data published so far is the persona-contrast study on the [home page](/#study): two to six runs per cell, with the blocked cells at 5 of 5 and 6 of 6 and the control at 12 of 12.
+
+## Support and compatibility
+
+The CLI requires Node 20 or newer (`engines` in `package.json`); the interactive `tui` requires Node 22. The project has one maintainer, no support contract and no SLA; bugs go to [GitHub issues](https://github.com/danielgwilson/humanish/issues) and vulnerabilities follow [SECURITY.md](https://github.com/danielgwilson/humanish/blob/main/SECURITY.md). Releases are frequent and there is no written compatibility policy: pin the version in `package.json`, read the release notes before upgrading, and note that every bundle records the version that produced it and published studies name theirs.
+
 ## What the design protects
 
 - **Keys.** The computer-use model key stays on the host and the desktop receives actions. Provisioned variable names are recorded, values are not, and known secret values are scrubbed from persisted text.
@@ -32,7 +63,7 @@ Humanish itself uploads nothing. No command publishes a bundle; `feedback issue`
 ## What it does not protect
 
 - **Free-form sensitive content in pixels or text.** `verify` finds patterns, not meaning. A screenshot can contain anything your app displayed; review it before sharing.
-- **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Humanish does not control retention, region or training use; read those terms before pointing a participant at anything private.
+- **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Humanish does not control retention, region or training use; [provider terms](#provider-terms) above lists what each states.
 - **Egress from the hosted desktop.** The desktop has internet access; the participant can reach any site the mission or the page leads it to.
 - **Billing limits.** Caps act on estimates after usage is reported. Your provider dashboard is the only hard limit.
 - **Release provenance.** The npm package is published from CI without provenance attestations today; pin versions and audit the tarball if that matters to you.

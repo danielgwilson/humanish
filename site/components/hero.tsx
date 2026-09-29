@@ -22,19 +22,19 @@ export default function Hero() {
             <code><span className="ps">$</span>npx humanish<span className="caret" aria-hidden="true"></span></code>
             <CopyButton text="npx humanish" />
           </div>
-          <div className="c-bar"><span>Try it without API keys</span><CopyButton text={"npm i -D humanish\nnpx humanish init --yes\nnpx humanish watch"} label="copy all" /></div>
+          <div className="c-bar"><span>Preview a sample run, no API keys</span><CopyButton text={"npm i -D humanish\nnpx humanish init --yes\nnpx humanish watch"} label="copy all" /></div>
           <div className="c-lines">
             <code>npm i -D humanish</code>
             <code>npx humanish init --yes</code>
             <code>npx humanish watch</code>
           </div>
-          <div className="c-foot">Sample bundle only · no keys, no spend<br /><a href="/docs">Run a live study →</a></div>
+          <div className="c-foot">Plays a bundled sample · does not open your app · no spend<br /><a href="/docs">Run a live study →</a></div>
         </div>
         <p className="agent-line rev" style={{ "--d": ".24s" } as React.CSSProperties}>For coding agents: <code>npx skills add danielgwilson/humanish</code></p>
       </div>
       <div className="hero-art" id="heroArt">
         <HeroCrowd />
-        <HeroObserver slug="lobby-0927" participants={8} title="Eight participants in one lobby of a multiplayer movie-guessing game" facts="6 reached the goal · 2 blocked · 7 findings · 13 minutes" />
+        <HeroObserver slug="lobby-0927" participants={8} title="Eight participants in one lobby of a multiplayer movie-guessing game" facts="6 reached the goal · 2 blocked · 7 findings · 13 minutes" runId="concurrent-shared-world-2026-09-27T20-57-56-664Z-1e8c9646" />
       </div>
     </section>
   );

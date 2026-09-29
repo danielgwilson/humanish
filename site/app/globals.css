@@ -381,6 +381,7 @@ h1:where(:not(.humanish-docs h1)) {
 .ho-foot { padding: 9px 13px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; border-top: 1px solid var(--line-soft) }
 .ho-foot .fq { flex: 1 1 200px; min-width: 0 }
 .ho-foot .ho-fact { white-space: nowrap }
+.ho-foot .ho-run { flex-basis: 100%; font-family: var(--mono); font-size: 10.5px; color: var(--label); overflow-wrap: anywhere }
 .ho-open { margin-left: auto; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap }
 .hero-tile {
   position: absolute; right: clamp(14px, 3vw, 54px); bottom: 9%;
@@ -890,12 +891,12 @@ h1 em { font-style: italic; font-weight: 400 }
 
 
 /* replay player */
-.rp { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--sh-panel); display: grid }
+.rp { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: clip; box-shadow: var(--sh-panel); display: grid }
 .rp-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--label) }
 .rp-title { color: var(--ink); font-weight: 500 }
 .rp-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; min-width: 0 }
 .rp-compact .rp-body { grid-template-columns: minmax(0, 1fr) }
-.rp-stage { position: relative; background: var(--mineral); overflow: hidden }
+.rp-stage { position: relative; background: var(--mineral); overflow: clip }
 .rp-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transition: opacity .32s ease }
 .rp-stage img.on { opacity: 1 }
 .rp-pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none }
@@ -956,3 +957,8 @@ h1 em { font-style: italic; font-weight: 400 }
 .study-axis .repair-results td { font-size: 24px }
 .tile-foot { align-items: flex-start }
 .tile-foot .fq { white-space: normal; line-height: 1.45 }
+
+/* Phone floor for the smallest mono labels; two persona rounds called them dense. */
+@media (max-width: 700px) {
+  .manifest dt, .plab, .brief-facts dt, .manifest dd.dd-sub, .ledger .lh span { font-size: 11px }
+}
