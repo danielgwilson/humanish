@@ -556,16 +556,12 @@ inline image payloads, invalid evidence and references to omitted files are refu
 The original and derivative are independently verified. Text still requires human
 review before sharing; screenshot blur does not certify natural-language privacy.
 
-## Contract Fixture Proof
+## Git Provenance
 
-The core fixture proves:
-
-- deterministic run ids from explicit inputs;
-- stable relative artifact paths;
-- latest/history/lifecycle/timing records;
-- git status counts without branch names, remotes, file names, file paths, or
-  absolute directories;
-- no environment-specific nouns in `src/core`.
+`captureGitState` (`src/git-state.ts`) records git status as counts, without
+branch names, remotes, file names, file paths or absolute directories. It
+refuses a forged gitdir file and unsafe linked-worktree metadata before running
+git. `tests/git-state.test.ts` covers these cases.
 
 Proof commands:
 

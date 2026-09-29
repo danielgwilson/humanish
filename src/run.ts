@@ -43,7 +43,7 @@ import {
 } from "./actor-goal-source.js";
 import { actorEnding } from "./actor-stop-cause.js";
 import type { TaskFunnel } from "./tasks.js";
-import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
+import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./git-state.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, type ResolvedPersona } from "./persona.js";
