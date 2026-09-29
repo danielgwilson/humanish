@@ -380,6 +380,7 @@ h1:where(:not(.humanish-docs h1)) {
 .ho-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; pointer-events: none }
 .ho-foot { padding: 9px 13px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; border-top: 1px solid var(--line-soft) }
 .ho-foot .fq { flex: 1 1 200px; min-width: 0 }
+.ho-foot .ho-fact { white-space: nowrap }
 .ho-open { margin-left: auto; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap }
 .hero-tile {
   position: absolute; right: clamp(14px, 3vw, 54px); bottom: 9%;

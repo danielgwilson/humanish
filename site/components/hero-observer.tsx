@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { reducedMotion, useInView } from "./tour/use-in-view";
 
 /** The Observer's logical viewport inside the frame; scaled to the hero column or the lightbox. */
@@ -113,7 +113,14 @@ export default function HeroObserver({ slug, participants, title, facts, speed =
       </div>
       <figcaption className="ho-foot">
         <span className="fl">Saved run</span>
-        <span className="fq">{facts ?? title}</span>
+        <span className="fq">
+          {(facts ?? title).split(" \u00b7 ").map((fact, i) => (
+            <Fragment key={fact}>
+              {i > 0 ? " \u00b7 " : null}
+              <span className="ho-fact">{fact}</span>
+            </Fragment>
+          ))}
+        </span>
         <a className="ho-open" href={full} target="_blank" rel="noopener">Open the Observer ↗</a>
       </figcaption>
     </figure>
