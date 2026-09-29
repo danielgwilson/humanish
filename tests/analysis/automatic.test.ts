@@ -38,7 +38,7 @@ import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../../src/analy
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
 import { pinDirectory, renderObserver, serveRunPath } from "../../src/observer.js";
 import * as observer from "../../src/observer.js";
-import { exportRun } from "../../src/export.js";
+import { exportRun } from "../../src/feedback/export.js";
 import type { PreparedRunArtifactPaths } from "../../src/run-paths.js";
 import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
 import { syntheticResult } from "./fixtures.js";

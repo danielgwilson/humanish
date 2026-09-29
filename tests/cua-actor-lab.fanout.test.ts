@@ -1,6 +1,6 @@
 import { deriveStudyFacts } from "../src/telemetry.js";
 import { CuaAdmissionLimitError } from "../src/cua-admission-limit.js";
-import { draftFeedback } from "../src/feedback.js";
+import { draftFeedback } from "../src/feedback/feedback.js";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";

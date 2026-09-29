@@ -8,7 +8,7 @@ import { runDryRun, verifyRun, type RunBundle } from "../src/run.js";
 import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { collectDesktopRecording } from "../src/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../src/run-paths.js";
-import { exportRun } from "../src/export.js";
+import { exportRun } from "../src/feedback/export.js";
 import { renderObserver } from "../src/observer.js";
 
 // Structural MP4 header only: these tests validate evidence handling, not decoding.

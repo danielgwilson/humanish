@@ -79,7 +79,7 @@ import {
   summarizeCuaDiagnostics,
   type CuaDiagnostics,
 } from "./cua-diagnostics.js";
-import { feedbackProofCommands } from "./feedback-proof.js";
+import { feedbackProofCommands } from "./feedback/proof.js";
 
 import type {
   ActorCompletionReason,
