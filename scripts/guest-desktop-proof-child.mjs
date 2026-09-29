@@ -43,7 +43,7 @@ const env = {
   LANG: "C.UTF-8",
   LC_ALL: "C.UTF-8",
 };
-let xvfb, wm, context, server, proofPage, content;
+let context, server, proofPage, content;
 const children = [];
 const result = {
   payloadHashes: await payloadHashes("/opt/proof"),
@@ -94,7 +94,7 @@ async function test(name, action) {
   console.log(JSON.stringify({ event: "case", ...result.cases.at(-1) }));
 }
 try {
-  xvfb = child("/usr/bin/Xvfb", [
+  child("/usr/bin/Xvfb", [
     ":0",
     "-screen",
     "0",
@@ -113,7 +113,7 @@ try {
       await delay(50);
     }
   }
-  wm = child("/usr/bin/openbox", ["--config-file", "/etc/xdg/openbox/rc.xml"]);
+  child("/usr/bin/openbox", ["--config-file", "/etc/xdg/openbox/rc.xml"]);
   const html = `<!doctype html><meta charset="utf-8"><title>NoteShelf native input proof</title>
 <style>body{font:20px system-ui;margin:28px;background:#f7f8fb}textarea{width:780px;height:100px;font:20px monospace}button{font-size:20px;padding:10px}#pad{width:400px;height:130px;background:#dbeafe;margin-top:24px}#spacer{height:1600px}</style>
 <h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count">Saved 0</p><div id="pad">Pointer test area</div><div id="spacer"></div><p>End of page</p>

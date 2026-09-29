@@ -213,6 +213,7 @@ describe("fixed canonical guest bootstrap", () => {
     p.left.write(Buffer.from([0]));
     await vi.advanceTimersByTimeAsync(4999);
     p.left.write(Buffer.from([0]));
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const result = expect(reader.identity).rejects.toMatchObject({ code: "deadline_exceeded" });
     await vi.advanceTimersByTimeAsync(1);
     await result;
@@ -284,9 +285,10 @@ describe("fixed canonical guest bootstrap", () => {
       });
     });
     const client = await connectGuestBootstrap(p.left, identity, c.signal);
-    await client.ready();
+    await expect(client.ready()).resolves.toBeUndefined();
     client.close();
     await tick();
+    expect(runtime).toBeDefined();
     await runtime?.closed;
   });
   it("rejects high-bit bytes before ASCII decoding the CONNECT preface", async () => {

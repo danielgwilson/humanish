@@ -1,0 +1,90 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y", "vitest"],
+  "categories": { "correctness": "error" },
+  "options": { "typeAware": true, "reportUnusedDisableDirectives": "error" },
+  "ignorePatterns": [
+    "**/dist/**",
+    "site/public/**",
+    "runtime/**",
+    "bench/**",
+    "fixtures/**",
+    "tests/fixtures/**",
+    "tests/golden/**",
+    "**/*.d.ts",
+    "**/*.d.mts",
+    // Scheduled for deletion (cleanup plan D1); its live path has been unreachable since 2026-07-14.
+    "src/oss-meta-lab.ts"
+  ],
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/switch-exhaustiveness-check": [
+      "error",
+      { "considerDefaultExhaustiveForUnions": true }
+    ],
+    "typescript/require-array-sort-compare": ["error", { "ignoreStringArrays": true }],
+    // Vitest accepts a failure message as the second argument: expect(value, "message").
+    "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "expect*", "assert*"] }],
+
+    // Off: vi.fn() types come from inference and the call site; explicit parameters add no safety.
+    "vitest/require-mock-type-parameters": "off",
+    // Off: table-driven tests assert inside loops and branches on purpose.
+    "vitest/no-conditional-expect": "off",
+    // Off: shared assertion helpers call expect outside it() by design.
+    "vitest/no-standalone-expect": "off",
+    // Off: methods taken from SDK objects are invoked with call/apply; every src site checked on
+    // 2026-09-29 was correct.
+    "typescript/unbound-method": "off",
+    // Off: terminal and ANSI parsing matches control characters on purpose.
+    "no-control-regex": "off",
+    // Off: result arrays are pre-sized with new Array(n) and filled by index; holes are intended.
+    "unicorn/no-new-array": "off",
+    // Off: spreading a string splits it into code points, which is what the flagged sites count;
+    // the one script hit is a tuple the untyped .mjs inference widened to a union.
+    "typescript/no-misused-spread": "off",
+
+    // Warnings are targets from the cleanup plan. `pnpm lint` caps their count with
+    // --max-warnings, so the count can only fall.
+    "max-lines": ["warn", { "max": 700, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": [
+      "warn",
+      { "max": 150, "skipBlankLines": true, "skipComments": true }
+    ],
+    "no-console": "warn",
+    "import/no-cycle": "warn",
+    "typescript/no-base-to-string": "warn",
+    "vitest/require-to-throw-message": "warn",
+    "react/set-state-in-effect": "warn",
+    "react/refs": "warn",
+    "react/purity": "warn",
+    "react/globals": "warn",
+    "react/preserve-manual-memoization": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/prefer-tag-over-role": "warn",
+    "jsx-a11y/label-has-associated-control": "warn",
+    "jsx-a11y/media-has-caption": "warn",
+    "jsx-a11y/no-noninteractive-element-interactions": "warn",
+    "jsx-a11y/alt-text": "warn",
+    "jsx-a11y/heading-has-content": "warn",
+    "jsx-a11y/click-events-have-key-events": "warn",
+    "jsx-a11y/no-static-element-interactions": "warn",
+    "jsx-a11y/anchor-is-valid": "warn"
+  },
+  "overrides": [
+    {
+      // Test fakes stand in for thenable SDK handles, and tests sort only to compare sets.
+      "files": ["tests/**", "observer/tests/**", "tui/tests/**"],
+      "rules": { "unicorn/no-thenable": "off", "typescript/require-array-sort-compare": "off" }
+    },
+    {
+      // Untyped .mjs scripts infer types too loose for these typed rules.
+      "files": ["**/*.mjs"],
+      "rules": {
+        "typescript/restrict-template-expressions": "off",
+        "typescript/require-array-sort-compare": "off"
+      }
+    }
+  ]
+}

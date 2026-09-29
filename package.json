@@ -54,7 +54,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm format:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
@@ -91,7 +91,8 @@
     "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs",
     "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
     "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "lint": "oxlint --max-warnings=590"
   },
   "dependencies": {
     "commander": "^14.0.3",
@@ -109,6 +110,8 @@
     "@types/pngjs": "^6.0.5",
     "axe-core": "4.13.0",
     "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
+    "oxlint-tsgolint": "7.0.2003",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"

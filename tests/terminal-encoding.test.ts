@@ -32,7 +32,6 @@ describe("what a terminal can actually render", () => {
   it("rewrites what it can and never passes an undecodable character through", () => {
     const ascii = forTerminal("humanish — ✓ 1 × ~$0.62 · ⚑ ❯ …", { LANG: "C" });
     expect(ascii).toBe("humanish -- + 1 x ~$0.62 - ! > ...");
-    // eslint-disable-next-line no-control-regex
     expect(/[^\x00-\x7F]/.test(ascii), "no non-ASCII may survive").toBe(false);
   });
 

@@ -511,7 +511,7 @@ describe("serve: stream gate", () => {
       url: "screenshots/proof.png",
       title: "Synthetic screenshot evidence",
     };
-    stream!.ui = { ...(stream!.ui ?? {}), screenshotUrl: "screenshots/proof.png" };
+    stream!.ui = { ...stream!.ui, screenshotUrl: "screenshots/proof.png" };
     stream!.artifacts.push({
       label: "synthetic screenshot evidence",
       path: "screenshots/proof.png",

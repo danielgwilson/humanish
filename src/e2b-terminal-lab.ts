@@ -1730,9 +1730,9 @@ async function runLiveTerminalSession(
   // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
   // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
   // spend to exercise the fail-closed cap without a real billable run.
-  const injectedLines = hooks.costProbe?.({
-    ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
-  });
+  const injectedLines = hooks.costProbe?.(
+    trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd },
+  );
   if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({
     ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),

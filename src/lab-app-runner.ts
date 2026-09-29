@@ -546,8 +546,8 @@ function collectStringMap(
   second: Record<string, string> | undefined,
 ): Record<string, string> {
   return {
-    ...(first ?? {}),
-    ...(second ?? {}),
+    ...first,
+    ...second,
   };
 }
 

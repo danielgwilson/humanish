@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, type MockInstance } from "vitest";
 
 import { App } from "../src/app.js";
 import type { RunDetail } from "../../src/run-detail.js";
@@ -354,7 +354,7 @@ describe("analysis cancellation authority", () => {
       },
     };
     const { surface } = await openLiveRun(detail, 80, { stopRun: stop });
-    let clock: ReturnType<typeof vi.spyOn> | undefined;
+    let clock: MockInstance | undefined;
     try {
       await surface.press(KEY.down, (frame) => frame.includes("❯ Cancel analysis"));
       await surface.press(KEY.enter, (frame) => frame.includes("cancel analysis?"));

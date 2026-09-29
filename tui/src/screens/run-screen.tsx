@@ -93,13 +93,7 @@ export function RunScreen({
       </Box>
 
       {interrupted ? (
-        <InterruptedFacts
-          run={run}
-          detail={detail}
-          participant={participant}
-          now={now}
-          columns={columns}
-        />
+        <InterruptedFacts run={run} participant={participant} now={now} columns={columns} />
       ) : (
         <FinishedFacts run={run} participant={participant} columns={columns} />
       )}
@@ -214,13 +208,11 @@ function FinishedFacts({
  */
 function InterruptedFacts({
   run,
-  detail,
   participant,
   now,
   columns,
 }: {
   run: RunIndexEntry;
-  detail: RunDetail | null | undefined;
   participant: RunParticipant | undefined;
   now: number;
   columns: number;

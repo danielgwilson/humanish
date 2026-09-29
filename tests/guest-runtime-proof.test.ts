@@ -51,8 +51,8 @@ function sample(mode = "packaged-main") {
 }
 describe("constrained guest proof receipts", () => {
   it("accepts complete independently named runtime cells", () => {
-    validateGuestProofCell(sample());
-    validateGuestProofCell(sample("owned-stream"));
+    expect(() => validateGuestProofCell(sample())).not.toThrow();
+    expect(() => validateGuestProofCell(sample("owned-stream"))).not.toThrow();
   });
   it.each([
     (s: ReturnType<typeof sample>) => {

@@ -421,7 +421,7 @@ export function createE2BCuaDesktopLane(
           stateStepRecords.push(record);
         },
         onPhase: onSubjectPhase,
-        ...(deps.hooks.detachedTimers ?? {}),
+        ...deps.hooks.detachedTimers,
       });
     } else if (localTreeRoute && serve && deps.localTreeArchiveBuffer) {
       await provisionLocalTreeSubject(desktop, {
@@ -434,7 +434,7 @@ export function createE2BCuaDesktopLane(
           stateStepRecords.push(record);
         },
         onPhase: onSubjectPhase,
-        ...(deps.hooks.detachedTimers ?? {}),
+        ...deps.hooks.detachedTimers,
       });
     }
 
@@ -501,7 +501,7 @@ export function createE2BCuaDesktopLane(
           ? browserLaunch.evidence
           : {
               requested: config.execution?.desktop?.browser ?? "default",
-              ...(browserLaunch.evidence ?? {}),
+              ...browserLaunch.evidence,
               media: mediaEvidence,
             };
       if (mediaEvidence !== undefined && browserLaunch.family !== "chromium") {
@@ -646,8 +646,9 @@ export function createE2BCuaDesktopLane(
                 ),
               }
             : undefined;
-    const executor = createE2BDesktopExecutor(desktop as unknown as E2BDesktopLike, {
-      ...(launchedBrowserFamily === "chromium"
+    const executor = createE2BDesktopExecutor(
+      desktop as unknown as E2BDesktopLike,
+      launchedBrowserFamily === "chromium"
         ? {
             observeBrowserState: makeChromeBrowserStateObserver(
               desktop,
@@ -696,8 +697,8 @@ export function createE2BCuaDesktopLane(
                   },
             ),
           }
-        : {}),
-    });
+        : {},
+    );
     return {
       executor: allocation.open(speech?.wrap(executor) ?? executor).executor,
       ...(inbox === undefined ? {} : { inbox }),

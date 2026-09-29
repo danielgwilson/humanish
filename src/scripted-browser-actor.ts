@@ -621,7 +621,7 @@ export async function executeBrowserPersonaStep(args: {
       .waitFor({ state: "visible", timeout: stepTimeoutMs });
   } else {
     const exhaustive: never = args.step.action;
-    throw new Error(`Unsupported browser persona action: ${exhaustive}`);
+    throw new Error(`Unsupported browser persona action: ${String(exhaustive)}`);
   }
 
   const afterState = await browserPersonaPageState(args.page, urlPolicy);

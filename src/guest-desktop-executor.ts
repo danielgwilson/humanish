@@ -270,6 +270,7 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
           await text?.close();
         } catch {
           terminate();
+          // oxlint-disable-next-line no-unsafe-finally -- a text channel that fails to close makes the action outcome unknowable
           throw new CuaExecutorError(
             "execution_failed",
             dispatched ? "outcome_uncertain" : "not_dispatched",

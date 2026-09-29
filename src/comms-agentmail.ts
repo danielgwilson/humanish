@@ -462,7 +462,9 @@ export function createAgentMailReceiver(options: {
               labels: "received",
               ...(token === undefined ? {} : { page_token: token }),
             });
-            const raw = success(await api(`${inboxPath(lease)}/messages?${query}`, "GET", budget));
+            const raw = success(
+              await api(`${inboxPath(lease)}/messages?${query.toString()}`, "GET", budget),
+            );
             if (
               !Array.isArray(raw.messages) ||
               raw.messages.length > AGENTMAIL_RECEIVING_LIMITS.pageSize

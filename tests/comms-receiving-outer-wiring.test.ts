@@ -191,17 +191,17 @@ describe("configured receiving through exported study runners", () => {
   ] as const)(
     "%s acquires before desktop allocation, isolates projections, and finishes restricted evidence",
     async (route) => {
-      await proof(route, false);
+      await expectRouteProof(route, false);
     },
   );
   it.each(["cua-clone", "concurrent-provisioned", "concurrent-external"] as const)(
     "%s finishes pre-acquired inboxes when desktop allocation fails",
     async (route) => {
-      await proof(route, true);
+      await expectRouteProof(route, true);
     },
   );
 
-  async function proof(route: Route, failCreate: boolean): Promise<void> {
+  async function expectRouteProof(route: Route, failCreate: boolean): Promise<void> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-receiving-outer-"));
     roots.push(cwd);
     const events: string[] = [],

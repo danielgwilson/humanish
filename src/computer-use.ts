@@ -545,7 +545,7 @@ function isIdleAction(action: CuaAction): boolean {
 }
 
 function isIdleTurn(actions: CuaAction[]): boolean {
-  return actions.length === 0 || actions.every(isIdleAction);
+  return actions.every(isIdleAction);
 }
 
 // Caps for stableProgressKey. The progress key is a coarse turn-over-turn comparison input,

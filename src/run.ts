@@ -5982,7 +5982,7 @@ async function loadBrowserPersonaJourneySelection(
     let raw: unknown;
     try {
       raw = parseYaml(text);
-    } catch (error) {
+    } catch {
       return {
         failure: `${relativePath} could not be parsed as YAML; browser persona journey failed closed.`,
         warnings,
@@ -6135,7 +6135,7 @@ async function readPackageName(
 async function readRunJsonIfExists(
   runPaths: PreparedRunArtifactPaths,
   ...segments: string[]
-): Promise<unknown | null> {
+): Promise<unknown> {
   const text = await readRunTextIfExists(runPaths, ...segments);
   if (text === null) {
     return null;
@@ -6175,7 +6175,7 @@ async function readSafeRunArtifactBytes(
 async function readSafeRunArtifactJson(
   runPaths: PreparedRunArtifactPaths,
   relativePath: string,
-): Promise<unknown | null> {
+): Promise<unknown> {
   const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
   if (!bytes) {
     return null;
@@ -6442,7 +6442,9 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
   for (const candidate of bundle.feedbackCandidates ?? []) {
     for (const evidence of candidate.evidence) {
       if (!isRunRootEvidenceReference(evidence.path)) {
-        findings.push(`feedback candidate ${candidate.id} nonlocal evidence ${evidence.path}`);
+        findings.push(
+          `feedback candidate ${candidate.id} nonlocal evidence ${String(evidence.path)}`,
+        );
       }
     }
   }
@@ -7349,7 +7351,7 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
 function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
   const findings: string[] = [];
   if (sw.schema !== SHARED_WORLD_SCHEMA) {
-    findings.push(`sharedWorld.schema must be ${SHARED_WORLD_SCHEMA}`);
+    findings.push(`sharedWorld.schema must be ${String(SHARED_WORLD_SCHEMA)}`);
   }
   if (bundle.attributionClass !== "shared-world") {
     findings.push("a sharedWorld evidence block requires attributionClass: shared-world");

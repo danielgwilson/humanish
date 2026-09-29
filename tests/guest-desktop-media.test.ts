@@ -136,6 +136,7 @@ describe("guest desktop media", () => {
       { kind: "speak", text: "A short utterance." },
       controller.signal,
     );
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(speaking).rejects.toMatchObject({ disposition: "outcome_uncertain" });
     await Promise.resolve();
     controller.abort();

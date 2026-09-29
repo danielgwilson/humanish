@@ -2042,7 +2042,6 @@ try {
   await runCase("zoom-fullscreen", {}, async ({ page, record, snap }) => {
     await openLane(page);
     await page.locator('.stage-box[data-image-state="ready"]').waitFor();
-    const zoom = page.getByLabel("Image zoom");
     await chooseSelect(page, "Image zoom", "actual");
     record.checks.actual = await page
       .locator(".stage-box img")

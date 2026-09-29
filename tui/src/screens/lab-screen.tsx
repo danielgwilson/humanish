@@ -232,7 +232,6 @@ function activeStart(items: readonly LabItem[], selected: number): LabRunMode | 
  */
 function StartRow({
   mode,
-  confirming,
   active,
   columns,
   row,

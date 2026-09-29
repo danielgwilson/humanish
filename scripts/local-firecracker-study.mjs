@@ -26,7 +26,7 @@ save.addEventListener('click', () => fetch('/saved', { method: 'POST', body: JSO
 }) }));</script>`,
 );
 const saves = [];
-const server = createServer(async (req, res) => {
+const handleRequest = async (req, res) => {
   if (req.url === "/saved" && req.method === "POST") {
     let body = "";
     for await (const chunk of req) {
@@ -46,6 +46,9 @@ const server = createServer(async (req, res) => {
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.end(html);
+};
+const server = createServer((req, res) => {
+  void handleRequest(req, res);
 });
 const abort = new AbortController();
 const cancel = () => abort.abort();

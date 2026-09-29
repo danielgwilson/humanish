@@ -1643,7 +1643,7 @@ describe("parseLabConfig (humanish.lab.v2)", () => {
       const input = {
         ...base,
         ...patch,
-        subject: { ...base.subject, ...(typedPatch.subject ?? {}) },
+        subject: { ...base.subject, ...typedPatch.subject },
         actors: typedPatch.actors ?? base.actors,
       };
       const result = parseLabConfig(input);
@@ -2178,7 +2178,7 @@ function validSharedWorld(overrides?: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [{ name: "notes-count", command: "echo count" }],
       },
-      ...(overrides?.subject ?? {}),
+      ...overrides?.subject,
     },
     actors: overrides?.actors ?? [
       {
@@ -2231,7 +2231,7 @@ function validSharedWorldLocalTree(overrides?: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [{ name: "notes-count", command: "echo count" }],
       },
-      ...(overrides?.subject ?? {}),
+      ...overrides?.subject,
     },
     actors: overrides?.actors ?? [
       {
@@ -2674,7 +2674,7 @@ function validConcurrent(overrides?: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [{ name: "notes-count", command: "echo count" }],
       },
-      ...(overrides?.subject ?? {}),
+      ...overrides?.subject,
     },
     actors: overrides?.actors ?? [
       {

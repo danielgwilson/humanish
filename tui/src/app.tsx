@@ -1,4 +1,4 @@
-import { Box, Text, useApp, useInput } from "ink";
+import { Text, useApp, useInput } from "ink";
 import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { HelpScreen } from "./screens/help-screen.js";
 import { ConnectionsScreen } from "./screens/connections-screen.js";
@@ -10,7 +10,6 @@ import type { RunDetail } from "../../src/run-detail.js";
 import type { RunIndexEntry, RunIndexResult } from "../../src/run-index.js";
 import { labRows, type LabRow } from "../../src/run-projection.js";
 import type { TuiOptions } from "../../src/tui-contract.js";
-import { fitPathToWidth } from "./fit-text.js";
 import { currentScreen, initialNav, navigate, selectedIndex, type NavState } from "./navigation.js";
 import { Frame, contentWidth } from "./frame.js";
 import { AllRunsScreen } from "./screens/all-runs-screen.js";
@@ -731,22 +730,6 @@ function breadcrumbOf(
   }
   const lab = screen.labId;
   return lab === undefined ? "‹ labs / run" : `‹ labs / ${lab} / run`;
-}
-
-function title(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined): string {
-  switch (screen.name) {
-    case "labs":
-      return "labs";
-    case "lab": {
-      // The header is the breadcrumb, so it carries the HUMAN name. The screen below then only has
-      // to say the handle you would type — instead of printing the same lab three times in four
-      // lines.
-      const row = data?.rows.find((candidate) => candidate.key === screen.labKey);
-      return row?.label ?? screen.labKey;
-    }
-    default:
-      return "run";
-  }
 }
 
 /**

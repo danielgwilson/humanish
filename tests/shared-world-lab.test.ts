@@ -1686,7 +1686,7 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const sandbox = makeFakeSandbox(makeCommandHandler(state));
     const { module, created } = makeFakeModule(sandbox);
     const config = sharedWorldConfig();
-    config.execution = { ...(config.execution ?? {}), timeoutMs: 900_000 }; // 15 min x 2 roles + 30 + 10 = 70 min
+    config.execution = { ...config.execution, timeoutMs: 900_000 }; // 15 min x 2 roles + 30 + 10 = 70 min
     const hooks: SharedWorldLabHooks = {
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
       loadDesktopModule: async () => module,
@@ -1887,7 +1887,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
             { name: "reviews-count", command: "psql query reviews" },
           ],
         },
-        ...(overrides?.subject ?? {}),
+        ...overrides?.subject,
       },
       actors: [
         {

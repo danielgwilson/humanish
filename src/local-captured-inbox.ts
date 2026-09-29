@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { inboxRecipientScope } from "./comms-inbox.js";
@@ -19,7 +19,10 @@ export async function startLocalCapturedInbox(
   const upstream = new URL(externalInboxUrl(external));
   const base = upstream.pathname.replace(/\/inbox$/, "");
   const stop = new AbortController();
-  const server = createServer(async (request, response) => {
+  const handleRequest = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method !== "GET") {
@@ -69,6 +72,9 @@ export async function startLocalCapturedInbox(
           .writeHead(502)
           .end("The captured inbox is unavailable. Check the running mail catch.");
     }
+  };
+  const server = createServer((request, response) => {
+    void handleRequest(request, response);
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);

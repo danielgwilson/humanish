@@ -100,7 +100,7 @@ export class RunIndexCache {
   /** Drop entries for runs that no longer exist, so a long-lived surface cannot leak. */
   retain(runIds: Iterable<string>): void {
     const keep = new Set(runIds);
-    for (const runId of [...this.slots.keys()]) {
+    for (const runId of this.slots.keys()) {
       if (!keep.has(runId)) this.slots.delete(runId);
     }
   }
@@ -119,7 +119,7 @@ async function statKey(file: string): Promise<CacheKey | null> {
   }
 }
 
-async function readJson(file: string): Promise<unknown | null> {
+async function readJson(file: string): Promise<unknown> {
   try {
     return JSON.parse(await readFile(file, "utf8")) as unknown;
   } catch {

@@ -378,7 +378,10 @@ export async function serveObserver(
   // Seeded with the loopback names after bind; addPublicOrigin extends it with the tunnel/public-url
   // host. Never consulted in loopback (non-exposed) mode.
   const hostAllowlist = new Set<string>();
-  const server = createServer(async (request, response) => {
+  const handleRequest = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
     try {
       // Every response, including run HTML artifacts, must refuse framing. A provider iframe
       // with its own origin intact must not navigate back here and gain the Observer's origin.
@@ -463,6 +466,9 @@ export async function serveObserver(
     } catch {
       writeResponse(response, 500, "Observer request failed", "text/plain; charset=utf-8");
     }
+  };
+  const server = createServer((request, response) => {
+    void handleRequest(request, response);
   });
 
   const port = await listenOnLoopback(server, options.port ?? 0);

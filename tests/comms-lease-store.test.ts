@@ -328,9 +328,8 @@ describe("private communications cleanup authority", () => {
           );
           child.stdout.once("data", (chunk) => {
             clearTimeout(timer);
-            String(chunk).includes("ready")
-              ? resolve()
-              : reject(new Error("Unexpected crash fixture output."));
+            if (String(chunk).includes("ready")) resolve();
+            else reject(new Error("Unexpected crash fixture output."));
           });
           child.once("error", () => {
             clearTimeout(timer);

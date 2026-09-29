@@ -1009,7 +1009,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
     if (seats > 1 && config.execution?.concurrency === undefined && routesToComputerUse(config)) {
-      config.execution = { ...(config.execution ?? {}), concurrency: seats };
+      config.execution = { ...config.execution, concurrency: seats };
     }
   }
 
@@ -3363,6 +3363,7 @@ function parseDwell(
       ...(whenResult.value === undefined ? {} : { when: whenResult.value }),
       ms,
       everyMs,
+      // oxlint-disable-next-line unicorn/no-thenable -- `then` is the documented dwell field of humanish.lab.v2
       then,
     },
   };

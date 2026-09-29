@@ -99,6 +99,7 @@ describe("one guest runtime lifecycle", () => {
       marker: f.marker,
       createDesktop: () => new Promise(() => {}),
     });
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(running).rejects.toBeDefined();
     f.left.write(encodeGuestBootstrap(identity));
     await vi.advanceTimersByTimeAsync(35000 + 4000);
@@ -234,6 +235,7 @@ describe("one guest runtime lifecycle", () => {
       marker: f.marker,
       createDesktop: () => new Promise(() => {}),
     });
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(running).rejects.toBeDefined();
     f.left.write(encodeGuestBootstrap(identity, false, initialUrl));
     await vi.advanceTimersByTimeAsync(35_000);
