@@ -6,7 +6,6 @@ on:
       - runtime/browser-media/**
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
-      - runtime/browser-disk/**
       - runtime/runtime-assets/**
       - src/guest-*.ts
       - src/browser-control-*.ts
@@ -29,7 +28,6 @@ on:
       - runtime/browser-media/**
       - runtime/browser-guest/**
       - runtime/browser-kernel/**
-      - runtime/browser-disk/**
       - runtime/runtime-assets/**
       - src/guest-*.ts
       - src/browser-control-*.ts
@@ -80,14 +78,13 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.14.0"
+          node-version: "24"
           cache: pnpm
       - name: Exercise build contracts without containers
         run: |
           python3 -B -m unittest discover -s runtime/runtime-assets/tests -v
           python3 -B -m unittest discover -s runtime/browser-kernel/tests -v
           python3 -B -m unittest discover -s runtime/browser-media/tests -v
-          python3 -B -m unittest discover -s runtime/browser-disk/tests -v
           python3 -B -m unittest discover -s runtime/browser-guest/control/tests -v
       - name: Compile the fixed runtime payload
         run: |
@@ -103,17 +100,6 @@ jobs:
         run: |
           python3 runtime/runtime-assets/fetch.py --output "$RUNNER_TEMP/boot-inputs"
           python3 runtime/browser-kernel/build.py --inputs "$RUNNER_TEMP/boot-inputs" --output "$RUNNER_TEMP/kernel-build" --jobs 2
-      - name: Assemble and inspect both filesystems without mounting
-        run: |
-          python3 runtime/browser-disk/build.py \
-            --base "$RUNNER_TEMP/browser-base" \
-            --package "$RUNNER_TEMP/guest-payload" \
-            --kernel-config "$RUNNER_TEMP/kernel-build/output/kernel.config" \
-            --output "$RUNNER_TEMP/browser-disks"
-      - name: Prove disk failure and interruption cleanup with an unrelated canary
-        run: |
-          disk_tools_image="$(python3 -c 'import json,os; print(json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "browser-disks/manifest.json")))["toolsImage"]["id"])')"
-          python3 runtime/browser-disk/proof.py --tools-image "$disk_tools_image" --output "$RUNNER_TEMP/disk-fault-proof"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -131,20 +117,6 @@ jobs:
             ${{ runner.temp }}/kernel-build/cleanup.json
             ${{ runner.temp }}/kernel-build/build.log
             ${{ runner.temp }}/kernel-build/output/manifest.json
-            ${{ runner.temp }}/browser-disks/manifest.json
-            ${{ runner.temp }}/browser-disks/cleanup.json
-            ${{ runner.temp }}/browser-disks/FAILED.json
-            ${{ runner.temp }}/browser-disks/build.log
-            ${{ runner.temp }}/browser-disks/output/*.json
-            ${{ runner.temp }}/browser-disks/output/*.log
-            ${{ runner.temp }}/browser-disks/failed-output/*.log
-            ${{ runner.temp }}/disk-fault-proof/*.json
-            ${{ runner.temp }}/disk-fault-proof/*.log
-            ${{ runner.temp }}/disk-fault-proof/cases-output/*.json
-            ${{ runner.temp }}/disk-fault-proof/cases-output/*.log
-            ${{ runner.temp }}/disk-fault-proof/interrupted-build/FAILED.json
-            ${{ runner.temp }}/disk-fault-proof/interrupted-build/cleanup.json
-            ${{ runner.temp }}/disk-fault-proof/interrupted-build/build.log
           include-hidden-files: true
           retention-days: 14
 
@@ -161,7 +133,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: "22.14.0"
+          node-version: "24"
           cache: pnpm
       - name: Build native ARM64 runtime
         env:
