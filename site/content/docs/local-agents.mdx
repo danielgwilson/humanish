@@ -3,17 +3,7 @@ title: Use a local coding agent
 description: Run a synthetic participant through your signed-in Codex or Claude Code, with explicit usage and credential boundaries.
 ---
 
-An account-based participant and a local desktop are separate choices. For an
-app running on your machine, follow [the local-browser setup](/docs/your-app#study-your-running-local-app):
-supported Codex account participants and a separate account analyst need neither
-E2B nor an OpenAI API key. Claude Code is not supported on that local desktop route.
-
-The rest of this guide configures an account-based participant on **hosted E2B
-desktops**. Finish the [installation](/docs#install), including `@e2b/desktop`.
-
-A live study normally uses the OpenAI API for its participant. Humanish can
-instead use a signed-in Codex or Claude Code CLI as the participant's brain.
-The hosted desktop still needs `E2B_API_KEY` and `@e2b/desktop`.
+You can pay for the participant with a plan you already have. A signed-in Codex or Claude Code CLI on your machine can be the participant's model on a hosted E2B desktop; you still need `E2B_API_KEY` and `@e2b/desktop` from the [install](/docs#install). For an app running on your machine with Codex, the [local-browser route](/docs/your-app#study-your-running-local-app) needs neither key; Claude Code is not supported on that route.
 
 On this hosted route, automatic findings default to the OpenAI API and require
 `OPENAI_API_KEY`, even with a local-agent participant. Without that key the

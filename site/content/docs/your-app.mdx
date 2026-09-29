@@ -1,70 +1,19 @@
 ---
 title: Study your own app
-description: Study your running local app with a Codex account, or use a hosted desktop for a preview URL.
+description: Point a synthetic participant at your preview URL, a repository built inside the desktop, or the app running on your machine.
 ---
 
-You have a preview build and want to know where a newcomer gets stuck. Give participants one concrete job, let them try it, and keep the evidence for the next change.
+You have a build nobody outside the team has used, and you want to know where a newcomer gets stuck. Give one participant one concrete job, let them try it, and keep what came back for the next change.
 
-Use an app you own or have permission to study, with synthetic accounts and data. Choose the route that fits where your app runs:
+Use an app you own or have permission to study, with synthetic accounts and data. Pick the route that matches where your app runs:
 
-- **Local app and Codex account:** use the commands below. No E2B or OpenAI API key is required.
-- **Public preview or staging URL:** use the [hosted lab](#create-a-lab-for-your-preview-url).
-- **App built inside a sandbox:** use the [clone route](#build-the-app-inside-the-sandbox).
-
-## Study your running local app
-
-Install `humanish` with Node.js 20+ in your project. This route needs a supported
-Codex CLI with a file-backed ChatGPT login. Linux x64 needs a local rootful Docker
-Engine, KVM and TUN; M3-or-newer Macs need native ARM64 Node and Lima 2.2+.
-Check the [qualified account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md)
-and [platform setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md)
-before running. Docker Desktop is not the supported runtime for this route.
-
-Start your app, then replace the loopback URL and task with yours. If you already
-ran `init`, edit `subject.appUrl` and the actor's `mission` in
-`humanish/labs/local-browser.yaml` before running: initialization preserves
-existing files and warns when these options are skipped.
-
-```bash
-npm install --save-dev humanish
-npx humanish init --yes \
-  --local-browser http://127.0.0.1:3000 \
-  --local-mission "Create a project named Weekend plan, find it again, and rename it Saturday plan. Stop when you finish or get stuck, and explain anything confusing."
-npx humanish doctor --lab local-browser
-npx humanish run local-browser
-```
-
-The starter creates one participant with a two-minute task budget. For a longer
-journey, edit `execution.timeoutMs` in `humanish/labs/local-browser.yaml` before
-running, up to 1,200,000 ms (20 minutes). Use an explicit loopback port above 1023.
-
-`doctor` checks setup without launching a participant or downloading the runtime.
-The first live run prepares the pinned browser image; later runs reuse it.
-Participants and the separate automatic analyst use your Codex account quota
-and remote model inference. Dollar cost is unknown, not zero. This local route
-does not need `@e2b/desktop`; it does not fall back to a hosted desktop if setup
-fails.
-
-Open the result and check its evidence:
-
-```bash
-npx humanish observe --run latest --open
-# In another terminal while Observer is open:
-npx humanish verify --run latest --json
-```
-
-For signup flows, configure your test app to send email to the
-[local captured inbox](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/comms-inbox.md#local-browser-studies).
-The catch accepts HTTP mail or optional SMTP; it does not receive mail sent to a
-real external mailbox. Review [outcomes and sharing limits](/docs/read-results)
-before acting on or sharing the report.
+- **A preview or staging URL:** the hosted route below. This is the common case.
+- **A repository, not yet deployed:** the [clone route](#build-the-app-inside-the-sandbox) builds it inside the desktop.
+- **Running on your machine, and you use Codex:** the [local-browser route](#study-your-running-local-app) needs no E2B or OpenAI key.
 
 ## Create a lab for your preview URL
 
-For hosted desktops, finish the [API provider setup](/docs#connect-a-desktop-and-a-model),
-including the `@e2b/desktop` peer.
-
-Create `.humanish/labs/your-app.yaml`. This ignored directory is a good place for local preview URLs and experiments. Replace the example URL and mission with your app and a task it actually supports.
+Finish the [install and keys](/docs#add-two-keys), including `@e2b/desktop`. Then create `.humanish/labs/your-app.yaml`. That directory is ignored by git, which makes it the right place for preview URLs and experiments. Replace the URL and the task with yours:
 
 ```yaml title=".humanish/labs/your-app.yaml"
 schema: humanish.lab.v2
@@ -96,21 +45,91 @@ defaults:
   open: true
 ```
 
-This sends one participant into your deployed app. For a second observation, reset the test data or use a separate test account, then run the lab again. Keep both run IDs so the first result is not lost behind `latest`.
+Write the task the way you would brief a person. "Create a project and find it again" leaves room for the participant to look around. "Click the plus icon in the top right" hands them the answer and hides the navigation problem you wanted to see.
 
-This hosted example uses `OPENAI_API_KEY` for the participant and `E2B_API_KEY` for the desktop. To use your Codex or Claude Code login for the participant on E2B, replace the actor with the [local-agent fragment](/docs/local-agents). That hosted route defaults to OpenAI API analysis, skipped without its key. The local-browser route above defaults to a separate Codex account analyst.
+The two caps are checked on every run and do not carry across runs: `maxTotalUsd` is the study's model budget, `maxUsd` the backstop per participant. Desktop time is billed on top, and a supported live run also requests analysis when it finishes, under its own $3 limit. [Budgets](/docs/budgets-and-privacy#set-a-study-budget) has the exact rules and the opt-outs.
 
-On this hosted route, a single public URL is limited to one participant per independent-world run. A simultaneous multi-user study needs the explicit shared-world route. To give multiple newcomers separate copies of the app, use the clone route below.
+To use your signed-in Codex or Claude Code as the participant instead of the OpenAI key, swap the actor for the [local-agent fragment](/docs/local-agents); that route skips analysis unless an OpenAI key is present.
 
-The `$4` participant-model budget and `$2` per-participant backstop are checked for each run; budgets do not carry across separate invocations. E2B desktop time is additional. Supported live studies also run analysis on completion by default, with a separate `$3` analysis budget. See [budget limits](/docs/budgets-and-privacy#set-a-study-budget) for caps and opt-outs.
+One public URL takes one participant per run on this route. For a second observation, reset the test data or use another test account and run the lab again, and keep both run ids so the first is not lost behind `latest`. For several newcomers at once, each on their own copy of the app, use the clone route below.
 
-Keep the mission in the participant's language. “Create a project and find it again” leaves room for discovery. “Click the plus icon in the top right” tells the participant the answer and hides the navigation problem you wanted to study.
+## Check, then run
+
+These two commands create no desktop and call no model:
+
+```bash
+npx humanish lab inspect .humanish/labs/your-app.yaml
+npx humanish doctor --lab .humanish/labs/your-app.yaml
+```
+
+`lab inspect` prints the resolved lab, including the persona text the participant will get. `doctor` tells the participant's authentication apart from desktop access and analysis; it does not check keys against the provider or confirm quota. With `--env-file <path>`, pass it to both `doctor` and the run command.
+
+Next, check that a hosted desktop can reach the preview. This needs `E2B_API_KEY`, creates one desktop for the probe and shuts it down afterwards, and makes no model call:
+
+```bash
+npx humanish lab preflight .humanish/labs/your-app.yaml --reachability public-preview
+```
+
+The probe only confirms reachability from E2B; it does not log in through preview protection. Make the deployment reachable, then run:
+
+```bash
+npx humanish run .humanish/labs/your-app.yaml
+npx humanish observe --run latest --open
+```
+
+To watch the desktop during the study, use `watch` in place of `run`. For an agent or a CI job, add `--json`. [Read results](/docs/read-results) before changing the app or adding participants.
+
+## Build the app inside the sandbox
+
+A deployment is optional. The starter `humanish/labs/cua-browser.yaml` shows the pattern: clone a repository, install, build and start the app inside each desktop. Replace the `subject` block with your repository and its real commands:
+
+```yaml
+subject:
+  source: clone
+  repos: [your-org/your-app]
+  serve:
+    install: npm ci
+    build: npm run build
+    start: npm run start -- --hostname 127.0.0.1 --port 3000
+    url: http://127.0.0.1:3000/
+```
+
+The start command shown fits a Next.js app; use yours, with a readiness URL on the port it serves. Drop `policies.allowPublicTargets` when the app is served only inside the desktop. For two participants, set `actors[0].count` to `2`: each gets its own clone and desktop under the same `$4` study budget. A shared external database still needs separate test accounts or data.
+
+If you edit the scaffolded `cua-browser.yaml` directly, change `scenario.mode` from `dry-run` to `live` and add a budget; a dry run produces contract evidence, not a study of the app.
+
+For uncommitted code, `subject.source: local-tree` packages a selected working tree with a content pin. Environment allowlists, state seeding and the other subject routes are in the [computer-use reference](/docs/computer-use#choose-a-subject) and the [lab parser](https://github.com/danielgwilson/humanish/blob/main/src/lab-config.ts).
+
+## Study your running local app
+
+This route drives a browser on your own machine through your signed-in Codex account, so it needs neither E2B nor an OpenAI API key. It needs a supported Codex CLI with a file-backed ChatGPT login, plus either Linux x64 with rootful Docker Engine, KVM and TUN, or an M3-or-newer Mac with native ARM64 Node and Lima 2.2 or later. Docker Desktop is not supported. Check the [account profile](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/restricted-codex-analysis.md) and [platform setup](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md) first.
+
+Start your app, then replace the URL and the task:
+
+```bash
+npm install --save-dev humanish
+npx humanish init --yes \
+  --local-browser http://127.0.0.1:3000 \
+  --local-mission "Create a project named Weekend plan, find it again, and rename it Saturday plan. Stop when you finish or get stuck, and explain anything confusing."
+npx humanish doctor --lab local-browser
+npx humanish run local-browser
+```
+
+If you already ran `init`, edit `subject.appUrl` and the actor's `mission` in `humanish/labs/local-browser.yaml` instead; `init` keeps existing files and warns that these options were skipped. Use an explicit loopback port above 1023.
+
+The starter gives one participant two minutes. For a longer task, raise `execution.timeoutMs` in the lab before running. `doctor` checks setup without launching a participant or downloading the runtime; the first live run prepares the pinned browser image and later runs reuse it. The participant and the separate analyst both use your Codex plan and remote inference, so the dollar cost is unknown rather than zero. This route does not fall back to a hosted desktop if setup fails.
+
+```bash
+npx humanish observe --run latest --open
+# In another terminal while Observer is open:
+npx humanish verify --run latest --json
+```
+
+For signup flows, point your test app's outgoing mail at the [local captured inbox](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/comms-inbox.md#local-browser-studies). It accepts HTTP mail or optional SMTP and never receives mail sent to a real mailbox.
 
 ## Give the participant a background
 
-`humanish init` creates editable profiles under `humanish/personas/`. Set the
-actor's `persona` to the file's ID. A profile can be a few sentences or a longer
-account of relevant experiences:
+`humanish init` writes editable profiles under `humanish/personas/`. Set the actor's `persona` to a profile's id. A profile can be a few sentences or a longer account of who this person is:
 
 ```yaml title="humanish/personas/volunteer-organizer.yaml"
 schema: humanish.persona.v1
@@ -124,20 +143,9 @@ background: |
   making the roster public or losing their own copy.
 ```
 
-Use the mission for today's situation and goal. Give the participant enough
-context to make choices without telling them which controls to use. Keep expected
-defects and hidden completion rules out of the background and mission.
+The background is who they are; the mission is what they are doing today. Give enough context for the participant to make choices, and keep the expected defect and the hidden completion rule out of both.
 
-Backgrounds preserve paragraphs up to 32 KiB of UTF-8 text. Oversized or invalid
-backgrounds stop the run before execution. Missing files and unsupported fields
-produce warnings; `backstory` is not a supported alias. The short `summary` still
-has a 280-character limit, with a warning when shortened.
-
-Rich profiles receive only explicitly declared trait directives. Legacy profiles
-without a background retain the existing medium defaults. `keyboard_first` means
-a preference that permits pointer fallback; `keyboard_only` describes a condition
-that does not. These instructions do not enforce input restrictions or certify
-accessibility. Avoid conflicts between the background and optional traits.
+Backgrounds keep their paragraphs up to 32 KiB of UTF-8; a larger or invalid background stops the run before it starts. `summary` is limited to 280 characters and is shortened with a warning. Missing files and unsupported fields warn; `backstory` is not an alias. Trait directives such as `keyboard_first` (a preference that allows pointer fallback) and `keyboard_only` (a condition that does not) are instructions to the participant, not enforced restrictions, and do not certify accessibility.
 
 Inspect the resolved persona text before spending on a study:
 
@@ -145,76 +153,12 @@ Inspect the resolved persona text before spending on a study:
 npx humanish lab inspect .humanish/labs/your-app.yaml --json
 ```
 
-The `personas` field contains authored persona context, separate from task goals,
-route instructions and runtime additions such as inbox access. Participants
-details retain that context on supported autonomous runs; older bundles state
-when it was not recorded. Recorded context hints are listed separately. A brief
-shows what was supplied, not proof that the participant followed it.
-
-Keep profiles synthetic or de-identified and review them before committing or
-sharing. Pattern redaction cannot certify that a personal story is safe to publish.
-
-## Check, then run
-
-Inspect the lab, then check the selected route's local setup. These commands create no desktop and make no model request:
-
-```bash
-npx humanish lab inspect .humanish/labs/your-app.yaml
-npx humanish doctor --lab .humanish/labs/your-app.yaml
-```
-
-`doctor` distinguishes the participant's authentication from desktop access and post-run analysis. It does not validate provider credentials remotely or confirm model access and quota. When using `--env-file <path>`, pass it to both `doctor` and the run command.
-
-Next, check whether a hosted desktop can reach the preview. This requires `E2B_API_KEY`, creates one E2B desktop and incurs desktop time. It makes no model calls and shuts down the probe desktop afterwards:
-
-```bash
-npx humanish lab preflight .humanish/labs/your-app.yaml --reachability public-preview
-```
-
-The probe checks reachability from E2B. It does not authenticate through preview protection or verify the app's behavior. Make the test deployment accessible before starting the study:
-
-```bash
-npx humanish run .humanish/labs/your-app.yaml
-npx humanish observe --run latest --open
-```
-
-To watch the desktop during the study, use this instead of `run`:
-
-```bash
-npx humanish watch .humanish/labs/your-app.yaml
-```
-
-For an agent or CI job, use `run ... --json`. [Read the result](/docs/read-results) before changing the app or expanding the panel.
-
-## Build the app inside the sandbox
-
-A public deployment is optional. The starter `humanish/labs/cua-browser.yaml` shows how to clone a repository, install dependencies, build, and start the app inside each sandbox.
-
-Replace the `subject` block in your lab with your public repository and its real commands:
-
-```yaml
-subject:
-  source: clone
-  repos: [your-org/your-app]
-  serve:
-    install: npm ci
-    build: npm run build
-    start: npm run start -- --hostname 127.0.0.1 --port 3000
-    url: http://127.0.0.1:3000/
-```
-
-The example start command fits a Next.js app. Use the command your project supports and a readiness URL on its actual port. Remove `policies.allowPublicTargets` when the app is served only on sandbox loopback. For a two-participant panel, change `actors[0].count` to `2`: each participant now gets its own clone and desktop, with the existing `$4` shared model budget. Shared external databases still need isolated test accounts or data.
-
-Two participants can reveal repeatable friction; they cannot establish population-wide usability.
-
-When editing the scaffolded `cua-browser.yaml` directly, also change `scenario.mode` from `dry-run` to `live` and add your study budget. Leaving it in dry-run produces contract evidence, not a real app study.
-
-For uncommitted code, `subject.source: local-tree` can package a selected working tree with a content pin. For environment allowlists, state seeding, local-tree configuration, and other subject routes, use the [source guide](/docs/computer-use#choose-a-subject) and [lab schema and parser](https://github.com/danielgwilson/humanish/blob/main/src/lab-config.ts).
+The `personas` field shows the authored context, separate from the task, route instructions and runtime additions such as inbox access. The bundle records what was supplied; it cannot prove the participant followed it. Keep profiles synthetic or de-identified and review them before committing or sharing; pattern redaction cannot certify that a personal story is safe to publish.
 
 ## Make a useful comparison
 
-Keep the task, personas, app state, and model settings stable between runs. Record the before and after app revisions. Look for the specific friction to disappear, then inspect whether a new one replaced it.
+Keep the task, personas, app state and model settings the same between runs, and record the app revision before and after. Look for the specific friction to disappear, then check whether something new replaced it.
 
-Report denominators: “2 of 2 completed; 1 reported friction.” A run finishing, a participant claiming success, and independent task evidence are different observations. The [results guide](/docs/read-results) explains how to read them together.
+Report denominators: "2 of 2 completed; 1 reported friction." A run finishing, a participant saying it succeeded, and independent task evidence are three different observations; [Read results](/docs/read-results) explains how to read them together. Two participants can show repeatable friction; they cannot establish population-wide usability.
 
-Move a lab into committed `humanish/labs/` only when its URLs, personas, tasks, and examples are safe to publish. Leave generated evidence in `.humanish/`.
+Move a lab into committed `humanish/labs/` only when its URLs, personas, tasks and examples are safe to publish. Generated evidence stays in `.humanish/`.

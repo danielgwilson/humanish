@@ -3,12 +3,7 @@ title: Computer-use reference
 description: Configure hosted browser participants, device fidelity, screenshots, stop rules, dwell windows, and reruns.
 ---
 
-A computer-use lab dispatches a **registered computer-use actor** (`actors[0].type`,
-resolved against the actor registry, e.g. `openai-computer-use`) to drive an app in
-a hosted E2B desktop browser and emit an evidence bundle under gitignored
-`.humanish/` (full-fidelity screenshots by default, length-only typed text, and
-provider-neutral `humanish.actor-trace.v1` traces). Start with the complete
-[own-app example](/docs/your-app); the blocks below are reference fragments.
+A computer-use lab puts a participant (`actors[0].type`, for example `openai-computer-use`) in a browser on a hosted E2B desktop and writes an evidence bundle under gitignored `.humanish/`: full-fidelity screenshots by default, typed text recorded as lengths only, and provider-neutral `humanish.actor-trace.v1` traces. Start with the complete [own-app example](/docs/your-app); the blocks below are reference fragments.
 
 ## Choose a subject
 
@@ -104,7 +99,7 @@ refuses them until the run is share-ready.
 
 `execution.desktop.device` picks the hosted desktop screen size:
 `mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet`
-(820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). **Honest fidelity:** on the computer-use / E2B-desktop
+(820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). Fidelity: on the computer-use / E2B-desktop
 route width/height size the virtual display and browser outer window. The actual page
 viewport is smaller because browser chrome occupies space; Chromium-family live bundles
 measure it through CDP and record it separately from requested/verified screen geometry.
