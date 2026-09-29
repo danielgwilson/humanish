@@ -1399,6 +1399,11 @@ try {
           liveConnection: false,
         });
       }
+      // The Observer preloaded this frame already. Chromium 153 reuses an image it loaded even under
+      // no-store, so disable the page cache to make the next request reach the server.
+      const devtools = await page.context().newCDPSession(page);
+      await devtools.send("Network.enable");
+      await devtools.send("Network.setCacheDisabled", { cacheDisabled: true });
       imageModes.set("/screenshots/portrait-2.png", "missing");
       await seekStudy(page, 12_000);
       await studyCard(page, "lane-1").getByText("Frame unavailable", { exact: true }).waitFor();
