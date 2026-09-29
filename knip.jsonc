@@ -61,6 +61,8 @@
     "catalogReferences",
     "cycles",
   ],
+  // knip reports cycles as warnings by default, which exit 0.
+  "rules": { "cycles": "error" },
   "cycles": {
     // Known cycles, removed by the run.ts and study-analysis splits. Any new cycle fails `pnpm knip`.
     "allow": [
