@@ -4,7 +4,7 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { buildArtifactSecurityHeaders } from "./serve-http.js";
+import { buildArtifactSecurityHeaders } from "./http.js";
 
 // Loopback-only host for the Observer static server. We never bind 0.0.0.0:
 // the Observer surfaces local run evidence and must stay reachable only from

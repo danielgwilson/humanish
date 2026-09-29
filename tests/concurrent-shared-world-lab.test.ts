@@ -44,7 +44,7 @@ import type {
   SubjectPhaseEvent,
 } from "../src/index.js";
 import { verifyRun } from "../src/run.js";
-import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
+import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer/render.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
 
 // ---------------------------------------------------------------------------

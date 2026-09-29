@@ -3,8 +3,8 @@
 Date: 2026-08-02
 
 Status: shipped — `loopback`, `exposed` (edge-authed), and `share-safe-open`
-modes (`src/observer-serve.ts`, `src/observer-library.ts`, `src/serve-http.ts`,
-`src/serve-exposure.ts`, `src/serve-tunnel.ts`; CLI wiring in `src/program.ts`).
+modes (`src/observer/serve.ts`, `src/observer/library.ts`, `src/observer/http.ts`,
+`src/observer/exposure.ts`, `src/observer/tunnel.ts`; CLI wiring in `src/program.ts`).
 The `/_humanish/api/*` control-plane namespace is reserved and answers `501`; no
 mutating route ships.
 
@@ -36,7 +36,7 @@ authenticated edge (or `--safe`, see the fail-closed matrix).
 
 ## Fail-closed exposure matrix
 
-One shared validator (`validateExposure` in `src/serve-exposure.ts`) governs
+One shared validator (`validateExposure` in `src/observer/exposure.ts`) governs
 both `serve` and `watch`. `--expose` must ALWAYS resolve to a reachable public
 origin (a `--tunnel` or a `--public-url`) — even under `--safe`, since an
 origin-less exposed server is an unreachable loopback no-op. With an origin
@@ -125,7 +125,7 @@ Live desktop stream URLs (auth-bearing hosted-VNC links) are never served by the
 LIBRARY surface, in any mode, and the guarantee is layered:
 
 - **structural** — runtime stream URLs live in a `WeakMap` keyed by the watch
-  process's in-memory `ObserverResult` (`src/observer.ts`) and are never
+  process's in-memory `ObserverResult` (`src/observer/render.ts`) and are never
   persisted into any bundle artifact; serve is a separate process reading disk,
   so there is nothing for it to find;
 - **defensive** — the serve handler passes an explicit empty array at its

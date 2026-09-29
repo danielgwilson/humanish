@@ -7,12 +7,8 @@
 // This module is pure with respect to the fail-closed matrix (validateExposure) and thin over the
 // tunnel launcher (startExposedObserver), so the CLI just maps flags in and results out.
 
-import { parsePublicOrigin, type ServeMode } from "./serve-http.js";
-import {
-  startNgrokTunnel,
-  type ServeTunnel,
-  type StartNgrokTunnelOptions,
-} from "./serve-tunnel.js";
+import { parsePublicOrigin, type ServeMode } from "./http.js";
+import { startNgrokTunnel, type ServeTunnel, type StartNgrokTunnelOptions } from "./tunnel.js";
 
 export type ExposureSurface = "serve" | "watch";
 

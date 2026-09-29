@@ -4,14 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
-import type { CuaLoopResult } from "../src/computer-use.js";
-import { buildCuaBundle } from "../src/cua-actor-lab.js";
-import { renderObserver } from "../src/observer.js";
-import type { LibraryHistory } from "../src/observer-library.js";
-import { serveObserverLibrary } from "../src/observer-serve.js";
-import type { ServeLibraryOptions, ServeLibraryServer } from "../src/observer-serve.js";
-import { buildRunSource, runDryRun, verifyRun } from "../src/run.js";
+import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../../src/actor-contract.js";
+import type { CuaLoopResult } from "../../src/computer-use.js";
+import { buildCuaBundle } from "../../src/cua-actor-lab.js";
+import { renderObserver } from "../../src/observer/render.js";
+import type { LibraryHistory } from "../../src/observer/library.js";
+import { serveObserverLibrary } from "../../src/observer/serve.js";
+import type { ServeLibraryOptions, ServeLibraryServer } from "../../src/observer/serve.js";
+import { buildRunSource, runDryRun, verifyRun } from "../../src/run.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
@@ -963,7 +963,7 @@ describe("serve library: labeled cost estimate", () => {
 describe("serve on a port somebody already holds (#484)", () => {
   it("reports HUMANISH_SERVE_PORT_IN_USE with the port, never HUMANISH_UNEXPECTED", async () => {
     const { createServer: createNetServer } = await import("node:net");
-    const { freePort } = await import("./helpers/free-port.js");
+    const { freePort } = await import("../helpers/free-port.js");
     const { mkdtemp, rm } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const path = await import("node:path");

@@ -10,7 +10,7 @@
 // nobody should do. So the writer redacts, exactly as the terminal lane already did.
 import { describe, expect, it } from "vitest";
 
-import { buildObserverData } from "../src/observer-data.js";
+import { buildObserverData } from "../src/observer/data.js";
 import { containsSensitive, redactText } from "../src/redaction.js";
 import type { RunBundle } from "../src/run.js";
 

@@ -118,7 +118,7 @@ Under its
 DNS-rebinding defense as the library surface: a strict Host allowlist (loopback
 names at bind, extended by `addPublicOrigin(tunnel.url | public-url)`, `421
 Misdirected Request` otherwise) and the shared `buildServeSecurityHeaders()` on
-every response (both live in `src/serve-http.ts`, shared without a module cycle).
+every response (both live in `src/observer/http.ts`, shared without a module cycle).
 The Host allowlist applies in exposed mode; frame-denial headers apply in both modes.
 
 Exposed mode also SCOPES the surface to the attached live run (`result.run`): the

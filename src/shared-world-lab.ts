@@ -102,7 +102,7 @@ import {
   type LabDesktopBrowser,
   type LabSubjectStateCheckpoint,
 } from "./lab-config.js";
-import { renderObserver, type ObserverResult } from "./observer.js";
+import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";

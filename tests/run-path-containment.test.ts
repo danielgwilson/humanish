@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import { runInit } from "../src/init.js";
-import { renderObserver, serveObserver } from "../src/observer.js";
+import { renderObserver, serveObserver } from "../src/observer/render.js";
 import { createProgram } from "../src/program.js";
 import { doctor, listRuns, runDryRun, verifyRun } from "../src/run.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../src/run-paths.js";

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
 
-import type { ObserverData } from "../src/observer-data.js";
+import type { ObserverData } from "../src/observer/data.js";
 import { runDryRun } from "../src/run.js";
 import { RUN_STATUS_SCHEMA } from "../src/run-status.js";
 

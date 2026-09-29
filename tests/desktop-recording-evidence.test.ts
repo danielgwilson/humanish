@@ -9,7 +9,7 @@ import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { collectDesktopRecording } from "../src/desktop-recording-artifact.js";
 import { prepareRunArtifactPaths } from "../src/run-paths.js";
 import { exportRun } from "../src/feedback/export.js";
-import { renderObserver } from "../src/observer.js";
+import { renderObserver } from "../src/observer/render.js";
 
 // Structural MP4 header only: these tests validate evidence handling, not decoding.
 const MP4 = Buffer.from("000000186674797069736f6d0000020069736f6d69736f32", "hex");

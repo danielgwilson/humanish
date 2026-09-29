@@ -114,13 +114,13 @@ import {
   type LabActorLane,
   type LabConfig,
 } from "./lab-config.js";
-import { buildObserverData } from "./observer-data.js";
+import { buildObserverData } from "./observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
   type ObserverResult,
   type ObserverRuntimeStreamUrl,
-} from "./observer.js";
+} from "./observer/render.js";
 import { redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
 import {

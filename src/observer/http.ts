@@ -1,6 +1,6 @@
 // Shared HTTP hardening primitives for the serve surfaces. Extracted here so BOTH the live
-// Observer server (src/observer.ts) and the run-library server
-// (src/observer-serve.ts) can enforce the identical Host allowlist + security-header posture
+// Observer server (src/observer/render.ts) and the run-library server
+// (src/observer/serve.ts) can enforce the identical Host allowlist + security-header posture
 // without a module cycle. This file imports nothing from the serve modules.
 
 // The exposure mode a serve/watch surface is running in.

@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildObserverData, type ObserverData } from "../src/observer-data.js";
+import { buildObserverData, type ObserverData } from "../../src/observer/data.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
@@ -11,10 +11,10 @@ import {
   serveObserver,
   withRuntimeStreamUrls,
   type ObserverServer,
-} from "../src/observer.js";
-import { serveObserverLibrary, type ServeLibraryServer } from "../src/observer-serve.js";
-import { runDryRun } from "../src/run.js";
-import { RUN_STATUS_SCHEMA } from "../src/run-status.js";
+} from "../../src/observer/render.js";
+import { serveObserverLibrary, type ServeLibraryServer } from "../../src/observer/serve.js";
+import { runDryRun } from "../../src/run.js";
+import { RUN_STATUS_SCHEMA } from "../../src/run-status.js";
 
 const roots: string[] = [];
 const servers: Array<ObserverServer | ServeLibraryServer> = [];

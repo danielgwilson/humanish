@@ -12,8 +12,8 @@ import path from "node:path";
 import { RUN_STATUS_FILE, isRunStatusRecord } from "./run-status.js";
 import { resolveRunPath } from "./run.js";
 import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "./run-paths.js";
-import { openTarget } from "./observer.js";
-import { serveObserverLibrary, type ServeLibraryServer } from "./observer-serve.js";
+import { openTarget } from "./observer/render.js";
+import { serveObserverLibrary, type ServeLibraryServer } from "./observer/serve.js";
 
 export const TUI_ACTION_SCHEMA = "humanish.tui-action.v1";
 

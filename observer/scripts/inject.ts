@@ -10,7 +10,7 @@ export const OBSERVER_DATA_PLACEHOLDER = "__HUMANISH_OBSERVER_DATA__";
 
 const SLOT = `<script id="observer-data" type="application/json">${OBSERVER_DATA_PLACEHOLDER}</script>`;
 
-/** Same escaping policy as src/observer.ts escapeJsonScript: keep the JSON inert
+/** Same escaping policy as src/observer/render.ts escapeJsonScript: keep the JSON inert
  *  inside a script element (no </script> breakout, no HTML entity surprises). */
 function escapeJsonScript(value: unknown): string {
   return JSON.stringify(value)

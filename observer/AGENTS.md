@@ -24,7 +24,7 @@ From the repo root (pnpm workspace):
 - `main.tsx` / `app.tsx` — boot (validated inline snapshot → polling → dev fixtures) and the frame
 - `components/` — chrome, grid cards, review player and comparison; plus vendored registry
   components (see `PROVENANCE.md`)
-- `lib/` — type-only bridge to `src/observer-data.ts`, slot reading, dev fixtures
+- `lib/` — type-only bridge to `src/observer/data.ts`, slot reading, dev fixtures
 - `styles/globals.css` — chrome styles; `styles/humanish/` — vendored registry CSS
 - `scripts/inject.ts` — reference slot-injection helper (the CLI adopts it at
   cutover)
@@ -48,7 +48,7 @@ From the repo root (pnpm workspace):
   No new colors — every color reads a humanish token.
 - The CLI consumes the built artifact as its only renderer (cutover 2026-08-16,
   #439): the root build copies `observer/dist/index.html` to
-  `dist/observer-app.html`, and `src/observer.ts` injects each run's snapshot
+  `dist/observer-app.html`, and `src/observer/render.ts` injects each run's snapshot
   into the slot (mirroring `scripts/inject.ts`). In a repo checkout the
   artifact auto-builds (production-forced, cross-process locked). There is no
   flag and no legacy fallback; rollback is a version pin.

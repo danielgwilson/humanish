@@ -32,7 +32,7 @@ import {
   type ConcurrentSharedWorldLabResult,
 } from "./concurrent-shared-world-lab.js";
 import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
-import type { ObserverResult } from "./observer.js";
+import type { ObserverResult } from "./observer/render.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
 import {
   automaticAnalysisRouteReason,

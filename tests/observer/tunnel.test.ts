@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import type { ChildProcess, spawn } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
-import { ServeTunnelError, startNgrokTunnel } from "../src/serve-tunnel.js";
+import { ServeTunnelError, startNgrokTunnel } from "../../src/observer/tunnel.js";
 
 // Field shape captured from a real ngrok 3.x `--log stdout --log-format json`
 // session; the url value has been genericized.

@@ -56,7 +56,7 @@ workflow without leaking private upstream truth into core.
 | Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                   | see Product-Adapter Extension Seam below                                            |
 | Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                         | see Shared-World Evidence below                                                     |
 | Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of DIGESTS only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest                                                      |
-| Serve result                      | `humanish.serve-result.v1` (`src/observer-serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
+| Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
 ## Lab Manifest
@@ -919,7 +919,7 @@ inside run bundles (per-stream transport and status) and lab execution config
 ## Serve Result And Reserved Control-Plane Namespace
 
 `humanish serve` reports `humanish.serve-result.v1`. The exported `ServeResult`
-type and `SERVE_SCHEMA` constant in `src/observer-serve.ts` are authoritative:
+type and `SERVE_SCHEMA` constant in `src/observer/serve.ts` are authoritative:
 mode (`loopback | exposed | share-safe-open`), the loopback host/port,
 `publicUrl`, the `tunnel` provider/url, an `oauth` echo (`provider`,
 `allowEmails`, `allowDomains` — operator-supplied allow rules, public-safe to

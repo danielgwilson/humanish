@@ -1,4 +1,4 @@
-import type { ObserverData } from "../src/observer-data";
+import type { ObserverData } from "../src/observer/data";
 import type { LoadedStudyAnalysis } from "../src/analysis/study-analysis";
 export function reviewPolishFixture(data: ObserverData): LoadedStudyAnalysis;
 export function fixture(options?: {

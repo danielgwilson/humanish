@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import liveBundle from "../../tests/golden/labs/live.json";
-import { buildObserverData } from "../../src/observer-data";
+import { buildObserverData } from "../../src/observer/data";
 import { tallyParticipantOutcomes, type RunBundle } from "../../src/run";
 import type { ActorStopCause } from "../../src/actor-contract";
 import firstRun from "../../tests/golden/observer-data/first-run.json";

@@ -1885,7 +1885,7 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
 
 describe("a taken port at the command boundary (#484)", () => {
   it("is HUMANISH_PORT_IN_USE in the JSON envelope and on stderr, never HUMANISH_UNEXPECTED", async () => {
-    const { PortInUseError } = await import("../src/listen.js");
+    const { PortInUseError } = await import("../src/observer/listen.js");
     const stdout: string[] = [];
     const stderr: string[] = [];
     const io = {

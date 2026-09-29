@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import liveBundle from "./golden/labs/live.json" with { type: "json" };
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "../src/actor-goal-source.js";
-import { buildObserverData, withObserverEndings } from "../src/observer-data.js";
+import { buildObserverData, withObserverEndings } from "../src/observer/data.js";
 import {
   formatParticipantOutcomes,
   participantOutcomeDetails,

@@ -2,7 +2,7 @@ import { createServer as createHttpServer } from "node:http";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { listenOnLoopback, PortInUseError, probePortHolder } from "../src/listen.js";
+import { listenOnLoopback, PortInUseError, probePortHolder } from "../src/observer/listen.js";
 import { freePort } from "./helpers/free-port.js";
 
 // `listen EADDRINUSE` surfaced as HUMANISH_UNEXPECTED, the catch-all for "a handler threw" (#484).

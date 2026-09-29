@@ -13,7 +13,7 @@ import {
 import type { CommsReceivingEvidence } from "../../src/comms/receiving-types.js";
 import { exportRun } from "../../src/feedback/export.js";
 import { draftFeedback } from "../../src/feedback/feedback.js";
-import { createShareSafetyAdmission } from "../../src/observer-serve.js";
+import { createShareSafetyAdmission } from "../../src/observer/serve.js";
 import { redactScreenshot } from "../../src/redaction.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";

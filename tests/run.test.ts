@@ -22,7 +22,7 @@ import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
 import { captureGitState } from "../src/git-state.js";
 import { buildCuaBundle } from "../src/cua-actor-lab.js";
-import { renderObserver } from "../src/observer.js";
+import { renderObserver } from "../src/observer/render.js";
 import { createProgram } from "../src/program.js";
 import { startCodexAppServerUi } from "../src/codex-app-server-ui.js";
 import {
