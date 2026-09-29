@@ -20,7 +20,7 @@ const STAGE_H = 900;
  * link: a scaled eight-participant grid is unreadable there and the replay streams
  * captures for as long as it plays.
  */
-export default function HeroObserver({ slug, participants, title, speed = 6 }: { slug: string; participants: number; title: string; speed?: number }) {
+export default function HeroObserver({ slug, participants, title, facts, speed = 6 }: { slug: string; participants: number; title: string; facts?: string; speed?: number }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const catchRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -110,7 +110,7 @@ export default function HeroObserver({ slug, participants, title, speed = 6 }: {
       </div>
       <figcaption className="ho-foot">
         <span className="fl">Saved run</span>
-        <span className="fq">{title}</span>
+        <span className="fq">{facts ?? title}</span>
         <a className="ho-open" href={full} target="_blank" rel="noopener">Open the Observer ↗</a>
       </figcaption>
     </figure>
