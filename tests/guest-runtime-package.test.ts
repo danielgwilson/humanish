@@ -35,11 +35,13 @@ async function fixture(injection = "") {
   if (injection)
     script = script.replace("  await cp(fixed, root,", injection + "\n  await cp(fixed, root,");
   await writeFile(join(root, "scripts/guest-runtime-package.mjs"), script);
-  await symlink(
-    await realpath(new URL("../node_modules/typescript", import.meta.url)),
-    join(root, "node_modules/typescript"),
-    "dir",
-  );
+  // The packager parses with oxc-parser and records the TypeScript version that built dist/.
+  for (const name of ["oxc-parser", "typescript"])
+    await symlink(
+      await realpath(new URL(`../node_modules/${name}`, import.meta.url)),
+      join(root, "node_modules", name),
+      "dir",
+    );
   for (const file of ["pnpm-lock.yaml", "tsconfig.json", "tsconfig.build.json"])
     await writeFile(join(root, file), "{}\n");
   await writeFile(join(root, "runtime/browser-guest/control/links.json"), "{}");

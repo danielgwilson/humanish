@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import * as ts from "typescript";
+import { parseSync } from "oxc-parser";
 
 // Value import of the producer is fine here (tests run in Node); the APP must never
 // do this — lib/observer-data.ts is type-only so no CLI code reaches the artifact.
@@ -26,42 +26,70 @@ it("the companion analysis schema matches the producer without importing it into
 const OBSERVER_ROOT = path.resolve(import.meta.dirname, "..");
 const CLI_ROOT = path.resolve(OBSERVER_ROOT, "../src");
 
+type AstNode = { type?: unknown; start?: unknown } & Record<string, unknown>;
+const isNode = (value: unknown): value is AstNode => typeof value === "object" && value !== null;
+const field = (node: AstNode, key: string): AstNode | undefined => {
+  const value = node[key];
+  return isNode(value) ? value : undefined;
+};
+const literal = (node: AstNode | undefined): string | undefined =>
+  node?.type === "Literal" && typeof node.value === "string" ? node.value : undefined;
+
+// A runtime edge is anything that survives type erasure under verbatimModuleSyntax: value
+// imports and re-exports (including `import { type X }`, which emits `import {} from`), dynamic
+// import(), require() and `import x = require()`.
 function runtimeCliEdges(file: string, source: string): string[] {
-  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  const { program, errors } = parseSync(file, source, { sourceType: "module" });
+  if (errors.length > 0) throw new Error(`${file} does not parse: ${errors[0]?.message}`);
   const edges: string[] = [];
-  function visit(node: ts.Node): void {
-    let specifier: ts.Expression | undefined;
-    if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly)
-      specifier = node.moduleSpecifier;
-    else if (ts.isExportDeclaration(node) && !node.isTypeOnly) specifier = node.moduleSpecifier;
-    else if (
-      ts.isImportEqualsDeclaration(node) &&
-      !node.isTypeOnly &&
-      ts.isExternalModuleReference(node.moduleReference)
-    )
-      specifier = node.moduleReference.expression;
-    else if (
-      ts.isCallExpression(node) &&
-      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
-    )
-      specifier = node.arguments[0];
-    if (specifier && ts.isStringLiteralLike(specifier)) {
-      const target = specifier.text.startsWith(".")
-        ? path.resolve(path.dirname(file), specifier.text)
-        : specifier.text.startsWith("@/")
-          ? path.resolve(OBSERVER_ROOT, specifier.text.slice(2))
-          : path.isAbsolute(specifier.text)
-            ? path.resolve(specifier.text)
-            : null;
-      if (target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`)) {
-        const line = tree.getLineAndCharacterOfPosition(node.getStart()).line + 1;
-        edges.push(`${path.relative(OBSERVER_ROOT, file)}:${line}: ${specifier.text}`);
+  const record = (specifier: string | undefined, start: unknown): void => {
+    if (specifier === undefined || typeof start !== "number") return;
+    const target = specifier.startsWith(".")
+      ? path.resolve(path.dirname(file), specifier)
+      : specifier.startsWith("@/")
+        ? path.resolve(OBSERVER_ROOT, specifier.slice(2))
+        : path.isAbsolute(specifier)
+          ? path.resolve(specifier)
+          : null;
+    if (target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`)) {
+      const line = source.slice(0, start).split("\n").length;
+      edges.push(`${path.relative(OBSERVER_ROOT, file)}:${line}: ${specifier}`);
+    }
+  };
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!isNode(value)) return;
+    switch (value.type) {
+      case "ImportDeclaration":
+        if (value.importKind !== "type") record(literal(field(value, "source")), value.start);
+        break;
+      case "ExportNamedDeclaration":
+      case "ExportAllDeclaration":
+        if (value.exportKind !== "type") record(literal(field(value, "source")), value.start);
+        break;
+      case "ImportExpression":
+        record(literal(field(value, "source")), value.start);
+        break;
+      case "CallExpression": {
+        const callee = field(value, "callee");
+        const [first] = Array.isArray(value.arguments) ? value.arguments : [];
+        if (callee?.type === "Identifier" && callee.name === "require" && isNode(first))
+          record(literal(first), value.start);
+        break;
+      }
+      case "TSImportEqualsDeclaration": {
+        const reference = field(value, "moduleReference");
+        if (value.importKind !== "type" && reference?.type === "TSExternalModuleReference")
+          record(literal(field(reference, "expression")), value.start);
+        break;
       }
     }
-    ts.forEachChild(node, visit);
-  }
-  visit(tree);
+    for (const [key, child] of Object.entries(value)) if (key !== "parent") visit(child);
+  };
+  visit(program);
   return edges;
 }
 
