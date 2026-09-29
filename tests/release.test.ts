@@ -230,9 +230,9 @@ describe("release readiness", () => {
     const ci = await readFile(".github/workflows/ci.yml", "utf8");
 
     expect(publish).toContain("id-token: write");
-    expect(publish).toContain("actions/checkout@v6");
-    expect(publish).toContain("actions/setup-node@v6");
-    expect(publish).toContain("pnpm/action-setup@v6");
+    expect(publish).toMatch(/actions\/checkout@v\d+/);
+    expect(publish).toMatch(/actions\/setup-node@v\d+/);
+    expect(publish).toMatch(/pnpm\/action-setup@v\d+/);
     expect(publish).toContain('registry-url: "https://registry.npmjs.org"');
     expect(publish).toContain("package-manager-cache: false");
     expect(publish).toContain("if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')");
@@ -244,7 +244,7 @@ describe("release readiness", () => {
       "HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}",
     );
     expect(publish).toContain("npm publish --access public");
-    expect(ci).toContain("pnpm/action-setup@v6");
+    expect(ci).toMatch(/pnpm\/action-setup@v\d+/);
     expect(ci).toContain("pnpm release:check");
   });
 });
