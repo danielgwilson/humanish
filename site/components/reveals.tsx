@@ -35,7 +35,7 @@ export default function Reveals() {
           }
         });
       },
-      { threshold: 0.15, rootMargin: "0px 0px 25% 0px" }
+      { threshold: 0.15, rootMargin: "0px 0px 25% 0px" },
     );
     els.forEach((el) => rio.observe(el));
     return () => rio.disconnect();

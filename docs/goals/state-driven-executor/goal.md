@@ -120,6 +120,7 @@ arbitrary blob; the docs say so.
 ## Proof ladder (PR1)
 
 Deterministic rungs are the merge gate ($0):
+
 1. `lab-config`: `local-app` + computer-use actor parses, `selectLabBackend` =
    "cua"; rejects `local-app` + non-cua actor, + `e2b-desktop`, + clone-only
    fields.

@@ -13,9 +13,13 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
   buildInitialRequest,
   createOpenAiResponsesProvider,
-  type OpenAiCuContext
+  type OpenAiCuContext,
 } from "../src/openai-responses-cu.js";
-import { REASONING_EFFORTS, isReasoningEffort, type ReasoningEffort } from "../src/reasoning-effort.js";
+import {
+  REASONING_EFFORTS,
+  isReasoningEffort,
+  type ReasoningEffort,
+} from "../src/reasoning-effort.js";
 
 function lab(actor: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -24,7 +28,7 @@ function lab(actor: Record<string, unknown>): Record<string, unknown> {
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actors: [{ type: "openai-computer-use", mission: "do the thing", ...actor }],
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "dry-run" }
+    scenario: { mode: "dry-run" },
   };
 }
 
@@ -53,8 +57,11 @@ describe("reasoning effort is a declarable study variable (#497)", () => {
     const parsed = parseLabConfig(
       lab({
         reasoningEffort: "medium",
-        lanes: [{ id: "steady", persona: "p" }, { id: "harder", persona: "p", reasoningEffort: "high" }]
-      })
+        lanes: [
+          { id: "steady", persona: "p" },
+          { id: "harder", persona: "p", reasoningEffort: "high" },
+        ],
+      }),
     );
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
@@ -73,7 +80,7 @@ describe("reasoning effort is a declarable study variable (#497)", () => {
     const ctx: OpenAiCuContext = {
       model: "gpt-5.6-sol",
       instructions: "go",
-      reasoningEffort: "xhigh"
+      reasoningEffort: "xhigh",
     };
     const body = buildInitialRequest(ctx) as { reasoning?: { effort?: string } };
     expect(body.reasoning?.effort).toBe("xhigh");
@@ -106,7 +113,7 @@ const CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 /** A provider that reports settings, or (with none) one that reports nothing at all. */
@@ -118,7 +125,7 @@ function settingsProvider(reasoningEffort?: ReasoningEffort): CuaProvider {
     ...(reasoningEffort === undefined ? {} : { modelSettings: { reasoningEffort } }),
     async nextTurn(): Promise<CuaTurn> {
       return { actions: [], pendingSafetyChecks: [], done: true, message: "done" };
-    }
+    },
   };
 }
 
@@ -126,7 +133,7 @@ const STILL_EXECUTOR: CuaExecutor = {
   async observe() {
     return { stateSignature: "s" };
   },
-  async execute() {}
+  async execute() {},
 };
 
 async function traceFrom(provider: CuaProvider): Promise<Record<string, unknown>> {
@@ -138,7 +145,7 @@ async function traceFrom(provider: CuaProvider): Promise<Record<string, unknown>
     persona: { id: "p", traitsApplied: [], promptDigest: "d" },
     redaction: defaultRedactionHooks,
     timeoutMs: 10_000,
-    now: () => (t += 1000)
+    now: () => (t += 1000),
   });
   return result.trace as unknown as Record<string, unknown>;
 }
@@ -166,7 +173,7 @@ async function summaryFor(actorYaml: string): Promise<{ reasoningEffort?: string
     await writeFile(
       path.join(cwd, ".humanish", "labs", "effort.yaml"),
       `schema: humanish.lab.v2\nid: effort\nsubject:\n  source: app-url\n  appUrl: http://127.0.0.1:3000/\nactors:\n${actorYaml}execution:\n  target: e2b-desktop\nscenario:\n  mode: dry-run\n`,
-      "utf8"
+      "utf8",
     );
     return await readLabSummary(cwd, "effort");
   } finally {
@@ -181,13 +188,15 @@ describe("the lab surface says what effort will actually run", () => {
   });
 
   it("reports a declared effort", async () => {
-    const summary = await summaryFor("  - type: openai-computer-use\n    mission: m\n    reasoningEffort: xhigh\n");
+    const summary = await summaryFor(
+      "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: xhigh\n",
+    );
     expect(summary?.reasoningEffort).toBe("xhigh");
   });
 
   it("says per-lane rather than picking one lane's answer for all of them", async () => {
     const summary = await summaryFor(
-      "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: low\n    lanes:\n      - id: steady\n      - id: harder\n        reasoningEffort: high\n"
+      "  - type: openai-computer-use\n    mission: m\n    reasoningEffort: low\n    lanes:\n      - id: steady\n      - id: harder\n        reasoningEffort: high\n",
     );
     expect(summary?.reasoningEffort).toBe("per-lane");
   });

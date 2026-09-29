@@ -52,7 +52,7 @@ export function buildCommsThreadArtifact(messages: CommsMessage[]): CommsThreadA
     linkDigests: message.links.map((link) => digestText(link, 16)),
     codeCount: message.codes.length,
     sentAt: message.sentAt,
-    deliveredAt: message.deliveredAt
+    deliveredAt: message.deliveredAt,
   }));
   return { schema: COMMS_THREAD_SCHEMA, channel, count: thread.length, thread };
 }

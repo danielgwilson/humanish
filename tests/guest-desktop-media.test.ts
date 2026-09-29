@@ -6,7 +6,11 @@ class FakeTransport implements DesktopMediaWorkerTransport {
   handlers: { data(bytes: Buffer): void; exit(): void } | undefined;
   writes: unknown[] = [];
   closed = false;
-  async start(options: { env: Readonly<Record<string, string>>; data(bytes: Buffer): void; exit(): void }): Promise<void> {
+  async start(options: {
+    env: Readonly<Record<string, string>>;
+    data(bytes: Buffer): void;
+    exit(): void;
+  }): Promise<void> {
     expect(options.env).toMatchObject({ HUMANISH_MEDIA_MICROPHONE: "1" });
     this.handlers = options;
   }
@@ -15,68 +19,135 @@ class FakeTransport implements DesktopMediaWorkerTransport {
     this.writes.push(value);
     queueMicrotask(() => this.send({ type: "reply", id: value.id, ok: true }));
   }
-  async close(): Promise<void> { this.closed = true; }
-  send(value: unknown): void { this.handlers!.data(Buffer.from(JSON.stringify(value) + "\n")); }
+  async close(): Promise<void> {
+    this.closed = true;
+  }
+  send(value: unknown): void {
+    this.handlers!.data(Buffer.from(JSON.stringify(value) + "\n"));
+  }
 }
 
 function executor(): CuaExecutor {
-  return { observe: vi.fn(async () => ({ stateSignature: "screen" })), execute: vi.fn(async () => {}) };
+  return {
+    observe: vi.fn(async () => ({ stateSignature: "screen" })),
+    execute: vi.fn(async () => {}),
+  };
 }
 
 async function start(transport: FakeTransport, terminal = vi.fn()) {
-  const pending = startDesktopMedia({ media: { microphone: { source: "speech" } }, env: { HOME: "/home/humanish" },
-    signal: new AbortController().signal, onTerminal: terminal, transport });
+  const pending = startDesktopMedia({
+    media: { microphone: { source: "speech" } },
+    env: { HOME: "/home/humanish" },
+    signal: new AbortController().signal,
+    onTerminal: terminal,
+    transport,
+  });
   transport.send({ type: "ready" });
   return { media: await pending, terminal };
 }
 
 describe("guest desktop media", () => {
   it("sets native Pulse environment, speaks through the worker and drains bounded heard speech", async () => {
-    const transport = new FakeTransport(), { media } = await start(transport), base = executor(), wrapped = media.wrap(base);
-    expect(media.env).toMatchObject({ PULSE_SOURCE: "humanish_input", PULSE_SINK: "humanish_speaker", HUMANISH_MEDIA_MICROPHONE: "1" });
+    const transport = new FakeTransport(),
+      { media } = await start(transport),
+      base = executor(),
+      wrapped = media.wrap(base);
+    expect(media.env).toMatchObject({
+      PULSE_SOURCE: "humanish_input",
+      PULSE_SINK: "humanish_speaker",
+      HUMANISH_MEDIA_MICROPHONE: "1",
+    });
     expect((wrapped as CuaExecutor & { speechEnabled?: boolean }).speechEnabled).toBe(true);
-    for (let index = 1; index <= 6; index++) transport.send({ type: "heard", utterance: {
-      id: `speech-${index}`, source: "speaker_audio", text: `heard ${index}`, durationMs: 800 } });
-    const first = await wrapped.observe() as CuaObservation & { heardSpeech?: unknown[] };
-    const second = await wrapped.observe() as CuaObservation & { heardSpeech?: unknown[] };
-    expect(first.heardSpeech).toHaveLength(4); expect(second.heardSpeech).toHaveLength(2);
-    await wrapped.execute({ kind: "speak", text: "Hello from the participant." } as unknown as CuaAction);
-    expect(transport.writes).toEqual([{ id: "speak-1", operation: "speak", text: "Hello from the participant." }]);
+    for (let index = 1; index <= 6; index++)
+      transport.send({
+        type: "heard",
+        utterance: {
+          id: `speech-${index}`,
+          source: "speaker_audio",
+          text: `heard ${index}`,
+          durationMs: 800,
+        },
+      });
+    const first = (await wrapped.observe()) as CuaObservation & { heardSpeech?: unknown[] };
+    const second = (await wrapped.observe()) as CuaObservation & { heardSpeech?: unknown[] };
+    expect(first.heardSpeech).toHaveLength(4);
+    expect(second.heardSpeech).toHaveLength(2);
+    await wrapped.execute({
+      kind: "speak",
+      text: "Hello from the participant.",
+    } as unknown as CuaAction);
+    expect(transport.writes).toEqual([
+      { id: "speak-1", operation: "speak", text: "Hello from the participant." },
+    ]);
     expect(base.execute).not.toHaveBeenCalled();
-    await media.close(); expect(transport.closed).toBe(true);
+    await media.close();
+    expect(transport.closed).toBe(true);
   });
 
   it("passes ordinary actions through and fails closed on an invalid worker event", async () => {
-    const transport = new FakeTransport(), terminal = vi.fn(), { media } = await start(transport, terminal), base = executor(), wrapped = media.wrap(base);
-    const action = { kind: "wait", ms: 10 } as CuaAction; await wrapped.execute(action);
+    const transport = new FakeTransport(),
+      terminal = vi.fn(),
+      { media } = await start(transport, terminal),
+      base = executor(),
+      wrapped = media.wrap(base);
+    const action = { kind: "wait", ms: 10 } as CuaAction;
+    await wrapped.execute(action);
     expect(base.execute).toHaveBeenCalledWith(action, undefined);
-    transport.send({ type: "heard", utterance: { id: "bad", source: "speaker_audio", text: "", durationMs: 0 } });
+    transport.send({
+      type: "heard",
+      utterance: { id: "bad", source: "speaker_audio", text: "", durationMs: 0 },
+    });
     expect(terminal).toHaveBeenCalledOnce();
-    await expect(wrapped.execute({ kind: "speak", text: "after failure" } as unknown as CuaAction)).rejects.toMatchObject({ code: "execution_failed", disposition: "not_dispatched" });
+    await expect(
+      wrapped.execute({ kind: "speak", text: "after failure" } as unknown as CuaAction),
+    ).rejects.toMatchObject({ code: "execution_failed", disposition: "not_dispatched" });
     await expect(wrapped.observe()).rejects.toMatchObject({ code: "execution_failed" });
   });
 
   it("rejects unsupported declarations before starting the worker", async () => {
     const transport = new FakeTransport();
-    await expect(startDesktopMedia({ media: { camera: { source: "clip.y4m" } }, env: {},
-      signal: new AbortController().signal, onTerminal: vi.fn(), transport })).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(
+      startDesktopMedia({
+        media: { camera: { source: "clip.y4m" } },
+        env: {},
+        signal: new AbortController().signal,
+        onTerminal: vi.fn(),
+        transport,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_request" });
     expect(transport.handlers).toBeUndefined();
   });
 
   it("stops pending playback on cancellation and waits for the same cleanup", async () => {
-    const transport = new FakeTransport(), { media } = await start(transport), wrapped = media.wrap(executor());
+    const transport = new FakeTransport(),
+      { media } = await start(transport),
+      wrapped = media.wrap(executor());
     let finishCleanup!: () => void;
-    const cleanup = new Promise<void>(resolve => { finishCleanup = resolve; });
-    const close = vi.spyOn(transport, "close").mockImplementation(async () => { await cleanup; transport.closed = true; });
+    const cleanup = new Promise<void>((resolve) => {
+      finishCleanup = resolve;
+    });
+    const close = vi.spyOn(transport, "close").mockImplementation(async () => {
+      await cleanup;
+      transport.closed = true;
+    });
     vi.spyOn(transport, "write").mockResolvedValue(undefined);
     const controller = new AbortController();
-    const speaking = wrapped.execute({ kind: "speak", text: "A short utterance." }, controller.signal);
+    const speaking = wrapped.execute(
+      { kind: "speak", text: "A short utterance." },
+      controller.signal,
+    );
     const rejected = expect(speaking).rejects.toMatchObject({ disposition: "outcome_uncertain" });
-    await Promise.resolve(); controller.abort();
+    await Promise.resolve();
+    controller.abort();
     let closed = false;
-    const closing = media.close().then(() => { closed = true; });
-    await Promise.resolve(); expect(closed).toBe(false);
-    finishCleanup(); await closing; await rejected;
+    const closing = media.close().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    finishCleanup();
+    await closing;
+    await rejected;
     expect(close).toHaveBeenCalledOnce();
     await expect(wrapped.observe()).rejects.toMatchObject({ code: "execution_failed" });
   });

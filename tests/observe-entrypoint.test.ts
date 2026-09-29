@@ -19,22 +19,49 @@ it("observe follows selected-run evidence and lifecycle over protected HTTP, the
     const runRoot = path.join(cwd, ".humanish", "runs", "selected");
     const bundlePath = path.join(runRoot, "run.json");
     const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
-    child = spawn(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("src/cli.ts"), "observe", "--cwd", cwd, "--run", "selected", "--no-open", "--json"], {
-      env: { ...process.env, HUMANISH_STRICT_KEYS: "1", HUMANISH_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" },
-      stdio: ["ignore", "pipe", "pipe"]
-    });
+    child = spawn(
+      process.execPath,
+      [
+        "--import",
+        import.meta.resolve("tsx"),
+        path.resolve("src/cli.ts"),
+        "observe",
+        "--cwd",
+        cwd,
+        "--run",
+        "selected",
+        "--no-open",
+        "--json",
+      ],
+      {
+        env: {
+          ...process.env,
+          HUMANISH_STRICT_KEYS: "1",
+          HUMANISH_TELEMETRY_DISABLED: "1",
+          DO_NOT_TRACK: "1",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     const processUnderTest = child;
     let stdout = "";
     let stderr = "";
     processUnderTest.stdout!.setEncoding("utf8");
     processUnderTest.stderr!.setEncoding("utf8");
-    processUnderTest.stderr!.on("data", (chunk: string) => { stderr += chunk; });
-    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
-      processUnderTest.once("error", reject);
-      processUnderTest.once("exit", (code, signal) => resolve({ code, signal }));
+    processUnderTest.stderr!.on("data", (chunk: string) => {
+      stderr += chunk;
     });
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve, reject) => {
+        processUnderTest.once("error", reject);
+        processUnderTest.once("exit", (code, signal) => resolve({ code, signal }));
+      },
+    );
     const url = await new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error(`observe did not attach: ${stderr}`)), 15_000);
+      const timeout = setTimeout(
+        () => reject(new Error(`observe did not attach: ${stderr}`)),
+        15_000,
+      );
       processUnderTest.stdout!.on("data", (chunk: string) => {
         stdout += chunk;
         try {
@@ -43,7 +70,9 @@ it("observe follows selected-run evidence and lifecycle over protected HTTP, the
             clearTimeout(timeout);
             resolve(result.observerUrl);
           }
-        } catch { /* Wait for the complete JSON envelope. */ }
+        } catch {
+          /* Wait for the complete JSON envelope. */
+        }
       });
       void exited.then(({ code, signal }) => {
         clearTimeout(timeout);
@@ -57,26 +86,52 @@ it("observe follows selected-run evidence and lifecycle over protected HTTP, the
       expect(response.headers.get("referrer-policy")).toBe("no-referrer");
       await response.arrayBuffer();
     }
-    const getData = async () => await (await fetch(new URL("observer-data.json", url))).json() as ObserverData;
+    const getData = async () =>
+      (await (await fetch(new URL("observer-data.json", url))).json()) as ObserverData;
     expect((await getData()).runtime?.state).toBe("finished");
     bundle.streams[0].label = "Updated saved capture";
-    bundle.streams[0].embed = { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true };
+    bundle.streams[0].embed = {
+      kind: "iframe",
+      url: "https://desktop.example/view",
+      runtimeDesktop: true,
+    };
     await writeFile(bundlePath, JSON.stringify(bundle));
     const now = new Date().toISOString();
-    await writeFile(path.join(runRoot, "status.json"), JSON.stringify({ schema: RUN_STATUS_SCHEMA, runId: "selected", state: "running", mode: "dry-run", pid: 999999, startedAt: now, updatedAt: now }));
+    await writeFile(
+      path.join(runRoot, "status.json"),
+      JSON.stringify({
+        schema: RUN_STATUS_SCHEMA,
+        runId: "selected",
+        state: "running",
+        mode: "dry-run",
+        pid: 999999,
+        startedAt: now,
+        updatedAt: now,
+      }),
+    );
     const updated = await getData();
     expect(updated.streams[0]?.label).toBe("Updated saved capture");
     expect(updated.streams[0]?.embed?.runtimeDesktop).toBeUndefined();
     expect(updated.runtime?.state).toBe("running");
-    const history = await (await fetch(new URL("/_humanish/history.json", url))).json() as { runs: Array<{ runId: string }> };
+    const history = (await (await fetch(new URL("/_humanish/history.json", url))).json()) as {
+      runs: Array<{ runId: string }>;
+    };
     expect(history.runs.map((run) => run.runId)).toEqual(["selected"]);
-    expect((await fetch(new URL("/_humanish/runs/other/observer/index.html", url))).status).toBe(404);
+    expect((await fetch(new URL("/_humanish/runs/other/observer/index.html", url))).status).toBe(
+      404,
+    );
     processUnderTest.kill("SIGINT");
-    const ended = await Promise.race([exited, new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => reject(new Error("observe did not close after SIGINT")), 5_000);
-      timer.unref();
-      void exited.finally(() => clearTimeout(timer));
-    })]);
+    const ended = await Promise.race([
+      exited,
+      new Promise<never>((_, reject) => {
+        const timer = setTimeout(
+          () => reject(new Error("observe did not close after SIGINT")),
+          5_000,
+        );
+        timer.unref();
+        void exited.finally(() => clearTimeout(timer));
+      }),
+    ]);
     expect(ended).toEqual({ code: 130, signal: null });
     expect(stderr).toContain("observe stopped");
     expect(JSON.parse(stdout).ok).toBe(true);

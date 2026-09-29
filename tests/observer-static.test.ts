@@ -9,7 +9,7 @@ import {
   createObserverStaticHandler,
   observerStaticContentType,
   respondToObserverStaticRequest,
-  serveObserverStatic
+  serveObserverStatic,
 } from "../src/observer-static.js";
 
 const SECRET_BODY = "TOP-SECRET-do-not-serve\n";
@@ -31,13 +31,29 @@ async function withRunDir<T>(callback: (fixture: RunFixture) => Promise<T>): Pro
   try {
     await mkdir(observerDir, { recursive: true });
     // Files inside the run dir — all of these SHOULD be reachable over loopback.
-    await writeFile(path.join(observerDir, "index.html"), "<!doctype html><title>Humanish Observer</title>", "utf8");
-    await writeFile(path.join(observerDir, "observer-data.json"), JSON.stringify({ schema: "humanish.observer-data.v1" }), "utf8");
+    await writeFile(
+      path.join(observerDir, "index.html"),
+      "<!doctype html><title>Humanish Observer</title>",
+      "utf8",
+    );
+    await writeFile(
+      path.join(observerDir, "observer-data.json"),
+      JSON.stringify({ schema: "humanish.observer-data.v1" }),
+      "utf8",
+    );
     await writeFile(path.join(observerDir, "client.js"), "console.log('observer');", "utf8");
     await writeFile(path.join(observerDir, "theme.css"), ":root{color:white}", "utf8");
-    await writeFile(path.join(observerDir, "badge.svg"), "<svg xmlns='http://www.w3.org/2000/svg'></svg>", "utf8");
-    await writeFile(path.join(runDir, "run.json"), JSON.stringify({ schema: "humanish.run-bundle.v1" }), "utf8");
-    await writeFile(path.join(runDir, "events.ndjson"), "{\"event\":\"start\"}\n", "utf8");
+    await writeFile(
+      path.join(observerDir, "badge.svg"),
+      "<svg xmlns='http://www.w3.org/2000/svg'></svg>",
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "run.json"),
+      JSON.stringify({ schema: "humanish.run-bundle.v1" }),
+      "utf8",
+    );
+    await writeFile(path.join(runDir, "events.ndjson"), '{"event":"start"}\n', "utf8");
 
     // Out-of-scope files: a sibling run and a secret in the parent runs/ dir.
     // Path traversal must never reach above the served run dir.
@@ -68,9 +84,12 @@ async function callHandler(runDir: string, url: string, method = "GET"): Promise
     },
     writeHead(status: number, headers: Record<string, string>) {
       captured.statusCode = status;
-      captured.headers = { ...captured.headers, ...Object.fromEntries(
-        Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
-      ) };
+      captured.headers = {
+        ...captured.headers,
+        ...Object.fromEntries(
+          Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]),
+        ),
+      };
       this.headersSent = true;
       return this;
     },
@@ -79,17 +98,21 @@ async function callHandler(runDir: string, url: string, method = "GET"): Promise
         captured.body = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : chunk;
       }
       return this;
-    }
+    },
   };
 
   const request = { method, url } as Pick<IncomingMessage, "method" | "url">;
-  await respondToObserverStaticRequest({ root: runDir, redirectRootTo: ENTRY }, request, response as unknown as ServerResponse);
+  await respondToObserverStaticRequest(
+    { root: runDir, redirectRootTo: ENTRY },
+    request,
+    response as unknown as ServerResponse,
+  );
   return captured;
 }
 
 async function callCreatedHandler(
   handler: (request: IncomingMessage, response: ServerResponse) => void,
-  url: string
+  url: string,
 ): Promise<CapturedResponse> {
   return new Promise((resolve) => {
     const captured: CapturedResponse = { statusCode: 0, headers: {}, body: "" };
@@ -101,9 +124,12 @@ async function callCreatedHandler(
       },
       writeHead(status: number, headers: Record<string, string>) {
         captured.statusCode = status;
-        captured.headers = { ...captured.headers, ...Object.fromEntries(
-          Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value])
-        ) };
+        captured.headers = {
+          ...captured.headers,
+          ...Object.fromEntries(
+            Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]),
+          ),
+        };
         this.headersSent = true;
         return this;
       },
@@ -113,12 +139,9 @@ async function callCreatedHandler(
         }
         resolve(captured);
         return this;
-      }
+      },
     };
-    handler(
-      { method: "GET", url } as IncomingMessage,
-      response as unknown as ServerResponse
-    );
+    handler({ method: "GET", url } as IncomingMessage, response as unknown as ServerResponse);
   });
 }
 
@@ -127,8 +150,12 @@ describe("observer static content type", () => {
     expect(observerStaticContentType("a/index.html")).toBe("text/html; charset=utf-8");
     expect(observerStaticContentType("a/client.js")).toBe("text/javascript; charset=utf-8");
     expect(observerStaticContentType("a/theme.css")).toBe("text/css; charset=utf-8");
-    expect(observerStaticContentType("a/observer-data.json")).toBe("application/json; charset=utf-8");
-    expect(observerStaticContentType("a/events.ndjson")).toBe("application/x-ndjson; charset=utf-8");
+    expect(observerStaticContentType("a/observer-data.json")).toBe(
+      "application/json; charset=utf-8",
+    );
+    expect(observerStaticContentType("a/events.ndjson")).toBe(
+      "application/x-ndjson; charset=utf-8",
+    );
     expect(observerStaticContentType("a/frame.png")).toBe("image/png");
     expect(observerStaticContentType("a/badge.svg")).toBe("image/svg+xml");
     expect(observerStaticContentType("a/mystery.bin")).toBe("application/octet-stream");
@@ -142,7 +169,11 @@ describe("observer static request handler", () => {
     const handler = createObserverStaticHandler({ root: runDir });
     try {
       await mkdir(runDir);
-      await writeFile(path.join(runDir, "index.html"), "<!doctype html><title>Late Observer</title>", "utf8");
+      await writeFile(
+        path.join(runDir, "index.html"),
+        "<!doctype html><title>Late Observer</title>",
+        "utf8",
+      );
 
       const response = await callCreatedHandler(handler, "/");
       expect(response.statusCode).toBe(200);
@@ -282,9 +313,21 @@ describe("observer static server", () => {
     await withRunDir(async ({ runDir }) => {
       const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });
       try {
-        for (const [pathname, method] of [["/", "GET"], [`/${ENTRY}`, "GET"], ["/observer/observer-data.json", "GET"], ["/missing", "GET"], [`/${ENTRY}`, "HEAD"], [`/${ENTRY}`, "DELETE"]]) {
-          const response = await fetch(new URL(pathname!, server.url), { method: method!, redirect: "manual" });
-          expect(response.headers.get("content-security-policy")).toBe("frame-ancestors 'none'; sandbox allow-scripts");
+        for (const [pathname, method] of [
+          ["/", "GET"],
+          [`/${ENTRY}`, "GET"],
+          ["/observer/observer-data.json", "GET"],
+          ["/missing", "GET"],
+          [`/${ENTRY}`, "HEAD"],
+          [`/${ENTRY}`, "DELETE"],
+        ]) {
+          const response = await fetch(new URL(pathname!, server.url), {
+            method: method!,
+            redirect: "manual",
+          });
+          expect(response.headers.get("content-security-policy")).toBe(
+            "frame-ancestors 'none'; sandbox allow-scripts",
+          );
           expect(response.headers.get("x-frame-options")).toBe("DENY");
           expect(response.headers.get("referrer-policy")).toBe("no-referrer");
           await response.arrayBuffer();
@@ -299,8 +342,14 @@ describe("observer static server", () => {
     await withRunDir(async ({ runDir }) => {
       const data = {
         schema: "humanish.observer-data.v1",
-        runtime: { state: "running", source: "local-run-status", observedAt: "2026-09-08T00:00:00Z" },
-        streams: [{ embed: { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true } }]
+        runtime: {
+          state: "running",
+          source: "local-run-status",
+          observedAt: "2026-09-08T00:00:00Z",
+        },
+        streams: [
+          { embed: { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true } },
+        ],
       };
       const json = JSON.stringify(data);
       const jsonPath = path.join(runDir, "observer", "observer-data.json");
@@ -310,7 +359,11 @@ describe("observer static server", () => {
       await writeFile(htmlPath, html);
       const server = await serveObserverStatic({ root: runDir, port: 0, entryPath: ENTRY });
       try {
-        for (const pathname of [`/${ENTRY}`, "/observer/observer-data.json", "/observer//observer-data.json"]) {
+        for (const pathname of [
+          `/${ENTRY}`,
+          "/observer/observer-data.json",
+          "/observer//observer-data.json",
+        ]) {
           const response = await fetch(new URL(pathname, server.url));
           const body = await response.text();
           expect(response.status).toBe(200);
@@ -318,7 +371,8 @@ describe("observer static server", () => {
           expect(body).not.toContain("runtimeDesktop");
           expect(body).toContain("https://desktop.example/view");
           expect(Number(response.headers.get("content-length"))).toBe(Buffer.byteLength(body));
-          if (pathname.endsWith(".html")) expect(body).toContain("<script>window.synthetic=1</script>");
+          if (pathname.endsWith(".html"))
+            expect(body).toContain("<script>window.synthetic=1</script>");
         }
         expect(await readFile(jsonPath, "utf8")).toBe(json);
         expect(await readFile(htmlPath, "utf8")).toBe(html);
@@ -349,11 +403,15 @@ describe("observer static server", () => {
         // Artifact link target inside the run dir resolves.
         const runJson = await fetch(new URL("run.json", base));
         expect(runJson.status).toBe(200);
-        expect(((await runJson.json()) as { schema: string }).schema).toBe("humanish.run-bundle.v1");
+        expect(((await runJson.json()) as { schema: string }).schema).toBe(
+          "humanish.run-bundle.v1",
+        );
 
         const observerData = await fetch(new URL("observer/observer-data.json", base));
         expect(observerData.status).toBe(200);
-        expect(((await observerData.json()) as { schema: string }).schema).toBe("humanish.observer-data.v1");
+        expect(((await observerData.json()) as { schema: string }).schema).toBe(
+          "humanish.observer-data.v1",
+        );
 
         const missing = await fetch(new URL("observer/nope.json", base));
         expect(missing.status).toBe(404);
@@ -371,7 +429,7 @@ describe("observer static server", () => {
       await writeFile(
         path.join(decoyRoot, ENTRY),
         "<!doctype html><title>RETARGETED-B-SECRET</title>",
-        "utf8"
+        "utf8",
       );
       await symlink(runDir, aliasRoot, "dir");
 

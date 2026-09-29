@@ -20,11 +20,15 @@ import {
   runCuaLanes,
   type CuaActorLabHooks,
   type CuaLaneSpec,
-  type CuaLanePlan
+  type CuaLanePlan,
 } from "../src/cua-actor-lab.js";
 import { getActor } from "../src/actor-registry.js";
 import { DEVICE_PRESETS } from "../src/device-presets.js";
-import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import type {
+  E2BDesktopCreateOptions,
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+} from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab } from "../src/lab-engine.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES, type FetchLike } from "../src/openai-responses-cu.js";
@@ -56,13 +60,24 @@ function scriptedFetch(responses: unknown[]): FetchLike {
   return async () => {
     const value = responses[Math.min(i, responses.length - 1)];
     i += 1;
-    return { ok: true, status: 200, text: async () => JSON.stringify(value), json: async () => value };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
   };
 }
 
 const TWO_TURN_SESSION = [
-  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
-  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
+  {
+    id: "resp_1",
+    output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }],
+  },
+  {
+    id: "resp_2",
+    output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+  },
 ];
 const HOLLOW_SESSION = [{ id: "r1", output: [{ type: "message", content: [] }] }];
 const FANOUT_ADAPTER_NAMESPACE = "fanout-browser-adapter-proof";
@@ -76,14 +91,21 @@ function fanoutFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     summary: `${ctx.backend} fan-out adapter found no product-level success evidence.`,
     data: {
       backend: ctx.backend,
-      laneCount: ctx.laneCount
-    }
+      laneCount: ctx.laneCount,
+    },
   };
 }
 
-const delay = (ms: number): Promise<void> => new Promise((resolve) => { setTimeout(resolve, ms); });
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
-async function waitForCondition(label: string, condition: () => boolean | Promise<boolean>, timeoutMs = 2_000): Promise<void> {
+async function waitForCondition(
+  label: string,
+  condition: () => boolean | Promise<boolean>,
+  timeoutMs = 2_000,
+): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await condition()) return;
@@ -122,9 +144,13 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
   const makeSandbox = (id: string, createOptions: E2BDesktopCreateOptions): E2BDesktopSandbox => {
     const requested = createOptions.resolution ?? [1440, 950];
     const laneIndex = Number(createOptions.metadata?.laneIndex ?? "0");
-    const reported = options.geometryOverride ? options.geometryOverride(laneIndex, requested) : requested;
+    const reported = options.geometryOverride
+      ? options.geometryOverride(laneIndex, requested)
+      : requested;
     let frame = 0;
-    const record = (name: string) => async (): Promise<void> => { void name; };
+    const record = (name: string) => async (): Promise<void> => {
+      void name;
+    };
     return {
       sandboxId: id,
       // Captured stock shape; resource-size variation tests live in desktop-resource-pricing.
@@ -132,27 +158,34 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
       commands: {
         run: async (command: string) => {
           if (command.includes("xdpyinfo")) {
-            return { exitCode: 0, stdout: `  dimensions:    ${reported[0]}x${reported[1]} pixels (300x200 millimeters)\n` };
+            return {
+              exitCode: 0,
+              stdout: `  dimensions:    ${reported[0]}x${reported[1]} pixels (300x200 millimeters)\n`,
+            };
           }
           const targetUrl = command.match(/^target_url='([^']+)'$/m)?.[1];
           if (targetUrl) {
             opened.push(targetUrl);
           }
           return { exitCode: 0, stdout: "" };
-        }
+        },
       },
       files: { write: async () => undefined },
       launch: record("launch") as (application: string, uri?: string) => Promise<void>,
-      open: (async (fileOrUrl: string) => { opened.push(fileOrUrl); }) as (fileOrUrl: string) => Promise<void>,
+      open: (async (fileOrUrl: string) => {
+        opened.push(fileOrUrl);
+      }) as (fileOrUrl: string) => Promise<void>,
       async screenshot() {
         frame += 1;
         return makePng(frame);
       },
-      async wait() { /* settle is instant in the fake */ },
+      async wait() {
+        /* settle is instant in the fake */
+      },
       stream: {
         getAuthKey: () => "fake-auth-key",
         getUrl: () => "https://stream.invalid/fake-auth-key",
-        start: async () => undefined
+        start: async () => undefined,
       },
       leftClick: record("leftClick"),
       rightClick: record("rightClick"),
@@ -162,16 +195,20 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
       scroll: record("scroll"),
       write: record("write"),
       press: record("press"),
-      drag: record("drag")
+      drag: record("drag"),
     } as unknown as E2BDesktopSandbox;
   };
 
   const module: E2BDesktopModule = {
     Sandbox: {
       // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
-      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+      create: async (
+        templateOrOptions: string | E2BDesktopCreateOptions,
+        maybeOptions?: E2BDesktopCreateOptions,
+      ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
-        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        const createOptions =
+          typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         serial += 1;
         live += 1;
         maxLive = Math.max(maxLive, live);
@@ -185,39 +222,68 @@ function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModuleHandle
         killed.push(sandboxId);
         live -= 1;
         return true;
-      }
+      },
       // NO `list` — the lab can only kill the exact ids it created, never enumerate.
-    }
+    },
   };
 
   return { module, created, templates, opened, killed, createdIds, maxLive: () => maxLive };
 }
 
 /** A 4-lane differentiated roster on a loopback app-url subject. */
-function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["actors"][0]["lanes"]; template?: string; reasoningEffort?: string }): LabConfig {
+function fanoutConfig(overrides?: {
+  concurrency?: number;
+  lanes?: LabConfig["actors"][0]["lanes"];
+  template?: string;
+  reasoningEffort?: string;
+}): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "fanout-proof",
     title: "Fan-out proof",
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-    actors: [{
-      type: "openai-computer-use",
-      mission: "Explore the app and stop.",
-      ...(overrides?.reasoningEffort === undefined ? {} : { reasoningEffort: overrides.reasoningEffort }),
-      lanes: overrides?.lanes ?? [
-        { id: "mobile-newcomer", persona: "first-time-visitor", device: "mobile", instruction: "Sign up from a phone." },
-        { id: "small-skimmer", persona: "impatient-skimmer", device: "small-mobile", instruction: "Skim and bounce." },
-        { id: "desktop-power", persona: "power-user", device: "desktop", instruction: "Open advanced settings." },
-        { id: "wide-researcher", persona: "comparison-shopper", device: "wide", instruction: "Compare the plans." }
-      ]
-    }],
+    actors: [
+      {
+        type: "openai-computer-use",
+        mission: "Explore the app and stop.",
+        ...(overrides?.reasoningEffort === undefined
+          ? {}
+          : { reasoningEffort: overrides.reasoningEffort }),
+        lanes: overrides?.lanes ?? [
+          {
+            id: "mobile-newcomer",
+            persona: "first-time-visitor",
+            device: "mobile",
+            instruction: "Sign up from a phone.",
+          },
+          {
+            id: "small-skimmer",
+            persona: "impatient-skimmer",
+            device: "small-mobile",
+            instruction: "Skim and bounce.",
+          },
+          {
+            id: "desktop-power",
+            persona: "power-user",
+            device: "desktop",
+            instruction: "Open advanced settings.",
+          },
+          {
+            id: "wide-researcher",
+            persona: "comparison-shopper",
+            device: "wide",
+            instruction: "Compare the plans.",
+          },
+        ],
+      },
+    ],
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
       concurrency: overrides?.concurrency ?? 2,
-      ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } })
+      ...(overrides?.template === undefined ? {} : { desktop: { template: overrides.template } }),
     },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -225,12 +291,20 @@ function fanoutConfig(overrides?: { concurrency?: number; lanes?: LabConfig["act
 
 describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planSeen: CuaLanePlan[] = [];
-    const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true, cuaHooks: { onPreflight: (plan) => planSeen.push(plan) } });
+    const outcome = await runLab(fanoutConfig(), {
+      cwd,
+      dryRun: true,
+      cuaHooks: { onPreflight: (plan) => planSeen.push(plan) },
+    });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
@@ -249,48 +323,74 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     expect(planSeen[0]?.concurrency).toBe(2);
     expect(planSeen[0]?.waves).toBe(2);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(4);
     expect(bundle.streams).toHaveLength(4);
     expect(bundle.streams.map((s: { status: string }) => s.status)).toEqual([
-      "contract_proof_only", "contract_proof_only", "contract_proof_only", "contract_proof_only"
+      "contract_proof_only",
+      "contract_proof_only",
+      "contract_proof_only",
+      "contract_proof_only",
     ]);
     // Dry-run carries the requested screens but does not invent measured CSS viewports. Sub-500 mobile
     // widths (mobile 414, small-mobile 360) are floored to Chrome's 500px window minimum (no clip).
-    expect(bundle.streams.map((s: { desktopGeometry: { screen: { requested: { width: number; height: number } } } }) => [
-      s.desktopGeometry.screen.requested.width,
-      s.desktopGeometry.screen.requested.height
-    ])).toEqual([
-      [500, 896], [500, 740], [1440, 950], [1920, 1080]
+    expect(
+      bundle.streams.map(
+        (s: { desktopGeometry: { screen: { requested: { width: number; height: number } } } }) => [
+          s.desktopGeometry.screen.requested.width,
+          s.desktopGeometry.screen.requested.height,
+        ],
+      ),
+    ).toEqual([
+      [500, 896],
+      [500, 740],
+      [1440, 950],
+      [1920, 1080],
     ]);
-    expect(bundle.streams.every((s: { viewport?: unknown }) => s.viewport === undefined)).toBe(true);
+    expect(bundle.streams.every((s: { viewport?: unknown }) => s.viewport === undefined)).toBe(
+      true,
+    );
     expect(bundle.simulations.map((s: { personaId: string }) => s.personaId)).toEqual([
-      "first-time-visitor", "impatient-skimmer", "power-user", "comparison-shopper"
+      "first-time-visitor",
+      "impatient-skimmer",
+      "power-user",
+      "comparison-shopper",
     ]);
     // The plan is recorded as a bundle event.
-    expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.plan")).toBe(true);
+    expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.plan")).toBe(
+      true,
+    );
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
   });
 
   it("resolveCuaLanePlan is pure: concurrency defaults to ALL lanes, env override only LOWERS (and is recorded)", () => {
-    const config = fanoutConfig({ concurrency: undefined as unknown as number, lanes: [
-      { id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }
-    ] });
+    const config = fanoutConfig({
+      concurrency: undefined as unknown as number,
+      lanes: [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }],
+    });
     // No declared concurrency on a 5-lane roster → every seat runs at once (#350): 5 lanes, 1 wave.
     const planDefault = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } });
     expect(planDefault.concurrency).toBe(5);
     expect(planDefault.waves).toBe(1);
     expect(planDefault.envLoweredConcurrencyFrom).toBeUndefined();
     // Env override LOWERS to 2 — and the lowering is recorded, never silent.
-    const planLowered = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop" } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } });
+    const planLowered = resolveCuaLanePlan(
+      { ...config, execution: { target: "e2b-desktop" } },
+      { env: { HUMANISH_CUA_MAX_CONCURRENCY: "2" } },
+    );
     expect(planLowered.concurrency).toBe(2);
     expect(planLowered.envLoweredConcurrencyFrom).toBe(5);
     // Env override may NOT raise above the declared cap (clamped to laneCount + the base).
-    const planRaiseAttempt = resolveCuaLanePlan({ ...config, execution: { target: "e2b-desktop", concurrency: 2 } }, { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } });
+    const planRaiseAttempt = resolveCuaLanePlan(
+      { ...config, execution: { target: "e2b-desktop", concurrency: 2 } },
+      { env: { HUMANISH_CUA_MAX_CONCURRENCY: "9" } },
+    );
     expect(planRaiseAttempt.concurrency).toBe(2);
     expect(planRaiseAttempt.envLoweredConcurrencyFrom).toBeUndefined();
   });
@@ -298,9 +398,19 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   it("direct live fan-out bundle builder fails closed when outcomes are missing", () => {
     const config = fanoutConfig({
       lanes: [
-        { id: "role-a", persona: "first-time-visitor", device: "desktop", instruction: "Review the dashboard." },
-        { id: "role-b", persona: "power-user", device: "desktop", instruction: "Review the settings." }
-      ]
+        {
+          id: "role-a",
+          persona: "first-time-visitor",
+          device: "desktop",
+          instruction: "Review the dashboard.",
+        },
+        {
+          id: "role-b",
+          persona: "power-user",
+          device: "desktop",
+          instruction: "Review the settings.",
+        },
+      ],
     });
     const plan = resolveCuaLanePlan(config);
     const specs: CuaLaneSpec[] = [
@@ -315,7 +425,7 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         devicePreset: DEVICE_PRESETS.desktop,
         resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
         screenshotDir: "role-a",
-        traceArtifactPath: "actors/stream-role-a.json"
+        traceArtifactPath: "actors/stream-role-a.json",
       },
       {
         laneId: "role-b",
@@ -328,8 +438,8 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         devicePreset: DEVICE_PRESETS.desktop,
         resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
         screenshotDir: "role-b",
-        traceArtifactPath: "actors/stream-role-b.json"
-      }
+        traceArtifactPath: "actors/stream-role-b.json",
+      },
     ];
     const source: RunBundle["source"] = {
       packageName: "humanish",
@@ -340,12 +450,12 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
         capturedAt: "2026-01-01T00:00:00.000Z",
         head: { shortSha: "abc1234", refState: "attached" },
         changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
-        note: "test fixture"
-      }
+        note: "test fixture",
+      },
     };
     const subject = {
       source: "app-url" as const,
-      state: { provenance: "undeclared" as const }
+      state: { provenance: "undeclared" as const },
     };
 
     const bundle = buildCuaFanoutBundle({
@@ -362,25 +472,29 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
       source,
       plan,
       cloneRoute: false,
-      subjectEnvNames: []
+      subjectEnvNames: [],
     });
 
     expect(bundle.mode).toBe("live");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("0/2");
-    expect(bundle.review.gaps).toEqual([
-      "role-a: did not pass",
-      "role-b: did not pass"
-    ]);
+    expect(bundle.review.gaps).toEqual(["role-a: did not pass", "role-b: did not pass"]);
   });
 });
 
 describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-live-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-live-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
-  function passingHooks(handle: FanoutModuleHandle, extra?: Partial<CuaActorLabHooks> & { active?: { count: number; max: number } }): CuaActorLabHooks {
+  function passingHooks(
+    handle: FanoutModuleHandle,
+    extra?: Partial<CuaActorLabHooks> & { active?: { count: number; max: number } },
+  ): CuaActorLabHooks {
     const active = extra?.active ?? { count: 0, max: 0 };
     return {
       env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
@@ -391,12 +505,15 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         try {
           await delay(20); // hold so concurrent lanes genuinely overlap
           // FRESH fetch per lane (each lane its own session transport).
-          return await runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+          return await runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
         } finally {
           active.count -= 1;
         }
       },
-      ...extra
+      ...extra,
     };
   }
 
@@ -410,8 +527,14 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       reasoningEffort: "medium",
       lanes: [
         { id: "default-effort", persona: "p", device: "desktop", instruction: "Work." },
-        { id: "harder-effort", persona: "p", device: "desktop", instruction: "Work.", reasoningEffort: "high" }
-      ]
+        {
+          id: "harder-effort",
+          persona: "p",
+          device: "desktop",
+          instruction: "Work.",
+          reasoningEffort: "high",
+        },
+      ],
     });
     const seen: (string | undefined)[] = [];
     const hooks = passingHooks(handle);
@@ -434,17 +557,21 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       concurrency: 2,
       lanes: [
         { id: "role-a", persona: "role-a", device: "desktop", instruction: "Explore role A." },
-        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." }
-      ]
+        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
+      ],
     });
     config.actors[0]!.mission = "Explore with test-openai-key.";
     const runId = "cua-fanout-live-observer";
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
     let resolveActorsStarted: () => void = () => {};
-    const actorsStarted = new Promise<void>((resolve) => { resolveActorsStarted = resolve; });
+    const actorsStarted = new Promise<void>((resolve) => {
+      resolveActorsStarted = resolve;
+    });
     let releaseActors: () => void = () => {};
-    const actorsReleased = new Promise<void>((resolve) => { releaseActors = resolve; });
+    const actorsReleased = new Promise<void>((resolve) => {
+      releaseActors = resolve;
+    });
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
     let observerServer: ObserverServer | undefined;
 
@@ -456,7 +583,10 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         resolveActorsStarted();
       }
       await actorsReleased;
-      return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+      return runCuaActorSession({
+        ...options,
+        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+      });
     };
 
     const runPromise = runLab(config, {
@@ -466,7 +596,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         readyObserver = observer;
         observerServer = await serveObserver(observer, { port: 0 });
       },
-      cuaHooks: hooks
+      cuaHooks: hooks,
     });
 
     try {
@@ -475,15 +605,20 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       await waitForCondition("both actor sessions started", () => actorSessionsStarted === 2);
 
       const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
-      expect((JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment)).toEqual([
+      expect(
+        (JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment),
+      ).toEqual([
         { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role A." },
-        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role B." }
+        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role B." },
       ]);
       expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");
       expect(persistedRunText).not.toContain("stream.invalid");
 
-      const persistedObserverDataText = await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8");
+      const persistedObserverDataText = await readFile(
+        path.join(runRoot, "observer", "observer-data.json"),
+        "utf8",
+      );
       expect(persistedObserverDataText).not.toContain("test-openai-key");
       expect(persistedObserverDataText).not.toContain("fake-auth-key");
       expect(persistedObserverDataText).not.toContain("stream.invalid");
@@ -493,20 +628,34 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         summary: { active: number };
       };
       expect(persistedObserverData.summary.active).toBe(2);
-      expect(persistedObserverData.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
-      expect(persistedObserverData.streams.map((stream) => stream.transport)).toEqual(["snapshot", "snapshot"]);
-      expect(persistedObserverData.events.filter((event) => event.type === "cua-lab.session.running")).toHaveLength(2);
+      expect(persistedObserverData.streams.map((stream) => stream.status)).toEqual([
+        "running",
+        "running",
+      ]);
+      expect(persistedObserverData.streams.map((stream) => stream.transport)).toEqual([
+        "snapshot",
+        "snapshot",
+      ]);
+      expect(
+        persistedObserverData.events.filter((event) => event.type === "cua-lab.session.running"),
+      ).toHaveLength(2);
 
       expect(readyObserver).toBeTruthy();
       expect(observerServer).toBeTruthy();
       const served = await fetch(new URL("observer-data.json", observerServer!.url));
-      const servedObserverData = await served.json() as {
+      const servedObserverData = (await served.json()) as {
         streams: Array<{ embed?: { kind: string; url?: string }; transport: string; url?: string }>;
       };
       expect(servedObserverData.streams).toHaveLength(2);
       expect(servedObserverData.streams.every((stream) => stream.transport === "sse")).toBe(true);
-      expect(servedObserverData.streams.every((stream) => stream.embed?.kind === "iframe")).toBe(true);
-      expect(servedObserverData.streams.every((stream) => stream.url === "https://stream.invalid/fake-auth-key")).toBe(true);
+      expect(servedObserverData.streams.every((stream) => stream.embed?.kind === "iframe")).toBe(
+        true,
+      );
+      expect(
+        servedObserverData.streams.every(
+          (stream) => stream.url === "https://stream.invalid/fake-auth-key",
+        ),
+      ).toBe(true);
 
       releaseActors();
       const outcome = await runPromise;
@@ -518,14 +667,22 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       expect(finalRunText).not.toContain("test-openai-key");
       expect(finalRunText).not.toContain("fake-auth-key");
       expect(finalRunText).not.toContain("stream.invalid");
-      const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as {
+      const finalObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8"),
+      ) as {
         summary: { active: number };
         streams: Array<{ status: string; transport: string }>;
       };
       expect(JSON.stringify(finalObserverData)).not.toContain("test-openai-key");
       expect(finalObserverData.summary.active).toBe(0);
-      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed"]);
-      expect(finalObserverData.streams.map((stream) => stream.transport)).toEqual(["snapshot", "snapshot"]);
+      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual([
+        "passed",
+        "passed",
+      ]);
+      expect(finalObserverData.streams.map((stream) => stream.transport)).toEqual([
+        "snapshot",
+        "snapshot",
+      ]);
     } finally {
       releaseActors();
       await observerServer?.close();
@@ -535,7 +692,10 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
   it("execution.desktop.template: EVERY fan-out lane's Sandbox.create gets the template; bundle records it", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }), { cwd, cuaHooks: passingHooks(handle) });
+    const outcome = await runLab(
+      fanoutConfig({ concurrency: 2, template: "acme-desktop-with-runtimes" }),
+      { cwd, cuaHooks: passingHooks(handle) },
+    );
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(outcome.result.ok).toBe(true);
@@ -545,44 +705,70 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       "acme-desktop-with-runtimes",
       "acme-desktop-with-runtimes",
       "acme-desktop-with-runtimes",
-      "acme-desktop-with-runtimes"
+      "acme-desktop-with-runtimes",
     ]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
   });
 
   it("byte-stable default: NO template → every fan-out lane's create gets NO template arg, bundle omits desktopTemplate", async () => {
     const handle = makeFanoutModule();
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), { cwd, cuaHooks: passingHooks(handle) });
+    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
+      cwd,
+      cuaHooks: passingHooks(handle),
+    });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     expect(handle.created).toHaveLength(4);
     expect(handle.templates).toEqual([undefined, undefined, undefined, undefined]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopTemplate).toBeUndefined();
   });
 
   it("runs the REAL orchestration at N=4, concurrency 2: 4 per-lane sandboxes, bounded concurrency, teardown kills ONLY each lane's own id, verifyRun ok", async () => {
     const handle = makeFanoutModule();
     const active = { count: 0, max: 0 };
-    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), { cwd, cuaHooks: passingHooks(handle, { active }) });
+    const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
+      cwd,
+      cuaHooks: passingHooks(handle, { active }),
+    });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
 
     expect(result.ok).toBe(true);
-    expect(result.laneSummary).toMatchObject({ total: 4, passed: 4, skipped: 0, harnessErrors: 0, hollow: 0, concurrency: 2, waves: 2 });
+    expect(result.laneSummary).toMatchObject({
+      total: 4,
+      passed: 4,
+      skipped: 0,
+      harnessErrors: 0,
+      hollow: 0,
+      concurrency: 2,
+      waves: 2,
+    });
 
     // Four sandboxes created, each with per-lane metadata.
     expect(handle.created).toHaveLength(4);
     expect(handle.created.map((c) => c.metadata?.laneId)).toEqual([
-      "mobile-newcomer", "small-skimmer", "desktop-power", "wide-researcher"
+      "mobile-newcomer",
+      "small-skimmer",
+      "desktop-power",
+      "wide-researcher",
     ]);
     expect(handle.created.map((c) => c.metadata?.laneIndex)).toEqual(["0", "1", "2", "3"]);
     expect(handle.created.every((c) => c.metadata?.laneCount === "4")).toBe(true);
     // Per-lane device geometry drove each sandbox's resolution (sub-500 mobile widths floored to the
     // 500px Chrome window minimum so the window fits its X screen — no clip).
-    expect(handle.created.map((c) => c.resolution)).toEqual([[500, 896], [500, 740], [1440, 950], [1920, 1080]]);
+    expect(handle.created.map((c) => c.resolution)).toEqual([
+      [500, 896],
+      [500, 740],
+      [1440, 950],
+      [1920, 1080],
+    ]);
     // The model's key NEVER enters any sandbox.
     expect(handle.created.every((c) => c.envs === undefined)).toBe(true);
 
@@ -593,7 +779,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     // Teardown kills EXACTLY the four created ids, BY id — never an enumerate-and-kill (the fake
     // module exposes no `list`, and the killed set equals the created set).
     expect([...handle.killed].sort()).toEqual([...handle.createdIds].sort());
-    expect(handle.createdIds).toEqual(["fake-sandbox-01", "fake-sandbox-02", "fake-sandbox-03", "fake-sandbox-04"]);
+    expect(handle.createdIds).toEqual([
+      "fake-sandbox-01",
+      "fake-sandbox-02",
+      "fake-sandbox-03",
+      "fake-sandbox-04",
+    ]);
 
     // The bundle PASSES verifyRun (not merely written).
     const verified = await verifyRun(cwd, result.runId);
@@ -610,7 +801,9 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const traceFiles = await readdir(path.join(runDir, "actors"));
     expect(traceFiles).toHaveLength(4);
     // Per-lane provider-neutral actor seam filled per stream.
-    expect(bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use")).toBe(true);
+    expect(
+      bundle.streams.every((s: { actor?: { lane: string } }) => s.actor?.lane === "computer-use"),
+    ).toBe(true);
   });
 
   it("reruns failed fan-out lanes as a new linked run without mutating the source verdict", async () => {
@@ -623,9 +816,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           if (options.persona.id === "power-user") {
             throw new Error("transient actor transport failed");
           }
-          return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     expect(sourceOutcome.backend).toBe("cua");
     if (sourceOutcome.backend !== "cua") return;
@@ -633,16 +829,23 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(sourceOutcome.result.laneSummary?.passed).toBe(3);
     expect(sourceOutcome.result.laneSummary?.harnessErrors).toBe(1);
 
-    const sourceBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
+    const sourceBundle = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"),
+        "utf8",
+      ),
+    ) as RunBundle;
     expect(sourceBundle.review.verdict).toBe("fail");
-    expect(sourceBundle.streams.find((stream) => stream.laneId === "desktop-power")?.status).toBe("failed");
+    expect(sourceBundle.streams.find((stream) => stream.laneId === "desktop-power")?.status).toBe(
+      "failed",
+    );
 
     const rerunHandle = makeFanoutModule();
     const rerunOutcome = await runLab(fanoutConfig({ concurrency: 4 }), {
       cwd,
       runId: "fanout-rerun-proof",
       rerun: { sourceRunId: sourceOutcome.result.runId },
-      cuaHooks: passingHooks(rerunHandle)
+      cuaHooks: passingHooks(rerunHandle),
     });
     expect(rerunOutcome.backend).toBe("cua");
     if (rerunOutcome.backend !== "cua") return;
@@ -650,18 +853,30 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(rerunOutcome.result.rerun).toMatchObject({
       sourceRunId: sourceOutcome.result.runId,
       selectedLaneIds: ["desktop-power"],
-      previous: [{ laneId: "desktop-power", status: "failed" }]
+      previous: [{ laneId: "desktop-power", status: "failed" }],
     });
-    expect(rerunOutcome.result.laneSummary).toMatchObject({ total: 1, passed: 1, skipped: 0, harnessErrors: 0 });
+    expect(rerunOutcome.result.laneSummary).toMatchObject({
+      total: 1,
+      passed: 1,
+      skipped: 0,
+      harnessErrors: 0,
+    });
     expect(rerunHandle.created).toHaveLength(1);
     expect(rerunHandle.created[0]?.metadata?.laneId).toBe("desktop-power");
 
-    const rerunBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"), "utf8")) as RunBundle;
+    const rerunBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"), "utf8"),
+    ) as RunBundle;
     expect(rerunBundle.rerun).toEqual(rerunOutcome.result.rerun);
     expect(rerunBundle.events.some((event) => event.type === "cua-lab.fanout.rerun")).toBe(true);
     expect(rerunBundle.review.summary).toContain(`Rerun from ${sourceOutcome.result.runId}`);
 
-    const sourceAfterRerun = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"), "utf8")) as RunBundle;
+    const sourceAfterRerun = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", sourceOutcome.result.runId, "run.json"),
+        "utf8",
+      ),
+    ) as RunBundle;
     expect(sourceAfterRerun.review.verdict).toBe("fail");
 
     const verified = await verifyRun(cwd, "fanout-rerun-proof");
@@ -670,7 +885,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     await writeFile(
       path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, previous: [] } }, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     const weakLineage = await verifyRun(cwd, "fanout-rerun-proof");
     expect(weakLineage.ok).toBe(false);
@@ -679,7 +894,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     await writeFile(
       path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, events: rerunBundle.events.filter((event) => event.type !== "cua-lab.fanout.rerun") }, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     const missingEvent = await verifyRun(cwd, "fanout-rerun-proof");
     expect(missingEvent.ok).toBe(false);
@@ -690,14 +905,20 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     await writeFile(
       path.join(cwd, ".humanish", "runs", "fanout-rerun-proof", "run.json"),
       `${JSON.stringify({ ...rerunBundle, rerun: { ...rerunBundle.rerun!, selectedLaneIds: ["desktop-power", "ghost-lane"] } }, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     const selectedMismatch = await verifyRun(cwd, "fanout-rerun-proof");
     expect(selectedMismatch.ok).toBe(false);
-    const selectedMismatchCheck = selectedMismatch.checks.find((check) => check.name === "rerun lineage");
+    const selectedMismatchCheck = selectedMismatch.checks.find(
+      (check) => check.name === "rerun lineage",
+    );
     expect(selectedMismatchCheck?.ok).toBe(false);
-    expect(selectedMismatchCheck?.message).toContain("selected lane ghost-lane is missing prior status");
-    expect(selectedMismatchCheck?.message).toContain("selected lane ghost-lane is missing from current streams");
+    expect(selectedMismatchCheck?.message).toContain(
+      "selected lane ghost-lane is missing prior status",
+    );
+    expect(selectedMismatchCheck?.message).toContain(
+      "selected lane ghost-lane is missing from current streams",
+    );
   });
 
   it("opens each lane's explicit target and records per-lane routes in the bundle", async () => {
@@ -712,7 +933,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           caseGroup: "case-001",
           persona: "role-a",
           target: "http://127.0.0.1:3001/role-a",
-          instruction: "Start from target A."
+          instruction: "Start from target A.",
         },
         {
           id: "role-b",
@@ -721,41 +942,49 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           caseGroup: "case-001",
           persona: "role-b",
           target: "http://127.0.0.1:3002/role-b",
-          instruction: "Start from target B."
-        }
-      ]
+          instruction: "Start from target B.",
+        },
+      ],
     });
     const planSeen: CuaLanePlan[] = [];
     const outcome = await runLab(config, {
       cwd,
-      cuaHooks: passingHooks(handle, { onPreflight: (plan) => planSeen.push(plan) })
+      cuaHooks: passingHooks(handle, { onPreflight: (plan) => planSeen.push(plan) }),
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
     expect(outcome.result.ok).toBe(true);
-    expect(handle.opened).toEqual([
-      "http://127.0.0.1:3001/role-a",
-      "http://127.0.0.1:3002/role-b"
-    ]);
+    expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a", "http://127.0.0.1:3002/role-b"]);
     expect(planSeen[0]?.lanes.map((lane) => lane.targetDigest)).toEqual([
       expect.stringMatching(/^[a-f0-9]{16}$/),
-      expect.stringMatching(/^[a-f0-9]{16}$/)
+      expect.stringMatching(/^[a-f0-9]{16}$/),
     ]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams.map((stream: { ui: { route: string } }) => stream.ui.route)).toEqual([
       "http://127.0.0.1:3001/role-a",
-      "http://127.0.0.1:3002/role-b"
+      "http://127.0.0.1:3002/role-b",
     ]);
-    expect(bundle.streams.map((stream: { actorType?: string; caseGroup?: string; laneId?: string; surface?: string }) => ({
-      laneId: stream.laneId,
-      actorType: stream.actorType,
-      surface: stream.surface,
-      caseGroup: stream.caseGroup
-    }))).toEqual([
+    expect(
+      bundle.streams.map(
+        (stream: {
+          actorType?: string;
+          caseGroup?: string;
+          laneId?: string;
+          surface?: string;
+        }) => ({
+          laneId: stream.laneId,
+          actorType: stream.actorType,
+          surface: stream.surface,
+          caseGroup: stream.caseGroup,
+        }),
+      ),
+    ).toEqual([
       { laneId: "role-a", actorType: "reviewer", surface: "review-queue", caseGroup: "case-001" },
-      { laneId: "role-b", actorType: "operator", surface: "dashboard", caseGroup: "case-001" }
+      { laneId: "role-b", actorType: "operator", surface: "dashboard", caseGroup: "case-001" },
     ]);
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);
@@ -772,9 +1001,9 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
           caseGroup: "case-001",
           persona: "role-a",
           target: "http://127.0.0.1:3001/role-a?scenario=alpha",
-          instruction: "Start from target A."
-        }
-      ]
+          instruction: "Start from target A.",
+        },
+      ],
     });
     const outcome = await runLab(config, { cwd, cuaHooks: passingHooks(handle) });
     expect(outcome.backend).toBe("cua");
@@ -783,99 +1012,173 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     expect(outcome.result.ok).toBe(true);
     expect(handle.opened).toEqual(["http://127.0.0.1:3001/role-a?scenario=alpha"]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams).toHaveLength(1);
     expect(bundle.streams[0]).toMatchObject({
       laneId: "role-a",
       actorType: "reviewer",
       surface: "review-queue",
       caseGroup: "case-001",
-      ui: { route: "http://127.0.0.1:3001/role-a?scenario=alpha" }
+      ui: { route: "http://127.0.0.1:3001/role-a?scenario=alpha" },
     });
 
     const verified = await verifyRun(cwd, outcome.result.runId);
     expect(verified.ok).toBe(true);
   });
 
-  it.each([1, 2])("keeps a recorded admission refusal in the %i-lane review and feedback without changing outcomes", async (count) => {
-    const handle = makeFanoutModule();
-    const config = fanoutConfig({ concurrency: 1, lanes: Array.from({ length: count }, (_, index) => ({
-      id: `participant-${index + 1}`, persona: "first-time-visitor"
-    })) });
-    config.policies = { ...config.policies, redactScreenshots: true };
-    const outcome = await runLab(config, { cwd, cuaHooks: {
-      ...passingHooks(handle),
-      runSession: async (options) => {
-        let dispatched = 0;
-        // Exercise the real actor loop and bundle writers with a provider contract fixture.
-        // Each participant acts before the adapter refuses a subsequent dispatch.
-        return runCuaActorSession({ ...options, provider: {
-          id: "synthetic-admission", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
-          nextTurn: async () => {
-            if (dispatched === 4) throw new CuaAdmissionLimitError();
-            dispatched += 1;
-            return { actions: [{ kind: "click", x: 10 + dispatched, y: 20 }],
-              pendingSafetyChecks: [], done: false,
-              usage: { input: 100 * dispatched, output: 10, cachedInput: 0, cacheWriteInput: 0 } };
-          }
-        } });
+  it.each([1, 2])(
+    "keeps a recorded admission refusal in the %i-lane review and feedback without changing outcomes",
+    async (count) => {
+      const handle = makeFanoutModule();
+      const config = fanoutConfig({
+        concurrency: 1,
+        lanes: Array.from({ length: count }, (_, index) => ({
+          id: `participant-${index + 1}`,
+          persona: "first-time-visitor",
+        })),
+      });
+      config.policies = { ...config.policies, redactScreenshots: true };
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          ...passingHooks(handle),
+          runSession: async (options) => {
+            let dispatched = 0;
+            // Exercise the real actor loop and bundle writers with a provider contract fixture.
+            // Each participant acts before the adapter refuses a subsequent dispatch.
+            return runCuaActorSession({
+              ...options,
+              provider: {
+                id: "synthetic-admission",
+                capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+                nextTurn: async () => {
+                  if (dispatched === 4) throw new CuaAdmissionLimitError();
+                  dispatched += 1;
+                  return {
+                    actions: [{ kind: "click", x: 10 + dispatched, y: 20 }],
+                    pendingSafetyChecks: [],
+                    done: false,
+                    usage: {
+                      input: 100 * dispatched,
+                      output: 10,
+                      cachedInput: 0,
+                      cacheWriteInput: 0,
+                    },
+                  };
+                },
+              },
+            });
+          },
+        },
+      });
+      expect(outcome.backend).toBe("cua");
+      if (outcome.backend !== "cua") return;
+      const result = outcome.result;
+      expect(result.ok).toBe(false);
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+      expect(bundle.review.participants).toEqual({
+        total: count,
+        reachedGoal: 0,
+        abandoned: 0,
+        ranOut: count,
+        blocked: 0,
+        harnessFailed: 0,
+        reportedFriction: 0,
+      });
+      expect(bundle.review.verdict).toBe("fail");
+      expect(bundle.review.summary).not.toContain("stop details unavailable");
+      expect(bundle.review.summary).toContain(
+        count === 1
+          ? "local admission limit before provider dispatch"
+          : "0/2 recorded completions, 2 interrupted (adapter admission limit)",
+      );
+      for (const stream of bundle.streams) {
+        expect(stream.actor).toMatchObject({
+          status: "incomplete",
+          completionReason: "budget_reached",
+          stopCause: "adapter_limit",
+          counts: { turns: 4, actions: 4 },
+          tokenUsage: { input: 1000, output: 40 },
+        });
       }
-    } });
-    expect(outcome.backend).toBe("cua");
-    if (outcome.backend !== "cua") return;
-    const result = outcome.result;
-    expect(result.ok).toBe(false);
-    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
-    expect(bundle.review.participants).toEqual({ total: count, reachedGoal: 0, abandoned: 0,
-      ranOut: count, blocked: 0, harnessFailed: 0, reportedFriction: 0 });
-    expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.summary).not.toContain("stop details unavailable");
-    expect(bundle.review.summary).toContain(count === 1 ? "local admission limit before provider dispatch"
-      : "0/2 recorded completions, 2 interrupted (adapter admission limit)");
-    for (const stream of bundle.streams) {
-      expect(stream.actor).toMatchObject({ status: "incomplete", completionReason: "budget_reached",
-        stopCause: "adapter_limit", counts: { turns: 4, actions: 4 }, tokenUsage: { input: 1000, output: 40 } });
-    }
-    expect(await readReview(cwd, result.runId)).toMatchObject({ summary: bundle.review.summary, participants: bundle.review.participants });
-    const original = await readFile(path.join(runDir, "run.json"), "utf8");
-    const drafted = await draftFeedback(cwd, result.runId);
-    expect(drafted.ok).toBe(true);
-    expect(drafted.draft?.actual).toContain(`Participants: 0/${count} recorded completions, ${count} interrupted (adapter admission limit).`);
-    expect(await readFile(path.join(runDir, "run.json"), "utf8")).toBe(original);
-    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
-    expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
-  });
+      expect(await readReview(cwd, result.runId)).toMatchObject({
+        summary: bundle.review.summary,
+        participants: bundle.review.participants,
+      });
+      const original = await readFile(path.join(runDir, "run.json"), "utf8");
+      const drafted = await draftFeedback(cwd, result.runId);
+      expect(drafted.ok).toBe(true);
+      expect(drafted.draft?.actual).toContain(
+        `Participants: 0/${count} recorded completions, ${count} interrupted (adapter admission limit).`,
+      );
+      expect(await readFile(path.join(runDir, "run.json"), "utf8")).toBe(original);
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+      expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
+    },
+  );
 
   it("projects each recorded interruption through real lane orchestration and summarizes divergent causes", async () => {
     const handle = makeFanoutModule();
-    const config = fanoutConfig({ lanes: [
-      { id: "first", persona: "first-time-visitor" }, { id: "second", persona: "power-user" }
-    ] });
+    const config = fanoutConfig({
+      lanes: [
+        { id: "first", persona: "first-time-visitor" },
+        { id: "second", persona: "power-user" },
+      ],
+    });
     let sessions = 0;
-    const outcome = await runLab(config, { cwd, cuaHooks: {
-      ...passingHooks(handle),
-      runSession: async (options) => {
-        const interruption = sessions++ === 0 ? "output_limit" as const : "token_limit" as const;
-        // A provider CONTRACT fixture, not an invented HTTP wire response.
-        return runCuaActorSession({ ...options, provider: { id: "synthetic-interruption", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES, nextTurn: async () => ({
-          actions: [], pendingSafetyChecks: [], done: false, interruption
-        }) } });
-      }
-    } });
+    const outcome = await runLab(config, {
+      cwd,
+      cuaHooks: {
+        ...passingHooks(handle),
+        runSession: async (options) => {
+          const interruption =
+            sessions++ === 0 ? ("output_limit" as const) : ("token_limit" as const);
+          // A provider CONTRACT fixture, not an invented HTTP wire response.
+          return runCuaActorSession({
+            ...options,
+            provider: {
+              id: "synthetic-interruption",
+              capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+              nextTurn: async () => ({
+                actions: [],
+                pendingSafetyChecks: [],
+                done: false,
+                interruption,
+              }),
+            },
+          });
+        },
+      },
+    });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.laneSummary).toMatchObject({ total: 2, passed: 0, harnessErrors: 0 });
-    expect(result.lanes?.map(lane => lane.session?.stopCause).sort()).toEqual(["provider_output_limit", "provider_token_limit"]);
+    expect(result.lanes?.map((lane) => lane.session?.stopCause).sort()).toEqual([
+      "provider_output_limit",
+      "provider_token_limit",
+    ]);
     expect(result.session?.stopCause).toBe(result.lanes?.[0]?.session?.stopCause);
     expect(result.diagnostics).toEqual({ category: "mixed", stopCause: "mixed" });
-    expect(deriveStudyFacts(result)).toMatchObject({ outcome: "none_passed", diagnosticCategory: "mixed", stopCause: "mixed" });
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.review.summary).toContain("1 interrupted (provider output limit), 1 interrupted (provider token limit)");
+    expect(deriveStudyFacts(result)).toMatchObject({
+      outcome: "none_passed",
+      diagnosticCategory: "mixed",
+      stopCause: "mixed",
+    });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.review.summary).toContain(
+      "1 interrupted (provider output limit), 1 interrupted (provider token limit)",
+    );
     expect(bundle.review.summary).not.toContain("stop details unavailable");
-    expect(bundle.streams.map((stream: { actor: { stopCause: string } }) => stream.actor.stopCause)).toEqual(result.lanes?.map(lane => lane.session?.stopCause));
+    expect(
+      bundle.streams.map((stream: { actor: { stopCause: string } }) => stream.actor.stopCause),
+    ).toEqual(result.lanes?.map((lane) => lane.session?.stopCause));
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
     expect(handle.killed.sort()).toEqual(handle.createdIds.sort());
   });
@@ -884,22 +1187,32 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const handle = makeFanoutModule();
     const outcome = await runLab(fanoutConfig({ concurrency: 2 }), {
       cwd,
-      cuaHooks: passingHooks(handle, { score: fanoutFailScore })
+      cuaHooks: passingHooks(handle, { score: fanoutFailScore }),
     });
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
-    expect(result.laneSummary).toMatchObject({ total: 4, passed: 4, skipped: 0, harnessErrors: 0, hollow: 0 });
+    expect(result.laneSummary).toMatchObject({
+      total: 4,
+      passed: 4,
+      skipped: 0,
+      harnessErrors: 0,
+      hollow: 0,
+    });
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(FANOUT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.laneCount).toBe(4);
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
+      true,
+    );
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
@@ -914,8 +1227,8 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         // Fail provisioning for lane 0 (the gate owner) via the per-lane prepareDesktop context.
         prepareDesktop: async (_desktop, lane) => {
           if (lane.laneIndex === 0) throw new Error("lane-0 world failed to provision");
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -946,9 +1259,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
             throw new Error("provider exploded mid-session");
           }
           await delay(25);
-          return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -964,7 +1280,9 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     // A fail-fast event is recorded.
-    expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.fail-fast")).toBe(true);
+    expect(bundle.events.some((e: { type: string }) => e.type === "cua-lab.fanout.fail-fast")).toBe(
+      true,
+    );
     // Completed evidence intact: lane 0 reached a terminal session with an actor trace.
     const laneZero = bundle.streams.find((s: { id: string }) => s.id === "stream-001");
     expect(laneZero?.actor?.lane).toBe("computer-use");
@@ -982,9 +1300,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
         loadDesktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) => {
           const responses = options.persona.id === "power-user" ? HOLLOW_SESSION : TWO_TURN_SESSION;
-          return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(responses) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(responses) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -1008,7 +1329,7 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", mission: "Explore." }],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile" } },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!config.ok) throw new Error(config.error.message);
     const outcome = await runLab(config.config, { cwd, cuaHooks: passingHooks(handle) });
@@ -1035,9 +1356,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
             throw new Error(`request failed using ${secret} while connecting`);
           }
           await delay(10);
-          return runCuaActorSession({ ...options, openai: { apiKey: secret, fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: secret, fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -1060,8 +1384,12 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
 
 describe("cua fan-out — engine fail-closed guards", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-guard-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-guard-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   it("rejects multi-lane fan-out on the in-process route (buildExecutor) — single lane only", async () => {
     const handle = makeFanoutModule();
@@ -1071,9 +1399,27 @@ describe("cua fan-out — engine fail-closed guards", () => {
       dryRun: false,
       hooks: {
         loadDesktopModule: async () => handle.module,
-        buildExecutor: async () => ({ observe: async () => ({ stateSignature: "x", appState: {} }), execute: async () => undefined }),
-        buildProvider: async () => ({ id: "p", capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: false, byoModel: true, preGrantableApprovals: false, inProcessTools: false, license: "open" }, async nextTurn() { return { actions: [], pendingSafetyChecks: [], done: true }; } })
-      }
+        buildExecutor: async () => ({
+          observe: async () => ({ stateSignature: "x", appState: {} }),
+          execute: async () => undefined,
+        }),
+        buildProvider: async () => ({
+          id: "p",
+          capabilities: {
+            headless: true,
+            structuredTrace: true,
+            lanes: ["computer-use"],
+            producesScreenshots: false,
+            byoModel: true,
+            preGrantableApprovals: false,
+            inProcessTools: false,
+            license: "open",
+          },
+          async nextTurn() {
+            return { actions: [], pendingSafetyChecks: [], done: true };
+          },
+        }),
+      },
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
@@ -1092,12 +1438,26 @@ describe("cua fan-out — engine fail-closed guards", () => {
 
 describe("cua fan-out — cost estimate (sum lane token lines + one aggregate desktop line)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   const usageSession = (input: number, output: number): unknown[] => [
-    { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }], usage: { input_tokens: input, output_tokens: output } },
-    { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }], usage: { input_tokens: 0, output_tokens: 0 } }
+    {
+      id: "resp_1",
+      output: [
+        { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] },
+      ],
+      usage: { input_tokens: input, output_tokens: output },
+    },
+    {
+      id: "resp_2",
+      output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+      usage: { input_tokens: 0, output_tokens: 0 },
+    },
   ];
 
   it("emits model and observed-desktop lines per lane, summing without double-counting", async () => {
@@ -1106,8 +1466,8 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
       concurrency: 2,
       lanes: [
         { id: "role-a", persona: "role-a", device: "desktop", instruction: "Explore role A." },
-        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." }
-      ]
+        { id: "role-b", persona: "role-b", device: "desktop", instruction: "Explore role B." },
+      ],
     });
     const outcome = await runLab(config, {
       cwd,
@@ -1115,25 +1475,40 @@ describe("cua fan-out — cost estimate (sum lane token lines + one aggregate de
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => handle.module,
         runSession: async (options: CuaActorSessionOptions) =>
-          runCuaActorSession({ ...options, openai: { ...options.openai, apiKey: "test-openai-key", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: {
+              ...options.openai,
+              apiKey: "test-openai-key",
+              fetchFn: scriptedFetch(usageSession(1000, 200)),
+            },
+          }),
+      },
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
     expect(result.ok).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     const cost = bundle.cost;
     expect(cost.schema).toBe("humanish.run-cost-summary.v1");
 
     const modelLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "model-tokens");
-    const desktopLines = cost.breakdown.filter((l: { kind: string }) => l.kind === "desktop-minutes");
+    const desktopLines = cost.breakdown.filter(
+      (l: { kind: string }) => l.kind === "desktop-minutes",
+    );
     // Each owned desktop retains its lane and resource basis.
     expect(modelLines).toHaveLength(2);
-    expect(new Set(modelLines.map((l: { laneId?: string }) => l.laneId))).toEqual(new Set(["role-a", "role-b"]));
+    expect(new Set(modelLines.map((l: { laneId?: string }) => l.laneId))).toEqual(
+      new Set(["role-a", "role-b"]),
+    );
     expect(desktopLines).toHaveLength(2);
-    expect(new Set(desktopLines.map((line: { laneId?: string }) => line.laneId))).toEqual(new Set(["role-a", "role-b"]));
+    expect(new Set(desktopLines.map((line: { laneId?: string }) => line.laneId))).toEqual(
+      new Set(["role-a", "role-b"]),
+    );
 
     // Token usage summed across BOTH lanes (2 * {input:1000, output:200}).
     expect(cost.tokenUsage).toEqual({ input: 2000, output: 400, total: 2400 });
@@ -1158,9 +1533,21 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
       title: "floor probe",
       subject: { source: "app-url", appUrl: "https://example.com/" },
       policies: { allowPublicTargets: true },
-      actors: [{ type: "openai-computer-use", mission: "Look.", lanes: [{ id: "solo", ...(device ? { device } : {}), instruction: "Look at the screen." }] }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, ...(rawResolution ? { desktop: { resolution: rawResolution } } : {}) },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          mission: "Look.",
+          lanes: [
+            { id: "solo", ...(device ? { device } : {}), instruction: "Look at the screen." },
+          ],
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        ...(rawResolution ? { desktop: { resolution: rawResolution } } : {}),
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -1174,7 +1561,12 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
   });
 
   it("mobile lane renders at the 500px floor but keeps the 414 device identity", () => {
-    const d = resolveLaneDevice(cfg("mobile"), { id: "solo", device: "mobile", persona: "p", instruction: "x" } as never);
+    const d = resolveLaneDevice(cfg("mobile"), {
+      id: "solo",
+      device: "mobile",
+      persona: "p",
+      instruction: "x",
+    } as never);
     expect(d.resolution).toEqual([500, 896]); // rendered screen the window fits (no clip)
     expect(d.preset.width).toBe(414); // declared device identity (prompt + metadata) is unfloored
     expect(d.preset.isMobile).toBe(true);
@@ -1184,18 +1576,28 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
     // A floored run must not look like a faithful one. `verified` compares the floored number with
     // itself, so without `declared` a reader sees requested 500 / verified 500 and concludes a
     // 500-wide screen was asked for. Both mobile presets render at 500 and are otherwise identical.
-    const mobile = resolveLaneDevice(cfg("mobile"), { id: "solo", device: "mobile", persona: "p", instruction: "x" } as never);
+    const mobile = resolveLaneDevice(cfg("mobile"), {
+      id: "solo",
+      device: "mobile",
+      persona: "p",
+      instruction: "x",
+    } as never);
     expect(declaredScreenForRender(mobile.preset, mobile.name, mobile.resolution)).toEqual({
       width: 414,
       height: 896,
-      preset: "mobile"
+      preset: "mobile",
     });
 
-    const small = resolveLaneDevice(cfg("small-mobile"), { id: "solo", device: "small-mobile", persona: "p", instruction: "x" } as never);
+    const small = resolveLaneDevice(cfg("small-mobile"), {
+      id: "solo",
+      device: "small-mobile",
+      persona: "p",
+      instruction: "x",
+    } as never);
     expect(declaredScreenForRender(small.preset, small.name, small.resolution)).toEqual({
       width: 360,
       height: 740,
-      preset: "small-mobile"
+      preset: "small-mobile",
     });
 
     // ...and the two floored seats really are indistinguishable by rendered width, which is the
@@ -1204,13 +1606,34 @@ describe("resolveLaneDevice floors sub-500 mobile widths to the Chrome window mi
   });
 
   it("omits `declared` when the preset rendered faithfully", () => {
-    const desktop = resolveLaneDevice(cfg("desktop"), { id: "solo", device: "desktop", persona: "p", instruction: "x" } as never);
-    expect(declaredScreenForRender(desktop.preset, desktop.name, desktop.resolution)).toBeUndefined();
+    const desktop = resolveLaneDevice(cfg("desktop"), {
+      id: "solo",
+      device: "desktop",
+      persona: "p",
+      instruction: "x",
+    } as never);
+    expect(
+      declaredScreenForRender(desktop.preset, desktop.name, desktop.resolution),
+    ).toBeUndefined();
   });
 
   it("small-mobile floors to 500 too; desktop is untouched", () => {
-    expect(resolveLaneDevice(cfg("small-mobile"), { id: "solo", device: "small-mobile", persona: "p", instruction: "x" } as never).resolution).toEqual([500, 740]);
-    expect(resolveLaneDevice(cfg("desktop"), { id: "solo", device: "desktop", persona: "p", instruction: "x" } as never).resolution).toEqual([1440, 950]);
+    expect(
+      resolveLaneDevice(cfg("small-mobile"), {
+        id: "solo",
+        device: "small-mobile",
+        persona: "p",
+        instruction: "x",
+      } as never).resolution,
+    ).toEqual([500, 740]);
+    expect(
+      resolveLaneDevice(cfg("desktop"), {
+        id: "solo",
+        device: "desktop",
+        persona: "p",
+        instruction: "x",
+      } as never).resolution,
+    ).toEqual([1440, 950]);
   });
 
   it("a raw sub-500 escape-hatch resolution is floored as well", () => {
@@ -1235,7 +1658,7 @@ describe("runCuaLanes total-runner guard (#342)", () => {
     devicePreset: DEVICE_PRESETS.desktop,
     resolution: [DEVICE_PRESETS.desktop.width, DEVICE_PRESETS.desktop.height],
     screenshotDir: laneId,
-    traceArtifactPath: `actors/stream-${laneId}.json`
+    traceArtifactPath: `actors/stream-${laneId}.json`,
   });
   const okOutcome = (s: CuaLaneSpec) => ({
     spec: s,
@@ -1247,7 +1670,7 @@ describe("runCuaLanes total-runner guard (#342)", () => {
     warnings: [],
     noEngagement: false,
     selfReportedBlocker: false,
-    harnessError: false
+    harnessError: false,
   });
   const deps = {} as unknown as Parameters<typeof runCuaLanes>[1];
 
@@ -1258,7 +1681,8 @@ describe("runCuaLanes total-runner guard (#342)", () => {
         (laneDeps as { signalProvisioned?: (ok: boolean) => void }).signalProvisioned?.(true);
         return okOutcome(s);
       }
-      if (s.laneId === "lane-02") throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
+      if (s.laneId === "lane-02")
+        throw new Error("ENOSPC: no space left on device, write actors/stream-lane-02.json");
       return okOutcome(s);
     });
 

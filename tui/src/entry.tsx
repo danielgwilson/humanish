@@ -26,7 +26,7 @@ function encodeFor(stdout: TuiOptions["stdout"]): TuiOptions["stdout"] {
   wrapped.write = ((chunk: unknown, ...rest: unknown[]): boolean =>
     (stdout.write as (value: unknown, ...args: unknown[]) => boolean)(
       typeof chunk === "string" ? forTerminal(chunk) : chunk,
-      ...rest
+      ...rest,
     )) as typeof stdout.write;
   return wrapped;
 }
@@ -39,21 +39,30 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number | 
   });
 
   const stdout = encodeFor(options.stdout);
-  const instance = render(<App options={options} onReady={ready} onKeyEntry={() => { outcome = { action: "agentmail-key" }; }} />, {
-    stdin: options.stdin,
-    stdout,
-    // Ink's own console patching rewrites stdout behind the app. humanish writes its logs to files
-    // and its results to stdout through CliIo, so there is nothing to patch and patching would
-    // only add a way for a stray write to corrupt the frame.
-    patchConsole: false,
-    exitOnCtrlC: true,
-    // The CLI has already refused unless BOTH streams are real TTYs, so by the time this runs an
-    // interactive terminal is established fact. Ink would otherwise consult `is-in-ci` and drop to
-    // writing one frame at unmount — turning a human's session on a CI runner into a dead screen
-    // because of an environment variable that says nothing about whether THIS invocation has a
-    // terminal.
-    interactive: true
-  });
+  const instance = render(
+    <App
+      options={options}
+      onReady={ready}
+      onKeyEntry={() => {
+        outcome = { action: "agentmail-key" };
+      }}
+    />,
+    {
+      stdin: options.stdin,
+      stdout,
+      // Ink's own console patching rewrites stdout behind the app. humanish writes its logs to files
+      // and its results to stdout through CliIo, so there is nothing to patch and patching would
+      // only add a way for a stray write to corrupt the frame.
+      patchConsole: false,
+      exitOnCtrlC: true,
+      // The CLI has already refused unless BOTH streams are real TTYs, so by the time this runs an
+      // interactive terminal is established fact. Ink would otherwise consult `is-in-ci` and drop to
+      // writing one frame at unmount — turning a human's session on a CI runner into a dead screen
+      // because of an environment variable that says nothing about whether THIS invocation has a
+      // terminal.
+      interactive: true,
+    },
+  );
 
   if (options.exitAfterFirstFrame === true) {
     // Smoke path: prove the surface mounts, renders real data, and tears down — without a human.
@@ -72,7 +81,9 @@ export const startTui: StartTui = async (options: TuiOptions): Promise<number | 
     // A crash inside the render tree must still leave the terminal usable, and must say what
     // happened rather than exiting silently on a cleared screen.
     instance.unmount();
-    options.stdout.write(`humanish tui exited: ${error instanceof Error ? error.message : String(error)}\n`);
+    options.stdout.write(
+      `humanish tui exited: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     return 1;
   }
 };

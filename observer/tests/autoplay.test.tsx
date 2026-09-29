@@ -10,8 +10,15 @@ import type { ObserverData, ObserverStream } from "../lib/observer-data";
 const feed = vi.hoisted(() => ({ data: null as ObserverData | null }));
 vi.mock("../lib/use-observer-feed", async () => {
   const { NO_ANALYSIS } = await import("../lib/study-analysis");
-  return { useObserverFeed: () => ({ data: feed.data, analysis: NO_ANALYSIS, history: null,
-    connection: { state: "offline", lastReceivedAt: 0 }, retry: () => undefined }) };
+  return {
+    useObserverFeed: () => ({
+      data: feed.data,
+      analysis: NO_ANALYSIS,
+      history: null,
+      connection: { state: "offline", lastReceivedAt: 0 },
+      retry: () => undefined,
+    }),
+  };
 });
 
 const origin = Date.parse("2026-09-01T10:00:00.000Z");
@@ -22,9 +29,12 @@ function lane(id: string, offsets: number[]): ObserverStream {
   const stream = structuredClone((live as unknown as ObserverData).streams[0]!);
   stream.id = id;
   stream.actor!.items = offsets.map((offset, index) => ({
-    id: `${id}-${index}`, kind: "screenshot", lifecycle: "completed", title: `Capture ${index}`,
+    id: `${id}-${index}`,
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: `Capture ${index}`,
     at: new Date(origin + offset).toISOString(),
-    screenshotRef: { path: `screenshots/${id}-${index}.png`, redaction: "none" }
+    screenshotRef: { path: `screenshots/${id}-${index}.png`, redaction: "none" },
   }));
   return stream;
 }
@@ -44,13 +54,27 @@ const playButton = () => container.querySelector('[aria-label="Play study"]');
 beforeAll(() => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   Element.prototype.scrollIntoView = () => undefined;
-  window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null,
-    addEventListener: () => undefined, removeEventListener: () => undefined,
-    addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false })) as unknown as typeof window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
 });
-beforeEach(() => { container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container); });
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
 afterEach(async () => {
-  await act(async () => root.unmount()); container.remove(); localStorage.clear(); vi.useRealTimers();
+  await act(async () => root.unmount());
+  container.remove();
+  localStorage.clear();
+  vi.useRealTimers();
   window.history.replaceState(null, "", window.location.pathname);
 });
 
@@ -59,7 +83,11 @@ describe("parseAutoplay", () => {
     expect(parseAutoplay("")).toBeNull();
     expect(parseAutoplay("?loop=1")).toBeNull();
     expect(parseAutoplay("?autoplay")).toEqual({ speed: 8, loop: false, sidebarClosed: false });
-    expect(parseAutoplay("?autoplay=on&loop=1&sidebar=closed")).toEqual({ speed: 8, loop: true, sidebarClosed: true });
+    expect(parseAutoplay("?autoplay=on&loop=1&sidebar=closed")).toEqual({
+      speed: 8,
+      loop: true,
+      sidebarClosed: true,
+    });
   });
   it("reads the sidebar switch with or without autoplay", () => {
     expect(sidebarClosedByUrl("?sidebar=closed")).toBe(true);
@@ -79,7 +107,8 @@ describe("parseAutoplay", () => {
 describe("Autoplay from the URL", () => {
   it("does not play by itself without the parameter", async () => {
     await render("");
-    expect(playButton()).not.toBeNull(); expect(pauseButton()).toBeNull();
+    expect(playButton()).not.toBeNull();
+    expect(pauseButton()).toBeNull();
   });
 
   it("starts the study transport at the requested speed and stops at the end", async () => {
@@ -90,7 +119,8 @@ describe("Autoplay from the URL", () => {
     const scrub = container.querySelector<HTMLInputElement>('[aria-label="Seek study recording"]')!;
     expect(Number(scrub.value)).toBeGreaterThanOrEqual(3900);
     await act(async () => vi.advanceTimersByTime(2000));
-    expect(pauseButton()).toBeNull(); expect(playButton()).not.toBeNull();
+    expect(pauseButton()).toBeNull();
+    expect(playButton()).not.toBeNull();
     await act(async () => vi.advanceTimersByTime(5000));
     expect(pauseButton()).toBeNull();
   });

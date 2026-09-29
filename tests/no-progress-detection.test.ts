@@ -67,7 +67,7 @@ describe("perceptualSignature on a light-themed UI (#383)", () => {
       lightUiFrame(1),
       lightUiFrame(2),
       lightUiFrame(2, { panel: true }),
-      lightUiFrame(3, { panel: true })
+      lightUiFrame(3, { panel: true }),
     ].map(perceptualSignature);
     // The measured failure was 9 distinct frames collapsing to 1 signature. Every step here differs.
     expect(new Set(frames).size).toBe(frames.length);
@@ -75,7 +75,8 @@ describe("perceptualSignature on a light-themed UI (#383)", () => {
 
   it("spans the full quantization range on a light frame, which is what the old hash never did", () => {
     const levels: number[] = [];
-    for (const ch of perceptualSignature(lightUiFrame(2, { panel: true }))) levels.push(Number.parseInt(ch, 16));
+    for (const ch of perceptualSignature(lightUiFrame(2, { panel: true })))
+      levels.push(Number.parseInt(ch, 16));
 
     // The measured failure was a hash confined to the TOP of its range: 93% of cells at the maximum
     // level and the two darkest levels never occupied at all, which is why a dark-on-light change
@@ -91,7 +92,9 @@ describe("perceptualSignature on a light-themed UI (#383)", () => {
 
   it("still reports an identical frame as identical, and survives an undecodable one", () => {
     expect(perceptualSignature(lightUiFrame(2))).toBe(perceptualSignature(lightUiFrame(2)));
-    expect(perceptualSignature(Buffer.alloc(0))).toBe(perceptualSignature(Buffer.from("not a png")));
+    expect(perceptualSignature(Buffer.alloc(0))).toBe(
+      perceptualSignature(Buffer.from("not a png")),
+    );
   });
 });
 
@@ -113,11 +116,13 @@ describe("actionFingerprint (the corroboration input, #383)", () => {
     const working = [
       actionFingerprint([click(100, 200)]),
       actionFingerprint([click(400, 300)]),
-      actionFingerprint([{ kind: "keypress", keys: ["ctrl", "a"] }])
+      actionFingerprint([{ kind: "keypress", keys: ["ctrl", "a"] }]),
     ];
     expect(new Set(working).size).toBe(3);
 
-    const stuck = [click(301, 486), click(300, 487), click(302, 485)].map((a) => actionFingerprint([a]));
+    const stuck = [click(301, 486), click(300, 487), click(302, 485)].map((a) =>
+      actionFingerprint([a]),
+    );
     expect(new Set(stuck).size).toBe(1);
   });
 });

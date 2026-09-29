@@ -4,15 +4,26 @@ import { GITHUB } from "@/lib/site-data";
 export default function Closer() {
   return (
     <section className="band band-dark closer" id="try">
-      <h2 className="rev">Try it on your app with <em>one participant</em></h2>
+      <h2 className="rev">
+        Try it on your app with <em>one participant</em>
+      </h2>
       <div className="cta-row rev" style={{ "--d": ".08s" } as React.CSSProperties}>
-        <a className="btn btn-primary" href="/docs">Run your first study</a>
-        <a className="btn btn-ghost" href={GITHUB}>View on GitHub</a>
+        <a className="btn btn-primary" href="/docs">
+          Run your first study
+        </a>
+        <a className="btn btn-ghost" href={GITHUB}>
+          View on GitHub
+        </a>
       </div>
-      <pre className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}><code>npm i -D humanish @e2b/desktop</code>
-<code>npx humanish init --yes</code>
-<code>npx humanish run try-live</code></pre>
-      <p className="closer-note rev" style={{ "--d": ".2s" } as React.CSSProperties}>Unlike the no-key preview above, this opens your app: one participant, about two minutes, capped at $2 of estimated model spend. MIT.</p>
+      <pre className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}>
+        <code>npm i -D humanish @e2b/desktop</code>
+        <code>npx humanish init --yes</code>
+        <code>npx humanish run try-live</code>
+      </pre>
+      <p className="closer-note rev" style={{ "--d": ".2s" } as React.CSSProperties}>
+        Unlike the no-key preview above, this opens your app: one participant, about two minutes,
+        capped at $2 of estimated model spend. MIT.
+      </p>
     </section>
   );
 }

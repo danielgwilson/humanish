@@ -19,12 +19,12 @@ Use a specific run ID in place of `latest` when you compare studies or save a fi
 
 ## Separate a finding from a broken run
 
-| Observation | What to investigate |
-| --- | --- |
-| Participant finishes the intended task | Check the actions and task evidence support the claim. |
+| Observation                              | What to investigate                                                     |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| Participant finishes the intended task   | Check the actions and task evidence support the claim.                  |
 | Participant abandons or reports friction | Inspect that moment in the app. This may be the study's useful finding. |
-| Install, provider, or sandbox fails | Fix the study setup; the participant may never have reached the app. |
-| A task was never measured | Treat it as unknown, even if the participant said they completed it. |
+| Install, provider, or sandbox fails      | Fix the study setup; the participant may never have reached the app.    |
+| A task was never measured                | Treat it as unknown, even if the participant said they completed it.    |
 
 Synthetic participants can miss problems or report things that do not reproduce. Confirm a finding against the app before treating it as a defect. See [known failure modes](/failure-modes) for when to recruit real people.
 
@@ -40,11 +40,11 @@ npx humanish verify --run latest --json
 
 Verification checks the bundle's evidence and automated public-safety gates. It is not a usability score or certification that a finding is true.
 
-| `shareSafety.status` | Meaning |
-| --- | --- |
-| `share_ready` | Eligible for public feedback drafts after review. |
-| `local_only` | Valid local evidence that should not be shared as-is. Raw screenshots are one reason. |
-| `blocked` | The bundle failed verification or a public-safety gate. |
+| `shareSafety.status` | Meaning                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `share_ready`        | Eligible for public feedback drafts after review.                                     |
+| `local_only`         | Valid local evidence that should not be shared as-is. Raw screenshots are one reason. |
+| `blocked`            | The bundle failed verification or a public-safety gate.                               |
 
 Full-fidelity screenshots are local-only by default. The automated scan catches secret and local-path shapes; it does **not** certify that names, personal information, or sensitive content are absent from text or pixels. Use synthetic data and review what you share. [Privacy details](/docs/budgets-and-privacy#review-evidence-before-sharing).
 

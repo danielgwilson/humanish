@@ -1,4 +1,8 @@
-import { isLocalBrowserLab, localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
+import {
+  isLocalBrowserLab,
+  localBrowserDefaults,
+  localBrowserUnsupportedReason,
+} from "./local-runtime-config.js";
 import { resolveAutomaticAnalysis, type LabAnalysis } from "./automatic-analysis-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
@@ -54,8 +58,17 @@ import { actorRegistry } from "./actor-registry.js";
 import { containsSensitive } from "./redaction.js";
 import type { LabTask } from "./tasks.js";
 import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
-import type { DwellWindow, StopConditionPrimitive, StopWhen, StopWhenRule } from "./stop-conditions.js";
-import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "./reasoning-effort.js";
+import type {
+  DwellWindow,
+  StopConditionPrimitive,
+  StopWhen,
+  StopWhenRule,
+} from "./stop-conditions.js";
+import {
+  isReasoningEffort,
+  reasoningEffortNames,
+  type ReasoningEffort,
+} from "./reasoning-effort.js";
 import { isExactRuntimeVersion } from "./terminal-runtime.js";
 import { isMaxOutputTokens } from "./output-token-limit.js";
 
@@ -75,7 +88,14 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
  * fails closed (HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) when run without them: a structured
  * error, never a desktop attempt. See docs/architecture/state-driven-executor.md.
  */
-export type LabSubjectSource = "this-repo" | "clone" | "app-url" | "local-app" | "terminal-product" | "desktop-cli" | "local-tree";
+export type LabSubjectSource =
+  | "this-repo"
+  | "clone"
+  | "app-url"
+  | "local-app"
+  | "terminal-product"
+  | "desktop-cli"
+  | "local-tree";
 
 /**
  * How a subject's WORLD relates across actor lanes. `per-lane-worlds` (the default; absent ==
@@ -910,7 +930,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   const id = str(raw.id);
   if (!id || !ID_PATTERN.test(id)) {
-    return invalid("Lab id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).");
+    return invalid(
+      "Lab id must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).",
+    );
   }
 
   const subjectResult = parseSubject(raw.subject);
@@ -935,7 +957,7 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     ...optionalStr("description", raw.description),
     subject: subjectResult.value,
     actors: actorsResult.value,
-    ...(executionResult.value ? { execution: executionResult.value } : {})
+    ...(executionResult.value ? { execution: executionResult.value } : {}),
   };
 
   const personas = parsePersonas(raw.personas);
@@ -945,8 +967,15 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     return scenarioResult;
   }
   if (scenarioResult.value) config.scenario = scenarioResult.value;
-  if (isRecord(raw.policies) && raw.policies.mediaPermission !== undefined && raw.policies.mediaPermission !== "prompt" && raw.policies.mediaPermission !== "granted") {
-    return invalid("`policies.mediaPermission` must be `prompt` (the participant answers the browser's own dialog) or `granted`.");
+  if (
+    isRecord(raw.policies) &&
+    raw.policies.mediaPermission !== undefined &&
+    raw.policies.mediaPermission !== "prompt" &&
+    raw.policies.mediaPermission !== "granted"
+  ) {
+    return invalid(
+      "`policies.mediaPermission` must be `prompt` (the participant answers the browser's own dialog) or `granted`.",
+    );
   }
   const policies = parsePolicies(raw.policies);
   if (policies) config.policies = policies;
@@ -959,7 +988,9 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (!commsResult.ok) return commsResult;
   if (commsResult.value) config.comms = commsResult.value;
   if (config.comms?.email?.smtp && config.subject.topology === "shared-world") {
-    return invalid("SMTP capture is not yet wired for shared-world studies. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.");
+    return invalid(
+      "SMTP capture is not yet wired for shared-world studies. Use per-lane worlds for SMTP, or configure supported HTTP email capture for concurrent shared-world studies.",
+    );
   }
 
   const mediaReason = desktopMediaValidationReason(config);
@@ -994,17 +1025,20 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     const laneIds = effectiveComputerUseLaneIds(config);
     const email = config.comms.email;
     if (email.recipients === undefined) {
-      email.recipients = laneIds.map((lane) => ({ lane, address: `${lane.toLowerCase()}@example.test` }));
+      email.recipients = laneIds.map((lane) => ({
+        lane,
+        address: `${lane.toLowerCase()}@example.test`,
+      }));
     } else {
       const unknown = email.recipients.filter((recipient) => !laneIds.includes(recipient.lane));
       if (unknown.length > 0) {
         return invalid(
-          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${laneIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`
+          `comms.email.recipients name lane(s) that do not exist: ${unknown.map((r) => `"${r.lane}"`).join(", ")}. This lab's lane ids are: ${laneIds.join(", ")}. A recipient's lane must match one of them exactly — the inbox instruction is injected per lane, and a mismatch disables the email funnel for that seat.`,
         );
       }
       if (!email.recipients.some((recipient) => recipient.address !== undefined)) {
         return invalid(
-          "comms.email.recipients cover no lane with an address — no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every lane then gets a deterministic address automatically)."
+          "comms.email.recipients cover no lane with an address — no actor would be told an inbox exists and no captured mail could match. Give at least one recipient an address, or omit `recipients` entirely (every lane then gets a deterministic address automatically).",
         );
       }
     }
@@ -1014,10 +1048,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // host repo (clone/app-url provide that). Reject the mis-configs rather than silently mishandle.
   if (config.subject.source === "this-repo") {
     if (config.execution?.target) {
-      return invalid("`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.");
+      return invalid(
+        "`execution.target` applies only to clone/app-url/local-app subjects; this-repo labs run locally.",
+      );
     }
     if (config.scenario?.mode === "live") {
-      return invalid("this-repo labs are dry-run only; use a clone or app-url subject for a live run.");
+      return invalid(
+        "this-repo labs are dry-run only; use a clone or app-url subject for a live run.",
+      );
     }
   }
 
@@ -1031,19 +1069,29 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (config.subject.source === "local-app") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "local") {
-      return invalid("local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route).");
+      return invalid(
+        "local-app subjects drive an in-process LOCAL dev server with NO E2B desktop — set `execution.target: local` or omit it (absent means local); `e2b-desktop` is rejected (use an app-url subject for the hosted-desktop route).",
+      );
     }
     if (!actorResolvesToComputerUse(type)) {
-      return invalid(`actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`);
+      return invalid(
+        `actors[0].type must be a registered computer-use actor for local-app subjects (one of: ${registeredComputerUseActors().join(", ")}); the caller's custom executor runs the computer-use loop. Got "${type}".`,
+      );
     }
     if (cuaLaneCount(config) > 1) {
-      return invalid("Multi-lane fan-out is not supported on the in-process/local-app route — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips; set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).");
+      return invalid(
+        "Multi-lane fan-out is not supported on the in-process/local-app route — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips; set actors[0].count to 1 and drop actors[0].lanes (use an app-url or clone subject on execution.target: e2b-desktop for fan-out).",
+      );
     }
     if (config.actors[0]?.lanes !== undefined) {
-      return invalid("`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route — it provisions one E2B desktop per lane, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.");
+      return invalid(
+        "`actors[0].lanes` (fan-out roster) is not supported on the in-process/local-app route — it provisions one E2B desktop per lane, which this route skips. Use an app-url or clone subject with execution.target: e2b-desktop.",
+      );
     }
     if (config.policies?.allowPublicTargets === true) {
-      return invalid("`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.");
+      return invalid(
+        "`policies.allowPublicTargets` is not supported on the local-app route — a local-app subject is always a loopback dev server; there is no public target to allow.",
+      );
     }
   }
 
@@ -1056,29 +1104,45 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       // Scripted-browser route (all fail-closed: invariant 6 — a field that cannot act on
       // this route is rejected, never silently ignored).
       if (config.execution?.target !== undefined && config.execution.target !== "local") {
-        return invalid("scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.");
+        return invalid(
+          "scripted-browser actors run on the operator's machine — set `execution.target: local` or omit it (absent means local); in-sandbox scripted execution is a later slice.",
+        );
       }
       if (!config.scenario?.ref) {
-        return invalid("scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.");
+        return invalid(
+          "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.",
+        );
       }
       if ((config.actors[0]?.count ?? 1) > 2) {
-        return invalid("scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.");
+        return invalid(
+          "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.",
+        );
       }
       if (config.policies?.redactScreenshots === true) {
-        return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+        return invalid(
+          "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.",
+        );
       }
       if (config.policies?.allowPublicTargets === true) {
-        return invalid("`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice.");
+        return invalid(
+          "`policies.allowPublicTargets` is not supported on the scripted-browser route — the scripted step driver enforces loopback at every navigation; public targets on this route are a later slice.",
+        );
       }
       if (!isLoopbackUrl(config.subject.appUrl ?? "")) {
-        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.");
+        return invalid(
+          "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on the scripted-browser route.",
+        );
       }
     } else {
       if (config.execution?.target !== "e2b-desktop" && config.execution?.target !== "local") {
-        return invalid("app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.");
+        return invalid(
+          "app-url computer-use subjects require `execution.target: local` or `e2b-desktop`.",
+        );
       }
       if (!actorResolvesToComputerUse(type)) {
-        return invalid(`actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`);
+        return invalid(
+          `actors[0].type must be a registered computer-use actor for app-url × e2b-desktop labs (one of: ${registeredComputerUseActors().join(", ")}); for local scripted execution use a registered scripted-browser actor (${registeredScriptedBrowserActors().join(", ")}). Got "${type}".`,
+        );
       }
       // Multi-lane fan-out is CONSUMED on this route (per-lane worlds; the shared cua-lane
       // cross-validation below enforces lanes/count XOR rules, the 16 cap, and the
@@ -1087,20 +1151,30 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       // Loopback by default; an owner may declare a public/preview target via policies.
       const laneTargets = declaredLaneTargets(config);
       const declaredTargets = [config.subject.appUrl ?? "", ...laneTargets];
-      const unsafeTarget = declaredTargets.find((target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target));
+      const unsafeTarget = declaredTargets.find(
+        (target) => !config.policies?.allowPublicTargets && !isLoopbackUrl(target),
+      );
       if (unsafeTarget !== undefined) {
-        return invalid("`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own.");
+        return invalid(
+          "`subject.appUrl` and `actors[0].lanes[].target` must be loopback URLs (127.0.0.1/localhost) unless `policies.allowPublicTargets: true` is set — set it to drive deployed/preview URLs you own.",
+        );
       }
     }
   } else if (actorResolvesToScriptedBrowser(config.actors[0]?.type)) {
     if (config.subject.source !== "clone") {
-      return invalid("scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject).");
+      return invalid(
+        "scripted-browser actors require `subject.source: app-url` (a running app at a loopback URL) or `subject.source: clone` with `execution.target: e2b-desktop` (a provisioned synthetic subject).",
+      );
     }
     if (config.execution?.target !== "e2b-desktop") {
-      return invalid("clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps.");
+      return invalid(
+        "clone subjects with scripted-browser actors require `execution.target: e2b-desktop` — the lab provisions the clone in E2B, exposes it with getHost, then drives deterministic browser steps.",
+      );
     }
     if (!config.subject.serve) {
-      return invalid("clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it.");
+      return invalid(
+        "clone subjects with scripted-browser actors require `subject.serve` (start + url) — the lab serves the app in-sandbox before the scripted browser drives it.",
+      );
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
       return invalid("clone scripted-browser labs require exactly one repo in subject.repos.");
@@ -1110,46 +1184,77 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
       return invalid(`subject.repos[0] must be an owner/repo slug (got "${repo}").`);
     }
     if (config.subject.topology !== undefined) {
-      return invalid("clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run.");
+      return invalid(
+        "clone scripted-browser labs do not support `subject.topology` yet — this slice provisions one synthetic subject and one deterministic scripted actor roster, not a shared-world run.",
+      );
     }
     if (config.subject.clone?.fanout !== undefined || config.subject.clone?.keep === true) {
-      return invalid("clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox.");
+      return invalid(
+        "clone scripted-browser labs do not support `subject.clone.fanout` or `subject.clone.keep` yet — the provisioned subject is always a single disposable E2B sandbox.",
+      );
     }
     if (!config.scenario?.ref) {
-      return invalid("scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.");
+      return invalid(
+        "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes; there is no built-in fallback on the lab route.",
+      );
     }
     if ((config.actors[0]?.count ?? 1) > 2) {
-      return invalid("scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.");
+      return invalid(
+        "scripted-browser labs support actors[0].count of 1 (desktop surface) or 2 (desktop + mobile); larger fan-out is a later slice.",
+      );
     }
     if (config.actors[0]?.lanes !== undefined) {
-      return invalid("`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.");
+      return invalid(
+        "`actors[0].lanes` is not supported on the scripted-browser route yet — use actors[0].count for the deterministic surface roster.",
+      );
     }
     if (config.policies?.redactScreenshots === true) {
-      return invalid("`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.");
+      return invalid(
+        "`policies.redactScreenshots: true` is not implemented on the scripted-browser route yet — screenshots persist raw in gitignored .humanish; a silently ignored redaction policy would be a safety lie, so it is rejected.",
+      );
     }
     if (config.policies?.allowPublicTargets === true) {
-      return invalid("`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject.");
+      return invalid(
+        "`policies.allowPublicTargets` is not supported on the clone scripted-browser route — the only external host is the harness-minted getHost URL for a provisioned synthetic subject.",
+      );
     }
     if (config.subject.exposure !== "synthetic") {
-      return invalid("clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data.");
+      return invalid(
+        "clone scripted-browser labs require `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data.",
+      );
     }
-    if (!config.subject.state?.seed || config.subject.state.seed.length === 0 || (config.subject.state.external?.length ?? 0) > 0) {
-      return invalid("clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state.");
+    if (
+      !config.subject.state?.seed ||
+      config.subject.state.seed.length === 0 ||
+      (config.subject.state.external?.length ?? 0) > 0
+    ) {
+      return invalid(
+        "clone scripted-browser labs require `subject.state.seed` and do not allow `subject.state.external` — getHost-exposed subjects must be synthetic seeded data, not external/unpinned state.",
+      );
     }
     if (!config.subject.serve.start.includes("0.0.0.0")) {
-      return invalid("clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback.");
+      return invalid(
+        "clone scripted-browser labs require `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; the readiness probe stays loopback.",
+      );
     }
   }
 
   // clone × e2b-desktop disambiguates on the actor lane: a computer-use actor means the lab
   // clones AND serves the subject in-sandbox, then drives it (the meta route otherwise).
-  if (config.subject.source === "clone" && config.execution?.target === "e2b-desktop"
-    && actorResolvesToComputerUse(config.actors[0]?.type)) {
+  if (
+    config.subject.source === "clone" &&
+    config.execution?.target === "e2b-desktop" &&
+    actorResolvesToComputerUse(config.actors[0]?.type)
+  ) {
     if (!config.subject.serve) {
-      return invalid("clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it.");
+      return invalid(
+        "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox before the actor drives it.",
+      );
     }
     if ((config.subject.repos?.length ?? 0) !== 1) {
-      return invalid("computer-use clone labs run a single lane; declare exactly one repo in subject.repos.");
+      return invalid(
+        "computer-use clone labs run a single lane; declare exactly one repo in subject.repos.",
+      );
     }
     const repo = config.subject.repos?.[0] ?? "";
     if (!REPO_SLUG_PATTERN.test(repo)) {
@@ -1167,10 +1272,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // repos/clone rejection also already happened there (local-tree never carries git slugs).
   if (config.subject.source === "local-tree") {
     if (config.execution?.target !== "e2b-desktop") {
-      return invalid("local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local/smoke route for a local-tree subject.");
+      return invalid(
+        "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox; there is no local/smoke route for a local-tree subject.",
+      );
     }
     if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
-      return invalid(`actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${config.actors[0]?.type ?? ""}".`);
+      return invalid(
+        `actors[0].type must be a registered computer-use actor for local-tree subjects (one of: ${registeredComputerUseActors().join(", ")}); the actor drives the hosted desktop that serves the packed working tree. Got "${config.actors[0]?.type ?? ""}".`,
+      );
     }
   }
 
@@ -1190,14 +1299,15 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // silently downgrading to a per-lane-worlds cua run. With `execution.concurrency > 1` the
   // concurrent extras (synthetic-subject attestation, 0.0.0.0 serve bind, no clone.keep) also apply.
   if (config.subject.topology === "shared-world") {
-    const reason = config.subject.source === "app-url"
-      // The external-public plane (a real public deployment as the shared plane): NEVER the getHost
-      // synthetic gate — that gate exists because getHost is internet-reachable AND harness-owned; a
-      // public site the harness neither provisioned nor exposed has neither property.
-      ? externalPublicSharedWorldValidationReason(config)
-      : (config.execution?.concurrency ?? 1) > 1
-        ? concurrentSharedWorldValidationReason(config)
-        : sharedWorldValidationReason(config);
+    const reason =
+      config.subject.source === "app-url"
+        ? // The external-public plane (a real public deployment as the shared plane): NEVER the getHost
+          // synthetic gate — that gate exists because getHost is internet-reachable AND harness-owned; a
+          // public site the harness neither provisioned nor exposed has neither property.
+          externalPublicSharedWorldValidationReason(config)
+        : (config.execution?.concurrency ?? 1) > 1
+          ? concurrentSharedWorldValidationReason(config)
+          : sharedWorldValidationReason(config);
     if (reason) {
       return invalid(reason);
     }
@@ -1213,17 +1323,25 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   // "watch a person use a terminal" is not something the other substrates can do.
   if (config.subject.source === "desktop-cli") {
     if (config.subject.product?.name === undefined) {
-      return invalid("desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.");
+      return invalid(
+        "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.",
+      );
     }
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-desktop") {
-      return invalid("desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it.");
+      return invalid(
+        "desktop-cli subjects are studied at a hosted desktop — set `execution.target: e2b-desktop` or omit it.",
+      );
     }
     if (!actorResolvesToComputerUse(config.actors[0]?.type ?? "")) {
-      return invalid("desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all.");
+      return invalid(
+        "desktop-cli subjects need a registered computer-use actor: the participant reads the screen and types, which is what makes an interactive surface studiable at all.",
+      );
     }
     const install = config.subject.product.install;
     if (install !== undefined && install.trim().length === 0) {
-      return invalid("`subject.product.install` must be a non-empty command when set (omit it to study the install itself).");
+      return invalid(
+        "`subject.product.install` must be a non-empty command when set (omit it to study the install itself).",
+      );
     }
   }
 
@@ -1235,10 +1353,14 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   if (config.subject.source === "terminal-product") {
     const type = config.actors[0]?.type ?? "";
     if (config.execution?.target !== undefined && config.execution.target !== "e2b-terminal") {
-      return invalid("terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected.");
+      return invalid(
+        "terminal-product subjects run the agent inside an E2B shell — set `execution.target: e2b-terminal` or omit it (absent means e2b-terminal); `local`/`e2b-desktop` are rejected.",
+      );
     }
     if (!actorResolvesToTerminal(type)) {
-      return invalid(`actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`);
+      return invalid(
+        `actors[0].type must be a registered terminal actor for terminal-product subjects (one of: ${registeredTerminalActors().join(", ")}). Got "${type}".`,
+      );
     }
     if ((config.actors[0]?.count ?? 1) > 1) {
       return invalid("Multi-lane terminal fan-out is not supported yet; set actors[0].count to 1.");
@@ -1246,11 +1368,15 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
   } else if (config.execution?.target === "e2b-terminal") {
     // e2b-terminal is the terminal-product substrate ONLY. Any other source declaring it is a
     // mis-config — reject, never silently mishandle (mirrors app-url's e2b-desktop pairing rule).
-    return invalid("`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.");
+    return invalid(
+      "`execution.target: e2b-terminal` requires `subject.source: terminal-product` with a registered terminal actor.",
+    );
   } else if (actorResolvesToTerminal(config.actors[0]?.type)) {
     // A registered terminal actor on a non-terminal-product subject: rejected, never ignored (the
     // terminal agent only studies a declared terminal-product from public surfaces).
-    return invalid("terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route.");
+    return invalid(
+      "terminal actors require `subject.source: terminal-product` (a CLI/product the agent studies from public surfaces); other subjects are not supported on this route.",
+    );
   }
 
   const tasksReason = taskProtocolValidationReason(config);
@@ -1280,7 +1406,9 @@ export const MAX_CUA_LANES = 16;
 
 function actorResolvesToComputerUse(type: string | undefined): boolean {
   if (!type) return false;
-  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  const descriptor = (
+    actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
+  )[type];
   return Boolean(descriptor?.capabilities.lanes.includes("computer-use"));
 }
 
@@ -1292,7 +1420,9 @@ function registeredComputerUseActors(): string[] {
 
 function actorResolvesToScriptedBrowser(type: string | undefined): boolean {
   if (!type) return false;
-  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  const descriptor = (
+    actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
+  )[type];
   return Boolean(descriptor?.capabilities.lanes.includes("scripted-browser"));
 }
 
@@ -1306,7 +1436,9 @@ function registeredScriptedBrowserActors(): string[] {
  *  the engine + tests can resolve the dispatch the same way the parser does. */
 export function actorResolvesToTerminal(type: string | undefined): boolean {
   if (!type) return false;
-  const descriptor = (actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>)[type];
+  const descriptor = (
+    actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
+  )[type];
   return Boolean(descriptor?.capabilities.lanes.includes("terminal"));
 }
 
@@ -1363,7 +1495,10 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
     if (actor?.laneFocus !== undefined) {
       return "actors[0].laneFocus and actors[0].lanes are mutually exclusive — a roster's per-lane `instruction` is the fan-out steer; laneFocus is the single-lane steer.";
     }
-    if (config.execution?.desktop?.resolution !== undefined && lanes.some((lane) => lane.device !== undefined)) {
+    if (
+      config.execution?.desktop?.resolution !== undefined &&
+      lanes.some((lane) => lane.device !== undefined)
+    ) {
       return "actors[0].lanes[].device and a raw execution.desktop.resolution are mutually exclusive — a per-lane device preset and a single hand-set resolution cannot both govern lane geometry.";
     }
     const targeted = lanes.filter((lane) => lane.target !== undefined);
@@ -1389,8 +1524,12 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
   // `subject.topology: shared-world` is ALSO declared, N lanes against one public target is the
   // EXTERNAL-PUBLIC shared-world topology (#164 phase 2) — ROUTE it there (a real public deployment
   // as the shared plane) instead of refusing; externalPublicSharedWorldValidationReason then applies.
-  if (laneCount > 1 && config.policies?.allowPublicTargets === true && declaredLaneTargets(config).length === 0
-    && config.subject.topology !== "shared-world") {
+  if (
+    laneCount > 1 &&
+    config.policies?.allowPublicTargets === true &&
+    declaredLaneTargets(config).length === 0 &&
+    config.subject.topology !== "shared-world"
+  ) {
     return "policies.allowPublicTargets cannot be combined with multi-lane fan-out (N>1) — N lanes against one declared public target is the SHARED-WORLD topology (layer 7, #164), not per-lane worlds. Declare `subject.topology: shared-world` to run the external-public shared-world route, fan out against a loopback/provisioned subject, or run a single public-target lane.";
   }
   return null;
@@ -1497,10 +1636,14 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
  */
 export function desktopMediaValidationReason(
   config: LabConfig,
-  supportsMedia = routesToComputerUse(config)
+  supportsMedia = routesToComputerUse(config),
 ): string | undefined {
-  if (config.execution?.desktop?.recording !== undefined
-    && (!supportsMedia || config.subject.topology === "shared-world" || config.subject.source === "local-app")) {
+  if (
+    config.execution?.desktop?.recording !== undefined &&
+    (!supportsMedia ||
+      config.subject.topology === "shared-world" ||
+      config.subject.source === "local-app")
+  ) {
     return "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route.";
   }
   const media = config.execution?.desktop?.media;
@@ -1511,14 +1654,24 @@ export function desktopMediaValidationReason(
   if (config.subject.topology === "shared-world") {
     return "execution.desktop.media is unsupported on shared-world routes; declared capture devices would not be provisioned. Use independent computer-use browser lanes or remove the declaration.";
   }
-  if (!supportsMedia || config.subject.source === "desktop-cli" || config.subject.source === "local-app") {
+  if (
+    !supportsMedia ||
+    config.subject.source === "desktop-cli" ||
+    config.subject.source === "local-app"
+  ) {
     return "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route.";
   }
   if (config.execution?.desktop?.browser === "firefox") {
     return "execution.desktop.media requires Chrome or Chromium; Firefox cannot receive the declared synthetic capture device. Set execution.desktop.browser: chrome or chromium.";
   }
   if (media.microphone !== undefined) {
-    if (config.actors.some(actor => actor.type !== "local-agent" || (actor.localAgent !== undefined && actor.localAgent !== "codex"))) {
+    if (
+      config.actors.some(
+        (actor) =>
+          actor.type !== "local-agent" ||
+          (actor.localAgent !== undefined && actor.localAgent !== "codex"),
+      )
+    ) {
       return "Participant speech currently requires local-agent with Codex, on a local or hosted desktop.";
     }
     if (config.execution?.target !== "local" && media.camera !== undefined) {
@@ -1539,23 +1692,30 @@ export function routesToComputerUse(config: LabConfig): boolean {
   // adopters their mission and persona were inert on the one route whose whole point is that a
   // person reads a screen.
   if (config.subject.source === "desktop-cli") {
-    return (config.execution?.target === undefined || config.execution.target === "e2b-desktop")
-      && actorResolvesToComputerUse(config.actors[0]?.type);
+    return (
+      (config.execution?.target === undefined || config.execution.target === "e2b-desktop") &&
+      actorResolvesToComputerUse(config.actors[0]?.type)
+    );
   }
   // local-tree packs+uploads the working tree, then serves it exactly like a computer-use clone
   // subject: same e2b-desktop + computer-use-actor gate.
-  return (config.subject.source === "clone" || config.subject.source === "local-tree")
-    && config.execution?.target === "e2b-desktop"
-    && actorResolvesToComputerUse(config.actors[0]?.type);
+  return (
+    (config.subject.source === "clone" || config.subject.source === "local-tree") &&
+    config.execution?.target === "e2b-desktop" &&
+    actorResolvesToComputerUse(config.actors[0]?.type)
+  );
 }
 
 /** Reused by direct library runners so unsupported receiving never becomes inert configuration. */
 export function receivingEmailValidationReason(config: LabConfig): string | undefined {
   if (config.comms?.email?.kind !== "real") return undefined;
-  if (!routesToComputerUse(config) || !["app-url", "clone", "local-tree"].includes(config.subject.source)) {
+  if (
+    !routesToComputerUse(config) ||
+    !["app-url", "clone", "local-tree"].includes(config.subject.source)
+  ) {
     return "Real email receiving requires a hosted computer-use browser study with an app-url, clone, or local-tree subject. Scripted, terminal, desktop-cli and local-app routes are unsupported.";
   }
-  if (config.actors.some(actor => actor.type === "local-agent")) {
+  if (config.actors.some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
   if (config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
@@ -1568,7 +1728,7 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
  * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
 export function taskProtocolValidationReason(
   config: LabConfig,
-  supportsTasks = routesToComputerUse(config) && !routesToSharedWorld(config)
+  supportsTasks = routesToComputerUse(config) && !routesToSharedWorld(config),
 ): string | null {
   for (const [index, actor] of config.actors.entries()) {
     if (actor.tasks === undefined) continue;
@@ -1586,8 +1746,13 @@ export function taskProtocolValidationReason(
 export function outputTokenLimitValidationReason(config: LabConfig): string | null {
   const actor = config.actors[0];
   if (actor?.maxOutputTokens === undefined) return null;
-  if (!isMaxOutputTokens(actor.maxOutputTokens)) return "actors[0].maxOutputTokens must be a positive safe integer.";
-  if (actor.type !== "openai-computer-use" || !routesToComputerUse(config) || config.subject.source === "local-app") {
+  if (!isMaxOutputTokens(actor.maxOutputTokens))
+    return "actors[0].maxOutputTokens must be a positive safe integer.";
+  if (
+    actor.type !== "openai-computer-use" ||
+    !routesToComputerUse(config) ||
+    config.subject.source === "local-app"
+  ) {
     return "actors[0].maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
   }
   return null;
@@ -1607,10 +1772,12 @@ export function routesToSharedWorld(config: LabConfig): boolean {
 
 /** The getHost provisioned-subject shared-world shape (clone/local-tree served + exposed in-sandbox). */
 export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
-  return (config.subject.source === "clone" || config.subject.source === "local-tree")
-    && config.subject.topology === "shared-world"
-    && config.execution?.target === "e2b-desktop"
-    && actorResolvesToComputerUse(config.actors[0]?.type);
+  return (
+    (config.subject.source === "clone" || config.subject.source === "local-tree") &&
+    config.subject.topology === "shared-world" &&
+    config.execution?.target === "e2b-desktop" &&
+    actorResolvesToComputerUse(config.actors[0]?.type)
+  );
 }
 
 /**
@@ -1624,11 +1791,13 @@ export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
  * enforced by the validation reason).
  */
 export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
-  return config.subject.source === "app-url"
-    && config.subject.topology === "shared-world"
-    && config.execution?.target === "e2b-desktop"
-    && actorResolvesToComputerUse(config.actors[0]?.type)
-    && config.policies?.allowPublicTargets === true;
+  return (
+    config.subject.source === "app-url" &&
+    config.subject.topology === "shared-world" &&
+    config.execution?.target === "e2b-desktop" &&
+    actorResolvesToComputerUse(config.actors[0]?.type) &&
+    config.policies?.allowPublicTargets === true
+  );
 }
 
 /**
@@ -1669,7 +1838,8 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
     return "the concurrent shared-world route requires `subject.serve.start` to bind all interfaces (e.g. `-H 0.0.0.0` / `--host 0.0.0.0` / `HOST=0.0.0.0`) — getHost only routes to a 0.0.0.0-bound port; a loopback-only bind 502s. (The readiness probe stays loopback.)";
   }
   if (config.subject.clone?.keep === true || config.subject.localTree?.keep === true) {
-    const keepField = config.subject.clone?.keep === true ? "subject.clone.keep" : "subject.localTree.keep";
+    const keepField =
+      config.subject.clone?.keep === true ? "subject.clone.keep" : "subject.localTree.keep";
     return `\`${keepField}\` is not supported on the concurrent shared-world route - it would orphan the N actor sandboxes (reclaimed only by server-timeout, not by id). All N+1 sandboxes are torn down by id.`;
   }
   return null;
@@ -1724,7 +1894,11 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (config.subject.serve !== undefined) {
     return "`subject.serve` is forbidden on the external-public shared-world route — the harness does not serve the plane (it is an already-deployed public app); there is no in-sandbox serve to run.";
   }
-  if (config.subject.state?.seed !== undefined || config.subject.state?.checkpoint !== undefined || config.subject.state !== undefined) {
+  if (
+    config.subject.state?.seed !== undefined ||
+    config.subject.state?.checkpoint !== undefined ||
+    config.subject.state !== undefined
+  ) {
     return "`subject.state` (seed/checkpoint/external) is forbidden on the external-public shared-world route — the harness neither seeds nor snapshots the plane (no in-sandbox filesystem to digest); no authoritative shared-state proof is possible on this class.";
   }
   if (config.subject.clone !== undefined || config.subject.repos !== undefined) {
@@ -1779,14 +1953,17 @@ export function routesToScriptedBrowser(config: LabConfig): boolean {
 }
 
 export function routesToLocalScriptedBrowser(config: LabConfig): boolean {
-  return config.subject.source === "app-url"
-    && actorResolvesToScriptedBrowser(config.actors[0]?.type);
+  return (
+    config.subject.source === "app-url" && actorResolvesToScriptedBrowser(config.actors[0]?.type)
+  );
 }
 
 export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
-  return config.subject.source === "clone"
-    && config.execution?.target === "e2b-desktop"
-    && actorResolvesToScriptedBrowser(config.actors[0]?.type);
+  return (
+    config.subject.source === "clone" &&
+    config.execution?.target === "e2b-desktop" &&
+    actorResolvesToScriptedBrowser(config.actors[0]?.type)
+  );
 }
 
 /**
@@ -1796,8 +1973,9 @@ export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
  * the single source of truth for selectLabBackend and the warning logic.
  */
 export function routesToTerminalProduct(config: LabConfig): boolean {
-  return config.subject.source === "terminal-product"
-    && actorResolvesToTerminal(config.actors[0]?.type);
+  return (
+    config.subject.source === "terminal-product" && actorResolvesToTerminal(config.actors[0]?.type)
+  );
 }
 
 // Report fields that are present but not yet consumed by the engine, so a user never trusts a
@@ -1817,16 +1995,19 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // The external-public plane (a real public deployment as the shared plane) consumes host lanes +
   // subject.publicTarget; it is only ever the concurrent app-url shape.
   const routesToExternalPublic = routesToConcurrent && config.subject.source === "app-url";
-  const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop"
-    && routesToCua;
+  const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop" && routesToCua;
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
     if (actor.lanes?.some((lane) => lane.entry !== undefined) && !routesToShared) {
-      inert.push(`actors[${index}].lanes[].entry (the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world)`);
+      inert.push(
+        `actors[${index}].lanes[].entry (the per-role loopback entry is a shared-world capability; needs subject.topology: shared-world)`,
+      );
     }
     // The host-seat marker acts ONLY on the external-public shared-world route; inert elsewhere.
     if (actor.lanes?.some((lane) => lane.host === true) && !routesToExternalPublic) {
-      inert.push(`actors[${index}].lanes[].host (the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)`);
+      inert.push(
+        `actors[${index}].lanes[].host (the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)`,
+      );
     }
     if (routesToCua || routesToTerminal) {
       // The cua + terminal routes consume mission/persona/model + laneFocus.instruction (they
@@ -1834,14 +2015,23 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
       // cua E2B route actors[0].lanes is CONSUMED (the fan-out roster).
       if (actor.laneFocus?.id) inert.push(`actors[${index}].laneFocus.id`);
       if (actor.laneFocus?.label) inert.push(`actors[${index}].laneFocus.label`);
-      if (routesToTerminal && actor.lanes) inert.push(`actors[${index}].lanes (fan-out is a computer-use route capability; terminal fan-out is a later slice)`);
+      if (routesToTerminal && actor.lanes)
+        inert.push(
+          `actors[${index}].lanes (fan-out is a computer-use route capability; terminal fan-out is a later slice)`,
+        );
     } else if (routesToScripted) {
       // persona and count are consumed (trace/bundle provenance; surface roster). The prompt
       // fields can never act here — the scripted actor runs no model.
-      if (actor.mission) inert.push(`actors[${index}].mission (the scripted-browser actor runs no model)`);
-      if (actor.laneFocus) inert.push(`actors[${index}].laneFocus (the scripted-browser actor runs no model)`);
-      if (actor.model) inert.push(`actors[${index}].model (the scripted-browser actor runs no model)`);
-      if (actor.lanes) inert.push(`actors[${index}].lanes (the scripted-browser route fans out via actors[0].count, not a lane roster)`);
+      if (actor.mission)
+        inert.push(`actors[${index}].mission (the scripted-browser actor runs no model)`);
+      if (actor.laneFocus)
+        inert.push(`actors[${index}].laneFocus (the scripted-browser actor runs no model)`);
+      if (actor.model)
+        inert.push(`actors[${index}].model (the scripted-browser actor runs no model)`);
+      if (actor.lanes)
+        inert.push(
+          `actors[${index}].lanes (the scripted-browser route fans out via actors[0].count, not a lane roster)`,
+        );
     } else {
       if (actor.mission) inert.push(`actors[${index}].mission`);
       if (actor.laneFocus) inert.push(`actors[${index}].laneFocus`);
@@ -1850,100 +2040,167 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
       if (actor.lanes) inert.push(`actors[${index}].lanes`);
     }
   }
-  if (config.subject.clone?.depth !== undefined && !routesToCua && !routesToScripted) inert.push("subject.clone.depth");
+  if (config.subject.clone?.depth !== undefined && !routesToCua && !routesToScripted)
+    inert.push("subject.clone.depth");
   if (config.subject.serve && !routesToCua && !routesToScripted) inert.push("subject.serve");
   if (config.subject.env && !routesToCua && !routesToScripted) inert.push("subject.env");
   if (config.subject.state && !routesToCua && !routesToScripted) inert.push("subject.state");
   // topology + checkpoint act ONLY on the shared-world route (#164); a set-but-unconsumed value
   // (incl. an explicit per-lane-worlds, which the cua route already is by mechanism) warns inert.
   if (config.subject.topology !== undefined && !routesToShared) {
-    inert.push("subject.topology (drives behavior only on the shared-world route; needs subject.topology: shared-world + clone × e2b-desktop × a computer-use actor + a ≥2 lane roster)");
+    inert.push(
+      "subject.topology (drives behavior only on the shared-world route; needs subject.topology: shared-world + clone × e2b-desktop × a computer-use actor + a ≥2 lane roster)",
+    );
   }
   if (config.subject.state?.checkpoint !== undefined && !routesToShared) {
-    inert.push("subject.state.checkpoint (the shared-world state-checkpoint probe; needs subject.topology: shared-world)");
+    inert.push(
+      "subject.state.checkpoint (the shared-world state-checkpoint probe; needs subject.topology: shared-world)",
+    );
   }
   // publicTarget (the external-public ownership attestation) acts ONLY on the external-public
   // shared-world route; inert elsewhere. (It is already parse-rejected on non-app-url sources.)
   if (config.subject.publicTarget !== undefined && !routesToExternalPublic) {
-    inert.push("subject.publicTarget (the external-public ownership attestation; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)");
+    inert.push(
+      "subject.publicTarget (the external-public ownership attestation; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)",
+    );
   }
   // exposure (the synthetic-subject attestation) acts ONLY on the CONCURRENT shared-world route
   // (the getHost-exposed plane); inert on the sequential shared-world route (loopback) and elsewhere.
-  if (config.subject.exposure !== undefined && !routesToConcurrent && !(routesToScripted && config.subject.source === "clone")) {
-    inert.push("subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs concurrent shared-world or clone × e2b-desktop × scripted-browser)");
+  if (
+    config.subject.exposure !== undefined &&
+    !routesToConcurrent &&
+    !(routesToScripted && config.subject.source === "clone")
+  ) {
+    inert.push(
+      "subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs concurrent shared-world or clone × e2b-desktop × scripted-browser)",
+    );
   }
   // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox HUMANISH
   // provisions (clone or local-tree) so it holds a handle to host the catch. On an app-url /
   // operator-provided subject there is no such handle, so a declared comms block would silently
   // collect nothing — a false green. Warn at parse time (fires on inspect + dry-run too).
   if (
-    config.comms?.email?.kind === "fake"
-    && config.comms.email.external === undefined
-    && config.subject.source !== "clone"
-    && config.subject.source !== "local-tree"
+    config.comms?.email?.kind === "fake" &&
+    config.comms.email.external === undefined &&
+    config.subject.source !== "clone" &&
+    config.subject.source !== "local-tree"
   ) {
-    inert.push("comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle. Declare `comms.email.external` to run the catch yourself: humanish then points the persona at your inbox, drains your catch, and writes the same evidence — see #328)");
+    inert.push(
+      "comms.email (the in-sandbox email/SMS catch needs a harness-provisioned subject to host it — subject.source: clone or local-tree; on an app-url or operator-provided subject humanish holds no sandbox handle. Declare `comms.email.external` to run the catch yourself: humanish then points the persona at your inbox, drains your catch, and writes the same evidence — see #328)",
+    );
   }
   // The reverse mis-config: declaring an adopter-hosted catch on a route where humanish provisions
   // the subject itself. Two catches would exist and the app would point at humanish's, so the
   // declared external one would silently collect nothing.
-  if (config.comms?.email?.external && (config.subject.source === "clone" || config.subject.source === "local-tree")) {
-    inert.push("comms.email.external (this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the study to an app-url/operator-provisioned subject)");
+  if (
+    config.comms?.email?.external &&
+    (config.subject.source === "clone" || config.subject.source === "local-tree")
+  ) {
+    inert.push(
+      "comms.email.external (this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the study to an app-url/operator-provisioned subject)",
+    );
   }
   // The SEQUENTIAL shared-world route has no comms wiring at all (no catch deploy, no inbox
   // instruction) — a comms block there does nothing, and the actors are never told an inbox
   // exists. Say so at parse time; the concurrent route (the default since #350: all seats live)
   // is the one that hosts the email funnel (#351).
-  if (config.comms?.email && config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
-    inert.push("comms.email (the sequential turn-taking shared-world route has no comms wiring — no catch is deployed and no actor is told an inbox exists; remove `execution.concurrency: 1` so all seats run concurrently, which is the route that hosts the email funnel)");
+  if (
+    config.comms?.email &&
+    config.subject.topology === "shared-world" &&
+    (config.execution?.concurrency ?? 1) <= 1
+  ) {
+    inert.push(
+      "comms.email (the sequential turn-taking shared-world route has no comms wiring — no catch is deployed and no actor is told an inbox exists; remove `execution.concurrency: 1` so all seats run concurrently, which is the route that hosts the email funnel)",
+    );
   }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
   // a failed install/boot; otherwise always killed). clone.fanout is REJECTED on the cua route
   // (a hard parse error above), so it can never reach this warning list there.
-  if (!routesToCua && !routesToScripted && !routesToTerminal && config.execution?.timeoutMs !== undefined) inert.push("execution.timeoutMs");
-  if (config.execution?.completionTimeoutMs !== undefined) inert.push("execution.completionTimeoutMs");
+  if (
+    !routesToCua &&
+    !routesToScripted &&
+    !routesToTerminal &&
+    config.execution?.timeoutMs !== undefined
+  )
+    inert.push("execution.timeoutMs");
+  if (config.execution?.completionTimeoutMs !== undefined)
+    inert.push("execution.completionTimeoutMs");
   // execution.concurrency is CONSUMED on the cua route (it bounds in-flight fan-out lanes);
   // inert (warned) everywhere else.
-  if (config.execution?.concurrency !== undefined && !routesToCua) inert.push("execution.concurrency");
+  if (config.execution?.concurrency !== undefined && !routesToCua)
+    inert.push("execution.concurrency");
   // execution.caps is CONSUMED on the cua route (maxUsd is the fail-closed spend abort); inert
   // (warned) everywhere else so a misplaced budget field is never trusted to cap a route it cannot.
-  if (config.execution?.caps && !routesToCua) inert.push("execution.caps (the fail-closed spend abort is a computer-use route capability; needs a computer-use actor on e2b-desktop)");
+  if (config.execution?.caps && !routesToCua)
+    inert.push(
+      "execution.caps (the fail-closed spend abort is a computer-use route capability; needs a computer-use actor on e2b-desktop)",
+    );
   // terminal-product consumes subject.product, scenario.caps, execution.{terminal,runtimeAuth}:
   // dry-run records the contract; live execution enforces caps and command-scoped auth. On every
   // OTHER route they are inert and must warn so a
   // misplaced safety/budget field is never trusted to do something it cannot (invariant 6).
-  if (config.subject.product && !routesToTerminal && config.subject.source !== "desktop-cli") inert.push("subject.product (needs subject.source: terminal-product or desktop-cli with the matching actor)");
-  if (config.scenario?.caps && !routesToTerminal) inert.push("scenario.caps (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.subject.product && !routesToTerminal && config.subject.source !== "desktop-cli")
+    inert.push(
+      "subject.product (needs subject.source: terminal-product or desktop-cli with the matching actor)",
+    );
+  if (config.scenario?.caps && !routesToTerminal)
+    inert.push(
+      "scenario.caps (needs subject.source: terminal-product + a registered terminal actor)",
+    );
   // The study-level budget is a CUA-route capability; the terminal route is a single agent whose
   // maxUsd already caps the whole run, so a maxTotalUsd there would be trusted and unenforced.
-  if (config.scenario?.caps?.maxTotalUsd !== undefined && routesToTerminal) inert.push("scenario.caps.maxTotalUsd (the study-level budget is a computer-use route capability; the terminal route's maxUsd already caps the whole run)");
-  if (config.execution?.terminal && !routesToTerminal) inert.push("execution.terminal (needs subject.source: terminal-product + a registered terminal actor)");
-  if (config.execution?.runtimeAuth !== undefined && !routesToTerminal) inert.push("execution.runtimeAuth (needs subject.source: terminal-product + a registered terminal actor)");
-  if (config.execution?.runtime !== undefined && !routesToTerminal) inert.push("execution.runtime (needs subject.source: terminal-product + a registered terminal actor)");
+  if (config.scenario?.caps?.maxTotalUsd !== undefined && routesToTerminal)
+    inert.push(
+      "scenario.caps.maxTotalUsd (the study-level budget is a computer-use route capability; the terminal route's maxUsd already caps the whole run)",
+    );
+  if (config.execution?.terminal && !routesToTerminal)
+    inert.push(
+      "execution.terminal (needs subject.source: terminal-product + a registered terminal actor)",
+    );
+  if (config.execution?.runtimeAuth !== undefined && !routesToTerminal)
+    inert.push(
+      "execution.runtimeAuth (needs subject.source: terminal-product + a registered terminal actor)",
+    );
+  if (config.execution?.runtime !== undefined && !routesToTerminal)
+    inert.push(
+      "execution.runtime (needs subject.source: terminal-product + a registered terminal actor)",
+    );
   // execution.desktop.* stays inert on the scripted route by design: device presets belong to
   // the cua desktop; scripted surfaces are the driver's fixed desktop/mobile viewports, where
   // isMobile/DSF genuinely render via playwright emulation.
-  if (!routesToCua && config.execution?.desktop?.resolution) inert.push("execution.desktop.resolution");
-  if (!routesToCua && config.execution?.desktop?.device !== undefined) inert.push("execution.desktop.device");
-  if (!routesToHostedCuaBrowser && config.execution?.desktop?.browser !== undefined) inert.push("execution.desktop.browser");
+  if (!routesToCua && config.execution?.desktop?.resolution)
+    inert.push("execution.desktop.resolution");
+  if (!routesToCua && config.execution?.desktop?.device !== undefined)
+    inert.push("execution.desktop.device");
+  if (!routesToHostedCuaBrowser && config.execution?.desktop?.browser !== undefined)
+    inert.push("execution.desktop.browser");
   if (!routesToHostedCuaBrowser && config.execution?.desktop?.fidelity !== undefined) {
-    inert.push("execution.desktop.fidelity (mobile emulation is applied only to hosted Chromium computer-use lanes on execution.target: e2b-desktop)");
+    inert.push(
+      "execution.desktop.fidelity (mobile emulation is applied only to hosted Chromium computer-use lanes on execution.target: e2b-desktop)",
+    );
   }
-  if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined) inert.push("execution.desktop.sandboxTimeoutMs");
+  if (!routesToCua && config.execution?.desktop?.sandboxTimeoutMs !== undefined)
+    inert.push("execution.desktop.sandboxTimeoutMs");
   // execution.desktop.template (the custom E2B desktop image) is consumed ONLY where a desktop is
   // actually created via Sandbox.create — the e2b-desktop computer-use routes (cua/shared-world/
   // concurrent). It is INERT on every other route (incl. the in-process local-app cua route, which
   // creates no desktop, and the meta route): warn so an unconsumed template is never silently
   // ignored (invariant 6).
-  const createsE2BDesktop = (routesToCua || (routesToScripted && config.subject.source === "clone"))
-    && config.execution?.target === "e2b-desktop";
+  const createsE2BDesktop =
+    (routesToCua || (routesToScripted && config.subject.source === "clone")) &&
+    config.execution?.target === "e2b-desktop";
   if (config.execution?.desktop?.template !== undefined && !createsE2BDesktop) {
-    inert.push("execution.desktop.template (the custom E2B desktop image is consumed only on execution.target: e2b-desktop computer-use routes that create a desktop; needs a computer-use actor on e2b-desktop)");
+    inert.push(
+      "execution.desktop.template (the custom E2B desktop image is consumed only on execution.target: e2b-desktop computer-use routes that create a desktop; needs a computer-use actor on e2b-desktop)",
+    );
   }
   // codexAppServer is consumed only on the e2b-desktop (meta) route; flag it when it cannot reach there.
-  const routesToDesktop = config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
+  const routesToDesktop =
+    config.subject.source === "clone" && config.execution?.target === "e2b-desktop";
   if (config.execution?.desktop?.codexAppServer !== undefined && !routesToDesktop) {
-    inert.push("execution.desktop.codexAppServer (needs subject.source: clone + execution.target: e2b-desktop)");
+    inert.push(
+      "execution.desktop.codexAppServer (needs subject.source: clone + execution.target: e2b-desktop)",
+    );
   }
   // scenario.ref is CONSUMED on the scripted-browser route (required there); forward-declared
   // everywhere else.
@@ -1953,16 +2210,24 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // review.scorer (#316) IS consumed (loaded + wired, or fail-closed at load) on every scorer-capable
   // route, so it does not warn there; on the scripted-browser route the actor carries no scorer seam,
   // so a declared scorer is flagged inert (the run also fails closed at load).
-  if (config.review?.scoring) inert.push("review.scoring (reserved for a later slice; not yet consumed)");
-  if (config.review?.milestones) inert.push("review.milestones (reserved for a later slice; not yet consumed)");
-  if (config.review?.vocabulary) inert.push("review.vocabulary (reserved for a later slice; not yet consumed)");
+  if (config.review?.scoring)
+    inert.push("review.scoring (reserved for a later slice; not yet consumed)");
+  if (config.review?.milestones)
+    inert.push("review.milestones (reserved for a later slice; not yet consumed)");
+  if (config.review?.vocabulary)
+    inert.push("review.vocabulary (reserved for a later slice; not yet consumed)");
   if (config.review?.scorer && routesToScripted) {
-    inert.push("review.scorer (the scripted-browser actor has no adopter-scorer seam; declare it on a terminal / computer-use / shared-world route)");
+    inert.push(
+      "review.scorer (the scripted-browser actor has no adopter-scorer seam; declare it on a terminal / computer-use / shared-world route)",
+    );
   }
   if (config.personas) inert.push("personas");
-  const warnings = inert.length === 0
-    ? []
-    : [`Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`];
+  const warnings =
+    inert.length === 0
+      ? []
+      : [
+          `Forward-declared fields are set but not yet consumed by the engine (planned for a later slice): ${inert.join(", ")}.`,
+        ];
   // A declared cap below the seat count is legal but loud: the roster promises N live actors and
   // the cap delivers waves of M. Say so up front (inspect + dry-run + run) — a green run in waves
   // is otherwise indistinguishable from the all-live run the author meant (#350).
@@ -1974,7 +2239,7 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
     const sequentialSelector = config.subject.topology === "shared-world" && cap === 1;
     if (routesToCua && cap !== undefined && seats > 1 && cap < seats && !sequentialSelector) {
       warnings.push(
-        `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`
+        `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`,
       );
     }
   }
@@ -1982,11 +2247,13 @@ function forwardDeclaredWarnings(config: LabConfig): string[] {
   // hears an inbox exists, so an email-gated flow on that seat dead-ends by construction.
   if (routesToCua && config.comms?.email?.recipients) {
     const laneIds = effectiveComputerUseLaneIds(config);
-    const covered = new Set(config.comms.email.recipients.filter((r) => r.address !== undefined).map((r) => r.lane));
+    const covered = new Set(
+      config.comms.email.recipients.filter((r) => r.address !== undefined).map((r) => r.lane),
+    );
     const uncovered = laneIds.filter((id) => !covered.has(id));
     if (covered.size > 0 && uncovered.length > 0 && laneIds.length > 1) {
       warnings.push(
-        `comms.email covers ${covered.size} of ${laneIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`
+        `comms.email covers ${covered.size} of ${laneIds.length} lanes; the uncovered lane(s) get no inbox and are never told one exists: ${uncovered.join(", ")}. Add addressed recipients for them if their flows need email.`,
       );
     }
   }
@@ -1998,8 +2265,18 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     return invalid("Lab `subject` is required and must be an object.");
   }
   const source = str(raw.source);
-  if (source !== "this-repo" && source !== "clone" && source !== "app-url" && source !== "local-app" && source !== "desktop-cli" && source !== "terminal-product" && source !== "local-tree") {
-    return invalid("`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree.");
+  if (
+    source !== "this-repo" &&
+    source !== "clone" &&
+    source !== "app-url" &&
+    source !== "local-app" &&
+    source !== "desktop-cli" &&
+    source !== "terminal-product" &&
+    source !== "local-tree"
+  ) {
+    return invalid(
+      "`subject.source` must be one of: this-repo, clone, app-url, local-app, terminal-product, desktop-cli, local-tree.",
+    );
   }
   const subject: LabSubject = { source };
 
@@ -2018,7 +2295,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   if (raw.exposure !== undefined) {
     const exposure = str(raw.exposure);
     if (exposure !== "synthetic") {
-      return invalid("`subject.exposure` must be `synthetic` (the author attestation that the getHost-exposed subject is synthetic seeded data).");
+      return invalid(
+        "`subject.exposure` must be `synthetic` (the author attestation that the getHost-exposed subject is synthetic seeded data).",
+      );
     }
     subject.exposure = exposure;
   }
@@ -2026,57 +2305,79 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
   // `product` is terminal-product-only; reject it elsewhere (invariant 6: a field that cannot act
   // on this route is an honest parse error, not silently dropped).
   if (source !== "terminal-product" && source !== "desktop-cli" && raw.product !== undefined) {
-    return invalid("`subject.product` applies only to terminal-product and desktop-cli subjects (the CLI a participant studies from public surfaces).");
+    return invalid(
+      "`subject.product` applies only to terminal-product and desktop-cli subjects (the CLI a participant studies from public surfaces).",
+    );
   }
   // appUrl is app-url/local-app-only; a terminal-product subject drives PUBLIC surfaces, not a
   // single loopback app — reject appUrl on it.
   if (source === "terminal-product" && raw.appUrl !== undefined) {
-    return invalid("`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).");
+    return invalid(
+      "`subject.appUrl` does not apply to terminal-product subjects — declare `subject.product.publicSurfaces` (the agent works from public surfaces, not one loopback app).",
+    );
   }
 
   // serve/env/state are shared between clone (cloned app) and local-tree (packed working
   // tree): both routes serve a subject in-sandbox with the same install/build/start/url +
   // env-name + seed/external/checkpoint shapes.
   if (source !== "clone" && source !== "local-tree" && raw.serve !== undefined) {
-    return invalid("`subject.serve` applies only to clone subjects or local-tree subjects (the lab serves the cloned/packed app in-sandbox).");
+    return invalid(
+      "`subject.serve` applies only to clone subjects or local-tree subjects (the lab serves the cloned/packed app in-sandbox).",
+    );
   }
   if (source !== "clone" && source !== "local-tree" && raw.env !== undefined) {
-    return invalid("`subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel).");
+    return invalid(
+      "`subject.env` applies only to clone subjects or local-tree subjects (the served app's environment channel).",
+    );
   }
   if (source !== "clone" && source !== "local-tree" && raw.state !== undefined) {
-    return invalid("`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).");
+    return invalid(
+      "`subject.state` applies only to clone subjects or local-tree subjects (the lab seeds the state it serves).",
+    );
   }
   // repos/clone are clone-ONLY (a fresh-clone subject's git inputs). local-tree packs the
   // resolution cwd itself, so it has no repo slug to clone and gets its own precise reasons
   // rather than falling through to the generic clone-only message below.
   if (source === "local-tree" && raw.repos !== undefined) {
-    return invalid("`subject.repos` does not apply to local-tree subjects. The local-tree route packs the lab resolution cwd itself; there is no owner/repo slug to clone.");
+    return invalid(
+      "`subject.repos` does not apply to local-tree subjects. The local-tree route packs the lab resolution cwd itself; there is no owner/repo slug to clone.",
+    );
   }
   if (source === "local-tree" && raw.clone !== undefined) {
-    return invalid("`subject.clone` does not apply to local-tree subjects. Declare `subject.localTree` instead (keep/exclude/maxArchiveBytes).");
+    return invalid(
+      "`subject.clone` does not apply to local-tree subjects. Declare `subject.localTree` instead (keep/exclude/maxArchiveBytes).",
+    );
   }
   // Rejected, never silently dropped, on app-url/local-app/this-repo/terminal-product subjects
   // too (invariant 6: a field that cannot act on this route is an honest parse error).
   if (source !== "clone" && raw.repos !== undefined) {
-    return invalid("`subject.repos` applies only to clone subjects (the owner/repo slugs to clone).");
+    return invalid(
+      "`subject.repos` applies only to clone subjects (the owner/repo slugs to clone).",
+    );
   }
   if (source !== "clone" && raw.clone !== undefined) {
     return invalid("`subject.clone` applies only to clone subjects (clone depth/fanout/keep).");
   }
   // localTree is local-tree-ONLY (pack/upload knobs for the packed working tree).
   if (source !== "local-tree" && raw.localTree !== undefined) {
-    return invalid("`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).");
+    return invalid(
+      "`subject.localTree` applies only to local-tree subjects (keep/exclude/maxArchiveBytes for packing the working tree).",
+    );
   }
   // publicTarget is app-url-ONLY (the external-public shared-world ownership attestation). It is
   // meaningless without a real public deployment as the plane — reject it elsewhere (invariant 6).
   if (source !== "app-url" && raw.publicTarget !== undefined) {
-    return invalid("`subject.publicTarget` applies only to app-url subjects on the external-public shared-world route (the operator's ownership attestation for a real public deployment used directly as the shared plane).");
+    return invalid(
+      "`subject.publicTarget` applies only to app-url subjects on the external-public shared-world route (the operator's ownership attestation for a real public deployment used directly as the shared plane).",
+    );
   }
 
   if (source === "clone") {
     const repos = strList(raw.repos);
     if (!repos || repos.length === 0) {
-      return invalid("`subject.repos` must list at least one owner/repo slug when source is clone.");
+      return invalid(
+        "`subject.repos` must list at least one owner/repo slug when source is clone.",
+      );
     }
     subject.repos = repos;
     const clone = parseClone(raw.clone);
@@ -2095,7 +2396,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       const badName = env.find((name) => !ENV_NAME_PATTERN.test(name));
       if (badName) {
-        return invalid(`subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`);
+        return invalid(
+          `subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`,
+        );
       }
       subject.env = env;
     }
@@ -2121,7 +2424,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     // A local-tree subject exists to be packed and served; there is no other way to boot it, so
     // serve is REQUIRED here (unlike clone, where serve is optional for the smoke/meta routes).
     if (raw.serve === undefined) {
-      return invalid("`subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route.");
+      return invalid(
+        "`subject.serve` is required when source is local-tree: a local-tree subject exists to be packed and served, so declare install/build/start/url exactly like the clone route.",
+      );
     }
     const serveResult = parseServe(raw.serve);
     if (!serveResult.ok) {
@@ -2135,7 +2440,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
       }
       const badName = env.find((name) => !ENV_NAME_PATTERN.test(name));
       if (badName) {
-        return invalid(`subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`);
+        return invalid(
+          `subject.env entries must be env var NAMES like DATABASE_URL (got "${badName}"); values come from the caller's environment and are never persisted.`,
+        );
       }
       subject.env = env;
     }
@@ -2174,7 +2481,9 @@ function parseSubject(raw: unknown): { ok: true; value: LabSubject } | LabConfig
     // so the loopback wall is enforced right here at parse.
     if (source === "local-app") {
       if (!isLoopbackUrl(appUrl)) {
-        return invalid("`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on a local-app subject — it drives an already-running LOCAL dev server in-process; public targets are not supported on this route.");
+        return invalid(
+          "`subject.appUrl` must be a loopback URL (127.0.0.1/localhost) on a local-app subject — it drives an already-running LOCAL dev server in-process; public targets are not supported on this route.",
+        );
       }
     } else if (!isHttpUrl(appUrl)) {
       return invalid("`subject.appUrl` must be an http(s) URL.");
@@ -2208,16 +2517,24 @@ const PUBLIC_TARGET_OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_./-]*$/;
 
 /** Parse the external-public shared-world ownership attestation ({ owner, authorized: true }). The
  *  harness cannot verify ownership — this is author-trust, surfaced honestly in the evidence class. */
-function parsePublicTarget(raw: unknown): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {
+function parsePublicTarget(
+  raw: unknown,
+): { ok: true; value: { owner: string; authorized: boolean } } | LabConfigParseFailure {
   if (!isRecord(raw)) {
-    return invalid("`subject.publicTarget` must be an object ({ owner, authorized: true }) — the operator's ownership attestation for the external-public shared plane.");
+    return invalid(
+      "`subject.publicTarget` must be an object ({ owner, authorized: true }) — the operator's ownership attestation for the external-public shared plane.",
+    );
   }
   const owner = str(raw.owner);
   if (!owner || !PUBLIC_TARGET_OWNER_PATTERN.test(owner)) {
-    return invalid("`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret.");
+    return invalid(
+      "`subject.publicTarget.owner` must be a public-safe operator/repo label (e.g. owner/repo); it is recorded in evidence, so it must carry no secret.",
+    );
   }
   if (raw.authorized !== true) {
-    return invalid("`subject.publicTarget.authorized` must be true — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).");
+    return invalid(
+      "`subject.publicTarget.authorized` must be true — you must attest you own/operate the public deployment used as the shared plane (author-trust; the harness cannot verify ownership).",
+    );
   }
   return { ok: true, value: { owner, authorized: true } };
 }
@@ -2226,25 +2543,41 @@ function parsePublicTarget(raw: unknown): { ok: true; value: { owner: string; au
 // token shape is the same load-bearing constraint as a lab id.
 const PRODUCT_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
-function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | LabConfigParseFailure {
+function parseProduct(
+  raw: unknown,
+): { ok: true; value: LabSubjectProduct } | LabConfigParseFailure {
   if (!isRecord(raw)) {
-    return invalid("`subject.product` is required on terminal-product subjects and must be an object ({ name, publicSurfaces }).");
+    return invalid(
+      "`subject.product` is required on terminal-product subjects and must be an object ({ name, publicSurfaces }).",
+    );
   }
   const name = str(raw.name);
   if (!name || !PRODUCT_NAME_PATTERN.test(name)) {
-    return invalid("`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).");
+    return invalid(
+      "`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/).",
+    );
   }
   const workdir = str(raw.workdir);
   if (raw.workdir !== undefined && (workdir === undefined || !/^[A-Za-z0-9_./-]+$/.test(workdir))) {
-    return invalid("`subject.product.workdir` must be a plain path (it interpolates into an in-sandbox command).");
+    return invalid(
+      "`subject.product.workdir` must be a plain path (it interpolates into an in-sandbox command).",
+    );
   }
   const upload = str(raw.upload);
   if (raw.upload !== undefined) {
     if (upload === undefined || upload.trim().length === 0) {
-      return invalid("`subject.product.upload` must be a non-empty project-relative path when set.");
+      return invalid(
+        "`subject.product.upload` must be a non-empty project-relative path when set.",
+      );
     }
-    if (upload.startsWith("/") || /^[A-Za-z]:/.test(upload) || upload.split(/[\\/]/).includes("..")) {
-      return invalid("`subject.product.upload` must stay inside the project — no absolute paths and no `..` segments.");
+    if (
+      upload.startsWith("/") ||
+      /^[A-Za-z]:/.test(upload) ||
+      upload.split(/[\\/]/).includes("..")
+    ) {
+      return invalid(
+        "`subject.product.upload` must stay inside the project — no absolute paths and no `..` segments.",
+      );
     }
   }
   const install = str(raw.install);
@@ -2257,9 +2590,20 @@ function parseProduct(raw: unknown): { ok: true; value: LabSubjectProduct } | La
   }
   const badSurface = publicSurfaces.find((surface) => !isHttpUrl(surface));
   if (badSurface) {
-    return invalid(`subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`);
+    return invalid(
+      `subject.product.publicSurfaces entries must be http(s) URLs (got "${badSurface}").`,
+    );
   }
-  return { ok: true, value: { name, publicSurfaces, ...(install === undefined ? {} : { install }), ...(workdir === undefined ? {} : { workdir }), ...(upload === undefined ? {} : { upload }) } };
+  return {
+    ok: true,
+    value: {
+      name,
+      publicSurfaces,
+      ...(install === undefined ? {} : { install }),
+      ...(workdir === undefined ? {} : { workdir }),
+      ...(upload === undefined ? {} : { upload }),
+    },
+  };
 }
 
 // Public-safe stance: a computer-use actor's ENTRY URL is always an app the lab owner runs on
@@ -2290,20 +2634,28 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
-function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefined } | LabConfigParseFailure {
+function parseServe(
+  raw: unknown,
+): { ok: true; value: LabSubjectServe | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid("`subject.serve` must be an object ({ install?, build?, start, url, readyTimeoutMs? }).");
+    return invalid(
+      "`subject.serve` must be an object ({ install?, build?, start, url, readyTimeoutMs? }).",
+    );
   }
   const start = str(raw.start);
   if (!start) {
-    return invalid("`subject.serve.start` is required when serve is set (the long-lived command that serves the app).");
+    return invalid(
+      "`subject.serve.start` is required when serve is set (the long-lived command that serves the app).",
+    );
   }
   const url = str(raw.url);
   if (!url || !isLoopbackUrl(url)) {
-    return invalid("`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost) — the app is served INSIDE the sandbox.");
+    return invalid(
+      "`subject.serve.url` must be a loopback http(s) URL (127.0.0.1 or localhost) — the app is served INSIDE the sandbox.",
+    );
   }
   const serve: LabSubjectServe = { start, url };
   const install = str(raw.install);
@@ -2333,17 +2685,26 @@ function parseServe(raw: unknown): { ok: true; value: LabSubjectServe | undefine
  * These values ARE recorded in evidence (they are part of how the subject was configured), so a
  * value that looks like a credential is refused here rather than committed to a public repo.
  */
-function parseEnvValues(raw: unknown): { ok: true; value?: Record<string, string> } | LabConfigParseFailure {
+function parseEnvValues(
+  raw: unknown,
+): { ok: true; value?: Record<string, string> } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true };
   if (!isRecord(raw)) {
-    return invalid("`subject.envValues` must be a mapping of env var NAME to a literal non-secret value.");
+    return invalid(
+      "`subject.envValues` must be a mapping of env var NAME to a literal non-secret value.",
+    );
   }
   const envValues: Record<string, string> = {};
   for (const [name, rawValue] of Object.entries(raw)) {
     if (!ENV_NAME_PATTERN.test(name)) {
-      return invalid(`subject.envValues keys must be env var NAMES like NEXT_PUBLIC_APP_URL (got "${name}").`);
+      return invalid(
+        `subject.envValues keys must be env var NAMES like NEXT_PUBLIC_APP_URL (got "${name}").`,
+      );
     }
-    const value = typeof rawValue === "number" || typeof rawValue === "boolean" ? String(rawValue) : str(rawValue);
+    const value =
+      typeof rawValue === "number" || typeof rawValue === "boolean"
+        ? String(rawValue)
+        : str(rawValue);
     if (value === undefined) {
       return invalid(`\`subject.envValues.${name}\` must be a string, number, or boolean.`);
     }
@@ -2351,7 +2712,7 @@ function parseEnvValues(raw: unknown): { ok: true; value?: Record<string, string
     // a secret looks like — the two must never disagree about the same string.
     if (containsSensitive(value)) {
       return invalid(
-        `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`
+        `\`subject.envValues.${name}\` looks like a secret or a local path, and these values are committed with the lab and recorded in evidence. Declare the NAME in \`subject.env\` instead — those values come from the caller's environment and never persist.`,
       );
     }
     envValues[name] = value;
@@ -2359,7 +2720,9 @@ function parseEnvValues(raw: unknown): { ok: true; value?: Record<string, string
   return { ok: true, value: envValues };
 }
 
-function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {
+function parseState(
+  raw: unknown,
+): { ok: true; value: LabSubjectState | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -2369,32 +2732,40 @@ function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefine
   const state: LabSubjectState = {};
   if (raw.seed !== undefined) {
     if (!Array.isArray(raw.seed) || !raw.seed.every(isRecord)) {
-      return invalid("`subject.state.seed` must be an array of step objects ({ name, command, when?, timeoutMs? }).");
+      return invalid(
+        "`subject.state.seed` must be an array of step objects ({ name, command, when?, timeoutMs? }).",
+      );
     }
     state.seed = raw.seed.map((entry) => ({
       name: typeof entry.name === "string" ? entry.name.trim() : "",
       command: typeof entry.command === "string" ? entry.command.trim() : "",
       ...(entry.when === undefined ? {} : { when: entry.when as LabStateStepWhen }),
-      ...(entry.timeoutMs === undefined ? {} : { timeoutMs: (posInt(entry.timeoutMs) ?? entry.timeoutMs) as number })
+      ...(entry.timeoutMs === undefined
+        ? {}
+        : { timeoutMs: (posInt(entry.timeoutMs) ?? entry.timeoutMs) as number }),
     }));
   }
   if (raw.external !== undefined) {
     const external = strList(raw.external);
     if (!external) {
-      return invalid("`subject.state.external` must be a non-empty list of env var NAMES when set.");
+      return invalid(
+        "`subject.state.external` must be a non-empty list of env var NAMES when set.",
+      );
     }
     state.external = external;
   }
   if (raw.checkpoint !== undefined) {
     if (!Array.isArray(raw.checkpoint) || !raw.checkpoint.every(isRecord)) {
-      return invalid("`subject.state.checkpoint` must be an array of probe objects ({ name, command, redact? }).");
+      return invalid(
+        "`subject.state.checkpoint` must be an array of probe objects ({ name, command, redact? }).",
+      );
     }
     state.checkpoint = raw.checkpoint.map((probe) => ({
       name: typeof probe.name === "string" ? probe.name.trim() : "",
       command: typeof probe.command === "string" ? probe.command.trim() : "",
       // Preserve the redact list verbatim (literal secret values may contain commas, so do NOT
       // run it through the comma-splitting strList); subjectStateInvalidReason validates the shape.
-      ...(probe.redact === undefined ? {} : { redact: probe.redact as string[] })
+      ...(probe.redact === undefined ? {} : { redact: probe.redact as string[] }),
     }));
   }
   return { ok: true, value: state };
@@ -2404,7 +2775,11 @@ function parseState(raw: unknown): { ok: true; value: LabSubjectState | undefine
 // the strict shape is load-bearing, exactly like the repo slug.
 const STATE_STEP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const STATE_STEP_NAME_MAX_CHARS = 40;
-const STATE_STEP_WHENS: readonly LabStateStepWhen[] = ["before-build", "before-start", "after-ready"];
+const STATE_STEP_WHENS: readonly LabStateStepWhen[] = [
+  "before-build",
+  "before-start",
+  "after-ready",
+];
 
 /**
  * Semantic validation for `subject.state`, shared by parseLabConfig and the engine
@@ -2412,13 +2787,18 @@ const STATE_STEP_WHENS: readonly LabStateStepWhen[] = ["before-build", "before-s
  * the failure message, or null when the declaration is valid. Reads the candidate
  * defensively — library callers can hand the engine arbitrarily-shaped objects.
  */
-export function subjectStateInvalidReason(state: LabSubjectState, env: readonly string[] | undefined): string | null {
+export function subjectStateInvalidReason(
+  state: LabSubjectState,
+  env: readonly string[] | undefined,
+): string | null {
   const seed = state.seed;
   const external = state.external;
   const checkpoint = state.checkpoint;
-  if ((seed === undefined || seed.length === 0)
-    && (external === undefined || external.length === 0)
-    && (checkpoint === undefined || checkpoint.length === 0)) {
+  if (
+    (seed === undefined || seed.length === 0) &&
+    (external === undefined || external.length === 0) &&
+    (checkpoint === undefined || checkpoint.length === 0)
+  ) {
     return "`subject.state` must declare seed steps, external env names, and/or checkpoints (an empty state block would be inert).";
   }
   if (seed !== undefined) {
@@ -2441,7 +2821,14 @@ export function subjectStateInvalidReason(state: LabSubjectState, env: readonly 
       if (step.when !== undefined && !STATE_STEP_WHENS.includes(step.when)) {
         return `subject.state.seed[${index}].when must be one of: ${STATE_STEP_WHENS.join(", ")}.`;
       }
-      if (step.timeoutMs !== undefined && !(typeof step.timeoutMs === "number" && Number.isSafeInteger(step.timeoutMs) && step.timeoutMs >= 1)) {
+      if (
+        step.timeoutMs !== undefined &&
+        !(
+          typeof step.timeoutMs === "number" &&
+          Number.isSafeInteger(step.timeoutMs) &&
+          step.timeoutMs >= 1
+        )
+      ) {
         return `subject.state.seed[${index}].timeoutMs must be a positive integer.`;
       }
     }
@@ -2477,7 +2864,10 @@ export function subjectStateInvalidReason(state: LabSubjectState, env: readonly 
         return `subject.state.checkpoint[${index}].command is required (the read-only digest probe command).`;
       }
       if (probe.redact !== undefined) {
-        if (!Array.isArray(probe.redact) || !probe.redact.every((value) => typeof value === "string" && value.length > 0)) {
+        if (
+          !Array.isArray(probe.redact) ||
+          !probe.redact.every((value) => typeof value === "string" && value.length > 0)
+        ) {
           return `subject.state.checkpoint[${index}].redact must be a list of non-empty literal strings when set.`;
         }
       }
@@ -2506,23 +2896,34 @@ function parseClone(raw: unknown): LabSubjectClone | undefined {
  * maxArchiveBytes almost certainly meant something, and the archive-size cap is a safety knob,
  * not a cosmetic default.
  */
-function parseLocalTree(raw: unknown): { ok: true; value: LabSubjectLocalTree | undefined } | LabConfigParseFailure {
+function parseLocalTree(
+  raw: unknown,
+): { ok: true; value: LabSubjectLocalTree | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid("`subject.localTree` must be an object ({ keep?, exclude?, maxArchiveBytes? }).");
+    return invalid(
+      "`subject.localTree` must be an object ({ keep?, exclude?, maxArchiveBytes? }).",
+    );
   }
   const localTree: LabSubjectLocalTree = {};
   if (raw.keep !== undefined) {
     if (typeof raw.keep !== "boolean") {
-      return invalid("`subject.localTree.keep` must be a boolean (YAML true/false, not a quoted string).");
+      return invalid(
+        "`subject.localTree.keep` must be a boolean (YAML true/false, not a quoted string).",
+      );
     }
     localTree.keep = raw.keep;
   }
   if (raw.exclude !== undefined) {
-    if (!Array.isArray(raw.exclude) || raw.exclude.some((item) => typeof item !== "string" || item.trim().length === 0)) {
-      return invalid("`subject.localTree.exclude` must be a list of non-empty strings (extra archive excludes on top of the always-on denylist).");
+    if (
+      !Array.isArray(raw.exclude) ||
+      raw.exclude.some((item) => typeof item !== "string" || item.trim().length === 0)
+    ) {
+      return invalid(
+        "`subject.localTree.exclude` must be a list of non-empty strings (extra archive excludes on top of the always-on denylist).",
+      );
     }
     const exclude = strList(raw.exclude);
     if (exclude) {
@@ -2536,7 +2937,9 @@ function parseLocalTree(raw: unknown): { ok: true; value: LabSubjectLocalTree | 
         try {
           normalized.push(normalizeExtraExcludeEntry(entry));
         } catch (error) {
-          return invalid(`\`subject.localTree.exclude\`: ${error instanceof Error ? error.message : String(error)}`);
+          return invalid(
+            `\`subject.localTree.exclude\`: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
       }
       localTree.exclude = normalized;
@@ -2545,7 +2948,9 @@ function parseLocalTree(raw: unknown): { ok: true; value: LabSubjectLocalTree | 
   if (raw.maxArchiveBytes !== undefined) {
     const maxArchiveBytes = posInt(raw.maxArchiveBytes);
     if (maxArchiveBytes === undefined) {
-      return invalid("`subject.localTree.maxArchiveBytes` must be a positive integer number of bytes when set.");
+      return invalid(
+        "`subject.localTree.maxArchiveBytes` must be a positive integer number of bytes when set.",
+      );
     }
     localTree.maxArchiveBytes = maxArchiveBytes;
   }
@@ -2559,7 +2964,9 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
   // Multi-actor fan-out is not wired yet (only actors[0] is consumed). Fail closed rather than
   // silently ignore actors[1..]; multi-actor support lands in a later slice.
   if (raw.length > 1) {
-    return invalid("Multiple actors are not supported yet (only the first actor runs); declare a single actor.");
+    return invalid(
+      "Multiple actors are not supported yet (only the first actor runs); declare a single actor.",
+    );
   }
   const actors: LabActor[] = [];
   for (const [index, entry] of raw.entries()) {
@@ -2574,17 +2981,24 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const count = posInt(entry.count);
     if (count !== undefined) actor.count = count;
     if (entry.lanes !== undefined && entry.roster !== undefined) {
-      return invalid(`actors[${index}].lanes and actors[${index}].roster are mutually exclusive — use explicit lanes OR compact roster groups, not both.`);
+      return invalid(
+        `actors[${index}].lanes and actors[${index}].roster are mutually exclusive — use explicit lanes OR compact roster groups, not both.`,
+      );
     }
     if (entry.roster !== undefined && count !== undefined) {
-      return invalid(`actors[${index}].roster and actors[${index}].count are mutually exclusive — use compact differentiated groups OR a homogeneous count, not both.`);
+      return invalid(
+        `actors[${index}].roster and actors[${index}].count are mutually exclusive — use compact differentiated groups OR a homogeneous count, not both.`,
+      );
     }
     if (entry.roster !== undefined && entry.laneFocus !== undefined) {
-      return invalid(`actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive — a roster group's instruction is the per-lane steer.`);
+      return invalid(
+        `actors[${index}].roster and actors[${index}].laneFocus are mutually exclusive — a roster group's instruction is the per-lane steer.`,
+      );
     }
-    const lanesResult = entry.roster !== undefined
-      ? parseRosterGroups(entry.roster, index)
-      : parseLanes(entry.lanes, index);
+    const lanesResult =
+      entry.roster !== undefined
+        ? parseRosterGroups(entry.roster, index)
+        : parseLanes(entry.lanes, index);
     if (!lanesResult.ok) {
       return lanesResult;
     }
@@ -2596,19 +3010,24 @@ function parseActors(raw: unknown): { ok: true; value: LabActor[] } | LabConfigP
     const model = str(entry.model);
     if (model) actor.model = model;
     if (entry.maxOutputTokens !== undefined) {
-      if (!isMaxOutputTokens(entry.maxOutputTokens)) return invalid(`actors[${index}].maxOutputTokens must be a positive safe integer.`);
+      if (!isMaxOutputTokens(entry.maxOutputTokens))
+        return invalid(`actors[${index}].maxOutputTokens must be a positive safe integer.`);
       actor.maxOutputTokens = entry.maxOutputTokens;
     }
     const localAgent = str(entry.localAgent);
     if (entry.localAgent !== undefined) {
       if (localAgent !== "codex" && localAgent !== "claude") {
-        return invalid(`actors[${index}].localAgent must be "codex" or "claude" (the locally signed-in CLI that drives the study).`);
+        return invalid(
+          `actors[${index}].localAgent must be "codex" or "claude" (the locally signed-in CLI that drives the study).`,
+        );
       }
       actor.localAgent = localAgent;
     }
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
-        return invalid(`actors[${index}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
+        return invalid(
+          `actors[${index}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+        );
       }
       actor.reasoningEffort = entry.reasoningEffort;
     }
@@ -2645,11 +3064,24 @@ function parseLaneFocus(raw: unknown): LabActorLaneFocus | undefined {
 // Like review fields, a declared lane distinction must not disappear silently (#343).
 // The exhaustive records make newly added interface fields require an explicit parser decision.
 const LANE_FIELDS: Record<keyof LabActorLane, true> = {
-  id: true, actorType: true, surface: true, caseGroup: true, persona: true,
-  device: true, instruction: true, stopWhen: true, dwell: true, reasoningEffort: true,
-  target: true, entry: true, host: true
+  id: true,
+  actorType: true,
+  surface: true,
+  caseGroup: true,
+  persona: true,
+  device: true,
+  instruction: true,
+  stopWhen: true,
+  dwell: true,
+  reasoningEffort: true,
+  target: true,
+  entry: true,
+  host: true,
 };
-const ROSTER_GROUP_FIELDS: Record<keyof LabActorRosterGroup, true> = { ...LANE_FIELDS, count: true };
+const ROSTER_GROUP_FIELDS: Record<keyof LabActorRosterGroup, true> = {
+  ...LANE_FIELDS,
+  count: true,
+};
 const LANE_KEYS = new Set(Object.keys(LANE_FIELDS));
 const ROSTER_GROUP_KEYS = new Set(Object.keys(ROSTER_GROUP_FIELDS));
 
@@ -2657,38 +3089,55 @@ const ROSTER_GROUP_KEYS = new Set(Object.keys(ROSTER_GROUP_FIELDS));
  * Parse `actors[index].roster` compact groups into concrete lanes. This is authoring sugar for
  * "N users of M adapter-owned types across S surfaces"; the runtime receives only `lanes[]`.
  */
-function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+function parseRosterGroups(
+  raw: unknown,
+  actorIndex: number,
+): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid(`actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`);
+    return invalid(
+      `actors[${actorIndex}].roster must be a non-empty array of group objects ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`,
+    );
   }
 
   const expanded: LabActorLane[] = [];
   const seenGroupIds = new Set<string>();
   for (const [groupIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
-      return invalid(`actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
+      return invalid(
+        `actors[${actorIndex}].roster[${groupIndex}] must be an object ({ id, count, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
+      );
     }
     const unknownKeys = Object.keys(entry).filter((key) => !ROSTER_GROUP_KEYS.has(key));
     if (unknownKeys.length > 0) {
-      return invalid(`Unknown \`actors[${actorIndex}].roster[${groupIndex}]\` field(s): ${unknownKeys.join(", ")}. Known roster group fields: ${[...ROSTER_GROUP_KEYS].join(", ")}.`);
+      return invalid(
+        `Unknown \`actors[${actorIndex}].roster[${groupIndex}]\` field(s): ${unknownKeys.join(", ")}. Known roster group fields: ${[...ROSTER_GROUP_KEYS].join(", ")}.`,
+      );
     }
     const groupId = str(entry.id);
     if (groupId === undefined) {
-      return invalid(`actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${LANE_ID_PATTERN}.`);
+      return invalid(
+        `actors[${actorIndex}].roster[${groupIndex}].id is required and must be a public-safe token matching ${LANE_ID_PATTERN}.`,
+      );
     }
     if (!LANE_ID_PATTERN.test(groupId) || groupId.length > LANE_ID_MAX_CHARS - 3) {
-      return invalid(`actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`);
+      return invalid(
+        `actors[${actorIndex}].roster[${groupIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS - 3} chars (generated lanes use <id>-NN); got "${groupId}".`,
+      );
     }
     if (seenGroupIds.has(groupId)) {
-      return invalid(`actors[${actorIndex}].roster group ids must be unique (duplicate "${groupId}").`);
+      return invalid(
+        `actors[${actorIndex}].roster group ids must be unique (duplicate "${groupId}").`,
+      );
     }
     seenGroupIds.add(groupId);
     const count = posInt(entry.count);
     if (count === undefined) {
-      return invalid(`actors[${actorIndex}].roster[${groupIndex}].count is required and must be a positive integer.`);
+      return invalid(
+        `actors[${actorIndex}].roster[${groupIndex}].count is required and must be a positive integer.`,
+      );
     }
     const groupLaneInput: Record<string, unknown> = { ...entry };
     delete groupLaneInput.id;
@@ -2696,7 +3145,7 @@ function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value:
     for (let i = 1; i <= count; i += 1) {
       expanded.push({
         ...groupLaneInput,
-        id: `${groupId}-${String(i).padStart(2, "0")}`
+        id: `${groupId}-${String(i).padStart(2, "0")}`,
       });
     }
   }
@@ -2712,28 +3161,39 @@ function parseRosterGroups(raw: unknown, actorIndex: number): { ok: true; value:
  * route-scoped cross-validation (lanes XOR count/laneFocus, device XOR raw resolution, cap 16)
  * runs in parseLabConfig where the route is known.
  */
-function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
+function parseLanes(
+  raw: unknown,
+  actorIndex: number,
+): { ok: true; value: LabActorLane[] | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!Array.isArray(raw) || raw.length === 0) {
-    return invalid(`actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`);
+    return invalid(
+      `actors[${actorIndex}].lanes must be a non-empty array of lane objects ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }) when set.`,
+    );
   }
   const lanes: LabActorLane[] = [];
   const seenIds = new Set<string>();
   for (const [laneIndex, entry] of raw.entries()) {
     if (!isRecord(entry)) {
-      return invalid(`actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`);
+      return invalid(
+        `actors[${actorIndex}].lanes[${laneIndex}] must be an object ({ id?, actorType?, surface?, caseGroup?, persona?, device?, instruction?, target?, entry? }).`,
+      );
     }
     const unknownKeys = Object.keys(entry).filter((key) => !LANE_KEYS.has(key));
     if (unknownKeys.length > 0) {
-      return invalid(`Unknown \`actors[${actorIndex}].lanes[${laneIndex}]\` field(s): ${unknownKeys.join(", ")}. Known lane fields: ${[...LANE_KEYS].join(", ")}.`);
+      return invalid(
+        `Unknown \`actors[${actorIndex}].lanes[${laneIndex}]\` field(s): ${unknownKeys.join(", ")}. Known lane fields: ${[...LANE_KEYS].join(", ")}.`,
+      );
     }
     const lane: LabActorLane = {};
     const id = str(entry.id);
     if (id !== undefined) {
       if (!LANE_ID_PATTERN.test(id) || id.length > LANE_ID_MAX_CHARS) {
-        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`);
+        return invalid(
+          `actors[${actorIndex}].lanes[${laneIndex}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_ID_MAX_CHARS} chars (it names per-lane evidence paths); got "${id}".`,
+        );
       }
       if (seenIds.has(id)) {
         return invalid(`actors[${actorIndex}].lanes ids must be unique (duplicate "${id}").`);
@@ -2744,24 +3204,38 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     const device = str(entry.device);
     if (device !== undefined) {
       if (!isDevicePresetName(device)) {
-        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`);
+        return invalid(
+          `actors[${actorIndex}].lanes[${laneIndex}].device must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
+        );
       }
       lane.device = device;
     }
     const persona = str(entry.persona);
     if (persona !== undefined) lane.persona = persona;
-    const actorType = parseLaneMetadata(entry.actorType, `actors[${actorIndex}].lanes[${laneIndex}].actorType`);
+    const actorType = parseLaneMetadata(
+      entry.actorType,
+      `actors[${actorIndex}].lanes[${laneIndex}].actorType`,
+    );
     if (!actorType.ok) return actorType;
     if (actorType.value !== undefined) lane.actorType = actorType.value;
-    const surface = parseLaneMetadata(entry.surface, `actors[${actorIndex}].lanes[${laneIndex}].surface`);
+    const surface = parseLaneMetadata(
+      entry.surface,
+      `actors[${actorIndex}].lanes[${laneIndex}].surface`,
+    );
     if (!surface.ok) return surface;
     if (surface.value !== undefined) lane.surface = surface.value;
-    const caseGroup = parseLaneMetadata(entry.caseGroup, `actors[${actorIndex}].lanes[${laneIndex}].caseGroup`);
+    const caseGroup = parseLaneMetadata(
+      entry.caseGroup,
+      `actors[${actorIndex}].lanes[${laneIndex}].caseGroup`,
+    );
     if (!caseGroup.ok) return caseGroup;
     if (caseGroup.value !== undefined) lane.caseGroup = caseGroup.value;
     const instruction = str(entry.instruction);
     if (instruction !== undefined) lane.instruction = instruction;
-    const stopWhenResult = parseStopWhen(entry.stopWhen, `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`);
+    const stopWhenResult = parseStopWhen(
+      entry.stopWhen,
+      `actors[${actorIndex}].lanes[${laneIndex}].stopWhen`,
+    );
     if (!stopWhenResult.ok) return stopWhenResult;
     if (stopWhenResult.value !== undefined) lane.stopWhen = stopWhenResult.value;
     const dwellResult = parseDwell(entry.dwell, `actors[${actorIndex}].lanes[${laneIndex}].dwell`);
@@ -2769,14 +3243,18 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     if (dwellResult.value !== undefined) lane.dwell = dwellResult.value;
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
-        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`);
+        return invalid(
+          `actors[${actorIndex}].lanes[${laneIndex}].reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+        );
       }
       lane.reasoningEffort = entry.reasoningEffort;
     }
     const target = str(entry.target);
     if (target !== undefined) {
       if (!isHttpUrl(target)) {
-        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].target must be an absolute http(s) URL.`);
+        return invalid(
+          `actors[${actorIndex}].lanes[${laneIndex}].target must be an absolute http(s) URL.`,
+        );
       }
       lane.target = target;
     }
@@ -2788,7 +3266,9 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
     // exactly-one-host check runs in externalPublicSharedWorldValidationReason (route context).
     if (entry.host !== undefined) {
       if (typeof entry.host !== "boolean") {
-        return invalid(`actors[${actorIndex}].lanes[${laneIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`);
+        return invalid(
+          `actors[${actorIndex}].lanes[${laneIndex}].host must be a boolean (marks the designated host seat on the external-public shared-world route).`,
+        );
       }
       if (entry.host) lane.host = true;
     }
@@ -2806,7 +3286,10 @@ function parseLanes(raw: unknown, actorIndex: number): { ok: true; value: LabAct
  * aloud, say what confused you) are not observable, and the funnel reports them as unmeasurable
  * rather than quietly counting them failed.
  */
-function parseTasks(raw: unknown, field: string): { ok: true; value: LabTask[] | undefined } | LabConfigParseFailure {
+function parseTasks(
+  raw: unknown,
+  field: string,
+): { ok: true; value: LabTask[] | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!Array.isArray(raw) || raw.length === 0) {
     return invalid(`\`${field}\` must be a non-empty list of tasks when set.`);
@@ -2819,15 +3302,24 @@ function parseTasks(raw: unknown, field: string): { ok: true; value: LabTask[] |
     if (id === undefined || !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(id)) {
       return invalid(`\`${field}[${index}].id\` must be a short id like "sign-up".`);
     }
-    if (seen.has(id)) return invalid(`\`${field}\` has a duplicate task id "${id}"; ids appear in evidence and must be unique.`);
+    if (seen.has(id))
+      return invalid(
+        `\`${field}\` has a duplicate task id "${id}"; ids appear in evidence and must be unique.`,
+      );
     seen.add(id);
     const goal = str(entry.goal);
     if (goal === undefined) {
-      return invalid(`\`${field}[${index}].goal\` is required — what the PARTICIPANT is asked to do, in their language.`);
+      return invalid(
+        `\`${field}[${index}].goal\` is required — what the PARTICIPANT is asked to do, in their language.`,
+      );
     }
     const successResult = parseStopWhen(entry.success, `${field}[${index}].success`);
     if (!successResult.ok) return successResult;
-    tasks.push({ id, goal, ...(successResult.value === undefined ? {} : { success: successResult.value }) });
+    tasks.push({
+      id,
+      goal,
+      ...(successResult.value === undefined ? {} : { success: successResult.value }),
+    });
   }
   return { ok: true, value: tasks };
 }
@@ -2837,31 +3329,56 @@ export const DWELL_MIN_MS = 1_000;
 export const DWELL_MAX_MS = 3_600_000;
 export const DWELL_DEFAULT_EVERY_MS = 10_000;
 
-function parseDwell(raw: unknown, field: string): { ok: true; value: DwellWindow | undefined } | LabConfigParseFailure {
+function parseDwell(
+  raw: unknown,
+  field: string,
+): { ok: true; value: DwellWindow | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid(`${field} must be an object with ms (and optional when, everyMs, then).`);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    return invalid(`${field} must be an object with ms (and optional when, everyMs, then).`);
   const entry = raw as Record<string, unknown>;
   const ms = entry.ms;
   if (typeof ms !== "number" || !Number.isInteger(ms) || ms < DWELL_MIN_MS || ms > DWELL_MAX_MS) {
-    return invalid(`${field}.ms must be an integer between ${DWELL_MIN_MS} and ${DWELL_MAX_MS} milliseconds.`);
+    return invalid(
+      `${field}.ms must be an integer between ${DWELL_MIN_MS} and ${DWELL_MAX_MS} milliseconds.`,
+    );
   }
   const everyMs = entry.everyMs === undefined ? DWELL_DEFAULT_EVERY_MS : entry.everyMs;
-  if (typeof everyMs !== "number" || !Number.isInteger(everyMs) || everyMs < DWELL_MIN_MS || everyMs > ms) {
+  if (
+    typeof everyMs !== "number" ||
+    !Number.isInteger(everyMs) ||
+    everyMs < DWELL_MIN_MS ||
+    everyMs > ms
+  ) {
     return invalid(`${field}.everyMs must be an integer between ${DWELL_MIN_MS} and ${field}.ms.`);
   }
   const then = entry.then === undefined ? "continue" : entry.then;
-  if (then !== "continue" && then !== "stop") return invalid(`${field}.then must be "continue" or "stop".`);
+  if (then !== "continue" && then !== "stop")
+    return invalid(`${field}.then must be "continue" or "stop".`);
   const whenResult = parseStopWhen(entry.when, `${field}.when`);
   if (!whenResult.ok) return whenResult;
-  return { ok: true, value: { ...(whenResult.value === undefined ? {} : { when: whenResult.value }), ms, everyMs, then } };
+  return {
+    ok: true,
+    value: {
+      ...(whenResult.value === undefined ? {} : { when: whenResult.value }),
+      ms,
+      everyMs,
+      then,
+    },
+  };
 }
 
-function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
+function parseStopWhen(
+  raw: unknown,
+  field: string,
+): { ok: true; value: StopWhen | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid(`${field} must be an object ({ any: [{ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }] }).`);
+    return invalid(
+      `${field} must be an object ({ any: [{ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }] }).`,
+    );
   }
   if (!Array.isArray(raw.any) || raw.any.length === 0) {
     return invalid(`${field}.any must be a non-empty array of stop condition rules.`);
@@ -2869,13 +3386,17 @@ function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen
   const any: StopWhenRule[] = [];
   for (const [index, entry] of raw.any.entries()) {
     if (!isRecord(entry)) {
-      return invalid(`${field}.any[${index}] must be an object ({ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }).`);
+      return invalid(
+        `${field}.any[${index}] must be an object ({ id?, urlIncludes?, urlPathEquals?, textIncludes?, appStatePathEquals? }).`,
+      );
     }
     const rule: StopWhenRule = {};
     const id = str(entry.id);
     if (id !== undefined) {
       if (!LANE_ID_PATTERN.test(id) || id.length > LANE_METADATA_MAX_CHARS) {
-        return invalid(`${field}.any[${index}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${id}".`);
+        return invalid(
+          `${field}.any[${index}].id must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${id}".`,
+        );
       }
       rule.id = id;
     }
@@ -2886,7 +3407,9 @@ function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen
     const urlPathEquals = str(entry.urlPathEquals);
     if (urlPathEquals !== undefined) {
       if (!urlPathEquals.startsWith("/") || urlPathEquals.startsWith("//")) {
-        return invalid(`${field}.any[${index}].urlPathEquals must be an absolute URL path starting with one slash.`);
+        return invalid(
+          `${field}.any[${index}].urlPathEquals must be an absolute URL path starting with one slash.`,
+        );
       }
       rule.urlPathEquals = urlPathEquals;
     }
@@ -2895,12 +3418,22 @@ function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen
       rule.textIncludes = textIncludes;
     }
     if (entry.appStatePathEquals !== undefined) {
-      const parsed = parseStopWhenAppStatePathEquals(entry.appStatePathEquals, `${field}.any[${index}].appStatePathEquals`);
+      const parsed = parseStopWhenAppStatePathEquals(
+        entry.appStatePathEquals,
+        `${field}.any[${index}].appStatePathEquals`,
+      );
       if (!parsed.ok) return parsed;
       rule.appStatePathEquals = parsed.value;
     }
-    if (rule.urlIncludes === undefined && rule.urlPathEquals === undefined && rule.textIncludes === undefined && rule.appStatePathEquals === undefined) {
-      return invalid(`${field}.any[${index}] must declare at least one condition: urlIncludes, urlPathEquals, textIncludes, or appStatePathEquals.`);
+    if (
+      rule.urlIncludes === undefined &&
+      rule.urlPathEquals === undefined &&
+      rule.textIncludes === undefined &&
+      rule.appStatePathEquals === undefined
+    ) {
+      return invalid(
+        `${field}.any[${index}] must declare at least one condition: urlIncludes, urlPathEquals, textIncludes, or appStatePathEquals.`,
+      );
     }
     any.push(rule);
   }
@@ -2909,7 +3442,7 @@ function parseStopWhen(raw: unknown, field: string): { ok: true; value: StopWhen
 
 function parseStopWhenAppStatePathEquals(
   raw: unknown,
-  field: string
+  field: string,
 ): { ok: true; value: { path: string; equals: StopConditionPrimitive } } | LabConfigParseFailure {
   if (!isRecord(raw)) {
     return invalid(`${field} must be an object ({ path, equals }).`);
@@ -2925,24 +3458,36 @@ function parseStopWhenAppStatePathEquals(
     return invalid(`${field}.equals is required.`);
   }
   const equals = raw.equals;
-  if (equals !== null && typeof equals !== "string" && typeof equals !== "number" && typeof equals !== "boolean") {
+  if (
+    equals !== null &&
+    typeof equals !== "string" &&
+    typeof equals !== "number" &&
+    typeof equals !== "boolean"
+  ) {
     return invalid(`${field}.equals must be a string, number, boolean, or null.`);
   }
   return { ok: true, value: { path: pathValue, equals } };
 }
 
-function parseLaneMetadata(raw: unknown, field: string): { ok: true; value: string | undefined } | LabConfigParseFailure {
+function parseLaneMetadata(
+  raw: unknown,
+  field: string,
+): { ok: true; value: string | undefined } | LabConfigParseFailure {
   const value = str(raw);
   if (value === undefined) {
     return { ok: true, value: undefined };
   }
   if (!LANE_ID_PATTERN.test(value) || value.length > LANE_METADATA_MAX_CHARS) {
-    return invalid(`${field} must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${value}".`);
+    return invalid(
+      `${field} must be a public-safe token matching ${LANE_ID_PATTERN} and at most ${LANE_METADATA_MAX_CHARS} chars; got "${value}".`,
+    );
   }
   return { ok: true, value };
 }
 
-function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefined } | LabConfigParseFailure {
+function parseExecution(
+  raw: unknown,
+): { ok: true; value: LabExecution | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -2981,15 +3526,23 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
   }
   if (terminalResult.value) execution.terminal = terminalResult.value;
   if (raw.runtime !== undefined) {
-    if (!isRecord(raw.runtime) || Object.keys(raw.runtime).some((key) => key !== "version") || !isExactRuntimeVersion(raw.runtime.version)) {
-      return invalid("`execution.runtime` must contain only an exact Codex `version` (for example 0.153.3); tags, ranges, URLs, and unknown fields are not accepted.");
+    if (
+      !isRecord(raw.runtime) ||
+      Object.keys(raw.runtime).some((key) => key !== "version") ||
+      !isExactRuntimeVersion(raw.runtime.version)
+    ) {
+      return invalid(
+        "`execution.runtime` must contain only an exact Codex `version` (for example 0.153.3); tags, ranges, URLs, and unknown fields are not accepted.",
+      );
     }
     execution.runtime = { version: raw.runtime.version };
   }
   if (raw.runtimeAuth !== undefined) {
     const runtimeAuth = str(raw.runtimeAuth);
     if (runtimeAuth !== "openai-env" && runtimeAuth !== "openai-egress") {
-      return invalid("`execution.runtimeAuth` must be openai-env or openai-egress (the terminal agent's runtime-auth channel).");
+      return invalid(
+        "`execution.runtimeAuth` must be openai-env or openai-egress (the terminal agent's runtime-auth channel).",
+      );
     }
     execution.runtimeAuth = runtimeAuth;
   }
@@ -3002,9 +3555,9 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
       // An empty list would deny everything including the agent's own model endpoint, which
       // fails as an unexplained hang rather than a refusal. Say so at parse time.
       return invalid(
-        "`execution.egressAllow` was declared but empty. Declaring it denies all other egress, so "
-        + "an empty list denies everything, including the agent's own provider endpoint. Remove "
-        + "the field for unrestricted egress, or list the hosts the run needs."
+        "`execution.egressAllow` was declared but empty. Declaring it denies all other egress, so " +
+          "an empty list denies everything, including the agent's own provider endpoint. Remove " +
+          "the field for unrestricted egress, or list the hosts the run needs.",
       );
     }
     execution.egressAllow = hosts;
@@ -3012,7 +3565,9 @@ function parseExecution(raw: unknown): { ok: true; value: LabExecution | undefin
   return { ok: true, value: Object.keys(execution).length > 0 ? execution : undefined };
 }
 
-function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | undefined } | LabConfigParseFailure {
+function parseTerminal(
+  raw: unknown,
+): { ok: true; value: LabExecutionTerminal | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
@@ -3026,7 +3581,9 @@ function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | 
       // "pty" is deliberately rejected: stdin is disabled, so the capture is a non-interactive
       // exec stream — an interactive-PTY label would overstate the mechanism (invariant 6 + the
       // goal packet's PTY ruling). True duplex PTY does not ship.
-      return invalid("`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.");
+      return invalid(
+        "`execution.terminal.transport` must be exec-stream — captured non-interactive exec output (stdin disabled) is not an interactive PTY; true duplex PTY transport is not supported.",
+      );
     }
     terminal.transport = transport;
   }
@@ -3039,36 +3596,53 @@ function parseTerminal(raw: unknown): { ok: true; value: LabExecutionTerminal | 
       // Assisted input is forbidden until the interventions ledger + comparability flag + verify
       // check exist (safety contract item 7) — shipping it now would let an assisted run pose as
       // autonomous green proof.
-      return invalid("`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.");
+      return invalid(
+        "`execution.terminal.stdin: sent` (assisted input) is not supported — the current route cannot capture assisted input with a non-comparable marker. stdin is disabled by default.",
+      );
     }
     terminal.stdin = stdin;
   }
   return { ok: true, value: Object.keys(terminal).length > 0 ? terminal : undefined };
 }
 
-function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | undefined } | LabConfigParseFailure {
+function parseDesktop(
+  raw: unknown,
+): { ok: true; value: LabExecutionDesktop | undefined } | LabConfigParseFailure {
   if (!isRecord(raw)) {
     return { ok: true, value: undefined };
   }
   const desktop: LabExecutionDesktop = {};
   if (raw.recording !== undefined) {
-    if (!isRecord(raw.recording) || typeof raw.recording.audio !== "boolean"
-      || Object.keys(raw.recording).some(key => key !== "audio")) {
-      return invalid("`execution.desktop.recording` must be { audio: true|false }; omit it for snapshots only.");
+    if (
+      !isRecord(raw.recording) ||
+      typeof raw.recording.audio !== "boolean" ||
+      Object.keys(raw.recording).some((key) => key !== "audio")
+    ) {
+      return invalid(
+        "`execution.desktop.recording` must be { audio: true|false }; omit it for snapshots only.",
+      );
     }
     desktop.recording = { audio: raw.recording.audio };
   }
   if (raw.device !== undefined) {
     const device = str(raw.device);
     if (!device || !isDevicePresetName(device)) {
-      return invalid(`\`execution.desktop.device\` must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`);
+      return invalid(
+        `\`execution.desktop.device\` must be one of: ${DEVICE_PRESET_NAMES.join(", ")}.`,
+      );
     }
     desktop.device = device;
   }
   if (raw.resolution !== undefined) {
     const resolution = raw.resolution;
-    if (!Array.isArray(resolution) || resolution.length !== 2 || !resolution.every((value) => Number.isInteger(value) && (value as number) > 0)) {
-      return invalid("`execution.desktop.resolution` must be two positive integers [width, height].");
+    if (
+      !Array.isArray(resolution) ||
+      resolution.length !== 2 ||
+      !resolution.every((value) => Number.isInteger(value) && (value as number) > 0)
+    ) {
+      return invalid(
+        "`execution.desktop.resolution` must be two positive integers [width, height].",
+      );
     }
     desktop.resolution = [resolution[0] as number, resolution[1] as number];
   }
@@ -3076,7 +3650,12 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
   if (sandboxTimeoutMs !== undefined) desktop.sandboxTimeoutMs = sandboxTimeoutMs;
   if (raw.browser !== undefined) {
     const browser = str(raw.browser);
-    if (browser !== "default" && browser !== "chrome" && browser !== "chromium" && browser !== "firefox") {
+    if (
+      browser !== "default" &&
+      browser !== "chrome" &&
+      browser !== "chromium" &&
+      browser !== "firefox"
+    ) {
       return invalid("`execution.desktop.browser` must be default, chrome, chromium, or firefox.");
     }
     desktop.browser = browser;
@@ -3087,20 +3666,26 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
   if (raw.template !== undefined) {
     const template = str(raw.template);
     if (template === undefined) {
-      return invalid("`execution.desktop.template` must be a non-empty E2B desktop template NAME or ID when set (any string is accepted; there is no allowlist).");
+      return invalid(
+        "`execution.desktop.template` must be a non-empty E2B desktop template NAME or ID when set (any string is accepted; there is no allowlist).",
+      );
     }
     desktop.template = template;
   }
   if (typeof raw.codexAppServer === "boolean") desktop.codexAppServer = raw.codexAppServer;
   if (raw.fidelity !== undefined) {
     if (!isRecord(raw.fidelity) || typeof raw.fidelity.mobileEmulation !== "boolean") {
-      return invalid("`execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent).");
+      return invalid(
+        "`execution.desktop.fidelity` must be an object with `mobileEmulation: true|false` (optional deviceScaleFactor, touch, userAgent).",
+      );
     }
     const fidelity: LabDesktopFidelity = { mobileEmulation: raw.fidelity.mobileEmulation };
     if (raw.fidelity.deviceScaleFactor !== undefined) {
       const scale = raw.fidelity.deviceScaleFactor;
       if (typeof scale !== "number" || !Number.isFinite(scale) || scale <= 0 || scale > 4) {
-        return invalid("`execution.desktop.fidelity.deviceScaleFactor` must be a number greater than 0 and at most 4.");
+        return invalid(
+          "`execution.desktop.fidelity.deviceScaleFactor` must be a number greater than 0 and at most 4.",
+        );
       }
       fidelity.deviceScaleFactor = scale;
     }
@@ -3113,7 +3698,9 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
     if (raw.fidelity.userAgent !== undefined) {
       const userAgent = str(raw.fidelity.userAgent);
       if (userAgent === undefined) {
-        return invalid("`execution.desktop.fidelity.userAgent` must be a non-empty string when set.");
+        return invalid(
+          "`execution.desktop.fidelity.userAgent` must be a non-empty string when set.",
+        );
       }
       fidelity.userAgent = userAgent;
     }
@@ -3121,19 +3708,26 @@ function parseDesktop(raw: unknown): { ok: true; value: LabExecutionDesktop | un
   }
   if (raw.media !== undefined) {
     if (!isRecord(raw.media)) {
-      return invalid("`execution.desktop.media` must be an object with `camera` and/or `microphone` ({ source }).");
+      return invalid(
+        "`execution.desktop.media` must be an object with `camera` and/or `microphone` ({ source }).",
+      );
     }
     const media: LabDesktopMedia = {};
     if (raw.media.camera !== undefined) {
       const source = isRecord(raw.media.camera) ? str(raw.media.camera.source) : undefined;
       if (source === undefined || (source !== "synthetic" && !source.endsWith(".y4m"))) {
-        return invalid("`execution.desktop.media.camera.source` must be `synthetic` or a path to a `.y4m` file (Chrome's fake video capture reads Y4M).");
+        return invalid(
+          "`execution.desktop.media.camera.source` must be `synthetic` or a path to a `.y4m` file (Chrome's fake video capture reads Y4M).",
+        );
       }
       media.camera = { source };
     }
     if (raw.media.microphone !== undefined) {
       const source = isRecord(raw.media.microphone) ? str(raw.media.microphone.source) : undefined;
-      if (source !== "speech") return invalid("`execution.desktop.media.microphone.source` must be `speech`. Microphone source-file injection is unsupported.");
+      if (source !== "speech")
+        return invalid(
+          "`execution.desktop.media.microphone.source` must be `speech`. Microphone source-file injection is unsupported.",
+        );
       media.microphone = { source };
     }
     if (media.camera === undefined && media.microphone === undefined) {
@@ -3152,7 +3746,9 @@ function parsePersonas(raw: unknown): Record<string, unknown>[] | undefined {
   return personas.length > 0 ? personas : undefined;
 }
 
-function parseScenario(raw: unknown): { ok: true; value: LabScenario | undefined } | LabConfigParseFailure {
+function parseScenario(
+  raw: unknown,
+): { ok: true; value: LabScenario | undefined } | LabConfigParseFailure {
   if (!isRecord(raw)) {
     return { ok: true, value: undefined };
   }
@@ -3175,12 +3771,16 @@ function parseScenario(raw: unknown): { ok: true; value: LabScenario | undefined
  * dropping a budget declaration (a cap that silently does nothing would be a safety lie —
  * invariant 6). Each cap must be a non-negative finite number.
  */
-function parseCaps(raw: unknown): { ok: true; value: LabScenarioCaps | undefined } | LabConfigParseFailure {
+function parseCaps(
+  raw: unknown,
+): { ok: true; value: LabScenarioCaps | undefined } | LabConfigParseFailure {
   if (raw === undefined) {
     return { ok: true, value: undefined };
   }
   if (!isRecord(raw)) {
-    return invalid("`scenario.caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).");
+    return invalid(
+      "`scenario.caps` must be an object ({ maxUsd?, maxTotalUsd?, maxJobs?, maxMinutes? }).",
+    );
   }
   const caps: LabScenarioCaps = {};
   for (const key of ["maxUsd", "maxTotalUsd", "maxJobs", "maxMinutes"] as const) {
@@ -3200,30 +3800,42 @@ function parsePolicies(raw: unknown): LabPolicies | undefined {
   }
   const policies: LabPolicies = {};
   if (typeof raw.redactRepos === "boolean") policies.redactRepos = raw.redactRepos;
-  if (typeof raw.redactScreenshots === "boolean") policies.redactScreenshots = raw.redactScreenshots;
-  if (typeof raw.allowPublicTargets === "boolean") policies.allowPublicTargets = raw.allowPublicTargets;
-  if (raw.mediaPermission === "prompt" || raw.mediaPermission === "granted") policies.mediaPermission = raw.mediaPermission;
-  if (typeof raw.allowPrivateRepoAccess === "boolean") policies.allowPrivateRepoAccess = raw.allowPrivateRepoAccess;
-  if (typeof raw.allowProviderCredentials === "boolean") policies.allowProviderCredentials = raw.allowProviderCredentials;
-  if (typeof raw.allowPaymentCredentials === "boolean") policies.allowPaymentCredentials = raw.allowPaymentCredentials;
-  if (typeof raw.allowGitHubMutation === "boolean") policies.allowGitHubMutation = raw.allowGitHubMutation;
+  if (typeof raw.redactScreenshots === "boolean")
+    policies.redactScreenshots = raw.redactScreenshots;
+  if (typeof raw.allowPublicTargets === "boolean")
+    policies.allowPublicTargets = raw.allowPublicTargets;
+  if (raw.mediaPermission === "prompt" || raw.mediaPermission === "granted")
+    policies.mediaPermission = raw.mediaPermission;
+  if (typeof raw.allowPrivateRepoAccess === "boolean")
+    policies.allowPrivateRepoAccess = raw.allowPrivateRepoAccess;
+  if (typeof raw.allowProviderCredentials === "boolean")
+    policies.allowProviderCredentials = raw.allowProviderCredentials;
+  if (typeof raw.allowPaymentCredentials === "boolean")
+    policies.allowPaymentCredentials = raw.allowPaymentCredentials;
+  if (typeof raw.allowGitHubMutation === "boolean")
+    policies.allowGitHubMutation = raw.allowGitHubMutation;
   return Object.keys(policies).length > 0 ? policies : undefined;
 }
 
 // Fail-LOUD: an unrecognized `review.*` key (e.g. a `scorrer:` typo of `scorer`) is rejected rather
 // than silently dropped — a gate you think you declared must not vanish silently (#316).
-function parseReview(raw: unknown): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
+function parseReview(
+  raw: unknown,
+): { ok: true; value: LabReview | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`review` must be a mapping.");
   const knownKeys = new Set(["scoring", "milestones", "vocabulary", "scorer", "analysis"]);
   const unknownKeys = Object.keys(raw).filter((key) => !knownKeys.has(key));
   if (unknownKeys.length > 0) {
-    return invalid(`Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer, analysis.`);
+    return invalid(
+      `Unknown \`review\` field(s): ${unknownKeys.join(", ")}. A declared gate must not vanish silently — did you mean \`scorer\`? Known review fields: scoring, milestones, vocabulary, scorer, analysis.`,
+    );
   }
   const analysis = resolveAutomaticAnalysis(raw.analysis);
   if (!analysis.ok) return invalid(analysis.message);
   const review: LabReview = {};
-  if (raw.analysis !== undefined) review.analysis = raw.analysis === false ? false : { ...(raw.analysis as LabAnalysis) };
+  if (raw.analysis !== undefined)
+    review.analysis = raw.analysis === false ? false : { ...(raw.analysis as LabAnalysis) };
   const scoring = str(raw.scoring);
   if (scoring) review.scoring = scoring;
   const milestones = str(raw.milestones);
@@ -3238,14 +3850,24 @@ function parseReview(raw: unknown): { ok: true; value: LabReview | undefined } |
   return { ok: true, value: Object.keys(review).length > 0 ? review : undefined };
 }
 
-function parseReviewScorer(raw: unknown): { ok: true; value: { ref: string } } | LabConfigParseFailure {
-  if (!isRecord(raw)) return invalid("`review.scorer` must be a mapping with a `ref` path (e.g. { ref: scorers/product.mjs }).");
+function parseReviewScorer(
+  raw: unknown,
+): { ok: true; value: { ref: string } } | LabConfigParseFailure {
+  if (!isRecord(raw))
+    return invalid(
+      "`review.scorer` must be a mapping with a `ref` path (e.g. { ref: scorers/product.mjs }).",
+    );
   const unknownKeys = Object.keys(raw).filter((key) => key !== "ref");
   if (unknownKeys.length > 0) {
-    return invalid(`Unknown \`review.scorer\` field(s): ${unknownKeys.join(", ")}. review.scorer accepts only \`ref\` (a repo-relative scorer-module path).`);
+    return invalid(
+      `Unknown \`review.scorer\` field(s): ${unknownKeys.join(", ")}. review.scorer accepts only \`ref\` (a repo-relative scorer-module path).`,
+    );
   }
   const ref = str(raw.ref);
-  if (!ref) return invalid("`review.scorer.ref` must be a non-empty repo-relative path to a scorer module (.mjs recommended; .js/.cjs accepted).");
+  if (!ref)
+    return invalid(
+      "`review.scorer.ref` must be a non-empty repo-relative path to a scorer module (.mjs recommended; .js/.cjs accepted).",
+    );
   return { ok: true, value: { ref } };
 }
 
@@ -3260,12 +3882,16 @@ function parseDefaults(raw: unknown): LabDefaults | undefined {
 
 // Fail-loud (never silently swallow a comms setting): a malformed `comms` block returns a parse
 // failure rather than being dropped.
-function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
+function parseComms(
+  raw: unknown,
+): { ok: true; value: LabComms | undefined } | LabConfigParseFailure {
   if (raw === undefined) return { ok: true, value: undefined };
   if (!isRecord(raw)) return invalid("`comms` must be a mapping.");
-  const unsupported = Object.keys(raw).filter(key => key !== "email");
+  const unsupported = Object.keys(raw).filter((key) => key !== "email");
   if (unsupported.length > 0) {
-    return invalid(`Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` is currently supported; SMS is not yet available.`);
+    return invalid(
+      `Unsupported comms setting(s): ${unsupported.join(", ")}. Only \`comms.email\` is currently supported; SMS is not yet available.`,
+    );
   }
   const comms: LabComms = {};
   if (raw.email !== undefined) {
@@ -3279,34 +3905,68 @@ function parseComms(raw: unknown): { ok: true; value: LabComms | undefined } | L
 function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | LabConfigParseFailure {
   if (!isRecord(raw)) return invalid("`comms.email` must be a mapping.");
   if (raw.connection !== undefined) {
-    const unsupported = Object.keys(raw).filter(key => !["connection", "linkOrigin", "allowedOrigins"].includes(key));
-    if (unsupported.length) return invalid("An email connection cannot be mixed with capture settings, kind, recipients, or provider options. Use only connection, optional linkOrigin and allowedOrigins.");
-    if (typeof raw.connection !== "string" || !/^[a-z][a-z0-9-]{0,47}$/.test(raw.connection)) return invalid("`comms.email.connection` must name a saved connection (lowercase letters, digits and hyphens; at most 48 characters).");
+    const unsupported = Object.keys(raw).filter(
+      (key) => !["connection", "linkOrigin", "allowedOrigins"].includes(key),
+    );
+    if (unsupported.length)
+      return invalid(
+        "An email connection cannot be mixed with capture settings, kind, recipients, or provider options. Use only connection, optional linkOrigin and allowedOrigins.",
+      );
+    if (typeof raw.connection !== "string" || !/^[a-z][a-z0-9-]{0,47}$/.test(raw.connection))
+      return invalid(
+        "`comms.email.connection` must name a saved connection (lowercase letters, digits and hyphens; at most 48 characters).",
+      );
     const value: LabCommsReceivingEmail = { kind: "real", connection: raw.connection };
     const origin = (input: unknown): string | undefined => {
       if (typeof input !== "string") return undefined;
       try {
         const url = new URL(input);
-        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash ? url.origin : undefined;
-      } catch { return undefined; }
+        return ["http:", "https:"].includes(url.protocol) &&
+          !url.username &&
+          !url.password &&
+          url.pathname === "/" &&
+          !url.search &&
+          !url.hash
+          ? url.origin
+          : undefined;
+      } catch {
+        return undefined;
+      }
     };
     if (raw.linkOrigin !== undefined) {
       const parsed = origin(raw.linkOrigin);
-      if (!parsed) return invalid("`comms.email.linkOrigin` must be an exact http(s) origin without credentials, query or fragment.");
+      if (!parsed)
+        return invalid(
+          "`comms.email.linkOrigin` must be an exact http(s) origin without credentials, query or fragment.",
+        );
       value.linkOrigin = parsed;
     }
     if (raw.allowedOrigins !== undefined) {
-      if (!Array.isArray(raw.allowedOrigins) || raw.allowedOrigins.length > 16) return invalid("`comms.email.allowedOrigins` must contain at most 16 exact http(s) origins.");
+      if (!Array.isArray(raw.allowedOrigins) || raw.allowedOrigins.length > 16)
+        return invalid(
+          "`comms.email.allowedOrigins` must contain at most 16 exact http(s) origins.",
+        );
       const origins = raw.allowedOrigins.map(origin);
-      if (origins.some(entry => entry === undefined)) return invalid("`comms.email.allowedOrigins` accepts exact http(s) origins without credentials, query or fragment.");
+      if (origins.some((entry) => entry === undefined))
+        return invalid(
+          "`comms.email.allowedOrigins` accepts exact http(s) origins without credentials, query or fragment.",
+        );
       value.allowedOrigins = [...new Set(origins as string[])];
     }
     return { ok: true, value };
   }
-  const unknown = Object.keys(raw).filter(key => !["kind", "injectEnv", "port", "smtp", "linkOrigin", "recipients", "external"].includes(key));
-  if (unknown.length) return invalid("Unknown email capture setting. Real inboxes select a saved `comms.email.connection`.");
+  const unknown = Object.keys(raw).filter(
+    (key) =>
+      !["kind", "injectEnv", "port", "smtp", "linkOrigin", "recipients", "external"].includes(key),
+  );
+  if (unknown.length)
+    return invalid(
+      "Unknown email capture setting. Real inboxes select a saved `comms.email.connection`.",
+    );
   if (raw.kind === "real") {
-    return invalid("Real inboxes require `comms.email.connection` naming a saved connection; omit kind.");
+    return invalid(
+      "Real inboxes require `comms.email.connection` naming a saved connection; omit kind.",
+    );
   }
   if (raw.kind !== undefined && raw.kind !== "fake") {
     return invalid("`comms.email.kind` must be `fake`.");
@@ -3319,29 +3979,40 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     if (!isRecord(raw.external)) return invalid("`comms.email.external` must be a mapping.");
     const catchBaseUrl = str(raw.external.catchBaseUrl);
     if (catchBaseUrl === undefined) {
-      return invalid("`comms.email.external.catchBaseUrl` is required — the base URL of the catch YOU run (humanish reads its GET /deliveries and your app POSTs its sends to it).");
+      return invalid(
+        "`comms.email.external.catchBaseUrl` is required — the base URL of the catch YOU run (humanish reads its GET /deliveries and your app POSTs its sends to it).",
+      );
     }
-    for (const [field, value] of [["catchBaseUrl", catchBaseUrl], ["inboxBaseUrl", str(raw.external.inboxBaseUrl)]] as const) {
+    for (const [field, value] of [
+      ["catchBaseUrl", catchBaseUrl],
+      ["inboxBaseUrl", str(raw.external.inboxBaseUrl)],
+    ] as const) {
       if (value === undefined) continue;
       let parsed: URL;
       try {
         parsed = new URL(value);
       } catch {
-        return invalid(`\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`);
+        return invalid(
+          `\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`,
+        );
       }
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        return invalid(`\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`);
+        return invalid(
+          `\`comms.email.external.${field}\` must be an absolute http(s) URL (got "${value}").`,
+        );
       }
     }
     const authTokenEnv = str(raw.external.authTokenEnv);
     if (authTokenEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(authTokenEnv)) {
-      return invalid(`\`comms.email.external.authTokenEnv\` must be a valid env var NAME (got "${authTokenEnv}"); the value is read at runtime and never persisted.`);
+      return invalid(
+        `\`comms.email.external.authTokenEnv\` must be a valid env var NAME (got "${authTokenEnv}"); the value is read at runtime and never persisted.`,
+      );
     }
     const inboxBaseUrl = str(raw.external.inboxBaseUrl);
     external = {
       catchBaseUrl,
       ...(inboxBaseUrl === undefined ? {} : { inboxBaseUrl }),
-      ...(authTokenEnv === undefined ? {} : { authTokenEnv })
+      ...(authTokenEnv === undefined ? {} : { authTokenEnv }),
     };
   }
 
@@ -3357,7 +4028,9 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     const hostEnv = envName(raw.smtp.hostEnv, "hostEnv");
     const portEnv = envName(raw.smtp.portEnv, "portEnv");
     if (hostEnv === undefined || portEnv === undefined) {
-      return invalid("`comms.email.smtp` needs both `hostEnv` and `portEnv` — the subject-env vars your app reads for its SMTP host and port. The harness sets them to its own loopback listener.");
+      return invalid(
+        "`comms.email.smtp` needs both `hostEnv` and `portEnv` — the subject-env vars your app reads for its SMTP host and port. The harness sets them to its own loopback listener.",
+      );
     }
     if (hostEnv.startsWith("__invalid__") || portEnv.startsWith("__invalid__")) {
       return invalid("`comms.email.smtp.hostEnv` and `portEnv` must be valid env var names.");
@@ -3365,7 +4038,8 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     let smtpPort = 2525;
     if (raw.smtp.port !== undefined) {
       const parsed = posInt(raw.smtp.port);
-      if (parsed === undefined || parsed > 65_535) return invalid("`comms.email.smtp.port` must be a positive integer ≤ 65535.");
+      if (parsed === undefined || parsed > 65_535)
+        return invalid("`comms.email.smtp.port` must be a positive integer ≤ 65535.");
       smtpPort = parsed;
     }
     const userEnv = envName(raw.smtp.userEnv, "userEnv");
@@ -3380,13 +4054,17 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
       ...(userEnv === undefined ? {} : { userEnv }),
       ...(passwordEnv === undefined ? {} : { passwordEnv }),
       ...(str(raw.smtp.user) === undefined ? {} : { user: str(raw.smtp.user) as string }),
-      ...(str(raw.smtp.password) === undefined ? {} : { password: str(raw.smtp.password) as string })
+      ...(str(raw.smtp.password) === undefined
+        ? {}
+        : { password: str(raw.smtp.password) as string }),
     };
   }
 
   const injectEnv = str(raw.injectEnv);
   if (injectEnv === undefined && external === undefined && smtp === undefined) {
-    return invalid("`comms.email` needs a transport: `injectEnv` (the subject-env var set to the catch's HTTP base URL, e.g. RESEND_BASE_URL), or `smtp` (host/port env vars, for an app that sends over SMTP), or `external` on an adopter-hosted plane where you run the catch yourself.");
+    return invalid(
+      "`comms.email` needs a transport: `injectEnv` (the subject-env var set to the catch's HTTP base URL, e.g. RESEND_BASE_URL), or `smtp` (host/port env vars, for an app that sends over SMTP), or `external` on an adopter-hosted plane where you run the catch yourself.",
+    );
   }
   if (injectEnv !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(injectEnv)) {
     return invalid(`\`comms.email.injectEnv\` must be a valid env var name (got "${injectEnv}").`);
@@ -3395,20 +4073,24 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     kind: "fake",
     ...(injectEnv === undefined ? {} : { injectEnv }),
     ...(smtp === undefined ? {} : { smtp }),
-    ...(external === undefined ? {} : { external })
+    ...(external === undefined ? {} : { external }),
   };
   if (raw.port !== undefined) {
     const port = posInt(raw.port);
     if (port === undefined) return invalid("`comms.email.port` must be a positive integer.");
     // Cap at 65534: the catch reserves port+1 for the read-only inbox listener on the shared-world route.
-    if (port > 65_534) return invalid("`comms.email.port` must be ≤ 65534 (the catch reserves port+1 for the inbox listener).");
+    if (port > 65_534)
+      return invalid(
+        "`comms.email.port` must be ≤ 65534 (the catch reserves port+1 for the inbox listener).",
+      );
     email.port = port;
   }
   if (raw.recipients !== undefined) {
     if (!Array.isArray(raw.recipients)) return invalid("`comms.email.recipients` must be a list.");
     const recipients: LabCommsRecipient[] = [];
     for (const entry of raw.recipients) {
-      if (!isRecord(entry)) return invalid("each `comms.email.recipients` entry must be a mapping.");
+      if (!isRecord(entry))
+        return invalid("each `comms.email.recipients` entry must be a mapping.");
       const lane = str(entry.lane);
       if (lane === undefined) return invalid("each `comms.email.recipients` entry needs a `lane`.");
       const address = str(entry.address);
@@ -3422,7 +4104,9 @@ function parseCommsEmail(raw: unknown): { ok: true; value: LabCommsEmail } | Lab
     try {
       new URL(linkOrigin);
     } catch {
-      return invalid(`\`comms.email.linkOrigin\` must be an absolute URL origin (got "${linkOrigin}").`);
+      return invalid(
+        `\`comms.email.linkOrigin\` must be an absolute URL origin (got "${linkOrigin}").`,
+      );
     }
     email.linkOrigin = linkOrigin;
   }
@@ -3448,13 +4132,17 @@ function optionalStr(key: string, value: unknown): Record<string, string> {
 
 function strList(value: unknown): string[] | undefined {
   if (typeof value === "string") {
-    const items = value.split(",").map((item) => item.trim()).filter(Boolean);
+    const items = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
     return items.length > 0 ? items : undefined;
   }
   if (!Array.isArray(value)) {
     return undefined;
   }
-  const items = value.filter((item): item is string => typeof item === "string")
+  const items = value
+    .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
   return items.length > 0 ? items : undefined;
@@ -3487,8 +4175,16 @@ function nonNegNumber(value: unknown): number | undefined {
 /** Analysis requires a live recording producer, including supported dry-run previews. */
 export function automaticAnalysisRouteReason(config: LabConfig): string | undefined {
   if (config.review?.analysis === undefined || config.review.analysis === false) return undefined;
-  if (routesToComputerUse(config) || routesToScriptedBrowser(config) || routesToTerminalProduct(config)
-    || routesToSharedWorld(config) || routesToConcurrentSharedWorld(config)
-    || ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(config.subject.source)) return undefined;
+  if (
+    routesToComputerUse(config) ||
+    routesToScriptedBrowser(config) ||
+    routesToTerminalProduct(config) ||
+    routesToSharedWorld(config) ||
+    routesToConcurrentSharedWorld(config) ||
+    ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(
+      config.subject.source,
+    )
+  )
+    return undefined;
   return "review.analysis requires a computer-use, scripted-browser, terminal-product or shared-world study; synthetic, smoke and meta routes do not produce eligible live recordings.";
 }

@@ -3,10 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-const skippedPaths = new Set([
-  "pnpm-lock.yaml",
-  "scripts/public-surface-scan.mjs"
-]);
+const skippedPaths = new Set(["pnpm-lock.yaml", "scripts/public-surface-scan.mjs"]);
 
 const skippedExtensions = new Set([
   ".png",
@@ -17,7 +14,7 @@ const skippedExtensions = new Set([
   ".ico",
   ".pdf",
   ".tgz",
-  ".woff2"
+  ".woff2",
 ]);
 
 const secretPatterns = [
@@ -33,12 +30,15 @@ const secretPatterns = [
   ["slack_token", /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g],
   ["jwt_like_token", /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g],
   ["private_key_block", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
-  ["db_connection_with_credentials", /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g],
+  [
+    "db_connection_with_credentials",
+    /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
+  ],
   ["npm_auth_token", /_authToken\s*=\s*[A-Za-z0-9._~+\/=-]{20,}/g],
   ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+\/-]{24,}\b/g],
   // ngrok authtokens are two base62 chunks joined by "_"; require the literal
   // "authtoken" nearby so ordinary underscore-joined identifiers do not match.
-  ["ngrok_authtoken", /\bauthtoken['":=\s]+[0-9A-Za-z]{20,}_[0-9A-Za-z]{18,}\b/gi]
+  ["ngrok_authtoken", /\bauthtoken['":=\s]+[0-9A-Za-z]{20,}_[0-9A-Za-z]{18,}\b/gi],
 ];
 
 const staleInternalDocDirs = ["operations"];
@@ -56,13 +56,21 @@ const privateResiduePatterns = [
   // sandbox constant and /home/someuser/ is redaction-test fixture data.
   ["absolute_linux_home_path", /\/home\/(?!user\/|someuser\/)[A-Za-z0-9._-]+\//g],
   ["local_git_path", /\blocal_git\b/g],
-  ["provider_sandbox_id", /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g],
+  [
+    "provider_sandbox_id",
+    /\b(?:(?:killed sandbox|Provider cleanup killed sandbox|sandbox id|sandbox ID|sandbox:)\s+`?|sandboxId["']?\s*[:=]\s*["']?)(?!\[redacted-sandbox-id\])i[a-z0-9]{18,}`?/g,
+  ],
   ["stale_internal_docs_path", new RegExp(`\\bdocs/(?:${staleInternalDocDirs.join("|")})\\b`, "g")],
-  ["stale_internal_context_name", new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi")],
-  ...((process.env.HUMANISH_PUBLIC_DENYLIST_PATTERN ?? "")
+  [
+    "stale_internal_context_name",
+    new RegExp(`\\b(?:${staleInternalContextNames.join("|")})\\b`, "gi"),
+  ],
+  ...(process.env.HUMANISH_PUBLIC_DENYLIST_PATTERN ?? "")
     .split("\n")
-    .map((pattern, index) => pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null)
-    .filter(Boolean))
+    .map((pattern, index) =>
+      pattern.trim() ? [`custom_private_residue_${index + 1}`, new RegExp(pattern, "g")] : null,
+    )
+    .filter(Boolean),
 ];
 
 // These two quoted XDG constants name the fixed synthetic guest account, not
@@ -72,12 +80,15 @@ const guestEnvironmentFiles = new Set([
   "src/guest-runtime-desktop.ts",
   "dist/guest-runtime-desktop.js",
   "dist/guest-runtime-desktop.d.ts",
-  "runtime/browser-guest/control/root/opt/humanish/control/vsock.py"
+  "runtime/browser-guest/control/root/opt/humanish/control/vsock.py",
 ]);
 
 function isFixedGuestHomeConstant(file, text, match) {
-  return guestEnvironmentFiles.has(file) && match.index > 0
-    && /^(["'])\/home\/humanish\/\.(?:cache|config)\1/.test(text.slice(match.index - 1));
+  return (
+    guestEnvironmentFiles.has(file) &&
+    match.index > 0 &&
+    /^(["'])\/home\/humanish\/\.(?:cache|config)\1/.test(text.slice(match.index - 1))
+  );
 }
 
 // PHI/PII detection. Labeled patterns keep false positives low in a repo full of
@@ -85,9 +96,15 @@ function isFixedGuestHomeConstant(file, text, match) {
 // fixtures and the maintainer's own address do not trip the gate.
 const piiPatterns = [
   ["us_ssn", /\b\d{3}-\d{2}-\d{4}\b/g],
-  ["labeled_phone_number", /\b(?:phone|tel|telephone|mobile|cell|fax)\b[\s:=#]{0,3}\+?\d[\d().\s-]{7,}\d/gi],
-  ["labeled_medical_record_number", /\b(?:mrn|medical[\s_-]?record(?:[\s_-]?(?:number|no|#))?|patient[\s_-]?id)\b[\s:=#]{0,3}[A-Za-z]*\d{3,}/gi],
-  ["labeled_date_of_birth", /\b(?:dob|date[\s_-]?of[\s_-]?birth)\b[\s:=#]{0,3}\d/gi]
+  [
+    "labeled_phone_number",
+    /\b(?:phone|tel|telephone|mobile|cell|fax)\b[\s:=#]{0,3}\+?\d[\d().\s-]{7,}\d/gi,
+  ],
+  [
+    "labeled_medical_record_number",
+    /\b(?:mrn|medical[\s_-]?record(?:[\s_-]?(?:number|no|#))?|patient[\s_-]?id)\b[\s:=#]{0,3}[A-Za-z]*\d{3,}/gi,
+  ],
+  ["labeled_date_of_birth", /\b(?:dob|date[\s_-]?of[\s_-]?birth)\b[\s:=#]{0,3}\d/gi],
 ];
 
 const emailAddress = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
@@ -99,7 +116,7 @@ const allowedEmailDomains = new Set([
   "danielgwilson.com",
   "users.noreply.github.com",
   "github.com",
-  "npmjs.com"
+  "npmjs.com",
 ]);
 
 // Binary public assets must be explicitly allowlisted here with a sha256 pin.
@@ -107,25 +124,53 @@ const allowedEmailDomains = new Set([
 // manually reviewed before its exact bytes were approved for publication.
 const approvedBinaryAssets = new Map([
   // Headline and wordmark font subsets (site/scripts/subset-display-fonts.py regenerates them).
-  ["site/app/fonts/0-display-newsreader.woff2", "fff427d8f05ea788a250a445d7bb7c3eb5994b7849a05c7093025012c8177188"],
-  ["site/app/fonts/0-display-newsreader-italic.woff2", "6275671ee20e5f8d09aa8e3f45a2e08227454df45962b7bfd1d32a414e6ec716"],
-  ["site/app/fonts/0-display-geist-600.woff2", "1cba40e360183117988926de0f2cea6504c9cc3ed8afaa20309045853257607b"],
-  ["docs/assets/humanish-observer-hero.png", "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1"],
-  ["docs/assets/humanish-drawdb-hero.png", "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983"],
+  [
+    "site/app/fonts/0-display-newsreader.woff2",
+    "fff427d8f05ea788a250a445d7bb7c3eb5994b7849a05c7093025012c8177188",
+  ],
+  [
+    "site/app/fonts/0-display-newsreader-italic.woff2",
+    "6275671ee20e5f8d09aa8e3f45a2e08227454df45962b7bfd1d32a414e6ec716",
+  ],
+  [
+    "site/app/fonts/0-display-geist-600.woff2",
+    "1cba40e360183117988926de0f2cea6504c9cc3ed8afaa20309045853257607b",
+  ],
+  [
+    "docs/assets/humanish-observer-hero.png",
+    "74cd3b6fba5e26fa3a09fec7a886d3af2b4707c7cecbf6e9a997aaa21ef5b6a1",
+  ],
+  [
+    "docs/assets/humanish-drawdb-hero.png",
+    "0a61840bd7615af7b869f7fb9ca40090af151bbf3109894503e8cd9629d65983",
+  ],
   // The humanish.dev landing page's study keyframes: crops from the live
   // Excalidraw study run (cua-2026-08-07T17-44-48-760Z-87389419), manually
   // reviewed before their exact bytes were approved for publication.
-  ["site/public/study/excalidraw-lane1.jpg", "7ec178d4a996de60b4f1c6a2802037218f3f572ec6ce0dcc3b14210dade97e45"],
-  ["site/public/study/excalidraw-lane2.jpg", "141123bcdb56d2733ec4e34c5edfd71a13ae96fe03d43bd3c82e47e4b26a05d9"],
-  ["site/public/study/excalidraw-lane3.jpg", "ada538324d00da4e7cab11c60e6e8eefe9752b2eacc95df4d407fc56fec4a647"],
-  ["site/public/study/excalidraw-lane4.jpg", "8a41a212132569a0cc5d7ed5b143180cf3468733fee01687baf45aa62e4bcd10"]
+  [
+    "site/public/study/excalidraw-lane1.jpg",
+    "7ec178d4a996de60b4f1c6a2802037218f3f572ec6ce0dcc3b14210dade97e45",
+  ],
+  [
+    "site/public/study/excalidraw-lane2.jpg",
+    "141123bcdb56d2733ec4e34c5edfd71a13ae96fe03d43bd3c82e47e4b26a05d9",
+  ],
+  [
+    "site/public/study/excalidraw-lane3.jpg",
+    "ada538324d00da4e7cab11c60e6e8eefe9752b2eacc95df4d407fc56fec4a647",
+  ],
+  [
+    "site/public/study/excalidraw-lane4.jpg",
+    "8a41a212132569a0cc5d7ed5b143180cf3468733fee01687baf45aa62e4bcd10",
+  ],
 ]);
 // Captures the site publishes from kept run bundles are pinned in a generated manifest
 // (scripts/site-run-assets-manifest.mjs); each entry is a reviewed frame from a named run.
 const runAssetManifest = "site/public/runs/ASSETS.sha256.json";
 try {
   const manifest = JSON.parse(readFileSync(runAssetManifest, "utf8"));
-  for (const [file, sha256] of Object.entries(manifest.assets ?? {})) approvedBinaryAssets.set(file, sha256);
+  for (const [file, sha256] of Object.entries(manifest.assets ?? {}))
+    approvedBinaryAssets.set(file, sha256);
 } catch {
   // No manifest: only the hand-listed assets above are approved.
 }
@@ -134,33 +179,41 @@ const approvedPublicCommitEmails = new Set([
   ...(process.env.HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST ?? "")
     .split("\n")
     .map((email) => email.trim())
-    .filter(Boolean)
+    .filter(Boolean),
 ]);
 
 const findings = [];
 
 function trackedFiles() {
-  const raw = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "buffer" });
+  const raw = execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    { encoding: "buffer" },
+  );
   return raw.toString("utf8").split("\0").filter(Boolean);
 }
 
 function packageFiles() {
   try {
-    const raw = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { encoding: "utf8" });
+    const raw = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+      encoding: "utf8",
+    });
     const packages = JSON.parse(raw);
     if (!Array.isArray(packages)) {
       findings.push({
         file: "<npm-pack>",
         line: 0,
         name: "package_payload_unreadable",
-        value: "npm pack --dry-run --json did not return an array"
+        value: "npm pack --dry-run --json did not return an array",
       });
       return [];
     }
     return packages.flatMap((entry) => {
       if (!entry || typeof entry !== "object" || !Array.isArray(entry.files)) return [];
       return entry.files
-        .map((file) => file && typeof file === "object" && typeof file.path === "string" ? file.path : null)
+        .map((file) =>
+          file && typeof file === "object" && typeof file.path === "string" ? file.path : null,
+        )
         .filter(Boolean);
     });
   } catch (error) {
@@ -168,7 +221,7 @@ function packageFiles() {
       file: "<npm-pack>",
       line: 0,
       name: "package_payload_unreadable",
-      value: error instanceof Error ? error.message.slice(0, 160) : "unknown error"
+      value: error instanceof Error ? error.message.slice(0, 160) : "unknown error",
     });
     return [];
   }
@@ -200,11 +253,12 @@ function reachableCommitEmails() {
   // still caught by the pull-request scope when that branch is proposed, and by the local sweep
   // meanwhile — it simply stops holding an unrelated release hostage.
   const githubRef = process.env.GITHUB_REF ?? "";
-  const ref = githubRef.startsWith("refs/pull/") && gitRefExists("HEAD^2")
-    ? "HEAD^2"
-    : githubRef.startsWith("refs/tags/") && gitRefExists("HEAD")
-      ? "HEAD"
-      : null; // the local sweep: every ref WE control, resolved below
+  const ref =
+    githubRef.startsWith("refs/pull/") && gitRefExists("HEAD^2")
+      ? "HEAD^2"
+      : githubRef.startsWith("refs/tags/") && gitRefExists("HEAD")
+        ? "HEAD"
+        : null; // the local sweep: every ref WE control, resolved below
   try {
     // The local sweep deliberately does NOT use `--all`. A clone that has fetched GitHub pull
     // refs carries commits from FORKS, authored by external contributors whose email addresses
@@ -214,9 +268,10 @@ function reachableCommitEmails() {
     // So the sweep walks the history this project controls: local branches, tags, and origin's
     // branches. Anything a contributor authored is judged when their PR is proposed, by the
     // pull-request scope above, which is the moment it actually matters to us.
-    const args = ref === null
-      ? ["log", "--branches", "--tags", "--remotes=origin", "--format=%ae%x09%ce"]
-      : ["log", ref, "--format=%ae%x09%ce"];
+    const args =
+      ref === null
+        ? ["log", "--branches", "--tags", "--remotes=origin", "--format=%ae%x09%ce"]
+        : ["log", ref, "--format=%ae%x09%ce"];
     const raw = execFileSync("git", args, { encoding: "utf8" });
     const pairs = [];
     const seen = new Set();
@@ -257,7 +312,7 @@ function lineNumberFor(text, index) {
 // A GitHub username is 1-39 alphanumeric characters or single interior hyphens.
 const githubUsername = String.raw`[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}`;
 const githubNoreplyEmail = new RegExp(
-  String.raw`^(?:noreply@github\.com|github-actions\[bot\]@users\.noreply\.github\.com|(?:\d+\+)?${githubUsername}@users\.noreply\.github\.com)$`
+  String.raw`^(?:noreply@github\.com|github-actions\[bot\]@users\.noreply\.github\.com|(?:\d+\+)?${githubUsername}@users\.noreply\.github\.com)$`,
 );
 // GitHub's own merge machinery commits as exactly this address when a PR is merged through the
 // web/API. A squash merge writes the CONTRIBUTOR as the author of the commit it mints on main —
@@ -277,7 +332,7 @@ const flagIdentity = (email) => {
     file: "<git-history>",
     line: 0,
     name: "unapproved_commit_email",
-    value: email
+    value: email,
   });
 };
 for (const { author, committer } of reachableCommitEmails()) {
@@ -285,7 +340,11 @@ for (const { author, committer } of reachableCommitEmails()) {
     flagIdentity(committer);
   }
   const authorExempt = committer === GITHUB_MERGE_COMMITTER;
-  if (!authorExempt && !githubNoreplyEmail.test(author) && !approvedPublicCommitEmails.has(author)) {
+  if (
+    !authorExempt &&
+    !githubNoreplyEmail.test(author) &&
+    !approvedPublicCommitEmails.has(author)
+  ) {
     flagIdentity(author);
   }
 }
@@ -302,7 +361,7 @@ for (const file of files) {
         file,
         line: 0,
         name: "unapproved_binary_asset",
-        value: "binary public asset must be explicitly allowlisted with sha256"
+        value: "binary public asset must be explicitly allowlisted with sha256",
       });
       continue;
     }
@@ -313,7 +372,7 @@ for (const file of files) {
           file,
           line: 0,
           name: "approved_binary_asset_hash_mismatch",
-          value: sha256
+          value: sha256,
         });
       } else {
         verifiedBinaryAssets += 1;
@@ -323,7 +382,7 @@ for (const file of files) {
         file,
         line: 0,
         name: "approved_binary_asset_missing",
-        value: approvedSha256
+        value: approvedSha256,
       });
     }
     continue;
@@ -341,12 +400,13 @@ for (const file of files) {
   for (const [name, regex] of [...secretPatterns, ...privateResiduePatterns, ...piiPatterns]) {
     regex.lastIndex = 0;
     for (const match of text.matchAll(regex)) {
-      if (name === "absolute_linux_home_path" && isFixedGuestHomeConstant(file, text, match)) continue;
+      if (name === "absolute_linux_home_path" && isFixedGuestHomeConstant(file, text, match))
+        continue;
       findings.push({
         file,
         line: lineNumberFor(text, match.index ?? 0),
         name,
-        value: match[0].slice(0, 80)
+        value: match[0].slice(0, 80),
       });
     }
   }
@@ -360,7 +420,7 @@ for (const file of files) {
       file,
       line: lineNumberFor(text, match.index ?? 0),
       name: "unapproved_email_address",
-      value: email
+      value: email,
     });
   }
 
@@ -372,7 +432,7 @@ if (scannedTextFiles === 0 && verifiedBinaryAssets === 0) {
     file: "<scan>",
     line: 0,
     name: "no_files_scanned",
-    value: "scan inspected zero files; aborting (possible environment failure)"
+    value: "scan inspected zero files; aborting (possible environment failure)",
   });
 }
 
@@ -384,4 +444,6 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log(`public-surface scan ok: ${scannedTextFiles} candidate text files checked, ${verifiedBinaryAssets} binary assets verified`);
+console.log(
+  `public-surface scan ok: ${scannedTextFiles} candidate text files checked, ${verifiedBinaryAssets} binary assets verified`,
+);

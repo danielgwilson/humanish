@@ -22,7 +22,9 @@ export interface VerifiedGitWorkspace {
 export type GitWorkspaceInspection =
   | { readonly status: "missing" }
   | {
-      readonly note: typeof GIT_METADATA_INSPECTION_FAILED_NOTE | typeof GIT_METADATA_CONTAINMENT_FAILED_NOTE;
+      readonly note:
+        | typeof GIT_METADATA_INSPECTION_FAILED_NOTE
+        | typeof GIT_METADATA_CONTAINMENT_FAILED_NOTE;
       readonly status: "unsafe";
       readonly worktreeRoot: string;
     }
@@ -38,7 +40,9 @@ export type GitWorkspaceInspection =
  * delegate metadata authority outside the selected project without a
  * verifiable backlink.
  */
-export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<GitWorkspaceInspection> {
+export async function inspectVerifiedGitWorkspace(
+  cwdInput: string,
+): Promise<GitWorkspaceInspection> {
   let current: string;
   try {
     current = await realpath(path.resolve(cwdInput));
@@ -73,7 +77,7 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
 
     if (dotGitStats.isDirectory()) {
       try {
-        if (await realpath(dotGitPath) !== dotGitPath) {
+        if ((await realpath(dotGitPath)) !== dotGitPath) {
           return unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
         }
         // A normal worktree does not need commondir. Accepting one here would
@@ -88,9 +92,9 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
           gitDir: dotGitPath,
           kind: "directory",
           trustRoot: current,
-          worktreeRoot: current
+          worktreeRoot: current,
         };
-        return await validateCriticalGitMetadata(workspace)
+        return (await validateCriticalGitMetadata(workspace))
           ? { status: "verified", workspace: freezeVerifiedWorkspace(workspace, configOverrides) }
           : unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
       } catch {
@@ -110,11 +114,9 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
       }
 
       const gitDir = await realpath(
-        path.isAbsolute(declaredGitDir)
-          ? declaredGitDir
-          : path.resolve(current, declaredGitDir)
+        path.isAbsolute(declaredGitDir) ? declaredGitDir : path.resolve(current, declaredGitDir),
       );
-      if (!await isPhysicalDirectory(gitDir)) {
+      if (!(await isPhysicalDirectory(gitDir))) {
         return unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
       }
 
@@ -128,10 +130,10 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
 
       const commonDir = await realpath(path.resolve(gitDir, declaredCommonDir));
       if (
-        !await isPhysicalDirectory(commonDir)
-        || path.basename(commonDir) !== ".git"
-        || path.dirname(gitDir) !== path.join(commonDir, "worktrees")
-        || path.basename(gitDir).length === 0
+        !(await isPhysicalDirectory(commonDir)) ||
+        path.basename(commonDir) !== ".git" ||
+        path.dirname(gitDir) !== path.join(commonDir, "worktrees") ||
+        path.basename(gitDir).length === 0
       ) {
         return unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
       }
@@ -139,7 +141,7 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
       const physicalBackpointer = await realpath(
         path.isAbsolute(declaredBackpointer)
           ? declaredBackpointer
-          : path.resolve(gitDir, declaredBackpointer)
+          : path.resolve(gitDir, declaredBackpointer),
       );
       if (physicalBackpointer !== dotGitPath) {
         return unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
@@ -147,11 +149,11 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
 
       const trustRoot = path.dirname(commonDir);
       if (
-        !await isPhysicalDirectory(trustRoot)
-        || await realpath(path.join(trustRoot, ".git")) !== commonDir
-        || !await stillSameSingleLinkFile(dotGitPath, dotGit.identity)
-        || !await stillSameSingleLinkFile(path.join(gitDir, "commondir"), commondir.identity)
-        || !await stillSameSingleLinkFile(path.join(gitDir, "gitdir"), backpointer.identity)
+        !(await isPhysicalDirectory(trustRoot)) ||
+        (await realpath(path.join(trustRoot, ".git"))) !== commonDir ||
+        !(await stillSameSingleLinkFile(dotGitPath, dotGit.identity)) ||
+        !(await stillSameSingleLinkFile(path.join(gitDir, "commondir"), commondir.identity)) ||
+        !(await stillSameSingleLinkFile(path.join(gitDir, "gitdir"), backpointer.identity))
       ) {
         return unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
       }
@@ -163,9 +165,9 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
         gitDir,
         kind: "linked-worktree",
         trustRoot,
-        worktreeRoot: current
+        worktreeRoot: current,
       };
-      return await validateCriticalGitMetadata(workspace)
+      return (await validateCriticalGitMetadata(workspace))
         ? { status: "verified", workspace: freezeVerifiedWorkspace(workspace, configOverrides) }
         : unsafeInspection(current, GIT_METADATA_CONTAINMENT_FAILED_NOTE);
     } catch {
@@ -176,9 +178,9 @@ export async function inspectVerifiedGitWorkspace(cwdInput: string): Promise<Git
 
 async function validateCriticalGitMetadata(workspace: VerifiedGitWorkspace): Promise<boolean> {
   if (
-    !await isPhysicalDirectory(workspace.gitDir)
-    || !await isPhysicalDirectory(workspace.commonDir)
-    || !await isPhysicalDirectory(workspace.worktreeRoot)
+    !(await isPhysicalDirectory(workspace.gitDir)) ||
+    !(await isPhysicalDirectory(workspace.commonDir)) ||
+    !(await isPhysicalDirectory(workspace.worktreeRoot))
   ) {
     return false;
   }
@@ -191,10 +193,10 @@ async function validateCriticalGitMetadata(workspace: VerifiedGitWorkspace): Pro
     path.join(workspace.commonDir, "config.worktree"),
     path.join(workspace.commonDir, "info", "attributes"),
     path.join(workspace.commonDir, "info", "exclude"),
-    path.join(workspace.commonDir, "packed-refs")
+    path.join(workspace.commonDir, "packed-refs"),
   ]);
   for (const filePath of criticalFiles) {
-    if (!await isSingleLinkRegularFileOrMissing(filePath)) {
+    if (!(await isSingleLinkRegularFileOrMissing(filePath))) {
       return false;
     }
   }
@@ -204,7 +206,7 @@ async function validateCriticalGitMetadata(workspace: VerifiedGitWorkspace): Pro
   const gitDirEntries = await readdir(workspace.gitDir).catch(() => []);
   for (const entry of gitDirEntries) {
     if (/^sharedindex\.[0-9a-f]+$/i.test(entry)) {
-      if (!await isSingleLinkRegularFileOrMissing(path.join(workspace.gitDir, entry))) {
+      if (!(await isSingleLinkRegularFileOrMissing(path.join(workspace.gitDir, entry)))) {
         return false;
       }
     }
@@ -212,24 +214,24 @@ async function validateCriticalGitMetadata(workspace: VerifiedGitWorkspace): Pro
 
   for (const directory of [
     path.join(workspace.commonDir, "objects"),
-    path.join(workspace.commonDir, "refs")
+    path.join(workspace.commonDir, "refs"),
   ]) {
-    if (!await isPhysicalDirectoryOrMissing(directory)) {
+    if (!(await isPhysicalDirectoryOrMissing(directory))) {
       return false;
     }
   }
 
   const head = await readSingleLinkRegularFile(path.join(workspace.gitDir, "HEAD"), true);
-  if (head && !await validateHeadReference(workspace, head.text)) {
+  if (head && !(await validateHeadReference(workspace, head.text))) {
     return false;
   }
 
   const alternatesPath = path.join(workspace.commonDir, "objects", "info", "alternates");
-  if (!await isSingleLinkRegularFileOrMissing(alternatesPath)) {
+  if (!(await isSingleLinkRegularFileOrMissing(alternatesPath))) {
     return false;
   }
   const alternates = await readSingleLinkRegularFile(alternatesPath, true);
-  if (alternates && !await alternatesStayInsideCommonDir(workspace.commonDir, alternates.text)) {
+  if (alternates && !(await alternatesStayInsideCommonDir(workspace.commonDir, alternates.text))) {
     return false;
   }
 
@@ -241,12 +243,14 @@ async function validateCriticalGitMetadata(workspace: VerifiedGitWorkspace): Pro
   return true;
 }
 
-async function collectExecutableConfigOverrides(workspace: VerifiedGitWorkspace): Promise<string[] | null> {
+async function collectExecutableConfigOverrides(
+  workspace: VerifiedGitWorkspace,
+): Promise<string[] | null> {
   const filters = new Set<string>();
   const diffs = new Set<string>();
   for (const configPath of new Set([
     path.join(workspace.commonDir, "config"),
-    path.join(workspace.gitDir, "config.worktree")
+    path.join(workspace.gitDir, "config.worktree"),
   ])) {
     const config = await readSingleLinkRegularFile(configPath, true);
     if (!config) continue;
@@ -258,9 +262,13 @@ async function collectExecutableConfigOverrides(workspace: VerifiedGitWorkspace)
       }
       const sectionStart = /^\s*\[\s*(filter|diff)\b/i.exec(line);
       if (!sectionStart) continue;
-      const section = /^\s*\[\s*(filter|diff)\s+(?:"((?:\\.|[^"\\])*)"|\.\s*([^\]\s]+))\s*\]\s*(?:[#;].*)?$/i.exec(line);
+      const section =
+        /^\s*\[\s*(filter|diff)\s+(?:"((?:\\.|[^"\\])*)"|\.\s*([^\]\s]+))\s*\]\s*(?:[#;].*)?$/i.exec(
+          line,
+        );
       if (!section) return null;
-      const rawDriver = section[2] === undefined ? section[3] : unescapeGitConfigSubsection(section[2]);
+      const rawDriver =
+        section[2] === undefined ? section[3] : unescapeGitConfigSubsection(section[2]);
       if (!rawDriver || !/^[A-Za-z0-9_.-]+$/.test(rawDriver)) return null;
       if (section[1]?.toLowerCase() === "filter") filters.add(rawDriver);
       else diffs.add(rawDriver);
@@ -273,7 +281,7 @@ async function collectExecutableConfigOverrides(workspace: VerifiedGitWorkspace)
       `filter.${driver}.clean=`,
       `filter.${driver}.smudge=`,
       `filter.${driver}.process=`,
-      `filter.${driver}.required=false`
+      `filter.${driver}.required=false`,
     );
   }
   for (const driver of [...diffs].sort()) {
@@ -291,7 +299,7 @@ function unescapeGitConfigSubsection(value: string): string | null {
       continue;
     }
     const escaped = value[index + 1];
-    if (escaped !== "\\" && escaped !== "\"") return null;
+    if (escaped !== "\\" && escaped !== '"') return null;
     result += escaped;
     index += 1;
   }
@@ -300,13 +308,16 @@ function unescapeGitConfigSubsection(value: string): string | null {
 
 function freezeVerifiedWorkspace(
   workspace: VerifiedGitWorkspace,
-  configOverrides: string[]
+  configOverrides: string[],
 ): VerifiedGitWorkspace {
   Object.freeze(configOverrides);
   return Object.freeze(workspace);
 }
 
-async function validateHeadReference(workspace: VerifiedGitWorkspace, headText: string): Promise<boolean> {
+async function validateHeadReference(
+  workspace: VerifiedGitWorkspace,
+  headText: string,
+): Promise<boolean> {
   const value = headText.trim();
   if (/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i.test(value)) {
     return true;
@@ -327,19 +338,31 @@ async function validateHeadReference(workspace: VerifiedGitWorkspace, headText: 
     candidates.push(path.join(workspace.gitDir, ...ref.split("/")));
   }
   for (const candidate of candidates) {
-    if (!await validateOptionalContainedFileChain(
-      candidate.startsWith(`${workspace.gitDir}${path.sep}`) ? workspace.gitDir : workspace.commonDir,
-      candidate
-    )) {
+    if (
+      !(await validateOptionalContainedFileChain(
+        candidate.startsWith(`${workspace.gitDir}${path.sep}`)
+          ? workspace.gitDir
+          : workspace.commonDir,
+        candidate,
+      ))
+    ) {
       return false;
     }
   }
   return true;
 }
 
-async function validateOptionalContainedFileChain(root: string, filePath: string): Promise<boolean> {
+async function validateOptionalContainedFileChain(
+  root: string,
+  filePath: string,
+): Promise<boolean> {
   const relative = path.relative(root, filePath);
-  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  if (
+    !relative ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
     return false;
   }
   let current = root;
@@ -364,7 +387,10 @@ async function validateOptionalContainedFileChain(root: string, filePath: string
 
 async function alternatesStayInsideCommonDir(commonDir: string, text: string): Promise<boolean> {
   const objectDir = path.join(commonDir, "objects");
-  for (const line of text.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)) {
+  for (const line of text
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean)) {
     const candidate = path.isAbsolute(line) ? line : path.resolve(objectDir, line);
     let physical: string;
     try {
@@ -391,16 +417,18 @@ function parseSinglePathLine(text: string): string | null {
 }
 
 function isSafeGitRef(value: string): boolean {
-  return value.startsWith("refs/")
-    && !value.includes("\\")
-    && !value.includes("\0")
-    && !value.includes("//")
-    && value.split("/").every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
+  return (
+    value.startsWith("refs/") &&
+    !value.includes("\\") &&
+    !value.includes("\0") &&
+    !value.includes("//") &&
+    value.split("/").every((segment) => segment.length > 0 && segment !== "." && segment !== "..")
+  );
 }
 
 async function readSingleLinkRegularFile(
   filePath: string,
-  allowMissing = false
+  allowMissing = false,
 ): Promise<{ readonly identity: FileIdentity; readonly text: string } | null> {
   let before;
   try {
@@ -418,17 +446,17 @@ async function readSingleLinkRegularFile(
   try {
     const opened = await handle.stat({ bigint: true });
     if (
-      !opened.isFile()
-      || opened.nlink !== 1n
-      || opened.dev !== before.dev
-      || opened.ino !== before.ino
+      !opened.isFile() ||
+      opened.nlink !== 1n ||
+      opened.dev !== before.dev ||
+      opened.ino !== before.ino
     ) {
       return null;
     }
     const text = await handle.readFile("utf8");
     return Object.freeze({
       identity: Object.freeze({ dev: opened.dev, ino: opened.ino }),
-      text
+      text,
     });
   } finally {
     await handle.close();
@@ -449,10 +477,12 @@ async function isSingleLinkRegularFileOrMissing(filePath: string): Promise<boole
   if (!handle) return false;
   try {
     const opened = await handle.stat({ bigint: true });
-    return opened.isFile()
-      && opened.nlink === 1n
-      && opened.dev === before.dev
-      && opened.ino === before.ino;
+    return (
+      opened.isFile() &&
+      opened.nlink === 1n &&
+      opened.dev === before.dev &&
+      opened.ino === before.ino
+    );
   } finally {
     await handle.close();
   }
@@ -461,11 +491,13 @@ async function isSingleLinkRegularFileOrMissing(filePath: string): Promise<boole
 async function stillSameSingleLinkFile(filePath: string, identity: FileIdentity): Promise<boolean> {
   try {
     const stats = await lstat(filePath, { bigint: true });
-    return !stats.isSymbolicLink()
-      && stats.isFile()
-      && stats.nlink === 1n
-      && stats.dev === identity.dev
-      && stats.ino === identity.ino;
+    return (
+      !stats.isSymbolicLink() &&
+      stats.isFile() &&
+      stats.nlink === 1n &&
+      stats.dev === identity.dev &&
+      stats.ino === identity.ino
+    );
   } catch {
     return false;
   }
@@ -474,7 +506,9 @@ async function stillSameSingleLinkFile(filePath: string, identity: FileIdentity)
 async function isPhysicalDirectory(directory: string): Promise<boolean> {
   try {
     const stats = await lstat(directory);
-    return !stats.isSymbolicLink() && stats.isDirectory() && await realpath(directory) === directory;
+    return (
+      !stats.isSymbolicLink() && stats.isDirectory() && (await realpath(directory)) === directory
+    );
   } catch {
     return false;
   }
@@ -483,7 +517,9 @@ async function isPhysicalDirectory(directory: string): Promise<boolean> {
 async function isPhysicalDirectoryOrMissing(directory: string): Promise<boolean> {
   try {
     const stats = await lstat(directory);
-    return !stats.isSymbolicLink() && stats.isDirectory() && await realpath(directory) === directory;
+    return (
+      !stats.isSymbolicLink() && stats.isDirectory() && (await realpath(directory)) === directory
+    );
   } catch (error) {
     return isNodeError(error) && error.code === "ENOENT";
   }
@@ -501,7 +537,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 
 function unsafeInspection(
   worktreeRoot: string,
-  note: typeof GIT_METADATA_INSPECTION_FAILED_NOTE | typeof GIT_METADATA_CONTAINMENT_FAILED_NOTE
+  note: typeof GIT_METADATA_INSPECTION_FAILED_NOTE | typeof GIT_METADATA_CONTAINMENT_FAILED_NOTE,
 ): GitWorkspaceInspection {
   return { note, status: "unsafe", worktreeRoot };
 }

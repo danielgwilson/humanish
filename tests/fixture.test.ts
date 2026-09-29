@@ -14,13 +14,15 @@ describe("minimal target app fixture", () => {
   it("is public-safe source material for init dry-runs", async () => {
     const result = await runInit({
       cwd: fixturePath,
-      dryRun: true
+      dryRun: true,
     });
 
     expect(result.ok).toBe(true);
     expect(result.mode).toBe("dry-run");
     expect(result.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
-    await expect(stat(path.join(fixturePath, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(fixturePath, "humanish"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   it("can be copied to a temp app and initialized without committing runtime artifacts", async () => {
@@ -31,16 +33,20 @@ describe("minimal target app fixture", () => {
       await cp(fixturePath, tempApp, { recursive: true });
       const result = await runInit({
         cwd: tempApp,
-        yes: true
+        yes: true,
       });
 
       expect(result.ok).toBe(true);
-      await expect(stat(path.join(tempApp, "humanish/scenarios/first-run-smoke.yaml"))).resolves.toBeTruthy();
+      await expect(
+        stat(path.join(tempApp, "humanish/scenarios/first-run-smoke.yaml")),
+      ).resolves.toBeTruthy();
       await expect(stat(path.join(tempApp, ".humanish/runs"))).resolves.toBeTruthy();
 
       const gitignore = await readFile(path.join(tempApp, ".gitignore"), "utf8");
       expect(gitignore).toContain(".humanish/");
-      expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
+      expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(
+        gitignore.lastIndexOf(".env*"),
+      );
     } finally {
       await rm(tempRoot, { force: true, recursive: true });
     }
@@ -50,7 +56,7 @@ describe("minimal target app fixture", () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-init-hardlink-"));
     const tempApp = path.join(tempRoot, "app");
     const externalPackage = path.join(tempRoot, "external-package.json");
-    const original = "{\"name\":\"external-sentinel\"}\n";
+    const original = '{"name":"external-sentinel"}\n';
 
     try {
       await mkdir(tempApp);
@@ -80,10 +86,12 @@ describe("minimal target app fixture", () => {
 
       expect(packageResult).toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" }
+        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" },
       });
       expect(packageResult.error?.message).toContain("package.json");
-      await expect(stat(path.join(packageDirectoryApp, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(packageDirectoryApp, "humanish"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
 
       await mkdir(runtimeFileApp, { recursive: true });
       await writeFile(path.join(runtimeFileApp, ".humanish"), "not-a-directory\n", "utf8");
@@ -91,10 +99,12 @@ describe("minimal target app fixture", () => {
 
       expect(runtimeResult).toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" }
+        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" },
       });
       expect(runtimeResult.error?.message).toContain(".humanish/runs");
-      await expect(stat(path.join(runtimeFileApp, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(runtimeFileApp, "humanish"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
     } finally {
       await rm(tempRoot, { force: true, recursive: true });
     }
@@ -112,12 +122,12 @@ describe("minimal target app fixture", () => {
         runInit({ cwd: tempApp, yes: true }),
         new Promise<never>((_resolve, reject) => {
           setTimeout(() => reject(new Error("runInit blocked while inspecting a FIFO")), 1_000);
-        })
+        }),
       ]);
 
       expect(result).toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" }
+        error: { code: "HUMANISH_UNSAFE_PROJECT_PATH" },
       });
       expect(result.error?.message).toContain(".gitignore");
       await expect(stat(path.join(tempApp, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -127,12 +137,7 @@ describe("minimal target app fixture", () => {
   });
 
   it("contains only synthetic, non-secret fixture content", async () => {
-    const files = [
-      "README.md",
-      ".env.example",
-      "package.json",
-      "src/server.mjs"
-    ];
+    const files = ["README.md", ".env.example", "package.json", "src/server.mjs"];
     const joined = (
       await Promise.all(files.map((file) => readFile(path.join(fixturePath, file), "utf8")))
     ).join("\n");

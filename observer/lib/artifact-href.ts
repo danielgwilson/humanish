@@ -13,13 +13,24 @@ export function runArtifactHref(artifactPath: string): string | null {
  * Filenames remain filesystem names: encode once when constructing the URL. */
 function safePath(value: string): boolean {
   if (!value || value.length > 8192) return false;
-  try { encodeURIComponent(value); } catch { return false; }
+  try {
+    encodeURIComponent(value);
+  } catch {
+    return false;
+  }
   let checked = value;
   for (let n = 0; n < 5; n++) {
-    if (/^[\\/]|[\\\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked)
-      || checked.split("/").some((part) => part === "." || part === ".." || part === "")) return false;
+    if (
+      /^[\\/]|[\\\\\u0000-\u001f\u007f]|^[a-z][a-z\d+.-]*:/i.test(checked) ||
+      checked.split("/").some((part) => part === "." || part === ".." || part === "")
+    )
+      return false;
     let decoded: string;
-    try { decoded = decodeURIComponent(checked); } catch { return !/%[0-9a-f]{2}/i.test(checked); }
+    try {
+      decoded = decodeURIComponent(checked);
+    } catch {
+      return !/%[0-9a-f]{2}/i.test(checked);
+    }
     if (decoded === checked) return true;
     if (decoded.split("/").length !== checked.split("/").length) return false;
     checked = decoded;
@@ -36,8 +47,19 @@ export function observerArtifactHref(value: string): string | null {
 }
 
 export function historyRunHref(runId: string): string | null {
-  if (!runId || runId.length > 256 || /[\\/\u0000-\u001f\u007f]/.test(runId) || runId === "." || runId === "..") return null;
-  try { return `/_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`; } catch { return null; }
+  if (
+    !runId ||
+    runId.length > 256 ||
+    /[\\/\u0000-\u001f\u007f]/.test(runId) ||
+    runId === "." ||
+    runId === ".."
+  )
+    return null;
+  try {
+    return `/_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`;
+  } catch {
+    return null;
+  }
 }
 
 /** Screenshot rendering additionally accepts the raster data URIs emitted by HTML
@@ -54,7 +76,9 @@ export function screenshotHref(screenshotPath: string): string | null {
 
 /** A lane's recorded trace items: the finished actor's, else the mid-run `liveActor`
  *  partial's (#441 incremental flush) — one accessor so every reader grows live. */
-export function traceItems(stream: ObserverStream): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
+export function traceItems(
+  stream: ObserverStream,
+): NonNullable<NonNullable<ObserverStream["actor"]>["items"]> {
   return stream.actor?.items ?? stream.liveActor?.items ?? [];
 }
 

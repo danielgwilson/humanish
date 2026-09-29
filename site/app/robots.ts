@@ -22,11 +22,11 @@ export default function robots(): MetadataRoute.Robots {
           "Perplexity-User",
           "CCBot",
           "Applebot-Extended",
-          "meta-externalagent"
+          "meta-externalagent",
         ],
-        allow: "/"
-      }
+        allow: "/",
+      },
     ],
-    sitemap: "https://humanish.dev/sitemap.xml"
+    sitemap: "https://humanish.dev/sitemap.xml",
   };
 }

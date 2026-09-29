@@ -13,7 +13,7 @@ import {
   routesToComputerUse,
   routesToScriptedBrowser,
   routesToTerminalProduct,
-  type LabConfig
+  type LabConfig,
 } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { createProgram } from "../src/program.js";
@@ -40,27 +40,41 @@ function terminalConfig(overrides?: {
       source: "terminal-product",
       product: {
         name: "widgetsmith-cli",
-        publicSurfaces: overrides?.publicSurfaces ?? ["https://example.com/widgetsmith", "https://example.com/widgetsmith/llms.txt"]
-      }
+        publicSurfaces: overrides?.publicSurfaces ?? [
+          "https://example.com/widgetsmith",
+          "https://example.com/widgetsmith/llms.txt",
+        ],
+      },
     },
-    actors: [{
-      type: overrides?.actorType ?? "codex-exec",
-      persona: "autonomous-creative-agent",
-      mission: overrides?.mission ?? "Discover widgetsmith-cli from public surfaces and stay within no-spend caps."
-    }],
+    actors: [
+      {
+        type: overrides?.actorType ?? "codex-exec",
+        persona: "autonomous-creative-agent",
+        mission:
+          overrides?.mission ??
+          "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
+      },
+    ],
     execution: {
-      ...(overrides && "target" in overrides ? (overrides.target ? { target: overrides.target } : {}) : { target: "e2b-terminal" }),
+      ...(overrides && "target" in overrides
+        ? overrides.target
+          ? { target: overrides.target }
+          : {}
+        : { target: "e2b-terminal" }),
       runtimeAuth: overrides?.runtimeAuth ?? "openai-env",
       timeoutMs: 600_000,
-      terminal: { transport: "exec-stream", stdin: "disabled" }
+      terminal: { transport: "exec-stream", stdin: "disabled" },
     },
-    scenario: { mode: overrides?.mode ?? "dry-run", caps: overrides?.caps ?? { maxUsd: 0, maxJobs: 0, maxMinutes: 10 } },
+    scenario: {
+      mode: overrides?.mode ?? "dry-run",
+      caps: overrides?.caps ?? { maxUsd: 0, maxJobs: 0, maxMinutes: 10 },
+    },
     policies: {
       allowPrivateRepoAccess: false,
       allowProviderCredentials: false,
       allowPaymentCredentials: false,
-      allowGitHubMutation: false
-    }
+      allowGitHubMutation: false,
+    },
   };
 }
 
@@ -87,16 +101,23 @@ describe("terminal actor registration + keyPlacement metadata", () => {
 
   it("keeps the descriptor's direct runner fail-closed instead of overclaiming live execution", async () => {
     const descriptor = actorRegistry["codex-exec"];
-    if (!isTerminalActorDescriptor(descriptor)) throw new Error("codex-exec must remain a terminal descriptor");
-    await expect(descriptor.runSession({
-      artifactRoot: ".humanish/runs/direct-terminal-descriptor",
-      prompt: "Study a synthetic public product.",
-      persona: { id: "synthetic-terminal-persona", traitsApplied: [], promptDigest: "123456789abc" },
-      publicSurfaces: ["https://example.com/product"],
-      timeoutMs: 1_000,
-      verdictNonce: "synthetic-nonce"
-    })).rejects.toThrow(
-      `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported`
+    if (!isTerminalActorDescriptor(descriptor))
+      throw new Error("codex-exec must remain a terminal descriptor");
+    await expect(
+      descriptor.runSession({
+        artifactRoot: ".humanish/runs/direct-terminal-descriptor",
+        prompt: "Study a synthetic public product.",
+        persona: {
+          id: "synthetic-terminal-persona",
+          traitsApplied: [],
+          promptDigest: "123456789abc",
+        },
+        publicSurfaces: ["https://example.com/product"],
+        timeoutMs: 1_000,
+        verdictNonce: "synthetic-nonce",
+      }),
+    ).rejects.toThrow(
+      `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported`,
     );
   });
 });
@@ -107,11 +128,23 @@ describe("terminal actor registration + keyPlacement metadata", () => {
 
 describe("terminal-product parse matrix", () => {
   it("accepts exact runtime versions and rejects ranges, tags, and misspelled runtime fields", () => {
-    const base = terminalConfig() as Record<string, unknown> & { execution: Record<string, unknown> };
-    for (const runtime of [{ version: "latest" }, { version: "^0.153.3" }, { version: "0.153.3; echo no" }, { version: "0.153.3", package: "other" }, {}, "0.153.3"]) {
+    const base = terminalConfig() as Record<string, unknown> & {
+      execution: Record<string, unknown>;
+    };
+    for (const runtime of [
+      { version: "latest" },
+      { version: "^0.153.3" },
+      { version: "0.153.3; echo no" },
+      { version: "0.153.3", package: "other" },
+      {},
+      "0.153.3",
+    ]) {
       expect(parseLabConfig({ ...base, execution: { ...base.execution, runtime } }).ok).toBe(false);
     }
-    const result = parseLabConfig({ ...base, execution: { ...base.execution, runtime: { version: "0.153.3" } } });
+    const result = parseLabConfig({
+      ...base,
+      execution: { ...base.execution, runtime: { version: "0.153.3" } },
+    });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.config.execution?.runtime).toEqual({ version: "0.153.3" });
@@ -135,10 +168,16 @@ describe("terminal-product parse matrix", () => {
     expect(parsed.warnings).toEqual([]);
     expect(parsed.config.subject.product).toEqual({
       name: "widgetsmith-cli",
-      publicSurfaces: ["https://example.com/widgetsmith", "https://example.com/widgetsmith/llms.txt"]
+      publicSurfaces: [
+        "https://example.com/widgetsmith",
+        "https://example.com/widgetsmith/llms.txt",
+      ],
     });
     expect(parsed.config.execution?.runtimeAuth).toBe("openai-env");
-    expect(parsed.config.execution?.terminal).toEqual({ transport: "exec-stream", stdin: "disabled" });
+    expect(parsed.config.execution?.terminal).toEqual({
+      transport: "exec-stream",
+      stdin: "disabled",
+    });
     expect(parsed.config.scenario?.caps).toEqual({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 });
     expect(routesToTerminalProduct(parsed.config)).toBe(true);
     expect(selectLabBackend(parsed.config)).toBe("terminal");
@@ -165,7 +204,7 @@ describe("terminal-product parse matrix", () => {
       { serve: { start: "node x", url: "http://127.0.0.1:3000" } },
       { clone: { depth: 1 } },
       { state: { external: ["DATABASE_URL"] } },
-      { repos: ["owner/repo"] }
+      { repos: ["owner/repo"] },
     ]) {
       const raw = terminalConfig() as { subject: Record<string, unknown> };
       Object.assign(raw.subject, field);
@@ -181,7 +220,7 @@ describe("terminal-product parse matrix", () => {
       id: "wrong-substrate-appurl",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
-      execution: { target: "e2b-terminal" }
+      execution: { target: "e2b-terminal" },
     });
     expect(viaAppUrl.ok).toBe(false);
     // A clone subject hits the dedicated terminal-substrate guard.
@@ -190,7 +229,7 @@ describe("terminal-product parse matrix", () => {
       id: "wrong-substrate-clone",
       subject: { source: "clone", repos: ["owner/repo"] },
       actors: [{ type: "humanish-setup" }],
-      execution: { target: "e2b-terminal" }
+      execution: { target: "e2b-terminal" },
     });
     expect(viaClone.ok).toBe(false);
     if (viaClone.ok) return;
@@ -202,15 +241,19 @@ describe("terminal-product parse matrix", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "wrong-subject",
       subject: { source: "this-repo" },
-      actors: [{ type: "codex-exec" }]
+      actors: [{ type: "codex-exec" }],
     });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error.message).toContain("terminal actors require `subject.source: terminal-product`");
+    expect(parsed.error.message).toContain(
+      "terminal actors require `subject.source: terminal-product`",
+    );
   });
 
   it("rejects a non-e2b-terminal target on a terminal-product subject", () => {
-    const parsed = parseLabConfig(terminalConfig({ target: "e2b-desktop" as unknown as "e2b-terminal" }));
+    const parsed = parseLabConfig(
+      terminalConfig({ target: "e2b-desktop" as unknown as "e2b-terminal" }),
+    );
     expect(parsed.ok).toBe(false);
   });
 
@@ -257,7 +300,7 @@ describe("terminal-product parse matrix", () => {
       subject: { source: "this-repo" },
       actors: [{ type: "synthetic-persona" }],
       scenario: { caps: { maxUsd: 0 } },
-      execution: { runtimeAuth: "openai-env" }
+      execution: { runtimeAuth: "openai-env" },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -289,29 +332,30 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
       id: "cua",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
     const scripted = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "scripted",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
       actors: [{ type: "scripted-browser", count: 2 }],
-      scenario: { ref: "scripted-first-run" }
+      scenario: { ref: "scripted-first-run" },
     });
     const synthetic = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }]
+      actors: [{ type: "synthetic-persona" }],
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "m",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
-    if (!cua.ok || !scripted.ok || !synthetic.ok || !meta.ok) throw new Error("fixture configs must parse");
+    if (!cua.ok || !scripted.ok || !synthetic.ok || !meta.ok)
+      throw new Error("fixture configs must parse");
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(scripted.config)).toBe("scripted");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
@@ -330,11 +374,13 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
       id: "scripted-warn",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:5173/" },
       actors: [{ type: "scripted-browser", mission: "this cannot act here" }],
-      scenario: { ref: "scripted-first-run" }
+      scenario: { ref: "scripted-first-run" },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.warnings.join(" ")).toContain("actors[0].mission (the scripted-browser actor runs no model)");
+    expect(parsed.warnings.join(" ")).toContain(
+      "actors[0].mission (the scripted-browser actor runs no model)",
+    );
   });
 });
 
@@ -351,20 +397,30 @@ describe("runTerminalProductLab (dry-run)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it.each(["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY"])("redacts a known %s value from dry-run assignment and study context", async (keyName) => {
-    const secret = "synthetic-opaque-terminal-secret";
-    const config = parsedTerminalConfig({ mission: `Discover the product using ${secret}.` });
-    const result = await runTerminalProductLab({ cwd, config, dryRun: true, hooks: { env: { [keyName]: secret } } });
-    expect(result.ok).toBe(true);
-    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    for (const file of ["run.json", "observer/observer-data.json"]) {
-      const text = await readFile(path.join(runDir, file), "utf8");
-      expect(text).not.toContain(secret);
-      expect(JSON.parse(text).streams[0].assignment).toEqual({ mission: "Discover the product using [REDACTED_SECRET]." });
-    }
-    expect(config.actors[0]!.mission).toContain(secret);
-    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
-  });
+  it.each(["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY"])(
+    "redacts a known %s value from dry-run assignment and study context",
+    async (keyName) => {
+      const secret = "synthetic-opaque-terminal-secret";
+      const config = parsedTerminalConfig({ mission: `Discover the product using ${secret}.` });
+      const result = await runTerminalProductLab({
+        cwd,
+        config,
+        dryRun: true,
+        hooks: { env: { [keyName]: secret } },
+      });
+      expect(result.ok).toBe(true);
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      for (const file of ["run.json", "observer/observer-data.json"]) {
+        const text = await readFile(path.join(runDir, file), "utf8");
+        expect(text).not.toContain(secret);
+        expect(JSON.parse(text).streams[0].assignment).toEqual({
+          mission: "Discover the product using [REDACTED_SECRET].",
+        });
+      }
+      expect(config.actors[0]!.mission).toContain(secret);
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    },
+  );
 
   it("dry-run produces a VERIFIED contract bundle: terminal stream, UNPINNED subject, caps/policies/auth declared", async () => {
     const outcome = await runLab(parsedTerminalConfig(), { cwd, dryRun: true });
@@ -387,7 +443,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(bundle.simulations[0].streamKind).toBe("terminal");
     // The terminal stream is an honest CONTRACT placeholder: stdin disabled, empty tail, NOT pty.
     const stream = bundle.streams[0];
-    expect(stream.assignment).toEqual({ mission: "Discover widgetsmith-cli from public surfaces and stay within no-spend caps." });
+    expect(stream.assignment).toEqual({
+      mission: "Discover widgetsmith-cli from public surfaces and stay within no-spend caps.",
+    });
     expect(stream.kind).toBe("terminal");
     expect(stream.transport).toBe("snapshot");
     expect(stream.transport).not.toBe("pty");
@@ -399,22 +457,30 @@ describe("runTerminalProductLab (dry-run)", () => {
       currentStep: bundle.simulations[0].currentStep,
       events: bundle.events,
       review: bundle.review,
-      redaction: bundle.redaction
+      redaction: bundle.redaction,
     });
     expect(publicTruth).toContain("did not execute an agent or prove live behavior");
-    expect(publicTruth).toContain("proves contract shape only, not live behavior, scale, or adoption");
+    expect(publicTruth).toContain(
+      "proves contract shape only, not live behavior, scale, or adoption",
+    );
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("SLICE 2");
 
     // Invariant 5: UNPINNED subject provenance, declared explicitly; public surfaces recorded.
-    const subjectEvent = bundle.events.find((e: { type: string }) => e.type === "terminal-lab.subject.declared");
+    const subjectEvent = bundle.events.find(
+      (e: { type: string }) => e.type === "terminal-lab.subject.declared",
+    );
     expect(subjectEvent.message).toContain("UNPINNED");
     expect(subjectEvent.message).toContain("widgetsmith-cli");
     // Deny-by-default credential posture + runtime-auth names-only declaration recorded.
-    const credEvent = bundle.events.find((e: { type: string }) => e.type === "terminal-lab.credentials.declared");
+    const credEvent = bundle.events.find(
+      (e: { type: string }) => e.type === "terminal-lab.credentials.declared",
+    );
     expect(credEvent.message).toContain("allowPrivateRepoAccess=false");
     expect(credEvent.message).toContain("openai-env");
-    const capsEvent = bundle.events.find((e: { type: string }) => e.type === "terminal-lab.caps.declared");
+    const capsEvent = bundle.events.find(
+      (e: { type: string }) => e.type === "terminal-lab.caps.declared",
+    );
     expect(capsEvent.message).toContain("maxUsd=0");
     // Mission recorded plaintext (public-safe author text); composed prompt bound by digest.
     expect(bundle.scenario.goal).toContain("widgetsmith-cli");
@@ -425,7 +491,9 @@ describe("runTerminalProductLab (dry-run)", () => {
     expect(verified.ok).toBe(true);
 
     // latest.json points at THIS run so `verify --run latest` stays honest.
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
+    const pointer = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
+    );
     expect(pointer.runId).toBe(result.runId);
 
     // Public safety: no absolute machine paths in any text artifact.
@@ -440,7 +508,10 @@ describe("runTerminalProductLab (dry-run)", () => {
     // Without a runtime key in the (empty) env, the shipped live backend fails closed at the
     // credential-resolution step — no sandbox, no spend, no artifacts. (The full
     // live path + credential boundary is covered deterministically in e2b-terminal-lab.test.ts.)
-    const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), { cwd, terminalHooks: { env: {} } });
+    const outcome = await runLab(parsedTerminalConfig({ mode: "live" }), {
+      cwd,
+      terminalHooks: { env: {} },
+    });
     expect(outcome.backend).toBe("terminal");
     if (outcome.backend !== "terminal") return;
     const result = outcome.result;
@@ -455,7 +526,10 @@ describe("runTerminalProductLab (dry-run)", () => {
   });
 
   it("rejects a non-terminal actor at the engine even if a config bypasses the parser", async () => {
-    const tampered = { ...parsedTerminalConfig(), actors: [{ type: "codex-app-server" }] } as LabConfig;
+    const tampered = {
+      ...parsedTerminalConfig(),
+      actors: [{ type: "codex-app-server" }],
+    } as LabConfig;
     const result = await runTerminalProductLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED");
@@ -467,7 +541,9 @@ describe("runTerminalProductLab (dry-run)", () => {
 // CLI: the committed terminal-product-demo lab through `lab run`, JSON + human
 // ---------------------------------------------------------------------------
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -476,13 +552,18 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
   program.exitOverride();
   try {
     await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
-    if (!(error instanceof CommanderError && (error.code === "commander.helpDisplayed" || error.code === "commander.version"))) {
+    if (
+      !(
+        error instanceof CommanderError &&
+        (error.code === "commander.helpDisplayed" || error.code === "commander.version")
+      )
+    ) {
       throw error;
     }
   }
@@ -493,8 +574,14 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-cli-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }, null, 2));
-    const lab = await readFile(path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"), "utf8");
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "fixture-app" }, null, 2),
+    );
+    const lab = await readFile(
+      path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
+      "utf8",
+    );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "labs", "terminal-product-demo.yaml"), lab, "utf8");
   });
@@ -503,16 +590,40 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
   });
 
   it("keeps the committed demo honest about the shipped live route and its dry-run fixture scope", async () => {
-    const lab = await readFile(path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"), "utf8");
-    expect(lab).toMatch(/shipped live terminal-product route and command-scoped credential boundary are\s+not exercised by this fixture/);
+    const lab = await readFile(
+      path.join(ROOT, "humanish", "labs", "terminal-product-demo.yaml"),
+      "utf8",
+    );
+    expect(lab).toMatch(
+      /shipped live terminal-product route and command-scoped credential boundary are\s+not exercised by this fixture/,
+    );
     expect(lab).toMatch(/this FICTIONAL mock CLI does not claim live or\s+adopter proof/);
     expect(lab).not.toMatch(/SLICE\s+[12]/);
   });
 
   it("dry-run --json emits the structured terminal lab result and verifies", async () => {
-    const result = await runCli(["lab", "run", "terminal-product-demo", "--cwd", cwd, "--dry-run", "--json", "--no-open", "--run-id", "terminal-cli-json"]);
+    const result = await runCli([
+      "lab",
+      "run",
+      "terminal-product-demo",
+      "--cwd",
+      cwd,
+      "--dry-run",
+      "--json",
+      "--no-open",
+      "--run-id",
+      "terminal-cli-json",
+    ]);
     expect(result.exitCode).toBe(0);
-    const envelope = JSON.parse(result.stdout) as { schema: string; ok: boolean; dryRun: boolean; actor: string; product: string; labId: string; runId: string };
+    const envelope = JSON.parse(result.stdout) as {
+      schema: string;
+      ok: boolean;
+      dryRun: boolean;
+      actor: string;
+      product: string;
+      labId: string;
+      runId: string;
+    };
     expect(envelope.schema).toBe("humanish.terminal-lab-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.dryRun).toBe(true);
@@ -526,7 +637,17 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
   });
 
   it("dry-run human output names run/lab/actor/product", async () => {
-    const result = await runCli(["lab", "run", "terminal-product-demo", "--cwd", cwd, "--dry-run", "--no-open", "--run-id", "terminal-cli-human"]);
+    const result = await runCli([
+      "lab",
+      "run",
+      "terminal-product-demo",
+      "--cwd",
+      cwd,
+      "--dry-run",
+      "--no-open",
+      "--run-id",
+      "terminal-cli-human",
+    ]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("humanish lab terminal dry-run");
     expect(result.stdout).toContain("run: terminal-cli-human");

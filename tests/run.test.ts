@@ -1,4 +1,17 @@
-import { access, chmod, cp, link, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  cp,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import os from "node:os";
@@ -26,7 +39,7 @@ import {
   type RunCostSummary,
   type RunBundle,
   type RunSubjectProvenance,
-  type RunSubjectStateStepRecord
+  type RunSubjectStateStepRecord,
 } from "../src/run.js";
 import { SYNTHETIC_PNG_1X1_BASE64, syntheticPng1x1 } from "./image-fixtures.js";
 
@@ -34,10 +47,12 @@ const execFileAsync = promisify(execFile);
 const PNG_1X1 = syntheticPng1x1();
 
 function isNodeErrorCode(error: unknown, ...codes: string[]): boolean {
-  return error instanceof Error
-    && "code" in error
-    && typeof error.code === "string"
-    && codes.includes(error.code);
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    codes.includes(error.code)
+  );
 }
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
@@ -58,7 +73,9 @@ async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promis
   }
 }
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -67,7 +84,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
 
   await program.parseAsync(["node", "humanish", ...args], { from: "node" });
@@ -75,7 +92,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   return {
     exitCode,
     stdout: stdout.join(""),
-    stderr: stderr.join("")
+    stderr: stderr.join(""),
   };
 }
 
@@ -101,7 +118,9 @@ async function waitForFile(filePath: string, timeoutMs = 2_000): Promise<void> {
 async function withHttpServer<T>(callback: (url: string) => Promise<T>): Promise<T> {
   const server = createServer((_request, response) => {
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end("<!doctype html><title>Humanish test app</title><main>browser surface proof</main>");
+    response.end(
+      "<!doctype html><title>Humanish test app</title><main>browser surface proof</main>",
+    );
   });
   const url = await new Promise<string>((resolve) => {
     server.listen(0, "127.0.0.1", () => {
@@ -147,9 +166,9 @@ async function writeFakeBrowserCommand(cwd: string): Promise<string> {
       "}",
       `const png = Buffer.from('${SYNTHETIC_PNG_1X1_BASE64}', 'base64');`,
       "fs.writeFileSync(screenshotArg.slice('--screenshot='.length), png);",
-      "process.exit(0);"
+      "process.exit(0);",
     ].join("\n"),
-    "utf8"
+    "utf8",
   );
   await chmod(browser, 0o755);
   return browser;
@@ -168,15 +187,18 @@ async function writeNeverScreenshottingBrowserCommand(cwd: string): Promise<stri
       "  process.exit(0);",
       "}",
       "// Exit cleanly without ever writing the requested --screenshot file.",
-      "process.exit(0);"
+      "process.exit(0);",
     ].join("\n"),
-    "utf8"
+    "utf8",
   );
   await chmod(browser, 0o755);
   return browser;
 }
 
-function restoreBrowserEnv(previousBrowserCommand: string | undefined, previousBrowserPersonaDriver: string | undefined): void {
+function restoreBrowserEnv(
+  previousBrowserCommand: string | undefined,
+  previousBrowserPersonaDriver: string | undefined,
+): void {
   if (previousBrowserCommand === undefined) {
     delete process.env.HUMANISH_BROWSER_COMMAND;
   } else {
@@ -198,16 +220,16 @@ async function writeHumanishBrowserScenario(cwd: string, scenarioText: string): 
       "schema: humanish.persona.v1",
       "id: synthetic-new-user",
       "name: Synthetic New User",
-      "summary: Public-safe fixture persona."
+      "summary: Public-safe fixture persona.",
     ].join("\n") + "\n",
-    "utf8"
+    "utf8",
   );
   await writeFile(path.join(cwd, "humanish/scenarios/app-browser.yaml"), scenarioText, "utf8");
 }
 
 describe("dry-run bundles", () => {
   it("verifies new physical geometry and legacy saved geometry sources", async () => {
-    await withFixtureCopy(async cwd => {
+    await withFixtureCopy(async (cwd) => {
       const run = await runDryRun({ cwd, dryRun: true, runId: "geometry-source-compatibility" });
       expect(run.ok).toBe(true);
       if (!run.bundlePath || !run.runId) throw new Error("Expected a successful dry run");
@@ -218,7 +240,7 @@ describe("dry-run bundles", () => {
       for (const source of ["xwininfo", "xdotool", "cdp", "untrusted"]) {
         bundle.streams[0].desktopGeometry = {
           screen: { requested: { width: 1440, height: 950 } },
-          browserWindow: { x: 0, y: 51, width: 1440, height: 899, source }
+          browserWindow: { x: 0, y: 51, width: 1440, height: 899, source },
         };
         await writeFile(file, JSON.stringify(bundle));
         const verified = await verifyRun(cwd, run.runId);
@@ -232,14 +254,17 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "dryrun-test"
+        runId: "dryrun-test",
       });
 
       expect(run.ok).toBe(true);
       expect(run.runId).toBe("dryrun-test");
       expect(run.bundlePath).toBe(".humanish/runs/dryrun-test/run.json");
 
-      const bundleText = await readFile(path.join(cwd, ".humanish/runs/dryrun-test/run.json"), "utf8");
+      const bundleText = await readFile(
+        path.join(cwd, ".humanish/runs/dryrun-test/run.json"),
+        "utf8",
+      );
       const bundle = JSON.parse(bundleText) as {
         cwd: string;
         schema: string;
@@ -266,7 +291,9 @@ describe("dry-run bundles", () => {
 
       const observer = await renderObserver(cwd, "latest");
       expect(observer.ok).toBe(true);
-      expect(observer.warnings.join("\n")).toContain("dry-run lanes do not claim product behavior proof");
+      expect(observer.warnings.join("\n")).toContain(
+        "dry-run lanes do not claim product behavior proof",
+      );
       expect(observer.warnings.join("\n")).not.toContain("verified local evidence artifacts");
 
       const review = await readReview(cwd, "latest");
@@ -292,17 +319,20 @@ describe("dry-run bundles", () => {
         runDryRun({
           cwd,
           dryRun: true,
-          runId: "dryrun-special-git"
+          runId: "dryrun-special-git",
         }),
         new Promise<never>((_resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error("generic dry-run hung on special .git metadata")), 10_000);
+          const timer = setTimeout(
+            () => reject(new Error("generic dry-run hung on special .git metadata")),
+            10_000,
+          );
           timer.unref?.();
-        })
+        }),
       ]);
 
       expect(run.ok).toBe(true);
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/dryrun-special-git/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/dryrun-special-git/run.json"), "utf8"),
       ) as { source: { git: { note: string; status: string } } };
       expect(bundle.source.git.status).toBe("unavailable");
       expect(bundle.source.git.note).toBe("Git metadata failed containment validation.");
@@ -319,7 +349,7 @@ describe("dry-run bundles", () => {
       };
       bundle.source.git = await captureGitState(cwd, {
         commandTimeoutMs: 10,
-        runner: async () => await new Promise(() => {})
+        runner: async () => await new Promise(() => {}),
       });
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -333,7 +363,7 @@ describe("dry-run bundles", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "cleanup-owned"
+        runId: "cleanup-owned",
       });
 
       const bundlePath = path.join(cwd, ".humanish/runs/cleanup-owned/run.json");
@@ -349,7 +379,7 @@ describe("dry-run bundles", () => {
           simId: "sim-001",
           streamId: "stream-001",
           laneId: "lane-01",
-          createdAt: "2026-01-01T00:00:00.000Z"
+          createdAt: "2026-01-01T00:00:00.000Z",
         },
         {
           schema: "humanish.provider-resource.v1",
@@ -358,8 +388,8 @@ describe("dry-run bundles", () => {
           id: "sbx-forged-unknown",
           owner: "humanish",
           status: "unknown",
-          createdAt: "2026-01-01T00:00:00.000Z"
-        }
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
       ];
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -369,7 +399,7 @@ describe("dry-run bundles", () => {
         loadDesktopModule: async () => {
           providerLoads += 1;
           throw new Error("provider module must not be loaded from stored resource metadata");
-        }
+        },
       });
 
       expect(cleanup.schema).toBe(CLEANUP_SCHEMA);
@@ -379,17 +409,26 @@ describe("dry-run bundles", () => {
         expect.objectContaining({
           id: "sbx-owned-1",
           status: "failed",
-          message: "automatic provider cleanup requires a verified resource lease"
+          message: "automatic provider cleanup requires a verified resource lease",
         }),
         expect.objectContaining({
           id: "sbx-forged-unknown",
           status: "failed",
-          message: "automatic provider cleanup requires a verified resource lease"
-        })
+          message: "automatic provider cleanup requires a verified resource lease",
+        }),
       ]);
-      expect(cleanup.summary).toMatchObject({ resources: 2, killed: 0, alreadyClean: 0, failed: 2, skipped: 0 });
+      expect(cleanup.summary).toMatchObject({
+        resources: 2,
+        killed: 0,
+        alreadyClean: 0,
+        failed: 2,
+        skipped: 0,
+      });
 
-      const cleanupText = await readFile(path.join(cwd, ".humanish/runs/cleanup-owned/cleanup.json"), "utf8");
+      const cleanupText = await readFile(
+        path.join(cwd, ".humanish/runs/cleanup-owned/cleanup.json"),
+        "utf8",
+      );
       expect(cleanupText).toContain("humanish.cleanup-result.v1");
 
       const verify = await verifyRun(cwd, "cleanup-owned");
@@ -408,22 +447,30 @@ describe("dry-run bundles", () => {
       await cp(path.resolve("fixtures/minimal-app"), physicalB, { recursive: true });
       await symlink(physicalA, cwdAlias, "dir");
       await runDryRun({ cwd: cwdAlias, dryRun: true, runId: "cleanup-retarget" });
-      await cp(path.join(physicalA, ".humanish"), path.join(physicalB, ".humanish"), { recursive: true });
+      await cp(path.join(physicalA, ".humanish"), path.join(physicalB, ".humanish"), {
+        recursive: true,
+      });
       const bCleanup = path.join(physicalB, ".humanish/runs/cleanup-retarget/cleanup.json");
       await writeFile(bCleanup, "physical-b-sentinel\n", "utf8");
 
-      await expect(cleanupRun(cwdAlias, "cleanup-retarget", {
-        cleanupAdapterResources: async ({ runDir }) => {
-          expect(runDir).toBe(path.join(await realpath(physicalA), ".humanish/runs/cleanup-retarget"));
-          await rm(cwdAlias);
-          await symlink(physicalB, cwdAlias, "dir");
-          return [];
-        }
-      })).rejects.toThrow(/changed physical destination|identity/i);
+      await expect(
+        cleanupRun(cwdAlias, "cleanup-retarget", {
+          cleanupAdapterResources: async ({ runDir }) => {
+            expect(runDir).toBe(
+              path.join(await realpath(physicalA), ".humanish/runs/cleanup-retarget"),
+            );
+            await rm(cwdAlias);
+            await symlink(physicalB, cwdAlias, "dir");
+            return [];
+          },
+        }),
+      ).rejects.toThrow(/changed physical destination|identity/i);
 
       await expect(readFile(bCleanup, "utf8")).resolves.toBe("physical-b-sentinel\n");
-      await expect(stat(path.join(physicalA, ".humanish/runs/cleanup-retarget/cleanup.json"))).rejects.toMatchObject({
-        code: "ENOENT"
+      await expect(
+        stat(path.join(physicalA, ".humanish/runs/cleanup-retarget/cleanup.json")),
+      ).rejects.toMatchObject({
+        code: "ENOENT",
       });
     } finally {
       await rm(tempRoot, { force: true, recursive: true });
@@ -440,7 +487,7 @@ describe("dry-run bundles", () => {
 
       await expect(cleanupRun(cwd, "cleanup-symlink")).resolves.toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" }
+        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" },
       });
       await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
     });
@@ -463,7 +510,7 @@ describe("dry-run bundles", () => {
 
       await expect(cleanupRun(cwd, "cleanup-hardlink")).resolves.toMatchObject({
         ok: false,
-        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" }
+        error: { code: "HUMANISH_INVALID_RUN_BUNDLE" },
       });
       await expect(readFile(sentinel, "utf8")).resolves.toBe("outside-sentinel\n");
     });
@@ -474,7 +521,7 @@ describe("dry-run bundles", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "cleanup-already-clean"
+        runId: "cleanup-already-clean",
       });
 
       const bundlePath = path.join(cwd, ".humanish/runs/cleanup-already-clean/run.json");
@@ -489,15 +536,18 @@ describe("dry-run bundles", () => {
           status: "killed",
           cleanup: {
             killed: true,
-            reason: "killed during normal lane teardown"
-          }
-        }
+            reason: "killed during normal lane teardown",
+          },
+        },
       ];
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const cli = await runCli(["cleanup", "--cwd", cwd, "--run", "latest", "--json"]);
       expect(cli.exitCode).toBe(0);
-      const result = JSON.parse(cli.stdout) as { ok: boolean; summary: { alreadyClean: number; killed: number } };
+      const result = JSON.parse(cli.stdout) as {
+        ok: boolean;
+        summary: { alreadyClean: number; killed: number };
+      };
       expect(result.ok).toBe(true);
       expect(result.summary.alreadyClean).toBe(1);
       expect(result.summary.killed).toBe(0);
@@ -509,32 +559,36 @@ describe("dry-run bundles", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "cleanup-failed-receipt"
+        runId: "cleanup-failed-receipt",
       });
 
       await writeFile(
         path.join(cwd, ".humanish/runs/cleanup-failed-receipt/cleanup.json"),
-        `${JSON.stringify({
-          schema: CLEANUP_SCHEMA,
-          ok: false,
-          cwd: PUBLIC_TARGET_CWD,
-          run: "cleanup-failed-receipt",
-          runId: "cleanup-failed-receipt",
-          checkedAt: "2026-01-01T00:02:00.000Z",
-          summary: { resources: 1, killed: 0, alreadyClean: 0, failed: 1, skipped: 0 },
-          resources: [
-            {
-              provider: "e2b-desktop",
-              kind: "sandbox",
-              id: "sbx-failed",
-              status: "failed",
-              message: "synthetic failure"
-            }
-          ],
-          adapterResults: [],
-          warnings: []
-        }, null, 2)}\n`,
-        "utf8"
+        `${JSON.stringify(
+          {
+            schema: CLEANUP_SCHEMA,
+            ok: false,
+            cwd: PUBLIC_TARGET_CWD,
+            run: "cleanup-failed-receipt",
+            runId: "cleanup-failed-receipt",
+            checkedAt: "2026-01-01T00:02:00.000Z",
+            summary: { resources: 1, killed: 0, alreadyClean: 0, failed: 1, skipped: 0 },
+            resources: [
+              {
+                provider: "e2b-desktop",
+                kind: "sandbox",
+                id: "sbx-failed",
+                status: "failed",
+                message: "synthetic failure",
+              },
+            ],
+            adapterResults: [],
+            warnings: [],
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
       );
 
       const verify = await verifyRun(cwd, "cleanup-failed-receipt");
@@ -549,14 +603,14 @@ describe("dry-run bundles", () => {
         cwd,
         dryRun: true,
         runId: "dryrun-sims-65",
-        simCount: 65
+        simCount: 65,
       });
 
       expect(run.ok).toBe(true);
       expect(run.simCount).toBe(65);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/dryrun-sims-65/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/dryrun-sims-65/run.json"), "utf8"),
       ) as { simCount: number; simulations: unknown[] };
       expect(bundle.simCount).toBe(65);
       expect(bundle.simulations).toHaveLength(65);
@@ -568,7 +622,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "malformed-run-shape"
+        runId: "malformed-run-shape",
       });
       expect(run.ok).toBe(true);
 
@@ -591,7 +645,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "malformed-run-source-git"
+        runId: "malformed-run-source-git",
       });
       expect(run.ok).toBe(true);
 
@@ -614,7 +668,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "malformed-run-git-values"
+        runId: "malformed-run-git-values",
       });
       expect(run.ok).toBe(true);
 
@@ -646,7 +700,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "malformed-feedback-candidate"
+        runId: "malformed-feedback-candidate",
       });
       expect(run.ok).toBe(true);
 
@@ -669,7 +723,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "malformed-sim-streams"
+        runId: "malformed-sim-streams",
       });
       expect(run.ok).toBe(true);
 
@@ -692,7 +746,7 @@ describe("dry-run bundles", () => {
       expect(firstStream).toBeDefined();
       bundle.streams[0] = {
         ...firstStream!,
-        simId: "missing-simulation"
+        simId: "missing-simulation",
       };
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -718,14 +772,14 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "flag-redaction-regression"
+        runId: "flag-redaction-regression",
       });
       expect(run.ok).toBe(true);
 
       await writeFile(
         path.join(cwd, ".humanish/runs/flag-redaction-regression/review.md"),
         "actor command: codex exec --ask-for-approval never\n",
-        "utf8"
+        "utf8",
       );
 
       const verify = await verifyRun(cwd, "flag-redaction-regression");
@@ -739,18 +793,26 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "profile-artifact-regression"
+        runId: "profile-artifact-regression",
       });
       expect(run.ok).toBe(true);
 
-      const profileDir = path.join(cwd, ".humanish/runs/profile-artifact-regression/profiles/desktop/Default");
+      const profileDir = path.join(
+        cwd,
+        ".humanish/runs/profile-artifact-regression/profiles/desktop/Default",
+      );
       await mkdir(profileDir, { recursive: true });
-      await writeFile(path.join(profileDir, "Preferences"), "{\"metadata_secret\":\"synthetic\"}\n", "utf8");
+      await writeFile(
+        path.join(profileDir, "Preferences"),
+        '{"metadata_secret":"synthetic"}\n',
+        "utf8",
+      );
 
       const verify = await verifyRun(cwd, "profile-artifact-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message)
-        .toContain("profiles");
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message).toContain(
+        "profiles",
+      );
     });
   });
 
@@ -759,22 +821,25 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "events-secret-regression"
+        runId: "events-secret-regression",
       });
       expect(run.ok).toBe(true);
 
       await writeFile(
         path.join(cwd, ".humanish/runs/events-secret-regression/events.ndjson"),
         `{\"message\":\"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}\"}\n`,
-        "utf8"
+        "utf8",
       );
 
       const verify = await verifyRun(cwd, "events-secret-regression");
       expect(verify.ok).toBe(false);
       expect(verify.shareSafety.status).toBe("blocked");
-      expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain("PUBLIC_SAFETY_FINDINGS");
-      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message)
-        .toContain("events.ndjson");
+      expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain(
+        "PUBLIC_SAFETY_FINDINGS",
+      );
+      expect(verify.checks.find((check) => check.name === "public-safety scan")?.message).toContain(
+        "events.ndjson",
+      );
     });
   });
 
@@ -783,7 +848,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "raw-cwd-regression"
+        runId: "raw-cwd-regression",
       });
       expect(run.ok).toBe(true);
 
@@ -803,7 +868,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "nonlocal-artifact-regression"
+        runId: "nonlocal-artifact-regression",
       });
       expect(run.ok).toBe(true);
 
@@ -814,14 +879,15 @@ describe("dry-run bundles", () => {
       bundle.streams[0]?.artifacts.push({
         label: "remote actor log",
         path: "/home/user/private-repo/actor.log",
-        kind: "log"
+        kind: "log",
       });
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const verify = await verifyRun(cwd, "nonlocal-artifact-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("nonlocal artifact");
+      expect(
+        verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+      ).toContain("nonlocal artifact");
     });
   });
 
@@ -830,7 +896,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "invalid-screenshot-regression"
+        runId: "invalid-screenshot-regression",
       });
       expect(run.ok).toBe(true);
 
@@ -849,15 +915,24 @@ describe("dry-run bundles", () => {
       };
       const stream = bundle.streams[0];
       expect(stream).toBeTruthy();
-      stream!.embed = { kind: "screenshot", url: screenshotPath, title: "Invalid screenshot evidence" };
+      stream!.embed = {
+        kind: "screenshot",
+        url: screenshotPath,
+        title: "Invalid screenshot evidence",
+      };
       stream!.ui = { ...(stream!.ui ?? {}), screenshotUrl: screenshotPath };
-      stream!.artifacts.push({ label: "invalid screenshot evidence", path: screenshotPath, kind: "screenshot" });
+      stream!.artifacts.push({
+        label: "invalid screenshot evidence",
+        path: screenshotPath,
+        kind: "screenshot",
+      });
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const verify = await verifyRun(cwd, "invalid-screenshot-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("screenshots/truncated.png (could not decode PNG evidence)");
+      expect(
+        verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+      ).toContain("screenshots/truncated.png (could not decode PNG evidence)");
     });
   });
 
@@ -866,7 +941,7 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "missing-nested-proof-regression"
+        runId: "missing-nested-proof-regression",
       });
       expect(run.ok).toBe(true);
 
@@ -876,14 +951,15 @@ describe("dry-run bundles", () => {
       };
       bundle.streams[0]!.ui = {
         ...(bundle.streams[0]?.ui ?? {}),
-        nestedObserverPath: "nested-evidence/missing-nested-proof.json"
+        nestedObserverPath: "nested-evidence/missing-nested-proof.json",
       };
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const verify = await verifyRun(cwd, "missing-nested-proof-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("nested-evidence/missing-nested-proof.json");
+      expect(
+        verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+      ).toContain("nested-evidence/missing-nested-proof.json");
     });
   });
 
@@ -892,24 +968,28 @@ describe("dry-run bundles", () => {
       const run = await runDryRun({
         cwd,
         dryRun: true,
-        runId: "placeholder-nested-proof-regression"
+        runId: "placeholder-nested-proof-regression",
       });
       expect(run.ok).toBe(true);
 
-      const bundlePath = path.join(cwd, ".humanish/runs/placeholder-nested-proof-regression/run.json");
+      const bundlePath = path.join(
+        cwd,
+        ".humanish/runs/placeholder-nested-proof-regression/run.json",
+      );
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as {
         streams: Array<{ ui?: { nestedObserverPath?: string } }>;
       };
       bundle.streams[0]!.ui = {
         ...(bundle.streams[0]?.ui ?? {}),
-        nestedObserverPath: "[remote-nested-observer]"
+        nestedObserverPath: "[remote-nested-observer]",
       };
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
       const verify = await verifyRun(cwd, "placeholder-nested-proof-regression");
       expect(verify.ok).toBe(false);
-      expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-        .toContain("nonlocal nested observer reference");
+      expect(
+        verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+      ).toContain("nonlocal nested observer reference");
     });
   });
 
@@ -925,7 +1005,7 @@ describe("dry-run bundles", () => {
           const result = await runDryRun({
             appUrl,
             cwd,
-            runId: "browser-app-test"
+            runId: "browser-app-test",
           });
 
           expect(result.ok).toBe(true);
@@ -933,7 +1013,7 @@ describe("dry-run bundles", () => {
           expect(result.simCount).toBe(2);
 
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-app-test/run.json"), "utf8")
+            await readFile(path.join(cwd, ".humanish/runs/browser-app-test/run.json"), "utf8"),
           ) as {
             mode: string;
             review: { verdict: string };
@@ -954,72 +1034,136 @@ describe("dry-run bundles", () => {
           expect(bundle.review.verdict).toBe("pass");
           expect(bundle.source.git.schema).toBe("humanish.git-state.v1");
           expect(bundle.source.git.status).toBe("missing");
-          expect(bundle.scenario).toEqual(expect.objectContaining({
-            id: "browser-persona-two-step",
-            source: "builtin:browser-persona-two-step"
-          }));
+          expect(bundle.scenario).toEqual(
+            expect.objectContaining({
+              id: "browser-persona-two-step",
+              source: "builtin:browser-persona-two-step",
+            }),
+          );
           expect(bundle.simulations).toEqual([
-            expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" }),
-            expect.objectContaining({ mode: "browser-sim", status: "passed", streamKind: "browser" })
+            expect.objectContaining({
+              mode: "browser-sim",
+              status: "passed",
+              streamKind: "browser",
+            }),
+            expect.objectContaining({
+              mode: "browser-sim",
+              status: "passed",
+              streamKind: "browser",
+            }),
           ]);
           expect(bundle.streams.map((stream) => stream.kind)).toEqual(["browser", "browser"]);
           expect(bundle.streams.map((stream) => stream.viewport.width)).toEqual([1440, 390]);
           expect(bundle.streams[1]?.viewport.isMobile).toBe(true);
           expect(bundle.streams[0]?.embed.kind).toBe("screenshot");
           expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
-          expect(bundle.streams[0]?.ui.screenshotUrl).toBe("../screenshots/desktop-step-02-interact.png");
-          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-01-load.png");
-          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-step-02-interact.png");
+          expect(bundle.streams[0]?.ui.screenshotUrl).toBe(
+            "../screenshots/desktop-step-02-interact.png",
+          );
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain(
+            "screenshots/desktop-step-01-load.png",
+          );
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain(
+            "screenshots/desktop-step-02-interact.png",
+          );
 
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/screenshots/desktop-step-01-load.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/screenshots/desktop-step-02-interact.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/screenshots/mobile-step-01-load.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/screenshots/mobile-step-02-interact.png"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/traces/desktop.json"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/events.ndjson"))).resolves.toBeTruthy();
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-test/profiles"))).rejects.toBeTruthy();
+          await expect(
+            stat(
+              path.join(
+                cwd,
+                ".humanish/runs/browser-app-test/screenshots/desktop-step-01-load.png",
+              ),
+            ),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(
+              path.join(
+                cwd,
+                ".humanish/runs/browser-app-test/screenshots/desktop-step-02-interact.png",
+              ),
+            ),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(
+              path.join(cwd, ".humanish/runs/browser-app-test/screenshots/mobile-step-01-load.png"),
+            ),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(
+              path.join(
+                cwd,
+                ".humanish/runs/browser-app-test/screenshots/mobile-step-02-interact.png",
+              ),
+            ),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(path.join(cwd, ".humanish/runs/browser-app-test/traces/desktop.json")),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(path.join(cwd, ".humanish/runs/browser-app-test/events.ndjson")),
+          ).resolves.toBeTruthy();
+          await expect(
+            stat(path.join(cwd, ".humanish/runs/browser-app-test/profiles")),
+          ).rejects.toBeTruthy();
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-app-test/traces/desktop.json"), "utf8")
+            await readFile(
+              path.join(cwd, ".humanish/runs/browser-app-test/traces/desktop.json"),
+              "utf8",
+            ),
           ) as { schema: string; steps: Array<{ status: string; screenshotPath: string }> };
           expect(desktopTrace.schema).toBe("humanish.browser-persona-trace.v1");
           expect(desktopTrace.steps).toHaveLength(2);
           expect(desktopTrace.steps.map((step) => step.status)).toEqual(["passed", "passed"]);
           expect(desktopTrace.steps.map((step) => step.screenshotPath)).toEqual([
             "screenshots/desktop-step-01-load.png",
-            "screenshots/desktop-step-02-interact.png"
+            "screenshots/desktop-step-02-interact.png",
           ]);
 
           const verify = await verifyRun(cwd, "latest");
           expect(verify.ok).toBe(true);
-          expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.ok).toBe(true);
+          expect(
+            verify.checks.find((check) => check.name === "local evidence artifacts exist")?.ok,
+          ).toBe(true);
 
           const observer = await renderObserver(cwd, "latest");
           expect(observer.ok).toBe(true);
           expect(observer.warnings.join("\n")).toContain("verified local evidence artifacts");
-          expect(observer.warnings.join("\n")).not.toContain("dry-run lanes do not claim product behavior proof");
+          expect(observer.warnings.join("\n")).not.toContain(
+            "dry-run lanes do not claim product behavior proof",
+          );
 
           bundle.streams[0]!.embed.url = "../screenshots/missing-embed.png";
           await writeFile(
             path.join(cwd, ".humanish/runs/browser-app-test/run.json"),
             `${JSON.stringify(bundle, null, 2)}\n`,
-            "utf8"
+            "utf8",
           );
           const missingEmbedVerify = await verifyRun(cwd, "latest");
           expect(missingEmbedVerify.ok).toBe(false);
-          expect(missingEmbedVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-            .toContain("screenshots/missing-embed.png");
+          expect(
+            missingEmbedVerify.checks.find(
+              (check) => check.name === "local evidence artifacts exist",
+            )?.message,
+          ).toContain("screenshots/missing-embed.png");
           bundle.streams[0]!.embed.url = "../screenshots/desktop-step-02-interact.png";
           await writeFile(
             path.join(cwd, ".humanish/runs/browser-app-test/run.json"),
             `${JSON.stringify(bundle, null, 2)}\n`,
-            "utf8"
+            "utf8",
           );
 
-          await rm(path.join(cwd, ".humanish/runs/browser-app-test/screenshots/mobile-step-02-interact.png"));
+          await rm(
+            path.join(
+              cwd,
+              ".humanish/runs/browser-app-test/screenshots/mobile-step-02-interact.png",
+            ),
+          );
           const missingVerify = await verifyRun(cwd, "latest");
           expect(missingVerify.ok).toBe(false);
-          expect(missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-            .toContain("screenshots/mobile-step-02-interact.png");
+          expect(
+            missingVerify.checks.find((check) => check.name === "local evidence artifacts exist")
+              ?.message,
+          ).toContain("screenshots/mobile-step-02-interact.png");
         } finally {
           if (previousBrowserCommand === undefined) {
             delete process.env.HUMANISH_BROWSER_COMMAND;
@@ -1054,7 +1198,7 @@ describe("dry-run bundles", () => {
           const result = await runDryRun({
             appUrl,
             cwd,
-            runId: "browser-blocked-test"
+            runId: "browser-blocked-test",
           });
 
           // The run honestly reports failure (allPassed === false) — fail-closed is intact.
@@ -1062,7 +1206,7 @@ describe("dry-run bundles", () => {
           expect(result.mode).toBe("live");
 
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-blocked-test/run.json"), "utf8")
+            await readFile(path.join(cwd, ".humanish/runs/browser-blocked-test/run.json"), "utf8"),
           ) as {
             streams: Array<{
               status: string;
@@ -1091,7 +1235,9 @@ describe("dry-run bundles", () => {
           // referenced an artifact it did not write.
           const verify = await verifyRun(cwd, "latest");
           expect(verify.ok).toBe(true);
-          const localEvidenceCheck = verify.checks.find((check) => check.name === "local evidence artifacts exist");
+          const localEvidenceCheck = verify.checks.find(
+            (check) => check.name === "local evidence artifacts exist",
+          );
           expect(localEvidenceCheck?.ok).toBe(true);
         } finally {
           restoreBrowserEnv(previousBrowserCommand, previousBrowserPersonaDriver);
@@ -1118,12 +1264,18 @@ describe("dry-run bundles", () => {
           expect(baseline.ok).toBe(true);
 
           // Delete a referenced screenshot the bundle claims as evidence for a passed stream.
-          await rm(path.join(cwd, ".humanish/runs/browser-broken-success-test/screenshots/desktop-step-02-interact.png"));
+          await rm(
+            path.join(
+              cwd,
+              ".humanish/runs/browser-broken-success-test/screenshots/desktop-step-02-interact.png",
+            ),
+          );
 
           const verify = await verifyRun(cwd, "browser-broken-success-test");
           expect(verify.ok).toBe(false);
-          expect(verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-            .toContain("screenshots/desktop-step-02-interact.png");
+          expect(
+            verify.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+          ).toContain("screenshots/desktop-step-02-interact.png");
         } finally {
           restoreBrowserEnv(previousBrowserCommand, previousBrowserPersonaDriver);
         }
@@ -1155,8 +1307,8 @@ describe("dry-run bundles", () => {
             "    - id: confirm-copy",
             "      label: Confirm visible copy",
             "      action: assertText",
-            "      value: browser surface proof"
-          ].join("\n") + "\n"
+            "      value: browser surface proof",
+          ].join("\n") + "\n",
         );
 
         const previousBrowserCommand = process.env.HUMANISH_BROWSER_COMMAND;
@@ -1169,60 +1321,88 @@ describe("dry-run bundles", () => {
             appUrl,
             cwd,
             runId: "browser-app-manifest-test",
-            simCount: 1
+            simCount: 1,
           });
 
           expect(result.ok).toBe(true);
           const bundle = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-app-manifest-test/run.json"), "utf8")
+            await readFile(
+              path.join(cwd, ".humanish/runs/browser-app-manifest-test/run.json"),
+              "utf8",
+            ),
           ) as {
             review: { gaps: string[]; verdict: string };
             scenario: { goal: string; id: string; source: string; title: string };
             simulations: Array<{ scenarioId: string }>;
-            streams: Array<{ artifacts: Array<{ path: string }>; ui: { intent: string; screenshotUrl: string } }>;
+            streams: Array<{
+              artifacts: Array<{ path: string }>;
+              ui: { intent: string; screenshotUrl: string };
+            }>;
           };
-          expect(bundle.scenario).toEqual(expect.objectContaining({
-            goal: "Exercise the fixture app through app-specific browser checks.",
-            id: "app-onboarding",
-            source: "humanish/scenarios/app-browser.yaml",
-            title: "Fixture app onboarding"
-          }));
+          expect(bundle.scenario).toEqual(
+            expect.objectContaining({
+              goal: "Exercise the fixture app through app-specific browser checks.",
+              id: "app-onboarding",
+              source: "humanish/scenarios/app-browser.yaml",
+              title: "Fixture app onboarding",
+            }),
+          );
           expect(bundle.simulations[0]?.scenarioId).toBe("app-onboarding");
-          expect(bundle.streams[0]?.ui.intent).toBe("Exercise the fixture app through app-specific browser checks.");
-          expect(bundle.streams[0]?.ui.screenshotUrl).toBe("../screenshots/desktop-confirm-copy.png");
-          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-open-home.png");
-          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain("screenshots/desktop-confirm-copy.png");
+          expect(bundle.streams[0]?.ui.intent).toBe(
+            "Exercise the fixture app through app-specific browser checks.",
+          );
+          expect(bundle.streams[0]?.ui.screenshotUrl).toBe(
+            "../screenshots/desktop-confirm-copy.png",
+          );
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain(
+            "screenshots/desktop-open-home.png",
+          );
+          expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path)).toContain(
+            "screenshots/desktop-confirm-copy.png",
+          );
           expect(bundle.review.gaps.join("\n")).toContain("humanish/scenarios/app-browser.yaml");
 
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-app-manifest-test/traces/desktop.json"), "utf8")
+            await readFile(
+              path.join(cwd, ".humanish/runs/browser-app-manifest-test/traces/desktop.json"),
+              "utf8",
+            ),
           ) as {
             scenario: { id: string; source: string; stepCount: number };
-            steps: Array<{ action: string; assertions?: Array<{ id: string; status: string }>; id: string; label: string; screenshotPath: string; status: string }>;
+            steps: Array<{
+              action: string;
+              assertions?: Array<{ id: string; status: string }>;
+              id: string;
+              label: string;
+              screenshotPath: string;
+              status: string;
+            }>;
           };
-          expect(desktopTrace.scenario).toEqual(expect.objectContaining({
-            id: "app-onboarding",
-            source: "humanish/scenarios/app-browser.yaml",
-            stepCount: 2
-          }));
+          expect(desktopTrace.scenario).toEqual(
+            expect.objectContaining({
+              id: "app-onboarding",
+              source: "humanish/scenarios/app-browser.yaml",
+              stepCount: 2,
+            }),
+          );
           expect(desktopTrace.steps).toEqual([
             expect.objectContaining({
               action: "goto",
               id: "open-home",
               label: "Open fixture home",
               screenshotPath: "screenshots/desktop-open-home.png",
-              status: "passed"
+              status: "passed",
             }),
             expect.objectContaining({
               action: "assertText",
               id: "confirm-copy",
               label: "Confirm visible copy",
               screenshotPath: "screenshots/desktop-confirm-copy.png",
-              status: "passed"
-            })
+              status: "passed",
+            }),
           ]);
           expect(desktopTrace.steps[0]?.assertions).toEqual([
-            expect.objectContaining({ id: "text-present", status: "passed" })
+            expect.objectContaining({ id: "text-present", status: "passed" }),
           ]);
 
           const verify = await verifyRun(cwd, "latest");
@@ -1263,8 +1443,8 @@ describe("dry-run bundles", () => {
             "      action: goto",
             "      path: /",
             "      expect:",
-            "        text: browser surface proof"
-          ].join("\n") + "\n"
+            "        text: browser surface proof",
+          ].join("\n") + "\n",
         );
 
         const previousBrowserCommand = process.env.HUMANISH_BROWSER_COMMAND;
@@ -1277,25 +1457,30 @@ describe("dry-run bundles", () => {
             appUrl,
             cwd,
             runId: "browser-app-one-step-manifest",
-            simCount: 1
+            simCount: 1,
           });
 
           expect(result.ok).toBe(true);
           const desktopTrace = JSON.parse(
-            await readFile(path.join(cwd, ".humanish/runs/browser-app-one-step-manifest/traces/desktop.json"), "utf8")
+            await readFile(
+              path.join(cwd, ".humanish/runs/browser-app-one-step-manifest/traces/desktop.json"),
+              "utf8",
+            ),
           ) as {
             scenario: { id: string; stepCount: number };
             steps: Array<{ id: string; status: string }>;
           };
-          expect(desktopTrace.scenario).toEqual(expect.objectContaining({
-            id: "single-step-proof",
-            stepCount: 1
-          }));
+          expect(desktopTrace.scenario).toEqual(
+            expect.objectContaining({
+              id: "single-step-proof",
+              stepCount: 1,
+            }),
+          );
           expect(desktopTrace.steps).toEqual([
             expect.objectContaining({
               id: "open-home",
-              status: "passed"
-            })
+              status: "passed",
+            }),
           ]);
         } finally {
           if (previousBrowserCommand === undefined) {
@@ -1328,8 +1513,8 @@ describe("dry-run bundles", () => {
             "    - id: open-home",
             "      action: goto",
             "      expect:",
-            "        text: \"unterminated"
-          ].join("\n") + "\n"
+            '        text: "unterminated',
+          ].join("\n") + "\n",
         );
 
         const previousBrowserCommand = process.env.HUMANISH_BROWSER_COMMAND;
@@ -1341,13 +1526,15 @@ describe("dry-run bundles", () => {
           const result = await runDryRun({
             appUrl,
             cwd,
-            runId: "browser-app-unparsable-manifest"
+            runId: "browser-app-unparsable-manifest",
           });
 
           expect(result.ok).toBe(false);
           expect(result.error?.code).toBe("HUMANISH_BROWSER_APP_CAPTURE_FAILED");
           expect(result.error?.message).toContain("could not be parsed as YAML");
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-unparsable-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+          await expect(
+            stat(path.join(cwd, ".humanish/runs/browser-app-unparsable-manifest/run.json")),
+          ).rejects.toMatchObject({ code: "ENOENT" });
         } finally {
           if (previousBrowserCommand === undefined) {
             delete process.env.HUMANISH_BROWSER_COMMAND;
@@ -1380,8 +1567,8 @@ describe("dry-run bundles", () => {
             "    - id: missing-selector",
             "      label: Missing selector fill",
             "      action: fill",
-            "      value: synthetic.user@example.test"
-          ].join("\n") + "\n"
+            "      value: synthetic.user@example.test",
+          ].join("\n") + "\n",
         );
 
         const previousBrowserCommand = process.env.HUMANISH_BROWSER_COMMAND;
@@ -1393,13 +1580,15 @@ describe("dry-run bundles", () => {
           const result = await runDryRun({
             appUrl,
             cwd,
-            runId: "browser-app-malformed-manifest"
+            runId: "browser-app-malformed-manifest",
           });
 
           expect(result.ok).toBe(false);
           expect(result.error?.code).toBe("HUMANISH_BROWSER_APP_CAPTURE_FAILED");
           expect(result.error?.message).toContain("fill action requires selector");
-          await expect(stat(path.join(cwd, ".humanish/runs/browser-app-malformed-manifest/run.json"))).rejects.toMatchObject({ code: "ENOENT" });
+          await expect(
+            stat(path.join(cwd, ".humanish/runs/browser-app-malformed-manifest/run.json")),
+          ).rejects.toMatchObject({ code: "ENOENT" });
         } finally {
           if (previousBrowserCommand === undefined) {
             delete process.env.HUMANISH_BROWSER_COMMAND;
@@ -1421,7 +1610,7 @@ describe("dry-run bundles", () => {
       const result = await runDryRun({
         appUrl: "https://example.com/?token=secret",
         cwd,
-        runId: "browser-app-invalid"
+        runId: "browser-app-invalid",
       });
 
       expect(result.ok).toBe(false);
@@ -1438,18 +1627,28 @@ describe("dry-run bundles", () => {
         process.env.HUMANISH_BROWSER_PERSONA_DRIVER = "fixture";
 
         try {
-          const pollutedUrl = appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") + "?access_token=secret-token#private-fragment";
+          const pollutedUrl =
+            appUrl.replace("http://", "http://synthetic-user:synthetic-pass@") +
+            "?access_token=secret-token#private-fragment";
           const result = await runDryRun({
             appUrl: pollutedUrl,
             cwd,
-            runId: "browser-app-url-sanitize"
+            runId: "browser-app-url-sanitize",
           });
 
           expect(result.ok).toBe(true);
 
-          const bundleText = await readFile(path.join(cwd, ".humanish/runs/browser-app-url-sanitize/run.json"), "utf8");
-          const desktopTraceText = await readFile(path.join(cwd, ".humanish/runs/browser-app-url-sanitize/traces/desktop.json"), "utf8");
-          const bundle = JSON.parse(bundleText) as { streams: Array<{ ui: { appUrl: string; route: string } }> };
+          const bundleText = await readFile(
+            path.join(cwd, ".humanish/runs/browser-app-url-sanitize/run.json"),
+            "utf8",
+          );
+          const desktopTraceText = await readFile(
+            path.join(cwd, ".humanish/runs/browser-app-url-sanitize/traces/desktop.json"),
+            "utf8",
+          );
+          const bundle = JSON.parse(bundleText) as {
+            streams: Array<{ ui: { appUrl: string; route: string } }>;
+          };
 
           expect(bundle.streams[0]?.ui.appUrl).toBe(appUrl);
           expect(bundle.streams[0]?.ui.route).toBe(appUrl);
@@ -1492,9 +1691,9 @@ describe("dry-run bundles", () => {
           "  process.stdout.write('secret-like value ' + 'sk-' + 'testsecretvalue1234567890' + '\\n');",
           "  process.stdout.write(('HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=' + process.env.HUMANISH_ACTOR_VERDICT_NONCE).split('').join('\\u001b7\\u001b8') + '\\n');",
           "  process.exit(0);",
-          "});"
+          "});",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1503,7 +1702,7 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-tui-test",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(true);
@@ -1511,7 +1710,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-tui-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-tui-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-tui-test/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         mode: string;
@@ -1528,7 +1727,7 @@ describe("dry-run bundles", () => {
       expect(bundle.mode).toBe("live");
       expect(bundle.review.verdict).toBe("pass");
       expect(bundle.simulations).toEqual([
-        expect.objectContaining({ mode: "tui-sim", status: "passed", streamKind: "tui" })
+        expect.objectContaining({ mode: "tui-sim", status: "passed", streamKind: "tui" }),
       ]);
       const corruptedMode = ["tbrowser", "sim"].join("-");
       expect(JSON.stringify(bundle)).not.toContain(corruptedMode);
@@ -1536,8 +1735,8 @@ describe("dry-run bundles", () => {
         expect.objectContaining({
           completion: expect.objectContaining({ status: "passed" }),
           kind: "tui",
-          transport: "pty"
-        })
+          transport: "pty",
+        }),
       ]);
       expect(bundle.streams[0]?.terminal.tail).toContain("codex fixture actor started");
       expect(bundle.streams[0]?.terminal.tail).toContain("[REDACTED_SECRET]");
@@ -1545,11 +1744,13 @@ describe("dry-run bundles", () => {
       expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
       expect(bundle.events.map((event) => event.type)).toContain("actor.prompt.submitted");
       expect(bundle.events.map((event) => event.type)).toContain("actor.verdict");
-      expect(bundle.events.some((event) => event.message.includes(`sk-${"testsecretvalue"}`))).toBe(false);
+      expect(bundle.events.some((event) => event.message.includes(`sk-${"testsecretvalue"}`))).toBe(
+        false,
+      );
 
       const transcript = await readFile(
         path.join(cwd, ".humanish/runs/codex-tui-test/transcripts/codex-tui-sanitized.txt"),
-        "utf8"
+        "utf8",
       );
       expect(transcript).toContain("HUMANISH_ACTOR_VERDICT=passed");
       expect(transcript).toContain("HUMANISH_ACTOR_NONCE=");
@@ -1567,7 +1768,7 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         "process.stdout.write('HUMANISH_ACTOR_VERDICT=blocked HUMANISH_ACTOR_NONCE=' + process.env.HUMANISH_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1576,14 +1777,14 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-tui-blocked-marker",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-tui-blocked-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-tui-blocked-marker/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1592,7 +1793,9 @@ describe("dry-run bundles", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.streams[0]?.status).toBe("blocked");
       expect(bundle.streams[0]?.completion.reason).toContain("blocked verdict marker");
-      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain("blocked");
+      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain(
+        "blocked",
+      );
     });
   });
 
@@ -1604,9 +1807,9 @@ describe("dry-run bundles", () => {
         [
           "process.stdout.write('tui actor echoing an unauthenticated marker\\n');",
           "process.stdout.write('HUMANISH_ACTOR_VERDICT=passed\\n');",
-          "process.exit(1);"
+          "process.exit(1);",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1615,14 +1818,14 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-tui-forged-marker",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-tui-forged-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-tui-forged-marker/run.json"), "utf8"),
       ) as {
         review: { verdict: string };
         streams: Array<{ status: string; completion: { reason: string; status: string } }>;
@@ -1650,9 +1853,9 @@ describe("dry-run bundles", () => {
           `  if (!fs.existsSync(${JSON.stringify(releaseFile)})) return;`,
           "  clearInterval(timer);",
           "  process.stdout.write('HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=' + process.env.HUMANISH_ACTOR_VERDICT_NONCE + '\\n');",
-          "}, 25);"
+          "}, 25);",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const runPromise = runDryRun({
@@ -1661,7 +1864,7 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId,
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       await waitForFile(startedFile);
@@ -1671,23 +1874,35 @@ describe("dry-run bundles", () => {
         events: Array<{ type: string }>;
         lifecycle: Array<{ event: string }>;
         review: { verdict: string };
-        streams: Array<{ artifacts: Array<{ path: string }>; status: string; completion: { status: string } }>;
+        streams: Array<{
+          artifacts: Array<{ path: string }>;
+          status: string;
+          completion: { status: string };
+        }>;
       };
       expect(runningBundle.review.verdict).toBe("contract_proof_only");
       expect(runningBundle.lifecycle.map((entry) => entry.event)).toContain("actor.running");
       expect(runningBundle.events.map((event) => event.type)).toContain("actor.running");
       expect(runningBundle.streams[0]?.status).toBe("running");
       expect(runningBundle.streams[0]?.completion.status).toBe("running");
-      expect(runningBundle.streams[0]?.artifacts.every((artifact) => !artifact.path.includes("transcripts/"))).toBe(true);
+      expect(
+        runningBundle.streams[0]?.artifacts.every(
+          (artifact) => !artifact.path.includes("transcripts/"),
+        ),
+      ).toBe(true);
 
-      const runningObserverData = JSON.parse(await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")) as {
+      const runningObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8"),
+      ) as {
         events: Array<{ type: string }>;
         streams: Array<{ status: string }>;
       };
       expect(runningObserverData.events.map((event) => event.type)).toContain("actor.running");
       expect(runningObserverData.streams[0]?.status).toBe("running");
 
-      const runningLatest = JSON.parse(await readFile(path.join(cwd, ".humanish/runs/latest.json"), "utf8")) as {
+      const runningLatest = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs/latest.json"), "utf8"),
+      ) as {
         runId: string;
         path: string;
       };
@@ -1698,7 +1913,9 @@ describe("dry-run bundles", () => {
       const result = await runPromise;
       expect(result.ok).toBe(true);
 
-      const latest = JSON.parse(await readFile(path.join(cwd, ".humanish/runs/latest.json"), "utf8")) as {
+      const latest = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs/latest.json"), "utf8"),
+      ) as {
         runId: string;
         path: string;
       };
@@ -1706,13 +1923,19 @@ describe("dry-run bundles", () => {
       await expect(stat(path.join(cwd, latest.path, "run.json"))).resolves.toBeTruthy();
       await expect(stat(path.join(cwd, latest.path, "review.md"))).resolves.toBeTruthy();
 
-      const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")) as {
+      const finalObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8"),
+      ) as {
         events: Array<{ type: string }>;
         streams: Array<{ artifacts: Array<{ path: string }>; status: string }>;
       };
       expect(finalObserverData.events.map((event) => event.type)).toContain("actor.verdict");
       expect(finalObserverData.streams[0]?.status).toBe("passed");
-      expect(finalObserverData.streams[0]?.artifacts.some((artifact) => artifact.path.includes("transcripts/"))).toBe(true);
+      expect(
+        finalObserverData.streams[0]?.artifacts.some((artifact) =>
+          artifact.path.includes("transcripts/"),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -1720,11 +1943,7 @@ describe("dry-run bundles", () => {
     await withFixtureCopy(async (cwd) => {
       const fakeActor = path.join(cwd, "fake-codex-cli.mjs");
       const previousCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
-      await writeFile(
-        fakeActor,
-        "process.stdout.write('cli fixture actor passed\\n');\n",
-        "utf8"
-      );
+      await writeFile(fakeActor, "process.stdout.write('cli fixture actor passed\\n');\n", "utf8");
       process.env.HUMANISH_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
 
       try {
@@ -1740,7 +1959,7 @@ describe("dry-run bundles", () => {
           "codex-cli",
           "--cwd",
           cwd,
-          "--json"
+          "--json",
         ]);
         expect(result.exitCode).toBe(0);
         const envelope = JSON.parse(result.stdout) as { mode: string; ok: boolean; runId: string };
@@ -1756,7 +1975,7 @@ describe("dry-run bundles", () => {
           "--no-open",
           "--cwd",
           cwd,
-          "--json"
+          "--json",
         ]);
         expect(watch.exitCode).toBe(0);
         const observer = JSON.parse(watch.stdout) as { ok: boolean; observerPath: string };
@@ -1778,12 +1997,12 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         [
-          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          'process.stdout.write(\'{"type":"turn.started"}\\n\');',
           "process.stdout.write('exec actor inspected humanish/config.ts\\n');",
           "process.stdout.write('secret-like value ' + 'sk-' + 'execsecretvalue1234567890' + '\\n');",
-          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+          'process.stdout.write(\'{"type":"turn.completed"}\\n\');',
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1792,7 +2011,7 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-exec-test",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(true);
@@ -1800,7 +2019,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-exec-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-exec-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-exec-test/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         mode: string;
@@ -1816,13 +2035,15 @@ describe("dry-run bundles", () => {
 
       expect(bundle.mode).toBe("live");
       expect(bundle.review.verdict).toBe("pass");
-      expect(bundle.simulations).toEqual([expect.objectContaining({ status: "passed", streamKind: "terminal" })]);
+      expect(bundle.simulations).toEqual([
+        expect.objectContaining({ status: "passed", streamKind: "terminal" }),
+      ]);
       expect(bundle.streams).toEqual([
         expect.objectContaining({
           completion: expect.objectContaining({ status: "passed" }),
           kind: "terminal",
-          transport: "snapshot"
-        })
+          transport: "snapshot",
+        }),
       ]);
       expect(bundle.streams[0]?.terminal.tail).toContain("exec actor inspected humanish/config.ts");
       expect(bundle.streams[0]?.terminal.tail).toContain("[REDACTED_SECRET]");
@@ -1830,11 +2051,13 @@ describe("dry-run bundles", () => {
       expect(bundle.events.map((event) => event.type)).toContain("actor.spawned");
       expect(bundle.events.map((event) => event.type)).toContain("actor.prompt.submitted");
       expect(bundle.events.map((event) => event.type)).toContain("actor.verdict");
-      expect(bundle.events.some((event) => event.message.includes(`sk-${"execsecretvalue"}`))).toBe(false);
+      expect(bundle.events.some((event) => event.message.includes(`sk-${"execsecretvalue"}`))).toBe(
+        false,
+      );
 
       const transcript = await readFile(
         path.join(cwd, ".humanish/runs/codex-exec-test/transcripts/codex-exec-sanitized.jsonl"),
-        "utf8"
+        "utf8",
       );
       expect(transcript).toContain("[REDACTED_SECRET]");
       expect(transcript).not.toContain(`sk-${"execsecretvalue"}`);
@@ -1859,25 +2082,33 @@ describe("dry-run bundles", () => {
         throw error;
       }
       const fakeActor = path.join(cwd, "fake-codex-exec-latest-hardlink.mjs");
-      await writeFile(fakeActor, [
-        "import fs from 'node:fs';",
-        "const latest = '.humanish/runs/latest.json';",
-        "fs.rmSync(latest);",
-        `fs.linkSync(${JSON.stringify(sentinel)}, latest);`,
-        "process.stdout.write('actor completed after planting hostile latest pointer\\n');"
-      ].join("\n"), "utf8");
+      await writeFile(
+        fakeActor,
+        [
+          "import fs from 'node:fs';",
+          "const latest = '.humanish/runs/latest.json';",
+          "fs.rmSync(latest);",
+          `fs.linkSync(${JSON.stringify(sentinel)}, latest);`,
+          "process.stdout.write('actor completed after planting hostile latest pointer\\n');",
+        ].join("\n"),
+        "utf8",
+      );
 
-      await expect(runDryRun({
-        cwd,
-        actor: "codex-exec",
-        actorCommand: [process.execPath, fakeActor],
-        runId: "codex-exec-hostile-latest",
-        simCount: 1,
-        timeoutMs: 5_000
-      })).rejects.toThrow(/hardlink|single-link/i);
+      await expect(
+        runDryRun({
+          cwd,
+          actor: "codex-exec",
+          actorCommand: [process.execPath, fakeActor],
+          runId: "codex-exec-hostile-latest",
+          simCount: 1,
+          timeoutMs: 5_000,
+        }),
+      ).rejects.toThrow(/hardlink|single-link/i);
 
       expect(await readFile(sentinel, "utf8")).toBe("outside-sentinel\n");
-      await expect(access(path.join(cwd, ".humanish/runs/codex-exec-hostile-latest/transcripts"))).rejects.toThrow();
+      await expect(
+        access(path.join(cwd, ".humanish/runs/codex-exec-hostile-latest/transcripts")),
+      ).rejects.toThrow();
     });
   });
 
@@ -1889,9 +2120,9 @@ describe("dry-run bundles", () => {
         [
           "process.stdout.write('exec actor echoing an unauthenticated marker\\n');",
           "process.stdout.write('HUMANISH_ACTOR_VERDICT=passed\\n');",
-          "process.exit(1);"
+          "process.exit(1);",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1900,14 +2131,14 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-exec-forged-marker",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_EXEC_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-exec-forged-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-exec-forged-marker/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1917,7 +2148,9 @@ describe("dry-run bundles", () => {
       expect(bundle.streams[0]?.status).toBe("failed");
       expect(bundle.streams[0]?.completion.status).toBe("failed");
       expect(bundle.streams[0]?.completion.reason).not.toContain("verdict marker");
-      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain("failed");
+      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain(
+        "failed",
+      );
     });
   });
 
@@ -1927,7 +2160,7 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         "process.stdout.write('HUMANISH_ACTOR_VERDICT=blocked HUMANISH_ACTOR_NONCE=' + process.env.HUMANISH_ACTOR_VERDICT_NONCE + '\\n');\nsetInterval(() => {}, 1000);\n",
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1936,14 +2169,14 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-exec-blocked-marker",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_EXEC_FAILED");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-exec-blocked-marker/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-exec-blocked-marker/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -1952,7 +2185,9 @@ describe("dry-run bundles", () => {
       expect(bundle.review.verdict).toBe("blocked");
       expect(bundle.streams[0]?.status).toBe("blocked");
       expect(bundle.streams[0]?.completion.reason).toContain("blocked verdict marker");
-      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain("blocked");
+      expect(bundle.events.find((event) => event.type === "actor.verdict")?.message).toContain(
+        "blocked",
+      );
     });
   });
 
@@ -1962,12 +2197,12 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         [
-          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          'process.stdout.write(\'{"type":"turn.started"}\\n\');',
           "process.stdout.write('exec fanout fixture inspected humanish dogfood docs\\n');",
           "process.stdout.write('secret-like value ' + 'sk-' + 'fanoutsecretvalue1234567890' + '\\n');",
-          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+          'process.stdout.write(\'{"type":"turn.completed"}\\n\');',
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const result = await runDryRun({
@@ -1976,7 +2211,7 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-exec-fanout-test",
         simCount: 4,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(true);
@@ -1984,13 +2219,18 @@ describe("dry-run bundles", () => {
       expect(result.simCount).toBe(4);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-exec-fanout-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-exec-fanout-test/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string; simId?: string; streamId?: string }>;
         mode: string;
         review: { verdict: string; summary: string };
         simCount: number;
-        simulations: Array<{ personaId: string; status: string; streamIds: string[]; streamKind: string }>;
+        simulations: Array<{
+          personaId: string;
+          status: string;
+          streamIds: string[];
+          streamKind: string;
+        }>;
         streams: Array<{
           artifacts: Array<{ path: string }>;
           completion: { status: string };
@@ -2012,39 +2252,54 @@ describe("dry-run bundles", () => {
         "passed",
         "passed",
         "passed",
-        "passed"
+        "passed",
       ]);
       expect(bundle.simulations.map((simulation) => simulation.streamKind)).toEqual([
         "terminal",
         "terminal",
         "terminal",
-        "terminal"
+        "terminal",
       ]);
       expect(new Set(bundle.simulations.map((simulation) => simulation.personaId)).size).toBe(4);
       expect(bundle.streams.map((stream) => stream.id)).toEqual([
         "sim-01-codex-exec",
         "sim-02-codex-exec",
         "sim-03-codex-exec",
-        "sim-04-codex-exec"
+        "sim-04-codex-exec",
       ]);
       expect(bundle.streams.every((stream) => stream.kind === "terminal")).toBe(true);
       expect(bundle.streams.every((stream) => stream.transport === "snapshot")).toBe(true);
       expect(bundle.streams.every((stream) => stream.completion.status === "passed")).toBe(true);
-      expect(bundle.streams.every((stream) => stream.terminal.tail.includes("[REDACTED_SECRET]"))).toBe(true);
+      expect(
+        bundle.streams.every((stream) => stream.terminal.tail.includes("[REDACTED_SECRET]")),
+      ).toBe(true);
       expect(bundle.events.filter((event) => event.type === "actor.spawned")).toHaveLength(4);
-      expect(bundle.events.filter((event) => event.type === "actor.prompt.submitted")).toHaveLength(4);
+      expect(bundle.events.filter((event) => event.type === "actor.prompt.submitted")).toHaveLength(
+        4,
+      );
       expect(bundle.events.filter((event) => event.type === "actor.verdict")).toHaveLength(4);
-      expect(bundle.events.some((event) => event.message.includes(`sk-${"fanoutsecretvalue"}`))).toBe(false);
+      expect(
+        bundle.events.some((event) => event.message.includes(`sk-${"fanoutsecretvalue"}`)),
+      ).toBe(false);
 
       for (const stream of bundle.streams) {
-        const transcriptPath = stream.artifacts.find((artifact) => artifact.path.endsWith("-sanitized.jsonl"))?.path;
-        const tracePath = stream.artifacts.find((artifact) => artifact.path.endsWith(".json") && artifact.path.startsWith("actors/"))?.path;
+        const transcriptPath = stream.artifacts.find((artifact) =>
+          artifact.path.endsWith("-sanitized.jsonl"),
+        )?.path;
+        const tracePath = stream.artifacts.find(
+          (artifact) => artifact.path.endsWith(".json") && artifact.path.startsWith("actors/"),
+        )?.path;
         expect(transcriptPath).toBeTruthy();
         expect(tracePath).toBeTruthy();
-        const transcript = await readFile(path.join(cwd, ".humanish/runs/codex-exec-fanout-test", transcriptPath ?? ""), "utf8");
+        const transcript = await readFile(
+          path.join(cwd, ".humanish/runs/codex-exec-fanout-test", transcriptPath ?? ""),
+          "utf8",
+        );
         expect(transcript).toContain("[REDACTED_SECRET]");
         expect(transcript).not.toContain(`sk-${"fanoutsecretvalue"}`);
-        await expect(stat(path.join(cwd, ".humanish/runs/codex-exec-fanout-test", tracePath ?? ""))).resolves.toBeTruthy();
+        await expect(
+          stat(path.join(cwd, ".humanish/runs/codex-exec-fanout-test", tracePath ?? "")),
+        ).resolves.toBeTruthy();
       }
 
       const verify = await verifyRun(cwd, "latest");
@@ -2059,13 +2314,13 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         [
-          "process.stdout.write('{\"type\":\"turn.started\"}\\n');",
+          'process.stdout.write(\'{"type":"turn.started"}\\n\');',
           "process.stdout.write('slow exec actor started\\n');",
           "await new Promise((resolve) => setTimeout(resolve, 750));",
           "process.stdout.write('slow exec actor finished\\n');",
-          "process.stdout.write('{\"type\":\"turn.completed\"}\\n');"
+          'process.stdout.write(\'{"type":"turn.completed"}\\n\');',
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       const runPromise = runDryRun({
@@ -2074,7 +2329,7 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, fakeActor],
         runId: "codex-exec-live-follow-test",
         simCount: 2,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       await waitForFile(path.join(runRoot, "observer/observer-data.json"));
@@ -2085,7 +2340,7 @@ describe("dry-run bundles", () => {
         streams: Array<{ artifacts: Array<{ path: string }>; status: string }>;
       };
       const runningObserverData = JSON.parse(
-        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8"),
       ) as {
         events: Array<{ type: string }>;
         run: { status: string };
@@ -2096,19 +2351,31 @@ describe("dry-run bundles", () => {
       expect(runningBundle.review.verdict).toBe("contract_proof_only");
       expect(runningBundle.review.summary).toContain("in-progress Observer snapshot");
       expect(runningBundle.lifecycle.map((entry) => entry.event)).toContain("actor.running");
-      expect(runningBundle.simulations.map((simulation) => simulation.status)).toEqual(["running", "running"]);
+      expect(runningBundle.simulations.map((simulation) => simulation.status)).toEqual([
+        "running",
+        "running",
+      ]);
       expect(runningBundle.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
-      expect(runningBundle.streams.every((stream) => stream.artifacts.every((artifact) => !artifact.path.includes("transcripts/")))).toBe(true);
+      expect(
+        runningBundle.streams.every((stream) =>
+          stream.artifacts.every((artifact) => !artifact.path.includes("transcripts/")),
+        ),
+      ).toBe(true);
       expect(runningObserverData.run.status).toBe("contract_proof_only");
       expect(runningObserverData.summary.active).toBe(2);
-      expect(runningObserverData.streams.map((stream) => stream.status)).toEqual(["running", "running"]);
-      expect(runningObserverData.events.filter((event) => event.type === "actor.running")).toHaveLength(2);
+      expect(runningObserverData.streams.map((stream) => stream.status)).toEqual([
+        "running",
+        "running",
+      ]);
+      expect(
+        runningObserverData.events.filter((event) => event.type === "actor.running"),
+      ).toHaveLength(2);
 
       const result = await runPromise;
       expect(result.ok).toBe(true);
 
       const finalObserverData = JSON.parse(
-        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8")
+        await readFile(path.join(runRoot, "observer/observer-data.json"), "utf8"),
       ) as {
         events: Array<{ type: string }>;
         run: { status: string };
@@ -2118,9 +2385,18 @@ describe("dry-run bundles", () => {
 
       expect(finalObserverData.run.status).toBe("pass");
       expect(finalObserverData.summary.active).toBe(0);
-      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed"]);
-      expect(finalObserverData.events.filter((event) => event.type === "actor.verdict")).toHaveLength(2);
-      expect(finalObserverData.streams.every((stream) => stream.artifacts.some((artifact) => artifact.path.includes("transcripts/")))).toBe(true);
+      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual([
+        "passed",
+        "passed",
+      ]);
+      expect(
+        finalObserverData.events.filter((event) => event.type === "actor.verdict"),
+      ).toHaveLength(2);
+      expect(
+        finalObserverData.streams.every((stream) =>
+          stream.artifacts.some((artifact) => artifact.path.includes("transcripts/")),
+        ),
+      ).toBe(true);
 
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);
@@ -2135,14 +2411,14 @@ describe("dry-run bundles", () => {
         actorCommand: [process.execPath, "-e", "process.exit(0)"],
         runId: "codex-exec-five-lanes",
         simCount: 5,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
 
       expect(result.ok).toBe(true);
       expect(result.simCount).toBe(5);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-exec-five-lanes/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-exec-five-lanes/run.json"), "utf8"),
       ) as {
         lifecycle: Array<{ message: string }>;
         simCount: number;
@@ -2169,7 +2445,7 @@ describe("dry-run bundles", () => {
       await writeFile(
         fakeActor,
         "process.stdout.write('cli exec fixture actor passed\\n');\n",
-        "utf8"
+        "utf8",
       );
       process.env.HUMANISH_CODEX_ACTOR_COMMAND = `${process.execPath} ${fakeActor}`;
 
@@ -2186,7 +2462,7 @@ describe("dry-run bundles", () => {
           "codex-exec-cli",
           "--cwd",
           cwd,
-          "--json"
+          "--json",
         ]);
         expect(result.exitCode).toBe(0);
         const envelope = JSON.parse(result.stdout) as { mode: string; ok: boolean; runId: string };
@@ -2202,7 +2478,7 @@ describe("dry-run bundles", () => {
           "--no-open",
           "--cwd",
           cwd,
-          "--json"
+          "--json",
         ]);
         expect(watch.exitCode).toBe(0);
         const observer = JSON.parse(watch.stdout) as { ok: boolean; observerPath: string };
@@ -2243,9 +2519,9 @@ describe("dry-run bundles", () => {
           "    send({ method: 'turn/completed', params: { threadId: thread.id, turn: { ...turn, status: 'completed' } } });",
           "    setTimeout(() => process.exit(0), 50);",
           "  }",
-          "});"
+          "});",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       process.env.OPENAI_API_KEY = fakeApiKey;
@@ -2256,10 +2532,13 @@ describe("dry-run bundles", () => {
           prompt: `Private UI prompt marker at ${cwd} with ${fakeApiKey}`,
           runRoot: ".humanish/codex-app-server-ui-test",
           stateFile: ".humanish/codex-app-server-ui-test/state.json",
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
         await controller.completion;
-        const stateText = await readFile(path.join(cwd, ".humanish/codex-app-server-ui-test/state.json"), "utf8");
+        const stateText = await readFile(
+          path.join(cwd, ".humanish/codex-app-server-ui-test/state.json"),
+          "utf8",
+        );
         expect(stateText).toContain("[target-cwd]");
         expect(stateText).not.toContain(cwd);
         expect(stateText).not.toContain("Private UI prompt marker");
@@ -2313,9 +2592,9 @@ describe("dry-run bundles", () => {
           "    send({ id: msg.id, result: { turn } }); send({ method: 'turn/started', params: { threadId: thread.id, turn } }); send({ method: 'item/commandExecution/requestApproval', id: 'approval-public-safe-01', params: { threadId: thread.id, turnId: turn.id, itemId: 'cmd-01', reason: 'synthetic approval request', command: 'node --version', cwd: process.cwd() } });",
           "  }",
           "  if (msg.id === 'approval-public-safe-01') finish();",
-          "});"
+          "});",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
       process.env.OPENAI_API_KEY = fakeApiKey;
@@ -2328,7 +2607,7 @@ describe("dry-run bundles", () => {
           actorCommand: [process.execPath, fakeAppServer],
           runId: "codex-app-server-test",
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
       } finally {
         if (previousOpenai === undefined) {
@@ -2343,7 +2622,7 @@ describe("dry-run bundles", () => {
       expect(result.runId).toBe("codex-app-server-test");
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/codex-app-server-test/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/codex-app-server-test/run.json"), "utf8"),
       ) as {
         events: Array<{ type: string; message: string }>;
         review: { verdict: string };
@@ -2354,7 +2633,10 @@ describe("dry-run bundles", () => {
             provider: string;
             state: string;
             threadId: string;
-            trace: { counts: { approvals: number; commandOutputs: number; envelopes: number }; schema: string };
+            trace: {
+              counts: { approvals: number; commandOutputs: number; envelopes: number };
+              schema: string;
+            };
             tracePath: string;
             turnId: string;
           };
@@ -2370,12 +2652,18 @@ describe("dry-run bundles", () => {
 
       expect(bundle.review.verdict).toBe("pass");
       expect(bundle.simulations).toEqual([
-        expect.objectContaining({ mode: "codex-app-sim", status: "passed", streamKind: "codex-ui" })
+        expect.objectContaining({
+          mode: "codex-app-sim",
+          status: "passed",
+          streamKind: "codex-ui",
+        }),
       ]);
-      expect(bundle.streams[0]).toEqual(expect.objectContaining({
-        kind: "codex-ui",
-        transport: "app-server"
-      }));
+      expect(bundle.streams[0]).toEqual(
+        expect.objectContaining({
+          kind: "codex-ui",
+          transport: "app-server",
+        }),
+      );
       expect(bundle.streams[0]?.codex.provider).toBe("codex-app-server");
       expect(bundle.streams[0]?.codex.state).toBe("completed");
       expect(bundle.streams[0]?.codex.threadId).toBe("thread-public-safe-01");
@@ -2392,24 +2680,32 @@ describe("dry-run bundles", () => {
       expect(typeof actorTrace?.persona.promptDigest).toBe("string");
       expect(actorTrace?.persona.promptDigest.length).toBeGreaterThan(0);
       expect(Array.isArray(actorTrace?.persona.traitsApplied)).toBe(true);
-      expect(actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("patience:"))).toBe(true);
-      expect(actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("skill:"))).toBe(true);
-      expect(bundle.streams[0]?.artifacts.some((artifact) => artifact.path === "codex-app-server/summary.json")).toBe(true);
+      expect(
+        actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("patience:")),
+      ).toBe(true);
+      expect(
+        actorTrace?.persona.traitsApplied.some((entry: string) => entry.startsWith("skill:")),
+      ).toBe(true);
+      expect(
+        bundle.streams[0]?.artifacts.some(
+          (artifact) => artifact.path === "codex-app-server/summary.json",
+        ),
+      ).toBe(true);
       expect(bundle.events.map((event) => event.type)).toContain("codex-app-server.verdict");
       expect(JSON.stringify(bundle)).not.toContain(`sk-${"testsecretvalue"}`);
       expect(JSON.stringify(bundle)).toContain("[REDACTED_SECRET]");
 
       const trace = await readFile(
         path.join(cwd, ".humanish/runs/codex-app-server-test/codex-app-server/summary.json"),
-        "utf8"
+        "utf8",
       );
       const appServerEvents = await readFile(
         path.join(cwd, ".humanish/runs/codex-app-server-test/codex-app-server/events.ndjson"),
-        "utf8"
+        "utf8",
       );
       const transcript = await readFile(
         path.join(cwd, ".humanish/runs/codex-app-server-test/codex-app-server/transcript.txt"),
-        "utf8"
+        "utf8",
       );
       expect(trace).toContain("humanish.codex-app-server-trace.v1");
       expect(trace).toContain("approval-public-safe-01");
@@ -2426,7 +2722,9 @@ describe("dry-run bundles", () => {
 
       const verify = await verifyRun(cwd, "latest");
       expect(verify.ok).toBe(true);
-      expect(verify.checks.find((check) => check.name === "codex app-server evidence")?.ok).toBe(true);
+      expect(verify.checks.find((check) => check.name === "codex app-server evidence")?.ok).toBe(
+        true,
+      );
     });
   });
 
@@ -2447,14 +2745,14 @@ describe("dry-run bundles", () => {
           actor: "codex-tui",
           runId: "codex-trust-blocked",
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
 
         expect(result.ok).toBe(false);
         expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".humanish/runs/codex-trust-blocked/run.json"), "utf8")
+          await readFile(path.join(cwd, ".humanish/runs/codex-trust-blocked/run.json"), "utf8"),
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2462,7 +2760,9 @@ describe("dry-run bundles", () => {
         };
         expect(bundle.review.verdict).toBe("blocked");
         expect(bundle.streams[0]?.status).toBe("blocked");
-        expect(bundle.streams[0]?.terminal.tail).toContain("Codex workspace trust preflight blocked");
+        expect(bundle.streams[0]?.terminal.tail).toContain(
+          "Codex workspace trust preflight blocked",
+        );
         expect(bundle.events.map((event) => event.type)).toContain("actor.preflight.blocked");
         expect(bundle.events.map((event) => event.type)).toContain("actor.blocked");
         expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
@@ -2505,12 +2805,12 @@ describe("dry-run bundles", () => {
       await writeFile(
         path.join(codexHome, "config.toml"),
         `[projects."${trustedAncestor.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
-        "utf8"
+        "utf8",
       );
       await writeFile(
         fakeCodex,
         `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'fake trusted codex tui started\\n'\nprintf 'HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=%s\\n' "$HUMANISH_ACTOR_VERDICT_NONCE"\n`,
-        "utf8"
+        "utf8",
       );
       await chmod(fakeCodex, 0o755);
       delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2523,14 +2823,14 @@ describe("dry-run bundles", () => {
           actor: "codex-tui",
           runId: "codex-trusted-ancestor",
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
 
         expect(result.ok).toBe(false);
         expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".humanish/runs/codex-trusted-ancestor/run.json"), "utf8")
+          await readFile(path.join(cwd, ".humanish/runs/codex-trusted-ancestor/run.json"), "utf8"),
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2583,7 +2883,7 @@ describe("dry-run bundles", () => {
       await writeFile(
         path.join(fakeGitDir, "commondir"),
         `${path.relative(fakeGitDir, path.join(trustedProject, ".git"))}\n`,
-        "utf8"
+        "utf8",
       );
       await writeFile(path.join(fakeGitDir, "gitdir"), `${path.join(cwd, ".git")}\n`, "utf8");
       await mkdir(codexHome, { recursive: true });
@@ -2594,15 +2894,15 @@ describe("dry-run bundles", () => {
           'trust_level = "trusted"',
           `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]`,
           'trust_level = "trusted"',
-          ""
+          "",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
       await mkdir(fakeBin, { recursive: true });
       await writeFile(
         fakeCodex,
         `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'forged trust actor started\\n'\n`,
-        "utf8"
+        "utf8",
       );
       await chmod(fakeCodex, 0o755);
       delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2615,13 +2915,13 @@ describe("dry-run bundles", () => {
           actor: "codex-tui",
           runId: "codex-forged-commondir",
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
         expect(result.ok).toBe(false);
         expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
         await expect(access(spawnedSentinel)).rejects.toThrow();
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".humanish/runs/codex-forged-commondir/run.json"), "utf8")
+          await readFile(path.join(cwd, ".humanish/runs/codex-forged-commondir/run.json"), "utf8"),
         ) as { events: Array<{ type: string }>; streams: Array<{ status: string }> };
         expect(bundle.streams[0]?.status).toBe("blocked");
         expect(bundle.events.map((event) => event.type)).not.toContain("actor.spawned");
@@ -2668,13 +2968,13 @@ describe("dry-run bundles", () => {
         await writeFile(
           path.join(codexHome, "config.toml"),
           `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
-          "utf8"
+          "utf8",
         );
         await mkdir(fakeBin);
         await writeFile(
           fakeCodex,
           `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'unsafe metadata actor started\\n'\n`,
-          "utf8"
+          "utf8",
         );
         await chmod(fakeCodex, 0o755);
         delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2687,7 +2987,7 @@ describe("dry-run bundles", () => {
             actor: "codex-tui",
             runId: `codex-unsafe-git-${kind}`,
             simCount: 1,
-            timeoutMs: 5_000
+            timeoutMs: 5_000,
           });
           expect(result.ok).toBe(false);
           expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
@@ -2701,7 +3001,7 @@ describe("dry-run bundles", () => {
           else process.env.PATH = previousPath;
         }
       });
-    }
+    },
   );
 
   it.each(["commondir-symlink", "gitdir-hardlink", "gitdir-fifo", "gitdir-mismatch"] as const)(
@@ -2742,7 +3042,11 @@ describe("dry-run bundles", () => {
           } else if (kind === "gitdir-fifo") {
             await execFileAsync("mkfifo", [path.join(adminGit, "gitdir")]);
           } else {
-            await writeFile(path.join(adminGit, "gitdir"), `${path.join(root, "different", ".git")}\n`, "utf8");
+            await writeFile(
+              path.join(adminGit, "gitdir"),
+              `${path.join(root, "different", ".git")}\n`,
+              "utf8",
+            );
           }
         }
 
@@ -2754,15 +3058,15 @@ describe("dry-run bundles", () => {
             'trust_level = "trusted"',
             `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]`,
             'trust_level = "trusted"',
-            ""
+            "",
           ].join("\n"),
-          "utf8"
+          "utf8",
         );
         await mkdir(fakeBin);
         await writeFile(
           fakeCodex,
           `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'unsafe admin metadata actor started\\n'\n`,
-          "utf8"
+          "utf8",
         );
         await chmod(fakeCodex, 0o755);
         delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2780,7 +3084,7 @@ describe("dry-run bundles", () => {
           actor: "codex-tui",
           runId: `codex-unsafe-admin-${kind}`,
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
         let raceTimer: ReturnType<typeof setTimeout> | undefined;
         try {
@@ -2792,8 +3096,11 @@ describe("dry-run bundles", () => {
               // red on Node 24 while Node 22 passed the same commit). 4_000 still sits below
               // runDryRun's own 5_000 timeoutMs, so a genuine hang is still caught here, with
               // this named error rather than a bare vitest timeout.
-              raceTimer = setTimeout(() => reject(new Error(`trust preflight hung on ${kind}`)), 4_000);
-            })
+              raceTimer = setTimeout(
+                () => reject(new Error(`trust preflight hung on ${kind}`)),
+                4_000,
+              );
+            }),
           ]);
           expect(result.ok).toBe(false);
           expect(result.error?.code).toBe("HUMANISH_LOCAL_CODEX_TUI_FAILED");
@@ -2811,7 +3118,7 @@ describe("dry-run bundles", () => {
           else process.env.PATH = previousPath;
         }
       });
-    }
+    },
   );
 
   it("inherits Codex trust only through verified Git linked-worktree metadata", async () => {
@@ -2828,25 +3135,33 @@ describe("dry-run bundles", () => {
     try {
       await mkdir(canonical);
       await execFileAsync("git", ["init", "--initial-branch=main"], { cwd: canonical });
-      await execFileAsync("git", ["config", "user.email", "humanish@example.test"], { cwd: canonical });
+      await execFileAsync("git", ["config", "user.email", "humanish@example.test"], {
+        cwd: canonical,
+      });
       await execFileAsync("git", ["config", "user.name", "Humanish Test"], { cwd: canonical });
-      await writeFile(path.join(canonical, "package.json"), '{"name":"linked-worktree-fixture"}\n', "utf8");
+      await writeFile(
+        path.join(canonical, "package.json"),
+        '{"name":"linked-worktree-fixture"}\n',
+        "utf8",
+      );
       await writeFile(path.join(canonical, ".gitignore"), ".humanish/\n", "utf8");
       await execFileAsync("git", ["add", "package.json", ".gitignore"], { cwd: canonical });
       await execFileAsync("git", ["commit", "-m", "fixture"], { cwd: canonical });
-      await execFileAsync("git", ["worktree", "add", "-b", "linked-proof", linked], { cwd: canonical });
+      await execFileAsync("git", ["worktree", "add", "-b", "linked-proof", linked], {
+        cwd: canonical,
+      });
 
       await mkdir(codexHome);
       await writeFile(
         path.join(codexHome, "config.toml"),
         `[projects."${canonical.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
-        "utf8"
+        "utf8",
       );
       await mkdir(fakeBin);
       await writeFile(
         fakeCodex,
         `#!/usr/bin/env sh\ntouch ${JSON.stringify(spawnedSentinel)}\nprintf 'verified linked worktree actor started\\n'\nprintf 'HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=%s\\n' "$HUMANISH_ACTOR_VERDICT_NONCE"\n`,
-        "utf8"
+        "utf8",
       );
       await chmod(fakeCodex, 0o755);
       delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2858,7 +3173,7 @@ describe("dry-run bundles", () => {
         actor: "codex-tui",
         runId: "codex-linked-worktree",
         simCount: 1,
-        timeoutMs: 5_000
+        timeoutMs: 5_000,
       });
       expect(result.ok).toBe(true);
       await expect(access(spawnedSentinel)).resolves.toBeUndefined();
@@ -2888,12 +3203,12 @@ describe("dry-run bundles", () => {
       await writeFile(
         path.join(codexHome, "config.toml"),
         `[projects."${cwd.replace(/["\\]/g, "\\$&")}"]\ntrust_level = "trusted"\n`,
-        "utf8"
+        "utf8",
       );
       await writeFile(
         fakeCodex,
         "#!/usr/bin/env sh\nprintf 'fake exact trusted codex tui started\\n'\nprintf 'HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=%s\\n' \"$HUMANISH_ACTOR_VERDICT_NONCE\"\n",
-        "utf8"
+        "utf8",
       );
       await chmod(fakeCodex, 0o755);
       delete process.env.HUMANISH_CODEX_ACTOR_COMMAND;
@@ -2906,13 +3221,16 @@ describe("dry-run bundles", () => {
           actor: "codex-tui",
           runId: "codex-exact-trusted-root",
           simCount: 1,
-          timeoutMs: 5_000
+          timeoutMs: 5_000,
         });
 
         expect(result.ok).toBe(true);
 
         const bundle = JSON.parse(
-          await readFile(path.join(cwd, ".humanish/runs/codex-exact-trusted-root/run.json"), "utf8")
+          await readFile(
+            path.join(cwd, ".humanish/runs/codex-exact-trusted-root/run.json"),
+            "utf8",
+          ),
         ) as {
           events: Array<{ type: string }>;
           review: { verdict: string };
@@ -2952,7 +3270,7 @@ describe("dry-run bundles", () => {
         "dryrun-cli",
         "--cwd",
         cwd,
-        "--json"
+        "--json",
       ]);
       expect(run.exitCode).toBe(0);
       const runResult = JSON.parse(run.stdout) as { ok: boolean; runId: string };
@@ -2993,7 +3311,7 @@ function cuaActorTrace(args: {
     redaction: {
       status: "passed",
       screenshots: args.screenshots ?? "blurred",
-      notes: "synthetic public-safe test trace"
+      notes: "synthetic public-safe test trace",
     },
     startedAt: "2026-01-01T00:00:00.000Z",
     completedAt: "2026-01-01T00:00:05.000Z",
@@ -3002,7 +3320,15 @@ function cuaActorTrace(args: {
     completionReason: args.completionReason ?? "goal_satisfied",
     reason: args.reason ?? "model reported a natural endpoint with no further action",
     ids: { model: "computer-use-preview" },
-    counts: args.counts ?? { turns: 1, actions: 0, screenshots: 0, reasonings: 0, messages: 0, idleTurns: 0, noProgressTurns: 0 },
+    counts: args.counts ?? {
+      turns: 1,
+      actions: 0,
+      screenshots: 0,
+      reasonings: 0,
+      messages: 0,
+      idleTurns: 0,
+      noProgressTurns: 0,
+    },
     items: args.items ?? [],
     capabilities: {
       headless: true,
@@ -3012,22 +3338,28 @@ function cuaActorTrace(args: {
       byoModel: false,
       preGrantableApprovals: false,
       inProcessTools: false,
-      license: "proprietary"
-    }
+      license: "proprietary",
+    },
   };
 }
 
 async function writeCuaRunFixture(
   cwd: string,
   runId: string,
-  args: { dryRun: boolean; trace?: ActorTrace; subject?: RunSubjectProvenance; cost?: RunCostSummary; forceReviewVerdict?: "pass" | "fail" | "blocked" | "timed_out" | "contract_proof_only" }
+  args: {
+    dryRun: boolean;
+    trace?: ActorTrace;
+    subject?: RunSubjectProvenance;
+    cost?: RunCostSummary;
+    forceReviewVerdict?: "pass" | "fail" | "blocked" | "timed_out" | "contract_proof_only";
+  },
 ): Promise<void> {
   const session: CuaLoopResult | undefined = args.trace
     ? {
         status: args.trace.status,
         completionReason: args.trace.completionReason,
         reason: args.trace.reason,
-        trace: args.trace
+        trace: args.trace,
       }
     : undefined;
   const bundle = buildCuaBundle({
@@ -3042,7 +3374,7 @@ async function writeCuaRunFixture(
     runId,
     screenshots: [],
     ...(session ? { session, traceArtifactPath: "actor.json" } : {}),
-    source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" })
+    source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" }),
   });
   // The verify matrix forges subject blocks the producer would never emit (e.g. a "seeded"
   // claim over a failed step) — verify must reject them from the persisted evidence alone.
@@ -3058,28 +3390,62 @@ async function writeCuaRunFixture(
   const runDir = path.join(cwd, ".humanish", "runs", runId);
   await mkdir(runDir, { recursive: true });
   await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`, "utf8");
-  await writeFile(path.join(runDir, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeFile(
+    path.join(runDir, "review.json"),
+    `${JSON.stringify(bundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(runDir, "review.md"),
+    `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(runDir, "events.ndjson"),
+    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
   if (session) {
-    await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    await writeFile(
+      path.join(runDir, "actor.json"),
+      `${JSON.stringify(session.trace, null, 2)}\n`,
+      "utf8",
+    );
   }
 }
 
 describe("verify hardening (no-engagement + screenshot posture)", () => {
   it("accepts a retained zero-action adapter-limit interruption without inventing a participant success", async () => {
     await withFixtureCopy(async (cwd) => {
-      const trace = cuaActorTrace({ status: "incomplete", completionReason: "budget_reached",
+      const trace = cuaActorTrace({
+        status: "incomplete",
+        completionReason: "budget_reached",
         reason: "The adapter reported a local admission limit before provider dispatch.",
         counts: { turns: 0, actions: 0, screenshots: 0, messages: 0 },
-        items: [{ id: "notice-001", kind: "notice", lifecycle: "completed", status: "warn", title: "adapter admission limit reached" }] });
+        items: [
+          {
+            id: "notice-001",
+            kind: "notice",
+            lifecycle: "completed",
+            status: "warn",
+            title: "adapter admission limit reached",
+          },
+        ],
+      });
       trace.stopCause = "adapter_limit";
       await writeCuaRunFixture(cwd, "adapter-limit", { dryRun: false, trace });
       const result = await verifyRun(cwd, "adapter-limit");
       expect(result.ok).toBe(true);
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs/adapter-limit/run.json"), "utf8")) as RunBundle;
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs/adapter-limit/run.json"), "utf8"),
+      ) as RunBundle;
       expect(bundle.streams[0]?.actor?.stopCause).toBe("adapter_limit");
-      expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, ranOut: 1, harnessFailed: 0 });
+      expect(bundle.review.participants).toMatchObject({
+        total: 1,
+        reachedGoal: 0,
+        ranOut: 1,
+        harnessFailed: 0,
+      });
     });
   });
 
@@ -3087,7 +3453,10 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
     await withFixtureCopy(async (cwd) => {
       // Shape mirrors the preserved pre-0.6.1 hollow-run bundles: mode live, status passed,
       // completionReason goal_satisfied, counts and items empty of actions and messages.
-      await writeCuaRunFixture(cwd, "hollow-live-regression", { dryRun: false, trace: cuaActorTrace({}) });
+      await writeCuaRunFixture(cwd, "hollow-live-regression", {
+        dryRun: false,
+        trace: cuaActorTrace({}),
+      });
 
       const verify = await verifyRun(cwd, "hollow-live-regression");
       expect(verify.ok).toBe(false);
@@ -3106,7 +3475,15 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
         dryRun: false,
         trace: cuaActorTrace({
           reason: "stopWhen matched dashboard-visible (textIncludes)",
-          counts: { turns: 0, actions: 0, screenshots: 1, reasonings: 0, messages: 0, idleTurns: 0, noProgressTurns: 0 },
+          counts: {
+            turns: 0,
+            actions: 0,
+            screenshots: 1,
+            reasonings: 0,
+            messages: 0,
+            idleTurns: 0,
+            noProgressTurns: 0,
+          },
           items: [
             {
               id: "screenshot-001",
@@ -3115,8 +3492,8 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
               title: "turn-00-start",
               screenshotRef: {
                 path: "screenshots/turn-00-start.png",
-                redaction: "blurred"
-              }
+                redaction: "blurred",
+              },
             },
             {
               id: "notice-002",
@@ -3124,13 +3501,18 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
               lifecycle: "completed",
               status: "matched",
               title: "stopWhen matched: dashboard-visible",
-              text: "Harness stop condition matched rule dashboard-visible using textIncludes."
-            }
-          ]
-        })
+              text: "Harness stop condition matched rule dashboard-visible using textIncludes.",
+            },
+          ],
+        }),
       });
-      await mkdir(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots"), { recursive: true });
-      await writeFile(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots/turn-00-start.png"), PNG_1X1);
+      await mkdir(path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots"), {
+        recursive: true,
+      });
+      await writeFile(
+        path.join(cwd, ".humanish/runs/stopwhen-observed-live/screenshots/turn-00-start.png"),
+        PNG_1X1,
+      );
 
       const verify = await verifyRun(cwd, "stopwhen-observed-live");
       expect(verify.ok).toBe(true);
@@ -3147,12 +3529,26 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
           status: "failed",
           completionReason: "gave_up",
           reason: "gave up: 6 consecutive turns with no material UI action",
-          counts: { turns: 6, actions: 1, screenshots: 6, reasonings: 0, messages: 1, idleTurns: 6, noProgressTurns: 0 },
+          counts: {
+            turns: 6,
+            actions: 1,
+            screenshots: 6,
+            reasonings: 0,
+            messages: 1,
+            idleTurns: 6,
+            noProgressTurns: 0,
+          },
           items: [
             { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "wait" },
-            { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Still waiting." }
-          ]
-        })
+            {
+              id: "message-001",
+              kind: "message",
+              lifecycle: "completed",
+              title: "message",
+              text: "Still waiting.",
+            },
+          ],
+        }),
       });
 
       const verify = await verifyRun(cwd, "failed-actor-pass-review-regression");
@@ -3169,12 +3565,31 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
         dryRun: false,
         trace: cuaActorTrace({
           screenshots: "raw",
-          counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+          counts: {
+            turns: 2,
+            actions: 1,
+            screenshots: 0,
+            reasonings: 0,
+            messages: 1,
+            idleTurns: 0,
+            noProgressTurns: 0,
+          },
           items: [
-            { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
-            { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
-          ]
-        })
+            {
+              id: "action-001",
+              kind: "ui_action",
+              lifecycle: "completed",
+              title: "click (11, 22)",
+            },
+            {
+              id: "message-001",
+              kind: "message",
+              lifecycle: "completed",
+              title: "message",
+              text: "Done.",
+            },
+          ],
+        }),
       });
 
       const verify = await verifyRun(cwd, "raw-posture-live");
@@ -3185,8 +3600,9 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       expect(verify.warnings[0]).toContain("NOT publish-safe");
       expect(verify.shareSafety.status).toBe("local_only");
       expect(verify.shareSafety.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
-      expect(verify.shareSafety.reasons.find((reason) => reason.code === "RAW_SCREENSHOTS")?.message)
-        .toContain("Full-fidelity screenshots are present");
+      expect(
+        verify.shareSafety.reasons.find((reason) => reason.code === "RAW_SCREENSHOTS")?.message,
+      ).toContain("Full-fidelity screenshots are present");
 
       // The CLI must show the posture in BOTH output modes.
       const json = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd, "--json"]);
@@ -3196,7 +3612,9 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
         warnings: string[];
       };
       expect(jsonBody.shareSafety.status).toBe("local_only");
-      expect(jsonBody.shareSafety.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
+      expect(jsonBody.shareSafety.reasons.map((reason) => reason.code)).toContain(
+        "RAW_SCREENSHOTS",
+      );
       expect(jsonBody.warnings[0]).toContain("FULL-FIDELITY (raw)");
       const human = await runCli(["verify", "--run", "raw-posture-live", "--cwd", cwd]);
       expect(human.exitCode).toBe(0);
@@ -3210,9 +3628,25 @@ describe("verify hardening (no-engagement + screenshot posture)", () => {
       await writeCuaRunFixture(cwd, "message-only-live", {
         dryRun: false,
         trace: cuaActorTrace({
-          counts: { turns: 1, actions: 0, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
-          items: [{ id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "The heading reads: Example." }]
-        })
+          counts: {
+            turns: 1,
+            actions: 0,
+            screenshots: 0,
+            reasonings: 0,
+            messages: 1,
+            idleTurns: 0,
+            noProgressTurns: 0,
+          },
+          items: [
+            {
+              id: "message-001",
+              kind: "message",
+              lifecycle: "completed",
+              title: "message",
+              text: "The heading reads: Example.",
+            },
+          ],
+        }),
       });
 
       const verify = await verifyRun(cwd, "message-only-live");
@@ -3238,24 +3672,43 @@ describe("verify: subject state provenance", () => {
   // state check: the actor-engagement check must not be the thing failing these bundles.
   const engagedTrace = (): ActorTrace =>
     cuaActorTrace({
-      counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+      counts: {
+        turns: 2,
+        actions: 1,
+        screenshots: 0,
+        reasonings: 0,
+        messages: 1,
+        idleTurns: 0,
+        noProgressTurns: 0,
+      },
       items: [
         { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
-        { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
-      ]
+        {
+          id: "message-001",
+          kind: "message",
+          lifecycle: "completed",
+          title: "message",
+          text: "Done.",
+        },
+      ],
     });
-  const seedRecord = (overrides: Partial<RunSubjectStateStepRecord>): RunSubjectStateStepRecord => ({
+  const seedRecord = (
+    overrides: Partial<RunSubjectStateStepRecord>,
+  ): RunSubjectStateStepRecord => ({
     name: "db-migrate",
     when: "before-start",
     commandDigest: "a1b2c3d4e5f60718",
-    ...overrides
+    ...overrides,
   });
-  const cloneSubject = (state: RunSubjectProvenance["state"], envNames: string[] = []): RunSubjectProvenance => ({
+  const cloneSubject = (
+    state: RunSubjectProvenance["state"],
+    envNames: string[] = [],
+  ): RunSubjectProvenance => ({
     source: "clone",
     repo: "example-org/example-app",
     commit: "abc123def4567890abc1",
     envNames,
-    state
+    state,
   });
   const stateCheck = (verify: Awaited<ReturnType<typeof verifyRun>>) =>
     verify.checks.find((entry) => entry.name === "subject state provenance");
@@ -3265,7 +3718,10 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-seeded-ok", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "seeded", seed: [seedRecord({ ok: true, exitCode: 0, durationMs: 1200 })] })
+        subject: cloneSubject({
+          provenance: "seeded",
+          seed: [seedRecord({ ok: true, exitCode: 0, durationMs: 1200 })],
+        }),
       });
       const verify = await verifyRun(cwd, "state-seeded-ok");
       expect(verify.ok).toBe(true);
@@ -3279,7 +3735,10 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-seeded-hollow", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "seeded", seed: [seedRecord({ ok: false, exitCode: 1 })] })
+        subject: cloneSubject({
+          provenance: "seeded",
+          seed: [seedRecord({ ok: false, exitCode: 1 })],
+        }),
       });
       const verify = await verifyRun(cwd, "state-seeded-hollow");
       expect(verify.ok).toBe(false);
@@ -3294,7 +3753,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-seeded-empty", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "seeded", seed: [] })
+        subject: cloneSubject({ provenance: "seeded", seed: [] }),
       });
       const empty = await verifyRun(cwd, "state-seeded-empty");
       expect(stateCheck(empty)?.ok).toBe(false);
@@ -3305,8 +3764,8 @@ describe("verify: subject state provenance", () => {
         trace: engagedTrace(),
         subject: cloneSubject({
           provenance: "seeded",
-          seed: [seedRecord({ ok: true, commandDigest: "not-a-digest" })]
-        })
+          seed: [seedRecord({ ok: true, commandDigest: "not-a-digest" })],
+        }),
       });
       const badDigest = await verifyRun(cwd, "state-seeded-bad-digest");
       expect(stateCheck(badDigest)?.ok).toBe(false);
@@ -3318,7 +3777,7 @@ describe("verify: subject state provenance", () => {
     await withFixtureCopy(async (cwd) => {
       await writeCuaRunFixture(cwd, "state-seeded-dryrun", {
         dryRun: true,
-        subject: cloneSubject({ provenance: "seeded", seed: [seedRecord({ ok: true })] })
+        subject: cloneSubject({ provenance: "seeded", seed: [seedRecord({ ok: true })] }),
       });
       const verify = await verifyRun(cwd, "state-seeded-dryrun");
       expect(verify.ok).toBe(false);
@@ -3332,7 +3791,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-unpinned-empty", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "unpinned" })
+        subject: cloneSubject({ provenance: "unpinned" }),
       });
       const empty = await verifyRun(cwd, "state-unpinned-empty");
       expect(stateCheck(empty)?.ok).toBe(false);
@@ -3344,7 +3803,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-unpinned-value", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "unpinned", externalEnvNames: [leakedValue] })
+        subject: cloneSubject({ provenance: "unpinned", externalEnvNames: [leakedValue] }),
       });
       const value = await verifyRun(cwd, "state-unpinned-value");
       expect(stateCheck(value)?.ok).toBe(false);
@@ -3358,12 +3817,14 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-dnr-live-pass", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "declared-not-run", seed: [seedRecord({})] })
+        subject: cloneSubject({ provenance: "declared-not-run", seed: [seedRecord({})] }),
       });
       const verify = await verifyRun(cwd, "state-dnr-live-pass");
       expect(verify.ok).toBe(false);
       expect(stateCheck(verify)?.ok).toBe(false);
-      expect(stateCheck(verify)?.message).toContain("cannot claim its declared seed steps did not run");
+      expect(stateCheck(verify)?.message).toContain(
+        "cannot claim its declared seed steps did not run",
+      );
     });
   });
 
@@ -3376,10 +3837,10 @@ describe("verify: subject state provenance", () => {
           {
             provenance: "unpinned",
             seed: [seedRecord({ ok: false, exitCode: 1 })],
-            externalEnvNames: ["DATABASE_URL"]
+            externalEnvNames: ["DATABASE_URL"],
           },
-          ["DATABASE_URL"]
-        )
+          ["DATABASE_URL"],
+        ),
       });
       const verify = await verifyRun(cwd, "state-unpinned-failed-seed");
       expect(verify.ok).toBe(false);
@@ -3393,7 +3854,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-undeclared-env", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "undeclared" }, ["DATABASE_URL", "GITHUB_TOKEN"])
+        subject: cloneSubject({ provenance: "undeclared" }, ["DATABASE_URL", "GITHUB_TOKEN"]),
       });
       const verify = await verifyRun(cwd, "state-undeclared-env");
       expect(verify.ok).toBe(true);
@@ -3407,7 +3868,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-undeclared-token-only", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "undeclared" }, ["GITHUB_TOKEN"])
+        subject: cloneSubject({ provenance: "undeclared" }, ["GITHUB_TOKEN"]),
       });
       const tokenOnly = await verifyRun(cwd, "state-undeclared-token-only");
       expect(tokenOnly.ok).toBe(true);
@@ -3420,7 +3881,7 @@ describe("verify: subject state provenance", () => {
       await writeCuaRunFixture(cwd, "state-bad-marker", {
         dryRun: false,
         trace: engagedTrace(),
-        subject: cloneSubject({ provenance: "pinned" as never })
+        subject: cloneSubject({ provenance: "pinned" as never }),
       });
       const verify = await verifyRun(cwd, "state-bad-marker");
       expect(verify.ok).toBe(false);
@@ -3442,11 +3903,25 @@ describe("verify: subject state provenance", () => {
 describe("verify: subject provenance (local-tree)", () => {
   const engagedTrace = (): ActorTrace =>
     cuaActorTrace({
-      counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+      counts: {
+        turns: 2,
+        actions: 1,
+        screenshots: 0,
+        reasonings: 0,
+        messages: 1,
+        idleTurns: 0,
+        noProgressTurns: 0,
+      },
       items: [
         { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
-        { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
-      ]
+        {
+          id: "message-001",
+          kind: "message",
+          lifecycle: "completed",
+          title: "message",
+          text: "Done.",
+        },
+      ],
     });
   // Shape-valid fixtures (64-hex / 40-hex), not real digests.
   const ARCHIVE_SHA = "a1".repeat(32);
@@ -3467,8 +3942,8 @@ describe("verify: subject provenance (local-tree)", () => {
           commit: HOST_COMMIT,
           dirty: true,
           envNames: [],
-          state: { provenance: "undeclared" }
-        }
+          state: { provenance: "undeclared" },
+        },
       });
       const verify = await verifyRun(cwd, "local-tree-well-formed");
       expect(verify.ok).toBe(true);
@@ -3486,8 +3961,8 @@ describe("verify: subject provenance (local-tree)", () => {
           source: "local-tree",
           archiveSha256: "not-a-hex-digest",
           envNames: [],
-          state: { provenance: "undeclared" }
-        }
+          state: { provenance: "undeclared" },
+        },
       });
       const verify = await verifyRun(cwd, "local-tree-bad-digest");
       expect(verify.ok).toBe(false);
@@ -3503,8 +3978,8 @@ describe("verify: subject provenance (local-tree)", () => {
         subject: {
           source: "local-tree",
           envNames: [],
-          state: { provenance: "undeclared" }
-        }
+          state: { provenance: "undeclared" },
+        },
       });
       const missing = await verifyRun(cwd, "local-tree-missing-pin");
       expect(missing.ok).toBe(false);
@@ -3521,8 +3996,8 @@ describe("verify: subject provenance (local-tree)", () => {
           source: "local-tree",
           archiveSha256: ARCHIVE_SHA,
           envNames: [],
-          state: { provenance: "undeclared" }
-        }
+          state: { provenance: "undeclared" },
+        },
       });
       const withPin = await verifyRun(cwd, "local-tree-with-pin");
       expect(withPin.ok).toBe(true);
@@ -3537,8 +4012,8 @@ describe("verify: subject provenance (local-tree)", () => {
         subject: {
           source: "local-tree",
           envNames: [],
-          state: { provenance: "undeclared" }
-        }
+          state: { provenance: "undeclared" },
+        },
       });
       const verify = await verifyRun(cwd, "local-tree-dryrun");
       expect(verify.ok).toBe(true);
@@ -3552,11 +4027,25 @@ describe("verify: cost estimate labeling", () => {
   // from the actor-engagement gate. Cost is ADVISORY on magnitude, FAIL-CLOSED on provenance.
   const engagedTrace = (estimatedCost?: ActorTrace["estimatedCost"]): ActorTrace => {
     const trace = cuaActorTrace({
-      counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+      counts: {
+        turns: 2,
+        actions: 1,
+        screenshots: 0,
+        reasonings: 0,
+        messages: 1,
+        idleTurns: 0,
+        noProgressTurns: 0,
+      },
       items: [
         { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
-        { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
-      ]
+        {
+          id: "message-001",
+          kind: "message",
+          lifecycle: "completed",
+          title: "message",
+          text: "Done.",
+        },
+      ],
     });
     if (estimatedCost) trace.estimatedCost = estimatedCost;
     return trace;
@@ -3571,13 +4060,20 @@ describe("verify: cost estimate labeling", () => {
     fullyEstimated: false,
     placeholder: false,
     breakdown: [
-      { kind: "model-tokens", laneId: "lane-01", modelId: "computer-use-preview", estimatedCostUsd: 11.6, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing (computer-use-preview)" },
-      { kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null }
+      {
+        kind: "model-tokens",
+        laneId: "lane-01",
+        modelId: "computer-use-preview",
+        estimatedCostUsd: 11.6,
+        ratesAsOf: "2026-08-01",
+        source: "openai.com/api/pricing (computer-use-preview)",
+      },
+      { kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null },
     ],
     tokenUsage: { input: 3843523, output: 5869, total: 3849392 },
     desktopMinutes: null,
     note: "Estimated model-token cost; desktop minutes unmeasured.",
-    ...overrides
+    ...overrides,
   });
 
   it("passes when the bundle carries NO cost at all (fail-open on absence)", async () => {
@@ -3591,7 +4087,11 @@ describe("verify: cost estimate labeling", () => {
 
   it("passes a properly-labeled estimate and a HUGE but correctly-labeled estimate (magnitude never fails)", async () => {
     await withFixtureCopy(async (cwd) => {
-      await writeCuaRunFixture(cwd, "cost-labeled", { dryRun: false, trace: engagedTrace(), cost: labeledSummary() });
+      await writeCuaRunFixture(cwd, "cost-labeled", {
+        dryRun: false,
+        trace: engagedTrace(),
+        cost: labeledSummary(),
+      });
       const labeled = await verifyRun(cwd, "cost-labeled");
       expect(costCheck(labeled)?.ok).toBe(true);
       expect(labeled.ok).toBe(true);
@@ -3602,9 +4102,16 @@ describe("verify: cost estimate labeling", () => {
         cost: labeledSummary({
           estimatedTotalUsd: 1_000_000,
           breakdown: [
-            { kind: "model-tokens", laneId: "lane-01", modelId: "computer-use-preview", estimatedCostUsd: 1_000_000, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing" }
-          ]
-        })
+            {
+              kind: "model-tokens",
+              laneId: "lane-01",
+              modelId: "computer-use-preview",
+              estimatedCostUsd: 1_000_000,
+              ratesAsOf: "2026-08-01",
+              source: "openai.com/api/pricing",
+            },
+          ],
+        }),
       });
       const huge = await verifyRun(cwd, "cost-huge");
       expect(costCheck(huge)?.ok).toBe(true);
@@ -3617,7 +4124,7 @@ describe("verify: cost estimate labeling", () => {
       await writeCuaRunFixture(cwd, "cost-no-rates", {
         dryRun: false,
         trace: engagedTrace(),
-        cost: labeledSummary({ ratesAsOf: null })
+        cost: labeledSummary({ ratesAsOf: null }),
       });
       const verify = await verifyRun(cwd, "cost-no-rates");
       expect(costCheck(verify)?.ok).toBe(false);
@@ -3630,7 +4137,7 @@ describe("verify: cost estimate labeling", () => {
       await writeCuaRunFixture(cwd, "cost-mismatch", {
         dryRun: false,
         trace: engagedTrace(),
-        cost: labeledSummary({ estimatedTotalUsd: 99.99 })
+        cost: labeledSummary({ estimatedTotalUsd: 99.99 }),
       });
       const verify = await verifyRun(cwd, "cost-mismatch");
       expect(costCheck(verify)?.ok).toBe(false);
@@ -3642,7 +4149,7 @@ describe("verify: cost estimate labeling", () => {
       await writeCuaRunFixture(cwd, "cost-null-hides", {
         dryRun: false,
         trace: engagedTrace(),
-        cost: labeledSummary({ estimatedTotalUsd: null })
+        cost: labeledSummary({ estimatedTotalUsd: null }),
       });
       const verify = await verifyRun(cwd, "cost-null-hides");
       expect(costCheck(verify)?.ok).toBe(false);
@@ -3657,8 +4164,8 @@ describe("verify: cost estimate labeling", () => {
           schema: "humanish.actor-estimated-cost.v1",
           estimatedCostUsd: 4.86,
           ratesAsOf: null,
-          source: "openai.com/api/pricing"
-        })
+          source: "openai.com/api/pricing",
+        }),
       });
       expect(costCheck(await verifyRun(cwd, "actor-cost-bad"))?.ok).toBe(false);
 
@@ -3669,8 +4176,8 @@ describe("verify: cost estimate labeling", () => {
           estimatedCostUsd: null,
           reason: "no_rate_for_model",
           ratesAsOf: null,
-          modelId: "mystery-model"
-        })
+          modelId: "mystery-model",
+        }),
       });
       const nullVerify = await verifyRun(cwd, "actor-cost-null");
       expect(costCheck(nullVerify)?.ok).toBe(true);

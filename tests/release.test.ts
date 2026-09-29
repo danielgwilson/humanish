@@ -48,13 +48,15 @@ describe("release readiness", () => {
       "README.md",
       "LICENSE",
       "SECURITY.md",
-      "CONTRIBUTING.md"
+      "CONTRIBUTING.md",
     ]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
     expect(packageJson.scripts["skill:check"]).toBe("DISABLE_TELEMETRY=1 npx skills add . --list");
     expect(packageJson.scripts["pack:dry-run"]).toBe("npm pack --dry-run");
-    expect(packageJson.scripts["release:check"]).toBe("pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run");
+    expect(packageJson.scripts["release:check"]).toBe(
+      "pnpm check && pnpm public-surface:scan && pnpm skill:check && npm pack --dry-run",
+    );
   });
 
   it("documents release gates and human publish decisions", async () => {
@@ -68,20 +70,26 @@ describe("release readiness", () => {
     expect(readiness).toContain("GitHub Visibility Gate");
     expect(readiness).toContain("from a fresh clone");
     expect(readiness).toContain("residual platform-cache risk");
-    expect(readiness).toContain("reachable commit author and committer emails are GitHub noreply-style");
+    expect(readiness).toContain(
+      "reachable commit author and committer emails are GitHub noreply-style",
+    );
     expect(readiness).toContain("npm dry-run payload");
     expect(readiness).toContain("explicitly allowlisted by SHA-256");
     expect(readiness).toContain("skills/humanish/SKILL.md");
     expect(readiness).toContain("pnpm skill:check");
     expect(readiness).toContain("Prefer the tag-gated GitHub Actions workflow");
     expect(readiness).toContain("npm version patch --no-git-tag-version");
-    expect(readiness).toContain("The release tag must point at a commit already reachable from `origin/main`.");
+    expect(readiness).toContain(
+      "The release tag must point at a commit already reachable from `origin/main`.",
+    );
     expect(readiness).toContain("Trusted Publishing Setup");
     expect(readiness).toContain("Trusted Publishing is configured for GitHub Actions");
     expect(readiness).toContain("re-point them after any repository rename");
     expect(readiness).toContain("workflow filename: `publish.yml`");
     expect(readiness).toContain("npm pack --dry-run");
-    expect(readiness).toContain("No agent should run `npm publish` locally without explicit human approval");
+    expect(readiness).toContain(
+      "No agent should run `npm publish` locally without explicit human approval",
+    );
     expect(readiness).toContain("`.humanish/`");
     expect(readiness).toContain("`.npmrc`");
     expect(readiness).toContain("unapproved durable commit email metadata");
@@ -95,7 +103,9 @@ describe("release readiness", () => {
     expect(standard).toContain("`ID+USERNAME@users.noreply.github.com`");
     expect(standard).toContain("`USERNAME@users.noreply.github.com`");
     expect(standard).toContain("accounts using GitHub's pre-July 18, 2017 privacy form");
-    expect(standard).toContain("Do not force-rewrite `main` solely because a known maintainer-approved public");
+    expect(standard).toContain(
+      "Do not force-rewrite `main` solely because a known maintainer-approved public",
+    );
     expect(standard).toContain("Secret/PHI/private source? Rotate/revoke first");
   });
 
@@ -105,12 +115,24 @@ describe("release readiness", () => {
     const ramp = await readFile("docs/ramp/README.md", "utf8");
     const goals = await readFile("docs/goals/current.md", "utf8");
     const schemas = await readFile("docs/contracts/schemas.md", "utf8");
-    const multiOriginDesign = await readFile("docs/goals/multi-origin-shared-world/design.md", "utf8");
-    const multiOriginStatus = await readFile("docs/goals/multi-origin-shared-world/README.md", "utf8");
+    const multiOriginDesign = await readFile(
+      "docs/goals/multi-origin-shared-world/design.md",
+      "utf8",
+    );
+    const multiOriginStatus = await readFile(
+      "docs/goals/multi-origin-shared-world/README.md",
+      "utf8",
+    );
     const proofRoadmap = await readFile("docs/goals/proof-roadmap/goal.md", "utf8");
     const proofRoadmapStatus = await readFile("docs/goals/proof-roadmap/README.md", "utf8");
-    const sequentialSharedWorldFixture = await readFile("humanish/labs/shared-world-demo.yaml", "utf8");
-    const concurrentSharedWorldFixture = await readFile("humanish/labs/shared-world-concurrent-demo.yaml", "utf8");
+    const sequentialSharedWorldFixture = await readFile(
+      "humanish/labs/shared-world-demo.yaml",
+      "utf8",
+    );
+    const concurrentSharedWorldFixture = await readFile(
+      "humanish/labs/shared-world-concurrent-demo.yaml",
+      "utf8",
+    );
     const program = await readFile("src/program.ts", "utf8");
     const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
 
@@ -145,7 +167,7 @@ describe("release readiness", () => {
       ["", "Users", ""].join("/"),
       ["local", "git"].join("_"),
       ["env", ".env.local"].join("/"),
-      ["private", "factory"].join("-")
+      ["private", "factory"].join("-"),
     ];
     for (const term of forbidden) {
       expect(`${ramp}\n${goals}`).not.toContain(term);
@@ -159,16 +181,14 @@ describe("release readiness", () => {
       `![Humanish Observer grid of a live four-persona drawDB study: four completed lanes, each showing its final full-desktop screenshot and outcome]` +
       `(https://unpkg.com/humanish@0.16.0/${screenshotPath})`;
     const screenshot = await stat(screenshotPath);
-    const inventory = JSON.parse(execFileSync(
-      "npm",
-      ["pack", "--dry-run", "--json", "--ignore-scripts"],
-      {
+    const inventory = JSON.parse(
+      execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
         cwd: process.cwd(),
         encoding: "utf8",
         maxBuffer: 5 * 1024 * 1024,
-        timeout: 30_000
-      }
-    )) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
+        timeout: 30_000,
+      }),
+    ) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
 
     expect(inventory).toHaveLength(1);
     const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
@@ -186,16 +206,14 @@ describe("release readiness", () => {
   it("keeps the legacy synthetic hero in the npm payload for older pinned READMEs", async () => {
     const screenshotPath = "docs/assets/humanish-observer-hero.png";
     const screenshot = await stat(screenshotPath);
-    const inventory = JSON.parse(execFileSync(
-      "npm",
-      ["pack", "--dry-run", "--json", "--ignore-scripts"],
-      {
+    const inventory = JSON.parse(
+      execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
         cwd: process.cwd(),
         encoding: "utf8",
         maxBuffer: 5 * 1024 * 1024,
-        timeout: 30_000
-      }
-    )) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
+        timeout: 30_000,
+      }),
+    ) as Array<{ files?: Array<{ path?: string; size?: number }> }>;
 
     expect(inventory).toHaveLength(1);
     const packedScreenshot = inventory[0]?.files?.find((file) => file.path === screenshotPath);
@@ -215,14 +233,16 @@ describe("release readiness", () => {
     expect(publish).toContain("actions/checkout@v6");
     expect(publish).toContain("actions/setup-node@v6");
     expect(publish).toContain("pnpm/action-setup@v6");
-    expect(publish).toContain("registry-url: \"https://registry.npmjs.org\"");
+    expect(publish).toContain('registry-url: "https://registry.npmjs.org"');
     expect(publish).toContain("package-manager-cache: false");
     expect(publish).toContain("if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')");
     expect(publish).toContain("Verify release tag is on main and matches package version");
-    expect(publish).toContain("git merge-base --is-ancestor \"$GITHUB_SHA\" origin/main");
-    expect(publish).toContain("[ \"v${PACKAGE_VERSION}\" != \"$GITHUB_REF_NAME\" ]");
+    expect(publish).toContain('git merge-base --is-ancestor "$GITHUB_SHA" origin/main');
+    expect(publish).toContain('[ "v${PACKAGE_VERSION}" != "$GITHUB_REF_NAME" ]');
     expect(publish).toContain("pnpm release:check");
-    expect(publish).toContain("HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}");
+    expect(publish).toContain(
+      "HUMANISH_PUBLIC_DENYLIST_PATTERN: ${{ secrets.HUMANISH_PUBLIC_DENYLIST_PATTERN }}",
+    );
     expect(publish).toContain("npm publish --access public");
     expect(ci).toContain("pnpm/action-setup@v6");
     expect(ci).toContain("pnpm release:check");

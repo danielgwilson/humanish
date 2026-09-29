@@ -7,11 +7,25 @@ import { useSettled } from "../lib/use-settled";
 let container: HTMLDivElement;
 let root: Root;
 let latest = false;
-function Probe({ value }: { value: boolean }) { latest = useSettled(value, 400); return null; }
+function Probe({ value }: { value: boolean }) {
+  latest = useSettled(value, 400);
+  return null;
+}
 
-beforeAll(() => { (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true; });
-beforeEach(() => { vi.useFakeTimers(); container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container); });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+beforeAll(() => {
+  (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+});
+beforeEach(() => {
+  vi.useFakeTimers();
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.useRealTimers();
+});
 
 describe("useSettled", () => {
   it("ignores a loading state that ends before the delay", async () => {

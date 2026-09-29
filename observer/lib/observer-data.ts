@@ -7,5 +7,5 @@ export type {
   ObserverArtifactLink,
   ObserverData,
   ObserverLaneGroup,
-  ObserverStream
+  ObserverStream,
 } from "../../src/observer-data.js";

@@ -85,7 +85,7 @@ const genericSensitivePatterns = [
   /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/,
   /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-  /^https?:\/\//
+  /^https?:\/\//,
 ];
 
 async function readJson<T>(relativePath: string): Promise<T> {
@@ -125,7 +125,7 @@ function expectPublicSafeFixture(value: unknown): void {
 function expectRelativeArtifactPaths(bundle: RunBundleFixture): void {
   const artifactPaths = [
     ...Object.values(bundle.artifacts),
-    ...bundle.streams.flatMap((stream) => stream.artifacts.map((artifact) => artifact.path))
+    ...bundle.streams.flatMap((stream) => stream.artifacts.map((artifact) => artifact.path)),
   ];
 
   for (const artifactPath of artifactPaths) {
@@ -152,22 +152,30 @@ describe("adapter fixture parity contracts", () => {
   it("defines a web-app dry-run fixture with adapter-owned routes and milestones", async () => {
     const root = `${fixtureRoot}/post-auth-return-dry-run`;
     const adapter = await readJson<AdapterFixture>(`${root}/adapter.json`);
-    const milestones = await readJson<{ milestones: Array<{ id: string; route: string }> }>(`${root}/milestones.json`);
+    const milestones = await readJson<{ milestones: Array<{ id: string; route: string }> }>(
+      `${root}/milestones.json`,
+    );
     const bundle = await readJson<RunBundleFixture>(`${root}/run-bundle.json`);
 
     expectPublicSafeFixture({ adapter, milestones, bundle });
     expect(adapter.schema).toBe("humanish.adapter.v1");
-    expect(adapter.authority).toEqual(expect.objectContaining({
-      github_mutation: "not_requested",
-      mode: "contract_fixture",
-      network_policy: "no_network",
-      spend_policy: "no_spend"
-    }));
-    expect(adapter.routes?.map((route) => route.id).sort()).toEqual(["auth-return", "studio", "upload"]);
+    expect(adapter.authority).toEqual(
+      expect.objectContaining({
+        github_mutation: "not_requested",
+        mode: "contract_fixture",
+        network_policy: "no_network",
+        spend_policy: "no_spend",
+      }),
+    );
+    expect(adapter.routes?.map((route) => route.id).sort()).toEqual([
+      "auth-return",
+      "studio",
+      "upload",
+    ]);
     expect(milestones.milestones.map((milestone) => milestone.id).sort()).toEqual([
       "auth-return-complete",
       "studio-ready",
-      "upload-ready"
+      "upload-ready",
     ]);
 
     expect(bundle.schema).toBe(RUN_BUNDLE_SCHEMA);
@@ -178,17 +186,23 @@ describe("adapter fixture parity contracts", () => {
     expect(bundle.scenario.id).toBe("post-auth-return-dry-run");
     expect(bundle.redaction.status).toBe("passed");
     expect(bundle.review.verdict).toBe("contract_proof_only");
-    expect(bundle.streams.map((stream) => stream.ui?.route).filter(Boolean).sort()).toEqual([
-      "/auth/return",
-      "/studio",
-      "/upload"
-    ]);
-    expect(bundle.lifecycle.filter((event) => event.event === "milestone.reached").map((event) => event.message).sort()).toEqual([
-      "auth-return-complete",
-      "studio-ready",
-      "upload-ready"
-    ]);
-    expect(bundle.streams.every((stream) => stream.artifacts.some((artifact) => artifact.path === "milestones.json"))).toBe(true);
+    expect(
+      bundle.streams
+        .map((stream) => stream.ui?.route)
+        .filter(Boolean)
+        .sort(),
+    ).toEqual(["/auth/return", "/studio", "/upload"]);
+    expect(
+      bundle.lifecycle
+        .filter((event) => event.event === "milestone.reached")
+        .map((event) => event.message)
+        .sort(),
+    ).toEqual(["auth-return-complete", "studio-ready", "upload-ready"]);
+    expect(
+      bundle.streams.every((stream) =>
+        stream.artifacts.some((artifact) => artifact.path === "milestones.json"),
+      ),
+    ).toBe(true);
     expectRelativeArtifactPaths(bundle);
   });
 
@@ -205,11 +219,24 @@ describe("adapter fixture parity contracts", () => {
     const bundle = await readJson<RunBundleFixture>(`${root}/run-bundle.json`);
     const feedbackDraft = await readJson<FeedbackDraftFixture>(`${root}/feedback-draft.json`);
     const verifyResult = await readJson<VerifyResultFixture>(`${root}/verify-result.json`);
-    const sanitizedTranscript = await readFile(`${root}/transcripts/sanitized-terminal.txt`, "utf8");
+    const sanitizedTranscript = await readFile(
+      `${root}/transcripts/sanitized-terminal.txt`,
+      "utf8",
+    );
 
-    expectPublicSafeFixture({ adapter, policy, bundle, feedbackDraft, verifyResult, sanitizedTranscript });
+    expectPublicSafeFixture({
+      adapter,
+      policy,
+      bundle,
+      feedbackDraft,
+      verifyResult,
+      sanitizedTranscript,
+    });
     expect(adapter.schema).toBe("humanish.adapter.v1");
-    expect(adapter.commands?.map((command) => command.id).sort()).toEqual(["feedback-draft", "start"]);
+    expect(adapter.commands?.map((command) => command.id).sort()).toEqual([
+      "feedback-draft",
+      "start",
+    ]);
     expect(adapter.authority.hosted_product_memory_required).toBe(false);
     expect(policy.network_policy).toBe("no_network");
     expect(policy.spend_policy).toBe("no_spend");
@@ -226,14 +253,14 @@ describe("adapter fixture parity contracts", () => {
     expect(bundle.streams[0]?.artifacts.map((artifact) => artifact.path).sort()).toEqual([
       "feedback-draft.json",
       "policy.json",
-      "transcripts/sanitized-terminal.txt"
+      "transcripts/sanitized-terminal.txt",
     ]);
     expect(bundle.feedbackCandidates).toEqual([
       expect.objectContaining({
         artifact: "feedback-draft.json",
         mutation: "not_requested",
-        requiresGithubToken: false
-      })
+        requiresGithubToken: false,
+      }),
     ]);
     expectRelativeArtifactPaths(bundle);
 
@@ -241,7 +268,11 @@ describe("adapter fixture parity contracts", () => {
     expect(feedbackDraft.adapter_id).toBe("terminal-feedback-lifecycle");
     expect(feedbackDraft.redaction.status).toBe("passed");
     expect(feedbackDraft.github).toEqual({ mutation: "not_requested", requires_token: false });
-    expect(feedbackDraft.evidence.map((item) => item.kind).sort()).toEqual(["state", "terminal", "trace"]);
+    expect(feedbackDraft.evidence.map((item) => item.kind).sort()).toEqual([
+      "state",
+      "terminal",
+      "trace",
+    ]);
 
     expect(sanitizedTranscript).toContain("synthetic sanitized transcript only");
     expect(verifyResult.schema).toBe("humanish.verify-result.v1");
@@ -252,7 +283,7 @@ describe("adapter fixture parity contracts", () => {
       "raw transcript not required",
       "redaction passed",
       "run bundle exists",
-      "sanitized transcript pointer exists"
+      "sanitized transcript pointer exists",
     ]);
   });
 
@@ -261,7 +292,7 @@ describe("adapter fixture parity contracts", () => {
       await Promise.all([
         readFile("docs/contracts/schemas.md", "utf8"),
         readFile("docs/contracts/run-bundle.md", "utf8"),
-        readFile("src/run.ts", "utf8")
+        readFile("src/run.ts", "utf8"),
       ])
     ).join("\n");
 
@@ -270,7 +301,7 @@ describe("adapter fixture parity contracts", () => {
       "upload-ready",
       "studio-ready",
       "auth-return-complete",
-      "terminal-feedback-lifecycle"
+      "terminal-feedback-lifecycle",
     ]) {
       expect(coreText).not.toContain(adapterOwnedTerm);
     }

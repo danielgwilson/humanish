@@ -12,13 +12,7 @@ import { prefersReducedMotion } from "@/lib/theme";
  * `resolveAfter` (ms) self-resolves after mount — used by the hero tile
  * (1100ms). Panels inside PinnedReplay omit it; the replay triggers them.
  */
-export default function CoverCanvas({
-  n,
-  resolveAfter
-}: {
-  n: string;
-  resolveAfter?: number;
-}) {
+export default function CoverCanvas({ n, resolveAfter }: { n: string; resolveAfter?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [removed, setRemoved] = useState(false);
 

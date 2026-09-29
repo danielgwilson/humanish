@@ -54,7 +54,9 @@ describe("doctor's terminal-surface row is written for whoever is reading it", (
   const base = { supported: true, bundlePresent: true, nodeVersion: "v22.14.0" };
 
   it("tells a person at a terminal what it opens", () => {
-    expect(terminalSurfaceMessage({ ...base, interactive: true })).toContain("opens the interactive surface");
+    expect(terminalSurfaceMessage({ ...base, interactive: true })).toContain(
+      "opens the interactive surface",
+    );
   });
 
   it("tells a reader who CANNOT use it to hand it on", () => {
@@ -66,8 +68,12 @@ describe("doctor's terminal-surface row is written for whoever is reading it", (
   });
 
   it("keeps the machine-state answers ahead of the audience question", () => {
-    expect(terminalSurfaceMessage({ ...base, supported: false, interactive: true })).toContain("needs Node");
-    expect(terminalSurfaceMessage({ ...base, bundlePresent: false, interactive: false })).toContain("pnpm build");
+    expect(terminalSurfaceMessage({ ...base, supported: false, interactive: true })).toContain(
+      "needs Node",
+    );
+    expect(terminalSurfaceMessage({ ...base, bundlePresent: false, interactive: false })).toContain(
+      "pnpm build",
+    );
   });
 
   it("still reports the surface as a capability, never a gate", async () => {

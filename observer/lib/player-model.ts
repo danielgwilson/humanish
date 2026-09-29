@@ -65,12 +65,19 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
           title: item.title,
           href,
           redaction: item.screenshotRef.redaction,
-          ...(Number.isFinite(atMs) ? { atMs } : {})
+          ...(Number.isFinite(atMs) ? { atMs } : {}),
         });
         // Scripted actions can carry their own capture. Keep the action row and
         // event ID so selecting its image does not erase the original action.
         if (item.kind === "screenshot") {
-          rows.push({ id: item.id, kind: item.kind, title: item.title, frameIndex: frames.length - 1, isFrame: true, ...(Number.isFinite(atMs) ? { atMs } : {}) });
+          rows.push({
+            id: item.id,
+            kind: item.kind,
+            title: item.title,
+            frameIndex: frames.length - 1,
+            isFrame: true,
+            ...(Number.isFinite(atMs) ? { atMs } : {}),
+          });
           continue;
         }
       }
@@ -86,8 +93,10 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
       ...(item.status !== undefined ? { status: item.status } : {}),
       frameIndex: Math.max(0, frames.length - 1),
       isFrame: false,
-      ...(item.at !== undefined && Number.isFinite(Date.parse(item.at)) ? { atMs: Date.parse(item.at) } : {}),
-      ...(coord !== null ? { coord } : {})
+      ...(item.at !== undefined && Number.isFinite(Date.parse(item.at))
+        ? { atMs: Date.parse(item.at) }
+        : {}),
+      ...(coord !== null ? { coord } : {}),
     });
   }
 
@@ -96,14 +105,16 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
   // Recorded pace needs every frame stamped and the stamps non-decreasing; anything
   // else (older bundle, mixed producers, clock skew) falls back to honest averaging.
   const recorded =
-    frames.length > 1
-    && frames.every((frame) => frame.atMs !== undefined)
-    && frames.every((frame, index) => index === 0 || (frame.atMs ?? 0) >= (frames[index - 1]?.atMs ?? 0));
+    frames.length > 1 &&
+    frames.every((frame) => frame.atMs !== undefined) &&
+    frames.every(
+      (frame, index) => index === 0 || (frame.atMs ?? 0) >= (frames[index - 1]?.atMs ?? 0),
+    );
   return {
     frames,
     rows,
     avgFrameMs: durationMs > 0 ? durationMs / frames.length : 1500,
-    paced: recorded ? "recorded" : "avg"
+    paced: recorded ? "recorded" : "avg",
   };
 }
 
@@ -142,14 +153,24 @@ export function isWaitRow(row: PlayerRow): boolean {
 }
 
 export function isActionRow(row: PlayerRow): boolean {
-  return ["ui_action", "command", "tool_call", "file_change", "approval"].includes(row.kind)
-    && !isWaitRow(row) && !isFindingRow(row);
+  return (
+    ["ui_action", "command", "tool_call", "file_change", "approval"].includes(row.kind) &&
+    !isWaitRow(row) &&
+    !isFindingRow(row)
+  );
 }
 
 /** Explicit evidence categories only; ordinary prose is never inferred to be a finding. */
 export function isFindingRow(row: PlayerRow): boolean {
-  return row.kind === "finding" || row.kind === "warning" || row.kind === "error"
-    || row.status === "warn" || row.status === "warning" || row.status === "error" || row.status === "failed";
+  return (
+    row.kind === "finding" ||
+    row.kind === "warning" ||
+    row.kind === "error" ||
+    row.status === "warn" ||
+    row.status === "warning" ||
+    row.status === "error" ||
+    row.status === "failed"
+  );
 }
 
 export interface PlayerRowGroup {
@@ -173,11 +194,17 @@ export function groupPlayerRows(rows: readonly PlayerRow[], groupWaits = true): 
 
 export function formatElapsed(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+  return `${Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
 /** Index window for bounded interactive DOM; every item remains reachable. */
-export function boundedWindow(length: number, center: number, limit: number): { start: number; end: number } {
+export function boundedWindow(
+  length: number,
+  center: number,
+  limit: number,
+): { start: number; end: number } {
   const start = Math.max(0, Math.min(Math.max(0, length - limit), center - Math.floor(limit / 2)));
   return { start, end: Math.min(length, start + limit) };
 }

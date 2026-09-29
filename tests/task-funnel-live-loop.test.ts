@@ -17,7 +17,7 @@ import {
   type CuaObservation,
   type CuaProvider,
   type CuaTurn,
-  type CuaTurnRequest
+  type CuaTurnRequest,
 } from "../src/computer-use.js";
 import { composeLaneInstructions } from "../src/cua-actor-lab.js";
 import { DEVICE_PRESETS } from "../src/device-presets.js";
@@ -33,13 +33,13 @@ const FAKE_CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 const persona: ActorPersonaRef = {
   id: "dana",
   traitsApplied: ["friction-tolerance:low"],
-  promptDigest: "abc123def456"
+  promptDigest: "abc123def456",
 };
 
 function frame(): Buffer {
@@ -94,18 +94,18 @@ const PROTOCOL: LabTask[] = [
   {
     id: "reach-signup",
     goal: "Create an account with your email address.",
-    success: { any: [{ id: "on-register", urlIncludes: "/register" }] }
+    success: { any: [{ id: "on-register", urlIncludes: "/register" }] },
   },
   {
     id: "see-verify-notice",
     goal: "Follow what the app tells you to do next.",
-    success: { any: [{ id: "notice", textIncludes: "check your email" }] }
+    success: { any: [{ id: "notice", textIncludes: "check your email" }] },
   },
   {
     id: "reach-dashboard",
     goal: "Get to your account's home area.",
-    success: { any: [{ id: "on-dashboard", urlIncludes: "/dashboard" }] }
-  }
+    success: { any: [{ id: "on-dashboard", urlIncludes: "/dashboard" }] },
+  },
 ];
 
 describe("the live loop corroborates the protocol (#414 wiring)", () => {
@@ -113,13 +113,28 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
     const provider = new RepeatProvider({
       actions: [{ kind: "click", x: 10, y: 20 }],
       pendingSafetyChecks: [],
-      done: false
+      done: false,
     });
     const executor = new ObservationSequenceExecutor([
       { screenshot: frame(), stateSignature: "s0", url: "http://127.0.0.1:3000/", text: "Welcome" },
-      { screenshot: frame(), stateSignature: "s1", url: "http://127.0.0.1:3000/register", text: "Sign up" },
-      { screenshot: frame(), stateSignature: "s2", url: "http://127.0.0.1:3000/register", text: "Almost there — check your email" },
-      { screenshot: frame(), stateSignature: "s3", url: "http://127.0.0.1:3000/dashboard", text: "Your documents" }
+      {
+        screenshot: frame(),
+        stateSignature: "s1",
+        url: "http://127.0.0.1:3000/register",
+        text: "Sign up",
+      },
+      {
+        screenshot: frame(),
+        stateSignature: "s2",
+        url: "http://127.0.0.1:3000/register",
+        text: "Almost there — check your email",
+      },
+      {
+        screenshot: frame(),
+        stateSignature: "s3",
+        url: "http://127.0.0.1:3000/dashboard",
+        text: "Your documents",
+      },
     ]);
 
     const result = await runComputerUseLoop({
@@ -133,7 +148,7 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
       tasks: PROTOCOL,
       // The stop condition and the final task coincide on purpose: the funnel must include the
       // very turn that ends the session.
-      stopWhen: { any: [{ id: "done", urlIncludes: "/dashboard" }] }
+      stopWhen: { any: [{ id: "done", urlIncludes: "/dashboard" }] },
     });
 
     expect(result.completionReason).toBe("goal_satisfied");
@@ -146,17 +161,19 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
     expect(funnel!.tasks.map((task) => ({ id: task.id, completed: task.completed }))).toEqual([
       { id: "reach-signup", completed: true },
       { id: "see-verify-notice", completed: true },
-      { id: "reach-dashboard", completed: true }
+      { id: "reach-dashboard", completed: true },
     ]);
     // Turn-stamped: signup completed on turn 1's observation, the notice on turn 2, dashboard on 3.
     expect(funnel!.tasks.map((task) => task.turn)).toEqual([1, 2, 3]);
 
     // The trace narrates WHICH task completed, never WHAT counted as proof.
-    const notices = result.trace.items.filter((item) => item.kind === "notice" && item.title.startsWith("task completed:"));
+    const notices = result.trace.items.filter(
+      (item) => item.kind === "notice" && item.title.startsWith("task completed:"),
+    );
     expect(notices.map((item) => item.title)).toEqual([
       "task completed: reach-signup",
       "task completed: see-verify-notice",
-      "task completed: reach-dashboard"
+      "task completed: reach-dashboard",
     ]);
     const persisted = JSON.stringify(result.trace);
     expect(persisted).not.toContain("/register");
@@ -169,10 +186,15 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
       actions: [],
       pendingSafetyChecks: [],
       done: true,
-      message: "I could not find the signup form, giving up."
+      message: "I could not find the signup form, giving up.",
     });
     const executor = new ObservationSequenceExecutor([
-      { screenshot: frame(), stateSignature: "s0", url: "http://127.0.0.1:3000/register", text: "Sign up" }
+      {
+        screenshot: frame(),
+        stateSignature: "s0",
+        url: "http://127.0.0.1:3000/register",
+        text: "Sign up",
+      },
     ]);
 
     const result = await runComputerUseLoop({
@@ -183,7 +205,7 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
       redaction: defaultRedactionHooks,
       timeoutMs: 10_000_000,
       now: monotonicClock(),
-      tasks: PROTOCOL
+      tasks: PROTOCOL,
     });
 
     const funnel = result.trace.taskFunnel;
@@ -194,9 +216,14 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
   });
 
   it("emits no funnel when the lab declared no protocol — honest absence, not an empty one", async () => {
-    const provider = new RepeatProvider({ actions: [], pendingSafetyChecks: [], done: true, message: "done" });
+    const provider = new RepeatProvider({
+      actions: [],
+      pendingSafetyChecks: [],
+      done: true,
+      message: "done",
+    });
     const executor = new ObservationSequenceExecutor([
-      { screenshot: frame(), stateSignature: "s0" }
+      { screenshot: frame(), stateSignature: "s0" },
     ]);
 
     const result = await runComputerUseLoop({
@@ -206,7 +233,7 @@ describe("the live loop corroborates the protocol (#414 wiring)", () => {
       persona,
       redaction: defaultRedactionHooks,
       timeoutMs: 10_000_000,
-      now: monotonicClock()
+      now: monotonicClock(),
     });
 
     expect(result.trace.taskFunnel).toBeUndefined();
@@ -219,7 +246,7 @@ describe("the participant never sees the researcher's criteria (composer)", () =
     const composed = composeLaneInstructions({
       mission: "You heard about this document tool and want to try it.",
       tasks: PROTOCOL,
-      device: { name: "desktop", preset: DEVICE_PRESETS.desktop }
+      device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
     });
 
     expect(composed.instructions).toContain("Work through these in order:");
@@ -237,10 +264,11 @@ describe("the participant never sees the researcher's criteria (composer)", () =
   it("changes nothing for a lab with no tasks", () => {
     const args = {
       mission: "You heard about this document tool and want to try it.",
-      device: { name: "desktop", preset: DEVICE_PRESETS.desktop }
+      device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
     } as const;
-    expect(composeLaneInstructions({ ...args }).instructions)
-      .toBe(composeLaneInstructions({ ...args, tasks: [] }).instructions);
+    expect(composeLaneInstructions({ ...args }).instructions).toBe(
+      composeLaneInstructions({ ...args, tasks: [] }).instructions,
+    );
   });
 });
 
@@ -256,22 +284,25 @@ describe("the study roll-up keeps its denominators", () => {
       id: task.id,
       completed: completed[index] ?? false,
       observable: true,
-      ...(completed[index] ? { turn: index + 1 } : {})
-    }))
+      ...(completed[index] ? { turn: index + 1 } : {}),
+    })),
   });
 
   it("aggregates per-task completion across participants", () => {
-    const study = aggregateTaskFunnels([funnelOf([true, true, true]), funnelOf([true, false, false])]);
+    const study = aggregateTaskFunnels([
+      funnelOf([true, true, true]),
+      funnelOf([true, false, false]),
+    ]);
     expect(study).toEqual({
       sessions: 2,
       tasks: [
         { id: "reach-signup", completed: 2, sessions: 2, observable: true, unmeasured: 0 },
         { id: "see-verify-notice", completed: 1, sessions: 2, observable: true, unmeasured: 0 },
-        { id: "reach-dashboard", completed: 1, sessions: 2, observable: true, unmeasured: 0 }
-      ]
+        { id: "reach-dashboard", completed: 1, sessions: 2, observable: true, unmeasured: 0 },
+      ],
     });
     expect(formatStudyTaskFunnel(study!)).toBe(
-      "reach-signup 2/2 · see-verify-notice 1/2 · reach-dashboard 1/2"
+      "reach-signup 2/2 · see-verify-notice 1/2 · reach-dashboard 1/2",
     );
   });
 
@@ -282,10 +313,12 @@ describe("the study roll-up keeps its denominators", () => {
       completed: 0,
       unobservable: 1,
       unmeasured: 0,
-      tasks: [{ id: "tell-us-what-confused-you", completed: false, observable: false }]
+      tasks: [{ id: "tell-us-what-confused-you", completed: false, observable: false }],
     };
     const study = aggregateTaskFunnels([unmeasured]);
-    expect(formatStudyTaskFunnel(study!)).toBe("tell-us-what-confused-you (no completion criterion)");
+    expect(formatStudyTaskFunnel(study!)).toBe(
+      "tell-us-what-confused-you (no completion criterion)",
+    );
   });
 
   it("returns undefined when no session measured a funnel — absence, never zeros", () => {

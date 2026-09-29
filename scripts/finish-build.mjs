@@ -6,7 +6,7 @@ import { chmodSync, copyFileSync, existsSync, statSync } from "node:fs";
 
 const artifacts = [
   { from: "observer/dist/index.html", to: "dist/observer-app.html", label: "observer" },
-  { from: "tui/dist/tui-app.js", to: "dist/tui-app.js", label: "tui" }
+  { from: "tui/dist/tui-app.js", to: "dist/tui-app.js", label: "tui" },
 ];
 
 chmodSync("dist/cli.js", 0o755);
@@ -14,7 +14,7 @@ chmodSync("dist/cli.js", 0o755);
 for (const artifact of artifacts) {
   if (!existsSync(artifact.from)) {
     throw new Error(
-      `${artifact.label} build artifact missing at ${artifact.from} — the workspace build did not run or failed silently.`
+      `${artifact.label} build artifact missing at ${artifact.from} — the workspace build did not run or failed silently.`,
     );
   }
   copyFileSync(artifact.from, artifact.to);

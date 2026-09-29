@@ -5,13 +5,10 @@ import type {
   RunAdapterScore,
   RunBundle,
   RunFeedbackCandidate,
-  RunScorerProvenance
+  RunScorerProvenance,
 } from "./run.js";
 
-export type BrowserAdapterBackend =
-  | "cua"
-  | "shared-world"
-  | "concurrent-shared-world";
+export type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
 /**
  * Product-agnostic scoring context for browser/computer-use lanes. Product-specific
@@ -47,14 +44,18 @@ export interface BrowserLabAdapterHooks {
    * Malformed candidates are dropped before bundle persistence so core remains
    * verifiable even when an adapter misbehaves.
    */
-  deriveFeedback?: (ctx: BrowserLabScoringContext) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
+  deriveFeedback?: (
+    ctx: BrowserLabScoringContext,
+  ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
   /**
    * Optional product/state proof artifact references. The adapter writes files
    * under `ctx.runDir` and returns local relative paths. Core stores only the
    * namespaced references and `verify` fails closed if referenced files are
    * missing or nonlocal.
    */
-  deriveArtifacts?: (ctx: BrowserLabScoringContext) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
+  deriveArtifacts?: (
+    ctx: BrowserLabScoringContext,
+  ) => RunAdapterArtifact[] | Promise<RunAdapterArtifact[]>;
 }
 
 export async function applyBrowserAdapterHooks(args: {
@@ -81,11 +82,14 @@ export async function applyBrowserAdapterHooks(args: {
   // The scorer sees a READ-ONLY view of the bundle: it cannot mutate noSpend/cost/review in place to
   // launder a verdict (a tamper attempt throws in the scorer's strict-mode ESM and is caught below as
   // a hook failure). The seam still stamps the REAL bundle.
-  const scoringContext: BrowserLabScoringContext = { ...context, bundle: frozenBundleView(context.bundle) };
+  const scoringContext: BrowserLabScoringContext = {
+    ...context,
+    bundle: frozenBundleView(context.bundle),
+  };
 
   const scrubValue = <T>(value: T): T => {
     const encoded = JSON.stringify(value);
-    return encoded === undefined ? value : JSON.parse(sanitize(encoded)) as T;
+    return encoded === undefined ? value : (JSON.parse(sanitize(encoded)) as T);
   };
 
   let declaredVerdictFailure: string | undefined;
@@ -98,15 +102,20 @@ export async function applyBrowserAdapterHooks(args: {
         const message = applyAdapterScoreFailureToReview(bundle);
         if (declared && message !== undefined) declaredVerdictFailure = message;
       } else {
-        warnings.push(`${hookLabel}.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`);
+        warnings.push(
+          `${hookLabel}.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.`,
+        );
         if (declared) {
-          declaredVerdictFailure = "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
+          declaredVerdictFailure =
+            "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
           recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
         }
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
-      warnings.push(`${hookLabel}.score threw (${detail}); dropped so the bundle stays verifiable.`);
+      warnings.push(
+        `${hookLabel}.score threw (${detail}); dropped so the bundle stays verifiable.`,
+      );
       if (declared) {
         declaredVerdictFailure = `Declared product scorer threw before returning a verdict (${detail}); a crashed declared gate is recorded as a fail, never a silent pass.`;
         recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
@@ -121,13 +130,18 @@ export async function applyBrowserAdapterHooks(args: {
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
-        else warnings.push(`${hookLabel}.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`);
+        else
+          warnings.push(
+            `${hookLabel}.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.`,
+          );
       }
       if (accepted.length > 0) {
         bundle.feedbackCandidates = [...bundle.feedbackCandidates, ...accepted];
       }
     } catch (error) {
-      warnings.push(`${hookLabel}.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+      warnings.push(
+        `${hookLabel}.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+      );
     }
   }
 
@@ -138,13 +152,18 @@ export async function applyBrowserAdapterHooks(args: {
       for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
         const cleaned = scrubValue(artifact);
         if (isAdapterArtifactShape(cleaned)) accepted.push(cleaned);
-        else warnings.push(`${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed humanish.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`);
+        else
+          warnings.push(
+            `${hookLabel}.deriveArtifacts returned an artifact that is not a well-formed humanish.adapter-artifact.v1 (non-empty namespace + label + local path + supported kind); dropped so the bundle stays verifiable.`,
+          );
       }
       if (accepted.length > 0) {
         bundle.adapterArtifacts = [...(bundle.adapterArtifacts ?? []), ...accepted];
       }
     } catch (error) {
-      warnings.push(`${hookLabel}.deriveArtifacts threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+      warnings.push(
+        `${hookLabel}.deriveArtifacts threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+      );
     }
   }
 
@@ -207,53 +226,62 @@ export function frozenBundleView(bundle: RunBundle): RunBundle {
 }
 
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    && (value as RunAdapterScore).schema === "humanish.adapter-score.v1"
-    && typeof (value as RunAdapterScore).namespace === "string"
-    && (value as RunAdapterScore).namespace.trim().length > 0
-    && ["pass", "partial", "fail"].includes((value as RunAdapterScore).status)
-    && typeof (value as RunAdapterScore).score === "number"
-    && Number.isFinite((value as RunAdapterScore).score)
-    && typeof (value as RunAdapterScore).summary === "string"
-    && ((value as RunAdapterScore).data === undefined
-      || (typeof (value as RunAdapterScore).data === "object"
-        && (value as RunAdapterScore).data !== null
-        && !Array.isArray((value as RunAdapterScore).data)));
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as RunAdapterScore).schema === "humanish.adapter-score.v1" &&
+    typeof (value as RunAdapterScore).namespace === "string" &&
+    (value as RunAdapterScore).namespace.trim().length > 0 &&
+    ["pass", "partial", "fail"].includes((value as RunAdapterScore).status) &&
+    typeof (value as RunAdapterScore).score === "number" &&
+    Number.isFinite((value as RunAdapterScore).score) &&
+    typeof (value as RunAdapterScore).summary === "string" &&
+    ((value as RunAdapterScore).data === undefined ||
+      (typeof (value as RunAdapterScore).data === "object" &&
+        (value as RunAdapterScore).data !== null &&
+        !Array.isArray((value as RunAdapterScore).data)))
+  );
 }
 
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
   if (!isRecord(value)) return false;
   const candidate = value as Partial<RunFeedbackCandidate>;
-  if (candidate.schema !== "humanish.feedback-candidate.v1"
-    || typeof candidate.id !== "string"
-    || typeof candidate.run_id !== "string"
-    || (candidate.stream_id !== undefined && typeof candidate.stream_id !== "string")
-    || typeof candidate.adapter_id !== "string"
-    || typeof candidate.scenario_id !== "string"
-    || typeof candidate.persona_id !== "string"
-    || !isFeedbackActor(candidate.actor)
-    || !isFeedbackSubstrate(candidate.substrate)
-    || !isFeedbackFailureOwner(candidate.failure_owner)
-    || typeof candidate.summary !== "string"
-    || candidate.summary.trim().length === 0
-    || typeof candidate.expected !== "string"
-    || typeof candidate.actual !== "string"
-    || !Array.isArray(candidate.evidence)
-    || !candidate.evidence.every(isFeedbackEvidence)
-    || !isRecord(candidate.redaction)
-    || candidate.redaction.status !== "passed"
-    || typeof candidate.redaction.notes !== "string"
-    || typeof candidate.idempotency_key !== "string"
-    || !isFeedbackNextState(candidate.proposed_next_state)
-    || !Array.isArray(candidate.acceptance_proof)
-    || !candidate.acceptance_proof.every((item) => typeof item === "string")) {
+  if (
+    candidate.schema !== "humanish.feedback-candidate.v1" ||
+    typeof candidate.id !== "string" ||
+    typeof candidate.run_id !== "string" ||
+    (candidate.stream_id !== undefined && typeof candidate.stream_id !== "string") ||
+    typeof candidate.adapter_id !== "string" ||
+    typeof candidate.scenario_id !== "string" ||
+    typeof candidate.persona_id !== "string" ||
+    !isFeedbackActor(candidate.actor) ||
+    !isFeedbackSubstrate(candidate.substrate) ||
+    !isFeedbackFailureOwner(candidate.failure_owner) ||
+    typeof candidate.summary !== "string" ||
+    candidate.summary.trim().length === 0 ||
+    typeof candidate.expected !== "string" ||
+    typeof candidate.actual !== "string" ||
+    !Array.isArray(candidate.evidence) ||
+    !candidate.evidence.every(isFeedbackEvidence) ||
+    !isRecord(candidate.redaction) ||
+    candidate.redaction.status !== "passed" ||
+    typeof candidate.redaction.notes !== "string" ||
+    typeof candidate.idempotency_key !== "string" ||
+    !isFeedbackNextState(candidate.proposed_next_state) ||
+    !Array.isArray(candidate.acceptance_proof) ||
+    !candidate.acceptance_proof.every((item) => typeof item === "string")
+  ) {
     return false;
   }
   if (candidate.adapter !== undefined) {
     const adapter = candidate.adapter;
-    if (!isRecord(adapter)
-      || typeof adapter.namespace !== "string" || adapter.namespace.trim().length === 0
-      || !isRecord(adapter.data)) {
+    if (
+      !isRecord(adapter) ||
+      typeof adapter.namespace !== "string" ||
+      adapter.namespace.trim().length === 0 ||
+      !isRecord(adapter.data)
+    ) {
       return false;
     }
   }
@@ -263,16 +291,18 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
 function isAdapterArtifactShape(value: unknown): value is RunAdapterArtifact {
   if (!isRecord(value)) return false;
   const artifact = value as Partial<RunAdapterArtifact>;
-  return artifact.schema === "humanish.adapter-artifact.v1"
-    && typeof artifact.namespace === "string"
-    && artifact.namespace.trim().length > 0
-    && typeof artifact.label === "string"
-    && artifact.label.trim().length > 0
-    && typeof artifact.path === "string"
-    && isSafeRelativeArtifactPath(artifact.path)
-    && isAdapterArtifactKind(artifact.kind)
-    && typeof artifact.note === "string"
-    && artifact.note.trim().length > 0;
+  return (
+    artifact.schema === "humanish.adapter-artifact.v1" &&
+    typeof artifact.namespace === "string" &&
+    artifact.namespace.trim().length > 0 &&
+    typeof artifact.label === "string" &&
+    artifact.label.trim().length > 0 &&
+    typeof artifact.path === "string" &&
+    isSafeRelativeArtifactPath(artifact.path) &&
+    isAdapterArtifactKind(artifact.kind) &&
+    typeof artifact.note === "string" &&
+    artifact.note.trim().length > 0
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -280,71 +310,83 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isSafeRelativeArtifactPath(value: string): boolean {
-  return value.trim().length > 0
-    && !path.isAbsolute(value)
-    && !value.includes("://")
-    && !value.split(/[\\/]/).some((part) => part === ".." || part === "." || part.length === 0);
+  return (
+    value.trim().length > 0 &&
+    !path.isAbsolute(value) &&
+    !value.includes("://") &&
+    !value.split(/[\\/]/).some((part) => part === ".." || part === "." || part.length === 0)
+  );
 }
 
 function isAdapterArtifactKind(value: unknown): value is RunAdapterArtifact["kind"] {
-  return value === "state"
-    || value === "review"
-    || value === "log"
-    || value === "trace"
-    || value === "screenshot"
-    || value === "filesystem"
-    || value === "summary";
+  return (
+    value === "state" ||
+    value === "review" ||
+    value === "log" ||
+    value === "trace" ||
+    value === "screenshot" ||
+    value === "filesystem" ||
+    value === "summary"
+  );
 }
 
 function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
-  return value === "codex-tui"
-    || value === "codex-exec"
-    || value === "codex-app-server"
-    || value === "computer-use"
-    || value === "synthetic-dry-run"
-    || value === "unknown";
+  return (
+    value === "codex-tui" ||
+    value === "codex-exec" ||
+    value === "codex-app-server" ||
+    value === "computer-use" ||
+    value === "synthetic-dry-run" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
-  return value === "e2b-desktop"
-    || value === "local-desktop"
-    || value === "e2b-terminal"
-    || value === "local-filesystem"
-    || value === "codex-app-server"
-    || value === "unknown";
+  return (
+    value === "e2b-desktop" ||
+    value === "local-desktop" ||
+    value === "e2b-terminal" ||
+    value === "local-filesystem" ||
+    value === "codex-app-server" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
-  return value === "harness"
-    || value === "target-app"
-    || value === "actor"
-    || value === "environment"
-    || value === "unknown";
+  return (
+    value === "harness" ||
+    value === "target-app" ||
+    value === "actor" ||
+    value === "environment" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
-  return value === "watch"
-    || value === "adapter-hardening"
-    || value === "target-app-setup"
-    || value === "actor-auth"
-    || value === "setup-quality-review"
-    || value === "study-quality-review";
+  return (
+    value === "watch" ||
+    value === "adapter-hardening" ||
+    value === "target-app-setup" ||
+    value === "actor-auth" ||
+    value === "setup-quality-review" ||
+    value === "study-quality-review"
+  );
 }
 
 function isFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
   if (!isRecord(value)) return false;
-  return typeof value.path === "string"
-    && value.path.length > 0
-    && !path.isAbsolute(value.path)
-    && !value.path.includes("://")
-    && !value.path.includes("..")
-    && (
-      value.kind === "review"
-      || value.kind === "state"
-      || value.kind === "log"
-      || value.kind === "trace"
-      || value.kind === "screenshot"
-      || value.kind === "filesystem"
-    )
-    && typeof value.note === "string";
+  return (
+    typeof value.path === "string" &&
+    value.path.length > 0 &&
+    !path.isAbsolute(value.path) &&
+    !value.path.includes("://") &&
+    !value.path.includes("..") &&
+    (value.kind === "review" ||
+      value.kind === "state" ||
+      value.kind === "log" ||
+      value.kind === "trace" ||
+      value.kind === "screenshot" ||
+      value.kind === "filesystem") &&
+    typeof value.note === "string"
+  );
 }

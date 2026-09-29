@@ -50,25 +50,70 @@ const classTokens = (header) => [...header.matchAll(/\.([A-Za-z][\w-]*)/g)].map(
 
 const ITEMS = {
   "humanish-tokens": {
-    match: (h) => h.startsWith(":root") || h.startsWith("@theme")
+    match: (h) => h.startsWith(":root") || h.startsWith("@theme"),
   },
   "terminal-cast": {
     include: ["vterm", "vln", "vp", "vok", "vdim", "vsum"],
-    exclude: []
+    exclude: [],
   },
   "persona-lane": {
-    include: ["panel", "pbar", "pl", "pidx", "pname", "pr", "pmedia", "pcap", "prep", "plab", "chip", "chip-pass", "chip-dot", "chip-mute"],
-    exclude: ["panel-dark", "vterm", "stage"]
+    include: [
+      "panel",
+      "pbar",
+      "pl",
+      "pidx",
+      "pname",
+      "pr",
+      "pmedia",
+      "pcap",
+      "prep",
+      "plab",
+      "chip",
+      "chip-pass",
+      "chip-dot",
+      "chip-mute",
+    ],
+    exclude: ["panel-dark", "vterm", "stage"],
   },
   "pinned-replay": {
     include: [
-      "runband", "wt-track", "wt-sticky", "rail", "rail-k", "rtrack", "ritem", "ridx", "rtx",
-      "stage", "panel", "panel-dark", "pbar", "pl", "pidx", "pname", "pr", "pbody", "pbody-brief",
-      "pcap", "prep", "plab", "brief-facts", "code", "ledger", "lh", "lrow", "ln", "ld", "whint",
-      "chip", "chip-pass", "chip-dot", "chip-mute"
+      "runband",
+      "wt-track",
+      "wt-sticky",
+      "rail",
+      "rail-k",
+      "rtrack",
+      "ritem",
+      "ridx",
+      "rtx",
+      "stage",
+      "panel",
+      "panel-dark",
+      "pbar",
+      "pl",
+      "pidx",
+      "pname",
+      "pr",
+      "pbody",
+      "pbody-brief",
+      "pcap",
+      "prep",
+      "plab",
+      "brief-facts",
+      "code",
+      "ledger",
+      "lh",
+      "lrow",
+      "ln",
+      "ld",
+      "whint",
+      "chip",
+      "chip-pass",
+      "chip-dot",
+      "chip-mute",
     ],
-    exclude: ["vterm", "vln", "vp", "vok", "vdim", "vsum", "study-notes", "pmedia", "tile-shot"]
-  }
+    exclude: ["vterm", "vln", "vp", "vok", "vdim", "vsum", "study-notes", "pmedia", "tile-shot"],
+  },
 };
 
 function keeps(item, header) {
@@ -76,7 +121,9 @@ function keeps(item, header) {
   if (spec.match) return spec.match(header);
   const tokens = classTokens(header);
   if (!tokens.length) return false;
-  return tokens.some((t) => spec.include.includes(t)) && !tokens.some((t) => spec.exclude.includes(t));
+  return (
+    tokens.some((t) => spec.include.includes(t)) && !tokens.some((t) => spec.exclude.includes(t))
+  );
 }
 
 function render(header, body) {
@@ -89,7 +136,9 @@ for (const item of Object.keys(ITEMS)) {
     if (block.header.startsWith("@media")) {
       const inner = parseBlocks(block.body).filter((b) => keeps(item, b.header));
       if (inner.length) {
-        parts.push(`${block.header} {\n${inner.map((b) => "  " + render(b.header, b.body).replace(/\n/g, "\n  ")).join("\n")}\n}`);
+        parts.push(
+          `${block.header} {\n${inner.map((b) => "  " + render(b.header, b.body).replace(/\n/g, "\n  ")).join("\n")}\n}`,
+        );
       }
     } else if (keeps(item, block.header)) {
       parts.push(render(block.header, block.body));
@@ -113,12 +162,12 @@ for (const item of Object.keys(ITEMS)) {
 const TSX = {
   "terminal-cast": ["components/terminal-cast.tsx"],
   "persona-lane": ["components/persona-lane.tsx", "components/cover-canvas.tsx"],
-  "pinned-replay": ["components/pinned-replay.tsx"]
+  "pinned-replay": ["components/pinned-replay.tsx"],
 };
 const CSS_POOL = {
   "terminal-cast": ["terminal-cast", "humanish-tokens"],
   "persona-lane": ["persona-lane", "humanish-tokens"],
-  "pinned-replay": ["pinned-replay", "persona-lane", "terminal-cast", "humanish-tokens"]
+  "pinned-replay": ["pinned-replay", "persona-lane", "terminal-cast", "humanish-tokens"],
 };
 const JS_ONLY = new Set(["cover"]); // JS selector hooks with no style rule
 let covFailed = false;
@@ -137,7 +186,9 @@ for (const [item, files] of Object.entries(TSX)) {
   for (const t of used) {
     if (JS_ONLY.has(t)) continue;
     if (!new RegExp(`\\.${t}(?![\\w-])`).test(pool)) {
-      console.error(`coverage: ${item} uses class "${t}" with no rule in its stylesheet or dependencies`);
+      console.error(
+        `coverage: ${item} uses class "${t}" with no rule in its stylesheet or dependencies`,
+      );
       covFailed = true;
     }
   }

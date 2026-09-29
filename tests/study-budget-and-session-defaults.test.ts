@@ -16,7 +16,7 @@ import {
   type CuaObservation,
   type CuaProvider,
   type CuaTurn,
-  type CuaTurnRequest
+  type CuaTurnRequest,
 } from "../src/computer-use.js";
 import { makeCuaRunBudget, resolveCuaLanePlan } from "../src/cua-actor-lab.js";
 import { parseLabConfig } from "../src/lab-config.js";
@@ -30,7 +30,7 @@ const FAKE_CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 const persona: ActorPersonaRef = { id: "dana", traitsApplied: [], promptDigest: "abc123def456" };
@@ -57,7 +57,9 @@ class ScriptedProvider implements CuaProvider {
   async nextTurn(_req: CuaTurnRequest): Promise<CuaTurn> {
     const turn = this.turns[this.i];
     this.i += 1;
-    return turn ?? { actions: [], pendingSafetyChecks: [], done: true, message: "done (exhausted)" };
+    return (
+      turn ?? { actions: [], pendingSafetyChecks: [], done: true, message: "done (exhausted)" }
+    );
   }
 }
 
@@ -85,14 +87,23 @@ describe("the closing observation feeds the funnel (first live study's miss)", (
   it("completes a task from the final state a done turn would otherwise never observe", async () => {
     const provider = new ScriptedProvider([
       { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false },
-      { actions: [], pendingSafetyChecks: [], done: true, message: "Signed in; I can see the documents area." }
+      {
+        actions: [],
+        pendingSafetyChecks: [],
+        done: true,
+        message: "Signed in; I can see the documents area.",
+      },
     ]);
     const executor = new ObservationSequenceExecutor([
       { screenshot: frame(), stateSignature: "s0", url: "http://127.0.0.1:3000/verify-email/tok" },
       // Post-action observation: navigation still settling — NOT the dashboard yet.
       { screenshot: frame(), stateSignature: "s1", url: "http://127.0.0.1:3000/verify-email/tok" },
       // The closing observation after the model says done: the participant's real final state.
-      { screenshot: frame(), stateSignature: "s2", url: "http://127.0.0.1:3000/t/personal/documents" }
+      {
+        screenshot: frame(),
+        stateSignature: "s2",
+        url: "http://127.0.0.1:3000/t/personal/documents",
+      },
     ]);
 
     const result = await runComputerUseLoop({
@@ -103,11 +114,13 @@ describe("the closing observation feeds the funnel (first live study's miss)", (
       redaction: defaultRedactionHooks,
       timeoutMs: 10_000_000,
       now: monotonicClock(),
-      tasks: [{
-        id: "reach-dashboard",
-        goal: "Get to your documents area.",
-        success: { any: [{ id: "docs", urlIncludes: "/documents" }] }
-      }]
+      tasks: [
+        {
+          id: "reach-dashboard",
+          goal: "Get to your documents area.",
+          success: { any: [{ id: "docs", urlIncludes: "/documents" }] },
+        },
+      ],
     });
 
     expect(result.completionReason).toBe("goal_satisfied");
@@ -123,14 +136,14 @@ describe("the study budget stops a lane honestly (#299)", () => {
         actions: [{ kind: "click", x: 10, y: 20 }] as CuaAction[],
         pendingSafetyChecks: [],
         done: false,
-        usage: { input: 1000, output: 50 }
-      }))
+        usage: { input: 1000, output: 50 },
+      })),
     );
     const executor = new ObservationSequenceExecutor(
       Array.from({ length: 12 }, (_, index) => ({
         screenshot: frame(),
-        stateSignature: `s${index}`
-      }))
+        stateSignature: `s${index}`,
+      })),
     );
 
     let calls = 0;
@@ -147,7 +160,7 @@ describe("the study budget stops a lane honestly (#299)", () => {
         return calls >= 3
           ? "study budget reached: the run's estimated model spend $12.10 crossed execution.caps.maxTotalUsd=$12"
           : null;
-      }
+      },
     });
 
     expect(result.completionReason).toBe("budget_reached");
@@ -174,20 +187,20 @@ describe("caps parsing and session defaults", () => {
     subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
     actors: [{ type: "openai-computer-use", mission: "Look around." }],
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "dry-run" }
+    scenario: { mode: "dry-run" },
   };
 
   it("parses execution.caps.maxTotalUsd and refuses a negative one", () => {
     const good = parseLabConfig({
       ...baseLab,
-      execution: { target: "e2b-desktop", caps: { maxTotalUsd: 25 } }
+      execution: { target: "e2b-desktop", caps: { maxTotalUsd: 25 } },
     });
     expect(good.ok).toBe(true);
     if (good.ok) expect(good.config.execution?.caps?.maxTotalUsd).toBe(25);
 
     const bad = parseLabConfig({
       ...baseLab,
-      execution: { target: "e2b-desktop", caps: { maxTotalUsd: -1 } }
+      execution: { target: "e2b-desktop", caps: { maxTotalUsd: -1 } },
     });
     expect(bad.ok).toBe(false);
   });
@@ -202,7 +215,11 @@ describe("caps parsing and session defaults", () => {
   it("derives a provisioned-route default that fits the one-hour sandbox cap", () => {
     const parsed = parseLabConfig({
       ...baseLab,
-      subject: { source: "clone", repos: ["example/app"], serve: { install: "npm install", start: "npm start", url: "http://localhost:3000/" } }
+      subject: {
+        source: "clone",
+        repos: ["example/app"],
+        serve: { install: "npm install", start: "npm start", url: "http://localhost:3000/" },
+      },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -217,11 +234,13 @@ describe("caps parsing and session defaults", () => {
         source: "clone",
         repos: ["example/app"],
         serve: { install: "npm install", start: "npm start", url: "http://localhost:3000/" },
-        state: { seed: [
-          { name: "migrate", command: "npm run migrate", when: "before-start" },
-          { name: "seed", command: "npm run seed", when: "before-start" }
-        ] }
-      }
+        state: {
+          seed: [
+            { name: "migrate", command: "npm run migrate", when: "before-start" },
+            { name: "seed", command: "npm run seed", when: "before-start" },
+          ],
+        },
+      },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

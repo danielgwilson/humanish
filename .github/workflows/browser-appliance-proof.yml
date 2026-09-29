@@ -80,7 +80,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: '22.14.0'
+          node-version: "22.14.0"
           cache: pnpm
       - name: Exercise build contracts without containers
         run: |
@@ -161,7 +161,7 @@ jobs:
           run_install: false
       - uses: actions/setup-node@v6
         with:
-          node-version: '22.14.0'
+          node-version: "22.14.0"
           cache: pnpm
       - name: Build native ARM64 runtime
         env:

@@ -6,7 +6,7 @@ import { parseResolvedPersona, PersonaConfigError, type ResolvedPersona } from "
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
-  type PreparedSelectedOutputDirectory
+  type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
 import { digestText, redactText } from "./redaction.js";
 import { realpath } from "node:fs/promises";
@@ -29,14 +29,17 @@ export function personaTitleFromId(personaId: string): string {
  */
 export async function resolveCommittedPersona(
   projectRoot: PreparedSelectedOutputDirectory,
-  personaId: string
+  personaId: string,
 ): Promise<{ persona: ResolvedPersona | null; warnings: string[] }> {
   if (!PERSONA_ID_PATTERN.test(personaId)) {
-    return { persona: null, warnings: ["Persona id is not a safe filename; using the id only (no persona context)."] };
+    return {
+      persona: null,
+      warnings: ["Persona id is not a safe filename; using the id only (no persona context)."],
+    };
   }
   for (const candidate of [
     path.posix.join("humanish", "personas", `${personaId}.yaml`),
-    path.posix.join("humanish", "personas", `${personaId}.yml`)
+    path.posix.join("humanish", "personas", `${personaId}.yml`),
   ]) {
     const bytes = await readContainedRegularFile(projectRoot, candidate);
     if (!bytes) continue;
@@ -46,15 +49,26 @@ export async function resolveCommittedPersona(
     } catch {
       return {
         persona: null,
-        warnings: [`${candidate} could not be parsed as YAML; the lane ran with the persona id only (no traits applied).`]
+        warnings: [
+          `${candidate} could not be parsed as YAML; the lane ran with the persona id only (no traits applied).`,
+        ],
       };
     }
     const warnings: string[] = [];
-    const persona = parseResolvedPersona(raw, { id: personaId, name: personaTitleFromId(personaId) }, warnings);
+    const persona = parseResolvedPersona(
+      raw,
+      { id: personaId, name: personaTitleFromId(personaId) },
+      warnings,
+    );
     persona.sourceDigest = digestText(bytes.toString("utf8"));
-    return { persona, warnings: warnings.map(warning => `${candidate}: ${warning}`) };
+    return { persona, warnings: warnings.map((warning) => `${candidate}: ${warning}`) };
   }
-  return { persona: null, warnings: [`Persona ${redactText(personaId)} has no readable file under humanish/personas; using the id only (no persona context).`] };
+  return {
+    persona: null,
+    warnings: [
+      `Persona ${redactText(personaId)} has no readable file under humanish/personas; using the id only (no persona context).`,
+    ],
+  };
 }
 
 /**
@@ -64,11 +78,13 @@ export async function resolveCommittedPersona(
  */
 export async function resolveCommittedPersonas(
   projectRoot: PreparedSelectedOutputDirectory,
-  personaIds: readonly (string | undefined)[]
+  personaIds: readonly (string | undefined)[],
 ): Promise<{ personas: Map<string, ResolvedPersona>; warnings: string[] }> {
   const personas = new Map<string, ResolvedPersona>();
   const warnings: string[] = [];
-  for (const personaId of new Set(personaIds.filter((id): id is string => typeof id === "string" && id.length > 0))) {
+  for (const personaId of new Set(
+    personaIds.filter((id): id is string => typeof id === "string" && id.length > 0),
+  )) {
     const resolved = await resolveCommittedPersona(projectRoot, personaId);
     if (resolved.persona) personas.set(personaId, resolved.persona);
     warnings.push(...resolved.warnings);
@@ -100,7 +116,7 @@ export function labPersonaIds(config: {
  */
 export async function resolveCommittedPersonasForCwd(
   cwd: string,
-  personaIds: readonly (string | undefined)[]
+  personaIds: readonly (string | undefined)[],
 ): Promise<{ personas: Map<string, ResolvedPersona>; warnings: string[] }> {
   try {
     const physical = await realpath(path.resolve(cwd));
@@ -108,6 +124,9 @@ export async function resolveCommittedPersonasForCwd(
     return await resolveCommittedPersonas(projectRoot, personaIds);
   } catch (error) {
     if (error instanceof PersonaConfigError) throw error;
-    return { personas: new Map(), warnings: ["Persona directory could not be read; no persona context was loaded."] };
+    return {
+      personas: new Map(),
+      warnings: ["Persona directory could not be read; no persona context was loaded."],
+    };
   }
 }

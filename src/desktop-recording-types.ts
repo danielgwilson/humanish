@@ -8,9 +8,11 @@ export const desktopRecordingMetadataSchema = z.strictObject({
   startedAt: z.iso.datetime(),
   durationMs: z.number().finite().positive(),
   bytes: z.number().int().positive().max(DESKTOP_RECORDING_MAX_BYTES),
-  audioSources: z.array(z.enum(["microphone-input", "speaker-output"])).max(2)
-    .refine(values => new Set(values).size === values.length),
-  complete: z.boolean()
+  audioSources: z
+    .array(z.enum(["microphone-input", "speaker-output"]))
+    .max(2)
+    .refine((values) => new Set(values).size === values.length),
+  complete: z.boolean(),
 });
 
 export type DesktopRecordingMetadata = z.infer<typeof desktopRecordingMetadataSchema>;

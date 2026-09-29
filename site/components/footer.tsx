@@ -42,7 +42,12 @@ export default function Footer({ base = "" }: { base?: string }) {
         </div>
       </div>
       <div className="provenance">
-        <p>Every number on this page is read from a kept run bundle; the run ids are in the linked receipts and in the embedded recordings. drawDB, TodoMVC and Excalidraw are applications studied; none is a humanish adopter or endorser. The lobby game is the maintainer&rsquo;s own. Cost lines are estimates at the dated rates each bundle records.</p>
+        <p>
+          Every number on this page is read from a kept run bundle; the run ids are in the linked
+          receipts and in the embedded recordings. drawDB, TodoMVC and Excalidraw are applications
+          studied; none is a humanish adopter or endorser. The lobby game is the maintainer&rsquo;s
+          own. Cost lines are estimates at the dated rates each bundle records.
+        </p>
         <span className="lic">MIT © humanish</span>
       </div>
     </footer>

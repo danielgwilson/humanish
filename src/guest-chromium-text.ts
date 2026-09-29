@@ -82,8 +82,14 @@ export function createGuestChromiumText(options: {
     generation++;
     for (const interrupt of interruptions) interrupt("session_revoked");
   }
-  function dialog() { dialogSeen = true; invalidate(); }
-  function targetClosed() { unusable = true; invalidate(); }
+  function dialog() {
+    dialogSeen = true;
+    invalidate();
+  }
+  function targetClosed() {
+    unusable = true;
+    invalidate();
+  }
   page.on("framenavigated", invalidate);
   page.on("frameattached", invalidate);
   page.on("framedetached", invalidate);
@@ -96,16 +102,28 @@ export function createGuestChromiumText(options: {
     if (closed || unusable) throw new CuaExecutorError("executor_closed", "not_dispatched");
     if (generation !== expected) throw new CuaExecutorError("session_revoked", "not_dispatched");
     const pages = context.pages();
-    if (dialogSeen || page.isClosed() || page.context() !== context || pages.length !== 1 || pages[0] !== page)
+    if (
+      dialogSeen ||
+      page.isClosed() ||
+      page.context() !== context ||
+      pages.length !== 1 ||
+      pages[0] !== page
+    )
       throw new CuaExecutorError("action_rejected", "not_dispatched");
   }
 
-  async function run<T>(signal: AbortSignal, expected: number, body: (op: Operation) => Promise<T>): Promise<T> {
+  async function run<T>(
+    signal: AbortSignal,
+    expected: number,
+    body: (op: Operation) => Promise<T>,
+  ): Promise<T> {
     let dispatched = false;
     let stopped: CuaExecutorErrorCode | undefined;
     const controller = new AbortController();
     let rejectStop!: (error: CuaExecutorError) => void;
-    const stop = new Promise<never>((_resolve, reject) => { rejectStop = reject; });
+    const stop = new Promise<never>((_resolve, reject) => {
+      rejectStop = reject;
+    });
     // An event can interrupt before the first awaited step; consume that rejection.
     void stop.catch(() => {});
     const interrupt = (code: CuaExecutorErrorCode) => {
@@ -120,7 +138,8 @@ export function createGuestChromiumText(options: {
     signal.addEventListener("abort", abort, { once: true });
     const check = () => {
       if (signal.aborted) abort();
-      if (stopped) throw new CuaExecutorError(stopped, dispatched ? "outcome_uncertain" : "not_dispatched");
+      if (stopped)
+        throw new CuaExecutorError(stopped, dispatched ? "outcome_uncertain" : "not_dispatched");
       scope(expected);
     };
     try {
@@ -134,7 +153,7 @@ export function createGuestChromiumText(options: {
           const value = await Promise.race([call(), stop]);
           check();
           return value;
-        }
+        },
       });
     } catch (error) {
       controller.abort();
@@ -157,8 +176,11 @@ export function createGuestChromiumText(options: {
         await Promise.race([
           session.detach(),
           new Promise<never>((_resolve, reject) => {
-            timer = setTimeout(() => reject(new CuaExecutorError("deadline_exceeded", "not_dispatched")), DEADLINE_MS);
-          })
+            timer = setTimeout(
+              () => reject(new CuaExecutorError("deadline_exceeded", "not_dispatched")),
+              DEADLINE_MS,
+            );
+          }),
         ]);
       } catch {
         unusable = true;
@@ -179,10 +201,17 @@ export function createGuestChromiumText(options: {
   }
 
   async function probe(op: Operation, session: CDPSession, contextId: number, expression: string) {
-    const result = await op.step(() => session.send("Runtime.evaluate", {
-      expression, contextId, returnByValue: true, awaitPromise: false,
-      userGesture: false, includeCommandLineAPI: false, silent: true
-    }));
+    const result = await op.step(() =>
+      session.send("Runtime.evaluate", {
+        expression,
+        contextId,
+        returnByValue: true,
+        awaitPromise: false,
+        userGesture: false,
+        includeCommandLineAPI: false,
+        silent: true,
+      }),
+    );
     if (result.exceptionDetails || result.result.type !== "boolean" || result.result.value !== true)
       throw new CuaExecutorError("action_rejected", "not_dispatched");
   }
@@ -192,8 +221,13 @@ export function createGuestChromiumText(options: {
       await run(signal, generation, ready);
     },
     async prepareText(text, signal) {
-      if (typeof text !== "string" || !text || text.includes("\0") || Buffer.byteLength(text, "utf8") > 65536 ||
-          Buffer.from(text, "utf8").toString("utf8") !== text)
+      if (
+        typeof text !== "string" ||
+        !text ||
+        text.includes("\0") ||
+        Buffer.byteLength(text, "utf8") > 65536 ||
+        Buffer.from(text, "utf8").toString("utf8") !== text
+      )
         throw new CuaExecutorError("invalid_request", "not_dispatched");
       scope(generation);
       if (busy) throw new CuaExecutorError("executor_busy", "not_dispatched");
@@ -215,10 +249,13 @@ export function createGuestChromiumText(options: {
           lifetime.abort();
           signal.removeEventListener("abort", abortLifetime);
           disposal = (async () => {
-            try { if (session) await detach(session); }
-            catch (error) {
-              throw new CuaExecutorError(isCuaExecutorError(error) ? error.code : "transport_failed",
-                dispatchedText ? "outcome_uncertain" : "not_dispatched");
+            try {
+              if (session) await detach(session);
+            } catch (error) {
+              throw new CuaExecutorError(
+                isCuaExecutorError(error) ? error.code : "transport_failed",
+                dispatchedText ? "outcome_uncertain" : "not_dispatched",
+              );
             } finally {
               busy = false;
               if (activeDisposal === dispose) activeDisposal = undefined;
@@ -229,18 +266,22 @@ export function createGuestChromiumText(options: {
       };
       activeDisposal = dispose;
       try {
-        await run(lifetime.signal, expected, async op => {
+        await run(lifetime.signal, expected, async (op) => {
           await ready(op);
-          session = await op.step(() => context.newCDPSession(page).then(acquired => {
-            sessions.add(acquired);
-            if (op.signal.aborted || closed) void detach(acquired).catch(() => {});
-            return acquired;
-          }));
+          session = await op.step(() =>
+            context.newCDPSession(page).then((acquired) => {
+              sessions.add(acquired);
+              if (op.signal.aborted || closed) void detach(acquired).catch(() => {});
+              return acquired;
+            }),
+          );
           const tree = await op.step(() => session!.send("Page.getFrameTree"));
           const frameId = tree.frameTree?.frame?.id;
           if (typeof frameId !== "string" || !frameId || tree.frameTree.frame.parentId)
             throw new CuaExecutorError("invalid_response", "not_dispatched");
-          const world = await op.step(() => session!.send("Page.createIsolatedWorld", { frameId, worldName }));
+          const world = await op.step(() =>
+            session!.send("Page.createIsolatedWorld", { frameId, worldName }),
+          );
           contextId = world.executionContextId;
           if (!Number.isSafeInteger(contextId) || contextId <= 0)
             throw new CuaExecutorError("invalid_response", "not_dispatched");
@@ -254,7 +295,7 @@ export function createGuestChromiumText(options: {
         async paste() {
           if (used || disposed) throw new CuaExecutorError("action_rejected", "not_dispatched");
           used = true; // A failed attempt cannot be retried through this handle.
-          await run(lifetime.signal, expected, async op => {
+          await run(lifetime.signal, expected, async (op) => {
             await ready(op);
             await probe(op, session!, contextId, RECHECK);
             await ready(op);
@@ -265,7 +306,7 @@ export function createGuestChromiumText(options: {
             }, true);
           });
         },
-        close: dispose
+        close: dispose,
       };
     },
     close() {
@@ -280,12 +321,15 @@ export function createGuestChromiumText(options: {
         context.off("page", invalidate);
         context.off("close", targetClosed);
         const active = activeDisposal?.();
-        closing = Promise.allSettled([...(active ? [active] : []), ...[...sessions].map(detach)]).then(results => {
-          const failure = results.find(result => result.status === "rejected");
+        closing = Promise.allSettled([
+          ...(active ? [active] : []),
+          ...[...sessions].map(detach),
+        ]).then((results) => {
+          const failure = results.find((result) => result.status === "rejected");
           if (failure?.status === "rejected") throw failure.reason;
         });
       }
       return closing;
-    }
+    },
   };
 }

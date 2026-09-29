@@ -32,9 +32,9 @@ describe("a launched run outlives the process that started it", () => {
       stub,
       [
         "import { writeFileSync } from 'node:fs';",
-        `setTimeout(() => writeFileSync(${JSON.stringify(marker)}, 'ok'), 1200);`
+        `setTimeout(() => writeFileSync(${JSON.stringify(marker)}, 'ok'), 1200);`,
       ].join("\n"),
-      "utf8"
+      "utf8",
     );
 
     // A parent that launches and then exits IMMEDIATELY — the surface being closed mid-run.
@@ -46,9 +46,9 @@ describe("a launched run outlives the process that started it", () => {
         `const { launchRun } = await import(${JSON.stringify(launchModule)});`,
         `const result = await launchRun({ cwd: ${JSON.stringify(dir)}, lab: 'stub', mode: 'dry-run', cliPath: ${JSON.stringify(stub)} });`,
         "if (!result.ok) { console.error(result.error.message); process.exit(1); }",
-        "process.exit(0);"
+        "process.exit(0);",
       ].join("\n"),
-      "utf8"
+      "utf8",
     );
 
     // tsx so the parent can import the TypeScript source directly.

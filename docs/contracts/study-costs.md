@@ -31,18 +31,18 @@ Observer and terminal run summaries label this narrower scope.
 The new `costs` object appears on totals, each lab and each day. `costsByRun`
 contains the same accounting per selected run with stable warning codes.
 
-| Field | Meaning |
-| --- | --- |
-| `estimatedTotalUsd` | Sum of the retained run and analysis estimates |
-| `runEstimatedUsd` | Participant/desktop estimate; may be a known subtotal |
-| `analysisEstimatedUsd` | Sum of all distinct retained analysis estimates |
-| `incompleteRunEstimates` | Runs with partial or unknown participant/desktop accounting |
-| `analysisAttempts` | Distinct retained execution IDs, including unresolved claims |
-| `analysisDispatchedAttempts` | Attempts whose final accounting confirms transport |
-| `analysisNotDispatchedAttempts` | Attempts whose final accounting confirms no transport |
-| `analysisUnpricedAttempts` | Dispatched or potentially dispatched attempts without a complete price |
-| `analysisUnresolvedAttempts` | Claims without usable final accounting; a subset of unpriced attempts |
-| `analysisHistoryUncertainRuns` | Runs with absent, legacy report-only, unreadable or conflicting history |
+| Field                           | Meaning                                                                 |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `estimatedTotalUsd`             | Sum of the retained run and analysis estimates                          |
+| `runEstimatedUsd`               | Participant/desktop estimate; may be a known subtotal                   |
+| `analysisEstimatedUsd`          | Sum of all distinct retained analysis estimates                         |
+| `incompleteRunEstimates`        | Runs with partial or unknown participant/desktop accounting             |
+| `analysisAttempts`              | Distinct retained execution IDs, including unresolved claims            |
+| `analysisDispatchedAttempts`    | Attempts whose final accounting confirms transport                      |
+| `analysisNotDispatchedAttempts` | Attempts whose final accounting confirms no transport                   |
+| `analysisUnpricedAttempts`      | Dispatched or potentially dispatched attempts without a complete price  |
+| `analysisUnresolvedAttempts`    | Claims without usable final accounting; a subset of unpriced attempts   |
+| `analysisHistoryUncertainRuns`  | Runs with absent, legacy report-only, unreadable or conflicting history |
 
 The three amount fields are `null` when nothing in that component has an
 estimate. Known zero is retained only when supported: for example, final

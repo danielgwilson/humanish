@@ -6,5 +6,9 @@ export interface HeardSpeech {
   durationMs: number;
 }
 
-export const CUA_SPEECH_LIMITS = Object.freeze({ characters: 400, bytes: 1600, utterances: 4, durationMs: 120_000 });
-
+export const CUA_SPEECH_LIMITS = Object.freeze({
+  characters: 400,
+  bytes: 1600,
+  utterances: 4,
+  durationMs: 120_000,
+});

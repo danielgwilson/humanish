@@ -138,13 +138,13 @@ non-empty and `data` is a record; keys inside `data` are never core enums.
 
 ## Failure Owners
 
-| Owner | Meaning |
-| --- | --- |
-| `harness` | Humanish or adapter logic produced invalid evidence or execution. |
-| `target-app` | The target app setup, dev server, or local surface blocked the run. |
-| `actor` | The coding-agent/persona actor failed to complete a requested setup or usage path. |
-| `environment` | E2B, local browser, shell, filesystem, network, or dependency substrate failed. |
-| `unknown` | Evidence is useful but ownership is not yet clear. |
+| Owner         | Meaning                                                                            |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `harness`     | Humanish or adapter logic produced invalid evidence or execution.                  |
+| `target-app`  | The target app setup, dev server, or local surface blocked the run.                |
+| `actor`       | The coding-agent/persona actor failed to complete a requested setup or usage path. |
+| `environment` | E2B, local browser, shell, filesystem, network, or dependency substrate failed.    |
+| `unknown`     | Evidence is useful but ownership is not yet clear.                                 |
 
 ## Issue Draft Gates
 

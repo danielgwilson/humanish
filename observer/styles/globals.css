@@ -1002,7 +1002,11 @@ button.arow:hover {
   .rail button,
   .pager button,
   .card {
-    transition: background 0.12s, color 0.12s, opacity 0.12s, box-shadow 0.12s;
+    transition:
+      background 0.12s,
+      color 0.12s,
+      opacity 0.12s,
+      box-shadow 0.12s;
   }
 }
 

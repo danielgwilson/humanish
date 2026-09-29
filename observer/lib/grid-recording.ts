@@ -8,12 +8,15 @@ export interface GridRecording {
   endMs: number | null;
   /** Original capture boundaries, deduplicated for sparse keyboard seeking. */
   boundariesMs: number[];
-  lanes: Map<string, {
-    model: PlayerModel | null;
-    times: number[] | null;
-    media: RecordingInterval | null;
-    timing: "recorded" | "unavailable" | "no-captures";
-  }>;
+  lanes: Map<
+    string,
+    {
+      model: PlayerModel | null;
+      times: number[] | null;
+      media: RecordingInterval | null;
+      timing: "recorded" | "unavailable" | "no-captures";
+    }
+  >;
 }
 
 export interface RecordingInterval {
@@ -43,7 +46,7 @@ export function buildGridRecording(allStreams: readonly ObserverStream[]): GridR
       model,
       times,
       media,
-      timing: !model ? "no-captures" : times ? "recorded" : "unavailable"
+      timing: !model ? "no-captures" : times ? "recorded" : "unavailable",
     });
     // A one-frame recording can have a valid stamp even when the player cannot
     // calculate a recorded pace. Never manufacture stamps from actor duration.
@@ -58,7 +61,7 @@ export function buildGridRecording(allStreams: readonly ObserverStream[]): GridR
     startMs: boundariesMs[0] ?? null,
     endMs: boundariesMs.at(-1) ?? null,
     boundariesMs,
-    lanes
+    lanes,
   };
 }
 
@@ -67,16 +70,30 @@ export function recordingInterval(stream: ObserverStream): RecordingInterval | n
   if (!recording) return null;
   const startMs = Date.parse(recording.startedAt);
   const endMs = startMs + recording.durationMs;
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || recording.durationMs <= 0) return null;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || recording.durationMs <= 0)
+    return null;
   return { startMs, endMs, recording };
 }
 
-export function recordingContains(interval: RecordingInterval | null, atMs: number | null): boolean {
-  return interval !== null && atMs !== null && Number.isFinite(atMs) && atMs >= interval.startMs && atMs <= interval.endMs;
+export function recordingContains(
+  interval: RecordingInterval | null,
+  atMs: number | null,
+): boolean {
+  return (
+    interval !== null &&
+    atMs !== null &&
+    Number.isFinite(atMs) &&
+    atMs >= interval.startMs &&
+    atMs <= interval.endMs
+  );
 }
 
 /** Select only evidence already captured at the cursor, without interpolating it. */
-export function gridMoment(recording: GridRecording, streamId: string, cursorMs: number): GridMoment {
+export function gridMoment(
+  recording: GridRecording,
+  streamId: string,
+  cursorMs: number,
+): GridMoment {
   const lane = recording.lanes.get(streamId);
   if (!lane?.model) return { kind: "no-captures" };
   if (!lane.times || !Number.isFinite(cursorMs)) return { kind: "timing-unavailable" };
@@ -88,12 +105,13 @@ export function gridMoment(recording: GridRecording, streamId: string, cursorMs:
     kind: "capture",
     frame,
     ageMs: selection.ageMs,
-    coverage: selection.coverage === "after" ? "after-last" : "within"
+    coverage: selection.coverage === "after" ? "after-last" : "within",
   };
 }
 
 /** Invalid positions and recordings without timed captures have no shared time. */
 export function clampGridTime(recording: GridRecording, requestedMs: number): number | null {
-  if (recording.startMs === null || recording.endMs === null || !Number.isFinite(requestedMs)) return null;
+  if (recording.startMs === null || recording.endMs === null || !Number.isFinite(requestedMs))
+    return null;
   return Math.max(recording.startMs, Math.min(recording.endMs, requestedMs));
 }

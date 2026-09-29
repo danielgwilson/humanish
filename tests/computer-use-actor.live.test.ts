@@ -14,53 +14,63 @@ import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
 // never task success, which would be flaky against a live model.
 // Fixture refreshes: additionally set HUMANISH_CUA_WIRE_CAPTURE_DIR to a gitignored dir (e.g.
 // under .humanish/) to capture redacted RESPONSE wire bodies — see src/openai-responses-cu.ts.
-const LIVE = process.env.HUMANISH_LIVE_CUA === "1"
-  && Boolean(process.env.OPENAI_API_KEY)
-  && Boolean(process.env.E2B_API_KEY);
+const LIVE =
+  process.env.HUMANISH_LIVE_CUA === "1" &&
+  Boolean(process.env.OPENAI_API_KEY) &&
+  Boolean(process.env.E2B_API_KEY);
 
 const PROOF_HTML = [
   "<!doctype html><html><head><meta charset=utf-8></head>",
-  "<body style=\"font-family:system-ui;padding:48px;background:#fff\">",
-  "<h1 style=\"font-size:48px\">Humanish CUA Live Proof</h1>",
-  "<p style=\"font-size:24px\">If you can read this heading, the computer-use actor is driving a real desktop.</p>",
-  "</body></html>"
+  '<body style="font-family:system-ui;padding:48px;background:#fff">',
+  '<h1 style="font-size:48px">Humanish CUA Live Proof</h1>',
+  '<p style="font-size:24px">If you can read this heading, the computer-use actor is driving a real desktop.</p>',
+  "</body></html>",
 ].join("");
 
 describe.skipIf(!LIVE)("openai-computer-use actor (LIVE, spend-gated)", () => {
-  it("drives a real E2B desktop and returns a conformant redacted trace", { timeout: 300_000 }, async () => {
-    const { Sandbox } = await import("@e2b/desktop");
-    const desktop = await Sandbox.create();
-    try {
-      await desktop.files.write("/home/user/proof.html", PROOF_HTML);
-      await desktop.open("file:///home/user/proof.html");
-      await desktop.wait(3000);
+  it(
+    "drives a real E2B desktop and returns a conformant redacted trace",
+    { timeout: 300_000 },
+    async () => {
+      const { Sandbox } = await import("@e2b/desktop");
+      const desktop = await Sandbox.create();
+      try {
+        await desktop.files.write("/home/user/proof.html", PROOF_HTML);
+        await desktop.open("file:///home/user/proof.html");
+        await desktop.wait(3000);
 
-      const result = await runCuaActorSession({
-        instructions: "Look at the page on screen. In your final message, state the main heading text exactly, then stop. Do not navigate anywhere else.",
-        persona: { id: "synthetic-new-user", traitsApplied: [], promptDigest: "live-proof" },
-        timeoutMs: 120_000,
-        idleSteps: 4,
-        noProgressSteps: 5,
-        openai: { apiKey: process.env.OPENAI_API_KEY as string, reasoningEffort: "low" },
-        desktop: desktop as unknown as E2BDesktopLike,
-        redactScreenshots: true,
-        now: () => Date.now()
-      });
+        const result = await runCuaActorSession({
+          instructions:
+            "Look at the page on screen. In your final message, state the main heading text exactly, then stop. Do not navigate anywhere else.",
+          persona: { id: "synthetic-new-user", traitsApplied: [], promptDigest: "live-proof" },
+          timeoutMs: 120_000,
+          idleSteps: 4,
+          noProgressSteps: 5,
+          openai: { apiKey: process.env.OPENAI_API_KEY as string, reasoningEffort: "low" },
+          desktop: desktop as unknown as E2BDesktopLike,
+          redactScreenshots: true,
+          now: () => Date.now(),
+        });
 
-      // Terminal + conformant + redacted; never asserts the model "succeeded".
-      expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.status);
-      expect(result.trace.schema).toBe(ACTOR_TRACE_SCHEMA);
-      expect(result.trace.lane).toBe("computer-use");
-      expect(result.trace.protocol).toBe("cua-loop");
-      expect(result.trace.provider).toBe("openai-responses-cu");
-      const shots = result.trace.items.filter((item) => item.kind === "screenshot");
-      expect(shots.length).toBeGreaterThan(0);
-      expect(shots.every((item) => item.screenshotRef?.redaction === "blurred")).toBe(true);
-      process.stderr.write(`humanish live E2B: status=${result.status} completion=${result.completionReason} turns=${result.trace.counts.turns} actions=${result.trace.counts.actions} screenshots=${shots.length}\n`);
-    } finally {
-      const killed = await desktop.kill();
-      expect(await desktop.isRunning()).toBe(false);
-      process.stderr.write(`humanish live E2B cleanup: exact sandbox ${killed ? "terminated" : "already absent"}\n`);
-    }
-  });
+        // Terminal + conformant + redacted; never asserts the model "succeeded".
+        expect(["passed", "failed", "blocked", "timed_out"]).toContain(result.status);
+        expect(result.trace.schema).toBe(ACTOR_TRACE_SCHEMA);
+        expect(result.trace.lane).toBe("computer-use");
+        expect(result.trace.protocol).toBe("cua-loop");
+        expect(result.trace.provider).toBe("openai-responses-cu");
+        const shots = result.trace.items.filter((item) => item.kind === "screenshot");
+        expect(shots.length).toBeGreaterThan(0);
+        expect(shots.every((item) => item.screenshotRef?.redaction === "blurred")).toBe(true);
+        process.stderr.write(
+          `humanish live E2B: status=${result.status} completion=${result.completionReason} turns=${result.trace.counts.turns} actions=${result.trace.counts.actions} screenshots=${shots.length}\n`,
+        );
+      } finally {
+        const killed = await desktop.kill();
+        expect(await desktop.isRunning()).toBe(false);
+        process.stderr.write(
+          `humanish live E2B cleanup: exact sandbox ${killed ? "terminated" : "already absent"}\n`,
+        );
+      }
+    },
+  );
 });

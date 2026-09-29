@@ -21,7 +21,11 @@ export interface CommsAddress {
 }
 
 /** Runtime-only captured raster attachment. Bytes never enter digest-only evidence. */
-export interface CommsInlineImage { contentId: string; contentType: string; base64: string; }
+export interface CommsInlineImage {
+  contentId: string;
+  contentType: string;
+  base64: string;
+}
 
 /** A message that arrived to (or was sent from) an inbox. Body/links/codes are runtime-only. */
 export interface CommsMessage {

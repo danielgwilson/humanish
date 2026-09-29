@@ -7,24 +7,37 @@ import {
   guardDesktopSandboxCreate,
   isTransientE2BError,
   type E2BDesktopCreateOptions,
-  type E2BDesktopModule
+  type E2BDesktopModule,
 } from "../src/e2b-desktop-launch.js";
 
 // Execute the installed SDK's real constructor/create/_start paths without HTTP.
 // Method-port faults do not claim to be captured provider wire responses.
-const options = { debug: true, apiKey: "synthetic-not-a-provider-key", requestTimeoutMs: 30_000,
-  timeoutMs: 60_000, resolution: [1280, 800], lifecycle: { onTimeout: "kill" } } as E2BDesktopCreateOptions;
+const options = {
+  debug: true,
+  apiKey: "synthetic-not-a-provider-key",
+  requestTimeoutMs: 30_000,
+  timeoutMs: 60_000,
+  resolution: [1280, 800],
+  lifecycle: { onTimeout: "kill" },
+} as E2BDesktopCreateOptions;
 
 function deferred() {
   let resolve!: () => void;
-  const promise = new Promise<void>((done) => { resolve = done; });
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
   return { promise, resolve };
 }
 
-function probe(config: {
-  command?: (command: string) => Promise<void>;
-  kill?: (call: number, opts: { requestTimeoutMs?: number; signal?: AbortSignal }) => Promise<boolean>;
-} = {}) {
+function probe(
+  config: {
+    command?: (command: string) => Promise<void>;
+    kill?: (
+      call: number,
+      opts: { requestTimeoutMs?: number; signal?: AbortSignal },
+    ) => Promise<boolean>;
+  } = {},
+) {
   const killCalls: Array<{ requestTimeoutMs?: number; signal?: AbortSignal }> = [];
   const originalKills: SdkDesktop["kill"][] = [];
   let constructed = 0;
@@ -43,20 +56,41 @@ function probe(config: {
       originalKills.push(this.kill);
     }
   }
-  const allocation = vi.spyOn(Probe as unknown as { createSandbox(...args: unknown[]): Promise<unknown> }, "createSandbox")
+  const allocation = vi
+    .spyOn(
+      Probe as unknown as { createSandbox(...args: unknown[]): Promise<unknown> },
+      "createSandbox",
+    )
     .mockRejectedValue(new Error("provider allocation forbidden in SDK compatibility tests"));
-  const list = vi.spyOn(Probe, "list").mockImplementation(() => { throw new Error("account enumeration forbidden"); });
-  return { module: guardDesktopSandboxCreate({ Sandbox: Probe } as unknown as E2BDesktopModule),
-    Probe, killCalls, originalKills, allocation, list, constructed: () => constructed };
+  const list = vi.spyOn(Probe, "list").mockImplementation(() => {
+    throw new Error("account enumeration forbidden");
+  });
+  return {
+    module: guardDesktopSandboxCreate({ Sandbox: Probe } as unknown as E2BDesktopModule),
+    Probe,
+    killCalls,
+    originalKills,
+    allocation,
+    list,
+    constructed: () => constructed,
+  };
 }
 
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("installed desktop SDK cleanup compatibility", () => {
   it.each(["Xvfb", "xdpyinfo", "startxfce4", "pgrep -x xfce4-session"])(
-    "preserves the original 503 cause from %s after confirmed cleanup", async (phase) => {
+    "preserves the original 503 cause from %s after confirmed cleanup",
+    async (phase) => {
       const original = new Error("HTTP 503 synthetic startup failure");
-      const p = probe({ command: async (command) => { if (command.includes(phase)) throw original; } });
+      const p = probe({
+        command: async (command) => {
+          if (command.includes(phase)) throw original;
+        },
+      });
       const error = await p.module.Sandbox.create(options).catch((value: unknown) => value);
       expect(error).toBeInstanceOf(E2BDesktopStartupError);
       expect(error).toMatchObject({ cause: original, cleanup: "killed" });
@@ -66,16 +100,21 @@ describe("installed desktop SDK cleanup compatibility", () => {
       expect(p.killCalls).toHaveLength(1);
       expect(p.allocation).not.toHaveBeenCalled();
       expect(p.list).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("retains unconfirmed cleanup when the SDK swallows its internal cleanup failure", async () => {
     const startup = new Error("HTTP 503 synthetic startup failure");
     const cleanup = new Error("synthetic cleanup secret");
-    const p = probe({ command: async () => { throw startup; }, kill: async (call) => {
-      if (call === 1) throw cleanup;
-      return true;
-    } });
+    const p = probe({
+      command: async () => {
+        throw startup;
+      },
+      kill: async (call) => {
+        if (call === 1) throw cleanup;
+        return true;
+      },
+    });
     const error = await p.module.Sandbox.create(options).catch((value: unknown) => value);
     expect(error).toMatchObject({ cause: startup, cleanup: "unconfirmed" });
     expect(isTransientE2BError(error)).toBe(false);
@@ -87,12 +126,29 @@ describe("installed desktop SDK cleanup compatibility", () => {
   it("bounds cleanup even when the SDK calls kill internally before rejecting create", async () => {
     vi.useFakeTimers();
     const gate = deferred();
-    const p = probe({ command: async () => { throw new Error("HTTP 503 synthetic startup failure"); },
-      kill: async (call) => { if (call === 1) await gate.promise; return true; } });
+    const p = probe({
+      command: async () => {
+        throw new Error("HTTP 503 synthetic startup failure");
+      },
+      kill: async (call) => {
+        if (call === 1) await gate.promise;
+        return true;
+      },
+    });
     const retry = vi.fn();
     let settled = false;
-    const pending = createDesktopSandbox(p.module, options, undefined, { onRetry: retry, sleep: async () => undefined })
-      .then(() => undefined, (error: unknown) => error).then((error) => { settled = true; return error; });
+    const pending = createDesktopSandbox(p.module, options, undefined, {
+      onRetry: retry,
+      sleep: async () => undefined,
+    })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      )
+      .then((error) => {
+        settled = true;
+        return error;
+      });
     await vi.advanceTimersByTimeAsync(DESKTOP_CREATE_CLEANUP_TIMEOUT_MS + 1);
     try {
       expect(settled, "SDK-internal kill must not bypass Humanish's cleanup deadline").toBe(true);
@@ -109,9 +165,15 @@ describe("installed desktop SDK cleanup compatibility", () => {
 
   it("honors a lower request timeout and clears its cleanup timer", async () => {
     vi.useFakeTimers();
-    const p = probe({ command: async () => { throw new Error("HTTP 503 synthetic startup failure"); },
-      kill: async () => new Promise(() => undefined) });
-    const pending = p.module.Sandbox.create({ ...options, requestTimeoutMs: 75 }).catch((error: unknown) => error);
+    const p = probe({
+      command: async () => {
+        throw new Error("HTTP 503 synthetic startup failure");
+      },
+      kill: async () => new Promise(() => undefined),
+    });
+    const pending = p.module.Sandbox.create({ ...options, requestTimeoutMs: 75 }).catch(
+      (error: unknown) => error,
+    );
     await vi.advanceTimersByTimeAsync(75);
     expect(await pending).toMatchObject({ cleanup: "unconfirmed" });
     expect(p.killCalls).toHaveLength(1);
@@ -122,7 +184,7 @@ describe("installed desktop SDK cleanup compatibility", () => {
 
   it("restores the original kill method and caller options after successful create", async () => {
     const p = probe();
-    const desktop = await p.module.Sandbox.create(options) as unknown as SdkDesktop;
+    const desktop = (await p.module.Sandbox.create(options)) as unknown as SdkDesktop;
     expect(desktop.kill).toBe(p.originalKills[0]);
     const teardownOptions = { requestTimeoutMs: 321, signal: new AbortController().signal };
     expect(await desktop.kill(teardownOptions)).toBe(true);
@@ -135,18 +197,29 @@ describe("installed desktop SDK cleanup compatibility", () => {
     class PrototypeKill extends SdkDesktop {
       constructor(...args: ConstructorParameters<typeof SdkDesktop>) {
         super(...args);
-        this.commands.run = (async (_command: string) => ({ exitCode: 0, stdout: "", stderr: "", pid: 1,
-          disconnect: async () => undefined })) as typeof this.commands.run;
+        this.commands.run = (async (_command: string) => ({
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          pid: 1,
+          disconnect: async () => undefined,
+        })) as typeof this.commands.run;
       }
       override async kill(opts?: Parameters<SdkDesktop["kill"]>[0]) {
         calls.push(opts);
         return false;
       }
     }
-    const allocation = vi.spyOn(PrototypeKill as unknown as { createSandbox(...args: unknown[]): Promise<unknown> }, "createSandbox")
+    const allocation = vi
+      .spyOn(
+        PrototypeKill as unknown as { createSandbox(...args: unknown[]): Promise<unknown> },
+        "createSandbox",
+      )
       .mockRejectedValue(new Error("provider allocation forbidden in SDK compatibility tests"));
-    const module = guardDesktopSandboxCreate({ Sandbox: PrototypeKill } as unknown as E2BDesktopModule);
-    const desktop = await module.Sandbox.create(options) as unknown as SdkDesktop;
+    const module = guardDesktopSandboxCreate({
+      Sandbox: PrototypeKill,
+    } as unknown as E2BDesktopModule);
+    const desktop = (await module.Sandbox.create(options)) as unknown as SdkDesktop;
     expect(Object.hasOwn(desktop, "kill")).toBe(false);
     expect(desktop.kill).toBe(PrototypeKill.prototype.kill);
     const teardownOptions = { requestTimeoutMs: 456 };

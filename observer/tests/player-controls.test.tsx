@@ -14,43 +14,104 @@ let container: HTMLDivElement;
 let stream: ObserverStream;
 let model: PlayerModel;
 
-async function render(props: Omit<ComponentProps<typeof Player>, "data" | "stream" | "model"> = {}) {
-  await act(async () => root.render(<Player data={data} stream={stream} model={model} {...props} />));
+async function render(
+  props: Omit<ComponentProps<typeof Player>, "data" | "stream" | "model"> = {},
+) {
+  await act(async () =>
+    root.render(<Player data={data} stream={stream} model={model} {...props} />),
+  );
 }
 async function click(label: string) {
-  const button = [...container.querySelectorAll("button")].find((node) => node.getAttribute("aria-label") === label || node.textContent === label);
+  const button = [...container.querySelectorAll("button")].find(
+    (node) => node.getAttribute("aria-label") === label || node.textContent === label,
+  );
   if (!button) throw new Error(`Missing button: ${label}`);
   await act(async () => button.click());
 }
 async function key(value: string, target: EventTarget = window) {
-  await act(async () => target.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true })));
+  await act(async () =>
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true }),
+    ),
+  );
 }
-function counter() { return container.querySelector(".counter")?.textContent; }
+function counter() {
+  return container.querySelector(".counter")?.textContent;
+}
 async function filterActivity(value: string) {
   const select = container.querySelector<HTMLButtonElement>('[aria-label="Filter activity"]')!;
-  await act(async () => { select.click(); });
-  const option = document.querySelector<HTMLElement>(`.observer-select-option[data-value="${value}"]`)!;
+  await act(async () => {
+    select.click();
+  });
+  const option = document.querySelector<HTMLElement>(
+    `.observer-select-option[data-value="${value}"]`,
+  )!;
   await act(async () => {
     const pointer = new MouseEvent("pointerdown", { bubbles: true });
     Object.defineProperty(pointer, "pointerType", { value: "touch" });
-    option.dispatchEvent(pointer); option.click();
+    option.dispatchEvent(pointer);
+    option.click();
   });
 }
 function appendFrame() {
-  model = { ...model, frames: [...model.frames, { index: model.frames.length, itemId: `frame-${model.frames.length}`, title: "Later capture", href: `../screenshots/later-${model.frames.length}.png`, atMs: 30_000 }] };
+  model = {
+    ...model,
+    frames: [
+      ...model.frames,
+      {
+        index: model.frames.length,
+        itemId: `frame-${model.frames.length}`,
+        title: "Later capture",
+        href: `../screenshots/later-${model.frames.length}.png`,
+        atMs: 30_000,
+      },
+    ],
+  };
 }
 
 beforeEach(() => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-  container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
-  stream = { ...data.streams[0]!, id: "participant", label: "Synthetic participant", status: "running", embed: { kind: "iframe", url: "https://live.example/desktop" } } as ObserverStream;
-  model = { paced: "recorded", avgFrameMs: 1000, rows: [], frames: Array.from({ length: 3 }, (_, index) => ({ index, itemId: `frame-${index}`, href: `../screenshots/frame-${index}.png`, title: `Capture ${index}`, atMs: 10_000 + index * 7000 })) };
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+  stream = {
+    ...data.streams[0]!,
+    id: "participant",
+    label: "Synthetic participant",
+    status: "running",
+    embed: { kind: "iframe", url: "https://live.example/desktop" },
+  } as ObserverStream;
+  model = {
+    paced: "recorded",
+    avgFrameMs: 1000,
+    rows: [],
+    frames: Array.from({ length: 3 }, (_, index) => ({
+      index,
+      itemId: `frame-${index}`,
+      href: `../screenshots/frame-${index}.png`,
+      title: `Capture ${index}`,
+      atMs: 10_000 + index * 7000,
+    })),
+  };
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); localStorage.clear(); window.history.replaceState(null, "", "/"); vi.restoreAllMocks(); });
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/");
+  vi.restoreAllMocks();
+});
 
 describe("player review controls", () => {
   it("shows only this participant's recorded assignment and keeps older absence explicit", async () => {
-    stream = { ...stream, assignment: { mission: "Add two tasks <script>not markup</script>", focus: "Use only the keyboard", tasks: [{ id: "rename", goal: "Rename the first task" }] } };
+    stream = {
+      ...stream,
+      assignment: {
+        mission: "Add two tasks <script>not markup</script>",
+        focus: "Use only the keyboard",
+        tasks: [{ id: "rename", goal: "Rename the first task" }],
+      },
+    };
     await render({ initialFrame: 0 });
     const assignment = container.querySelector(".participant-assignment")!;
     expect(assignment.textContent).toContain("Use only the keyboard");
@@ -65,8 +126,12 @@ describe("player review controls", () => {
     expect(container.querySelector(".participant-assignment")).toBeNull();
     await click("Show inspector");
     await click("details");
-    expect(container.querySelector(".assignment-missing")?.textContent).toBe("Assigned task not recorded for this participant.");
-    expect(container.querySelector(".assignment-missing")?.textContent).not.toContain(data.run.scenario.goal);
+    expect(container.querySelector(".assignment-missing")?.textContent).toBe(
+      "Assigned task not recorded for this participant.",
+    );
+    expect(container.querySelector(".assignment-missing")?.textContent).not.toContain(
+      data.run.scenario.goal,
+    );
   });
   it("keeps a retained scripted goal visible above playback with its original provenance", async () => {
     delete stream.assignment;
@@ -82,18 +147,56 @@ describe("player review controls", () => {
     expect(container.querySelector(".viewer > .participant-assignment")).toBe(assignment);
     stream.assignment = { mission: "Explicit assignment takes precedence." };
     await render({ initialFrame: 0 });
-    expect(container.querySelector(".participant-assignment")?.textContent).toContain("Explicit assignment takes precedence.");
-    expect(container.querySelector(".participant-assignment")?.textContent).not.toContain("Recorded scripted goal");
+    expect(container.querySelector(".participant-assignment")?.textContent).toContain(
+      "Explicit assignment takes precedence.",
+    );
+    expect(container.querySelector(".participant-assignment")?.textContent).not.toContain(
+      "Recorded scripted goal",
+    );
   });
   function intervalEntries() {
     // The two-click shape was captured in a retained drawDB run: two distinct
     // actions share one preceding screenshot and require distinct selections.
-    model = { ...model, rows: [
-      { id: "capture", kind: "screenshot", title: "Capture", frameIndex: 0, isFrame: true, atMs: 10_000 },
-      { id: "ui_action-016", kind: "ui_action", title: "click (720, 348)", frameIndex: 0, isFrame: false, atMs: 15_000, coord: { x: 720, y: 348 } },
-      { id: "ui_action-017", kind: "ui_action", title: "click (999, 686)", frameIndex: 0, isFrame: false, atMs: 15_500, coord: { x: 999, y: 686 } },
-      { id: "thought", kind: "reasoning", title: "Reported plan", text: "I will open the menu.", frameIndex: 1, isFrame: false, atMs: 20_000 }
-    ] };
+    model = {
+      ...model,
+      rows: [
+        {
+          id: "capture",
+          kind: "screenshot",
+          title: "Capture",
+          frameIndex: 0,
+          isFrame: true,
+          atMs: 10_000,
+        },
+        {
+          id: "ui_action-016",
+          kind: "ui_action",
+          title: "click (720, 348)",
+          frameIndex: 0,
+          isFrame: false,
+          atMs: 15_000,
+          coord: { x: 720, y: 348 },
+        },
+        {
+          id: "ui_action-017",
+          kind: "ui_action",
+          title: "click (999, 686)",
+          frameIndex: 0,
+          isFrame: false,
+          atMs: 15_500,
+          coord: { x: 999, y: 686 },
+        },
+        {
+          id: "thought",
+          kind: "reasoning",
+          title: "Reported plan",
+          text: "I will open the menu.",
+          frameIndex: 1,
+          isFrame: false,
+          atMs: 20_000,
+        },
+      ],
+    };
     stream = { ...stream, viewport: { width: 1280, height: 800 } };
   }
   async function entry(id: string) {
@@ -106,8 +209,12 @@ describe("player review controls", () => {
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(2);
     await entry("ui_action-016");
     expect(counter()).toBe("1 / 3");
-    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("Recorded action · 00:05click (720, 348)");
-    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("Capture 00:00 · 5s before entry");
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain(
+      "Recorded action · 00:05click (720, 348)",
+    );
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain(
+      "Capture 00:00 · 5s before entry",
+    );
     expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
     expect(container.querySelector(".pins .spin .tip")?.textContent).toBe("click (720, 348)");
     await entry("ui_action-017");
@@ -117,7 +224,9 @@ describe("player review controls", () => {
     expect(window.location.hash).toBe("#/lane/participant/f/1/e/ui_action-017");
     model = structuredClone(model);
     await render({ initialFrame: 0 });
-    expect(container.querySelector('[aria-current="true"]')?.getAttribute("data-entry-id")).toBe("ui_action-017");
+    expect(container.querySelector('[aria-current="true"]')?.getAttribute("data-entry-id")).toBe(
+      "ui_action-017",
+    );
     await click("Show capture interval");
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(2);
     expect(window.location.hash).toBe("#/lane/participant/f/1");
@@ -129,7 +238,11 @@ describe("player review controls", () => {
     expect(window.location.hash).toContain("/e/ui_action-016");
     await click("Next action");
     expect(window.location.hash).toContain("/e/ui_action-017");
-    expect([...container.querySelectorAll("button")].find((button) => button.textContent === "Next action")?.disabled).toBe(true);
+    expect(
+      [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === "Next action",
+      )?.disabled,
+    ).toBe(true);
     await click("Next frame");
     expect(window.location.hash).toBe("#/lane/participant/f/2");
     expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(0);
@@ -140,9 +253,11 @@ describe("player review controls", () => {
     expect(container.querySelector(".pins .tip")?.textContent).toBe("click (999, 686)");
     model = { ...model, rows: model.rows.filter((row) => row.id !== "ui_action-017") };
     await render({ initialFrame: 0, initialEventId: "ui_action-017" });
-    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain("selected entry is unavailable");
+    expect(container.querySelector('[aria-label="Selected evidence"]')?.textContent).toContain(
+      "selected entry is unavailable",
+    );
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(0);
-    expect(container.querySelectorAll('[data-on]')).toHaveLength(1); // filmstrip only
+    expect(container.querySelectorAll("[data-on]")).toHaveLength(1); // filmstrip only
     expect(window.location.hash).toContain("/e/ui_action-017");
     await render({ initialFrame: 0, initialEventId: null, navigationRevision: 1 });
     expect(window.location.hash).toBe("#/lane/participant/f/1");
@@ -157,29 +272,74 @@ describe("player review controls", () => {
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(0);
   });
   it("shows explicitly requested thinking while retaining the All evidence preference", async () => {
-    model = { ...model, rows: [
-      { id: "narration", kind: "reasoning", title: "Recorded narration", text: "I will inspect the next screen.", isFrame: false, frameIndex: 0 },
-      { id: "action", kind: "ui_action", title: "click (100, 100)", isFrame: false, frameIndex: 0 }
-    ] };
+    model = {
+      ...model,
+      rows: [
+        {
+          id: "narration",
+          kind: "reasoning",
+          title: "Recorded narration",
+          text: "I will inspect the next screen.",
+          isFrame: false,
+          frameIndex: 0,
+        },
+        {
+          id: "action",
+          kind: "ui_action",
+          title: "click (100, 100)",
+          isFrame: false,
+          frameIndex: 0,
+        },
+      ],
+    };
     await render({ initialFrame: 0 });
-    const thinking = [...container.querySelectorAll("label")].find((label) => label.textContent?.trim() === "Thinking")!.querySelector<HTMLInputElement>("input")!;
+    const thinking = [...container.querySelectorAll("label")]
+      .find((label) => label.textContent?.trim() === "Thinking")!
+      .querySelector<HTMLInputElement>("input")!;
     await act(async () => thinking.click());
     expect(container.querySelector(".thought-detail")).toBeNull();
     await filterActivity("thoughts");
-    expect(container.querySelector(".thought-detail")?.textContent).toContain("I will inspect the next screen.");
+    expect(container.querySelector(".thought-detail")?.textContent).toContain(
+      "I will inspect the next screen.",
+    );
     expect(container.querySelector(".feed-empty")).toBeNull();
-    expect([...container.querySelectorAll("label")].some((label) => label.textContent?.trim() === "Thinking")).toBe(false);
+    expect(
+      [...container.querySelectorAll("label")].some(
+        (label) => label.textContent?.trim() === "Thinking",
+      ),
+    ).toBe(false);
     await filterActivity("all");
     expect(container.querySelector(".thought-detail")).toBeNull();
     expect(container.querySelector(".arow")?.textContent).toContain("click (100, 100)");
     expect(counter()).toBe("1 / 3");
   });
   it("shows run/setup warnings separately without inventing a capture or timestamp", async () => {
-    stream = { ...stream, timeline: [
-      { id: "setup", at: "2026-09-09T00:00:00.000Z", type: "setup.warning", level: "warn", message: "Browser bounds were corrected before participant entry." },
-      { id: "legacy", at: "unknown", type: "run.error", level: "error", message: "A run notice with no usable timestamp." },
-      { id: "informational", at: "2026-09-09T00:00:00.000Z", type: "run.info", level: "info", message: "An ordinary progress update." }
-    ] };
+    stream = {
+      ...stream,
+      timeline: [
+        {
+          id: "setup",
+          at: "2026-09-09T00:00:00.000Z",
+          type: "setup.warning",
+          level: "warn",
+          message: "Browser bounds were corrected before participant entry.",
+        },
+        {
+          id: "legacy",
+          at: "unknown",
+          type: "run.error",
+          level: "error",
+          message: "A run notice with no usable timestamp.",
+        },
+        {
+          id: "informational",
+          at: "2026-09-09T00:00:00.000Z",
+          type: "run.info",
+          level: "info",
+          message: "An ordinary progress update.",
+        },
+      ],
+    };
     await render({ initialFrame: 1 });
     const address = window.location.hash;
     await filterActivity("findings");
@@ -192,18 +352,29 @@ describe("player review controls", () => {
     expect(notices.querySelector("time")?.dateTime).toBe("2026-09-09T00:00:00.000Z");
     expect(notices.querySelectorAll("button, a")).toHaveLength(0);
     expect(container.querySelector(".feed-empty")).toBeNull();
-    expect(container.querySelector<HTMLButtonElement>('button[title^="Frame-linked trace findings"]')?.disabled).toBe(true);
+    expect(
+      container.querySelector<HTMLButtonElement>('button[title^="Frame-linked trace findings"]')
+        ?.disabled,
+    ).toBe(true);
     expect(model.rows).toHaveLength(0);
     expect(window.location.hash).toBe(address);
     expect(counter()).toBe("2 / 3");
   });
   it("pages long run notices without moving the recorded frame or losing notices", async () => {
-    stream = { ...stream, timeline: Array.from({ length: 95 }, (_, index) => ({
-      id: `setup-${index}`, at: "unknown", type: "setup.warning", level: "warn" as const, message: `Recorded setup notice ${index + 1}.`
-    })) };
+    stream = {
+      ...stream,
+      timeline: Array.from({ length: 95 }, (_, index) => ({
+        id: `setup-${index}`,
+        at: "unknown",
+        type: "setup.warning",
+        level: "warn" as const,
+        message: `Recorded setup notice ${index + 1}.`,
+      })),
+    };
     await render({ initialFrame: 1 });
     await filterActivity("findings");
-    const entries = () => [...container.querySelectorAll(".player-run-notices li")].map((entry) => entry.textContent);
+    const entries = () =>
+      [...container.querySelectorAll(".player-run-notices li")].map((entry) => entry.textContent);
     expect(entries()).toHaveLength(40);
     expect(entries()[0]).toContain("Recorded setup notice 1.");
     await click("Next notices");
@@ -225,11 +396,13 @@ describe("player review controls", () => {
     expect(container.querySelector("iframe")).toBeNull();
     expect(counter()).toBe("2 / 3");
     await click("Next frame");
-    appendFrame(); await render();
+    appendFrame();
+    await render();
     expect(counter()).toBe("3 / 4");
     await click("Jump to live");
     expect(counter()).toBe("4 / 4");
-    appendFrame(); await render();
+    appendFrame();
+    await render();
     expect(counter()).toBe("5 / 5");
   });
   it("honors same-participant route props and a repeated hash address after local scrubbing", async () => {
@@ -238,7 +411,10 @@ describe("player review controls", () => {
     expect(counter()).toBe("3 / 3");
     await click("Previous frame");
     expect(counter()).toBe("2 / 3");
-    await act(async () => { window.history.replaceState(null, "", "#/lane/participant/f/3"); window.dispatchEvent(new HashChangeEvent("hashchange")); });
+    await act(async () => {
+      window.history.replaceState(null, "", "#/lane/participant/f/3");
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
     expect(counter()).toBe("3 / 3");
     await render({ initialFrame: null, initialMode: "live" });
     expect(container.querySelector("iframe")).not.toBeNull();
@@ -256,12 +432,18 @@ describe("player review controls", () => {
     try {
       await render({ initialFrame: 0 });
       await click("Play");
-      await act(async () => { vi.advanceTimersByTime(5000); });
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
       model = structuredClone(model);
       await render({ initialFrame: 0 });
-      await act(async () => { vi.advanceTimersByTime(2100); });
+      await act(async () => {
+        vi.advanceTimersByTime(2100);
+      });
       expect(counter()).toBe("2 / 3");
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("reports actual selection during playback and does not repeat unchanged snapshot updates", async () => {
     const onViewChange = vi.fn();
@@ -271,7 +453,9 @@ describe("player review controls", () => {
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: false });
       await click("Play");
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: true });
-      await act(async () => { vi.advanceTimersByTime(7100); });
+      await act(async () => {
+        vi.advanceTimersByTime(7100);
+      });
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 1, mode: "replay", playing: true });
       expect(window.location.hash).toBe("#/lane/participant/f/2");
       const calls = onViewChange.mock.calls.length;
@@ -280,7 +464,9 @@ describe("player review controls", () => {
       expect(onViewChange).toHaveBeenCalledTimes(calls);
       await click("Pause");
       expect(onViewChange).toHaveBeenLastCalledWith({ frame: 1, mode: "replay", playing: false });
-    } finally { vi.useRealTimers(); }
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("reports a missing addressed frame as null", async () => {
     const onViewChange = vi.fn();
@@ -293,10 +479,13 @@ describe("player review controls", () => {
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "live", playing: false });
     await render({ updating: false, onViewChange });
     expect(container.querySelector("iframe")).toBeNull();
-    expect(container.querySelector(".player-mode strong")?.textContent).toBe(`Participant status: ${data.streams[0]!.statusLabel || data.streams[0]!.status}`);
+    expect(container.querySelector(".player-mode strong")?.textContent).toBe(
+      `Participant status: ${data.streams[0]!.statusLabel || data.streams[0]!.status}`,
+    );
     expect(container.querySelector('[aria-label="Jump to live"]')).toBeNull();
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: 2, mode: "replay", playing: false });
-    appendFrame(); await render({ updating: false, onViewChange });
+    appendFrame();
+    await render({ updating: false, onViewChange });
     expect(counter()).toBe("3 / 4");
   });
   it("does not attach a desktop through an explicit live address on an offline snapshot", async () => {
@@ -312,7 +501,10 @@ describe("player review controls", () => {
     await key("ArrowRight", container.querySelector('input[type="range"]')!);
     expect(counter()).toBe("2 / 3");
     await key(" ", container.querySelector('button[aria-label="Play"]')!);
-    const editor = document.createElement("div"); editor.contentEditable = "true"; editor.setAttribute("contenteditable", "true"); container.appendChild(editor);
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    editor.setAttribute("contenteditable", "true");
+    container.appendChild(editor);
     await key("ArrowLeft", editor);
     expect(counter()).toBe("2 / 3");
   });
@@ -331,13 +523,20 @@ describe("player review controls", () => {
   });
   it("handles missing images, clipboard refusal, and fullscreen refusal without hiding evidence", async () => {
     await render({ initialFrame: 0 });
-    await act(async () => container.querySelector(".stage-box img")!.dispatchEvent(new Event("error")));
+    await act(async () =>
+      container.querySelector(".stage-box img")!.dispatchEvent(new Event("error")),
+    );
     expect(container.textContent).toContain("This recorded image could not be loaded");
     await click("Retry image");
     expect(container.querySelector(".stage-box")?.getAttribute("data-image-state")).toBe("loading");
-    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) } });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
     await click("Copy moment link");
-    expect(container.querySelector<HTMLInputElement>('[aria-label="Moment link"]')?.value).toContain("#/lane/participant/f/1");
+    expect(
+      container.querySelector<HTMLInputElement>('[aria-label="Moment link"]')?.value,
+    ).toContain("#/lane/participant/f/1");
     await click("Fullscreen");
     expect(container.textContent).toContain("Fullscreen is unavailable");
     expect(counter()).toBe("1 / 3");
@@ -384,7 +583,23 @@ describe("player review controls", () => {
   });
   it("bounds long feeds and filmstrips while retaining navigation to all original entries", async () => {
     stream = { ...stream, status: "passed" };
-    model = { ...model, frames: Array.from({ length: 1000 }, (_, index) => ({ index, itemId: `frame-${index}`, href: `../screenshots/${index}.png`, title: `Frame ${index}`, atMs: index * 1000 })), rows: Array.from({ length: 3000 }, (_, index) => ({ id: `action-${index}`, title: `Action ${index}`, kind: "ui_action", isFrame: false, frameIndex: Math.floor(index / 3) })) };
+    model = {
+      ...model,
+      frames: Array.from({ length: 1000 }, (_, index) => ({
+        index,
+        itemId: `frame-${index}`,
+        href: `../screenshots/${index}.png`,
+        title: `Frame ${index}`,
+        atMs: index * 1000,
+      })),
+      rows: Array.from({ length: 3000 }, (_, index) => ({
+        id: `action-${index}`,
+        title: `Action ${index}`,
+        kind: "ui_action",
+        isFrame: false,
+        frameIndex: Math.floor(index / 3),
+      })),
+    };
     await render({ initialFrame: 500 });
     expect(container.querySelectorAll(".filmstrip .fs")).toHaveLength(40);
     expect(container.querySelectorAll(".arow")).toHaveLength(100);
@@ -395,8 +610,29 @@ describe("player review controls", () => {
     expect(counter()).toBe("501 / 1000");
   });
   it("maps desktop click coordinates using the verified screen, not the CSS viewport", async () => {
-    stream = { ...stream, viewport: { width: 414, height: 740 }, desktopGeometry: { screen: { requested: { width: 500, height: 896 }, verified: { width: 500, height: 896, source: "xdpyinfo" } } } };
-    model = { ...model, rows: [{ id: "click-center", title: "click (250, 448)", kind: "ui_action", isFrame: false, frameIndex: 0, coord: { x: 250, y: 448 } }] };
+    stream = {
+      ...stream,
+      viewport: { width: 414, height: 740 },
+      desktopGeometry: {
+        screen: {
+          requested: { width: 500, height: 896 },
+          verified: { width: 500, height: 896, source: "xdpyinfo" },
+        },
+      },
+    };
+    model = {
+      ...model,
+      rows: [
+        {
+          id: "click-center",
+          title: "click (250, 448)",
+          kind: "ui_action",
+          isFrame: false,
+          frameIndex: 0,
+          coord: { x: 250, y: 448 },
+        },
+      ],
+    };
     await render({ initialFrame: 0 });
     const pin = container.querySelector<HTMLElement>(".pins .spin");
     expect(pin?.style.left).toBe("50%");
@@ -404,7 +640,19 @@ describe("player review controls", () => {
   });
   it("places edge click labels toward the available image area", async () => {
     stream = { ...stream, viewport: { width: 390, height: 844 } };
-    model = { ...model, rows: [{ id: "click-edge", title: "click (380, 820)", kind: "ui_action", isFrame: false, frameIndex: 0, coord: { x: 380, y: 820 } }] };
+    model = {
+      ...model,
+      rows: [
+        {
+          id: "click-edge",
+          title: "click (380, 820)",
+          kind: "ui_action",
+          isFrame: false,
+          frameIndex: 0,
+          coord: { x: 380, y: 820 },
+        },
+      ],
+    };
     await render({ initialFrame: 0 });
     const pin = container.querySelector<HTMLElement>(".pins .spin");
     expect(pin?.dataset.tipSide).toBe("left");
@@ -412,7 +660,21 @@ describe("player review controls", () => {
     expect(pin?.textContent).toContain("click (380, 820)");
   });
   it("projects legacy unstamped evidence without requiring new schema fields", () => {
-    const legacy = { ...stream, actor: { items: [{ id: "a", kind: "screenshot", lifecycle: "completed", title: "Capture", screenshotRef: { path: "screenshots/old.png", redaction: "none" } }], durationMs: 5000 } } as ObserverStream;
+    const legacy = {
+      ...stream,
+      actor: {
+        items: [
+          {
+            id: "a",
+            kind: "screenshot",
+            lifecycle: "completed",
+            title: "Capture",
+            screenshotRef: { path: "screenshots/old.png", redaction: "none" },
+          },
+        ],
+        durationMs: 5000,
+      },
+    } as ObserverStream;
     expect(buildPlayerModel(legacy)?.paced).toBe("avg");
   });
 });

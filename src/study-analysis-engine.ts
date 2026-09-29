@@ -3,12 +3,35 @@ import { createHash, randomUUID } from "node:crypto";
 import { estimateActorCost, MODEL_RATES } from "./pricing.js";
 import { containsSensitive } from "./redaction.js";
 import { scrubTransientCommsText } from "./run-narration-secrets.js";
-import { STUDY_ANALYSIS_SCHEMA, type AnalysisObservation, type StudyAnalysisArtifact, type StudyAnalysisConfig, type StudyAnalysisInput, type StudyAnalysisResult } from "./study-analysis.js";
-import { createStudyAnalysisProvider, type StudyAnalysisProvider } from "./study-analysis-provider.js";
-import { checkAnalysisResult, hashStudyAnalysisValue, studyAnalysisResponseSchema, studyAnalysisResultJsonSchema, validateStudyAnalysisInputMetadata } from "./study-analysis-validation.js";
+import {
+  STUDY_ANALYSIS_SCHEMA,
+  type AnalysisObservation,
+  type StudyAnalysisArtifact,
+  type StudyAnalysisConfig,
+  type StudyAnalysisInput,
+  type StudyAnalysisResult,
+} from "./study-analysis.js";
+import {
+  createStudyAnalysisProvider,
+  type StudyAnalysisProvider,
+} from "./study-analysis-provider.js";
+import {
+  checkAnalysisResult,
+  hashStudyAnalysisValue,
+  studyAnalysisResponseSchema,
+  studyAnalysisResultJsonSchema,
+  validateStudyAnalysisInputMetadata,
+} from "./study-analysis-validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-6";
-export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze(["gpt-6-astra", "gpt-5.5", "gpt-5.6", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]);
+export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
+  "gpt-6-astra",
+  "gpt-5.5",
+  "gpt-5.6",
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
+]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_STUDY_ANALYSIS_MODELS);
 const IMAGE_DATA = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
@@ -71,35 +94,63 @@ function instructions(config: StudyAnalysisConfig): string {
 function evidenceText(input: StudyAnalysisInput): string {
   // Filesystem paths and image bytes are not capabilities for the model. Images are separately
   // attached, labeled with the same packet-local evidence key that the validator resolves.
-  return JSON.stringify({ runId: input.runId, participants: input.participants, coverage: input.coverage,
-    evidence: input.evidence.map(({ capture, ...item }) => ({ ...item, hasCapture: capture !== null })) });
+  return JSON.stringify({
+    runId: input.runId,
+    participants: input.participants,
+    coverage: input.coverage,
+    evidence: input.evidence.map(({ capture, ...item }) => ({
+      ...item,
+      hasCapture: capture !== null,
+    })),
+  });
 }
 
 function inputError(input: StudyAnalysisInput): string | null {
-  try { validateStudyAnalysisInputMetadata(input); }
-  catch { return "analysis_input_invalid"; }
+  try {
+    validateStudyAnalysisInputMetadata(input);
+  } catch {
+    return "analysis_input_invalid";
+  }
   const packetText = evidenceText(input);
-  if (!input.participants.length || input.participants.length > 16 || !input.evidence.length || input.evidence.length > 800
-    || input.images.length > 128 || Buffer.byteLength(packetText) > MAX_EVIDENCE_BYTES) return "analysis_input_limit";
+  if (
+    !input.participants.length ||
+    input.participants.length > 16 ||
+    !input.evidence.length ||
+    input.evidence.length > 800 ||
+    input.images.length > 128 ||
+    Buffer.byteLength(packetText) > MAX_EVIDENCE_BYTES
+  )
+    return "analysis_input_limit";
   // Source JSON may encode a sensitive string using Unicode escapes. Check the
   // decoded text we actually send, independently of raw-file verification. Image
   // bytes and filesystem-only capture metadata are not part of this text scan.
   if (containsSensitive(packetText)) return "analysis_input_sensitive";
-  if (new Set(input.evidence.map(item => item.id)).size !== input.evidence.length
-    || new Set(input.images.map(image => image.evidenceId)).size !== input.images.length) return "analysis_input_invalid";
-  const captures = input.evidence.filter(item => item.capture !== null);
-  if (captures.length !== input.images.length || input.coverage.captureCount !== captures.length
-    || input.coverage.evidenceCount !== input.evidence.length) return "analysis_input_invalid";
+  if (
+    new Set(input.evidence.map((item) => item.id)).size !== input.evidence.length ||
+    new Set(input.images.map((image) => image.evidenceId)).size !== input.images.length
+  )
+    return "analysis_input_invalid";
+  const captures = input.evidence.filter((item) => item.capture !== null);
+  if (
+    captures.length !== input.images.length ||
+    input.coverage.captureCount !== captures.length ||
+    input.coverage.evidenceCount !== input.evidence.length
+  )
+    return "analysis_input_invalid";
   let imageBytes = 0;
   for (const image of input.images) {
-    const evidence = captures.find(item => item.id === image.evidenceId);
-    if (image.dataUrl.length > Math.ceil(8 * 1024 * 1024 * 4 / 3) + 64) return "analysis_input_limit";
+    const evidence = captures.find((item) => item.id === image.evidenceId);
+    if (image.dataUrl.length > Math.ceil((8 * 1024 * 1024 * 4) / 3) + 64)
+      return "analysis_input_limit";
     const parsed = IMAGE_DATA.exec(image.dataUrl);
-    if (!evidence?.capture || !parsed || evidence.capture.mimeType !== `image/${parsed[1]}`) return "analysis_input_invalid";
+    if (!evidence?.capture || !parsed || evidence.capture.mimeType !== `image/${parsed[1]}`)
+      return "analysis_input_invalid";
     const bytes = Buffer.from(parsed[2]!, "base64");
     imageBytes += bytes.byteLength;
-    if (bytes.byteLength > 8 * 1024 * 1024 || imageBytes > MAX_IMAGE_BYTES) return "analysis_input_limit";
-    if (createHash("sha256").update(bytes).digest("hex") !== evidence.capture.sha256) return "analysis_input_changed";
+    if (bytes.byteLength > 8 * 1024 * 1024 || imageBytes > MAX_IMAGE_BYTES)
+      return "analysis_input_limit";
+    if (createHash("sha256").update(bytes).digest("hex") !== evidence.capture.sha256)
+      return "analysis_input_changed";
   }
   return null;
 }
@@ -114,73 +165,176 @@ function inputError(input: StudyAnalysisInput): string | null {
  * Known-sensitive decoded text denies admission with analysis_input_sensitive or
  * analysis_question_sensitive. Neither error includes rejected input values.
  */
-export function estimateStudyAnalysisAdmission(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisAdmission {
-  const denied = (error: string): StudyAnalysisAdmission =>
-    ({ allowed: false, error, inputTokenAllowance: 0, outputTokenAllowance: 0, estimatedCostUsd: null, ratesAsOf: null });
-  if ((config.provider === "codex" ? !validCodexAnalysisConfig(config)
-    : (config.provider !== undefined && config.provider !== "openai") || !SUPPORTED_MODELS.has(config.model)
-      || !Number.isFinite(config.maxCostUsd) || config.maxCostUsd <= 0 || config.maxCostUsd > 1000
-      || !Number.isSafeInteger(config.maxOutputTokens) || config.maxOutputTokens < 256 || config.maxOutputTokens > 32_768)
-    || !Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 600_000
-    || (config.question !== null && (typeof config.question !== "string" || config.question.length > 4000))) {
+export function estimateStudyAnalysisAdmission(
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+): StudyAnalysisAdmission {
+  const denied = (error: string): StudyAnalysisAdmission => ({
+    allowed: false,
+    error,
+    inputTokenAllowance: 0,
+    outputTokenAllowance: 0,
+    estimatedCostUsd: null,
+    ratesAsOf: null,
+  });
+  if (
+    (config.provider === "codex"
+      ? !validCodexAnalysisConfig(config)
+      : (config.provider !== undefined && config.provider !== "openai") ||
+        !SUPPORTED_MODELS.has(config.model) ||
+        !Number.isFinite(config.maxCostUsd) ||
+        config.maxCostUsd <= 0 ||
+        config.maxCostUsd > 1000 ||
+        !Number.isSafeInteger(config.maxOutputTokens) ||
+        config.maxOutputTokens < 256 ||
+        config.maxOutputTokens > 32_768) ||
+    !Number.isSafeInteger(config.timeoutMs) ||
+    config.timeoutMs < 1 ||
+    config.timeoutMs > 600_000 ||
+    (config.question !== null &&
+      (typeof config.question !== "string" || config.question.length > 4000))
+  ) {
     return denied("analysis_config_invalid");
   }
-  if (config.question !== null && containsSensitive(config.question)) return denied("analysis_question_sensitive");
+  if (config.question !== null && containsSensitive(config.question))
+    return denied("analysis_question_sensitive");
   const badInput = inputError(input);
   if (badInput) return denied(badInput);
-  if (config.provider === "codex") return { allowed: true, error: null, inputTokenAllowance: null,
-    outputTokenAllowance: null, estimatedCostUsd: null, ratesAsOf: null };
+  if (config.provider === "codex")
+    return {
+      allowed: true,
+      error: null,
+      inputTokenAllowance: null,
+      outputTokenAllowance: null,
+      estimatedCostUsd: null,
+      ratesAsOf: null,
+    };
   const rate = MODEL_RATES[config.model];
-  if (!rate || rate.placeholder || !Number.isFinite(rate.inputUsdPerToken) || rate.inputUsdPerToken < 0
-    || !Number.isFinite(rate.outputUsdPerToken) || rate.outputUsdPerToken < 0) return denied("analysis_rate_unknown");
-  const inputTokenAllowance = Buffer.byteLength(JSON.stringify({ instructions: instructions(config),
-    evidence: evidenceText(input), schema: studyAnalysisResultJsonSchema })) + 2048 + input.images.length * 3000;
-  const long = rate.longContext !== undefined && inputTokenAllowance > rate.longContext.thresholdInputTokens;
-  const inputRate = Math.max(rate.inputUsdPerToken, rate.cacheWriteUsdPerToken ?? 0, rate.cachedInputUsdPerToken ?? 0);
-  const estimate = inputTokenAllowance * inputRate * (long ? rate.longContext!.inputMultiplier : 1)
-    + config.maxOutputTokens * rate.outputUsdPerToken * (long ? rate.longContext!.outputMultiplier : 1);
+  if (
+    !rate ||
+    rate.placeholder ||
+    !Number.isFinite(rate.inputUsdPerToken) ||
+    rate.inputUsdPerToken < 0 ||
+    !Number.isFinite(rate.outputUsdPerToken) ||
+    rate.outputUsdPerToken < 0
+  )
+    return denied("analysis_rate_unknown");
+  const inputTokenAllowance =
+    Buffer.byteLength(
+      JSON.stringify({
+        instructions: instructions(config),
+        evidence: evidenceText(input),
+        schema: studyAnalysisResultJsonSchema,
+      }),
+    ) +
+    2048 +
+    input.images.length * 3000;
+  const long =
+    rate.longContext !== undefined && inputTokenAllowance > rate.longContext.thresholdInputTokens;
+  const inputRate = Math.max(
+    rate.inputUsdPerToken,
+    rate.cacheWriteUsdPerToken ?? 0,
+    rate.cachedInputUsdPerToken ?? 0,
+  );
+  const estimate =
+    inputTokenAllowance * inputRate * (long ? rate.longContext!.inputMultiplier : 1) +
+    config.maxOutputTokens *
+      rate.outputUsdPerToken *
+      (long ? rate.longContext!.outputMultiplier : 1);
   // Round upward for admission; rounding a small positive boundary down could admit an overrun.
   const estimatedCostUsd = Math.ceil(estimate * 1e6) / 1e6;
   if (!Number.isFinite(estimatedCostUsd)) return denied("analysis_rate_unknown");
-  return { allowed: estimatedCostUsd <= config.maxCostUsd, error: estimatedCostUsd <= config.maxCostUsd ? null : "analysis_budget_exceeded",
-    inputTokenAllowance, outputTokenAllowance: config.maxOutputTokens, estimatedCostUsd, ratesAsOf: rate.asOf };
+  return {
+    allowed: estimatedCostUsd <= config.maxCostUsd,
+    error: estimatedCostUsd <= config.maxCostUsd ? null : "analysis_budget_exceeded",
+    inputTokenAllowance,
+    outputTokenAllowance: config.maxOutputTokens,
+    estimatedCostUsd,
+    ratesAsOf: rate.asOf,
+  };
 }
 
 /** Only for an omitted output limit. Preserve the established allowance when
  * more reasoning/report space would refuse a study its declared budget admits.
  * This is one pre-dispatch choice, never a fallback request or a budget increase. */
-export function preferLargerStudyAnalysisOutput(input: StudyAnalysisInput, config: StudyAnalysisConfig): StudyAnalysisConfig {
+export function preferLargerStudyAnalysisOutput(
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+): StudyAnalysisConfig {
   if (config.provider === "codex" || config.maxOutputTokens !== 16_384) return config;
   const expanded = { ...config, maxOutputTokens: 32_768 };
   return estimateStudyAnalysisAdmission(input, expanded).allowed ? expanded : config;
 }
 
-export type StudyAnalysisDispatchContext = Pick<StudyAnalysisArtifact,
-  "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion">;
+export type StudyAnalysisDispatchContext = Pick<
+  StudyAnalysisArtifact,
+  "id" | "runId" | "sourceRunSha256" | "inputDigest" | "configDigest" | "promptVersion"
+>;
 
 /** Scrub only generated prose. Source evidence, provenance and integrity hashes remain exact. */
 function scrubGeneratedNarrative(result: StudyAnalysisResult): StudyAnalysisResult {
   const scrub = scrubTransientCommsText;
-  const observation = <T extends AnalysisObservation>(value: T): T => ({ ...value,
-    claim: scrub(value.claim), limitation: scrub(value.limitation) });
+  const observation = <T extends AnalysisObservation>(value: T): T => ({
+    ...value,
+    claim: scrub(value.claim),
+    limitation: scrub(value.limitation),
+  });
   // A model can also echo a key as a syntactically valid finding ID. Refuse it without rewriting
   // IDs, references or enums (including accidental collisions); never repair citation structure.
   const structural = [
-    ...result.participants.flatMap(value => [value.streamId, value.outcome, ...value.evidenceIds, ...value.feedback.map(quote => quote.evidenceId)]),
-    ...result.findings.flatMap(value => [value.id, value.impact, value.recovery, value.confidence,
-      ...value.affectedStreamIds, ...value.exposedStreamIds, ...value.observations.flatMap(item => [item.basis, ...item.evidenceIds])]),
-    ...(result.concernReviews ?? []).flatMap(value => [value.basis, value.disposition, ...(value.findingId === null ? [] : [value.findingId]), ...value.evidenceIds])
+    ...result.participants.flatMap((value) => [
+      value.streamId,
+      value.outcome,
+      ...value.evidenceIds,
+      ...value.feedback.map((quote) => quote.evidenceId),
+    ]),
+    ...result.findings.flatMap((value) => [
+      value.id,
+      value.impact,
+      value.recovery,
+      value.confidence,
+      ...value.affectedStreamIds,
+      ...value.exposedStreamIds,
+      ...value.observations.flatMap((item) => [item.basis, ...item.evidenceIds]),
+    ]),
+    ...(result.concernReviews ?? []).flatMap((value) => [
+      value.basis,
+      value.disposition,
+      ...(value.findingId === null ? [] : [value.findingId]),
+      ...value.evidenceIds,
+    ]),
   ];
-  if (structural.some(value => scrub(value) !== value)) throw new Error("ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE");
-  return { ...result,
-    summary: scrub(result.summary), limitations: result.limitations.map(scrub),
-    participants: result.participants.map(value => ({ ...value, summary: scrub(value.summary), intent: scrub(value.intent),
-      outcomeReason: scrub(value.outcomeReason), limitations: value.limitations.map(scrub),
-      feedback: value.feedback.map(quote => ({ ...quote, text: scrub(quote.text) })) })),
-    findings: result.findings.map(value => ({ ...value, title: scrub(value.title), summary: scrub(value.summary),
-      exposureReason: scrub(value.exposureReason), nextStep: scrub(value.nextStep), priorityReason: scrub(value.priorityReason),
-      observations: value.observations.map(observation) })),
-    ...(result.concernReviews === undefined ? {} : { concernReviews: result.concernReviews.map(value => ({ ...observation(value), reason: scrub(value.reason) })) })
+  if (structural.some((value) => scrub(value) !== value))
+    throw new Error("ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE");
+  return {
+    ...result,
+    summary: scrub(result.summary),
+    limitations: result.limitations.map(scrub),
+    participants: result.participants.map((value) => ({
+      ...value,
+      summary: scrub(value.summary),
+      intent: scrub(value.intent),
+      outcomeReason: scrub(value.outcomeReason),
+      limitations: value.limitations.map(scrub),
+      feedback: value.feedback.map((quote) => ({ ...quote, text: scrub(quote.text) })),
+    })),
+    findings: result.findings.map((value) => ({
+      ...value,
+      title: scrub(value.title),
+      summary: scrub(value.summary),
+      exposureReason: scrub(value.exposureReason),
+      nextStep: scrub(value.nextStep),
+      priorityReason: scrub(value.priorityReason),
+      observations: value.observations.map(observation),
+    })),
+    ...(result.concernReviews === undefined
+      ? {}
+      : {
+          concernReviews: result.concernReviews.map((value) => ({
+            ...observation(value),
+            reason: scrub(value.reason),
+          })),
+        }),
   };
 }
 
@@ -188,17 +342,19 @@ const VALIDATION_FAILURES: Readonly<Record<string, string>> = Object.freeze({
   ANALYSIS_RESULT_SCHEMA_INVALID: "analysis_validation_failed_schema_invalid",
   ANALYSIS_INPUT_DUPLICATES: "analysis_validation_failed_input_duplicates",
   ANALYSIS_PARTICIPANT_COVERAGE_INVALID: "analysis_validation_failed_participant_coverage_invalid",
-  ANALYSIS_PARTICIPANT_REFERENCE_INVALID: "analysis_validation_failed_participant_reference_invalid",
+  ANALYSIS_PARTICIPANT_REFERENCE_INVALID:
+    "analysis_validation_failed_participant_reference_invalid",
   ANALYSIS_OUTCOME_WITHOUT_EVIDENCE: "analysis_validation_failed_outcome_without_evidence",
   ANALYSIS_QUOTE_INVALID: "analysis_validation_failed_quote_invalid",
   ANALYSIS_FINDING_ID_DUPLICATE: "analysis_validation_failed_finding_id_duplicate",
-  ANALYSIS_OBSERVATION_REFERENCE_INVALID: "analysis_validation_failed_observation_reference_invalid",
+  ANALYSIS_OBSERVATION_REFERENCE_INVALID:
+    "analysis_validation_failed_observation_reference_invalid",
   ANALYSIS_VISUAL_WITHOUT_CAPTURE: "analysis_validation_failed_visual_without_capture",
   ANALYSIS_ACTION_SOURCE_INVALID: "analysis_validation_failed_action_source_invalid",
   ANALYSIS_STATEMENT_SOURCE_INVALID: "analysis_validation_failed_statement_source_invalid",
   ANALYSIS_FINDING_MEMBERSHIP_INVALID: "analysis_validation_failed_finding_membership_invalid",
   ANALYSIS_AFFECTED_WITHOUT_EVIDENCE: "analysis_validation_failed_affected_without_evidence",
-  ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid"
+  ANALYSIS_CONCERN_FINDING_INVALID: "analysis_validation_failed_concern_finding_invalid",
 });
 
 type CheckedProviderAnalysis =
@@ -208,18 +364,27 @@ type CheckedProviderAnalysis =
 function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): CheckedProviderAnalysis {
   try {
     const parsed = studyAnalysisResponseSchema.safeParse(value);
-    if (!parsed.success) return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
+    if (!parsed.success)
+      return { ok: false, error: VALIDATION_FAILURES.ANALYSIS_RESULT_SCHEMA_INVALID! };
     let scrubbed: StudyAnalysisResult;
     try {
       scrubbed = scrubGeneratedNarrative(parsed.data);
     } catch (error) {
-      return { ok: false, error: error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"
-        ? "analysis_validation_failed_scrub_rejected"
-        : "analysis_validation_failed_unexpected" };
+      return {
+        ok: false,
+        error:
+          error instanceof Error && error.message === "ANALYSIS_TRANSIENT_SECRET_IN_STRUCTURE"
+            ? "analysis_validation_failed_scrub_rejected"
+            : "analysis_validation_failed_unexpected",
+      };
     }
     const checked = checkAnalysisResult(input, scrubbed);
-    if (!checked.ok) return { ok: false,
-      error: VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected" };
+    if (!checked.ok)
+      return {
+        ok: false,
+        error:
+          VALIDATION_FAILURES[checked.errors[0] ?? ""] ?? "analysis_validation_failed_unexpected",
+      };
     return checked;
   } catch {
     return { ok: false, error: "analysis_validation_failed_unexpected" };
@@ -227,23 +392,30 @@ function checkProviderAnalysis(input: StudyAnalysisInput, value: unknown): Check
 }
 
 /** Explicit invocation or an opted-in post-run owner; Observer readers never call this. */
-export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyAnalysisConfig, options: {
-  apiKey?: string;
-  /** Internal transport injection; no manifest or CLI route can supply a provider function. */
-  codexProvider?: StudyAnalysisProvider;
-  signal?: AbortSignal;
-  onProgress?: (progress: StudyAnalysisProgress) => void;
-  fetch?: typeof fetch;
-  /** Internal orchestration: bind a permanent automatic claim before any provider call. */
-  analysisId?: string;
-  beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
-}): Promise<StudyAnalysisArtifact> {
+export async function runStudyAnalysis(
+  input: StudyAnalysisInput,
+  config: StudyAnalysisConfig,
+  options: {
+    apiKey?: string;
+    /** Internal transport injection; no manifest or CLI route can supply a provider function. */
+    codexProvider?: StudyAnalysisProvider;
+    signal?: AbortSignal;
+    onProgress?: (progress: StudyAnalysisProgress) => void;
+    fetch?: typeof fetch;
+    /** Internal orchestration: bind a permanent automatic claim before any provider call. */
+    analysisId?: string;
+    beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+  },
+): Promise<StudyAnalysisArtifact> {
   // Callers retain their own object references. Snapshot once so a display callback or later
   // caller mutation cannot alter the admitted prompt, citations, or stored provenance mid-run.
   input = structuredClone(input);
   config = structuredClone(config);
   const createdAt = new Date().toISOString();
-  if (options.analysisId !== undefined && !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(options.analysisId)) {
+  if (
+    options.analysisId !== undefined &&
+    !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(options.analysisId)
+  ) {
     throw new Error("ANALYSIS_ID_INVALID");
   }
   validateStudyAnalysisInputMetadata(input);
@@ -251,26 +423,57 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   if (admission.error === "analysis_config_invalid") throw new Error("ANALYSIS_CONFIG_INVALID");
   // Do not emit progress or construct an artifact containing rejected sensitive
   // input. Direct callers receive only a stable code, as with malformed metadata.
-  if (admission.error === "analysis_input_sensitive" || admission.error === "analysis_question_sensitive") {
+  if (
+    admission.error === "analysis_input_sensitive" ||
+    admission.error === "analysis_question_sensitive"
+  ) {
     throw new Error(admission.error.toUpperCase());
   }
   const artifact: StudyAnalysisArtifact = {
-    schema: STUDY_ANALYSIS_SCHEMA, id: options.analysisId ?? `analysis-${randomUUID()}`, runId: input.runId, status: "failed",
-    createdAt, completedAt: createdAt, sourceRunSha256: input.sourceRunSha256, inputDigest: input.inputDigest,
+    schema: STUDY_ANALYSIS_SCHEMA,
+    id: options.analysisId ?? `analysis-${randomUUID()}`,
+    runId: input.runId,
+    status: "failed",
+    createdAt,
+    completedAt: createdAt,
+    sourceRunSha256: input.sourceRunSha256,
+    inputDigest: input.inputDigest,
     ...(input.captureVersion === undefined ? {} : { captureVersion: input.captureVersion }),
-    configDigest: hashStudyAnalysisValue(config), config: structuredClone(config), promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
-    provider: config.provider ?? "openai", participants: structuredClone(input.participants), coverage: structuredClone(input.coverage), evidence: structuredClone(input.evidence),
-    usage: { inputTokens: null, outputTokens: null, cachedInputTokens: null, cacheWriteInputTokens: null,
-      estimatedCostUsd: null, usageComplete: false, dispatched: false, ratesAsOf: admission.ratesAsOf,
-      estimatedAdmissionUsd: admission.estimatedCostUsd }, result: null, error: admission.error
+    configDigest: hashStudyAnalysisValue(config),
+    config: structuredClone(config),
+    promptVersion: STUDY_ANALYSIS_PROMPT_VERSION,
+    provider: config.provider ?? "openai",
+    participants: structuredClone(input.participants),
+    coverage: structuredClone(input.coverage),
+    evidence: structuredClone(input.evidence),
+    usage: {
+      inputTokens: null,
+      outputTokens: null,
+      cachedInputTokens: null,
+      cacheWriteInputTokens: null,
+      estimatedCostUsd: null,
+      usageComplete: false,
+      dispatched: false,
+      ratesAsOf: admission.ratesAsOf,
+      estimatedAdmissionUsd: admission.estimatedCostUsd,
+    },
+    result: null,
+    error: admission.error,
   };
   const progress = (phase: StudyAnalysisProgress["phase"]): void => {
     // A display callback is not part of provider execution; it must not turn a paid successful
     // response into a thrown error or interrupt persistence of its usage.
     try {
-      options.onProgress?.({ phase, evidenceCount: input.evidence.length, captureCount: input.images.length,
-        estimatedAdmissionUsd: admission.estimatedCostUsd, ...(phase === "finished" ? { status: artifact.status } : {}) });
-    } catch { /* Progress observers do not own execution or storage. */ }
+      options.onProgress?.({
+        phase,
+        evidenceCount: input.evidence.length,
+        captureCount: input.images.length,
+        estimatedAdmissionUsd: admission.estimatedCostUsd,
+        ...(phase === "finished" ? { status: artifact.status } : {}),
+      });
+    } catch {
+      /* Progress observers do not own execution or storage. */
+    }
   };
   const finish = (): StudyAnalysisArtifact => {
     artifact.completedAt = new Date().toISOString();
@@ -290,29 +493,49 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
   progress("admitted");
   // Unlike display progress, this awaited guard owns authorization/durability.
   // A failed guard must prevent transport, so its error is deliberately not swallowed.
-  await options.beforeDispatch?.({ id: artifact.id, runId: artifact.runId, sourceRunSha256: artifact.sourceRunSha256,
-    inputDigest: artifact.inputDigest, configDigest: artifact.configDigest, promptVersion: artifact.promptVersion });
+  await options.beforeDispatch?.({
+    id: artifact.id,
+    runId: artifact.runId,
+    sourceRunSha256: artifact.sourceRunSha256,
+    inputDigest: artifact.inputDigest,
+    configDigest: artifact.configDigest,
+    promptVersion: artifact.promptVersion,
+  });
   if (options.signal?.aborted) {
     artifact.status = "cancelled";
     artifact.error = "analysis_cancelled";
     return finish();
   }
   progress("requesting");
-  const provider = config.provider === "codex"
-    ? options.codexProvider ?? (await import("./restricted-codex-analysis.js")).createRestrictedCodexAnalysisProvider()
-    : createStudyAnalysisProvider({ apiKey: options.apiKey!, ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }) });
-  const response = await provider({ model: config.model, instructions: instructions(config), evidence: evidenceText(input),
-    images: input.images, schema: studyAnalysisResultJsonSchema, maxOutputTokens: config.maxOutputTokens, timeoutMs: config.timeoutMs,
-    ...(options.signal === undefined ? {} : { signal: options.signal }) });
+  const provider =
+    config.provider === "codex"
+      ? (options.codexProvider ??
+        (await import("./restricted-codex-analysis.js")).createRestrictedCodexAnalysisProvider())
+      : createStudyAnalysisProvider({
+          apiKey: options.apiKey!,
+          ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),
+        });
+  const response = await provider({
+    model: config.model,
+    instructions: instructions(config),
+    evidence: evidenceText(input),
+    images: input.images,
+    schema: studyAnalysisResultJsonSchema,
+    maxOutputTokens: config.maxOutputTokens,
+    timeoutMs: config.timeoutMs,
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  });
   artifact.usage.dispatched = response.dispatched;
   if (response.usage) {
-    const priced = config.provider === "codex" ? { estimatedCostUsd: null, ratesAsOf: null }
-      : estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
+    const priced =
+      config.provider === "codex"
+        ? { estimatedCostUsd: null, ratesAsOf: null }
+        : estimateActorCost({ ...response.usage, turns: [response.usage] }, config.model);
     artifact.usage.inputTokens = response.usage.input;
     artifact.usage.outputTokens = response.usage.output;
     artifact.usage.cachedInputTokens = response.usage.cachedInput ?? null;
     artifact.usage.cacheWriteInputTokens = response.usage.cacheWriteInput ?? null;
-    artifact.usage.usageComplete = response.usageComplete ?? (config.provider !== "codex");
+    artifact.usage.usageComplete = response.usageComplete ?? config.provider !== "codex";
     artifact.usage.estimatedCostUsd = priced.estimatedCostUsd;
     artifact.usage.ratesAsOf = priced.ratesAsOf;
   }
@@ -330,9 +553,13 @@ export async function runStudyAnalysis(input: StudyAnalysisInput, config: StudyA
     artifact.result = checked.result;
     artifact.status = input.coverage.complete ? "complete" : "partial";
     artifact.error = null;
-    if (config.provider !== "codex" && ((response.usage?.output ?? 0) > config.maxOutputTokens
-      || (artifact.usage.estimatedCostUsd ?? 0) > (admission.estimatedCostUsd ?? config.maxCostUsd)
-      || (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)) {
+    if (
+      config.provider !== "codex" &&
+      ((response.usage?.output ?? 0) > config.maxOutputTokens ||
+        (artifact.usage.estimatedCostUsd ?? 0) >
+          (admission.estimatedCostUsd ?? config.maxCostUsd) ||
+        (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)
+    ) {
       artifact.status = "partial";
       artifact.error = "analysis_admission_estimate_exceeded";
     }

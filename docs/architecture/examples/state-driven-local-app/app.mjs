@@ -40,9 +40,9 @@ export async function startLocalApp() {
     getReceipt: () => ({ greeted, messages, stateReads, serverClosed: !server.listening }),
     async close() {
       await new Promise((resolve, reject) => {
-        server.close((error) => error ? reject(error) : resolve(undefined));
+        server.close((error) => (error ? reject(error) : resolve(undefined)));
         server.closeAllConnections();
       });
-    }
+    },
   };
 }

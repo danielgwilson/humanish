@@ -1,7 +1,7 @@
 import {
   runCodexAppServerSession,
   type CodexAppServerRunOptions,
-  type CodexAppServerRunResult
+  type CodexAppServerRunResult,
 } from "./codex-app-server.js";
 import {
   CLAUDE_AGENT_SDK_CAPABILITIES,
@@ -12,12 +12,12 @@ import {
   codexResultToActorTrace,
   type ActorCapabilities,
   type ActorPersonaRef,
-  type ActorTrace
+  type ActorTrace,
 } from "./actor-contract.js";
 import {
   runTerminalAgentSession,
   type TerminalAgentSessionOptions,
-  type TerminalAgentSessionResult
+  type TerminalAgentSessionResult,
 } from "./terminal-agent-actor.js";
 import { piSessionToActorTrace, type PiSessionResult } from "./pi-agent-core.js";
 import {
@@ -25,7 +25,7 @@ import {
   runClaudeAgentSession,
   type ClaudeAgentSessionOptions,
   type ClaudeAgentSessionResult,
-  type ClaudeSessionResult
+  type ClaudeSessionResult,
 } from "./claude-agent-sdk.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use-actor.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./local-agent-cli.js";
@@ -34,12 +34,19 @@ import { OPENAI_RESPONSES_CU_CAPABILITIES } from "./openai-responses-cu.js";
 import {
   runScriptedBrowserSession,
   type ScriptedBrowserSessionOptions,
-  type ScriptedBrowserSessionResult
+  type ScriptedBrowserSessionResult,
 } from "./scripted-browser-actor.js";
 
 // Closed first-party actor registry. These ids are implemented in core; supported out-of-tree
 // actor registration does not ship. See docs/architecture/actor-contract.md.
-export type ActorId = "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-computer-use" | "local-agent" | "scripted-browser" | "codex-exec";
+export type ActorId =
+  | "codex-app-server"
+  | "pi-agent-core"
+  | "claude-agent-sdk"
+  | "openai-computer-use"
+  | "local-agent"
+  | "scripted-browser"
+  | "codex-exec";
 
 interface ActorDescriptorBase {
   id: ActorId;
@@ -119,7 +126,9 @@ export type ActorDescriptor =
  * Any future computer-use provider (e.g. stagehand-cua) must keep that session signature; this
  * guard is what lets the lab dispatch on capabilities rather than on hardcoded actor ids.
  */
-export function isCuaActorDescriptor(descriptor: ActorDescriptor): descriptor is CuaActorDescriptor {
+export function isCuaActorDescriptor(
+  descriptor: ActorDescriptor,
+): descriptor is CuaActorDescriptor {
   return descriptor.capabilities.lanes.includes("computer-use");
 }
 
@@ -130,7 +139,9 @@ export function isCuaActorDescriptor(descriptor: ActorDescriptor): descriptor is
  * like the CUA shape — no separate toActorTrace). Any future scripted driver (e.g. a HAR
  * replayer) must keep this signature; it is what lets the lab dispatch on capabilities, not ids.
  */
-export function isScriptedBrowserActorDescriptor(descriptor: ActorDescriptor): descriptor is ScriptedBrowserActorDescriptor {
+export function isScriptedBrowserActorDescriptor(
+  descriptor: ActorDescriptor,
+): descriptor is ScriptedBrowserActorDescriptor {
   return descriptor.capabilities.lanes.includes("scripted-browser");
 }
 
@@ -141,7 +152,9 @@ export function isScriptedBrowserActorDescriptor(descriptor: ActorDescriptor): d
  * descriptor's direct runSession is intentionally unsupported; live execution is route-owned.
  * Any future terminal actor must declare keyPlacement honestly and integrate with that lifecycle.
  */
-export function isTerminalActorDescriptor(descriptor: ActorDescriptor): descriptor is TerminalActorDescriptor {
+export function isTerminalActorDescriptor(
+  descriptor: ActorDescriptor,
+): descriptor is TerminalActorDescriptor {
   return descriptor.capabilities.lanes.includes("terminal");
 }
 
@@ -151,20 +164,20 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     label: "Codex App-Server",
     capabilities: CODEX_APP_SERVER_CAPABILITIES,
     runSession: runCodexAppServerSession,
-    toActorTrace: codexResultToActorTrace
+    toActorTrace: codexResultToActorTrace,
   },
   "pi-agent-core": {
     id: "pi-agent-core",
     label: "pi Agent Core",
     capabilities: PI_AGENT_CORE_CAPABILITIES,
-    toActorTrace: piSessionToActorTrace
+    toActorTrace: piSessionToActorTrace,
   },
   "claude-agent-sdk": {
     id: "claude-agent-sdk",
     label: "Claude Agent SDK",
     capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
     runSession: runClaudeAgentSession,
-    toActorTrace: claudeSessionToActorTrace
+    toActorTrace: claudeSessionToActorTrace,
   },
   // The ActorId names the actor slot (keeps the lane open for a future stagehand-cua provider);
   // the trace's `provider` string stays "openai-responses-cu" (the concrete model adapter).
@@ -177,13 +190,13 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     id: "local-agent",
     label: "Local coding agent (operator-authenticated)",
     capabilities: LOCAL_AGENT_CAPABILITIES,
-    runSession: runCuaActorSession
+    runSession: runCuaActorSession,
   },
   "openai-computer-use": {
     id: "openai-computer-use",
     label: "OpenAI Computer Use",
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
-    runSession: runCuaActorSession
+    runSession: runCuaActorSession,
   },
   // Same naming convention: the ActorId names the slot; the trace's `provider` stays the
   // concrete driver name "browser-persona" (matching the native
@@ -192,7 +205,7 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     id: "scripted-browser",
     label: "Scripted Browser (deterministic Playwright steps)",
     capabilities: SCRIPTED_BROWSER_CAPABILITIES,
-    runSession: runScriptedBrowserSession
+    runSession: runScriptedBrowserSession,
   },
   // The ActorId names the terminal-product dispatch slot; the live route records the concrete
   // provider as "codex". keyPlacement "in-sandbox-command-scoped" is registry-declared and
@@ -202,8 +215,8 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     id: "codex-exec",
     label: "Codex Exec (autonomous terminal agent, in-sandbox)",
     capabilities: TERMINAL_AGENT_CAPABILITIES,
-    runSession: runTerminalAgentSession
-  }
+    runSession: runTerminalAgentSession,
+  },
 };
 
 // Overloads narrow the return type per id so codex call sites keep their exact

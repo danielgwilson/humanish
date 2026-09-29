@@ -2,8 +2,8 @@
   "name": "humanish-site",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "humanish.dev landing page (Next.js App Router).",
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

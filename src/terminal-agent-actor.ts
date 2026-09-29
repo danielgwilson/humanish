@@ -9,13 +9,19 @@
 // fail closed. Use `runTerminalProductLab` (or `runLab` with a terminal-product config) for both
 // dry-run and live execution.
 
-import type { ActorPersonaRef, ActorStatus, ActorCompletionReason, ActorTrace } from "./actor-contract.js";
+import type {
+  ActorPersonaRef,
+  ActorStatus,
+  ActorCompletionReason,
+  ActorTrace,
+} from "./actor-contract.js";
 
 /**
  * Backward-compatible fail-closed marker for the intentionally unsupported direct runner.
  * The name is retained because it is already exported public API.
  */
-export const TERMINAL_AGENT_NOT_IMPLEMENTED_CODE = "HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED" as const;
+export const TERMINAL_AGENT_NOT_IMPLEMENTED_CODE =
+  "HUMANISH_TERMINAL_AGENT_NOT_IMPLEMENTED" as const;
 
 /**
  * Options the engine hands the terminal agent session. The transport is the captured
@@ -54,9 +60,9 @@ export interface TerminalAgentSessionResult {
  * itself runs the shipped live route.
  */
 export async function runTerminalAgentSession(
-  _options: TerminalAgentSessionOptions
+  _options: TerminalAgentSessionOptions,
 ): Promise<TerminalAgentSessionResult> {
   throw new Error(
-    `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported. Terminal execution is route-owned so the lab can enforce command-scoped runtime auth, caps, evidence capture, and by-id cleanup together. Use runTerminalProductLab or runLab with a terminal-product config.`
+    `${TERMINAL_AGENT_NOT_IMPLEMENTED_CODE}: direct runTerminalAgentSession calls are intentionally unsupported. Terminal execution is route-owned so the lab can enforce command-scoped runtime auth, caps, evidence capture, and by-id cleanup together. Use runTerminalProductLab or runLab with a terminal-product config.`,
   );
 }

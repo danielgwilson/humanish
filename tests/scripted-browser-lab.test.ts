@@ -9,7 +9,11 @@ import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES } from "../src/actor-contract.js";
-import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import type {
+  E2BDesktopCreateOptions,
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+} from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import { createProgram } from "../src/program.js";
@@ -18,9 +22,14 @@ import { verifyRun } from "../src/run.js";
 import { runCuaActorLab } from "../src/cua-actor-lab.js";
 import {
   runScriptedBrowserLab,
-  type ScriptedBrowserLabHooks
+  type ScriptedBrowserLabHooks,
 } from "../src/scripted-browser-lab.js";
-import type { ScriptedBrowserLike, ScriptedBrowserSessionResult, ScriptedLocatorLike, ScriptedPageLike } from "../src/scripted-browser-actor.js";
+import type {
+  ScriptedBrowserLike,
+  ScriptedBrowserSessionResult,
+  ScriptedLocatorLike,
+  ScriptedPageLike,
+} from "../src/scripted-browser-actor.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const ROOT = process.cwd();
@@ -31,10 +40,12 @@ const PNG_1X1 = syntheticPng1x1();
 // real screenshot bytes, so evidence-presence checks see what a live run would.
 // ---------------------------------------------------------------------------
 
-function makeFakeBrowser(options: {
-  bodyAfterClick?: string;
-  selectorCounts?: Record<string, number>;
-} = {}): ScriptedBrowserLike {
+function makeFakeBrowser(
+  options: {
+    bodyAfterClick?: string;
+    selectorCounts?: Record<string, number>;
+  } = {},
+): ScriptedBrowserLike {
   const state = { url: "about:blank", body: "landing page" };
   const locatorFor = (selector: string): ScriptedLocatorLike => {
     const count = options.selectorCounts?.[selector] ?? 1;
@@ -48,7 +59,7 @@ function makeFakeBrowser(options: {
       waitFor: async () => {
         if (count === 0) throw new Error(`Timeout waiting for selector ${selector}`);
       },
-      isVisible: async () => count > 0
+      isVisible: async () => count > 0,
     };
     return locator;
   };
@@ -68,11 +79,11 @@ function makeFakeBrowser(options: {
       return PNG_1X1;
     },
     url: () => state.url,
-    evaluate: async <T,>() => state.body as unknown as T
+    evaluate: async <T>() => state.body as unknown as T,
   };
   return {
     newContext: async () => ({ newPage: async () => page }),
-    close: async () => undefined
+    close: async () => undefined,
   };
 }
 
@@ -93,24 +104,32 @@ function makeFakeSubjectSandbox(id: string): FakeSubjectSandbox {
         if (command.includes("curl")) return { exitCode: 0, stdout: "READY\n" };
         if (command.includes("tail -c")) return { exitCode: 0, stdout: "" };
         return { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       write: async (filePath: string, data: string | ArrayBuffer) => {
         calls.push(["files.write", filePath, String(data)]);
         return undefined;
-      }
+      },
     },
-    launch: async (application: string, uri?: string) => { calls.push(["launch", application, uri]); },
-    open: async (fileOrUrl: string) => { calls.push(["open", fileOrUrl]); },
+    launch: async (application: string, uri?: string) => {
+      calls.push(["launch", application, uri]);
+    },
+    open: async (fileOrUrl: string) => {
+      calls.push(["open", fileOrUrl]);
+    },
     getHost: (port: number) => `${port}-${id}.e2b.app`,
-    async screenshot() { return new Uint8Array([1, 2, 3, 4]); },
-    async wait(ms: number) { calls.push(["wait", ms]); },
+    async screenshot() {
+      return new Uint8Array([1, 2, 3, 4]);
+    },
+    async wait(ms: number) {
+      calls.push(["wait", ms]);
+    },
     stream: {
       getAuthKey: () => "fake-auth-key",
       getUrl: () => "https://stream.invalid/fake-auth-key",
-      start: async () => undefined
-    }
+      start: async () => undefined,
+    },
   };
   return sandbox as unknown as FakeSubjectSandbox;
 }
@@ -129,7 +148,10 @@ function makeFakeE2BModule(): {
   let n = 0;
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+      create: async (
+        templateOrOptions: string | E2BDesktopCreateOptions,
+        maybeOptions?: E2BDesktopCreateOptions,
+      ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
         const options = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         n += 1;
@@ -142,8 +164,8 @@ function makeFakeE2BModule(): {
       kill: async (sandboxId: string) => {
         killed.push(sandboxId);
         return true;
-      }
-    }
+      },
+    },
   };
   return { module, created, templates, killed, sandboxes };
 }
@@ -164,7 +186,10 @@ async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Prom
 
 /** Copy the COMMITTED demo scenario into the temp cwd so the test binds to the real file. */
 async function writeCommittedScenario(cwd: string): Promise<string> {
-  const text = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+  const text = await readFile(
+    path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"),
+    "utf8",
+  );
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(cwd, "humanish", "scenarios", "scripted-first-run.yaml"), text, "utf8");
   return text;
@@ -182,9 +207,25 @@ function scriptedConfig(overrides?: {
     id: "scripted-routing-proof",
     title: "Scripted routing proof",
     subject: { source: "app-url", appUrl: overrides?.appUrl ?? "http://127.0.0.1:5173/" },
-    actors: [{ type: "scripted-browser", persona: "synthetic-new-user", ...(overrides?.count === undefined ? {} : { count: overrides.count }) }],
-    scenario: { ref: overrides?.ref ?? "scripted-first-run", ...(overrides?.mode === undefined ? {} : { mode: overrides.mode }) },
-    execution: { ...(overrides && "target" in overrides ? (overrides.target ? { target: overrides.target } : {}) : { target: "local" }), timeoutMs: 30_000 }
+    actors: [
+      {
+        type: "scripted-browser",
+        persona: "synthetic-new-user",
+        ...(overrides?.count === undefined ? {} : { count: overrides.count }),
+      },
+    ],
+    scenario: {
+      ref: overrides?.ref ?? "scripted-first-run",
+      ...(overrides?.mode === undefined ? {} : { mode: overrides.mode }),
+    },
+    execution: {
+      ...(overrides && "target" in overrides
+        ? overrides.target
+          ? { target: overrides.target }
+          : {}
+        : { target: "local" }),
+      timeoutMs: 30_000,
+    },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -204,14 +245,18 @@ function provisionedScriptedConfig(): LabConfig {
         install: "pnpm install --frozen-lockfile",
         build: "pnpm build",
         start: "pnpm start --host 0.0.0.0",
-        url: "http://127.0.0.1:3000/"
+        url: "http://127.0.0.1:3000/",
       },
       env: ["GITHUB_TOKEN"],
-      state: { seed: [{ name: "seed", command: "pnpm db:seed" }] }
+      state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
     },
     actors: [{ type: "scripted-browser", persona: "synthetic-provider", count: 1 }],
     scenario: { ref: "scripted-first-run", mode: "live" },
-    execution: { target: "e2b-desktop", timeoutMs: 30_000, desktop: { template: "adopter-ui-sim-base" } }
+    execution: {
+      target: "e2b-desktop",
+      timeoutMs: 30_000,
+      desktop: { template: "adopter-ui-sim-base" },
+    },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -229,28 +274,29 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       id: "cua",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
     const synthetic = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }]
+      actors: [{ type: "synthetic-persona" }],
     });
     const smoke = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "c",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "humanish-setup" }]
+      actors: [{ type: "humanish-setup" }],
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "m",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
-    if (!cua.ok || !synthetic.ok || !smoke.ok || !meta.ok) throw new Error("fixture configs must parse");
+    if (!cua.ok || !synthetic.ok || !smoke.ok || !meta.ok)
+      throw new Error("fixture configs must parse");
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
     expect(selectLabBackend(smoke.config)).toBe("smoke");
@@ -261,7 +307,7 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
     // Such a config cannot parse; build it by hand (the library-API path).
     const tampered = {
       ...scriptedConfig(),
-      actors: [{ type: "not-a-registered-actor" }]
+      actors: [{ type: "not-a-registered-actor" }],
     } as LabConfig;
     expect(selectLabBackend(tampered)).toBe("cua");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-fallback-"));
@@ -303,7 +349,7 @@ describe("runScriptedBrowserLab", () => {
       id: "scripted-first-run",
       source: "humanish/scenarios/scripted-first-run.yaml",
       sourceDigest: digestText(scenarioText),
-      steps: 4
+      steps: 4,
     });
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -312,9 +358,11 @@ describe("runScriptedBrowserLab", () => {
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simCount).toBe(2);
     expect(bundle.cwd).toBe("[target-cwd]");
-    expect(bundle.simulations.map((sim: { id: string; status: string }) => [sim.id, sim.status])).toEqual([
+    expect(
+      bundle.simulations.map((sim: { id: string; status: string }) => [sim.id, sim.status]),
+    ).toEqual([
       ["scripted-desktop", "contract_proof_only"],
-      ["scripted-mobile", "contract_proof_only"]
+      ["scripted-mobile", "contract_proof_only"],
     ]);
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     // No session ran, so no stream.actor exists (mirrors the cua dry-run honesty rule).
@@ -324,18 +372,26 @@ describe("runScriptedBrowserLab", () => {
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.scenario.sourceDigest).toBe(digestText(scenarioText));
     // Subject provenance and the participant/analysis spending boundary are explicit events.
-    const subjectEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.subject.declared");
+    const subjectEvent = bundle.events.find(
+      (event: { type: string }) => event.type === "scripted-lab.subject.declared",
+    );
     expect(subjectEvent?.message).toContain("UNPINNED");
     expect(subjectEvent?.message).toContain("scenario digest");
-    const spendEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend");
+    const spendEvent = bundle.events.find(
+      (event: { type: string }) => event.type === "scripted-lab.spend",
+    );
     expect(spendEvent?.message).toContain("Scripted participant steps make no model requests");
-    expect(spendEvent?.message).toContain("post-run analysis has a separate budget unless disabled");
+    expect(spendEvent?.message).toContain(
+      "post-run analysis has a separate budget unless disabled",
+    );
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
 
     // latest.json points at THIS run so `verify --run latest` stays honest.
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
+    const pointer = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
+    );
     expect(pointer.runId).toBe(result.runId);
   });
 
@@ -343,81 +399,110 @@ describe("runScriptedBrowserLab", () => {
     await writeCommittedScenario(cwd);
     const outcome = await runLab(scriptedConfig(), { cwd, dryRun: true });
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.simCount).toBe(1);
     expect(bundle.simulations.map((sim: { id: string }) => sim.id)).toEqual(["scripted-desktop"]);
   });
 
-  it.each(["default", "disabled"])("live (with a fake browser): the real step engine verifies with analysis %s", async analysisMode => {
-    await writeCommittedScenario(cwd);
-    await withHttpServer(async (appUrl) => {
-      const hooks: ScriptedBrowserLabHooks = {
-        launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" })
-      };
-      const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
-      if (analysisMode === "disabled") config.review = { analysis: false };
-      const analyze = automaticAnalysisBoundary();
-      const outcome = await runLab(config, { cwd, scriptedHooks: hooks, automaticAnalysis: { run: analyze } });
-      expect(analyze).toHaveBeenCalledTimes(analysisMode === "disabled" ? 0 : 1);
-      if (analysisMode === "disabled") expect(outcome.result).not.toHaveProperty("automaticAnalysis");
-      else expect(outcome.result).toMatchObject({ automaticAnalysisTrigger: "default", automaticAnalysis: { reason: "synthetic_no_provider" } });
-      expect(outcome.backend).toBe("scripted");
-      if (outcome.backend !== "scripted") return;
-      const result = outcome.result;
+  it.each(["default", "disabled"])(
+    "live (with a fake browser): the real step engine verifies with analysis %s",
+    async (analysisMode) => {
+      await writeCommittedScenario(cwd);
+      await withHttpServer(async (appUrl) => {
+        const hooks: ScriptedBrowserLabHooks = {
+          launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
+        };
+        const config = scriptedConfig({ appUrl, count: 2, mode: "live" });
+        if (analysisMode === "disabled") config.review = { analysis: false };
+        const analyze = automaticAnalysisBoundary();
+        const outcome = await runLab(config, {
+          cwd,
+          scriptedHooks: hooks,
+          automaticAnalysis: { run: analyze },
+        });
+        expect(analyze).toHaveBeenCalledTimes(analysisMode === "disabled" ? 0 : 1);
+        if (analysisMode === "disabled")
+          expect(outcome.result).not.toHaveProperty("automaticAnalysis");
+        else
+          expect(outcome.result).toMatchObject({
+            automaticAnalysisTrigger: "default",
+            automaticAnalysis: { reason: "synthetic_no_provider" },
+          });
+        expect(outcome.backend).toBe("scripted");
+        if (outcome.backend !== "scripted") return;
+        const result = outcome.result;
 
-      expect(result.ok).toBe(true);
-      expect(result.dryRun).toBe(false);
-      expect(result.sessions).toHaveLength(2);
-      for (const session of result.sessions) {
-        expect(session.status).toBe("passed");
-        expect(session.completionReason).toBe("goal_satisfied");
-        expect(session.screenshots).toBe(4);
-      }
+        expect(result.ok).toBe(true);
+        expect(result.dryRun).toBe(false);
+        expect(result.sessions).toHaveLength(2);
+        for (const session of result.sessions) {
+          expect(session.status).toBe("passed");
+          expect(session.completionReason).toBe("goal_satisfied");
+          expect(session.screenshots).toBe(4);
+        }
 
-      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-      expect(bundle.mode).toBe("live");
-      expect(bundle.simCount).toBe(2);
-      expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
+        const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+        const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+        expect(bundle.mode).toBe("live");
+        expect(bundle.simCount).toBe(2);
+        expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([
+          100, 100,
+        ]);
 
-      for (const surface of ["desktop", "mobile"]) {
-        const stream = bundle.streams.find((entry: { id: string }) => entry.id === `scripted-${surface}-stream`);
-        // The seam this registration exists to fill.
-        expect(stream.actor.schema).toBe(ACTOR_TRACE_SCHEMA);
-        expect(stream.actor.lane).toBe("scripted-browser");
-        expect(stream.actor.provider).toBe("browser-persona");
-        expect(stream.actor.protocol).toBe("scripted-steps");
-        expect(stream.actor.tokenUsage).toEqual({ input: 0, output: 0, total: 0, costUsd: 0 });
-        // REAL emulated viewport metadata (isMobile/DSF genuinely render on this route).
-        expect(stream.viewport.isMobile).toBe(surface === "mobile");
+        for (const surface of ["desktop", "mobile"]) {
+          const stream = bundle.streams.find(
+            (entry: { id: string }) => entry.id === `scripted-${surface}-stream`,
+          );
+          // The seam this registration exists to fill.
+          expect(stream.actor.schema).toBe(ACTOR_TRACE_SCHEMA);
+          expect(stream.actor.lane).toBe("scripted-browser");
+          expect(stream.actor.provider).toBe("browser-persona");
+          expect(stream.actor.protocol).toBe("scripted-steps");
+          expect(stream.actor.tokenUsage).toEqual({ input: 0, output: 0, total: 0, costUsd: 0 });
+          // REAL emulated viewport metadata (isMobile/DSF genuinely render on this route).
+          expect(stream.viewport.isMobile).toBe(surface === "mobile");
 
-        // Native + projected traces persist on disk; the projection matches the seam.
-        const nativeTrace = JSON.parse(await readFile(path.join(runDir, "traces", `${surface}.json`), "utf8"));
-        expect(nativeTrace.schema).toBe("humanish.browser-persona-trace.v1");
-        const actorTrace = JSON.parse(await readFile(path.join(runDir, `actor-${surface}.json`), "utf8"));
-        expect(actorTrace).toEqual(stream.actor);
-      }
+          // Native + projected traces persist on disk; the projection matches the seam.
+          const nativeTrace = JSON.parse(
+            await readFile(path.join(runDir, "traces", `${surface}.json`), "utf8"),
+          );
+          expect(nativeTrace.schema).toBe("humanish.browser-persona-trace.v1");
+          const actorTrace = JSON.parse(
+            await readFile(path.join(runDir, `actor-${surface}.json`), "utf8"),
+          );
+          expect(actorTrace).toEqual(stream.actor);
+        }
 
-      // Screenshots referenced by streams exist on disk (4 steps × 2 surfaces).
-      const screenshotFiles = await readdir(path.join(runDir, "screenshots"));
-      expect(screenshotFiles).toHaveLength(8);
+        // Screenshots referenced by streams exist on disk (4 steps × 2 surfaces).
+        const screenshotFiles = await readdir(path.join(runDir, "screenshots"));
+        expect(screenshotFiles).toHaveLength(8);
 
-      // verifyRun passes INCLUDING the hollow-run engagement check, and surfaces the
-      // raw-screenshot posture as a warning (never flips ok).
-      const verified = await verifyRun(cwd, result.runId);
-      expect(verified.ok).toBe(true);
-      expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
-      expect(verified.warnings.join("\n")).toContain("FULL-FIDELITY (raw)");
-      expect(result.warnings.join("\n")).toContain("full-fidelity");
+        // verifyRun passes INCLUDING the hollow-run engagement check, and surfaces the
+        // raw-screenshot posture as a warning (never flips ok).
+        const verified = await verifyRun(cwd, result.runId);
+        expect(verified.ok).toBe(true);
+        expect(verified.checks.find((check) => check.name === "actor engagement")?.ok).toBe(true);
+        expect(verified.warnings.join("\n")).toContain("FULL-FIDELITY (raw)");
+        expect(result.warnings.join("\n")).toContain("full-fidelity");
 
-      // Public safety: no absolute machine paths or secret-shaped text in any text artifact.
-      for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor-desktop.json", "actor-mobile.json"]) {
-        const text = await readFile(path.join(runDir, file), "utf8");
-        expect(text, file).not.toContain(cwd);
-        expect(text, file).not.toContain(tmpdir());
-      }
-    });
-  });
+        // Public safety: no absolute machine paths or secret-shaped text in any text artifact.
+        for (const file of [
+          "run.json",
+          "review.json",
+          "review.md",
+          "events.ndjson",
+          "actor-desktop.json",
+          "actor-mobile.json",
+        ]) {
+          const text = await readFile(path.join(runDir, file), "utf8");
+          expect(text, file).not.toContain(cwd);
+          expect(text, file).not.toContain(tmpdir());
+        }
+      });
+    },
+  );
 
   it("live provisioned clone: provisions one synthetic subject, drives getHost, and persists only public-safe URL labels", async () => {
     let clock = Date.parse("2026-09-04T00:00:00.000Z");
@@ -427,7 +512,7 @@ describe("runScriptedBrowserLab", () => {
     const hooks: ScriptedBrowserLabHooks = {
       env: {
         E2B_API_KEY: "fake-e2b-key-for-test",
-        GITHUB_TOKEN: "github-token-test"
+        GITHUB_TOKEN: "github-token-test",
       },
       loadDesktopModule: async () => fakeE2B.module,
       // The injected session writes synthetic captures; it does not launch a host browser.
@@ -435,7 +520,10 @@ describe("runScriptedBrowserLab", () => {
       runSession: async (options) => {
         rawSessionUrls.push(options.appUrl);
         expect(options.evidenceAppUrl).toBe("[provisioned-subject]");
-        expect(options.urlPolicy).toEqual({ kind: "provisioned-subject", evidenceOrigin: "[provisioned-subject]" });
+        expect(options.urlPolicy).toEqual({
+          kind: "provisioned-subject",
+          evidenceOrigin: "[provisioned-subject]",
+        });
         const capturedAt = "2026-06-19T00:00:00.000Z";
         const screenshotPath = `screenshots/${options.surface.id}-step-01-load.png`;
         const tracePath = `traces/${options.surface.id}.json`;
@@ -450,34 +538,43 @@ describe("runScriptedBrowserLab", () => {
           ok: true,
           reason,
           screenshotPath,
-          steps: [{
-            action: "goto" as const,
-            completedAt: capturedAt,
-            durationMs: 1,
-            id: "step-01-load",
-            label: "Load landing page",
-            reason: "goto completed for Load landing page.",
-            screenshotPath,
-            status: "passed" as const,
-            url: "[provisioned-subject]/"
-          }],
+          steps: [
+            {
+              action: "goto" as const,
+              completedAt: capturedAt,
+              durationMs: 1,
+              id: "step-01-load",
+              label: "Load landing page",
+              reason: "goto completed for Load landing page.",
+              screenshotPath,
+              status: "passed" as const,
+              url: "[provisioned-subject]/",
+            },
+          ],
           surface: options.surface,
-          tracePath
+          tracePath,
         };
-        await writeFile(path.join(options.artifactRoot, tracePath), `${JSON.stringify({
-          schema: "humanish.browser-persona-trace.v1",
-          capturedAt,
-          appUrl: "[provisioned-subject]",
-          browserCommand: "injected-browser",
-          durationMs: 1,
-          httpStatus: 200,
-          ok: true,
-          reason,
-          screenshotPath,
-          steps: capture.steps,
-          surface: options.surface,
-          redaction: "passed"
-        }, null, 2)}\n`);
+        await writeFile(
+          path.join(options.artifactRoot, tracePath),
+          `${JSON.stringify(
+            {
+              schema: "humanish.browser-persona-trace.v1",
+              capturedAt,
+              appUrl: "[provisioned-subject]",
+              browserCommand: "injected-browser",
+              durationMs: 1,
+              httpStatus: 200,
+              ok: true,
+              reason,
+              screenshotPath,
+              steps: capture.steps,
+              surface: options.surface,
+              redaction: "passed",
+            },
+            null,
+            2,
+          )}\n`,
+        );
         return {
           status: "passed",
           completionReason: "goal_satisfied",
@@ -489,7 +586,11 @@ describe("runScriptedBrowserLab", () => {
             protocol: "scripted-steps",
             lane: "scripted-browser",
             persona: options.persona,
-            redaction: { status: "passed", screenshots: "raw", notes: "fake provisioned scripted trace" },
+            redaction: {
+              status: "passed",
+              screenshots: "raw",
+              notes: "fake provisioned scripted trace",
+            },
             startedAt: capturedAt,
             completedAt: capturedAt,
             durationMs: 1,
@@ -498,17 +599,19 @@ describe("runScriptedBrowserLab", () => {
             reason,
             ids: {},
             counts: { steps: 1, actions: 1, assertions: 0, blocked: 0, screenshots: 1 },
-            items: [{
-              id: "step-01-load",
-              kind: "ui_action",
-              lifecycle: "completed",
-              status: "passed",
-              title: "Load landing page",
-              screenshotRef: { path: screenshotPath, redaction: "none" }
-            }],
+            items: [
+              {
+                id: "step-01-load",
+                kind: "ui_action",
+                lifecycle: "completed",
+                status: "passed",
+                title: "Load landing page",
+                screenshotRef: { path: screenshotPath, redaction: "none" },
+              },
+            ],
             tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
-            capabilities: SCRIPTED_BROWSER_CAPABILITIES
-          }
+            capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+          },
         };
       },
       // An injected monotonic clock (#276): every poll loop on the provisioned path (install, build,
@@ -520,8 +623,8 @@ describe("runScriptedBrowserLab", () => {
         now: () => clock,
         sleep: async (ms) => {
           clock += ms;
-        }
-      }
+        },
+      },
     };
 
     const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
@@ -530,7 +633,9 @@ describe("runScriptedBrowserLab", () => {
     const result = outcome.result;
 
     // Name the step on failure: "expected false to be true" said nothing on either CI leg.
-    expect(result.ok, JSON.stringify({ error: result.error, warnings: result.warnings })).toBe(true);
+    expect(result.ok, JSON.stringify({ error: result.error, warnings: result.warnings })).toBe(
+      true,
+    );
     expect(result.appUrl).toBe("[provisioned-subject]");
     expect(result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: true });
     expect(result.hostDigest).toMatch(/^[a-f0-9]{16}$/);
@@ -548,17 +653,28 @@ describe("runScriptedBrowserLab", () => {
       repo: "repo-01",
       commit: "abc123def4567890abc1",
       envNames: ["GITHUB_TOKEN"],
-      state: { provenance: "seeded" }
+      state: { provenance: "seeded" },
     });
     expect(bundle.desktopTemplate).toBe("adopter-ui-sim-base");
     expect(bundle.streams[0].ui.route).toBe("[provisioned-subject]");
     expect(bundle.streams[0].actor.reason).toContain("[provisioned-subject]");
-    expect(bundle.events.find((event: { type: string }) => event.type === "scripted-lab.subject.declared")?.message)
-      .toContain("Provisioned synthetic subject");
-    expect(bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend")?.message)
-      .toContain("E2B sandbox minutes");
+    expect(
+      bundle.events.find(
+        (event: { type: string }) => event.type === "scripted-lab.subject.declared",
+      )?.message,
+    ).toContain("Provisioned synthetic subject");
+    expect(
+      bundle.events.find((event: { type: string }) => event.type === "scripted-lab.spend")?.message,
+    ).toContain("E2B sandbox minutes");
 
-    for (const file of ["run.json", "review.json", "review.md", "events.ndjson", "actor-desktop.json", path.join("traces", "desktop.json")]) {
+    for (const file of [
+      "run.json",
+      "review.json",
+      "review.md",
+      "events.ndjson",
+      "actor-desktop.json",
+      path.join("traces", "desktop.json"),
+    ]) {
       const text = await readFile(path.join(runDir, file), "utf8");
       expect(text, file).toContain("[provisioned-subject]");
       expect(text, file).not.toContain("e2b.app");
@@ -576,9 +692,12 @@ describe("runScriptedBrowserLab", () => {
     await withHttpServer(async (appUrl) => {
       // Click never produces the Welcome state -> stateChanged + waitForText fail honestly.
       const hooks: ScriptedBrowserLabHooks = {
-        launchBrowser: async () => makeFakeBrowser({})
+        launchBrowser: async () => makeFakeBrowser({}),
       };
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), { cwd, scriptedHooks: hooks });
+      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
+        cwd,
+        scriptedHooks: hooks,
+      });
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
@@ -588,10 +707,14 @@ describe("runScriptedBrowserLab", () => {
       expect(result.sessions[0]?.completionReason).toBe("step_failed");
       expect(result.sessions[0]?.status).toBe("failed");
 
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      );
       expect(bundle.review.verdict).toBe("fail");
       expect(bundle.review.gaps.join("\n")).toContain("desktop");
-      const sessionEvent = bundle.events.find((event: { type: string }) => event.type === "scripted-lab.session.step_failed");
+      const sessionEvent = bundle.events.find(
+        (event: { type: string }) => event.type === "scripted-lab.session.step_failed",
+      );
       expect(sessionEvent).toBeDefined();
 
       const verified = await verifyRun(cwd, result.runId);
@@ -605,16 +728,21 @@ describe("runScriptedBrowserLab", () => {
       const hooks: ScriptedBrowserLabHooks = {
         launchBrowser: async () => {
           throw new Error("chromium executable missing");
-        }
+        },
       };
-      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), { cwd, scriptedHooks: hooks });
+      const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
+        cwd,
+        scriptedHooks: hooks,
+      });
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_FAILED");
       expect(result.sessions[0]?.completionReason).toBe("harness_error");
-      const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      );
       expect(bundle.review.verdict).toBe("fail");
     });
   });
@@ -626,9 +754,12 @@ describe("runScriptedBrowserLab", () => {
       runSession: async () => {
         throw new Error(`session exploded with ${secretToken}`);
       },
-      launchBrowser: async () => makeFakeBrowser({})
+      launchBrowser: async () => makeFakeBrowser({}),
     };
-    const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), { cwd, scriptedHooks: hooks });
+    const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), {
+      cwd,
+      scriptedHooks: hooks,
+    });
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
     const result = outcome.result;
 
@@ -653,82 +784,98 @@ describe("runScriptedBrowserLab", () => {
     const runId = "unsafe-hook-result";
     const hooks: ScriptedBrowserLabHooks = {
       browserCommand: "/synthetic/browser",
-      runSession: async (options) => ({
-        status: "passed",
-        completionReason: "goal_satisfied",
-        reason: "synthetic malicious callback result",
-        capture: {
-          capturedAt: "2026-07-13T00:00:00.000Z",
-          durationMs: 1,
-          ok: true,
-          reason: "synthetic malicious callback result",
-          steps: [],
-          surface: options.surface,
-          tracePath: "../../scripted-outside-sentinel.txt"
-        },
-        trace: {
-          schema: ACTOR_TRACE_SCHEMA,
-          provider: "browser-persona",
-          protocol: "scripted-steps",
-          lane: "scripted-browser",
-          persona: options.persona,
-          redaction: { status: "passed", screenshots: "none", notes: "synthetic" },
-          startedAt: "2026-07-13T00:00:00.000Z",
-          completedAt: "2026-07-13T00:00:00.000Z",
+      runSession: async (options) =>
+        ({
           status: "passed",
           completionReason: "goal_satisfied",
-          summary: "synthetic",
-          capabilities: SCRIPTED_BROWSER_CAPABILITIES,
-          actions: [],
-          tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 }
-        }
-      } as unknown as ScriptedBrowserSessionResult)
+          reason: "synthetic malicious callback result",
+          capture: {
+            capturedAt: "2026-07-13T00:00:00.000Z",
+            durationMs: 1,
+            ok: true,
+            reason: "synthetic malicious callback result",
+            steps: [],
+            surface: options.surface,
+            tracePath: "../../scripted-outside-sentinel.txt",
+          },
+          trace: {
+            schema: ACTOR_TRACE_SCHEMA,
+            provider: "browser-persona",
+            protocol: "scripted-steps",
+            lane: "scripted-browser",
+            persona: options.persona,
+            redaction: { status: "passed", screenshots: "none", notes: "synthetic" },
+            startedAt: "2026-07-13T00:00:00.000Z",
+            completedAt: "2026-07-13T00:00:00.000Z",
+            status: "passed",
+            completionReason: "goal_satisfied",
+            summary: "synthetic",
+            capabilities: SCRIPTED_BROWSER_CAPABILITIES,
+            actions: [],
+            tokenUsage: { input: 0, output: 0, total: 0, costUsd: 0 },
+          },
+        }) as unknown as ScriptedBrowserSessionResult,
     };
 
-    await expect(runScriptedBrowserLab({
-      cwd,
-      config: scriptedConfig({ count: 1, mode: "live" }),
-      dryRun: false,
-      hooks,
-      runId
-    })).rejects.toThrow(/unsafe artifact path/i);
+    await expect(
+      runScriptedBrowserLab({
+        cwd,
+        config: scriptedConfig({ count: 1, mode: "live" }),
+        dryRun: false,
+        hooks,
+        runId,
+      }),
+    ).rejects.toThrow(/unsafe artifact path/i);
     expect(await readFile(outside, "utf8")).toBe("UNCHANGED");
-    await expect(stat(path.join(cwd, ".humanish", "runs", runId, "run.json")))
-      .rejects.toMatchObject({ code: "ENOENT" });
-    await expect(stat(path.join(cwd, ".humanish", "runs", "latest.json")))
-      .rejects.toMatchObject({ code: "ENOENT" });
+    await expect(
+      stat(path.join(cwd, ".humanish", "runs", runId, "run.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(path.join(cwd, ".humanish", "runs", "latest.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   describe("scenario.ref consumption (fail-closed)", () => {
     it.each([
       ["missing scenario file", "does-not-exist", undefined],
       ["invalid YAML", "broken-scenario", "id: broken\n  bad:\n indent: [unclosed"],
-      ["zero executable browser steps", "no-browser-steps", [
-        "schema: humanish.scenario.v1",
-        "id: no-browser-steps",
-        "title: Prose-only scenario",
-        "goal: No executable steps here.",
-        "steps:",
-        "  - name: look around",
-        "    expectation: something is visible"
-      ].join("\n")]
-    ])("returns HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s", async (_label, ref, text) => {
-      if (text !== undefined) {
-        await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
-        await writeFile(path.join(cwd, "humanish", "scenarios", `${ref}.yaml`), text, "utf8");
-      }
-      const result = await runScriptedBrowserLab({ cwd, config: scriptedConfig({ ref }), dryRun: true });
-      expect(result.ok).toBe(false);
-      expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
-      expect(result.runId).toBe("not-created");
-      await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
-    });
+      [
+        "zero executable browser steps",
+        "no-browser-steps",
+        [
+          "schema: humanish.scenario.v1",
+          "id: no-browser-steps",
+          "title: Prose-only scenario",
+          "goal: No executable steps here.",
+          "steps:",
+          "  - name: look around",
+          "    expectation: something is visible",
+        ].join("\n"),
+      ],
+    ])(
+      "returns HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID with no artifacts: %s",
+      async (_label, ref, text) => {
+        if (text !== undefined) {
+          await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
+          await writeFile(path.join(cwd, "humanish", "scenarios", `${ref}.yaml`), text, "utf8");
+        }
+        const result = await runScriptedBrowserLab({
+          cwd,
+          config: scriptedConfig({ ref }),
+          dryRun: true,
+        });
+        expect(result.ok).toBe(false);
+        expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
+        expect(result.runId).toBe("not-created");
+        await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
+      },
+    );
 
     it("clamps path-style refs inside the target cwd (no ../../ escape recorded as provenance)", async () => {
       const result = await runScriptedBrowserLab({
         cwd,
         config: scriptedConfig({ ref: "../../outside/evil.yaml" }),
-        dryRun: true
+        dryRun: true,
       });
       expect(result.ok).toBe(false);
       expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID");
@@ -737,13 +884,16 @@ describe("runScriptedBrowserLab", () => {
     });
 
     it("resolves a path-style ref and records repo-relative provenance", async () => {
-      const text = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+      const text = await readFile(
+        path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"),
+        "utf8",
+      );
       await mkdir(path.join(cwd, "custom"), { recursive: true });
       await writeFile(path.join(cwd, "custom", "journey.yaml"), text, "utf8");
       const result = await runScriptedBrowserLab({
         cwd,
         config: scriptedConfig({ ref: "custom/journey.yaml" }),
-        dryRun: true
+        dryRun: true,
       });
       expect(result.ok).toBe(true);
       expect(result.scenario?.source).toBe("custom/journey.yaml");
@@ -753,7 +903,10 @@ describe("runScriptedBrowserLab", () => {
     it("rejects a symlinked scenario before any browser hook runs or outside bytes enter output", async () => {
       const outsideScenario = path.join(path.dirname(cwd), "outside-scenario.yaml");
       const secretMarker = "OUTSIDE-SCENARIO-SECRET";
-      const scenarioText = await readFile(path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"), "utf8");
+      const scenarioText = await readFile(
+        path.join(ROOT, "humanish", "scenarios", "scripted-first-run.yaml"),
+        "utf8",
+      );
       await writeFile(outsideScenario, `${scenarioText}\n# ${secretMarker}\n`, "utf8");
       await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
       await symlink(outsideScenario, path.join(cwd, "humanish", "scenarios", "linked.yaml"));
@@ -768,8 +921,8 @@ describe("runScriptedBrowserLab", () => {
           runSession: async () => {
             hookCalled = true;
             throw new Error("must not run");
-          }
-        }
+          },
+        },
       });
 
       expect(result.ok).toBe(false);
@@ -791,7 +944,10 @@ describe("runScriptedBrowserLab", () => {
   it("re-enforces the loopback boundary at the engine even if a config bypasses the parser", async () => {
     await writeCommittedScenario(cwd);
     const config = scriptedConfig();
-    const tampered = { ...config, subject: { source: "app-url" as const, appUrl: "https://example.com/" } };
+    const tampered = {
+      ...config,
+      subject: { source: "app-url" as const, appUrl: "https://example.com/" },
+    };
     const result = await runScriptedBrowserLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE");
@@ -804,7 +960,9 @@ describe("runScriptedBrowserLab", () => {
 // CLI (rung 4): the committed scripted-demo lab through `lab run`, JSON + human.
 // ---------------------------------------------------------------------------
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -813,13 +971,18 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
   program.exitOverride();
   try {
     await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   } catch (error) {
-    if (!(error instanceof CommanderError && (error.code === "commander.helpDisplayed" || error.code === "commander.version"))) {
+    if (
+      !(
+        error instanceof CommanderError &&
+        (error.code === "commander.helpDisplayed" || error.code === "commander.version")
+      )
+    ) {
       throw error;
     }
   }
@@ -831,7 +994,10 @@ describe("humanish lab run scripted-demo (CLI)", () => {
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scripted-cli-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }, null, 2));
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "fixture-app" }, null, 2),
+    );
     const lab = await readFile(path.join(ROOT, "humanish", "labs", "scripted-demo.yaml"), "utf8");
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "labs", "scripted-demo.yaml"), lab, "utf8");
@@ -843,7 +1009,18 @@ describe("humanish lab run scripted-demo (CLI)", () => {
   });
 
   it("dry-run --json emits the structured scripted lab result", async () => {
-    const result = await runCli(["lab", "run", "scripted-demo", "--cwd", cwd, "--dry-run", "--json", "--no-open", "--run-id", "scripted-cli-json"]);
+    const result = await runCli([
+      "lab",
+      "run",
+      "scripted-demo",
+      "--cwd",
+      cwd,
+      "--dry-run",
+      "--json",
+      "--no-open",
+      "--run-id",
+      "scripted-cli-json",
+    ]);
     expect(result.exitCode).toBe(0);
     const envelope = JSON.parse(result.stdout) as {
       schema: string;
@@ -860,15 +1037,27 @@ describe("humanish lab run scripted-demo (CLI)", () => {
     expect(envelope.actor).toBe("scripted-browser");
     expect(envelope.labId).toBe("scripted-demo");
     expect(envelope.runId).toBe("scripted-cli-json");
-    expect(envelope.scenario).toEqual(expect.objectContaining({
-      id: "scripted-first-run",
-      source: "humanish/scenarios/scripted-first-run.yaml",
-      steps: 4
-    }));
+    expect(envelope.scenario).toEqual(
+      expect.objectContaining({
+        id: "scripted-first-run",
+        source: "humanish/scenarios/scripted-first-run.yaml",
+        steps: 4,
+      }),
+    );
   });
 
   it("dry-run human output names run/lab/actor/subject/scenario", async () => {
-    const result = await runCli(["lab", "run", "scripted-demo", "--cwd", cwd, "--dry-run", "--no-open", "--run-id", "scripted-cli-human"]);
+    const result = await runCli([
+      "lab",
+      "run",
+      "scripted-demo",
+      "--cwd",
+      cwd,
+      "--dry-run",
+      "--no-open",
+      "--run-id",
+      "scripted-cli-human",
+    ]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("humanish lab scripted dry-run");
     expect(result.stdout).toContain("run: scripted-cli-human");

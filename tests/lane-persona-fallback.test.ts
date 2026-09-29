@@ -19,7 +19,7 @@ function planFor(actor: Record<string, unknown>) {
     subject: { source: "app-url", appUrl: "http://127.0.0.1:8000/" },
     actors: [actor],
     execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 2 },
-    scenario: { mode: "dry-run" }
+    scenario: { mode: "dry-run" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return resolveCuaLanePlan(parsed.config, { dryRun: true });
@@ -31,7 +31,10 @@ describe("lane persona resolution (#512)", () => {
       type: "openai-computer-use",
       persona: "synthetic-new-user",
       mission: "Look at the page.",
-      lanes: [{ id: "mobile", device: "mobile" }, { id: "desktop", device: "desktop" }]
+      lanes: [
+        { id: "mobile", device: "mobile" },
+        { id: "desktop", device: "desktop" },
+      ],
     });
     expect(plan.lanes).toHaveLength(2);
     for (const lane of plan.lanes) {
@@ -44,7 +47,7 @@ describe("lane persona resolution (#512)", () => {
       type: "openai-computer-use",
       persona: "synthetic-new-user",
       mission: "Look at the page.",
-      lanes: [{ id: "a", persona: "power-user" }, { id: "b" }]
+      lanes: [{ id: "a", persona: "power-user" }, { id: "b" }],
     });
     expect(plan.lanes[0]?.persona).toBe("power-user");
     // The un-overridden lane still inherits, so one override does not strip the rest.
@@ -57,7 +60,7 @@ describe("lane persona resolution (#512)", () => {
     const plan = planFor({
       type: "openai-computer-use",
       mission: "Look at the page.",
-      lanes: [{ id: "a" }]
+      lanes: [{ id: "a" }],
     });
     expect(plan.lanes[0]?.persona).toBe("cua-operator");
   });
@@ -67,7 +70,7 @@ describe("lane persona resolution (#512)", () => {
     const plan = planFor({
       type: "openai-computer-use",
       persona: "synthetic-new-user",
-      mission: "Look at the page."
+      mission: "Look at the page.",
     });
     expect(plan.lanes[0]?.persona).toBe("synthetic-new-user");
   });

@@ -9,8 +9,15 @@ import type { ObserverData } from "../lib/observer-data";
 const feed = vi.hoisted(() => ({ data: null as ObserverData | null }));
 vi.mock("../lib/use-observer-feed", async () => {
   const { NO_ANALYSIS } = await import("../lib/study-analysis");
-  return { useObserverFeed: () => ({ data: feed.data, analysis: NO_ANALYSIS, history: null,
-    connection: { state: "offline" }, retry: () => undefined }) };
+  return {
+    useObserverFeed: () => ({
+      data: feed.data,
+      analysis: NO_ANALYSIS,
+      history: null,
+      connection: { state: "offline" },
+      retry: () => undefined,
+    }),
+  };
 });
 
 const origin = Date.parse("2026-09-01T10:00:00.000Z");
@@ -23,9 +30,12 @@ function snapshot(offsets: number[]): ObserverData {
   const stream = data.streams[0]!;
   stream.id = "recorded-participant";
   stream.actor!.items = offsets.map((offset) => ({
-    id: `capture-${offset}`, kind: "screenshot", lifecycle: "completed", title: `Capture ${offset}`,
+    id: `capture-${offset}`,
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: `Capture ${offset}`,
     at: new Date(origin + offset).toISOString(),
-    screenshotRef: { path: `screenshots/capture-${offset}.png`, redaction: "none" }
+    screenshotRef: { path: `screenshots/capture-${offset}.png`, redaction: "none" },
   }));
   data.streams = [stream];
   return data;
@@ -33,11 +43,16 @@ function snapshot(offsets: number[]): ObserverData {
 
 async function render(data: ObserverData) {
   feed.data = data;
-  await act(async () => { root.render(<App data={data} snapshot />); });
+  await act(async () => {
+    root.render(<App data={data} snapshot />);
+  });
   if (!positioned) {
     const scrub = container.querySelector<HTMLInputElement>('[aria-label="Seek study recording"]')!;
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(scrub, "5000");
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        scrub,
+        "5000",
+      );
       scrub.dispatchEvent(new Event("input", { bubbles: true }));
       scrub.dispatchEvent(new Event("change", { bubbles: true }));
     });
@@ -47,7 +62,10 @@ async function render(data: ObserverData) {
   // the settled image; loading/late responses have their own decode tests.
   await act(async () => {
     for (const image of container.querySelectorAll<HTMLImageElement>(".thumb img")) {
-      Object.defineProperties(image, { naturalWidth: { value: 390, configurable: true }, naturalHeight: { value: 844, configurable: true } });
+      Object.defineProperties(image, {
+        naturalWidth: { value: 390, configurable: true },
+        naturalHeight: { value: 844, configurable: true },
+      });
       image.dispatchEvent(new Event("load"));
     }
   });
@@ -59,9 +77,15 @@ const play = () => container.querySelector<HTMLButtonElement>('[aria-label="Play
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = () => undefined;
-  window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null,
-    addEventListener: () => undefined, removeEventListener: () => undefined,
-    addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 });
 
@@ -74,7 +98,9 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await act(async () => { root.unmount(); });
+  await act(async () => {
+    root.unmount();
+  });
   container.remove();
   localStorage.clear();
   window.history.replaceState(null, "", window.location.pathname);
@@ -91,7 +117,11 @@ describe("Paused whole-grid review survives same-run snapshot replacement", () =
     expect(play()?.disabled).toBe(true);
     // A range thumb cannot represent this old absolute moment; disclose that
     // instead of displaying a new capture as though the reviewer had sought it.
-    expect(container.querySelector('[aria-label="Seek study recording"]')?.getAttribute("aria-valuetext")).toMatch(/outside.*available/i);
+    expect(
+      container
+        .querySelector('[aria-label="Seek study recording"]')
+        ?.getAttribute("aria-valuetext"),
+    ).toMatch(/outside.*available/i);
   });
 
   it("does not rewind a paused cursor when refreshed evidence ends earlier", async () => {
@@ -102,7 +132,11 @@ describe("Paused whole-grid review survives same-run snapshot replacement", () =
     expect(caption()).toBe("Last capture · 00:04 before cursor");
     expect(container.querySelector(".card-capture-age")?.textContent).toBe("4s ago");
     expect(play()?.disabled).toBe(true);
-    expect(container.querySelector('[aria-label="Seek study recording"]')?.getAttribute("aria-valuetext")).toMatch(/outside.*available/i);
+    expect(
+      container
+        .querySelector('[aria-label="Seek study recording"]')
+        ?.getAttribute("aria-valuetext"),
+    ).toMatch(/outside.*available/i);
   });
 
   it("keeps the original cursor through temporary missing evidence and recovery", async () => {
@@ -129,6 +163,10 @@ describe("Paused whole-grid review survives same-run snapshot replacement", () =
     expect(image()?.getAttribute("src")).toBe("../screenshots/capture-1000.png");
     expect(caption()).toBe("Capture · 00:04 before cursor");
     expect(container.querySelector('[aria-label="Pause study"]')).toBeNull();
-    expect(container.querySelector('[aria-label="Seek study recording"]')?.getAttribute("aria-valuetext")).toBe("00:05 of 00:20, recorded capture time");
+    expect(
+      container
+        .querySelector('[aria-label="Seek study recording"]')
+        ?.getAttribute("aria-valuetext"),
+    ).toBe("00:05 of 00:20, recorded capture time");
   });
 });

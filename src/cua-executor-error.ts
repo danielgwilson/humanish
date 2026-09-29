@@ -10,7 +10,7 @@ const messages = Object.freeze({
   deadline_exceeded: "Desktop executor request exceeded its deadline.",
   action_rejected: "Desktop executor rejected the action.",
   execution_failed: "Desktop executor could not complete the request.",
-  cancelled: "Desktop executor request was cancelled."
+  cancelled: "Desktop executor request was cancelled.",
 });
 
 export type CuaExecutorErrorCode = keyof typeof messages;
@@ -33,7 +33,10 @@ export class CuaExecutorError extends Error {
   readonly disposition: CuaExecutorDisposition;
 
   constructor(code: CuaExecutorErrorCode, disposition: CuaExecutorDisposition) {
-    if (!isCuaExecutorErrorCode(code) || (disposition !== "not_dispatched" && disposition !== "outcome_uncertain")) {
+    if (
+      !isCuaExecutorErrorCode(code) ||
+      (disposition !== "not_dispatched" && disposition !== "outcome_uncertain")
+    ) {
       throw new TypeError("Invalid desktop executor error declaration.");
     }
     super(messages[code]);
@@ -43,7 +46,7 @@ export class CuaExecutorError extends Error {
     // Keep the values used in durable diagnostics finite even for JavaScript callers.
     Object.defineProperties(this, {
       code: { writable: false, configurable: false },
-      disposition: { writable: false, configurable: false }
+      disposition: { writable: false, configurable: false },
     });
     executorErrors.add(this);
   }

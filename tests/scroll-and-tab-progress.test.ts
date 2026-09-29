@@ -21,9 +21,12 @@ import {
   type CuaObservation,
   type CuaProvider,
   type CuaTurn,
-  type CuaTurnRequest
+  type CuaTurnRequest,
 } from "../src/computer-use.js";
-import { makeChromeBrowserStateObserver, makeChromeDesktopGeometryObserver } from "../src/cua-actor-lab.js";
+import {
+  makeChromeBrowserStateObserver,
+  makeChromeDesktopGeometryObserver,
+} from "../src/cua-actor-lab.js";
 import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
@@ -36,7 +39,7 @@ const FAKE_CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 const persona: ActorPersonaRef = { id: "reader", traitsApplied: [], promptDigest: "abc123def456" };
@@ -59,11 +62,17 @@ class RepeatScrollProvider implements CuaProvider {
   readonly capabilities = FAKE_CAPS;
   async nextTurn(_req: CuaTurnRequest): Promise<CuaTurn> {
     // The same bucketed fingerprint every turn — exactly what reading a long page looks like.
-    return { actions: [{ kind: "scroll", x: 640, y: 400, dx: 0, dy: 300 }], pendingSafetyChecks: [], done: false };
+    return {
+      actions: [{ kind: "scroll", x: 640, y: 400, dx: 0, dy: 300 }],
+      pendingSafetyChecks: [],
+      done: false,
+    };
   }
 }
 
-function scrollingExecutor(scrollYFor: (observeIndex: number) => number | undefined): CuaExecutor & { observes: number } {
+function scrollingExecutor(
+  scrollYFor: (observeIndex: number) => number | undefined,
+): CuaExecutor & { observes: number } {
   const staticFrame = frame();
   const executor = {
     observes: 0,
@@ -71,9 +80,13 @@ function scrollingExecutor(scrollYFor: (observeIndex: number) => number | undefi
       const scrollY = scrollYFor(executor.observes);
       executor.observes += 1;
       // The PINNED frame: identical signature every time, like a scrollytelling section.
-      return { screenshot: staticFrame, stateSignature: "pinned", ...(scrollY === undefined ? {} : { scrollY }) };
+      return {
+        screenshot: staticFrame,
+        stateSignature: "pinned",
+        ...(scrollY === undefined ? {} : { scrollY }),
+      };
     },
-    async execute(_action: CuaAction): Promise<void> {}
+    async execute(_action: CuaAction): Promise<void> {},
   };
   return executor;
 }
@@ -96,7 +109,7 @@ describe("scroll position is state (#393)", () => {
       // The wall clock is the honest stop for a long read; 40 fake seconds ≈ 38 turns, roughly
       // double the no-progress backstop, so the old behavior would have tripped long before this.
       timeoutMs: 40_000,
-      now: monotonicClock()
+      now: monotonicClock(),
     });
 
     expect(result.completionReason).toBe("budget_reached");
@@ -114,7 +127,7 @@ describe("scroll position is state (#393)", () => {
       persona,
       redaction: defaultRedactionHooks,
       timeoutMs: 10_000_000,
-      now: monotonicClock()
+      now: monotonicClock(),
     });
 
     expect(result.completionReason).toBe("gave_up");
@@ -130,16 +143,21 @@ describe("the state observer follows the participant's active tab", () => {
         run: async (command: string) => {
           commands.push(command);
           return { exitCode: 0, stdout: "{}" };
-        }
+        },
       },
-      screenshot: async () => new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 })))
+      screenshot: async () => new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 }))),
     } as unknown as E2BDesktopSandbox;
     return { commands, desktop };
   }
 
   it("selects the most-recently-active page target, not the launch tab", async () => {
     const { commands, desktop } = captureScript();
-    await makeChromeBrowserStateObserver(desktop, 1000, { targetUrl: "http://127.0.0.1:3000/" }, "launch-target-id")();
+    await makeChromeBrowserStateObserver(
+      desktop,
+      1000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      "launch-target-id",
+    )();
     expect(commands).toHaveLength(1);
     // Chrome's /json lists page targets most-recently-focused first; the participant's current
     // tab is the head. The launch target survives only as the fallback ("active" in the probe).
@@ -149,7 +167,12 @@ describe("the state observer follows the participant's active tab", () => {
 
   it("keeps the geometry observer pinned to the launch window", async () => {
     const { commands, desktop } = captureScript();
-    await makeChromeDesktopGeometryObserver(desktop, 1000, { targetUrl: "http://127.0.0.1:3000/" }, "launch-target-id")();
+    await makeChromeDesktopGeometryObserver(
+      desktop,
+      1000,
+      { targetUrl: "http://127.0.0.1:3000/" },
+      "launch-target-id",
+    )();
     expect(commands).toHaveLength(1);
     expect(commands[0]).toContain('"prefer":"pinned"');
     expect(commands[0]).toContain('"targetId":"launch-target-id"');
@@ -158,15 +181,27 @@ describe("the state observer follows the participant's active tab", () => {
   it("parses scrollY from the observer and stamps it onto the observation", async () => {
     const desktop = {
       commands: {
-        run: async () => ({ exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/docs", title: "Docs", text: "hello", scrollY: 1234.5 }) })
+        run: async () => ({
+          exitCode: 0,
+          stdout: JSON.stringify({
+            url: "http://127.0.0.1:3000/docs",
+            title: "Docs",
+            text: "hello",
+            scrollY: 1234.5,
+          }),
+        }),
       },
-      screenshot: async () => new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 })))
+      screenshot: async () => new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 }))),
     } as unknown as E2BDesktopSandbox;
-    const observe = makeChromeBrowserStateObserver(desktop, 1000, { targetUrl: "http://127.0.0.1:3000/" });
+    const observe = makeChromeBrowserStateObserver(desktop, 1000, {
+      targetUrl: "http://127.0.0.1:3000/",
+    });
     const state = await observe();
     expect(state.scrollY).toBe(1234.5);
 
-    const executor = createE2BDesktopExecutor(desktop as unknown as E2BDesktopLike, { observeBrowserState: observe });
+    const executor = createE2BDesktopExecutor(desktop as unknown as E2BDesktopLike, {
+      observeBrowserState: observe,
+    });
     const observation = await executor.observe();
     expect(observation.scrollY).toBe(1234.5);
   });

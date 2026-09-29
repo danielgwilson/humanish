@@ -44,16 +44,16 @@ present, exposure requires EITHER edge auth (`--oauth` on the ngrok edge, or a
 `--public-url` you secure) OR `--safe` (share_ready runs only). A tunnel with
 neither is a wide-open public URL to local bundles and is refused.
 
-| `--expose` | `--tunnel` | `--oauth` | `--public-url` | `--safe` | Outcome |
-| --- | --- | --- | --- | --- | --- |
-| — | — | — | — | any | `loopback` (no exposure) |
-| ✓ | ✓ | ✓ | — | any | OK → `exposed` (edge-authed; all runs unless `--safe`) |
-| ✓ | ✓ | — | — | ✓ | OK → `share-safe-open` (public, share_ready only) |
-| ✓ | ✓ | — | — | — | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE` |
-| ✓ | — | — | ✓ | any | OK → `exposed` (operator-secured edge) |
-| ✓ | — | — | — | any | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN` (no reachable origin, even with `--safe`) |
-| ✓ | — | ✓ | — | any | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL` |
-| ✓ | ✓ | ✓ | ✓ | any | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url) |
+| `--expose` | `--tunnel` | `--oauth` | `--public-url` | `--safe` | Outcome                                                                                       |
+| ---------- | ---------- | --------- | -------------- | -------- | --------------------------------------------------------------------------------------------- |
+| —          | —          | —         | —              | any      | `loopback` (no exposure)                                                                      |
+| ✓          | ✓          | ✓         | —              | any      | OK → `exposed` (edge-authed; all runs unless `--safe`)                                        |
+| ✓          | ✓          | —         | —              | ✓        | OK → `share-safe-open` (public, share_ready only)                                             |
+| ✓          | ✓          | —         | —              | —        | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE`                                |
+| ✓          | —          | —         | ✓              | any      | OK → `exposed` (operator-secured edge)                                                        |
+| ✓          | —          | —         | —              | any      | **REFUSED** `HUMANISH_SERVE_EXPOSE_REQUIRES_ORIGIN` (no reachable origin, even with `--safe`) |
+| ✓          | —          | ✓         | —              | any      | **REFUSED** `HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL`                                            |
+| ✓          | ✓          | ✓         | ✓              | any      | **REFUSED** `HUMANISH_SERVE_OPTION_CONFLICT` (tunnel + public-url)                            |
 
 Guard order (all before any bind/spawn): `--allow-email`/`--allow-domain`
 without `--oauth` → `HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH`; `--oauth` without
@@ -113,11 +113,11 @@ allowlist + security headers under its new `exposed` option (see observer.md), s
 
 ## Mode-to-boundary mapping
 
-| Mode | Invocation | Boundary class |
-| --- | --- | --- |
-| `loopback` | `humanish serve` | Capture-side trust: readable only by whoever can already read gitignored `.humanish/` on this machine; no new boundary is crossed. |
-| `exposed` | `--expose --tunnel ngrok --oauth google …`, or `--expose --public-url <origin>` | Edge-authed exposure: only viewers who clear the edge OAuth (or the operator's own edge) reach the loopback server, which then serves everything it grants unless `--safe` composes in. The gate is the edge, not humanish. |
-| `share-safe-open` | `--expose --safe --tunnel ngrok` (no `--oauth`) | Genuine publishing behind the feedback-grade `share_ready` gate: only runs that pass verify are served — admission is re-checked when a bundle changes and re-verified within a bounded window (default 30s); everything else is absent, 404ing byte-identically to a nonexistent run (no existence oracle). |
+| Mode              | Invocation                                                                      | Boundary class                                                                                                                                                                                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `loopback`        | `humanish serve`                                                                | Capture-side trust: readable only by whoever can already read gitignored `.humanish/` on this machine; no new boundary is crossed.                                                                                                                                                                           |
+| `exposed`         | `--expose --tunnel ngrok --oauth google …`, or `--expose --public-url <origin>` | Edge-authed exposure: only viewers who clear the edge OAuth (or the operator's own edge) reach the loopback server, which then serves everything it grants unless `--safe` composes in. The gate is the edge, not humanish.                                                                                  |
+| `share-safe-open` | `--expose --safe --tunnel ngrok` (no `--oauth`)                                 | Genuine publishing behind the feedback-grade `share_ready` gate: only runs that pass verify are served — admission is re-checked when a bundle changes and re-verified within a bounded window (default 30s); everything else is absent, 404ing byte-identically to a nonexistent run (no existence oracle). |
 
 ## Stream-URL doctrine
 

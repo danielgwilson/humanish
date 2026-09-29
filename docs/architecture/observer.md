@@ -73,13 +73,13 @@ browser tabs; exiting the TUI closes it, including when the UI fails. Opening a
 run does not launch a study. The URL is always shown for manual opening or SSH
 port forwarding, and only contained run paths in the TUI's project are accepted.
 
-| Entry point | What updates | Lifetime |
-| --- | --- | --- |
-| `watch` during a study | Saved evidence and available in-memory desktop streams | Until the attached command exits |
-| `observe --run <id>` | Saved evidence from the selected run | Until the command exits |
-| TUI Open Observer | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits |
-| `serve` | Saved evidence across the project's library | Until the server command exits |
-| Static HTML or `file://` | The exported snapshot | Independent of a server |
+| Entry point              | What updates                                                              | Lifetime                         |
+| ------------------------ | ------------------------------------------------------------------------- | -------------------------------- |
+| `watch` during a study   | Saved evidence and available in-memory desktop streams                    | Until the attached command exits |
+| `observe --run <id>`     | Saved evidence from the selected run                                      | Until the command exits          |
+| TUI Open Observer        | Saved evidence in the selected run; shares the project's evidence library | Until the TUI exits              |
+| `serve`                  | Saved evidence across the project's library                               | Until the server command exits   |
+| Static HTML or `file://` | The exported snapshot                                                     | Independent of a server          |
 
 `observe` uses the same current-data projection as the attached viewer, scoped
 to the selected run. Its history cannot enumerate other runs. HTML exports use

@@ -1,4 +1,9 @@
-import type { ActorStatus, ActorCompletionReason, ActorStopCause, ParticipantDeclaredOutcome } from "./actor-contract.js";
+import type {
+  ActorStatus,
+  ActorCompletionReason,
+  ActorStopCause,
+  ParticipantDeclaredOutcome,
+} from "./actor-contract.js";
 import type { CuaGoalSource } from "./actor-goal-source.js";
 import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
 
@@ -21,7 +26,12 @@ export interface AnalysisEvidence {
   /** Relative to first retained capture, not a video offset; null for nonvisual evidence. */
   elapsedMs: number | null;
   frame: number | null;
-  capture: { eventId: string; path: string; sha256: string; mimeType: "image/png" | "image/jpeg" | "image/webp" } | null;
+  capture: {
+    eventId: string;
+    path: string;
+    sha256: string;
+    mimeType: "image/png" | "image/jpeg" | "image/webp";
+  } | null;
 }
 export interface AnalysisCoverage {
   includedStreamIds: string[];
@@ -43,7 +53,13 @@ export interface AnalysisParticipantInput {
     stopCause: ActorStopCause | null;
     goalSource: CuaGoalSource | null;
     declaredOutcome: ParticipantDeclaredOutcome | null;
-    taskOutcomes: Array<{ taskId: string; completed: boolean; observable: boolean; inputsObserved: boolean | null; turn: number | null }> | null;
+    taskOutcomes: Array<{
+      taskId: string;
+      completed: boolean;
+      observable: boolean;
+      inputsObserved: boolean | null;
+      turn: number | null;
+    }> | null;
   };
 }
 export interface StudyAnalysisInput {
@@ -58,7 +74,10 @@ export interface StudyAnalysisInput {
   /** Ephemeral input only: never persisted in the analysis artifact. */
   images: { evidenceId: string; dataUrl: string }[];
 }
-export interface AnalysisQuote { evidenceId: string; text: string }
+export interface AnalysisQuote {
+  evidenceId: string;
+  text: string;
+}
 export interface AnalysisParticipantReview {
   streamId: string;
   summary: string;

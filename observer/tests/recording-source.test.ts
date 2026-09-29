@@ -11,11 +11,15 @@ describe("recording return navigation", () => {
     const concerns = { runId: "study", kind: "concerns" as const };
     expect(recordingSource(recordingState(concerns), "study", [], true)).toEqual(concerns);
     expect(recordingSource(recordingState(concerns), "study")).toEqual(fallback);
-    expect(recordingSource(recordingState({ ...concerns, runId: "other" }), "study", [], true)).toEqual(fallback);
+    expect(
+      recordingSource(recordingState({ ...concerns, runId: "other" }), "study", [], true),
+    ).toEqual(fallback);
   });
   it("uses Participants for copied links, foreign studies, and removed findings", () => {
     expect(recordingSource(null, "study", ["F1"])).toEqual(fallback);
-    expect(recordingSource(recordingState({ ...finding, runId: "other" }), "study", ["F1"])).toEqual(fallback);
+    expect(
+      recordingSource(recordingState({ ...finding, runId: "other" }), "study", ["F1"]),
+    ).toEqual(fallback);
     expect(recordingSource(recordingState(finding), "study", ["F2"])).toEqual(fallback);
     expect(recordingSource(recordingState(finding), "study", ["F1"])).toEqual(finding);
   });
@@ -30,9 +34,20 @@ describe("recording return navigation", () => {
     expect(recordingSource(window.history.state, "study", ["F1"])).toEqual(fallback);
   });
   it("returns to the exact comparison configuration and refuses unrelated return destinations", () => {
-    const comparison = { runId: "study", kind: "comparison" as const, hash: "#/compare?lane=a&lane=b&clock=elapsed&t=12" };
+    const comparison = {
+      runId: "study",
+      kind: "comparison" as const,
+      hash: "#/compare?lane=a&lane=b&clock=elapsed&t=12",
+    };
     expect(recordingSource(recordingState(comparison), "study")).toEqual(comparison);
-    expect(recordingSource(recordingState({ ...comparison, hash: "https://example.com" }), "study")).toEqual(fallback);
-    expect(recordingSource(recordingState({ ...comparison, hash: "#/compare?" + "x".repeat(2048) }), "study")).toEqual(fallback);
+    expect(
+      recordingSource(recordingState({ ...comparison, hash: "https://example.com" }), "study"),
+    ).toEqual(fallback);
+    expect(
+      recordingSource(
+        recordingState({ ...comparison, hash: "#/compare?" + "x".repeat(2048) }),
+        "study",
+      ),
+    ).toEqual(fallback);
   });
 });

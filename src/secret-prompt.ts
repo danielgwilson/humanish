@@ -2,15 +2,23 @@ import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
 
 /** Host-owned entry: no secret crosses the TUI view contract or reaches a writable terminal. */
-export async function promptSecret(label: string, stdin: NodeJS.ReadStream, stdout: NodeJS.WriteStream): Promise<string | null> {
+export async function promptSecret(
+  label: string,
+  stdin: NodeJS.ReadStream,
+  stdout: NodeJS.WriteStream,
+): Promise<string | null> {
   if (!stdin.isTTY || !stdout.isTTY) return null;
   const wasRaw = stdin.isRaw;
   // readline owns editing, paste and raw-mode lifecycle; all of its echo goes to this sink.
-  const sink = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  const sink = new Writable({
+    write(_chunk, _encoding, done) {
+      done();
+    },
+  });
   const reader = createInterface({ input: stdin, output: sink, terminal: true, historySize: 0 });
   // Ink unrefs stdin on unmount. A pending promise alone does not keep Node alive.
   stdin.ref?.();
-  return await new Promise(resolve => {
+  return await new Promise((resolve) => {
     let settled = false;
     const finish = (value: string | null): void => {
       if (settled) return;
@@ -22,7 +30,7 @@ export async function promptSecret(label: string, stdin: NodeJS.ReadStream, stdo
       stdout.write("\n");
       resolve(value);
     };
-    reader.once("line", line => finish(line.trim() || null));
+    reader.once("line", (line) => finish(line.trim() || null));
     reader.once("SIGINT", () => finish(null));
     reader.once("close", () => finish(null));
     reader.once("error", () => finish(null));

@@ -46,16 +46,19 @@ describe("run index cost, measured against the existing listing", () => {
           durationMs: 120_000,
           verdict: "pass",
           participants: { total: 1, reachedGoal: 1 },
-          estimatedCostUsd: 0.34
+          estimatedCostUsd: 0.34,
         },
-        Date.parse("2026-08-19T10:00:00.000Z")
+        Date.parse("2026-08-19T10:00:00.000Z"),
       );
       const shotsDir = path.join(runDir, "screenshots");
       await mkdir(shotsDir, { recursive: true });
       await Promise.all(
         Array.from({ length: SCREENSHOTS_PER_RUN }, (_, shot) =>
-          writeFile(path.join(shotsDir, `step-${String(shot).padStart(3, "0")}.png`), "not-a-real-png")
-        )
+          writeFile(
+            path.join(shotsDir, `step-${String(shot).padStart(3, "0")}.png`),
+            "not-a-real-png",
+          ),
+        ),
       );
     }
 
@@ -66,7 +69,10 @@ describe("run index cost, measured against the existing listing", () => {
     // Best of five for each reader. A single sample at the millisecond scale is one GC pause away
     // from inverting warm and cold (CI on 2026-09-03: warm 4.6 ms, cold 3.2 ms, #606); the minimum
     // is the algorithm's cost, the rest is the runner's.
-    const bestOf = async <T,>(reader: () => Promise<T>, samples = 5): Promise<{ result: T; ms: number }> => {
+    const bestOf = async <T>(
+      reader: () => Promise<T>,
+      samples = 5,
+    ): Promise<{ result: T; ms: number }> => {
       let best: { result: T; ms: number } | undefined;
       for (let sample = 0; sample < samples; sample += 1) {
         const started = performance.now();

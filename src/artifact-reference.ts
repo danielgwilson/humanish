@@ -30,7 +30,10 @@
  * the strict verifier still catches the broken producer. Only a step whose recorded
  * evidence IS the failure passes `wrote: false`.
  */
-export function artifactReferenceIfWritten(path: string | undefined, wrote: boolean): string | undefined {
+export function artifactReferenceIfWritten(
+  path: string | undefined,
+  wrote: boolean,
+): string | undefined {
   if (!wrote) {
     return undefined;
   }

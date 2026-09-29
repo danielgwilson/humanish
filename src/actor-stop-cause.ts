@@ -16,7 +16,7 @@ const labels: Record<ActorEnding["cause"], string> = {
   provider_incomplete: "provider response incomplete",
   provider_status: "unexpected provider status",
   harness_aborted: "stopped by harness",
-  unspecified_limit: "limit reached"
+  unspecified_limit: "limit reached",
 };
 
 /** Shared wording for consumers that already hold a validated, finite stop cause. */
@@ -28,10 +28,12 @@ export function actorStopCauseLabel(cause: ActorEnding["cause"]): string {
 export function actorEnding(actor: ActorTrace | undefined): ActorEnding | undefined {
   if (!actor) return undefined;
   const explicit = actor.stopCause;
-  if (typeof explicit === "string" && Object.hasOwn(labels, explicit)) return { cause: explicit, label: actorStopCauseLabel(explicit) };
+  if (typeof explicit === "string" && Object.hasOwn(labels, explicit))
+    return { cause: explicit, label: actorStopCauseLabel(explicit) };
   // These exact machine-generated notices predate stopCause. Their text is not parsed and a
   // provider token notice cannot retrospectively establish output versus context exhaustion.
-  const notice = (title: string) => actor.items.some((item) => item.kind === "notice" && item.title === title);
+  const notice = (title: string) =>
+    actor.items.some((item) => item.kind === "notice" && item.title === title);
   let cause: ActorEnding["cause"] | undefined;
   if (actor.completionReason === "budget_reached") {
     cause = notice("provider token limit reached") ? "provider_token_limit" : "unspecified_limit";

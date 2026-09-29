@@ -5,18 +5,23 @@ import { promptSecret } from "../src/secret-prompt.js";
 function terminal() {
   const input = new PassThrough() as unknown as NodeJS.ReadStream;
   input.isTTY = true;
-  input.setRawMode = raw => { input.isRaw = raw; return input; };
+  input.setRawMode = (raw) => {
+    input.isRaw = raw;
+    return input;
+  };
   const output = new PassThrough() as unknown as NodeJS.WriteStream;
   output.isTTY = true;
   let written = "";
-  output.on("data", chunk => { written += String(chunk); });
+  output.on("data", (chunk) => {
+    written += String(chunk);
+  });
   return { input, output, written: () => written };
 }
 
 describe("host-owned secret prompt", () => {
   it("disables echo and installs handlers before advertising readiness", async () => {
     const t = terminal();
-    t.output.on("data", chunk => {
+    t.output.on("data", (chunk) => {
       if (String(chunk).includes("input hidden")) {
         expect(t.input.isRaw).toBe(true);
         t.input.emit("data", "synthetic-immediate-paste\r");
@@ -55,7 +60,8 @@ describe("host-owned secret prompt", () => {
     }
   });
   it("does not consume non-terminal input", async () => {
-    const t = terminal(); t.input.isTTY = false;
+    const t = terminal();
+    t.input.isTTY = false;
     expect(await promptSecret("Key", t.input, t.output)).toBeNull();
     expect(t.written()).toBe("");
   });

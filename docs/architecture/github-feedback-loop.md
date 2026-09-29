@@ -71,14 +71,14 @@ produce a high-quality issue draft and clear filing instructions.
 
 ## Feedback States
 
-| State | Meaning | GitHub action |
-| --- | --- | --- |
-| `watch` | Useful observation, not yet work | Keep as bundle-local feedback or low-priority issue |
-| `needs_spec` | Real signal, scope unclear | Create issue with spec task |
-| `spec_ready` | Docs/spec work can clarify it | Create issue with docs-only authority |
-| `agent_ready` | Narrow enough for autonomous PR draft | Include readiness block for maintainers |
-| `blocked` | Needs human/operator input | Create or update issue with blocker |
-| `wontfix` | Accounted for and rejected | Keep in review packet; no issue by default |
+| State         | Meaning                               | GitHub action                                       |
+| ------------- | ------------------------------------- | --------------------------------------------------- |
+| `watch`       | Useful observation, not yet work      | Keep as bundle-local feedback or low-priority issue |
+| `needs_spec`  | Real signal, scope unclear            | Create issue with spec task                         |
+| `spec_ready`  | Docs/spec work can clarify it         | Create issue with docs-only authority               |
+| `agent_ready` | Narrow enough for autonomous PR draft | Include readiness block for maintainers             |
+| `blocked`     | Needs human/operator input            | Create or update issue with blocker                 |
+| `wontfix`     | Accounted for and rejected            | Keep in review packet; no issue by default          |
 
 ## Issue Body Contract
 
@@ -142,17 +142,17 @@ mirror it, but they do not replace it.
 
 Initial label taxonomy:
 
-| Label | Meaning |
-| --- | --- |
+| Label              | Meaning                                                |
+| ------------------ | ------------------------------------------------------ |
 | `product-feedback` | Persona/user friction captured as public-safe feedback |
-| `agent-candidate` | May become autonomous work after spec/readiness |
-| `needs-spec` | Requires scope or acceptance criteria before mutation |
-| `agent-ready` | Has valid readiness block and narrow write scope |
-| `proof-required` | Cannot close without run bundle or command proof |
-| `harness` | Harness/core/observer/review work |
-| `adapter` | Product adapter work |
-| `feedback-loop` | Feedback, issue-draft, or queue plumbing |
-| `privacy-boundary` | Public/PII/PHI/secret-safety concern |
+| `agent-candidate`  | May become autonomous work after spec/readiness        |
+| `needs-spec`       | Requires scope or acceptance criteria before mutation  |
+| `agent-ready`      | Has valid readiness block and narrow write scope       |
+| `proof-required`   | Cannot close without run bundle or command proof       |
+| `harness`          | Harness/core/observer/review work                      |
+| `adapter`          | Product adapter work                                   |
+| `feedback-loop`    | Feedback, issue-draft, or queue plumbing               |
+| `privacy-boundary` | Public/PII/PHI/secret-safety concern                   |
 
 ## GitHub Projects
 

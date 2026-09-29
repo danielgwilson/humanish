@@ -6,19 +6,26 @@ import { loadStudyAnalysis } from "./study-analysis-store.js";
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 import { studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
 
-import { formatParticipantOutcomes, formatStudyTaskFunnel, loadRunBundlePrepared, verifyRunPrepared, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
+import {
+  formatParticipantOutcomes,
+  formatStudyTaskFunnel,
+  loadRunBundlePrepared,
+  verifyRunPrepared,
+  participantOutcomeDetails,
+  withCuaReviewProvenance,
+} from "./run.js";
 import type { RunBundle, RunFeedbackCandidate, VerifyResult } from "./run.js";
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
-  validatePreparedRunArtifactPaths
+  validatePreparedRunArtifactPaths,
 } from "./run-paths.js";
 import {
   bindExistingManagedHumanishOutputDirectory,
   readContainedRegularFile,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
 export const FEEDBACK_SCHEMA = "humanish.feedback.v1";
@@ -37,7 +44,13 @@ export interface FeedbackDraft {
   expected: string;
   actual: string;
   source_candidate_id?: string;
-  source_analysis?: { id: string; sha256: string; finding_id: string; finding_sha256: string; correction_id: string | null };
+  source_analysis?: {
+    id: string;
+    sha256: string;
+    finding_id: string;
+    finding_sha256: string;
+    correction_id: string | null;
+  };
   source_bundle: string;
   evidence: Array<{
     path: string;
@@ -103,7 +116,7 @@ function summarizeCandidates(bundle: RunBundle): FeedbackCandidateSummary[] {
       ...(item.stream_id === undefined ? {} : { stream_id: item.stream_id }),
       persona_id: item.persona_id,
       failure_owner: item.failure_owner,
-      summary: item.summary
+      summary: item.summary,
     }));
 }
 
@@ -125,7 +138,7 @@ interface BoundFeedbackResult {
 export async function draftFeedback(
   cwdInput: string,
   runInput: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<FeedbackResult> {
   return (await draftFeedbackBound(cwdInput, runInput, options)).result;
 }
@@ -133,96 +146,129 @@ export async function draftFeedback(
 async function draftFeedbackBound(
   cwdInput: string,
   runInput: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<BoundFeedbackResult> {
   const cwd = path.resolve(cwdInput);
   const context = await resolveFeedbackRunContext(cwd, runInput);
 
   if (!context) {
-    return { result: {
-      schema: FEEDBACK_RESULT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      error: {
-        code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`
-      }
-    } };
+    return {
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        error: {
+          code: "HUMANISH_RUN_NOT_FOUND",
+          message: `Run not found: ${runInput}`,
+        },
+      },
+    };
   }
 
   const verified = await verifyRunPrepared(
     context.physicalCwd,
     context.storedRunId,
-    context.preparedRunPaths
+    context.preparedRunPaths,
   );
   await validatePreparedRunArtifactPaths(context.preparedRunPaths);
   if (!verified.ok) {
-    return { context, result: {
-      schema: FEEDBACK_RESULT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      error: {
-        code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: verified.error?.message ?? "Run bundle failed verification."
-      }
-    } };
+    return {
+      context,
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        error: {
+          code: "HUMANISH_INVALID_RUN_BUNDLE",
+          message: verified.error?.message ?? "Run bundle failed verification.",
+        },
+      },
+    };
   }
 
   if (verified.shareSafety.status !== "share_ready") {
-    return { context, result: {
-      schema: FEEDBACK_RESULT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      shareSafety: verified.shareSafety,
-      error: {
-        code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
-        message: `Run is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((reason) => reason.code).join(", ")}`
-      }
-    } };
+    return {
+      context,
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        shareSafety: verified.shareSafety,
+        error: {
+          code: "HUMANISH_FEEDBACK_SHARE_SAFETY_BLOCKED",
+          message: `Run is ${verified.shareSafety.status}, not share_ready: ${verified.shareSafety.reasons.map((reason) => reason.code).join(", ")}`,
+        },
+      },
+    };
   }
 
   const candidates = summarizeCandidates(context.loaded.bundle);
-  if (options.candidate !== undefined && !candidates.some((item) => item.id === options.candidate)) {
-    return { context, result: {
-      schema: FEEDBACK_RESULT_SCHEMA,
-      ok: false,
-      cwd,
-      run: runInput,
-      candidates,
-      error: {
-        code: "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND",
-        message: candidates.length === 0
-          ? `No feedback candidate on run ${context.storedRunId}; \`--candidate ${options.candidate}\` cannot be drafted.`
-          : `No feedback candidate \`${options.candidate}\` on run ${context.storedRunId}. Available: ${candidates.map((item) => item.id).join(", ")}.`
-      }
-    } };
+  if (
+    options.candidate !== undefined &&
+    !candidates.some((item) => item.id === options.candidate)
+  ) {
+    return {
+      context,
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        candidates,
+        error: {
+          code: "HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND",
+          message:
+            candidates.length === 0
+              ? `No feedback candidate on run ${context.storedRunId}; \`--candidate ${options.candidate}\` cannot be drafted.`
+              : `No feedback candidate \`${options.candidate}\` on run ${context.storedRunId}. Available: ${candidates.map((item) => item.id).join(", ")}.`,
+        },
+      },
+    };
   }
 
   const independent = options.analysis !== undefined || options.finding !== undefined;
-  const draft = independent ? await buildAnalysisDraft(context, options) : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
-  if (!draft) return { context, result: { schema: FEEDBACK_RESULT_SCHEMA, ok: false, cwd, run: runInput,
-    error: { code: "HUMANISH_INVALID_FEEDBACK_DRAFT", message: "Select a current valid analysis and finding together, without --candidate. Dismissed findings cannot be promoted into feedback." } } };
+  const draft = independent
+    ? await buildAnalysisDraft(context, options)
+    : buildDraft(context.loaded.bundle, context.loaded.bundlePath, options.candidate);
+  if (!draft)
+    return {
+      context,
+      result: {
+        schema: FEEDBACK_RESULT_SCHEMA,
+        ok: false,
+        cwd,
+        run: runInput,
+        error: {
+          code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
+          message:
+            "Select a current valid analysis and finding together, without --candidate. Dismissed findings cannot be promoted into feedback.",
+        },
+      },
+    };
   const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
   await writeJson(context.preparedRunPaths, path.join("feedback", "draft.json"), draft);
 
-  return { context, result: {
-    schema: FEEDBACK_RESULT_SCHEMA,
-    ok: true,
-    cwd,
-    run: runInput,
-    draftPath,
-    draft,
-    candidates
-  } };
+  return {
+    context,
+    result: {
+      schema: FEEDBACK_RESULT_SCHEMA,
+      ok: true,
+      cwd,
+      run: runInput,
+      draftPath,
+      draft,
+      candidates,
+    },
+  };
 }
 
 export async function verifyFeedback(
   cwdInput: string,
   runInput: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<FeedbackResult> {
   return (await verifyFeedbackBound(cwdInput, runInput, options)).result;
 }
@@ -230,7 +276,7 @@ export async function verifyFeedback(
 async function verifyFeedbackBound(
   cwdInput: string,
   runInput: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<BoundFeedbackResult> {
   const drafted = await draftFeedbackBound(cwdInput, runInput, options);
 
@@ -240,54 +286,79 @@ async function verifyFeedbackBound(
 
   const missingEvidence = [];
   for (const evidence of drafted.result.draft.evidence) {
-    if (!await isSafeFeedbackEvidenceFile(drafted.context, evidence.path)) {
+    if (!(await isSafeFeedbackEvidenceFile(drafted.context, evidence.path))) {
       missingEvidence.push(evidence.path);
     }
   }
 
   if (missingEvidence.length > 0) {
-    return { context: drafted.context, result: {
-      ...drafted.result,
-      ok: false,
-      error: {
-        code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
-        message: `Feedback evidence missing: ${missingEvidence.join(", ")}`
-      }
-    } };
+    return {
+      context: drafted.context,
+      result: {
+        ...drafted.result,
+        ok: false,
+        error: {
+          code: "HUMANISH_INVALID_FEEDBACK_DRAFT",
+          message: `Feedback evidence missing: ${missingEvidence.join(", ")}`,
+        },
+      },
+    };
   }
 
   return drafted;
 }
 
-async function isSafeFeedbackEvidenceFile(context: FeedbackRunContext, evidencePath: string): Promise<boolean> {
+async function isSafeFeedbackEvidenceFile(
+  context: FeedbackRunContext,
+  evidencePath: string,
+): Promise<boolean> {
   const absolute = path.resolve(context.physicalCwd, evidencePath);
   const relative = path.relative(context.preparedRunPaths.physicalRunRoot, absolute);
-  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  if (
+    relative === "" ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
     return false;
   }
-  return await readContainedRegularFile(context.preparedRunPaths, relative) !== null;
+  return (await readContainedRegularFile(context.preparedRunPaths, relative)) !== null;
 }
 
 export async function renderIssueMarkdown(
   cwdInput: string,
   runInput: string,
   repo: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<FeedbackResult> {
   const verified = await verifyFeedbackBound(cwdInput, runInput, options);
 
-  if (!verified.result.ok || !verified.result.draft || !verified.result.draftPath || !verified.context) {
+  if (
+    !verified.result.ok ||
+    !verified.result.draft ||
+    !verified.result.draftPath ||
+    !verified.context
+  ) {
     return verified.result;
   }
 
   const issueMarkdown = renderMarkdown(verified.result.draft, repo);
-  const issuePath = path.join(verified.context.preparedRunPaths.relativeRunRoot, "feedback", "issue.md");
-  await writeContainedOutputFile(verified.context.preparedRunPaths, path.join("feedback", "issue.md"), issueMarkdown, "utf8");
+  const issuePath = path.join(
+    verified.context.preparedRunPaths.relativeRunRoot,
+    "feedback",
+    "issue.md",
+  );
+  await writeContainedOutputFile(
+    verified.context.preparedRunPaths,
+    path.join("feedback", "issue.md"),
+    issueMarkdown,
+    "utf8",
+  );
 
   return {
     ...verified.result,
     issuePath,
-    issueMarkdown
+    issueMarkdown,
   };
 }
 
@@ -295,7 +366,7 @@ export async function renderIssueUrl(
   cwdInput: string,
   runInput: string,
   repo: string,
-  options: FeedbackDraftOptions = {}
+  options: FeedbackDraftOptions = {},
 ): Promise<FeedbackResult> {
   const rendered = await renderIssueMarkdown(cwdInput, runInput, repo, options);
 
@@ -306,7 +377,7 @@ export async function renderIssueUrl(
   const title = `[Humanish] ${rendered.draft.summary}`;
   return {
     ...rendered,
-    issueUrl: `https://github.com/${encodeGitHubRepoPath(repo)}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(rendered.issueMarkdown)}`
+    issueUrl: `https://github.com/${encodeGitHubRepoPath(repo)}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(rendered.issueMarkdown)}`,
   };
 }
 
@@ -322,13 +393,17 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
       run: runInput,
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`
-      }
+        message: `Run not found: ${runInput}`,
+      },
     };
   }
 
-  const draftBytes = await readContainedRegularFile(context.preparedRunPaths, path.join("feedback", "draft.json"));
-  const draft = draftBytes === null ? undefined : JSON.parse(draftBytes.toString("utf8")) as FeedbackDraft;
+  const draftBytes = await readContainedRegularFile(
+    context.preparedRunPaths,
+    path.join("feedback", "draft.json"),
+  );
+  const draft =
+    draftBytes === null ? undefined : (JSON.parse(draftBytes.toString("utf8")) as FeedbackDraft);
   const draftPath = path.join(context.preparedRunPaths.relativeRunRoot, "feedback", "draft.json");
 
   return {
@@ -339,11 +414,14 @@ export async function listFeedback(cwdInput: string, runInput: string): Promise<
     ...(draft ? { draftPath, draft } : {}),
     // The choice set for `draft --candidate`: a three-participant study has up to three findings,
     // and until #609 only the first ever reached a draft.
-    candidates: summarizeCandidates(context.loaded.bundle)
+    candidates: summarizeCandidates(context.loaded.bundle),
   };
 }
 
-async function resolveFeedbackRunContext(cwd: string, runInput: string): Promise<FeedbackRunContext | null> {
+async function resolveFeedbackRunContext(
+  cwd: string,
+  runInput: string,
+): Promise<FeedbackRunContext | null> {
   let physicalCwd: string;
   try {
     physicalCwd = await realpath(cwd);
@@ -360,27 +438,32 @@ async function resolveFeedbackRunContext(cwd: string, runInput: string): Promise
     if (!runsRoot) return null;
     const pointerBytes = await readContainedRegularFile(runsRoot, "latest.json");
     if (!pointerBytes) return null;
-    const pointer = JSON.parse(pointerBytes.toString("utf8")) as { path?: unknown; runId?: unknown };
+    const pointer = JSON.parse(pointerBytes.toString("utf8")) as {
+      path?: unknown;
+      runId?: unknown;
+    };
     if (
-      typeof pointer.runId !== "string"
-      || typeof pointer.path !== "string"
-      || !resolveLatestRunDirectory(physicalCwd, { path: pointer.path, runId: pointer.runId })
+      typeof pointer.runId !== "string" ||
+      typeof pointer.path !== "string" ||
+      !resolveLatestRunDirectory(physicalCwd, { path: pointer.path, runId: pointer.runId })
     ) {
       return null;
     }
     storedRunId = pointer.runId;
     preparedRunPaths = await bindExistingRunArtifactPaths(physicalCwd, storedRunId);
     if (
-      preparedRunPaths.physicalRunsRoot !== runsRoot.physicalPath
-      || preparedRunPaths.runsRootIdentity.birthtimeNs !== runsRoot.identity.birthtimeNs
-      || preparedRunPaths.runsRootIdentity.dev !== runsRoot.identity.dev
-      || preparedRunPaths.runsRootIdentity.ino !== runsRoot.identity.ino
+      preparedRunPaths.physicalRunsRoot !== runsRoot.physicalPath ||
+      preparedRunPaths.runsRootIdentity.birthtimeNs !== runsRoot.identity.birthtimeNs ||
+      preparedRunPaths.runsRootIdentity.dev !== runsRoot.identity.dev ||
+      preparedRunPaths.runsRootIdentity.ino !== runsRoot.identity.ino
     ) {
       throw new Error("Feedback runs root changed physical destination.");
     }
   } else {
     if (!isSafeRunIdSegment(runInput)) return null;
-    const boundRunPaths = await bindExistingRunArtifactPaths(physicalCwd, storedRunId).catch(() => null);
+    const boundRunPaths = await bindExistingRunArtifactPaths(physicalCwd, storedRunId).catch(
+      () => null,
+    );
     if (!boundRunPaths) return null;
     preparedRunPaths = boundRunPaths;
   }
@@ -393,7 +476,7 @@ async function resolveFeedbackRunContext(cwd: string, runInput: string): Promise
 function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string): FeedbackDraft {
   const candidate = bundle.feedbackCandidates.find(
     (item): item is RunFeedbackCandidate =>
-      isUsableFeedbackCandidate(item) && (candidateId === undefined || item.id === candidateId)
+      isUsableFeedbackCandidate(item) && (candidateId === undefined || item.id === candidateId),
   );
   if (candidate) {
     return {
@@ -414,21 +497,21 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
         {
           path: bundlePath,
           kind: "state",
-          note: "Source run bundle."
+          note: "Source run bundle.",
         },
         ...candidate.evidence.map((item) => ({
           path: path.join(path.dirname(bundlePath), item.path),
           kind: item.kind,
-          note: item.note
-        }))
+          note: item.note,
+        })),
       ],
       redaction: {
         status: "passed",
-        notes: candidate.redaction.notes
+        notes: candidate.redaction.notes,
       },
       idempotency_key: candidate.idempotency_key,
       proposed_next_state: candidate.proposed_next_state,
-      acceptance_proof: projectFeedbackAcceptanceProof(bundle, candidate)
+      acceptance_proof: projectFeedbackAcceptanceProof(bundle, candidate),
     };
   }
 
@@ -444,10 +527,12 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
       review.summary,
       ...(bundle.review.participants === undefined
         ? []
-        : [`Participants: ${formatParticipantOutcomes(bundle.review.participants, participantEndings)}.`]),
+        : [
+            `Participants: ${formatParticipantOutcomes(bundle.review.participants, participantEndings)}.`,
+          ]),
       ...(bundle.review.tasks === undefined
         ? []
-        : [`Tasks: ${formatStudyTaskFunnel(bundle.review.tasks)}.`])
+        : [`Tasks: ${formatStudyTaskFunnel(bundle.review.tasks)}.`]),
     ];
     return {
       schema: FEEDBACK_SCHEMA,
@@ -468,24 +553,24 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
         {
           path: bundlePath,
           kind: "state",
-          note: "Source run bundle."
+          note: "Source run bundle.",
         },
         {
           path: path.join(path.dirname(bundlePath), "review.md"),
           kind: "review",
-          note: "The run's review: verdict, participants, and gaps."
-        }
+          note: "The run's review: verdict, participants, and gaps.",
+        },
       ],
       redaction: {
         status: "passed",
-        notes: bundle.redaction.notes
+        notes: bundle.redaction.notes,
       },
       idempotency_key: `humanish:${bundle.runId}:live-run-summary`,
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
         feedbackProofCommands(bundle.runId).verify,
-        feedbackProofCommands(bundle.runId).watch
-      ]
+        feedbackProofCommands(bundle.runId).watch,
+      ],
     };
   }
 
@@ -499,41 +584,47 @@ function buildDraft(bundle: RunBundle, bundlePath: string, candidateId?: string)
     substrate: "local-filesystem",
     failure_owner: "harness",
     summary: "Dry-run contract proof needs product-evidence follow-up",
-    expected: "Humanish should produce verified, public-safe evidence before product claims are filed.",
-    actual: "This dry-run produced a contract-proof bundle only; no browser or product behavior was exercised.",
+    expected:
+      "Humanish should produce verified, public-safe evidence before product claims are filed.",
+    actual:
+      "This dry-run produced a contract-proof bundle only; no browser or product behavior was exercised.",
     source_bundle: bundlePath,
     evidence: [
       {
         path: bundlePath,
         kind: "state",
-        note: "Synthetic run bundle."
+        note: "Synthetic run bundle.",
       },
       {
         path: path.join(path.dirname(bundlePath), "review.md"),
         kind: "review",
-        note: "Review skeleton labels this as contract proof only."
-      }
+        note: "Review skeleton labels this as contract proof only.",
+      },
     ],
     redaction: {
       status: "passed",
-      notes: bundle.redaction.notes
+      notes: bundle.redaction.notes,
     },
     idempotency_key: `humanish:${bundle.runId}:dry-run-contract-proof`,
     proposed_next_state: "watch",
     acceptance_proof: [
       feedbackProofCommands(bundle.runId).verify,
-      feedbackProofCommands(bundle.runId).watch
-    ]
+      feedbackProofCommands(bundle.runId).watch,
+    ],
   };
 }
 
-async function buildAnalysisDraft(context: FeedbackRunContext, options: FeedbackDraftOptions): Promise<FeedbackDraft | null> {
+async function buildAnalysisDraft(
+  context: FeedbackRunContext,
+  options: FeedbackDraftOptions,
+): Promise<FeedbackDraft | null> {
   if (!options.analysis || !options.finding || options.candidate !== undefined) return null;
   const loaded = await loadStudyAnalysis(context.preparedRunPaths, options.analysis);
   const analysis = loaded.analysis;
   const finding = analysis?.result?.findings.find((item) => item.id === options.finding);
   const sharing = studyAnalysisSharingProblems(loaded);
-  if (loaded.state !== "ready" || sharing.sensitive || sharing.unverified || !analysis || !finding) return null;
+  if (loaded.state !== "ready" || sharing.sensitive || sharing.unverified || !analysis || !finding)
+    return null;
   const correction = loaded.corrections.filter((item) => item.findingId === finding.id).at(-1);
   if (correction?.status === "dismissed") return null;
   const bundle = context.loaded.bundle;
@@ -542,58 +633,115 @@ async function buildAnalysisDraft(context: FeedbackRunContext, options: Feedback
   const evidence = analysis.evidence.filter((item) => evidenceIds.has(item.id));
   const claim = correction?.status === "amended" ? correction.replacementClaim! : finding.title;
   const firstLine = claim.trim().split(/\r?\n/)[0] || `Reviewed finding ${finding.id}`;
-  const summary = Array.from(firstLine).length > 160 ? Array.from(firstLine).slice(0, 159).join("") + "…" : firstLine;
-  const source = { id: analysis.id, sha256: hashStudyAnalysisValue(analysis), finding_id: finding.id,
-    finding_sha256: hashStudyAnalysisValue(finding), correction_id: correction?.id ?? null };
+  const summary =
+    Array.from(firstLine).length > 160
+      ? Array.from(firstLine).slice(0, 159).join("") + "…"
+      : firstLine;
+  const source = {
+    id: analysis.id,
+    sha256: hashStudyAnalysisValue(analysis),
+    finding_id: finding.id,
+    finding_sha256: hashStudyAnalysisValue(finding),
+    correction_id: correction?.id ?? null,
+  };
   return {
-    schema: FEEDBACK_SCHEMA, run_id: bundle.runId, adapter_id: bundle.source.packageName ?? bundle.scenario.id,
-    scenario_id: bundle.scenario.id, persona_id: bundle.persona.id, actor: "unknown", substrate: "unknown",
-    failure_owner: "unknown", summary,
-    expected: "Review the cited behavior against the participant assignment and confirm the expected product behavior.",
-    actual: ["Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
-      correction?.status === "amended" ? `Amended claim: ${claim}. Original analysis: ${finding.summary}` : finding.summary,
+    schema: FEEDBACK_SCHEMA,
+    run_id: bundle.runId,
+    adapter_id: bundle.source.packageName ?? bundle.scenario.id,
+    scenario_id: bundle.scenario.id,
+    persona_id: bundle.persona.id,
+    actor: "unknown",
+    substrate: "unknown",
+    failure_owner: "unknown",
+    summary,
+    expected:
+      "Review the cited behavior against the participant assignment and confirm the expected product behavior.",
+    actual: [
+      "Independent study analysis; does not replace participant feedback or recorded completion outcomes.",
+      correction?.status === "amended"
+        ? `Amended claim: ${claim}. Original analysis: ${finding.summary}`
+        : finding.summary,
       `Impact: ${finding.impact}. ${finding.affectedStreamIds.length} affected / ${finding.exposedStreamIds.length} observed exposed participants. ${finding.exposureReason}`,
       `Recovery: ${finding.recovery}. Confidence: ${finding.confidence}.`,
-      ...finding.observations.map((item) => `${item.basis}: ${item.claim}${item.limitation ? ` Limitation: ${item.limitation}` : ""}`),
+      ...finding.observations.map(
+        (item) =>
+          `${item.basis}: ${item.claim}${item.limitation ? ` Limitation: ${item.limitation}` : ""}`,
+      ),
       `Next check: ${finding.nextStep}`,
-      correction ? `Human review: ${correction.status}. ${correction.reason}` : "Human review: not yet recorded."
-    ].join("\n"), source_bundle: context.loaded.bundlePath, source_analysis: source,
+      correction
+        ? `Human review: ${correction.status}. ${correction.reason}`
+        : "Human review: not yet recorded.",
+    ].join("\n"),
+    source_bundle: context.loaded.bundlePath,
+    source_analysis: source,
     evidence: [
-      { path: context.loaded.bundlePath, kind: "state", note: "Original run evidence; participant outcomes remain authoritative for what was recorded." },
-      { path: path.join(root, "analysis", analysis.id, "analysis.json"), kind: "review",
-        note: `Independent analysis ${analysis.id}, finding ${finding.id}; sha256 ${source.sha256}.` },
-      ...(correction ? [{ path: path.join(root, "analysis", analysis.id, "corrections", correction.id, "correction.json"),
-        kind: "review" as const, note: "Append-only review of this exact finding version." }] : []),
-      ...evidence.map((item) => ({ path: item.capture ? path.join(root, item.capture.path) : context.loaded.bundlePath,
-        kind: item.capture ? "screenshot" as const : "state" as const,
-        note: `Participant ${item.streamId}, event ${item.eventId}${item.at ? ` at ${item.at}` : ""}; evidence ${item.id}.` }))
+      {
+        path: context.loaded.bundlePath,
+        kind: "state",
+        note: "Original run evidence; participant outcomes remain authoritative for what was recorded.",
+      },
+      {
+        path: path.join(root, "analysis", analysis.id, "analysis.json"),
+        kind: "review",
+        note: `Independent analysis ${analysis.id}, finding ${finding.id}; sha256 ${source.sha256}.`,
+      },
+      ...(correction
+        ? [
+            {
+              path: path.join(
+                root,
+                "analysis",
+                analysis.id,
+                "corrections",
+                correction.id,
+                "correction.json",
+              ),
+              kind: "review" as const,
+              note: "Append-only review of this exact finding version.",
+            },
+          ]
+        : []),
+      ...evidence.map((item) => ({
+        path: item.capture ? path.join(root, item.capture.path) : context.loaded.bundlePath,
+        kind: item.capture ? ("screenshot" as const) : ("state" as const),
+        note: `Participant ${item.streamId}, event ${item.eventId}${item.at ? ` at ${item.at}` : ""}; evidence ${item.id}.`,
+      })),
     ],
-    redaction: { status: "passed", notes: "Source run and derived analysis passed the existing share-safety gate; semantic claims still require human review." },
+    redaction: {
+      status: "passed",
+      notes:
+        "Source run and derived analysis passed the existing share-safety gate; semantic claims still require human review.",
+    },
     idempotency_key: `humanish:${bundle.runId}:analysis:${hashStudyAnalysisValue(source)}`,
     proposed_next_state: "study-quality-review",
-    acceptance_proof: [feedbackProofCommands(bundle.runId).verify, feedbackProofCommands(bundle.runId).watch]
+    acceptance_proof: [
+      feedbackProofCommands(bundle.runId).verify,
+      feedbackProofCommands(bundle.runId).watch,
+    ],
   };
 }
 
 function isUsableFeedbackCandidate(candidate: unknown): candidate is RunFeedbackCandidate {
-  if (!isRecord(candidate)
-    || candidate.schema !== "humanish.feedback-candidate.v1"
-    || !isRecord(candidate.redaction)
-    || candidate.redaction.status !== "passed"
-    || typeof candidate.summary !== "string"
-    || candidate.summary.trim().length === 0
-    || !Array.isArray(candidate.evidence)
+  if (
+    !isRecord(candidate) ||
+    candidate.schema !== "humanish.feedback-candidate.v1" ||
+    !isRecord(candidate.redaction) ||
+    candidate.redaction.status !== "passed" ||
+    typeof candidate.summary !== "string" ||
+    candidate.summary.trim().length === 0 ||
+    !Array.isArray(candidate.evidence)
   ) {
     return false;
   }
 
-  return candidate.evidence.every((item) =>
-    isRecord(item)
-    && typeof item.path === "string"
-    && item.path.length > 0
-    && !path.isAbsolute(item.path)
-    && !item.path.includes("://")
-    && !item.path.includes("..")
+  return candidate.evidence.every(
+    (item) =>
+      isRecord(item) &&
+      typeof item.path === "string" &&
+      item.path.length > 0 &&
+      !path.isAbsolute(item.path) &&
+      !item.path.includes("://") &&
+      !item.path.includes(".."),
   );
 }
 
@@ -654,9 +802,16 @@ ${draft.acceptance_proof.map((proof) => `    - ${proof}`).join("\n")}
 }
 
 function encodeGitHubRepoPath(repo: string): string {
-  return repo.split("/").map((part) => encodeURIComponent(part)).join("/");
+  return repo
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
 }
 
-async function writeJson(root: PreparedRunArtifactPaths, relativePath: string, value: unknown): Promise<void> {
+async function writeJson(
+  root: PreparedRunArtifactPaths,
+  relativePath: string,
+  value: unknown,
+): Promise<void> {
   await writeContainedOutputFile(root, relativePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }

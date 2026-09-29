@@ -8,7 +8,7 @@ import type { ClaudeSessionResult } from "../src/claude-agent-sdk.js";
 export const fixturePersona: ActorPersonaRef = {
   id: "synthetic-new-user",
   traitsApplied: ["patience:low", "skill:high"],
-  promptDigest: "abc123def456"
+  promptDigest: "abc123def456",
 };
 
 export function buildCodexResult(): CodexAppServerRunResult {
@@ -25,7 +25,7 @@ export function buildCodexResult(): CodexAppServerRunResult {
     requests: 2,
     responses: 2,
     tools: 1,
-    warnings: 1
+    warnings: 1,
   };
   const trace: CodexAppServerTrace = {
     schema: "humanish.codex-app-server-trace.v1",
@@ -50,22 +50,53 @@ export function buildCodexResult(): CodexAppServerRunResult {
     items: [
       { id: "i-msg", type: "agentMessage", lifecycle: "completed", title: "Agent message" },
       { id: "i-rsn", type: "reasoning", lifecycle: "completed", title: "Reasoning summary" },
-      { id: "i-cmd", type: "commandExecution", lifecycle: "completed", status: "completed", title: "Run command" },
+      {
+        id: "i-cmd",
+        type: "commandExecution",
+        lifecycle: "completed",
+        status: "completed",
+        title: "Run command",
+      },
       { id: "i-file", type: "fileChange", lifecycle: "completed", title: "Edit file" },
-      { id: "i-tool", type: "mcpToolCall", lifecycle: "completed", title: "Tool call" }
+      { id: "i-tool", type: "mcpToolCall", lifecycle: "completed", title: "Tool call" },
     ],
     messages: [{ itemId: "i-msg", text: "synthetic assistant message" }],
     reasoning: [{ itemId: "i-rsn", text: "synthetic reasoning summary" }],
     plans: [{ explanation: "synthetic plan", steps: ["step one", "step two"] }],
     commands: [
-      { itemId: "i-cmd", command: "echo hello", cwd: "[target-cwd]", status: "completed", exitCode: 0, outputTail: "hello" }
+      {
+        itemId: "i-cmd",
+        command: "echo hello",
+        cwd: "[target-cwd]",
+        status: "completed",
+        exitCode: 0,
+        outputTail: "hello",
+      },
     ],
-    fileChanges: [{ itemId: "i-file", status: "completed", changeCount: 1, outputTail: "1 change" }],
-    tools: [{ itemId: "i-tool", kind: "mcp", server: "synthetic-server", tool: "synthetic-tool", status: "completed" }],
-    approvals: [{ id: 7, method: "execCommandApproval", itemId: "i-cmd", decision: "decline", reason: "synthetic decline" }],
+    fileChanges: [
+      { itemId: "i-file", status: "completed", changeCount: 1, outputTail: "1 change" },
+    ],
+    tools: [
+      {
+        itemId: "i-tool",
+        kind: "mcp",
+        server: "synthetic-server",
+        tool: "synthetic-tool",
+        status: "completed",
+      },
+    ],
+    approvals: [
+      {
+        id: 7,
+        method: "execCommandApproval",
+        itemId: "i-cmd",
+        decision: "decline",
+        reason: "synthetic decline",
+      },
+    ],
     warnings: [{ method: "warn/method", message: "synthetic warning" }],
     errors: [{ method: "error/method", message: "synthetic error" }],
-    tokenUsage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 }
+    tokenUsage: { input_tokens: 100, output_tokens: 50, total_tokens: 150 },
   };
   return {
     status: "passed",
@@ -82,7 +113,7 @@ export function buildCodexResult(): CodexAppServerRunResult {
     trace,
     transcriptPath: "codex-app-server/transcript.txt",
     tracePath: "codex-app-server/summary.json",
-    eventsPath: "codex-app-server/events.ndjson"
+    eventsPath: "codex-app-server/events.ndjson",
   };
 }
 
@@ -103,7 +134,11 @@ export function buildPiSession(): PiSessionResult {
       { type: "message_start", role: "assistant" },
       { type: "message_update", thinkingDelta: "considering the task" },
       { type: "message_update", textDelta: "Looking at the project" },
-      { type: "message_end", text: "Looking at the project structure.", thinking: "considering the task" },
+      {
+        type: "message_end",
+        text: "Looking at the project structure.",
+        thinking: "considering the task",
+      },
       { type: "tool_execution_start", toolCallId: "call-1", toolName: "read_file" },
       { type: "tool_execution_end", toolCallId: "call-1", isError: false },
       { type: "tool_execution_start", toolCallId: "call-2", toolName: "bash" },
@@ -115,8 +150,8 @@ export function buildPiSession(): PiSessionResult {
       { type: "auto_retry_end" },
       { type: "notice", method: "extension_error", message: "synthetic extension notice" },
       { type: "turn_end" },
-      { type: "agent_end" }
-    ]
+      { type: "agent_end" },
+    ],
   };
 }
 
@@ -137,15 +172,15 @@ export function buildClaudeSession(): ClaudeSessionResult {
           content: [
             { type: "thinking", thinking: "considering the request" },
             { type: "text", text: "Inspecting the project setup." },
-            { type: "tool_use", id: "toolu_01", name: "Read" }
-          ]
-        }
+            { type: "tool_use", id: "toolu_01", name: "Read" },
+          ],
+        },
       },
       {
         type: "user",
         message: {
-          content: [{ type: "tool_result", tool_use_id: "toolu_01", is_error: false }]
-        }
+          content: [{ type: "tool_result", tool_use_id: "toolu_01", is_error: false }],
+        },
       },
       {
         type: "result",
@@ -156,8 +191,8 @@ export function buildClaudeSession(): ClaudeSessionResult {
         session_id: "claude-session-1",
         total_cost_usd: 0.0034,
         usage: { input_tokens: 200, output_tokens: 80 },
-        result: "Completed the inspection."
-      }
-    ]
+        result: "Completed the inspection.",
+      },
+    ],
   };
 }

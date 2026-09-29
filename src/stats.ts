@@ -8,7 +8,13 @@
 import path from "node:path";
 
 import { readRunIndex, type RunIndexEntry } from "./run-index.js";
-import { addStudyCosts, emptyStudyCosts, readStudyCosts, type StudyCosts, type StudyCostRow } from "./study-costs.js";
+import {
+  addStudyCosts,
+  emptyStudyCosts,
+  readStudyCosts,
+  type StudyCosts,
+  type StudyCostRow,
+} from "./study-costs.js";
 
 export const STATS_SCHEMA = "humanish.stats.v1";
 
@@ -78,11 +84,11 @@ export interface StatsResult {
 }
 
 export const STATS_NOTE =
-  "Every dollar figure is a retained rate-table estimate, never a provider charge. "
-  + "Known spend includes participant/desktop estimates and all distinct recorded analysis attempts; reuse is counted once. "
-  + "Unknown amounts are excluded, not $0. Missing historical attempts cannot be reconstructed. "
-  + "Analysis is attributed to its run's start date, including later reruns. "
-  + "JSON estimatedSpendUsd and medianCostUsd retain their participant/desktop-only meaning; costs includes analysis.";
+  "Every dollar figure is a retained rate-table estimate, never a provider charge. " +
+  "Known spend includes participant/desktop estimates and all distinct recorded analysis attempts; reuse is counted once. " +
+  "Unknown amounts are excluded, not $0. Missing historical attempts cannot be reconstructed. " +
+  "Analysis is attributed to its run's start date, including later reruns. " +
+  "JSON estimatedSpendUsd and medianCostUsd retain their participant/desktop-only meaning; costs includes analysis.";
 
 export interface StatsOptions {
   /** ISO date or datetime; runs that started before it are excluded. */
@@ -125,7 +131,10 @@ function round(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
 
-export async function computeStats(cwdInput: string, options: StatsOptions = {}): Promise<StatsResult | StatsFailure> {
+export async function computeStats(
+  cwdInput: string,
+  options: StatsOptions = {},
+): Promise<StatsResult | StatsFailure> {
   const cwd = path.resolve(cwdInput);
   let sinceMs: number | undefined;
   if (options.since !== undefined) {
@@ -135,17 +144,31 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
         schema: STATS_SCHEMA,
         ok: false,
         cwd,
-        error: { code: "HUMANISH_STATS_INVALID_SINCE", message: `--since must be an ISO date or datetime, got "${options.since}".` }
+        error: {
+          code: "HUMANISH_STATS_INVALID_SINCE",
+          message: `--since must be an ISO date or datetime, got "${options.since}".`,
+        },
       };
     }
   }
 
-  const index = await readRunIndex(cwd, options.nowMs === undefined ? {} : { nowMs: options.nowMs });
+  const index = await readRunIndex(
+    cwd,
+    options.nowMs === undefined ? {} : { nowMs: options.nowMs },
+  );
   // Corrupt source metadata must not hide separately retained paid analysis receipts.
   // These directories cannot be attributed to a lab/date, so scoped filters exclude them.
   const indexedIds = new Set(index.runs.map((entry) => entry.runId));
-  const entries: RunIndexEntry[] = [...index.runs, ...index.unreadable.filter((id) => !indexedIds.has(id))
-    .map((runId) => ({ runId, derivedFrom: "directory" as const, liveness: "interrupted" as const }))];
+  const entries: RunIndexEntry[] = [
+    ...index.runs,
+    ...index.unreadable
+      .filter((id) => !indexedIds.has(id))
+      .map((runId) => ({
+        runId,
+        derivedFrom: "directory" as const,
+        liveness: "interrupted" as const,
+      })),
+  ];
   const selected = entries.filter((entry) => {
     if (options.lab !== undefined && entry.lab?.id !== options.lab) return false;
     if (sinceMs !== undefined) {
@@ -166,7 +189,7 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     unpricedRuns: 0,
     participants: emptyParticipants(),
     verdicts: {},
-    costs: emptyStudyCosts()
+    costs: emptyStudyCosts(),
   };
   const labs = new Map<string, StatsLabRow & { durations: number[]; runCosts: number[] }>();
   const days = new Map<string, StatsDayRow>();
@@ -180,18 +203,33 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     if (entry.mode === "live") totals.live += 1;
     if (entry.mode === "dry-run") totals.dryRun += 1;
     if (entry.liveness === "running") totals.running += 1;
-    const priced = typeof entry.estimatedCostUsd === "number" && Number.isFinite(entry.estimatedCostUsd) && entry.estimatedCostUsd >= 0;
+    const priced =
+      typeof entry.estimatedCostUsd === "number" &&
+      Number.isFinite(entry.estimatedCostUsd) &&
+      entry.estimatedCostUsd >= 0;
     if (priced) totals.estimatedSpendUsd += entry.estimatedCostUsd as number;
     else totals.unpricedRuns += 1;
     addParticipants(totals.participants, entry);
-    if (entry.verdict !== undefined) totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
+    if (entry.verdict !== undefined)
+      totals.verdicts[entry.verdict] = (totals.verdicts[entry.verdict] ?? 0) + 1;
 
     const labId = entry.lab?.id ?? "(no lab)";
     let row = labs.get(labId);
     if (row === undefined) {
       row = {
-        lab: labId, runs: 0, live: 0, dryRun: 0, judged: 0, passed: 0, durationSamples: 0, costSamples: 0,
-        unpricedRuns: 0, participants: emptyParticipants(), durations: [], costs: emptyStudyCosts(), runCosts: []
+        lab: labId,
+        runs: 0,
+        live: 0,
+        dryRun: 0,
+        judged: 0,
+        passed: 0,
+        durationSamples: 0,
+        costSamples: 0,
+        unpricedRuns: 0,
+        participants: emptyParticipants(),
+        durations: [],
+        costs: emptyStudyCosts(),
+        runCosts: [],
       };
       labs.set(labId, row);
     }
@@ -202,7 +240,8 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
       row.judged += 1;
       if (entry.verdict === "pass") row.passed += 1;
     }
-    if (entry.mode === "live" && entry.durationMs !== undefined) row.durations.push(entry.durationMs);
+    if (entry.mode === "live" && entry.durationMs !== undefined)
+      row.durations.push(entry.durationMs);
     if (priced) row.runCosts.push(entry.estimatedCostUsd as number);
     else row.unpricedRuns += 1;
     addParticipants(row.participants, entry);
@@ -212,7 +251,14 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     const day = at === undefined ? "(undated)" : at.slice(0, 10);
     let dayRow = days.get(day);
     if (dayRow === undefined) {
-      dayRow = { day, runs: 0, live: 0, estimatedSpendUsd: 0, unpricedRuns: 0, costs: emptyStudyCosts() };
+      dayRow = {
+        day,
+        runs: 0,
+        live: 0,
+        estimatedSpendUsd: 0,
+        unpricedRuns: 0,
+        costs: emptyStudyCosts(),
+      };
       days.set(day, dayRow);
     }
     dayRow.runs += 1;
@@ -229,7 +275,7 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
       ...(durations.length === 0 ? {} : { medianDurationMs: Math.round(median(durations)!) }),
       durationSamples: durations.length,
       ...(runCosts.length === 0 ? {} : { medianCostUsd: round(median(runCosts)!) }),
-      costSamples: runCosts.length
+      costSamples: runCosts.length,
     }))
     .sort((a, b) => b.runs - a.runs || a.lab.localeCompare(b.lab));
 
@@ -241,10 +287,12 @@ export async function computeStats(cwdInput: string, options: StatsOptions = {})
     ...(options.lab === undefined ? {} : { lab: options.lab }),
     totals: { ...totals, estimatedSpendUsd: round(totals.estimatedSpendUsd) },
     labs: labRows,
-    days: [...days.values()].map((row) => ({ ...row, estimatedSpendUsd: round(row.estimatedSpendUsd) })).sort((a, b) => a.day.localeCompare(b.day)),
+    days: [...days.values()]
+      .map((row) => ({ ...row, estimatedSpendUsd: round(row.estimatedSpendUsd) }))
+      .sort((a, b) => a.day.localeCompare(b.day)),
     costsByRun,
     unreadable: index.unreadable,
-    note: STATS_NOTE
+    note: STATS_NOTE,
   };
 }
 
@@ -265,7 +313,7 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
   const t = result.totals;
   const scope = [
     result.lab === undefined ? undefined : `lab ${result.lab}`,
-    result.since === undefined ? undefined : `since ${result.since}`
+    result.since === undefined ? undefined : `since ${result.since}`,
   ].filter((part): part is string => part !== undefined);
   const lines = [
     `humanish stats${scope.length === 0 ? "" : ` (${scope.join(", ")})`}`,
@@ -275,24 +323,39 @@ export function formatStatsHuman(result: StatsResult | StatsFailure): string {
     `analysis: ${knownMoney(t.costs.analysisEstimatedUsd)} over ${t.costs.analysisAttempts} recorded attempt(s); ${t.costs.analysisUnpricedAttempts} unpriced, ${t.costs.analysisUnresolvedAttempts} unresolved`,
     `analysis history: ${t.costs.analysisHistoryUncertainRuns} run(s) missing or uncertain; use --json for per-run accounting`,
     `participants: ${t.participants.reachedGoal}/${t.participants.total} recorded goal completions, ${t.participants.reportedFriction} reported friction`,
-    `verdicts: ${Object.entries(t.verdicts).map(([verdict, count]) => `${verdict} ${count}`).join(", ") || "none recorded"}`
+    `verdicts: ${
+      Object.entries(t.verdicts)
+        .map(([verdict, count]) => `${verdict} ${count}`)
+        .join(", ") || "none recorded"
+    }`,
   ];
   if (result.labs.length > 0) {
     lines.push("", "per lab:");
     for (const row of result.labs) {
       const rate = row.passRate === undefined ? "no verdicts" : `${row.passed}/${row.judged} pass`;
-      const duration = row.medianDurationMs === undefined ? "no timed live runs" : `median ${minutes(row.medianDurationMs)} over ${row.durationSamples}`;
-      const cost = row.medianCostUsd === undefined ? "no priced participant/desktop runs" : `participant/desktop median ${money(row.medianCostUsd)} over ${row.costSamples}`;
-      lines.push(`- ${row.lab}: ${row.runs} run(s), ${row.live} live; ${rate}; ${duration}; known study spend ${knownMoney(row.costs.estimatedTotalUsd)}; ${cost}; ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`);
+      const duration =
+        row.medianDurationMs === undefined
+          ? "no timed live runs"
+          : `median ${minutes(row.medianDurationMs)} over ${row.durationSamples}`;
+      const cost =
+        row.medianCostUsd === undefined
+          ? "no priced participant/desktop runs"
+          : `participant/desktop median ${money(row.medianCostUsd)} over ${row.costSamples}`;
+      lines.push(
+        `- ${row.lab}: ${row.runs} run(s), ${row.live} live; ${rate}; ${duration}; known study spend ${knownMoney(row.costs.estimatedTotalUsd)}; ${cost}; ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`,
+      );
     }
   }
   if (result.days.length > 0) {
     lines.push("", "by day:");
     for (const row of result.days) {
-      lines.push(`- ${row.day}: ${row.runs} run(s), ${row.live} live, known study spend ${knownMoney(row.costs.estimatedTotalUsd)}, ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`);
+      lines.push(
+        `- ${row.day}: ${row.runs} run(s), ${row.live} live, known study spend ${knownMoney(row.costs.estimatedTotalUsd)}, ${row.unpricedRuns} unpriced runs, ${row.costs.analysisUnpricedAttempts} unpriced analyses`,
+      );
     }
   }
-  if (result.unreadable.length > 0) lines.push("", `unreadable run directories: ${result.unreadable.join(", ")}`);
+  if (result.unreadable.length > 0)
+    lines.push("", `unreadable run directories: ${result.unreadable.join(", ")}`);
   lines.push("", result.note);
   return `${lines.join("\n")}\n`;
 }

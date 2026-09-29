@@ -30,7 +30,9 @@ function fail(message) {
 
 for (const name of ["OPENAI_API_KEY"]) {
   if (!process.env[name] || process.env[name].trim().length === 0) {
-    fail(`${name} is not set. This gate drives a real agent in a real sandbox; there is no offline mode.`);
+    fail(
+      `${name} is not set. This gate drives a real agent in a real sandbox; there is no offline mode.`,
+    );
   }
 }
 if (!process.env.E2B_API_KEY) {
@@ -55,17 +57,21 @@ if (!tarball) fail("npm pack produced no tarball.");
 const fixture = await readFile(path.join(cwd, "humanish", "labs", "first-contact.yaml"), "utf8");
 const productBlock = "  product:\n    name: humanish\n";
 if (!fixture.includes(productBlock)) {
-  fail("first-contact.yaml has changed shape — this gate rewrites its product block and cannot any more.");
+  fail(
+    "first-contact.yaml has changed shape — this gate rewrites its product block and cannot any more.",
+  );
 }
 if (!/^review:\s*\n\s+analysis: false\s*$/m.test(fixture)) {
-  fail("first-contact.yaml must explicitly disable automatic analysis to preserve this gate’s zero-spend product contract.");
+  fail(
+    "first-contact.yaml must explicitly disable automatic analysis to preserve this gate’s zero-spend product contract.",
+  );
 }
 let lab = fixture
   .replace("id: first-contact", `id: ${LAB_ID}`)
   .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")
   .replace(
     productBlock,
-    `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`
+    `${productBlock}    upload: ${tarball}\n    install: >-\n      sudo -n npm install -g "$HUMANISH_PRODUCT_UPLOAD"\n      && humanish init --yes\n`,
   );
 
 // THE MISSION HAS TO CHANGE, and the first version of this gate missed it. first-contact tells the
@@ -75,27 +81,30 @@ let lab = fixture
 // dollar telling us the LAST release worked. So the gate's copy says plainly that the build under
 // test is already here and must not be fetched.
 const missionAnchor = "    mission: >-\n";
-if (!lab.includes(missionAnchor)) fail("first-contact.yaml has changed shape — cannot rewrite its mission.");
+if (!lab.includes(missionAnchor))
+  fail("first-contact.yaml has changed shape — cannot rewrite its mission.");
 lab = lab.replace(
   missionAnchor,
-  missionAnchor
-    + "      The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n"
-    + "      a release candidate that is NOT on npm. Use the installed `humanish` command directly.\n"
-    + "      Do NOT run `npm install humanish`, `npx humanish`, or otherwise fetch it from a registry —\n"
-    + "      that would test a different build than the one under test.\n"
+  missionAnchor +
+    "      The build you are evaluating is ALREADY INSTALLED on this machine as `humanish`, and it is\n" +
+    "      a release candidate that is NOT on npm. Use the installed `humanish` command directly.\n" +
+    "      Do NOT run `npm install humanish`, `npx humanish`, or otherwise fetch it from a registry —\n" +
+    "      that would test a different build than the one under test.\n",
 );
 
 await mkdir(path.dirname(labPath), { recursive: true });
 await writeFile(labPath, lab, "utf8");
 
-console.log(`release:dogfood — sending a participant to meet humanish@${version} (product spend capped at $0)`);
+console.log(
+  `release:dogfood — sending a participant to meet humanish@${version} (product spend capped at $0)`,
+);
 let raw = "";
 try {
   raw = execFileSync("node", ["dist/cli.js", "run", LAB_ID, "--json"], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    stdio: ["ignore", "pipe", "inherit"]
+    stdio: ["ignore", "pipe", "inherit"],
   });
 } catch (error) {
   raw = error.stdout ?? "";
@@ -114,7 +123,9 @@ try {
 
 const session = result.session ?? {};
 console.log("");
-console.log(`  verdict:  ${session.status ?? "unknown"} (${session.completionReason ?? "no reason recorded"})`);
+console.log(
+  `  verdict:  ${session.status ?? "unknown"} (${session.completionReason ?? "no reason recorded"})`,
+);
 console.log(`  run:      ${result.runId ?? "not created"}`);
 console.log(`  no-spend: ${result.noSpend?.satisfied === true ? "satisfied" : "NOT satisfied"}`);
 console.log("");
@@ -123,13 +134,26 @@ console.log("");
 // the actual finding, and a gate that only checks the marker throws away the reason it exists.
 console.log("  What the participant said — read this before you tag:");
 console.log("  " + "-".repeat(70));
-const transcript = path.join(cwd, ".humanish", "runs", result.runId ?? "", "terminal-transcript.txt");
+const transcript = path.join(
+  cwd,
+  ".humanish",
+  "runs",
+  result.runId ?? "",
+  "terminal-transcript.txt",
+);
 try {
   const report = terminalParticipantReport(await readFile(transcript, "utf8"));
   const last = report.last ?? "(the participant said nothing)";
-  console.log(last.split("\n").map((line) => `  ${line}`).join("\n"));
+  console.log(
+    last
+      .split("\n")
+      .map((line) => `  ${line}`)
+      .join("\n"),
+  );
   if (report.malformedLines > 0) {
-    console.log(`  ${report.malformedLines} malformed JSON event line(s) skipped; inspect the retained transcript.`);
+    console.log(
+      `  ${report.malformedLines} malformed JSON event line(s) skipped; inspect the retained transcript.`,
+    );
   }
 } catch {
   console.log("  (no transcript on disk — the run did not get far enough to report)");
@@ -147,16 +171,22 @@ try {
   const others = [...new Set(exercised.filter((v) => v !== version && /^0\.\d+\.\d+$/.test(v)))];
   if (!sawCandidate) {
     fail(
-      `the participant never exercised ${version}.`
-      + (others.length > 0 ? ` It used ${others.join(", ")} instead — it fetched a published build.` : "")
-      + " The gate cannot vouch for this candidate."
+      `the participant never exercised ${version}.` +
+        (others.length > 0
+          ? ` It used ${others.join(", ")} instead — it fetched a published build.`
+          : "") +
+        " The gate cannot vouch for this candidate.",
     );
   }
   if (others.length > 0) {
-    console.log(`  note: other humanish versions also appear in the transcript (${others.join(", ")}).`);
+    console.log(
+      `  note: other humanish versions also appear in the transcript (${others.join(", ")}).`,
+    );
   }
 } catch (error) {
-  fail(`could not read the transcript to confirm which build was exercised: ${String(error).slice(0, 160)}`);
+  fail(
+    `could not read the transcript to confirm which build was exercised: ${String(error).slice(0, 160)}`,
+  );
 }
 
 // WHAT COUNTS AS GETTING THERE. The gate withholds E2B and provider credentials by design (it is
@@ -168,23 +198,31 @@ try {
 const milestones = [
   [/humanish init|init --yes/i, "set the project up"],
   [/humanish run |lab run /i, "ran a study"],
-  [/humanish verify|share_ready/i, "verified the evidence"]
+  [/humanish verify|share_ready/i, "verified the evidence"],
 ];
 try {
   const seen = await readFile(transcript, "utf8");
   const missed = milestones.filter(([pattern]) => !pattern.test(seen)).map(([, what]) => what);
   if (missed.length > 0) {
-    fail(`the participant never ${missed.join(", nor ")} on this build. Do not tag ${version} until you know why.`);
+    fail(
+      `the participant never ${missed.join(", nor ")} on this build. Do not tag ${version} until you know why.`,
+    );
   }
   if (session.status === "failed") {
-    fail(`the participant reported a FAILURE on this build. Do not tag ${version} until you know why.`);
+    fail(
+      `the participant reported a FAILURE on this build. Do not tag ${version} until you know why.`,
+    );
   }
   if (session.status !== "passed") {
-    console.log(`  note: the participant reported "${session.status}" — it completed the no-spend path and`);
+    console.log(
+      `  note: the participant reported "${session.status}" — it completed the no-spend path and`,
+    );
     console.log("        then stopped at the credentials this gate deliberately withholds.");
   }
 } catch (error) {
-  fail(`could not read the transcript to judge what the participant did: ${String(error).slice(0, 160)}`);
+  fail(
+    `could not read the transcript to judge what the participant did: ${String(error).slice(0, 160)}`,
+  );
 }
 if (result.ok !== true) {
   fail(`the run itself did not complete on this build. Do not tag ${version} until you know why.`);
@@ -192,4 +230,6 @@ if (result.ok !== true) {
 if (result.noSpend?.satisfied !== true) {
   fail("the no-spend proof was not satisfied — the run spent where it declared it would not.");
 }
-console.log(`release:dogfood ok — a participant met humanish@${version} and got where it was going.`);
+console.log(
+  `release:dogfood ok — a participant met humanish@${version} and got where it was going.`,
+);

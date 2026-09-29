@@ -19,19 +19,31 @@ export const PRICING_SCHEMA = "humanish.pricing.v1";
 export const ACTOR_ESTIMATED_COST_SCHEMA = "humanish.actor-estimated-cost.v1";
 
 /** Account lanes must never acquire a price through an aggregate or ambiguous model line. */
-export function contradictsAccountBilling(streams: readonly { id?: string; laneId?: string;
-  actor?: { executionProfile?: { billing?: unknown } | undefined }; liveActor?: { executionProfile?: { billing?: unknown } | undefined } }[],
-  cost: { fullyEstimated?: unknown; breakdown?: unknown } | undefined): boolean {
-  const account = (stream: typeof streams[number]): boolean =>
-    (stream.liveActor?.executionProfile ?? stream.actor?.executionProfile)?.billing === "account-unknown";
+export function contradictsAccountBilling(
+  streams: readonly {
+    id?: string;
+    laneId?: string;
+    actor?: { executionProfile?: { billing?: unknown } | undefined };
+    liveActor?: { executionProfile?: { billing?: unknown } | undefined };
+  }[],
+  cost: { fullyEstimated?: unknown; breakdown?: unknown } | undefined,
+): boolean {
+  const account = (stream: (typeof streams)[number]): boolean =>
+    (stream.liveActor?.executionProfile ?? stream.actor?.executionProfile)?.billing ===
+    "account-unknown";
   if (!cost || !streams.some(account)) return false;
   if (cost.fullyEstimated === true) return true;
   if (!Array.isArray(cost.breakdown)) return true;
-  return cost.breakdown.some((line: { kind?: unknown; estimatedCostUsd?: unknown; laneId?: unknown }) => {
-    if (line?.kind !== "model-tokens" || typeof line.estimatedCostUsd !== "number") return false;
-    const owners = typeof line.laneId === "string" ? streams.filter(s => s.id === line.laneId || s.laneId === line.laneId) : streams;
-    return owners.length !== 1 || account(owners[0]!);
-  });
+  return cost.breakdown.some(
+    (line: { kind?: unknown; estimatedCostUsd?: unknown; laneId?: unknown }) => {
+      if (line?.kind !== "model-tokens" || typeof line.estimatedCostUsd !== "number") return false;
+      const owners =
+        typeof line.laneId === "string"
+          ? streams.filter((s) => s.id === line.laneId || s.laneId === line.laneId)
+          : streams;
+      return owners.length !== 1 || account(owners[0]!);
+    },
+  );
 }
 
 export interface ModelRate {
@@ -144,7 +156,7 @@ export interface DesktopCostEstimate {
 const GPT56_LONG_CONTEXT = {
   thresholdInputTokens: 272_000,
   inputMultiplier: 2,
-  outputMultiplier: 1.5
+  outputMultiplier: 1.5,
 } as const;
 
 const GPT56_SOURCE = "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)";
@@ -157,7 +169,7 @@ function gpt56Rate(
   cachedPer1M: number,
   writePer1M: number,
   outPer1M: number,
-  asOf: string = "2026-08-18"
+  asOf: string = "2026-08-18",
 ): ModelRate {
   return {
     inputUsdPerToken: inPer1M * 1e-6,
@@ -166,7 +178,7 @@ function gpt56Rate(
     outputUsdPerToken: outPer1M * 1e-6,
     longContext: { ...GPT56_LONG_CONTEXT },
     asOf,
-    source: GPT56_SOURCE
+    source: GPT56_SOURCE,
   };
 }
 
@@ -184,7 +196,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     inputUsdPerToken: 3e-6,
     outputUsdPerToken: 12e-6,
     asOf: "2026-08-01",
-    source: "openai.com/api/pricing (computer-use-preview)"
+    source: "openai.com/api/pricing (computer-use-preview)",
   },
   // gpt-5.5: the PREVIOUS-generation CUA default, kept so pinned labs and old bundles still
   // price. Pre-5.6 models bill no cache-write fee (prompt-caching guide) and no long-context
@@ -194,7 +206,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     outputUsdPerToken: 30e-6,
     cachedInputUsdPerToken: 0.5e-6,
     asOf: "2026-08-05",
-    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)"
+    source: "openrouter.ai/openai/gpt-5.5 (gpt-5.5 no longer on openai.com/api/pricing; see #334)",
   },
   // The gpt-5.6 family (live sheet 2026-08-18, standard tier, short-context base rates;
   // the longContext block prices the >272K re-tier when per-request turns are recorded).
@@ -216,7 +228,7 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
   // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit lab
   // model choices and the study-analysis default; the computer-use default is separate.
-  "gpt-6-astra": gpt56Rate(10, 1, 12.5, 50, GPT56_SOL_PROMO_AS_OF)
+  "gpt-6-astra": gpt56Rate(10, 1, 12.5, 50, GPT56_SOL_PROMO_AS_OF),
 };
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated
@@ -226,7 +238,7 @@ export const DESKTOP_RESOURCE_RATE: DesktopResourceRate = {
   usdPerGiBSecond: 0.0000045,
   asOf: "2026-09-05",
   // A source label rather than an executable URL; runtime URL redaction protects E2B streams.
-  source: "e2b.dev/pricing"
+  source: "e2b.dev/pricing",
 };
 
 // Planning/legacy-helper assumption only: stock desktops observed on 2026-09-05 had 8 vCPU /
@@ -237,38 +249,66 @@ export const DESKTOP_RATE: DesktopRate = {
   usdPerMinute: 0.00888,
   asOf: "2026-09-05",
   source: "e2b.dev/pricing (planning assumption: 8 vCPU / 8 GiB; not an observed allocation)",
-  placeholder: true
+  placeholder: true,
 };
 
 export function isDesktopResources(value: unknown): value is DesktopResources {
   if (value === null || typeof value !== "object") return false;
   const resources = value as DesktopResources;
-  return Number.isSafeInteger(resources.cpuCount) && resources.cpuCount > 0
-    && Number.isSafeInteger(resources.memoryMiB) && resources.memoryMiB > 0;
+  return (
+    Number.isSafeInteger(resources.cpuCount) &&
+    resources.cpuCount > 0 &&
+    Number.isSafeInteger(resources.memoryMiB) &&
+    resources.memoryMiB > 0
+  );
 }
 
 /** Price one observed allocation. Missing quantities/rates stay unknown, never a stock guess. */
 export function estimateAllocatedDesktopCost(
   minutes: number | undefined,
   resources: DesktopResources | undefined,
-  rate: DesktopResourceRate = DESKTOP_RESOURCE_RATE
+  rate: DesktopResourceRate = DESKTOP_RESOURCE_RATE,
 ): DesktopCostEstimate {
   if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) {
     return { estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null, minutes: null };
   }
   if (!isDesktopResources(resources)) {
-    return { estimatedCostUsd: null, reason: "no_desktop_resources", ratesAsOf: null, minutes: round6(minutes) };
+    return {
+      estimatedCostUsd: null,
+      reason: "no_desktop_resources",
+      ratesAsOf: null,
+      minutes: round6(minutes),
+    };
   }
   // The public Hobby/Pro sheet stops at 8 CPU / 8 GiB; larger allocations may have negotiated
   // prices. Retain the resource evidence without extrapolating a standard rate to them.
-  if (![1, 2, 4, 6, 8].includes(resources.cpuCount) || resources.memoryMiB < 512 || resources.memoryMiB > 8192
-    || !Number.isFinite(rate.usdPerCpuSecond) || rate.usdPerCpuSecond < 0
-    || !Number.isFinite(rate.usdPerGiBSecond) || rate.usdPerGiBSecond < 0) {
-    return { estimatedCostUsd: null, reason: "no_rate_for_desktop", ratesAsOf: null, minutes: round6(minutes), resources };
+  if (
+    ![1, 2, 4, 6, 8].includes(resources.cpuCount) ||
+    resources.memoryMiB < 512 ||
+    resources.memoryMiB > 8192 ||
+    !Number.isFinite(rate.usdPerCpuSecond) ||
+    rate.usdPerCpuSecond < 0 ||
+    !Number.isFinite(rate.usdPerGiBSecond) ||
+    rate.usdPerGiBSecond < 0
+  ) {
+    return {
+      estimatedCostUsd: null,
+      reason: "no_rate_for_desktop",
+      ratesAsOf: null,
+      minutes: round6(minutes),
+      resources,
+    };
   }
-  const usdPerSecond = resources.cpuCount * rate.usdPerCpuSecond + resources.memoryMiB / 1024 * rate.usdPerGiBSecond;
-  return { estimatedCostUsd: round6(minutes * 60 * usdPerSecond), ratesAsOf: rate.asOf,
-    source: rate.source, minutes: round6(minutes), resources, usdPerSecond };
+  const usdPerSecond =
+    resources.cpuCount * rate.usdPerCpuSecond + (resources.memoryMiB / 1024) * rate.usdPerGiBSecond;
+  return {
+    estimatedCostUsd: round6(minutes * 60 * usdPerSecond),
+    ratesAsOf: rate.asOf,
+    source: rate.source,
+    minutes: round6(minutes),
+    resources,
+    usdPerSecond,
+  };
 }
 
 /** Round a USD figure to 6 decimals so a float-accumulated total never carries spurious
@@ -284,21 +324,33 @@ export function round6(n: number): number {
  * (estimatedCostUsd: null + a reason) for a missing rate or missing usage — never a guessed cost.
  */
 export function estimateActorCostForExecution(
-  usage: ActorTokenUsage | undefined, modelId: string | undefined, profile?: { billing?: unknown }
+  usage: ActorTokenUsage | undefined,
+  modelId: string | undefined,
+  profile?: { billing?: unknown },
 ): ActorEstimatedCost {
   return profile?.billing === "account-unknown"
-    ? { schema: ACTOR_ESTIMATED_COST_SCHEMA, estimatedCostUsd: null, ratesAsOf: null, reason: "account_billing_unknown",
-      ...(modelId === undefined ? {} : { modelId }) }
+    ? {
+        schema: ACTOR_ESTIMATED_COST_SCHEMA,
+        estimatedCostUsd: null,
+        ratesAsOf: null,
+        reason: "account_billing_unknown",
+        ...(modelId === undefined ? {} : { modelId }),
+      }
     : estimateActorCost(usage, modelId);
 }
 
 export function estimateActorCost(
   tokenUsage: ActorTokenUsage | undefined,
   modelId: string | undefined,
-  rates: Record<string, ModelRate> = MODEL_RATES
+  rates: Record<string, ModelRate> = MODEL_RATES,
 ): ActorEstimatedCost {
   if (!tokenUsage || (tokenUsage.input === undefined && tokenUsage.output === undefined)) {
-    return { schema: ACTOR_ESTIMATED_COST_SCHEMA, estimatedCostUsd: null, reason: "no_token_usage", ratesAsOf: null };
+    return {
+      schema: ACTOR_ESTIMATED_COST_SCHEMA,
+      estimatedCostUsd: null,
+      reason: "no_token_usage",
+      ratesAsOf: null,
+    };
   }
   const rate = modelId ? rates[modelId.trim().toLowerCase()] : undefined;
   if (!rate) {
@@ -307,7 +359,7 @@ export function estimateActorCost(
       estimatedCostUsd: null,
       reason: "no_rate_for_model",
       ratesAsOf: null,
-      ...(modelId ? { modelId } : {})
+      ...(modelId ? { modelId } : {}),
     };
   }
   const inTok = tokenUsage.input ?? 0;
@@ -347,17 +399,21 @@ export function estimateActorCost(
   // Every piece is honestly absent: no reported split means no discount and no surcharge assumed.
   const priceRequest = (
     usage: { input?: number; cachedInput?: number; cacheWriteInput?: number; output?: number },
-    tierable: boolean
+    tierable: boolean,
   ): void => {
     const reqIn = usage.input ?? 0;
     const reqOut = usage.output ?? 0;
     // Tiering applies only to a real per-REQUEST record: session totals crossing the threshold
     // say nothing about any single request, so totals always price on the base tier.
-    const long = tierable && rate.longContext !== undefined && reqIn > rate.longContext.thresholdInputTokens;
+    const long =
+      tierable && rate.longContext !== undefined && reqIn > rate.longContext.thresholdInputTokens;
     const inMul = long ? rate.longContext!.inputMultiplier : 1;
     const outMul = long ? rate.longContext!.outputMultiplier : 1;
     if (long) longContextTurns += 1;
-    const cached = rate.cachedInputUsdPerToken === undefined ? 0 : Math.min(reqIn, Math.max(0, usage.cachedInput ?? 0));
+    const cached =
+      rate.cachedInputUsdPerToken === undefined
+        ? 0
+        : Math.min(reqIn, Math.max(0, usage.cachedInput ?? 0));
     const writes = Math.min(reqIn - cached, Math.max(0, usage.cacheWriteInput ?? 0));
     const full = reqIn - cached - writes;
     cachedTotal += cached;
@@ -377,9 +433,11 @@ export function estimateActorCost(
         input: inTok,
         output: outTok,
         ...(tokenUsage.cachedInput === undefined ? {} : { cachedInput: tokenUsage.cachedInput }),
-        ...(tokenUsage.cacheWriteInput === undefined ? {} : { cacheWriteInput: tokenUsage.cacheWriteInput })
+        ...(tokenUsage.cacheWriteInput === undefined
+          ? {}
+          : { cacheWriteInput: tokenUsage.cacheWriteInput }),
       },
-      false
+      false,
     );
   }
 
@@ -399,8 +457,8 @@ export function estimateActorCost(
       outputTokens: outTok,
       ...(cachedTotal > 0 ? { cachedInputTokens: cachedTotal } : {}),
       ...(writeTotal > 0 ? { cacheWriteInputTokens: writeTotal } : {}),
-      ...(longContextTurns > 0 ? { longContextTurns } : {})
-    }
+      ...(longContextTurns > 0 ? { longContextTurns } : {}),
+    },
   };
 }
 
@@ -411,7 +469,7 @@ export function estimateActorCost(
  */
 export function estimateDesktopCost(
   minutes: number | undefined,
-  rate: DesktopRate = DESKTOP_RATE
+  rate: DesktopRate = DESKTOP_RATE,
 ): DesktopCostEstimate {
   if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) {
     return { estimatedCostUsd: null, reason: "no_duration", ratesAsOf: null, minutes: null };
@@ -421,6 +479,6 @@ export function estimateDesktopCost(
     ratesAsOf: rate.asOf,
     source: rate.source,
     minutes: round6(minutes),
-    ...(rate.placeholder ? { placeholder: true } : {})
+    ...(rate.placeholder ? { placeholder: true } : {}),
   };
 }

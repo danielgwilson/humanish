@@ -32,15 +32,15 @@ Core records must be safe to include in public run bundles by default:
 
 ## Primitive Set
 
-| Primitive | Contract |
-| --- | --- |
-| Run id | The core builder is deterministic from explicit prefix, timestamp, and entropy, and emits ids matching `^[a-z0-9][a-z0-9-]{0,127}$`. Runtime artifact binding uses the broader compatibility rule in `src/run-paths.ts`: one non-empty segment, excluding `.`, `..`, separators, and NUL. |
-| Artifact layout | Builds stable relative pointers under `.humanish/runs/<run-id>/` plus `.humanish/runs/latest.json`. |
-| Latest pointer | `{ schema, runId, path, updatedAt }` using `humanish.latest-run.v1`. |
-| History entry | `{ schema, runId, createdAt, mode, path }` using `humanish.run-history-entry.v1`. |
-| Lifecycle event | `{ at, event, message }`; event and message are required. |
-| Timing summary | `{ startedAt, endedAt, durationMs, status }`; running records have null end and duration. |
-| Git state | `{ schema, status, capturedAt, head, changes, note }` using `humanish.git-state.v1`. |
+| Primitive       | Contract                                                                                                                                                                                                                                                                                  |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run id          | The core builder is deterministic from explicit prefix, timestamp, and entropy, and emits ids matching `^[a-z0-9][a-z0-9-]{0,127}$`. Runtime artifact binding uses the broader compatibility rule in `src/run-paths.ts`: one non-empty segment, excluding `.`, `..`, separators, and NUL. |
+| Artifact layout | Builds stable relative pointers under `.humanish/runs/<run-id>/` plus `.humanish/runs/latest.json`.                                                                                                                                                                                       |
+| Latest pointer  | `{ schema, runId, path, updatedAt }` using `humanish.latest-run.v1`.                                                                                                                                                                                                                      |
+| History entry   | `{ schema, runId, createdAt, mode, path }` using `humanish.run-history-entry.v1`.                                                                                                                                                                                                         |
+| Lifecycle event | `{ at, event, message }`; event and message are required.                                                                                                                                                                                                                                 |
+| Timing summary  | `{ startedAt, endedAt, durationMs, status }`; running records have null end and duration.                                                                                                                                                                                                 |
+| Git state       | `{ schema, status, capturedAt, head, changes, note }` using `humanish.git-state.v1`.                                                                                                                                                                                                      |
 
 ## Git State Boundary
 

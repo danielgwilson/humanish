@@ -16,8 +16,13 @@ export default async function DocumentationPage({ params }: Props) {
     <DocsPage toc={page.data.toc}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody><Content components={getMDXComponents()} /></DocsBody>
-      <a className="docs-edit" href={`https://github.com/danielgwilson/humanish/blob/main/site/content/docs/${page.path}`}>
+      <DocsBody>
+        <Content components={getMDXComponents()} />
+      </DocsBody>
+      <a
+        className="docs-edit"
+        href={`https://github.com/danielgwilson/humanish/blob/main/site/content/docs/${page.path}`}
+      >
         Edit this page on GitHub
       </a>
     </DocsPage>
@@ -39,6 +44,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: { canonical: url },
     openGraph: { title, description, url },
-    twitter: { title, description }
+    twitter: { title, description },
   };
 }

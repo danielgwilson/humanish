@@ -7,9 +7,20 @@ import { ParticipantAssignment } from "../components/participant-assignment";
 describe("retained participant context", () => {
   it("shows the supplied background separately from assignment and recorded guidance", () => {
     const stream = structuredClone(live.streams[0]) as unknown as ObserverStream;
-    stream.actor!.persona.brief = { compilerVersion: 2, text: "Coordinates volunteers.\nConcerned about public rosters.", digest: "synthetic", redacted: true };
+    stream.actor!.persona.brief = {
+      compilerVersion: 2,
+      text: "Coordinates volunteers.\nConcerned about public rosters.",
+      digest: "synthetic",
+      redacted: true,
+    };
     stream.assignment = { mission: "Arrange Saturday's event." };
-    stream.actor!.items.push({ id: "hint", kind: "notice", title: "Participant context hint", text: "No visible progress for 3 steps.", lifecycle: "completed" });
+    stream.actor!.items.push({
+      id: "hint",
+      kind: "notice",
+      title: "Participant context hint",
+      text: "No visible progress for 3 steps.",
+      lifecycle: "completed",
+    });
     const html = renderToStaticMarkup(<ParticipantAssignment stream={stream} />);
     expect(html).toContain("Concerned about public rosters.");
     expect(html).toContain("sensitive values removed");

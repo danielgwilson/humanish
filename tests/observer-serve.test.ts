@@ -15,7 +15,7 @@ import { buildRunSource, runDryRun, verifyRun } from "../src/run.js";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lp9J1wAAAABJRU5ErkJggg==",
-  "base64"
+  "base64",
 );
 
 // Concatenated so this test file itself never contains a secret-shaped literal
@@ -27,11 +27,11 @@ const CONTROL_PLANE_DISABLED_BODY = `${JSON.stringify(
   {
     error: {
       code: "HUMANISH_SERVE_CONTROL_PLANE_DISABLED",
-      message: "control plane not enabled in this version"
-    }
+      message: "control plane not enabled in this version",
+    },
   },
   null,
-  2
+  2,
 )}\n`;
 
 const tempRoots: string[] = [];
@@ -53,13 +53,16 @@ async function createProjectFixture(): Promise<string> {
   return app;
 }
 
-async function startLibrary(cwd: string, overrides: Partial<ServeLibraryOptions> = {}): Promise<ServeLibraryServer> {
+async function startLibrary(
+  cwd: string,
+  overrides: Partial<ServeLibraryOptions> = {},
+): Promise<ServeLibraryServer> {
   const options: ServeLibraryOptions = {
     port: 0,
     safe: false,
     expose: false,
     edgeAuthed: false,
-    ...overrides
+    ...overrides,
   };
   const started = await serveObserverLibrary(cwd, options);
   if (!started.ok) {
@@ -71,12 +74,14 @@ async function startLibrary(cwd: string, overrides: Partial<ServeLibraryOptions>
 
 // Edge-authed exposure (ngrok --oauth or an operator --public-url): the auth gate lives at the
 // tunnel edge, so this loopback server serves every route with NO cookie and NO 401.
-function exposedOptions(overrides: Partial<ServeLibraryOptions> = {}): Partial<ServeLibraryOptions> {
+function exposedOptions(
+  overrides: Partial<ServeLibraryOptions> = {},
+): Partial<ServeLibraryOptions> {
   return {
     expose: true,
     edgeAuthed: true,
     publicOrigin: "https://observer.example.com",
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -93,7 +98,7 @@ interface RawResponse {
 function rawRequest(
   port: number,
   requestPath: string,
-  options: { method?: string; headers?: Record<string, string> } = {}
+  options: { method?: string; headers?: Record<string, string> } = {},
 ): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     const request = http.request(
@@ -102,7 +107,7 @@ function rawRequest(
         port,
         path: requestPath,
         method: options.method ?? "GET",
-        headers: options.headers ?? {}
+        headers: options.headers ?? {},
       },
       (response) => {
         const chunks: Buffer[] = [];
@@ -113,10 +118,10 @@ function rawRequest(
             status: response.statusCode ?? 0,
             headers: response.headers,
             body: bodyBytes.toString("utf8"),
-            bodyBytes
+            bodyBytes,
           });
         });
-      }
+      },
     );
     request.on("error", reject);
     request.end();
@@ -139,7 +144,10 @@ function expectServeSecurityHeaders(headers: http.IncomingHttpHeaders): void {
   expect(headers["cache-control"]).toBe("no-store");
 }
 
-async function readRunBundle(cwd: string, runId: string): Promise<{
+async function readRunBundle(
+  cwd: string,
+  runId: string,
+): Promise<{
   createdAt: string;
   mode: string;
   review: { verdict: string };
@@ -174,7 +182,7 @@ function rawScreenshotActorTrace(): ActorTrace {
     redaction: {
       status: "passed",
       screenshots: "raw",
-      notes: "synthetic public-safe test trace"
+      notes: "synthetic public-safe test trace",
     },
     startedAt: "2026-01-01T00:00:00.000Z",
     completedAt: "2026-01-01T00:00:05.000Z",
@@ -183,10 +191,24 @@ function rawScreenshotActorTrace(): ActorTrace {
     completionReason: "goal_satisfied",
     reason: "model reported a natural endpoint with no further action",
     ids: { model: "computer-use-preview" },
-    counts: { turns: 2, actions: 1, screenshots: 0, reasonings: 0, messages: 1, idleTurns: 0, noProgressTurns: 0 },
+    counts: {
+      turns: 2,
+      actions: 1,
+      screenshots: 0,
+      reasonings: 0,
+      messages: 1,
+      idleTurns: 0,
+      noProgressTurns: 0,
+    },
     items: [
       { id: "action-001", kind: "ui_action", lifecycle: "completed", title: "click (11, 22)" },
-      { id: "message-001", kind: "message", lifecycle: "completed", title: "message", text: "Done." }
+      {
+        id: "message-001",
+        kind: "message",
+        lifecycle: "completed",
+        title: "message",
+        text: "Done.",
+      },
     ],
     capabilities: {
       headless: true,
@@ -196,8 +218,8 @@ function rawScreenshotActorTrace(): ActorTrace {
       byoModel: false,
       preGrantableApprovals: false,
       inProcessTools: false,
-      license: "proprietary"
-    }
+      license: "proprietary",
+    },
   };
 }
 
@@ -209,7 +231,7 @@ async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
     status: trace.status,
     completionReason: trace.completionReason,
     reason: trace.reason,
-    trace
+    trace,
   };
   const bundle = buildCuaBundle({
     actorId: "openai-computer-use",
@@ -224,17 +246,25 @@ async function writeLocalOnlyRun(cwd: string, runId: string): Promise<void> {
     screenshots: [],
     session,
     traceArtifactPath: "actor.json",
-    source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" })
+    source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" }),
   });
   const runDir = path.join(cwd, ".humanish", "runs", runId);
   await mkdir(runDir, { recursive: true });
   await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-  await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`, "utf8");
+  await writeFile(
+    path.join(runDir, "review.json"),
+    `${JSON.stringify(bundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(runDir, "review.md"),
+    `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`,
+    "utf8",
+  );
   await writeFile(
     path.join(runDir, "events.ndjson"),
     `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8"
+    "utf8",
   );
   await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
 }
@@ -250,7 +280,11 @@ describe("serve: loopback mode", () => {
     expect((await runDryRun({ cwd, dryRun: true, runId: "run-beta" })).ok).toBe(true);
     // A marker outside the pinned proof root (.humanish/runs) that traversal
     // must never reach.
-    await writeFile(path.join(cwd, ".humanish", "outside.txt"), "outside-proof-root marker\n", "utf8");
+    await writeFile(
+      path.join(cwd, ".humanish", "outside.txt"),
+      "outside-proof-root marker\n",
+      "utf8",
+    );
   });
 
   it("streams a single byte range from run-contained video through the library route", async () => {
@@ -259,9 +293,13 @@ describe("serve: loopback mode", () => {
     await mkdir(recordings, { recursive: true });
     await writeFile(path.join(recordings, "participant.mp4"), bytes);
     const server = await startLibrary(cwd);
-    const response = await rawRequest(server.port, "/_humanish/runs/run-alpha/recordings/participant.mp4", {
-      headers: { range: "bytes=-3" }
-    });
+    const response = await rawRequest(
+      server.port,
+      "/_humanish/runs/run-alpha/recordings/participant.mp4",
+      {
+        headers: { range: "bytes=-3" },
+      },
+    );
     expect(response.status).toBe(206);
     expect(response.headers["content-type"]).toBe("video/mp4");
     expect(response.headers["accept-ranges"]).toBe("bytes");
@@ -320,7 +358,9 @@ describe("serve: loopback mode", () => {
     expect(page.headers.get("content-type")).toBe("text/html; charset=utf-8");
     expect(await page.text()).toContain('id="observer-data"');
 
-    const data = await fetch(new URL("/_humanish/runs/run-alpha/observer/observer-data.json", server.url));
+    const data = await fetch(
+      new URL("/_humanish/runs/run-alpha/observer/observer-data.json", server.url),
+    );
     expect(data.status).toBe(200);
     expect(data.headers.get("content-type")).toBe("application/json; charset=utf-8");
     const observerData = (await data.json()) as { run: { runId: string } };
@@ -338,13 +378,17 @@ describe("serve: loopback mode", () => {
 
     // Encoded traversal survives URL parsing intact and must die at the pinned
     // file layer: 403, no sibling bytes.
-    const encoded = await fetch(new URL("/_humanish/runs/run-alpha/..%2frun-beta/run.json", server.url));
+    const encoded = await fetch(
+      new URL("/_humanish/runs/run-alpha/..%2frun-beta/run.json", server.url),
+    );
     expect(encoded.status).toBe(403);
     const encodedBody = await encoded.text();
     expect(encodedBody).toBe("Forbidden");
     expect(encodedBody).not.toContain("run-beta");
 
-    const dotEncoded = await fetch(new URL("/_humanish/runs/run-alpha/%2e%2e%2frun-beta/run.json", server.url));
+    const dotEncoded = await fetch(
+      new URL("/_humanish/runs/run-alpha/%2e%2e%2frun-beta/run.json", server.url),
+    );
     expect([403, 404]).toContain(dotEncoded.status);
     expect(await dotEncoded.text()).not.toContain('"runId"');
 
@@ -354,7 +398,10 @@ describe("serve: loopback mode", () => {
     expect(outside.status).toBe(404);
     expect(outside.body).not.toContain("outside-proof-root");
 
-    const projectFile = await rawRequest(server.port, "/_humanish/runs/run-alpha/../../../package.json");
+    const projectFile = await rawRequest(
+      server.port,
+      "/_humanish/runs/run-alpha/../../../package.json",
+    );
     expect(projectFile.status).toBe(404);
     expect(projectFile.body).not.toContain('"name"');
 
@@ -365,7 +412,10 @@ describe("serve: loopback mode", () => {
     // pinned in the safe-mode suite below). The traversal path never reaches
     // the file layer.
     const direct = await rawRequest(server.port, "/_humanish/runs/run-beta/run.json");
-    const rawSibling = await rawRequest(server.port, "/_humanish/runs/run-alpha/../run-beta/run.json");
+    const rawSibling = await rawRequest(
+      server.port,
+      "/_humanish/runs/run-alpha/../run-beta/run.json",
+    );
     expect(rawSibling.status).toBe(direct.status);
     expect(rawSibling.bodyBytes.equals(direct.bodyBytes)).toBe(true);
 
@@ -381,7 +431,9 @@ describe("serve: loopback mode", () => {
     expect(post.status).toBe(405);
     expect(await post.text()).toBe("Method Not Allowed");
 
-    const put = await fetch(new URL("/_humanish/runs/run-alpha/run.json", server.url), { method: "PUT" });
+    const put = await fetch(new URL("/_humanish/runs/run-alpha/run.json", server.url), {
+      method: "PUT",
+    });
     expect(put.status).toBe(405);
     expect(await put.text()).toBe("Method Not Allowed");
   });
@@ -401,10 +453,14 @@ describe("serve: loopback mode", () => {
   it("(12) allows loopback Hosts and answers 421 for undeclared Hosts", async () => {
     const server = await startLibrary(cwd);
 
-    const loopback = await rawRequest(server.port, "/", { headers: { host: `127.0.0.1:${server.port}` } });
+    const loopback = await rawRequest(server.port, "/", {
+      headers: { host: `127.0.0.1:${server.port}` },
+    });
     expect(loopback.status).toBe(200);
 
-    const localhost = await rawRequest(server.port, "/", { headers: { host: `localhost:${server.port}` } });
+    const localhost = await rawRequest(server.port, "/", {
+      headers: { host: `localhost:${server.port}` },
+    });
     expect(localhost.status).toBe(200);
 
     const evil = await rawRequest(server.port, "/", { headers: { host: "evil.example" } });
@@ -422,7 +478,7 @@ describe("serve: loopback mode", () => {
       [404, await rawRequest(server.port, "/_humanish/runs/no-such-run/observer/index.html")],
       [405, await rawRequest(server.port, "/", { method: "POST" })],
       [421, await rawRequest(server.port, "/", { headers: { host: "evil.example" } })],
-      [501, await rawRequest(server.port, "/_humanish/api/runs")]
+      [501, await rawRequest(server.port, "/_humanish/api/runs")],
     ];
 
     for (const [status, response] of responses) {
@@ -450,16 +506,26 @@ describe("serve: stream gate", () => {
     const bundle = await readRunBundle(cwd, "stream-run");
     const stream = bundle.streams[0];
     expect(stream).toBeTruthy();
-    stream!.embed = { kind: "screenshot", url: "screenshots/proof.png", title: "Synthetic screenshot evidence" };
+    stream!.embed = {
+      kind: "screenshot",
+      url: "screenshots/proof.png",
+      title: "Synthetic screenshot evidence",
+    };
     stream!.ui = { ...(stream!.ui ?? {}), screenshotUrl: "screenshots/proof.png" };
-    stream!.artifacts.push({ label: "synthetic screenshot evidence", path: "screenshots/proof.png", kind: "screenshot" });
+    stream!.artifacts.push({
+      label: "synthetic screenshot evidence",
+      path: "screenshots/proof.png",
+      kind: "screenshot",
+    });
     await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
   });
 
   it("(14) never rewrites persisted streams with runtime transport or hosted substrate URLs", async () => {
     const server = await startLibrary(cwd);
 
-    const response = await fetch(new URL("/_humanish/runs/stream-run/observer/observer-data.json", server.url));
+    const response = await fetch(
+      new URL("/_humanish/runs/stream-run/observer/observer-data.json", server.url),
+    );
     expect(response.status).toBe(200);
     const text = await response.text();
 
@@ -514,7 +580,9 @@ describe("serve: exposed (edge-authed) mode", () => {
     }
 
     // Screenshots resolve without any auth exchange.
-    const screenshot = await fetch(new URL("/_humanish/runs/cap-run/screenshots/proof.png", server.url));
+    const screenshot = await fetch(
+      new URL("/_humanish/runs/cap-run/screenshots/proof.png", server.url),
+    );
     expect(screenshot.status).toBe(200);
     expect(screenshot.headers.get("content-type")).toBe("image/png");
   });
@@ -522,7 +590,9 @@ describe("serve: exposed (edge-authed) mode", () => {
   it("(17) the Host allowlist still admits the declared public origin and 421s undeclared Hosts", async () => {
     const server = await startLibrary(cwd, exposedOptions());
 
-    const declared = await rawRequest(server.port, "/", { headers: { host: "observer.example.com" } });
+    const declared = await rawRequest(server.port, "/", {
+      headers: { host: "observer.example.com" },
+    });
     expect(declared.status).toBe(200);
 
     const undeclared = await rawRequest(server.port, "/", { headers: { host: "evil.example" } });
@@ -573,7 +643,9 @@ describe("serve: safe mode", () => {
     const blocked = await verifyRun(cwd, "safe-blocked");
     expect(blocked.ok).toBe(false);
     expect(blocked.shareSafety.status).toBe("blocked");
-    expect(blocked.shareSafety.reasons.map((reason) => reason.code)).toContain("PUBLIC_SAFETY_FINDINGS");
+    expect(blocked.shareSafety.reasons.map((reason) => reason.code)).toContain(
+      "PUBLIC_SAFETY_FINDINGS",
+    );
     const raw = await verifyRun(cwd, "safe-raw");
     expect(raw.ok).toBe(true);
     expect(raw.shareSafety.status).toBe("local_only");
@@ -588,7 +660,9 @@ describe("serve: safe mode", () => {
     expect(server.runsListed).toBe(1);
     expect(server.shareReadyCount).toBe(1);
 
-    const history = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const history = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(history.runs.map((run) => run.runId)).toEqual(["safe-ready"]);
 
     const html = await (await fetch(server.url)).text();
@@ -597,7 +671,10 @@ describe("serve: safe mode", () => {
     expect(html).not.toContain("safe-blocked");
     expect(html).not.toContain("safe-raw");
 
-    const nonexistent = await rawRequest(server.port, "/_humanish/runs/no-such-run/observer/index.html");
+    const nonexistent = await rawRequest(
+      server.port,
+      "/_humanish/runs/no-such-run/observer/index.html",
+    );
     expect(nonexistent.status).toBe(404);
     for (const runId of ["safe-blocked", "safe-raw"]) {
       const hidden = await rawRequest(server.port, `/_humanish/runs/${runId}/observer/index.html`);
@@ -610,11 +687,16 @@ describe("serve: safe mode", () => {
 
     // Raw dot segments cannot route around admission: the URL normalizes to
     // the blocked run's own route, which is 404 in safe mode.
-    const traversal = await rawRequest(server.port, "/_humanish/runs/safe-ready/../safe-blocked/run.json");
+    const traversal = await rawRequest(
+      server.port,
+      "/_humanish/runs/safe-ready/../safe-blocked/run.json",
+    );
     expect(traversal.status).toBe(404);
     expect(traversal.bodyBytes.equals(nonexistent.bodyBytes)).toBe(true);
 
-    expect((await fetch(new URL("/_humanish/runs/safe-ready/observer/index.html", server.url))).status).toBe(200);
+    expect(
+      (await fetch(new URL("/_humanish/runs/safe-ready/observer/index.html", server.url))).status,
+    ).toBe(200);
   });
 
   it("(27) safe mode composes with edge auth: no cookie needed, non-admitted runs still 404", async () => {
@@ -623,7 +705,10 @@ describe("serve: safe mode", () => {
     // still hides non-share_ready runs — defense in depth, no in-process cookie.
     expect(server.mode).toBe("exposed");
 
-    const blocked = await rawRequest(server.port, "/_humanish/runs/safe-blocked/observer/index.html");
+    const blocked = await rawRequest(
+      server.port,
+      "/_humanish/runs/safe-blocked/observer/index.html",
+    );
     expect(blocked.status).toBe(404);
 
     const ready = await rawRequest(server.port, "/_humanish/runs/safe-ready/observer/index.html");
@@ -642,14 +727,18 @@ describe("serve: safe mode", () => {
     expect(data.runs).toEqual([]);
     expect(data.latestRunId).toBeNull();
 
-    const history = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const history = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(history.runs).toEqual([]);
     expect(history.latestRunId).toBeNull();
   });
 
   it("(29) filtered latestRunId is an admitted run's id or null, never a hidden run", async () => {
     const server = await startLibrary(cwd, { safe: true });
-    const history = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const history = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
 
     // On-disk latest.json points at safe-blocked (created last); the filtered
     // history must fall back to an admitted run instead of leaking that id.
@@ -670,12 +759,18 @@ describe("serve: safe mode resilience", () => {
 
     const server = await startLibrary(cwd, { safe: true });
 
-    const history = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const history = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(history.runs.map((run) => run.runId)).toEqual(["intact-run"]);
     expect(history.latestRunId).toBe("intact-run");
 
-    expect((await fetch(new URL("/_humanish/runs/corrupt-run/observer/index.html", server.url))).status).toBe(404);
-    expect((await fetch(new URL("/_humanish/runs/intact-run/observer/index.html", server.url))).status).toBe(200);
+    expect(
+      (await fetch(new URL("/_humanish/runs/corrupt-run/observer/index.html", server.url))).status,
+    ).toBe(404);
+    expect(
+      (await fetch(new URL("/_humanish/runs/intact-run/observer/index.html", server.url))).status,
+    ).toBe(200);
 
     // Server stays up after chewing on the truncated bundle.
     expect((await fetch(server.url)).status).toBe(200);
@@ -692,9 +787,13 @@ describe("serve: safe mode resilience", () => {
     const callsFor = (runId: string): number =>
       verifySpy.mock.calls.filter((call) => call[1] === runId).length;
 
-    const firstHistory = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const firstHistory = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(firstHistory.runs.map((run) => run.runId)).toEqual(["cache-ready"]);
-    const secondHistory = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const secondHistory = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(secondHistory.runs.map((run) => run.runId)).toEqual(["cache-ready"]);
 
     // One verify per run covers startup plus both history requests: the
@@ -704,17 +803,29 @@ describe("serve: safe mode resilience", () => {
 
     // Clean the blocked run (restore the pre-secret event log) and touch
     // run.json so its stat identity changes.
-    await writeFile(path.join(cwd, ".humanish", "runs", "cache-blocked", "events.ndjson"), originalEvents, "utf8");
+    await writeFile(
+      path.join(cwd, ".humanish", "runs", "cache-blocked", "events.ndjson"),
+      originalEvents,
+      "utf8",
+    );
     await sleep(5);
     const bundlePath = path.join(cwd, ".humanish", "runs", "cache-blocked", "run.json");
     await writeFile(bundlePath, await readFile(bundlePath, "utf8"), "utf8");
 
-    const thirdHistory = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
-    expect(thirdHistory.runs.map((run) => run.runId).sort()).toEqual(["cache-blocked", "cache-ready"]);
+    const thirdHistory = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
+    expect(thirdHistory.runs.map((run) => run.runId).sort()).toEqual([
+      "cache-blocked",
+      "cache-ready",
+    ]);
     expect(callsFor("cache-blocked")).toBe(2);
     expect(callsFor("cache-ready")).toBe(1);
 
-    expect((await fetch(new URL("/_humanish/runs/cache-blocked/observer/index.html", server.url))).status).toBe(200);
+    expect(
+      (await fetch(new URL("/_humanish/runs/cache-blocked/observer/index.html", server.url)))
+        .status,
+    ).toBe(200);
   });
 
   it("(26b) re-verifies a stale admission after the TTL even when run.json is unchanged", async () => {
@@ -725,24 +836,36 @@ describe("serve: safe mode resilience", () => {
     // modelling an out-of-band artifact change that does not touch run.json, the
     // exact fail-open the TTL closes. admit() only reads .ok and shareSafety.status.
     const shareReady = { ok: true, shareSafety: { status: "share_ready", reasons: [] } };
-    const blocked = { ok: false, shareSafety: { status: "blocked", reasons: [{ code: "PUBLIC_SAFETY_FINDINGS", message: "x" }] } };
+    const blocked = {
+      ok: false,
+      shareSafety: {
+        status: "blocked",
+        reasons: [{ code: "PUBLIC_SAFETY_FINDINGS", message: "x" }],
+      },
+    };
     const verifySpy = vi.fn().mockResolvedValueOnce(shareReady).mockResolvedValue(blocked);
 
     let clock = 1_000_000;
     const server = await startLibrary(cwd, {
       safe: true,
       verifyImpl: verifySpy as unknown as typeof verifyRun,
-      now: () => clock
+      now: () => clock,
     });
 
-    const first = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const first = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(first.runs.map((run) => run.runId)).toEqual(["ttl-run"]);
 
     // Advance past the 30s admission TTL without touching run.json.
     clock += 31_000;
-    const second = (await (await fetch(new URL("/_humanish/history.json", server.url))).json()) as LibraryHistory;
+    const second = (await (
+      await fetch(new URL("/_humanish/history.json", server.url))
+    ).json()) as LibraryHistory;
     expect(second.runs).toEqual([]);
-    expect((await fetch(new URL("/_humanish/runs/ttl-run/observer/index.html", server.url))).status).toBe(404);
+    expect(
+      (await fetch(new URL("/_humanish/runs/ttl-run/observer/index.html", server.url))).status,
+    ).toBe(404);
     expect(verifySpy).toHaveBeenCalledTimes(2);
   });
 });
@@ -760,10 +883,20 @@ describe("serve library: labeled cost estimate", () => {
         source: "openai.com/api/pricing",
         modelId: "gpt-5.5",
         placeholder: true,
-        breakdown: { inputUsd: estimatedCostUsd, outputUsd: 0, inputTokens: 2_000_000, outputTokens: 4_000 }
-      }
+        breakdown: {
+          inputUsd: estimatedCostUsd,
+          outputUsd: 0,
+          inputTokens: 2_000_000,
+          outputTokens: 4_000,
+        },
+      },
     };
-    const session: CuaLoopResult = { status: trace.status, completionReason: trace.completionReason, reason: trace.reason, trace };
+    const session: CuaLoopResult = {
+      status: trace.status,
+      completionReason: trace.completionReason,
+      reason: trace.reason,
+      trace,
+    };
     const bundle = buildCuaBundle({
       actorId: "openai-computer-use",
       appUrl: "http://127.0.0.1:3000/",
@@ -778,14 +911,26 @@ describe("serve library: labeled cost estimate", () => {
       session,
       traceArtifactPath: "actor.json",
       desktopMinutes: 1,
-      source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" })
+      source: await buildRunSource({ cwd, humanishSource: "present", packageName: "humanish" }),
     });
     const runDir = path.join(cwd, ".humanish", "runs", runId);
     await mkdir(runDir, { recursive: true });
     await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-    await writeFile(path.join(runDir, "review.json"), `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-    await writeFile(path.join(runDir, "review.md"), `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`, "utf8");
-    await writeFile(path.join(runDir, "events.ndjson"), `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+    await writeFile(
+      path.join(runDir, "review.json"),
+      `${JSON.stringify(bundle.review, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "review.md"),
+      `# ${bundle.scenario.title}\n\n- verdict: ${bundle.review.verdict}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "events.ndjson"),
+      `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+      "utf8",
+    );
     await writeFile(path.join(runDir, "actor.json"), `${JSON.stringify(trace, null, 2)}\n`, "utf8");
     // Render the observer so observer-data.json (which the library reads) carries the cost summary.
     expect((await renderObserver(cwd, runId)).ok).toBe(true);
@@ -832,12 +977,23 @@ describe("serve on a port somebody already holds (#484)", () => {
     const holder = createNetServer();
     // The probe opens a socket the silent holder never answers; close() would wait for it forever.
     const sockets = new Set<import("node:net").Socket>();
-    holder.on("connection", (socket) => { sockets.add(socket); socket.on("close", () => sockets.delete(socket)); });
+    holder.on("connection", (socket) => {
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+    });
     await new Promise<void>((resolve) => holder.listen(port, "127.0.0.1", resolve));
     try {
-      const started = await serveObserverLibrary(path.join(cwd, "app"), { port, safe: true, expose: false, edgeAuthed: false });
+      const started = await serveObserverLibrary(path.join(cwd, "app"), {
+        port,
+        safe: true,
+        expose: false,
+        edgeAuthed: false,
+      });
       expect(started.ok).toBe(false);
-      if (started.ok) { await started.server.close(); return; }
+      if (started.ok) {
+        await started.server.close();
+        return;
+      }
       expect(started.error.code).toBe("HUMANISH_SERVE_PORT_IN_USE");
       expect(started.error.message).toContain(String(port));
       expect(started.error.message).toContain("--port 0");

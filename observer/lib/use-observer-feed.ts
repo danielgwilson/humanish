@@ -1,19 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchStudyAnalysis, NO_ANALYSIS, type LoadedStudyAnalysis } from "./study-analysis";
 import type { ObserverData } from "./observer-data";
-import { fetchHistoryIndex, fetchObserverData, isServedOrigin, type HistoryIndex, OBSERVER_POLL_MS, HISTORY_POLL_MS } from "./live";
+import {
+  fetchHistoryIndex,
+  fetchObserverData,
+  isServedOrigin,
+  type HistoryIndex,
+  OBSERVER_POLL_MS,
+  HISTORY_POLL_MS,
+} from "./live";
 
 export interface ObserverConnection {
   state: "connecting" | "current" | "retrying" | "offline";
   lastReceivedAt: number | null;
 }
 
-export function useObserverFeed(initial: ObserverData | null, snapshot = false, initialAnalysis: LoadedStudyAnalysis = NO_ANALYSIS) {
+export function useObserverFeed(
+  initial: ObserverData | null,
+  snapshot = false,
+  initialAnalysis: LoadedStudyAnalysis = NO_ANALYSIS,
+) {
   const [data, setData] = useState(initial);
   const [analysis, setAnalysis] = useState(initialAnalysis);
-  const currentData = useRef(data); currentData.current = data;
+  const currentData = useRef(data);
+  currentData.current = data;
   const [history, setHistory] = useState<HistoryIndex | null>(null);
-  const [connection, setConnection] = useState<ObserverConnection>({ state: !snapshot && isServedOrigin(window.location.protocol) ? "connecting" : "offline", lastReceivedAt: null });
+  const [connection, setConnection] = useState<ObserverConnection>({
+    state: !snapshot && isServedOrigin(window.location.protocol) ? "connecting" : "offline",
+    lastReceivedAt: null,
+  });
   const [revision, setRevision] = useState(0);
   const retry = useCallback(() => setRevision((v) => v + 1), []);
   useEffect(() => {
@@ -46,14 +61,29 @@ export function useObserverFeed(initial: ObserverData | null, snapshot = false, 
       } finally {
         clearTimeout(deadline);
         inFlight = false;
-        if (!disposed) timer = setTimeout(() => void poll(), document.hidden ? HISTORY_POLL_MS : OBSERVER_POLL_MS);
+        if (!disposed)
+          timer = setTimeout(
+            () => void poll(),
+            document.hidden ? HISTORY_POLL_MS : OBSERVER_POLL_MS,
+          );
       }
     };
-    const refresh = () => { if (!document.hidden) { clearTimeout(timer); void poll(); } };
+    const refresh = () => {
+      if (!document.hidden) {
+        clearTimeout(timer);
+        void poll();
+      }
+    };
     void poll();
     document.addEventListener("visibilitychange", refresh);
     window.addEventListener("online", refresh);
-    return () => { disposed = true; clearTimeout(timer); controller?.abort(); document.removeEventListener("visibilitychange", refresh); window.removeEventListener("online", refresh); };
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      controller?.abort();
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+    };
   }, [initial, revision, snapshot]);
   useEffect(() => {
     if (snapshot || !isServedOrigin(window.location.protocol)) return;
@@ -67,15 +97,26 @@ export function useObserverFeed(initial: ObserverData | null, snapshot = false, 
         controller = new AbortController();
         const deadline = setTimeout(() => controller?.abort(), 15_000);
         try {
-          const next = await fetchStudyAnalysis((input, init) => window.fetch(input, init), observed, controller.signal);
+          const next = await fetchStudyAnalysis(
+            (input, init) => window.fetch(input, init),
+            observed,
+            controller.signal,
+          );
           if (!disposed && next) setAnalysis(next);
-        } finally { clearTimeout(deadline); }
+        } finally {
+          clearTimeout(deadline);
+        }
       }
-      if (!disposed) timer = setTimeout(() => void poll(), document.hidden ? HISTORY_POLL_MS : OBSERVER_POLL_MS);
+      if (!disposed)
+        timer = setTimeout(() => void poll(), document.hidden ? HISTORY_POLL_MS : OBSERVER_POLL_MS);
     };
     // Companion failures and latency never block the recording or library feed.
     void poll();
-    return () => { disposed = true; clearTimeout(timer); controller?.abort(); };
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      controller?.abort();
+    };
   }, [initial, revision, snapshot]);
   return { data, history, connection, retry, analysis };
 }

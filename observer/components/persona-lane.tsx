@@ -48,13 +48,36 @@ export default function PersonaLane({
   passLabel = "Passed",
   failLabel = "Gave up",
   dataI,
-  sizer
+  sizer,
 }: PersonaLaneProps) {
   return (
-    <article className="panel" {...(dataI !== undefined ? { "data-i": dataI } : {})} {...(sizer ? { "data-sizer": "" } : {})}>
-      <header className="pbar"><span className="pl"><b className="pidx">{idx}</b><span className="pname">{name}</span></span><span className="pr">{right}</span></header>
-      <div className="pmedia"><img src={img} alt={alt} loading="lazy" /><CoverCanvas n={idx} /></div>
-      <footer className="pcap"><p className="prep"><span className="plab">{reportLabel}</span><q>{report}</q></p>{passed ? <span className="chip chip-pass">{passLabel}</span> : <span className="chip chip-dot chip-mute">{failLabel}</span>}</footer>
+    <article
+      className="panel"
+      {...(dataI !== undefined ? { "data-i": dataI } : {})}
+      {...(sizer ? { "data-sizer": "" } : {})}
+    >
+      <header className="pbar">
+        <span className="pl">
+          <b className="pidx">{idx}</b>
+          <span className="pname">{name}</span>
+        </span>
+        <span className="pr">{right}</span>
+      </header>
+      <div className="pmedia">
+        <img src={img} alt={alt} loading="lazy" />
+        <CoverCanvas n={idx} />
+      </div>
+      <footer className="pcap">
+        <p className="prep">
+          <span className="plab">{reportLabel}</span>
+          <q>{report}</q>
+        </p>
+        {passed ? (
+          <span className="chip chip-pass">{passLabel}</span>
+        ) : (
+          <span className="chip chip-dot chip-mute">{failLabel}</span>
+        )}
+      </footer>
     </article>
   );
 }

@@ -23,7 +23,7 @@ describe("Humanish format stack", () => {
       "humanish/scenarios/",
       "humanish/labs/",
       "humanish/policies/",
-      "humanish/review/"
+      "humanish/review/",
     ];
 
     const authoredSourcePaths = starterFiles
@@ -34,6 +34,8 @@ describe("Humanish format stack", () => {
     expect(authoredSourcePaths.every((filePath) => filePath.endsWith(".yaml"))).toBe(true);
     expect(starterFiles.some((file) => file.path.endsWith(".yml"))).toBe(false);
     expect(starterFiles.some((file) => file.path === "humanish/config.ts")).toBe(true);
-    expect(starterFiles.some((file) => file.path === "humanish/fixtures/synthetic-login-state.json")).toBe(true);
+    expect(
+      starterFiles.some((file) => file.path === "humanish/fixtures/synthetic-login-state.json"),
+    ).toBe(true);
   });
 });

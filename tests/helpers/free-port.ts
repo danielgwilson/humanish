@@ -36,7 +36,7 @@ export async function freePort(): Promise<number> {
  */
 export async function withFreePort(
   attempt: (port: number) => Promise<boolean>,
-  tries = 3
+  tries = 3,
 ): Promise<number> {
   let lastPort = 0;
   for (let index = 0; index < tries; index += 1) {

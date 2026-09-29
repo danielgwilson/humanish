@@ -11,11 +11,11 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile({ removeViteModuleLoader: true })],
   resolve: {
-    alias: { "@": path.resolve(import.meta.dirname, ".") }
+    alias: { "@": path.resolve(import.meta.dirname, ".") },
   },
   build: {
     // Fonts (woff2) must become data: URIs, not emitted assets.
     assetsInlineLimit: 100_000_000,
-    chunkSizeWarningLimit: 4096
-  }
+    chunkSizeWarningLimit: 4096,
+  },
 });

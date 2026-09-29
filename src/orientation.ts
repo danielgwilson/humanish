@@ -45,13 +45,18 @@ export interface OrientationCommand {
 export async function readOrientation(cwd: string): Promise<OrientationState> {
   const [labs, runs] = await Promise.all([
     listLabManifests(cwd).catch(() => undefined),
-    listRuns(cwd).catch(() => undefined)
+    listRuns(cwd).catch(() => undefined),
   ]);
 
-  const labIds = (labs?.labs ?? []).map((lab) => lab.id).filter((id): id is string => typeof id === "string");
-  const runIds = (runs?.runs ?? []).map((run) => run.runId).filter((id): id is string => typeof id === "string");
+  const labIds = (labs?.labs ?? [])
+    .map((lab) => lab.id)
+    .filter((id): id is string => typeof id === "string");
+  const runIds = (runs?.runs ?? [])
+    .map((run) => run.runId)
+    .filter((id): id is string => typeof id === "string");
   const latest = typeof runs?.latest === "string" ? runs.latest : runIds[0];
-  const initialized = (labs?.labs ?? []).some((lab) => lab.origin === "committed") || labIds.length > 0;
+  const initialized =
+    (labs?.labs ?? []).some((lab) => lab.origin === "committed") || labIds.length > 0;
 
   return {
     schema: ORIENTATION_SCHEMA,
@@ -60,7 +65,7 @@ export async function readOrientation(cwd: string): Promise<OrientationState> {
     labIds: labIds.slice(0, 3),
     runCount: runIds.length,
     ...(latest === undefined ? {} : { latestRunId: latest }),
-    nextCommands: nextCommandsFor({ initialized, labIds, hasRun: runIds.length > 0 })
+    nextCommands: nextCommandsFor({ initialized, labIds, hasRun: runIds.length > 0 }),
   };
 }
 
@@ -68,11 +73,18 @@ export async function readOrientation(cwd: string): Promise<OrientationState> {
  * The two or three commands worth running from this state. Deliberately short: a list of everything
  * is what bare invocation used to print, and it is why nobody read it.
  */
-function nextCommandsFor(args: { initialized: boolean; labIds: string[]; hasRun: boolean }): OrientationCommand[] {
+function nextCommandsFor(args: {
+  initialized: boolean;
+  labIds: string[];
+  hasRun: boolean;
+}): OrientationCommand[] {
   if (!args.initialized) {
     return [
       { command: "humanish init", why: "create humanish/ with a starter lab and persona" },
-      { command: "humanish run first-run", why: "a synthetic run with no keys and no spend, to see the shape of the evidence" }
+      {
+        command: "humanish run first-run",
+        why: "a synthetic run with no keys and no spend, to see the shape of the evidence",
+      },
     ];
   }
 
@@ -80,15 +92,24 @@ function nextCommandsFor(args: { initialized: boolean; labIds: string[]; hasRun:
   const commands: OrientationCommand[] = [
     {
       command: suggestedLab ? `humanish watch ${suggestedLab}` : "humanish watch",
-      why: "run a lab and open the Observer while it goes"
-    }
+      why: "run a lab and open the Observer while it goes",
+    },
   ];
   if (args.hasRun) {
-    commands.push({ command: "humanish verify --run latest", why: "check the last run's evidence and public-safety gates" });
-    commands.push({ command: "humanish observe --run latest", why: "reopen the last run's Observer" });
+    commands.push({
+      command: "humanish verify --run latest",
+      why: "check the last run's evidence and public-safety gates",
+    });
+    commands.push({
+      command: "humanish observe --run latest",
+      why: "reopen the last run's Observer",
+    });
   } else {
     commands.push({ command: "humanish lab list", why: "see the labs this project declares" });
-    commands.push({ command: "humanish doctor", why: "check what this project still needs before a live run" });
+    commands.push({
+      command: "humanish doctor",
+      why: "check what this project still needs before a live run",
+    });
   }
   return commands;
 }
@@ -100,15 +121,22 @@ function nextCommandsFor(args: { initialized: boolean; labIds: string[]; hasRun:
 export function formatOrientationHuman(state: OrientationState): string {
   const lines: string[] = [
     "humanish — run realistic synthetic personas against your app and keep the evidence.",
-    ""
+    "",
   ];
 
   if (!state.initialized) {
     lines.push("This project is not set up yet.");
   } else {
     const labs = state.labCount === 1 ? "1 lab" : `${state.labCount} labs`;
-    const runs = state.runCount === 0 ? "no runs yet" : state.runCount === 1 ? "1 run" : `${state.runCount} runs`;
-    lines.push(`This project has ${labs} and ${runs}${state.latestRunId ? ` (latest: ${state.latestRunId})` : ""}.`);
+    const runs =
+      state.runCount === 0
+        ? "no runs yet"
+        : state.runCount === 1
+          ? "1 run"
+          : `${state.runCount} runs`;
+    lines.push(
+      `This project has ${labs} and ${runs}${state.latestRunId ? ` (latest: ${state.latestRunId})` : ""}.`,
+    );
   }
 
   lines.push("");

@@ -20,7 +20,7 @@ const LANE_PROMPT = [
   "",
   "Sign up and verify your email.",
   "",
-  "Lane focus: read your mail at https://8025-ixyzsandbox123.e2b.app/inbox and follow the link."
+  "Lane focus: read your mail at https://8025-ixyzsandbox123.e2b.app/inbox and follow the link.",
 ].join("\n");
 
 describe("scenario.goal redaction (#412)", () => {
@@ -51,7 +51,13 @@ describe("scenario.goal redaction (#412)", () => {
       source: { packageName: "humanish", humanishSource: "present", git: null },
       persona: { id: "p", name: "P", source: "test", sourceDigest: "d" },
       // What the writer stores after this fix.
-      scenario: { id: "s", title: "T", goal: redactText(LANE_PROMPT), source: "test", sourceDigest: "d" },
+      scenario: {
+        id: "s",
+        title: "T",
+        goal: redactText(LANE_PROMPT),
+        source: "test",
+        sourceDigest: "d",
+      },
       lifecycle: [],
       simulations: [],
       streams: [],
@@ -59,7 +65,7 @@ describe("scenario.goal redaction (#412)", () => {
       artifacts: [],
       redaction: { status: "passed", screenshots: "raw" },
       feedbackCandidates: [],
-      review: { schema: "humanish.review.v1", verdict: "pass", summary: "s", gaps: [] }
+      review: { schema: "humanish.review.v1", verdict: "pass", summary: "s", gaps: [] },
     } as unknown as RunBundle;
 
     const data = buildObserverData(bundle);

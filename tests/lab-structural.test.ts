@@ -36,7 +36,12 @@ describe("lab refactor structural necessity (rung 1)", () => {
   });
 
   it("the v1 lab schema is gone from src (no back-compat)", () => {
-    for (const rel of ["src/labs.ts", "src/lab-config.ts", "src/program.ts", "src/init-templates.ts"]) {
+    for (const rel of [
+      "src/labs.ts",
+      "src/lab-config.ts",
+      "src/program.ts",
+      "src/init-templates.ts",
+    ]) {
       expect(read(rel)).not.toContain("humanish.lab.v1");
     }
   });
@@ -52,14 +57,23 @@ describe("lab config expressiveness (rung 3)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "migration-rehearsal",
       title: "bespoke-sim to humanish migration",
-      subject: { source: "clone", repos: ["example-org/private-app"], clone: { depth: 1, fanout: 1 } },
+      subject: {
+        source: "clone",
+        repos: ["example-org/private-app"],
+        clone: { depth: 1, fanout: 1 },
+      },
       // A free-form (non-registered) actor label on the clone+e2b route stays a label and routes
       // to meta. (codex-exec is now a REGISTERED terminal actor — it would be a mis-config here, so
       // this expressiveness test uses a generic migrator label to keep its point: clone+e2b config
       // routes config-only with the mission forward-declared.)
-      actors: [{ type: "codex-migrator", mission: "Remove the bespoke UI sim package and adopt humanish." }],
+      actors: [
+        {
+          type: "codex-migrator",
+          mission: "Remove the bespoke UI sim package and adopt humanish.",
+        },
+      ],
       execution: { target: "e2b-desktop" },
-      policies: { redactRepos: true }
+      policies: { redactRepos: true },
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -85,7 +99,7 @@ describe("lab config expressiveness (rung 3)", () => {
     const parsed = parseBrowserPersonaJourneyFromScenario({
       raw: parseYaml(scenarioText),
       relativePath: "humanish/scenarios/scripted-first-run.yaml",
-      sourceDigest: digestText(scenarioText)
+      sourceDigest: digestText(scenarioText),
     });
     expect(parsed.failure).toBeUndefined();
     expect(parsed.journey?.steps).toHaveLength(4);
@@ -93,13 +107,14 @@ describe("lab config expressiveness (rung 3)", () => {
   });
 
   it("synthetic behavior is a FUNCTION of config (actor count -> simCount), not just a parsed label", async () => {
-    const base = (count: number) => parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "behavioral",
-      subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona", count }],
-      scenario: { mode: "dry-run" }
-    });
+    const base = (count: number) =>
+      parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "behavioral",
+        subject: { source: "this-repo" },
+        actors: [{ type: "synthetic-persona", count }],
+        scenario: { mode: "dry-run" },
+      });
     const two = base(2);
     const five = base(5);
     expect(two.ok && five.ok).toBe(true);

@@ -8,7 +8,7 @@ import {
   type ActorStatus,
   type ActorTokenUsage,
   type ActorTrace,
-  type ActorTraceItem
+  type ActorTraceItem,
 } from "./actor-contract.js";
 import { redactText } from "./redaction.js";
 import {
@@ -16,7 +16,7 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   type PreparedOutputDirectory,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
 // This module holds both halves of the Claude adapter:
@@ -103,7 +103,7 @@ export function claudeStatusToCompletionReason(status: ActorStatus): ActorComple
 
 function pickClaudeTokenUsage(
   usage: { input_tokens?: number; output_tokens?: number } | undefined,
-  costUsd: number | undefined
+  costUsd: number | undefined,
 ): ActorTokenUsage | undefined {
   const num = (value: unknown): number | undefined =>
     typeof value === "number" && Number.isFinite(value) ? value : undefined;
@@ -115,7 +115,7 @@ function pickClaudeTokenUsage(
     ...(input === undefined ? {} : { input }),
     ...(output === undefined ? {} : { output }),
     ...(total === undefined ? {} : { total }),
-    ...(cost === undefined ? {} : { costUsd: cost })
+    ...(cost === undefined ? {} : { costUsd: cost }),
   };
   return Object.keys(tokenUsage).length > 0 ? tokenUsage : undefined;
 }
@@ -155,7 +155,7 @@ function claudeMessagesToActorItems(messages: ClaudeMessage[]): ActorTraceItem[]
             kind: "message",
             lifecycle: "completed",
             title: "Assistant message",
-            ...(text.length > 0 ? { text: redactText(text) } : {})
+            ...(text.length > 0 ? { text: redactText(text) } : {}),
           });
         } else if (block.type === "thinking") {
           messageOrdinal += 1;
@@ -165,7 +165,7 @@ function claudeMessagesToActorItems(messages: ClaudeMessage[]): ActorTraceItem[]
             kind: "reasoning",
             lifecycle: "completed",
             title: "Reasoning",
-            ...(thinking.length > 0 ? { text: redactText(thinking) } : {})
+            ...(thinking.length > 0 ? { text: redactText(thinking) } : {}),
           });
         } else if (block.type === "tool_use") {
           const name = redactText(block.name);
@@ -175,7 +175,7 @@ function claudeMessagesToActorItems(messages: ClaudeMessage[]): ActorTraceItem[]
             kind: "tool_call",
             lifecycle: "started",
             title: name,
-            tool: { name }
+            tool: { name },
           });
         }
       }
@@ -189,7 +189,7 @@ function claudeMessagesToActorItems(messages: ClaudeMessage[]): ActorTraceItem[]
             lifecycle: "completed",
             ...(block.is_error ? { status: "error" } : {}),
             title: name,
-            tool: { name }
+            tool: { name },
           });
         }
       }
@@ -203,21 +203,35 @@ function claudeMessagesToActorItems(messages: ClaudeMessage[]): ActorTraceItem[]
  * side-effect-free; mirrors codexResultToActorTrace / piSessionToActorTrace. The
  * persona reference is supplied by the harness.
  */
-export function claudeSessionToActorTrace(session: ClaudeSessionResult, persona: ActorPersonaRef): ActorTrace {
+export function claudeSessionToActorTrace(
+  session: ClaudeSessionResult,
+  persona: ActorPersonaRef,
+): ActorTrace {
   const result = [...session.messages].reverse().find((message) => message.type === "result");
   // Match the init message by subtype: the SDK emits other system messages
   // (hook_started/hook_response) first, and only init carries model/session.
-  const init = session.messages.find((message) => message.type === "system" && message.subtype === "init");
-  const subtype: ClaudeResultSubtype = result?.type === "result" ? result.subtype : "error_during_execution";
+  const init = session.messages.find(
+    (message) => message.type === "system" && message.subtype === "init",
+  );
+  const subtype: ClaudeResultSubtype =
+    result?.type === "result" ? result.subtype : "error_during_execution";
   const status = claudeResultSubtypeToStatus(subtype);
-  const sessionId = (result?.type === "result" ? result.session_id : undefined) ?? (init?.type === "system" ? init.session_id : undefined);
+  const sessionId =
+    (result?.type === "result" ? result.session_id : undefined) ??
+    (init?.type === "system" ? init.session_id : undefined);
   const model = init?.type === "system" ? init.model : undefined;
   const durationMs =
     result?.type === "result" && typeof result.duration_ms === "number"
       ? result.duration_ms
       : elapsedMs(session.startedAt, session.completedAt);
-  const reason = result?.type === "result" ? result.result ?? `claude session ended: ${subtype}` : "claude session produced no result message";
-  const tokenUsage = result?.type === "result" ? pickClaudeTokenUsage(result.usage, result.total_cost_usd) : undefined;
+  const reason =
+    result?.type === "result"
+      ? (result.result ?? `claude session ended: ${subtype}`)
+      : "claude session produced no result message";
+  const tokenUsage =
+    result?.type === "result"
+      ? pickClaudeTokenUsage(result.usage, result.total_cost_usd)
+      : undefined;
   const items = claudeMessagesToActorItems(session.messages);
 
   return {
@@ -230,7 +244,8 @@ export function claudeSessionToActorTrace(session: ClaudeSessionResult, persona:
     redaction: {
       status: "passed",
       screenshots: "n/a",
-      notes: "Claude Agent SDK message stream projected to actor trace; secret-like text is rejected by verify."
+      notes:
+        "Claude Agent SDK message stream projected to actor trace; secret-like text is rejected by verify.",
     },
     startedAt: session.startedAt,
     completedAt: session.completedAt,
@@ -240,15 +255,15 @@ export function claudeSessionToActorTrace(session: ClaudeSessionResult, persona:
     reason: redactText(reason),
     ids: {
       ...(sessionId === undefined ? {} : { sessionId }),
-      ...(model === undefined ? {} : { model })
+      ...(model === undefined ? {} : { model }),
     },
     counts: {
       messages: session.messages.length,
-      items: items.length
+      items: items.length,
     },
     items,
     ...(tokenUsage === undefined ? {} : { tokenUsage }),
-    capabilities: CLAUDE_AGENT_SDK_CAPABILITIES
+    capabilities: CLAUDE_AGENT_SDK_CAPABILITIES,
   };
 }
 
@@ -259,7 +274,10 @@ export function claudeSessionToActorTrace(session: ClaudeSessionResult, persona:
 // fake generator (no key, no SDK import, no spend). Only loadClaudeAgentSdk()
 // touches the optional peer dependency, lazily, mirroring the @e2b/desktop pattern.
 
-export type ClaudeQueryFn = (args: { prompt: string; options: Record<string, unknown> }) => AsyncIterable<unknown>;
+export type ClaudeQueryFn = (args: {
+  prompt: string;
+  options: Record<string, unknown>;
+}) => AsyncIterable<unknown>;
 
 export interface ClaudeAgentSessionOptions {
   cwd: string;
@@ -309,12 +327,14 @@ function isMissingClaudeAgentSdk(error: unknown): boolean {
 
 async function loadClaudeAgentSdkQuery(): Promise<ClaudeQueryFn> {
   try {
-    const sdk = (await import("@anthropic-ai/claude-agent-sdk")) as unknown as { query: ClaudeQueryFn };
+    const sdk = (await import("@anthropic-ai/claude-agent-sdk")) as unknown as {
+      query: ClaudeQueryFn;
+    };
     return sdk.query;
   } catch (error) {
     if (isMissingClaudeAgentSdk(error)) {
       throw new Error(
-        "Live Claude Agent SDK runs require the optional peer dependency @anthropic-ai/claude-agent-sdk. Install it with `npm i -D @anthropic-ai/claude-agent-sdk`, or inject a queryFn for tests."
+        "Live Claude Agent SDK runs require the optional peer dependency @anthropic-ai/claude-agent-sdk. Install it with `npm i -D @anthropic-ai/claude-agent-sdk`, or inject a queryFn for tests.",
       );
     }
     throw error;
@@ -362,20 +382,25 @@ async function finishClaudeSession(
   runRoot: PreparedOutputDirectory,
   persona: ActorPersonaRef,
   session: ClaudeSessionResult,
-  envelopeLines: string[]
+  envelopeLines: string[],
 ): Promise<ClaudeAgentSessionResult> {
   const eventsPath = path.join(CLAUDE_ARTIFACT_DIR, "events.ndjson");
   const tracePath = path.join(CLAUDE_ARTIFACT_DIR, "summary.json");
   const transcriptPath = path.join(CLAUDE_ARTIFACT_DIR, "transcript.txt");
   const trace = claudeSessionToActorTrace(session, persona);
   const transcript = renderClaudeTranscript(trace);
-  await writeContainedOutputFile(runRoot, eventsPath, envelopeLines.length > 0 ? `${envelopeLines.join("\n")}\n` : "", "utf8");
+  await writeContainedOutputFile(
+    runRoot,
+    eventsPath,
+    envelopeLines.length > 0 ? `${envelopeLines.join("\n")}\n` : "",
+    "utf8",
+  );
   await writeContainedOutputFile(runRoot, tracePath, `${JSON.stringify(trace, null, 2)}\n`, "utf8");
   await writeContainedOutputFile(
     runRoot,
     transcriptPath,
     transcript.length > 0 ? transcript : "No Claude Agent SDK transcript output captured.\n",
-    "utf8"
+    "utf8",
   );
   return {
     status: trace.status,
@@ -386,7 +411,7 @@ async function finishClaudeSession(
     transcriptPath,
     tracePath,
     eventsPath,
-    tail: transcript.slice(-6000)
+    tail: transcript.slice(-6000),
   };
 }
 
@@ -396,14 +421,16 @@ async function finishClaudeSession(
  * mapping is delegated to the pure claudeSessionToActorTrace. A load failure or
  * timeout still produces a (failed/timed_out) bundle rather than throwing.
  */
-export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions): Promise<ClaudeAgentSessionResult> {
+export async function runClaudeAgentSession(
+  options: ClaudeAgentSessionOptions,
+): Promise<ClaudeAgentSessionResult> {
   const preparedRunRoot = await prepareSelectedOutputDirectory(process.cwd(), options.runRoot);
   const runRoot = preparedRunRoot;
   await prepareContainedOutputDirectory(runRoot, CLAUDE_ARTIFACT_DIR);
   await Promise.all([
     prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "events.ndjson")),
     prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "summary.json")),
-    prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "transcript.txt"))
+    prepareContainedOutputFile(runRoot, path.join(CLAUDE_ARTIFACT_DIR, "transcript.txt")),
   ]);
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
@@ -418,21 +445,42 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
     const session: ClaudeSessionResult = {
       startedAt,
       completedAt: new Date().toISOString(),
-      messages: [{ type: "result", subtype: "error_during_execution", is_error: true, duration_ms: Date.now() - startedMs, result: reason }]
+      messages: [
+        {
+          type: "result",
+          subtype: "error_during_execution",
+          is_error: true,
+          duration_ms: Date.now() - startedMs,
+          result: reason,
+        },
+      ],
     };
-    return finishClaudeSession(runRoot, options.persona, session, [JSON.stringify({ at: startedAt, error: reason })]);
+    return finishClaudeSession(runRoot, options.persona, session, [
+      JSON.stringify({ at: startedAt, error: reason }),
+    ]);
   }
 
   const queryOptions: Record<string, unknown> = {
     systemPrompt: options.systemPrompt ?? defaultClaudeSystemPrompt(options.persona),
     settingSources: [],
     allowedTools: [],
-    disallowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch", "Task", "NotebookEdit"],
+    disallowedTools: [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Task",
+      "NotebookEdit",
+    ],
     permissionMode: "default",
     cwd: options.cwd,
     maxTurns: options.maxTurns ?? 8,
     includePartialMessages: false,
-    ...(options.model ? { model: options.model } : {})
+    ...(options.model ? { model: options.model } : {}),
   };
 
   const messages: ClaudeMessage[] = [];
@@ -445,7 +493,9 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
   const abortController = new AbortController();
   queryOptions.abortController = abortController;
   const deadline = startedMs + options.timeoutMs;
-  const iterator = queryFn({ prompt: options.prompt, options: queryOptions })[Symbol.asyncIterator]();
+  const iterator = queryFn({ prompt: options.prompt, options: queryOptions })[
+    Symbol.asyncIterator
+  ]();
 
   try {
     while (true) {
@@ -482,11 +532,16 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
         break;
       }
       messages.push(step.value as ClaudeMessage);
-      envelopeLines.push(JSON.stringify({ at: new Date().toISOString(), message: redactJsonDeep(step.value) }));
+      envelopeLines.push(
+        JSON.stringify({ at: new Date().toISOString(), message: redactJsonDeep(step.value) }),
+      );
     }
   } catch (error) {
     envelopeLines.push(
-      JSON.stringify({ at: new Date().toISOString(), error: redactText(error instanceof Error ? error.message : String(error)) })
+      JSON.stringify({
+        at: new Date().toISOString(),
+        error: redactText(error instanceof Error ? error.message : String(error)),
+      }),
     );
   }
 
@@ -500,9 +555,16 @@ export async function runClaudeAgentSession(options: ClaudeAgentSessionOptions):
       subtype: timedOut ? "error_max_turns" : "error_during_execution",
       is_error: true,
       duration_ms: Date.now() - startedMs,
-      result: timedOut ? "Claude session timed out before completion." : "Claude session ended without a result message."
+      result: timedOut
+        ? "Claude session timed out before completion."
+        : "Claude session ended without a result message.",
     });
   }
 
-  return finishClaudeSession(runRoot, options.persona, { messages, startedAt, completedAt }, envelopeLines);
+  return finishClaudeSession(
+    runRoot,
+    options.persona,
+    { messages, startedAt, completedAt },
+    envelopeLines,
+  );
 }

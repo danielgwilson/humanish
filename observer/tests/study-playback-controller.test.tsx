@@ -15,9 +15,12 @@ function lane(id: string, times: (number | null)[], ids?: string[]): ObserverStr
   const stream = structuredClone((live as unknown as ObserverData).streams[0]!);
   stream.id = id;
   stream.actor!.items = times.map((offset, index) => ({
-    id: ids?.[index] ?? `${id}-${index}`, kind: "screenshot", lifecycle: "completed", title: `Capture ${index}`,
+    id: ids?.[index] ?? `${id}-${index}`,
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: `Capture ${index}`,
     ...(offset === null ? {} : { at: new Date(origin + offset).toISOString() }),
-    screenshotRef: { path: `screenshots/${id}-${index}.png`, redaction: "none" }
+    screenshotRef: { path: `screenshots/${id}-${index}.png`, redaction: "none" },
   }));
   return stream;
 }
@@ -28,14 +31,22 @@ function Probe({ streams, runId }: { streams: ObserverStream[]; runId: string })
 }
 
 async function render(streams: ObserverStream[], runId = "study") {
-  await act(async () => { root.render(<Probe streams={streams} runId={runId} />); });
+  await act(async () => {
+    root.render(<Probe streams={streams} runId={runId} />);
+  });
 }
 
 beforeEach(() => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-  container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+afterEach(async () => {
+  await act(async () => root.unmount());
+  container.remove();
+  vi.useRealTimers();
+});
 
 describe("Study playback controller", () => {
   it("keeps exact capture identity at duplicate stamps and preserves missing evidence", async () => {
@@ -43,11 +54,21 @@ describe("Study playback controller", () => {
     await render([stream]);
     await act(async () => playback.selectFrame("duplicate", 1, "selected-action"));
     expect(playback.atMs).toBe(origin + 1000);
-    expect(playback.playerControl("duplicate")).toMatchObject({ moment: { kind: "capture", frame: { itemId: "second" } }, eventId: "selected-action" });
+    expect(playback.playerControl("duplicate")).toMatchObject({
+      moment: { kind: "capture", frame: { itemId: "second" } },
+      eventId: "selected-action",
+    });
     await render([lane("duplicate", [0, 1000], ["first", "third"])]);
-    expect(playback.playerControl("duplicate")).toMatchObject({ moment: { kind: "no-captures" }, unavailableFrame: true, eventId: "selected-action" });
+    expect(playback.playerControl("duplicate")).toMatchObject({
+      moment: { kind: "no-captures" },
+      unavailableFrame: true,
+      eventId: "selected-action",
+    });
     await act(async () => playback.seek(origin + 1000));
-    expect(playback.playerControl("duplicate")).toMatchObject({ moment: { kind: "capture", frame: { itemId: "third" } }, eventId: null });
+    expect(playback.playerControl("duplicate")).toMatchObject({
+      moment: { kind: "capture", frame: { itemId: "third" } },
+      eventId: null,
+    });
   });
 
   it("holds an absolute cursor through removal, recovery and appended captures", async () => {
@@ -63,7 +84,11 @@ describe("Study playback controller", () => {
     await render([lane("one", [0, 1000, 10_000, 20_000])]);
     expect(playback.atMs).toBe(origin + 5000);
     expect(playback.playing).toBe(false);
-    expect(playback.playerControl("one").moment).toMatchObject({ kind: "capture", frame: { index: 1 }, ageMs: 4000 });
+    expect(playback.playerControl("one").moment).toMatchObject({
+      kind: "capture",
+      frame: { index: 1 },
+      ageMs: 4000,
+    });
   });
 
   it("continues one elapsed clock across unchanged polls and participant projections", async () => {
@@ -78,7 +103,10 @@ describe("Study playback controller", () => {
     await render(structuredClone(streams));
     await act(async () => vi.advanceTimersByTime(2500));
     expect(playback.atMs).toBe(origin + 5500);
-    expect(playback.playerControl("late")).toMatchObject({ playing: true, moment: { kind: "capture", ageMs: 500 } });
+    expect(playback.playerControl("late")).toMatchObject({
+      playing: true,
+      moment: { kind: "capture", ageMs: 500 },
+    });
     await act(async () => playback.playerControl("early").onToggle());
     expect(playback.playing).toBe(false);
     expect(playback.atMs).toBe(origin + 5500);

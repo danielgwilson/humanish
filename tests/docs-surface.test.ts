@@ -10,9 +10,15 @@ const root = resolve(import.meta.dirname, "..");
 const names = readdirSync(resolve(root, "site/content/docs"))
   .filter((name) => name.endsWith(".mdx") && name !== "cli.mdx")
   .map((name) => name.slice(0, -4));
-const pages = names.map((name) => ({ name, text: readFileSync(resolve(root, `site/content/docs/${name}.mdx`), "utf8") }));
+const pages = names.map((name) => ({
+  name,
+  text: readFileSync(resolve(root, `site/content/docs/${name}.mdx`), "utf8"),
+}));
 const readme = { name: "README", text: readFileSync(resolve(root, "README.md"), "utf8") };
-const llms = { name: "llms.txt", text: readFileSync(resolve(root, "site/public/llms.txt"), "utf8") };
+const llms = {
+  name: "llms.txt",
+  text: readFileSync(resolve(root, "site/public/llms.txt"), "utf8"),
+};
 
 // The website is a runnable setup path. Catch unsupported flags and stale lab examples before
 // a reader spends provider money following them; parsing metadata never invokes CLI handlers.
@@ -42,15 +48,25 @@ describe("website documentation examples", () => {
         if (command === program) failures.push(`${name}: unknown command: ${line}`);
         const parsed = command.parseOptions(tokens);
         const invalid = parsed.unknown.filter((token) => token.startsWith("-"));
-        if (invalid.length) failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
+        if (invalid.length)
+          failures.push(`${name}: unsupported flags ${invalid.join(", ")}: ${line}`);
         for (const option of command.options) {
-          if (option.mandatory && option.defaultValue === undefined
-            && !tokens.some((token) => token === option.long || token === option.short || token.startsWith(`${option.long}=`))) {
+          if (
+            option.mandatory &&
+            option.defaultValue === undefined &&
+            !tokens.some(
+              (token) =>
+                token === option.long ||
+                token === option.short ||
+                token.startsWith(`${option.long}=`),
+            )
+          ) {
             failures.push(`${name}: missing required option ${option.long}: ${line}`);
           }
         }
         const requiredArguments = command.registeredArguments.filter((arg) => arg.required).length;
-        if (parsed.operands.length < requiredArguments) failures.push(`${name}: missing required argument: ${line}`);
+        if (parsed.operands.length < requiredArguments)
+          failures.push(`${name}: missing required argument: ${line}`);
         checked++;
       }
     }
@@ -70,7 +86,9 @@ describe("website documentation examples", () => {
     expect(result.config.policies?.allowPublicTargets).toBe(true);
     const blocks = [...page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)];
     const isolated = parse(yaml);
-    isolated.subject = blocks.map(block => parse(block[1]!)).find(block => block.subject?.source === "clone").subject;
+    isolated.subject = blocks
+      .map((block) => parse(block[1]!))
+      .find((block) => block.subject?.source === "clone").subject;
     isolated.actors[0].count = 2;
     delete isolated.policies.allowPublicTargets;
     const panel = parseLabConfig(isolated);
@@ -78,7 +96,11 @@ describe("website documentation examples", () => {
   });
 
   it("accepts the moved computer-use fragments and scripted-browser scenario", () => {
-    const ownApp = parse(pages.find(({ name }) => name === "your-app")!.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!);
+    const ownApp = parse(
+      pages
+        .find(({ name }) => name === "your-app")!
+        .text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!,
+    );
     for (const name of ["computer-use", "local-agents"]) {
       const page = pages.find((page) => page.name === name)!;
       for (const block of page.text.matchAll(/```yaml[^\n]*\n([\s\S]*?)```/g)) {
@@ -89,8 +111,16 @@ describe("website documentation examples", () => {
         expect(result.ok, `${name}: ${JSON.stringify(result)}`).toBe(true);
       }
     }
-    const scenario = parse(pages.find(({ name }) => name === "lab-manifests")!.text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!);
-    const parsed = parseBrowserPersonaJourneyFromScenario({ raw: scenario, relativePath: "humanish/scenarios/todo-onboarding.yaml", sourceDigest: "docs-example" });
+    const scenario = parse(
+      pages
+        .find(({ name }) => name === "lab-manifests")!
+        .text.match(/```yaml[^\n]*\n([\s\S]*?)```/)![1]!,
+    );
+    const parsed = parseBrowserPersonaJourneyFromScenario({
+      raw: scenario,
+      relativePath: "humanish/scenarios/todo-onboarding.yaml",
+      sourceDigest: "docs-example",
+    });
     expect(parsed.failure).toBeUndefined();
     expect(parsed.journey?.steps).toHaveLength(3);
   });
@@ -101,14 +131,19 @@ describe("website documentation examples", () => {
       for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
         const url = match[1]!.split("#")[0]!;
         if (url.startsWith("https://humanish.dev/docs")) {
-          const slug = url === "https://humanish.dev/docs" ? "index" : url.slice("https://humanish.dev/docs/".length);
-          if (!existsSync(resolve(root, `site/content/docs/${slug}.mdx`))) failures.push(`${name}: ${url}`);
+          const slug =
+            url === "https://humanish.dev/docs"
+              ? "index"
+              : url.slice("https://humanish.dev/docs/".length);
+          if (!existsSync(resolve(root, `site/content/docs/${slug}.mdx`)))
+            failures.push(`${name}: ${url}`);
         } else if (url.startsWith("https://github.com/danielgwilson/humanish/blob/main/")) {
           const localPath = url.replace("https://github.com/danielgwilson/humanish/blob/main/", "");
           if (!existsSync(resolve(root, localPath))) failures.push(`${name}: ${url}`);
         } else if (url === "/docs" || url.startsWith("/docs/")) {
           const slug = url === "/docs" ? "index" : url.slice("/docs/".length);
-          if (!existsSync(resolve(root, `site/content/docs/${slug}.mdx`))) failures.push(`${name}: ${url}`);
+          if (!existsSync(resolve(root, `site/content/docs/${slug}.mdx`)))
+            failures.push(`${name}: ${url}`);
         }
       }
     }

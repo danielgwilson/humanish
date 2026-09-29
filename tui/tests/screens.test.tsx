@@ -28,7 +28,9 @@ async function expectGolden(name: string, actual: string): Promise<void> {
     return;
   }
   const expected = await readFile(file, "utf8").catch(() => {
-    throw new Error(`missing golden ${file}. Create it with UPDATE_TUI_GOLDENS=1 and read the diff before committing.`);
+    throw new Error(
+      `missing golden ${file}. Create it with UPDATE_TUI_GOLDENS=1 and read the diff before committing.`,
+    );
   });
   expect(actual).toBe(expected.replace(/\n$/, ""));
 }
@@ -40,24 +42,55 @@ async function expectGolden(name: string, actual: string): Promise<void> {
  */
 function options(overrides: Partial<TuiCapabilities> = {}): TuiOptions {
   const capabilities: TuiCapabilities = {
-    readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
-    listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
+    readRunIndex: async () => ({
+      schema: "humanish.run-index.v1",
+      cwd: "/projects/acme-app",
+      runs: RUNS,
+      unreadable: [],
+    }),
+    listLabs: async () => ({
+      schema: "humanish.lab-list.v1",
+      ok: true,
+      cwd: "/projects/acme-app",
+      labs: LABS,
+      warnings: [],
+    }),
     startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-      readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
-      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
-    ...overrides
+    readLabSummary: async () => null,
+    readProjectState: () => ({
+      schema: "humanish.tui-project.v1" as const,
+      initialized: true,
+      hasRuntime: true,
+    }),
+    openObserver: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "opened",
+    }),
+    reclaimRun: async () => ({
+      schema: "humanish.reclaim-result.v1" as const,
+      ok: true,
+      cwd: "/x",
+      runId: "r",
+      receiptCount: 0,
+      outcomes: [],
+      warnings: [],
+    }),
+    stopRun: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "asked the run to stop",
+    }),
+    ...overrides,
   };
   return {
     cwd: "/projects/acme-app",
     version: { cli: "9.9.9" },
     capabilities,
     stdin: process.stdin,
-    stdout: process.stdout
+    stdout: process.stdout,
   };
 }
 
@@ -65,7 +98,7 @@ async function frameAt(
   columns: number,
   rows = 24,
   overrides: Partial<TuiCapabilities> = {},
-  until?: (frame: string) => boolean
+  until?: (frame: string) => boolean,
 ): Promise<string> {
   const rendered = await renderToText(<App options={options(overrides)} now={NOW} tick={0} />, {
     columns,
@@ -75,7 +108,7 @@ async function frameAt(
     // is NOT, so it cannot silently stop matching when the copy on the screen changes.
     // Live participant names arrive from a SECOND async read, so a caller that asserts on them has
     // to wait for that frame rather than the first data-bearing one.
-    until: until ?? ((frame) => frame.trim().length > 0 && !frame.includes("reading project"))
+    until: until ?? ((frame) => frame.trim().length > 0 && !frame.includes("reading project")),
   });
   rendered.unmount();
   return normalizeFrame(rendered.last);
@@ -117,7 +150,9 @@ describe("the labs screen, rendered", () => {
     expect(lines.filter((line) => line.includes("diagram-editor")).length).toBe(2);
     expect(frame).toContain("diagram-editor-live");
     // The shared title is dropped precisely because it is shared — it identifies neither row.
-    expect(lines.filter((line) => line.includes("Is the diagram axis load-bearing?")).length).toBe(0);
+    expect(lines.filter((line) => line.includes("Is the diagram axis load-bearing?")).length).toBe(
+      0,
+    );
     // And no two rows are byte-identical, which is the failure the real project surfaced.
     const rowLines = lines.filter((line) => line.startsWith("❯ ") || line.startsWith("  "));
     expect(new Set(rowLines).size).toBe(rowLines.length);
@@ -130,15 +165,21 @@ describe("the labs screen, rendered", () => {
       80,
       24,
       {
-      readRunDetail: async () => ({
-        schema: "humanish.run-detail.v1" as const,
-        runId: "cua-2026-08-19T11-30-00-000Z-aa11bb22",
-        participants: [
-          { id: "s1", label: "CUA browser — signup flow", personaId: "skeptical-power-user", traits: [], status: "running" }
-        ]
-      })
+        readRunDetail: async () => ({
+          schema: "humanish.run-detail.v1" as const,
+          runId: "cua-2026-08-19T11-30-00-000Z-aa11bb22",
+          participants: [
+            {
+              id: "s1",
+              label: "CUA browser — signup flow",
+              personaId: "skeptical-power-user",
+              traits: [],
+              status: "running",
+            },
+          ],
+        }),
       },
-      (candidate) => candidate.includes("skeptical-power-user")
+      (candidate) => candidate.includes("skeptical-power-user"),
     );
     const liveRow = frame.split("\n").find((line) => line.includes("Signup flow")) ?? "";
     expect(liveRow).toContain("skeptical-power-user");
@@ -151,12 +192,23 @@ describe("the labs screen, rendered", () => {
 
   it("says the project is empty in a way that tells you what to do next", async () => {
     const empty = options({
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [], unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: [],
+        unreadable: [],
+      }),
+      listLabs: async () => ({
+        schema: "humanish.lab-list.v1",
+        ok: true,
+        cwd: "/projects/acme-app",
+        labs: [],
+        warnings: [],
+      }),
     });
     const rendered = await renderToText(<App options={empty} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.includes("no labs")
+      until: (frame) => frame.includes("no labs"),
     });
     rendered.unmount();
     const frame = normalizeFrame(rendered.last);
@@ -172,11 +224,17 @@ describe("the labs screen, rendered", () => {
       readRunIndex: async () => {
         throw new Error("EACCES: permission denied");
       },
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
+      listLabs: async () => ({
+        schema: "humanish.lab-list.v1",
+        ok: true,
+        cwd: "/projects/acme-app",
+        labs: [],
+        warnings: [],
+      }),
     });
     const rendered = await renderToText(<App options={broken} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.includes("could not read")
+      until: (frame) => frame.includes("could not read"),
     });
     rendered.unmount();
     // An unreadable project and an empty one look identical if you render zeroes for both.
@@ -196,7 +254,7 @@ describe("the harness renders the way a terminal does, not the way a build log d
     try {
       const rendered = await renderToText(<App options={options()} now={NOW} tick={0} />, {
         columns: 80,
-        until: (frame) => frame.includes("Signup flow")
+        until: (frame) => frame.includes("Signup flow"),
       });
       rendered.unmount();
       // A frame arrived BEFORE unmount, which is the whole property.
@@ -210,17 +268,48 @@ describe("the harness renders the way a terminal does, not the way a build log d
 
 describe("the two empty states are different problems", () => {
   const empty = { schema: "humanish.run-index.v1" as const, cwd: "/x", runs: [], unreadable: [] };
-  const noLabs = { schema: "humanish.lab-list.v1" as const, ok: true as const, cwd: "/x", labs: [], warnings: [] };
+  const noLabs = {
+    schema: "humanish.lab-list.v1" as const,
+    ok: true as const,
+    cwd: "/x",
+    labs: [],
+    warnings: [],
+  };
 
   it("a project with no labs is told to write one", async () => {
-    const frame = await frameAt(80, 24, {
-      readRunIndex: async () => empty,
-      listLabs: async () => noLabs,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
-      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
-    }, (candidate) => candidate.includes("no labs here yet"));
+    const frame = await frameAt(
+      80,
+      24,
+      {
+        readRunIndex: async () => empty,
+        listLabs: async () => noLabs,
+        readProjectState: () => ({
+          schema: "humanish.tui-project.v1" as const,
+          initialized: true,
+          hasRuntime: true,
+        }),
+        openObserver: async () => ({
+          schema: "humanish.tui-action.v1" as const,
+          ok: true,
+          message: "opened",
+        }),
+        reclaimRun: async () => ({
+          schema: "humanish.reclaim-result.v1" as const,
+          ok: true,
+          cwd: "/x",
+          runId: "r",
+          receiptCount: 0,
+          outcomes: [],
+          warnings: [],
+        }),
+        stopRun: async () => ({
+          schema: "humanish.tui-action.v1" as const,
+          ok: true,
+          message: "asked the run to stop",
+        }),
+      },
+      (candidate) => candidate.includes("no labs here yet"),
+    );
     expect(frame).toContain("no labs here yet");
     expect(frame).toContain("a lab is a study");
   });
@@ -228,11 +317,20 @@ describe("the two empty states are different problems", () => {
   it("a directory that is not a project is told THAT first", async () => {
     // `npx humanish tui` is easy to type anywhere, and someone in their home directory reading
     // "write a lab" cannot act on it — they do not know they are in the wrong place.
-    const frame = await frameAt(80, 24, {
-      readRunIndex: async () => empty,
-      listLabs: async () => noLabs,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: false, hasRuntime: false })
-    }, (candidate) => candidate.includes("not a humanish project"));
+    const frame = await frameAt(
+      80,
+      24,
+      {
+        readRunIndex: async () => empty,
+        listLabs: async () => noLabs,
+        readProjectState: () => ({
+          schema: "humanish.tui-project.v1" as const,
+          initialized: false,
+          hasRuntime: false,
+        }),
+      },
+      (candidate) => candidate.includes("not a humanish project"),
+    );
     expect(frame).toContain("this directory is not a humanish project");
     expect(frame).not.toContain("no labs here yet");
     // It now OFFERS to fix it rather than telling the reader to leave. "cd somewhere else and run
@@ -253,7 +351,7 @@ describe("all runs — everyone working, across every lab", () => {
     mode: "live" as const,
     lab: { id: labId },
     startedAt: new Date(NOW - minutesAgo * 60_000).toISOString(),
-    updatedAt: new Date(NOW).toISOString()
+    updatedAt: new Date(NOW).toISOString(),
   });
 
   const detailFor = (runId: string, persona: string, thought?: string) => ({
@@ -266,29 +364,35 @@ describe("all runs — everyone working, across every lab", () => {
         personaId: persona,
         traits: [],
         status: "running",
-        ...(thought === undefined ? {} : { thought: { text: thought } })
-      }
-    ]
+        ...(thought === undefined ? {} : { thought: { text: thought } }),
+      },
+    ],
   });
 
   async function openAllRuns(columns = 80) {
-    const runs = [
-      live("r-1", "signup-flow", 3),
-      live("r-2", "diagram-editor", 1)
-    ];
+    const runs = [live("r-1", "signup-flow", 3), live("r-2", "diagram-editor", 1)];
     const details: Record<string, ReturnType<typeof detailFor>> = {
-      "r-1": detailFor("r-1", "synthetic-new-user", "**Figuring out table creation** I am thinking about possible names."),
-      "r-2": detailFor("r-2", "skeptical-power-user")
+      "r-1": detailFor(
+        "r-1",
+        "synthetic-new-user",
+        "**Figuring out table creation** I am thinking about possible names.",
+      ),
+      "r-2": detailFor("r-2", "skeptical-power-user"),
     };
     const rendered = await renderToText(
       <App
         options={options({
-          readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs, unreadable: [] }),
-          readRunDetail: async (_cwd, runId) => details[runId] ?? null
+          readRunIndex: async () => ({
+            schema: "humanish.run-index.v1",
+            cwd: "/projects/acme-app",
+            runs,
+            unreadable: [],
+          }),
+          readRunDetail: async (_cwd, runId) => details[runId] ?? null,
         })}
         now={NOW}
       />,
-      { columns, rows: 28, until: (frame) => frame.includes("All runs") }
+      { columns, rows: 28, until: (frame) => frame.includes("All runs") },
     );
     // Down past the labs to the peer, then open it.
     for (let index = 0; index < 8; index += 1) {
@@ -311,7 +415,9 @@ describe("all runs — everyone working, across every lab", () => {
     const frame = await openAllRuns();
     const row = frame.split("\n").find((line) => line.includes("synthetic-new-user")) ?? "";
     // And each run appears exactly once, even though two manifests declare the same lab id.
-    expect(frame.split("\n").filter((line) => line.includes("skeptical-power-user")).length).toBe(1);
+    expect(frame.split("\n").filter((line) => line.includes("skeptical-power-user")).length).toBe(
+      1,
+    );
     // Who first, where second: when three studies run at once the question is who is doing what.
     expect(row.indexOf("synthetic-new-user")).toBeLessThan(row.indexOf("Signup flow"));
     expect(row).toMatch(/\d+:\d\d/);
@@ -334,11 +440,11 @@ describe("all runs — everyone working, across every lab", () => {
   });
 });
 
-describe("the labs list says what a study IS (stakeholder feedback: \"so i know wtf they are\")", () => {
+describe('the labs list says what a study IS (stakeholder feedback: "so i know wtf they are")', () => {
   it("shows the selected lab's own first sentence, and only the first", async () => {
     const surface = await renderToText(<App options={options()} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.includes("Signup flow")
+      until: (frame) => frame.includes("Signup flow"),
     });
     const frame = surface.last;
     surface.unmount();
@@ -351,7 +457,7 @@ describe("the labs list says what a study IS (stakeholder feedback: \"so i know 
   it("says so plainly when a lab declares nothing, rather than echoing its own title back", async () => {
     const surface = await renderToText(<App options={options()} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.includes("never-run-lab")
+      until: (frame) => frame.includes("never-run-lab"),
     });
     // Down to the lab with no description of its own.
     let frame = "";

@@ -5,7 +5,7 @@ import {
   runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunOptions,
   type CodexAppServerRunResult,
-  type CodexAppServerStatus
+  type CodexAppServerStatus,
 } from "./codex-app-server.js";
 import {
   prepareContainedOutputDirectory,
@@ -17,7 +17,7 @@ import {
   type PreparedOutputDirectory,
   type PreparedSelectedOutputFile,
   writeContainedOutputFile,
-  writePreparedSelectedOutputFile
+  writePreparedSelectedOutputFile,
 } from "./selected-output-paths.js";
 
 export const CODEX_APP_SERVER_UI_SCHEMA = "humanish.codex-app-server-ui.v1";
@@ -61,15 +61,20 @@ export interface CodexAppServerUiController {
   url: string;
 }
 
-export async function startCodexAppServerUi(options: CodexAppServerUiOptions): Promise<CodexAppServerUiController> {
+export async function startCodexAppServerUi(
+  options: CodexAppServerUiOptions,
+): Promise<CodexAppServerUiController> {
   const cwd = path.resolve(options.cwd);
-  const preparedRunRoot = options.runRoot === undefined
-    ? await prepareManagedHumanishOutputDirectory(cwd, "codex-app-server-ui")
-    : await prepareSelectedOutputDirectory(cwd, options.runRoot);
-  const preparedStateFile: PreparedSelectedOutputFile | undefined = options.stateFile === undefined
-    ? undefined
-    : await prepareSelectedOutputFile(cwd, options.stateFile);
-  const stateFile = preparedStateFile?.requestedPath ?? path.join(preparedRunRoot.requestedPath, "state.json");
+  const preparedRunRoot =
+    options.runRoot === undefined
+      ? await prepareManagedHumanishOutputDirectory(cwd, "codex-app-server-ui")
+      : await prepareSelectedOutputDirectory(cwd, options.runRoot);
+  const preparedStateFile: PreparedSelectedOutputFile | undefined =
+    options.stateFile === undefined
+      ? undefined
+      : await prepareSelectedOutputFile(cwd, options.stateFile);
+  const stateFile =
+    preparedStateFile?.requestedPath ?? path.join(preparedRunRoot.requestedPath, "state.json");
   if (!preparedStateFile) {
     await prepareContainedOutputFile(preparedRunRoot, "state.json");
   }
@@ -77,7 +82,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
   await Promise.all([
     prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "events.ndjson")),
     prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "summary.json")),
-    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "transcript.txt"))
+    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "transcript.txt")),
   ]);
   const publicRunRoot = path.relative(cwd, preparedRunRoot.requestedPath) || ".";
   const publicStateFile = path.relative(cwd, stateFile) || path.basename(stateFile);
@@ -92,7 +97,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     startedAt: new Date().toISOString(),
     status: "starting",
     stateFile: publicStateFile,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 
   const persistState = async (): Promise<void> => {
@@ -108,7 +113,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     if (request.url === "/state") {
       response.writeHead(200, {
         "cache-control": "no-store",
-        "content-type": "application/json; charset=utf-8"
+        "content-type": "application/json; charset=utf-8",
       });
       response.end(`${JSON.stringify(state)}\n`);
       return;
@@ -126,14 +131,14 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
       await serveArtifact({
         requestPath,
         response,
-        runRoot: preparedRunRoot
+        runRoot: preparedRunRoot,
       });
       return;
     }
 
     response.writeHead(200, {
       "cache-control": "no-store",
-      "content-type": "text/html; charset=utf-8"
+      "content-type": "text/html; charset=utf-8",
     });
     response.end(renderCodexAppServerUiHtml());
   });
@@ -144,7 +149,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     reason: "Codex app-server actor is running.",
     status: "running",
     updatedAt: new Date().toISOString(),
-    url
+    url,
   };
   try {
     await persistState();
@@ -163,7 +168,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     experimentalApi: true,
     ...(options.model === undefined ? {} : { model: options.model }),
     sandbox: options.sandbox ?? "read-only",
-    serviceName: options.serviceName ?? "humanish"
+    serviceName: options.serviceName ?? "humanish",
   };
   const completion = runCodexAppServerSessionInPreparedRoot(sessionOptions, preparedRunRoot).then(
     async (result): Promise<CodexAppServerUiState> => {
@@ -172,7 +177,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
         reason: result.reason,
         result,
         status: result.status,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
       try {
         await persistState();
@@ -190,7 +195,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
         ...state,
         reason: error instanceof Error ? error.message : String(error),
         status: "blocked",
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
       try {
         await persistState();
@@ -200,7 +205,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
       }
       await closeServer(server);
       return state;
-    }
+    },
   );
 
   return {
@@ -208,7 +213,7 @@ export async function startCodexAppServerUi(options: CodexAppServerUiOptions): P
     completion,
     initialState: state,
     stateFile,
-    url
+    url,
   };
 }
 
@@ -221,7 +226,7 @@ async function serveArtifact(args: {
   if (body) {
     args.response.writeHead(200, {
       "cache-control": "no-store",
-      "content-type": contentTypeFor(args.requestPath)
+      "content-type": contentTypeFor(args.requestPath),
     });
     args.response.end(body);
     return;

@@ -7,7 +7,7 @@ describe("CLI argv normalization", () => {
     expect(normalizeCliArgv(["node", "humanish", "--", "--help"])).toEqual([
       "node",
       "humanish",
-      "--help"
+      "--help",
     ]);
   });
 
@@ -16,7 +16,7 @@ describe("CLI argv normalization", () => {
       "node",
       "humanish",
       "init",
-      "--dry-run"
+      "--dry-run",
     ]);
   });
 });

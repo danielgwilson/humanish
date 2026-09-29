@@ -59,7 +59,7 @@ export function LabsScreen({
   peerSelected,
   liveTotal,
   initArmed,
-  actionNote
+  actionNote,
 }: LabsScreenProps): React.ReactElement {
   if (rows.length === 0) {
     // Two different problems. "This is not a project" has to be said first, because otherwise the
@@ -77,7 +77,9 @@ export function LabsScreen({
       <Box flexDirection="column">
         <Text>this directory is not a humanish project</Text>
         <Box marginTop={1} flexDirection="column">
-          <Text dimColor>humanish studies live in a project: a humanish/ directory of labs and</Text>
+          <Text dimColor>
+            humanish studies live in a project: a humanish/ directory of labs and
+          </Text>
           <Text dimColor>personas beside the app they study.</Text>
         </Box>
         {/* An ACTION, not an instruction to leave. The person reading this has just arrived, and
@@ -90,7 +92,9 @@ export function LabsScreen({
           </Text>
           <Box flexGrow={1} />
           <Text dimColor>
-            {initArmed ? "⏎ again to confirm · esc cancel" : "writes humanish/ and updates package.json"}
+            {initArmed
+              ? "⏎ again to confirm · esc cancel"
+              : "writes humanish/ and updates package.json"}
           </Text>
         </Box>
         {actionNote === undefined ? null : (
@@ -105,7 +109,7 @@ export function LabsScreen({
   const window = listWindow({ total: rows.length, selected, viewport });
   return (
     <Box flexDirection="column">
-      {window.start > 0 ? <Text dimColor>  ↑ {window.start} more</Text> : null}
+      {window.start > 0 ? <Text dimColor> ↑ {window.start} more</Text> : null}
       {rows.slice(window.start, window.end).map((row, offset) => {
         const index = window.start + offset;
         // The list is already sorted so everything with history comes first. Marking the seam
@@ -131,14 +135,18 @@ export function LabsScreen({
           </React.Fragment>
         );
       })}
-      {window.end < rows.length ? <Text dimColor>  ↓ {rows.length - window.end} more</Text> : null}
+      {window.end < rows.length ? <Text dimColor> ↓ {rows.length - window.end} more</Text> : null}
       {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
           not something the app decides you are in. */}
       <Box marginTop={1}>
-        <Text {...color(peerSelected ? PALETTE.accent : undefined)} bold={peerSelected} dimColor={!peerSelected}>
-          {gutter(peerSelected)}   All runs
+        <Text
+          {...color(peerSelected ? PALETTE.accent : undefined)}
+          bold={peerSelected}
+          dimColor={!peerSelected}
+        >
+          {gutter(peerSelected)} All runs
         </Text>
-        {liveTotal > 0 ? <Text color={PALETTE.ok}>   {liveTotal} working</Text> : null}
+        {liveTotal > 0 ? <Text color={PALETTE.ok}> {liveTotal} working</Text> : null}
       </Box>
       {unattributed > 0 ? (
         <Box marginTop={1}>
@@ -169,7 +177,9 @@ function describe(row: LabRow | undefined, peerSelected: boolean): string {
   if (peerSelected) return "every run in this project, newest first — across every lab";
   if (row === undefined) return "";
   const described = row.description?.split(/(?<=[.!?])\s/)[0]?.trim();
-  return described !== undefined && described.length > 0 ? described : "no description in the manifest";
+  return described !== undefined && described.length > 0
+    ? described
+    : "no description in the manifest";
 }
 
 function LabRowView({
@@ -178,7 +188,7 @@ function LabRowView({
   active,
   tick,
   liveParticipants,
-  now
+  now,
 }: {
   row: LabRow;
   columns: number;
@@ -188,7 +198,10 @@ function LabRowView({
   now: number;
 }): React.ReactElement {
   const live = row.liveRuns[0];
-  const status = live === undefined ? labSummaryLine(row) : liveStatus(row, live, liveParticipants.get(live.runId), now);
+  const status =
+    live === undefined
+      ? labSummaryLine(row)
+      : liveStatus(row, live, liveParticipants.get(live.runId), now);
   const statusBudget = Math.max(10, Math.floor(columns / 2) - 2);
   const shown = status.length <= statusBudget ? status : fallbackStatus(row);
   // Glyph column, name column, then the status flush right. The glyph gutter is part of the layout
@@ -220,7 +233,12 @@ function LabRowView({
  * What a live lab says about itself: the participant, and how long they have been at it. A person
  * scanning this list wants to know who is in there — not a count, and not a running total.
  */
-function liveStatus(row: LabRow, live: RunIndexEntry, who: string | undefined, now: number): string {
+function liveStatus(
+  row: LabRow,
+  live: RunIndexEntry,
+  who: string | undefined,
+  now: number,
+): string {
   const started = live.startedAt === undefined ? Number.NaN : Date.parse(live.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
   // Until the run has written a participant record there is nobody to name, and "starting…" is the

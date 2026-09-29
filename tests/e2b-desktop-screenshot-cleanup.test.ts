@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadE2BDesktopModule, type E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import {
   desktopScreenshotCleanupFailures,
-  protectDesktopScreenshotCleanup
+  protectDesktopScreenshotCleanup,
 } from "../src/e2b-desktop-screenshot-cleanup.js";
 
 const bytes = Uint8Array.from([137, 80, 78, 71]);
@@ -15,21 +15,30 @@ const bytes = Uint8Array.from([137, 80, 78, 71]);
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason: unknown) => void;
-  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
   return { promise, resolve, reject };
 }
 
 // Real installed SDK code, with debug mode preventing provider allocation. The local method
 // ports below are commands/files, not invented provider HTTP response fixtures.
-async function sdkProbe(options: {
-  capture?: () => Promise<void>;
-  read?: (path: string) => Promise<Uint8Array>;
-  remove?: (path: string) => Promise<void>;
-  fromLoader?: boolean;
-} = {}) {
-  const paths: { capture: string[]; read: string[]; remove: string[] } = { capture: [], read: [], remove: [] };
+async function sdkProbe(
+  options: {
+    capture?: () => Promise<void>;
+    read?: (path: string) => Promise<Uint8Array>;
+    remove?: (path: string) => Promise<void>;
+    fromLoader?: boolean;
+  } = {},
+) {
+  const paths: { capture: string[]; read: string[]; remove: string[] } = {
+    capture: [],
+    read: [],
+    remove: [],
+  };
   const Base = options.fromLoader
-    ? (await loadE2BDesktopModule()).Sandbox as unknown as typeof SdkDesktop
+    ? ((await loadE2BDesktopModule()).Sandbox as unknown as typeof SdkDesktop)
     : SdkDesktop;
   class ProbeSandbox extends Base {
     constructor(...args: ConstructorParameters<typeof SdkDesktop>) {
@@ -52,19 +61,31 @@ async function sdkProbe(options: {
     }
   }
   // A changed SDK debug path must fail before it can allocate a provider resource.
-  const allocation = vi.spyOn(ProbeSandbox as unknown as {
-    createSandbox(...args: unknown[]): Promise<unknown>;
-  }, "createSandbox").mockRejectedValue(new Error("provider allocation forbidden in conformance tests"));
-  const desktop = await ProbeSandbox.create({ debug: true, apiKey: "synthetic-not-a-provider-key" });
+  const allocation = vi
+    .spyOn(
+      ProbeSandbox as unknown as {
+        createSandbox(...args: unknown[]): Promise<unknown>;
+      },
+      "createSandbox",
+    )
+    .mockRejectedValue(new Error("provider allocation forbidden in conformance tests"));
+  const desktop = await ProbeSandbox.create({
+    debug: true,
+    apiKey: "synthetic-not-a-provider-key",
+  });
   expect(allocation).not.toHaveBeenCalled();
   return { desktop, paths };
 }
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("SDK screenshot cleanup compatibility (#662)", () => {
   it("keeps screenshot cleanup safe in strict Node without swallowing unrelated removal failures", () => {
-    const helper = fileURLToPath(new URL("../src/e2b-desktop-screenshot-cleanup.ts", import.meta.url));
+    const helper = fileURLToPath(
+      new URL("../src/e2b-desktop-screenshot-cleanup.ts", import.meta.url),
+    );
     const script = `
       import { Sandbox } from '@e2b/desktop';
       import { protectDesktopScreenshotCleanup, desktopScreenshotCleanupFailures } from ${JSON.stringify(helper)};
@@ -86,9 +107,27 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
       await new Promise(resolve => setTimeout(resolve, 30));
       console.log('cleanup-failures=' + desktopScreenshotCleanupFailures(desktop));
     `;
-    const run = (protect: boolean, unrelated = false) => spawnSync(process.execPath, [
-      "--unhandled-rejections=strict", "--import", "tsx", "--input-type=module", "--eval", script
-    ], { encoding: "utf8", env: { ...process.env, PROTECT_SCREENSHOT: protect ? "1" : "0", UNRELATED_REMOVE: unrelated ? "1" : "0" }, timeout: 10_000 });
+    const run = (protect: boolean, unrelated = false) =>
+      spawnSync(
+        process.execPath,
+        [
+          "--unhandled-rejections=strict",
+          "--import",
+          "tsx",
+          "--input-type=module",
+          "--eval",
+          script,
+        ],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            PROTECT_SCREENSHOT: protect ? "1" : "0",
+            UNRELATED_REMOVE: unrelated ? "1" : "0",
+          },
+          timeout: 10_000,
+        },
+      );
     const protectedRun = run(true);
     expect(protectedRun.status).toBe(0);
     expect(protectedRun.stdout).toContain("image-bytes=4");
@@ -124,14 +163,21 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     expect(desktopScreenshotCleanupFailures(desktop)).toBe(0);
   });
 
-  it.each(["capture", "read"] as const)("preserves %s failure before any cleanup", async (phase) => {
-    const error = new Error(`synthetic-${phase}-failure`);
-    const { desktop, paths } = await sdkProbe({ [phase]: async () => { throw error; } });
-    protectDesktopScreenshotCleanup(desktop);
-    await expect(desktop.screenshot()).rejects.toBe(error);
-    expect(paths.remove).toEqual([]);
-    expect(desktopScreenshotCleanupFailures(desktop)).toBe(0);
-  });
+  it.each(["capture", "read"] as const)(
+    "preserves %s failure before any cleanup",
+    async (phase) => {
+      const error = new Error(`synthetic-${phase}-failure`);
+      const { desktop, paths } = await sdkProbe({
+        [phase]: async () => {
+          throw error;
+        },
+      });
+      protectDesktopScreenshotCleanup(desktop);
+      await expect(desktop.screenshot()).rejects.toBe(error);
+      expect(paths.remove).toEqual([]);
+      expect(desktopScreenshotCleanupFailures(desktop)).toBe(0);
+    },
+  );
 
   it("preserves the original removal promise and rejection for ordinary awaited callers", async () => {
     const error = new Error("synthetic-awaited-remove-failure");
@@ -160,20 +206,25 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     expect(desktopScreenshotCleanupFailures(desktop)).toBe(2);
     expect(warning).toHaveBeenCalledTimes(2);
     expect(warning.mock.calls.flat().join(" ")).not.toContain("synthetic-private-error");
-    for (const path of paths.remove) expect(warning.mock.calls.flat().join(" ")).not.toContain(path);
+    for (const path of paths.remove)
+      expect(warning.mock.calls.flat().join(" ")).not.toContain(path);
   });
 
   it("does not hide an awaited removal failure inside a future SDK screenshot implementation", async () => {
     const error = new Error("synthetic-awaited-screenshot-cleanup");
     const pending = Promise.reject(error);
-    const files = { write: async () => undefined, read: async (_path: string) => bytes, remove: (_path: string) => pending };
+    const files = {
+      write: async () => undefined,
+      read: async (_path: string) => bytes,
+      remove: (_path: string) => pending,
+    };
     const desktop = {
       files,
       async screenshot() {
         await files.read("/tmp/synthetic-frame.png");
         await files.remove("/tmp/synthetic-frame.png");
         return bytes;
-      }
+      },
     } as unknown as E2BDesktopSandbox;
     const warning = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     protectDesktopScreenshotCleanup(desktop);
@@ -183,14 +234,20 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
 
   it("does not classify a second desktop's removal as the active desktop's screenshot cleanup", async () => {
     const error = new Error("synthetic-other-desktop-removal");
-    const other = await sdkProbe({ remove: async () => { throw error; } });
+    const other = await sdkProbe({
+      remove: async () => {
+        throw error;
+      },
+    });
     protectDesktopScreenshotCleanup(other.desktop);
     let unrelated: Promise<void> | undefined;
-    const current = await sdkProbe({ remove: async (path) => {
-      // Same async scope and exact path, but a different SDK instance owns this operation.
-      unrelated = other.desktop.files.remove(path);
-      void unrelated.catch(() => undefined);
-    } });
+    const current = await sdkProbe({
+      remove: async (path) => {
+        // Same async scope and exact path, but a different SDK instance owns this operation.
+        unrelated = other.desktop.files.remove(path);
+        void unrelated.catch(() => undefined);
+      },
+    });
     protectDesktopScreenshotCleanup(current.desktop);
     expect(await current.desktop.screenshot()).toBe(bytes);
     await expect(unrelated).rejects.toBe(error);
@@ -199,7 +256,10 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
   });
 
   it("leaves screenshot-only injected desktops unchanged", () => {
-    const desktop = { files: { write: async () => undefined }, screenshot: async () => bytes } as unknown as E2BDesktopSandbox;
+    const desktop = {
+      files: { write: async () => undefined },
+      screenshot: async () => bytes,
+    } as unknown as E2BDesktopSandbox;
     const screenshot = desktop.screenshot;
     expect(protectDesktopScreenshotCleanup(desktop).screenshot).toBe(screenshot);
   });

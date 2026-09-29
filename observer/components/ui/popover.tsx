@@ -16,7 +16,7 @@ export function Popover({
   children,
   open,
   onOpenChange,
-  title = label
+  title = label,
 }: {
   trigger: ReactNode;
   triggerClassName: string;
@@ -30,15 +30,31 @@ export function Popover({
   // Follow entry/exit while open so the popup stays reachable with its trigger.
   const fullscreen = useFullscreenContainer();
   return (
-    <BasePopover.Root {...(open === undefined ? {} : { open })} {...(onOpenChange ? { onOpenChange } : {})}>
-      <BasePopover.Trigger render={<IconButton label={label} hint={title} className={triggerClassName}>{trigger}</IconButton>}>
+    <BasePopover.Root
+      {...(open === undefined ? {} : { open })}
+      {...(onOpenChange ? { onOpenChange } : {})}
+    >
+      <BasePopover.Trigger
+        render={
+          <IconButton label={label} hint={title} className={triggerClassName}>
+            {trigger}
+          </IconButton>
+        }
+      >
         {trigger}
       </BasePopover.Trigger>
       <BasePopover.Portal {...(fullscreen ? { container: fullscreen } : {})}>
         <BasePopover.Positioner className="observer-popover-positioner" sideOffset={8} align="end">
           <BasePopover.Popup className="pop-panel" aria-label={label}>
-            <div className="popover-heading"><BasePopover.Title>{title}</BasePopover.Title>
-              <BasePopover.Close render={<IconButton label={`Close ${title.toLowerCase()}`}><ReviewIcon name="close" /></IconButton>} />
+            <div className="popover-heading">
+              <BasePopover.Title>{title}</BasePopover.Title>
+              <BasePopover.Close
+                render={
+                  <IconButton label={`Close ${title.toLowerCase()}`}>
+                    <ReviewIcon name="close" />
+                  </IconButton>
+                }
+              />
             </div>
             {children}
           </BasePopover.Popup>

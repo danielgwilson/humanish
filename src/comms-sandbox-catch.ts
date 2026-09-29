@@ -399,14 +399,17 @@ export interface DeployedCommsCatch {
 async function catchHealthy(
   desktop: E2BDesktopSandbox,
   port: number,
-  options: { timeoutMs: number; requestTimeoutMs: number } & DetachedTimers
+  options: { timeoutMs: number; requestTimeoutMs: number } & DetachedTimers,
 ): Promise<boolean> {
   const now = options.now ?? Date.now;
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const deadline = now() + options.timeoutMs;
   for (;;) {
     const result = await desktop.commands
-      .run(`curl -s --max-time 5 http://127.0.0.1:${port}/health 2>/dev/null || true`, { requestTimeoutMs: options.requestTimeoutMs })
+      .run(`curl -s --max-time 5 http://127.0.0.1:${port}/health 2>/dev/null || true`, {
+        requestTimeoutMs: options.requestTimeoutMs,
+      })
       .catch(() => ({ stdout: "" }));
     if ((result.stdout ?? "").includes("humanish-comms-catch")) return true;
     if (now() >= deadline) return false;
@@ -427,7 +430,7 @@ export interface RawCapturedSend {
  */
 export async function deployCommsCatch(
   desktop: E2BDesktopSandbox,
-  options: DeployCommsCatchOptions = {}
+  options: DeployCommsCatchOptions = {},
 ): Promise<DeployedCommsCatch> {
   // Validate the port to an integer before it reaches the shell command (defense-in-depth: a future
   // caller might cast a config value; the value is typed `number` but this makes injection impossible).
@@ -435,14 +438,23 @@ export async function deployCommsCatch(
   if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
     throw new Error(`deployCommsCatch: invalid port ${JSON.stringify(options.port)}`);
   }
-  const inboxPort = options.inboxPort === undefined ? undefined : Math.trunc(Number(options.inboxPort));
-  if (inboxPort !== undefined && (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_535 || inboxPort === port)) {
+  const inboxPort =
+    options.inboxPort === undefined ? undefined : Math.trunc(Number(options.inboxPort));
+  if (
+    inboxPort !== undefined &&
+    (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_535 || inboxPort === port)
+  ) {
     throw new Error(`deployCommsCatch: invalid inboxPort ${JSON.stringify(options.inboxPort)}`);
   }
-  const smtpPort = options.smtpPort === undefined ? undefined : Math.trunc(Number(options.smtpPort));
+  const smtpPort =
+    options.smtpPort === undefined ? undefined : Math.trunc(Number(options.smtpPort));
   if (
     smtpPort !== undefined &&
-    (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_535 || smtpPort === port || smtpPort === inboxPort)
+    (!Number.isInteger(smtpPort) ||
+      smtpPort <= 0 ||
+      smtpPort > 65_535 ||
+      smtpPort === port ||
+      smtpPort === inboxPort)
   ) {
     throw new Error(`deployCommsCatch: invalid smtpPort ${JSON.stringify(options.smtpPort)}`);
   }
@@ -466,11 +478,15 @@ export async function deployCommsCatch(
       ...(inboxPort === undefined && smtpPort === undefined ? [] : [String(inboxPort ?? 0)]),
       // The token slot is positional: an SMTP port cannot be reached without filling it. In-sandbox
       // the capture listener is loopback-only, so an empty token is the same posture as before.
-      ...(smtpPort === undefined ? [] : ['""', String(smtpPort)])
+      ...(smtpPort === undefined ? [] : ['""', String(smtpPort)]),
     ].join(" "),
-    requestTimeoutMs
+    requestTimeoutMs,
   });
-  const probe = { timeoutMs: options.readyTimeoutMs ?? 15_000, requestTimeoutMs, ...(options.timers ?? {}) };
+  const probe = {
+    timeoutMs: options.readyTimeoutMs ?? 15_000,
+    requestTimeoutMs,
+    ...(options.timers ?? {}),
+  };
   const ready = await catchHealthy(desktop, port, probe);
   // Confirm the read-only inbox listener bound too (loopback-reachable at its own port), when requested —
   // else a getHost-exposed inbox would 502. Fail closed by folding it into `ready`.
@@ -482,7 +498,7 @@ export async function deployCommsCatch(
     surfaceDir,
     ...(inboxPort === undefined ? {} : { inboxPort }),
     ...(smtpPort === undefined ? {} : { smtpPort }),
-    ready: ready && inboxReady
+    ready: ready && inboxReady,
   };
 }
 
@@ -494,9 +510,12 @@ export async function drainCommsCatch(
   desktop: E2BDesktopSandbox,
   deployed: Pick<DeployedCommsCatch, "deliveriesPath">,
   cursor = 0,
-  requestTimeoutMs = 30_000
+  requestTimeoutMs = 30_000,
 ): Promise<{ sends: RawCapturedSend[]; cursor: number }> {
-  const result = await desktop.commands.run(`cat ${shq(deployed.deliveriesPath)} 2>/dev/null || true`, { requestTimeoutMs });
+  const result = await desktop.commands.run(
+    `cat ${shq(deployed.deliveriesPath)} 2>/dev/null || true`,
+    { requestTimeoutMs },
+  );
   const stdout = result.stdout ?? "";
   let lines = stdout.split("\n").filter((line) => line.trim().length > 0);
   // If the file doesn't end in a newline, the last line may be a PARTIAL append (the host `cat` raced
@@ -509,7 +528,11 @@ export async function drainCommsCatch(
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       if (typeof parsed.path === "string" && typeof parsed.body === "string") {
-        sends.push({ path: parsed.path, body: parsed.body, t: typeof parsed.t === "number" ? parsed.t : 0 });
+        sends.push({
+          path: parsed.path,
+          body: parsed.body,
+          t: typeof parsed.t === "number" ? parsed.t : 0,
+        });
       }
     } catch {
       // skip a malformed line
@@ -535,7 +558,11 @@ export function parseDeliveriesNdjson(text: string): RawCapturedSend[] {
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       if (typeof parsed.path === "string" && typeof parsed.body === "string") {
-        sends.push({ path: parsed.path, body: parsed.body, t: typeof parsed.t === "number" ? parsed.t : 0 });
+        sends.push({
+          path: parsed.path,
+          body: parsed.body,
+          t: typeof parsed.t === "number" ? parsed.t : 0,
+        });
       }
     } catch {
       // skip a malformed line
@@ -553,7 +580,7 @@ export function parseDeliveriesNdjson(text: string): RawCapturedSend[] {
  */
 export function capturedRecipientAddresses(
   sends: readonly RawCapturedSend[],
-  profiles: EmailSendProfile[] = DEFAULT_EMAIL_PROFILES
+  profiles: EmailSendProfile[] = DEFAULT_EMAIL_PROFILES,
 ): string[] {
   const addresses = new Set<string>();
   for (const send of sends) {
@@ -563,7 +590,8 @@ export function capturedRecipientAddresses(
     } catch {
       continue;
     }
-    const profile = profiles.find((candidate) => candidate.sendPaths.includes(send.path)) ?? profiles[0];
+    const profile =
+      profiles.find((candidate) => candidate.sendPaths.includes(send.path)) ?? profiles[0];
     if (profile === undefined) continue;
     for (const normalized of profile.parse(send.path, parsed)) {
       for (const address of normalized.to) {
@@ -581,11 +609,12 @@ export function capturedRecipientAddresses(
  */
 export async function inboxMessagesFrom(
   sends: readonly RawCapturedSend[],
-  recipients: readonly InboxSurfaceRecipient[]
+  recipients: readonly InboxSurfaceRecipient[],
 ): Promise<CommsMessage[]> {
   const channel = new FakeInbox();
   const inboxes: CommsAddress[] = [];
-  for (const recipient of recipients) inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
+  for (const recipient of recipients)
+    inboxes.push(await channel.provisionAddress(recipient.lane, recipient.address));
   await routeCapturedSends([...sends], channel);
   const seen = new Set<string>();
   const messages: CommsMessage[] = [];
@@ -608,7 +637,7 @@ export async function inboxMessagesFrom(
 export async function routeCapturedSends(
   sends: RawCapturedSend[],
   channel: CommsChannel,
-  profiles: EmailSendProfile[] = DEFAULT_EMAIL_PROFILES
+  profiles: EmailSendProfile[] = DEFAULT_EMAIL_PROFILES,
 ): Promise<number> {
   let delivered = 0;
   for (const send of sends) {
@@ -618,7 +647,8 @@ export async function routeCapturedSends(
     } catch {
       continue;
     }
-    const profile = profiles.find((candidate) => candidate.sendPaths.includes(send.path)) ?? profiles[0];
+    const profile =
+      profiles.find((candidate) => candidate.sendPaths.includes(send.path)) ?? profiles[0];
     if (profile === undefined) continue;
     for (const normalized of profile.parse(send.path, parsed)) {
       const messages = await channel.deliverRaw({
@@ -626,7 +656,7 @@ export async function routeCapturedSends(
         to: normalized.to,
         ...(normalized.subject === undefined ? {} : { subject: normalized.subject }),
         body: normalized.body,
-        ...(normalized.inlineImages ? { inlineImages: normalized.inlineImages } : {})
+        ...(normalized.inlineImages ? { inlineImages: normalized.inlineImages } : {}),
       });
       delivered += messages.length;
     }
@@ -680,7 +710,11 @@ export async function collectCommsThread(args: {
   }
   if (messages.length === 0) return { captured: sends.length, matched: 0 };
   messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
-  return { artifact: buildCommsThreadArtifact(messages), captured: sends.length, matched: messages.length };
+  return {
+    artifact: buildCommsThreadArtifact(messages),
+    captured: sends.length,
+    matched: messages.length,
+  };
 }
 
 /** An adopter-hosted catch: humanish never provisioned it, so it is addressed over HTTP (#328). */
@@ -711,19 +745,30 @@ export function externalInboxUrl(external: ExternalCommsCatch): string {
  */
 export async function externalCatchHealthy(
   external: ExternalCommsCatch,
-  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {}
+  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {},
 ): Promise<boolean> {
   const fetchFn = options.fetchFn ?? fetch;
   try {
-    const bases = new Set([external.catchBaseUrl, external.inboxBaseUrl ?? external.catchBaseUrl].map(baseOf));
-    const health = await Promise.all([...bases].map(async (base) => {
-      const response = await fetchFn(`${base}/health`, { signal: AbortSignal.timeout(options.timeoutMs ?? 15_000) });
-      if (!response.ok) return false;
-      const body: unknown = await response.json();
-      if (!body || typeof body !== "object") return false;
-      const value = body as Record<string, unknown>;
-      return value.ok === true && value.service === "humanish-comms-catch" && Array.isArray(value.capabilities) && value.capabilities.includes("recipient-inbox-v1");
-    }));
+    const bases = new Set(
+      [external.catchBaseUrl, external.inboxBaseUrl ?? external.catchBaseUrl].map(baseOf),
+    );
+    const health = await Promise.all(
+      [...bases].map(async (base) => {
+        const response = await fetchFn(`${base}/health`, {
+          signal: AbortSignal.timeout(options.timeoutMs ?? 15_000),
+        });
+        if (!response.ok) return false;
+        const body: unknown = await response.json();
+        if (!body || typeof body !== "object") return false;
+        const value = body as Record<string, unknown>;
+        return (
+          value.ok === true &&
+          value.service === "humanish-comms-catch" &&
+          Array.isArray(value.capabilities) &&
+          value.capabilities.includes("recipient-inbox-v1")
+        );
+      }),
+    );
     return health.every(Boolean);
   } catch {
     return false;
@@ -738,12 +783,12 @@ export async function externalCatchHealthy(
 export async function drainExternalCommsCatch(
   external: ExternalCommsCatch,
   cursor = 0,
-  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {}
+  options: { timeoutMs?: number; fetchFn?: typeof fetch } = {},
 ): Promise<{ sends: RawCapturedSend[]; cursor: number }> {
   const fetchFn = options.fetchFn ?? fetch;
   const response = await fetchFn(`${baseOf(external.catchBaseUrl)}/deliveries`, {
     signal: AbortSignal.timeout(options.timeoutMs ?? 30_000),
-    ...(external.authToken ? { headers: { authorization: `Bearer ${external.authToken}` } } : {})
+    ...(external.authToken ? { headers: { authorization: `Bearer ${external.authToken}` } } : {}),
   });
   if (!response.ok) {
     throw new Error(`comms catch GET /deliveries returned ${response.status}`);
@@ -756,7 +801,11 @@ export async function drainExternalCommsCatch(
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       if (typeof parsed.path === "string" && typeof parsed.body === "string") {
-        sends.push({ path: parsed.path, body: parsed.body, t: typeof parsed.t === "number" ? parsed.t : 0 });
+        sends.push({
+          path: parsed.path,
+          body: parsed.body,
+          t: typeof parsed.t === "number" ? parsed.t : 0,
+        });
       }
     } catch {
       // skip a malformed line
@@ -778,7 +827,10 @@ export async function collectExternalCommsThread(args: {
   timeoutMs?: number;
   fetchFn?: typeof fetch;
 }): Promise<CommsThreadCollection> {
-  const drainOptions = { ...(args.timeoutMs === undefined ? {} : { timeoutMs: args.timeoutMs }), ...(args.fetchFn ? { fetchFn: args.fetchFn } : {}) };
+  const drainOptions = {
+    ...(args.timeoutMs === undefined ? {} : { timeoutMs: args.timeoutMs }),
+    ...(args.fetchFn ? { fetchFn: args.fetchFn } : {}),
+  };
   const { sends } = await drainExternalCommsCatch(args.external, 0, drainOptions);
   if (sends.length === 0) return { captured: 0, matched: 0 };
   await routeCapturedSends(sends, args.channel, args.profiles);
@@ -793,7 +845,11 @@ export async function collectExternalCommsThread(args: {
   }
   if (messages.length === 0) return { captured: sends.length, matched: 0 };
   messages.sort((a, b) => a.deliveredAt - b.deliveredAt || a.id.localeCompare(b.id));
-  return { artifact: buildCommsThreadArtifact(messages), captured: sends.length, matched: messages.length };
+  return {
+    artifact: buildCommsThreadArtifact(messages),
+    captured: sends.length,
+    matched: messages.length,
+  };
 }
 
 /**
@@ -807,7 +863,7 @@ export async function writeInboxSurface(
   desktop: E2BDesktopSandbox,
   surfaceDir: string,
   messages: CommsMessage[],
-  options: InboxRenderOptions & { requestTimeoutMs?: number } = {}
+  options: InboxRenderOptions & { requestTimeoutMs?: number } = {},
 ): Promise<number> {
   const files = buildInboxSurface(messages, options);
   // Create the union of parent dirs (inbox/<id>/synth etc.) in one mkdir before writing.
@@ -816,7 +872,9 @@ export async function writeInboxSurface(
     const slash = file.path.lastIndexOf("/");
     if (slash > 0) dirs.add(`${surfaceDir}/${file.path.slice(0, slash)}`);
   }
-  await desktop.commands.run(`mkdir -p ${[...dirs].map(shq).join(" ")}`, { requestTimeoutMs: options.requestTimeoutMs ?? 30_000 });
+  await desktop.commands.run(`mkdir -p ${[...dirs].map(shq).join(" ")}`, {
+    requestTimeoutMs: options.requestTimeoutMs ?? 30_000,
+  });
   for (const file of files) {
     await desktop.files.write(`${surfaceDir}/${file.path}`, file.body);
   }
@@ -852,13 +910,14 @@ export async function refreshInboxSurface(args: {
 }): Promise<{ count: number; rendered: boolean }> {
   const { sends } = await drainCommsCatch(args.desktop, args.deployed, 0, args.requestTimeoutMs);
   if (sends.length === 0) return { count: 0, rendered: false };
-  if (args.sinceCount !== undefined && sends.length <= args.sinceCount) return { count: sends.length, rendered: false };
+  if (args.sinceCount !== undefined && sends.length <= args.sinceCount)
+    return { count: sends.length, rendered: false };
   const messages = await inboxMessagesFrom(sends, args.recipients);
   if (messages.length === 0) return { count: sends.length, rendered: false };
   await writeInboxSurface(args.desktop, args.deployed.surfaceDir, messages, {
     recipients: args.recipients.map((recipient) => recipient.address),
     ...(args.originMap === undefined ? {} : { originMap: args.originMap }),
-    ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs })
+    ...(args.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: args.requestTimeoutMs }),
   });
   return { count: sends.length, rendered: true };
 }

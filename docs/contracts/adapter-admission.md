@@ -15,7 +15,7 @@ const provider = createOpenAiResponsesProvider({
       throw new CuaAdmissionLimitError();
     }
     return transport(url, init);
-  }
+  },
 });
 ```
 

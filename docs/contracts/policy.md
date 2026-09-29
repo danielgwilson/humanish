@@ -37,12 +37,12 @@ status. It never records credential values.
 
 ## Credential Classes
 
-| Class | Examples | May Be Recorded | Must Not Be Recorded |
-| --- | --- | --- | --- |
-| Executor auth | local Codex login, local shell authority, E2B desktop token, browser automation session | class name, env var name, present/missing status, authority level | tokens, cookies, session ids, raw home config, private command history |
-| Product auth | target app test account, synthetic browser state, local fixture login | synthetic fixture id, auth state class, redaction status | real emails, passwords, customer accounts, patient accounts, production cookies |
-| Provider auth | model provider key, desktop provider key, package registry token | env var name, provider class, present/missing status, spend policy | API key values, auth-bearing stream URLs, billing account identifiers |
-| Maintainer auth | GitHub token, npm publish authority, repository admin rights | required/not-required, requested authority, explicit maintainer approval status | tokens, OAuth payloads, private org metadata, mutation authority by implication |
+| Class           | Examples                                                                                | May Be Recorded                                                                 | Must Not Be Recorded                                                            |
+| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Executor auth   | local Codex login, local shell authority, E2B desktop token, browser automation session | class name, env var name, present/missing status, authority level               | tokens, cookies, session ids, raw home config, private command history          |
+| Product auth    | target app test account, synthetic browser state, local fixture login                   | synthetic fixture id, auth state class, redaction status                        | real emails, passwords, customer accounts, patient accounts, production cookies |
+| Provider auth   | model provider key, desktop provider key, package registry token                        | env var name, provider class, present/missing status, spend policy              | API key values, auth-bearing stream URLs, billing account identifiers           |
+| Maintainer auth | GitHub token, npm publish authority, repository admin rights                            | required/not-required, requested authority, explicit maintainer approval status | tokens, OAuth payloads, private org metadata, mutation authority by implication |
 
 Synthetic fixture:
 
@@ -76,14 +76,14 @@ credentials:
 Network policy describes where a run may connect. It is not a hidden allowlist
 for credentials.
 
-| Mode | Meaning | Default For |
-| --- | --- | --- |
-| `no_network` | No external network calls. | contract docs, local unit tests |
-| `local_only` | Localhost and loopback only. | Observer, local fixtures |
-| `public_oss` | Public GitHub clone/fetch of owner/repo slugs only. | disposable OSS smoke |
-| `authorized_private` | Token-backed clone/fetch of repos the maintainer is already authorized to access, with repo labels redacted by default. | local maintainer dogfood only |
-| `provider_substrate` | Explicit provider substrate such as hosted desktop streams. | live routes with an isolated credential boundary and in-process resource handles |
-| `custom_allowlist` | Adapter-declared public hosts. | target-specific adapters |
+| Mode                 | Meaning                                                                                                                 | Default For                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `no_network`         | No external network calls.                                                                                              | contract docs, local unit tests                                                  |
+| `local_only`         | Localhost and loopback only.                                                                                            | Observer, local fixtures                                                         |
+| `public_oss`         | Public GitHub clone/fetch of owner/repo slugs only.                                                                     | disposable OSS smoke                                                             |
+| `authorized_private` | Token-backed clone/fetch of repos the maintainer is already authorized to access, with repo labels redacted by default. | local maintainer dogfood only                                                    |
+| `provider_substrate` | Explicit provider substrate such as hosted desktop streams.                                                             | live routes with an isolated credential boundary and in-process resource handles |
+| `custom_allowlist`   | Adapter-declared public hosts.                                                                                          | target-specific adapters                                                         |
 
 Synthetic fixture:
 
@@ -112,12 +112,12 @@ labels, ignored artifact paths, and verifier status.
 
 Spend policy names when provider costs may be incurred.
 
-| Mode | Meaning |
-| --- | --- |
-| `no_spend` | No provider calls that can bill. |
-| `dry_run_only` | Only local contract proof; no live substrate. |
+| Mode                     | Meaning                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `no_spend`               | No provider calls that can bill.                                                                   |
+| `dry_run_only`           | Only local contract proof; no live substrate.                                                      |
 | `explicit_live_provider` | Provider calls allowed because required env var names are present and operator intent is explicit. |
-| `maintainer_approved` | Reserved for publish, billing, or high-risk mutation workflows. |
+| `maintainer_approved`    | Reserved for publish, billing, or high-risk mutation workflows.                                    |
 
 Synthetic fixture:
 
@@ -165,11 +165,11 @@ Required redaction gates:
 `humanish verify` separates bundle validity from public promotion with
 `shareSafety`:
 
-| Status | Meaning |
-| --- | --- |
-| `share_ready` | The bundle passed verification and has no known local-only evidence posture. Feedback commands may render public issue drafts. |
-| `local_only` | The bundle passed verification and is useful local evidence, but should not be shared as-is. Current example: full-fidelity raw screenshots. |
-| `blocked` | Verification or public-safety checks failed. The bundle must not be promoted. |
+| Status        | Meaning                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `share_ready` | The bundle passed verification and has no known local-only evidence posture. Feedback commands may render public issue drafts.               |
+| `local_only`  | The bundle passed verification and is useful local evidence, but should not be shared as-is. Current example: full-fidelity raw screenshots. |
+| `blocked`     | Verification or public-safety checks failed. The bundle must not be promoted.                                                                |
 
 Feedback commands fail closed unless `shareSafety.status` is `share_ready`.
 This keeps the default raw-screenshot capture useful for local review without

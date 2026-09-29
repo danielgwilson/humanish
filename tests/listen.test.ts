@@ -10,7 +10,14 @@ import { freePort } from "./helpers/free-port.js";
 describe("listenOnLoopback", () => {
   const open: Array<{ close: (cb?: () => void) => unknown }> = [];
   afterEach(async () => {
-    await Promise.all(open.splice(0).map((s) => new Promise<void>((resolve) => { s.close(() => resolve()); })));
+    await Promise.all(
+      open.splice(0).map(
+        (s) =>
+          new Promise<void>((resolve) => {
+            s.close(() => resolve());
+          }),
+      ),
+    );
   });
 
   it("names a taken port and says whose it is, instead of throwing Node's raw error", async () => {
@@ -24,11 +31,11 @@ describe("listenOnLoopback", () => {
       name: "PortInUseError",
       port,
       holder: "other",
-      message: expect.stringContaining(`already listening on 127.0.0.1:${port}`)
+      message: expect.stringContaining(`already listening on 127.0.0.1:${port}`),
     });
     await expect(listenOnLoopback(server, port, async () => "humanish")).rejects.toMatchObject({
       holder: "humanish",
-      message: expect.stringContaining("another humanish process")
+      message: expect.stringContaining("another humanish process"),
     });
   });
 
@@ -48,13 +55,17 @@ describe("listenOnLoopback", () => {
         response.end(JSON.stringify({ schema: "humanish.run-history.v1", runs: [] }));
         return;
       }
-      response.writeHead(404); response.end();
+      response.writeHead(404);
+      response.end();
     });
     open.push(ours);
     const oursPort = await listenOnLoopback(ours, 0);
     expect(await probePortHolder(oursPort)).toBe("humanish");
 
-    const theirs = createHttpServer((_request, response) => { response.writeHead(200, { "content-type": "text/html" }); response.end("<main>landing page</main>"); });
+    const theirs = createHttpServer((_request, response) => {
+      response.writeHead(200, { "content-type": "text/html" });
+      response.end("<main>landing page</main>");
+    });
     open.push(theirs);
     const theirsPort = await listenOnLoopback(theirs, 0);
     expect(await probePortHolder(theirsPort)).toBe("other");

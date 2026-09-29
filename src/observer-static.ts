@@ -32,7 +32,7 @@ const CONTENT_TYPES: Record<string, string> = {
   ".ndjson": "application/x-ndjson; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
   ".woff": "font/woff",
-  ".woff2": "font/woff2"
+  ".woff2": "font/woff2",
 };
 
 export interface ObserverStaticHandlerOptions {
@@ -90,7 +90,7 @@ export function observerStaticContentType(filePath: string): string {
 export async function respondToObserverStaticRequest(
   options: ObserverStaticHandlerOptions,
   request: Pick<IncomingMessage, "method" | "url">,
-  response: ServerResponse
+  response: ServerResponse,
 ): Promise<void> {
   applySecurityHeaders(response);
   try {
@@ -109,7 +109,7 @@ async function respondToPinnedObserverStaticRequest(
   root: PinnedStaticRoot,
   options: ObserverStaticHandlerOptions,
   request: Pick<IncomingMessage, "method" | "url">,
-  response: ServerResponse
+  response: ServerResponse,
 ): Promise<void> {
   applySecurityHeaders(response);
   const indexRelative = options.indexPath ?? "index.html";
@@ -135,7 +135,7 @@ async function respondToPinnedObserverStaticRequest(
       response.writeHead(302, {
         location,
         "cache-control": "no-store",
-        "content-length": "0"
+        "content-length": "0",
       });
       response.end();
       return;
@@ -197,7 +197,7 @@ async function respondToPinnedObserverStaticRequest(
     response.writeHead(200, {
       "cache-control": "no-store",
       "content-type": observerStaticContentType(filePath),
-      "content-length": String(body.byteLength)
+      "content-length": String(body.byteLength),
     });
     if (method === "HEAD") {
       response.end();
@@ -214,7 +214,8 @@ async function respondToPinnedObserverStaticRequest(
 }
 
 function applySecurityHeaders(response: ServerResponse): void {
-  for (const [name, value] of Object.entries(buildArtifactSecurityHeaders())) response.setHeader(name, value);
+  for (const [name, value] of Object.entries(buildArtifactSecurityHeaders()))
+    response.setHeader(name, value);
 }
 
 /** Static serving is recorded evidence. Neither JSON files nor inline HTML snapshots
@@ -223,19 +224,30 @@ function recordedObserverStaticBody(filePath: string, body: Buffer): Buffer {
   const strip = (text: string): string | null => {
     try {
       const data: unknown = JSON.parse(text);
-      if (!data || typeof data !== "object" || Array.isArray(data)
-        || (data as Record<string, unknown>).schema !== "humanish.observer-data.v1") return null;
+      if (
+        !data ||
+        typeof data !== "object" ||
+        Array.isArray(data) ||
+        (data as Record<string, unknown>).schema !== "humanish.observer-data.v1"
+      )
+        return null;
       const projection = data as Record<string, unknown>;
       delete projection.runtime;
       if (Array.isArray(projection.streams)) {
         for (const stream of projection.streams) {
           if (!stream || typeof stream !== "object" || Array.isArray(stream)) continue;
           const embed: unknown = (stream as Record<string, unknown>).embed;
-          if (embed && typeof embed === "object" && !Array.isArray(embed)) delete (embed as Record<string, unknown>).runtimeDesktop;
+          if (embed && typeof embed === "object" && !Array.isArray(embed))
+            delete (embed as Record<string, unknown>).runtimeDesktop;
         }
       }
-      return JSON.stringify(projection).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-    } catch { return null; }
+      return JSON.stringify(projection)
+        .replace(/</g, "\\u003c")
+        .replace(/>/g, "\\u003e")
+        .replace(/&/g, "\\u0026");
+    } catch {
+      return null;
+    }
   };
   if (path.basename(filePath) === "observer-data.json") {
     const stripped = strip(body.toString("utf8"));
@@ -245,17 +257,22 @@ function recordedObserverStaticBody(filePath: string, body: Buffer): Buffer {
     const html = body.toString("utf8");
     // Identify Observer JSON by its schema, not an attribute spelling: HTML permits
     // encoded ids and '>' inside quoted attributes. Other scripts remain byte-identical.
-    const sanitized = html.replace(/(<script\b(?:[^>"']|"[^"]*"|'[^']*')*>)([\s\S]*?)(<\/script\s*>)/gi,
+    const sanitized = html.replace(
+      /(<script\b(?:[^>"']|"[^"]*"|'[^']*')*>)([\s\S]*?)(<\/script\s*>)/gi,
       (match, start: string, json: string, end: string) => {
         const stripped = strip(json);
         return stripped === null ? match : `${start}${stripped}${end}`;
-      });
+      },
+    );
     return sanitized === html ? body : Buffer.from(sanitized);
   }
   return body;
 }
 
-async function readContainedRegularFile(root: PinnedStaticRoot, filePathInput: string): Promise<Buffer | null> {
+async function readContainedRegularFile(
+  root: PinnedStaticRoot,
+  filePathInput: string,
+): Promise<Buffer | null> {
   const filePath = path.resolve(filePathInput);
   if (!isPathInside(root.physicalPath, filePath)) return null;
   try {
@@ -269,18 +286,18 @@ async function readContainedRegularFile(root: PinnedStaticRoot, filePathInput: s
     try {
       const openedStats = await handle.stat({ bigint: true });
       if (
-        !openedStats.isFile()
-        || openedStats.nlink !== 1n
-        || openedStats.dev !== expectedStats.dev
-        || openedStats.ino !== expectedStats.ino
+        !openedStats.isFile() ||
+        openedStats.nlink !== 1n ||
+        openedStats.dev !== expectedStats.dev ||
+        openedStats.ino !== expectedStats.ino
       ) {
         return null;
       }
       const recheckedStats = await inspectContainedStaticFile(root, filePath);
       if (
-        !recheckedStats
-        || recheckedStats.dev !== expectedStats.dev
-        || recheckedStats.ino !== expectedStats.ino
+        !recheckedStats ||
+        recheckedStats.dev !== expectedStats.dev ||
+        recheckedStats.ino !== expectedStats.ino
       ) {
         return null;
       }
@@ -297,7 +314,7 @@ async function readContainedRegularFile(root: PinnedStaticRoot, filePathInput: s
 }
 
 export function createObserverStaticHandler(
-  options: ObserverStaticHandlerOptions
+  options: ObserverStaticHandlerOptions,
 ): (request: IncomingMessage, response: ServerResponse) => void {
   let rootPromise: Promise<PinnedStaticRoot> | undefined;
   return (request, response) => {
@@ -315,12 +332,14 @@ export function createObserverStaticHandler(
   };
 }
 
-export async function serveObserverStatic(options: ObserverStaticServeOptions): Promise<ObserverStaticServer> {
+export async function serveObserverStatic(
+  options: ObserverStaticServeOptions,
+): Promise<ObserverStaticServer> {
   const entryPath = options.entryPath?.replace(/^\/+/, "") ?? "";
   const handlerOptions = {
     root: options.root,
     ...(options.indexPath === undefined ? {} : { indexPath: options.indexPath }),
-    ...(entryPath ? { redirectRootTo: entryPath } : {})
+    ...(entryPath ? { redirectRootTo: entryPath } : {}),
   };
   const root = await pinStaticRoot(options.root);
   const handler = (request: IncomingMessage, response: ServerResponse) => {
@@ -332,7 +351,7 @@ export async function serveObserverStatic(options: ObserverStaticServeOptions): 
     url: `http://${OBSERVER_STATIC_HOST}:${port}/${entryPath}`,
     port,
     host: OBSERVER_STATIC_HOST,
-    close: () => closeServer(server)
+    close: () => closeServer(server),
   };
 }
 
@@ -341,23 +360,30 @@ function writeText(response: ServerResponse, status: number, message: string): v
   response.writeHead(status, {
     "cache-control": "no-store",
     "content-type": "text/plain; charset=utf-8",
-    "content-length": String(Buffer.byteLength(body))
+    "content-length": String(Buffer.byteLength(body)),
   });
   response.end(body);
 }
 
 function isPathInside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
-  return relative === ""
-    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 async function inspectContainedStaticFile(
   root: PinnedStaticRoot,
-  filePath: string
+  filePath: string,
 ): Promise<PinnedStaticFileIdentity | null> {
   const relative = path.relative(root.physicalPath, filePath);
-  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  if (
+    !relative ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
     return null;
   }
 
@@ -376,7 +402,7 @@ async function inspectContainedStaticFile(
     }
   }
 
-  if (await realpath(filePath) !== filePath) return null;
+  if ((await realpath(filePath)) !== filePath) return null;
   return fileIdentity;
 }
 
@@ -386,18 +412,23 @@ async function pinStaticRoot(rootInput: string): Promise<PinnedStaticRoot> {
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
     throw new Error("Observer static roots must be physical directories.");
   }
-  return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino, physicalPath });
+  return Object.freeze({
+    birthtimeNs: stats.birthtimeNs,
+    dev: stats.dev,
+    ino: stats.ino,
+    physicalPath,
+  });
 }
 
 async function assertPinnedStaticRoot(root: PinnedStaticRoot): Promise<void> {
   const stats = await lstat(root.physicalPath, { bigint: true });
   if (
-    stats.isSymbolicLink()
-    || !stats.isDirectory()
-    || stats.birthtimeNs !== root.birthtimeNs
-    || stats.dev !== root.dev
-    || stats.ino !== root.ino
-    || await realpath(root.physicalPath) !== root.physicalPath
+    stats.isSymbolicLink() ||
+    !stats.isDirectory() ||
+    stats.birthtimeNs !== root.birthtimeNs ||
+    stats.dev !== root.dev ||
+    stats.ino !== root.ino ||
+    (await realpath(root.physicalPath)) !== root.physicalPath
   ) {
     throw new Error("Observer static root identity changed.");
   }

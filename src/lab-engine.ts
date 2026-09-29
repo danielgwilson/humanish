@@ -15,30 +15,47 @@ import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from ".
 import {
   runScriptedBrowserLab,
   type ScriptedBrowserLabHooks,
-  type ScriptedBrowserLabResult
+  type ScriptedBrowserLabResult,
 } from "./scripted-browser-lab.js";
 import {
   runTerminalProductLab,
   type TerminalProductLabHooks,
-  type TerminalProductLabResult
+  type TerminalProductLabResult,
 } from "./e2b-terminal-lab.js";
 import {
   runSharedWorldLab,
   type SharedWorldLabHooks,
-  type SharedWorldLabResult
+  type SharedWorldLabResult,
 } from "./shared-world-lab.js";
 import {
   runConcurrentSharedWorld,
-  type ConcurrentSharedWorldLabResult
+  type ConcurrentSharedWorldLabResult,
 } from "./concurrent-shared-world-lab.js";
 import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
 import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
-import { automaticAnalysisRouteReason, taskProtocolValidationReason, routesToComputerUse, routesToConcurrentSharedWorld, routesToScriptedBrowser, routesToSharedWorld, routesToTerminalProduct, type LabConfig } from "./lab-config.js";
+import {
+  automaticAnalysisRouteReason,
+  taskProtocolValidationReason,
+  routesToComputerUse,
+  routesToConcurrentSharedWorld,
+  routesToScriptedBrowser,
+  routesToSharedWorld,
+  routesToTerminalProduct,
+  type LabConfig,
+} from "./lab-config.js";
 
-export type LabBackend = "synthetic" | "smoke" | "meta" | "cua" | "scripted" | "terminal" | "shared-world" | "concurrent-shared-world";
+export type LabBackend =
+  | "synthetic"
+  | "smoke"
+  | "meta"
+  | "cua"
+  | "scripted"
+  | "terminal"
+  | "shared-world"
+  | "concurrent-shared-world";
 
 /** Runtime overrides from CLI flags. Each wins over the config when provided. */
 export interface RunLabOptions {
@@ -129,10 +146,12 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // served page, so nothing is cloned and no browser is launched.
     return "cua";
   }
-  if (routesToComputerUse(config)
-    || config.subject.source === "app-url"
-    || config.subject.source === "local-app"
-    || config.subject.source === "local-tree") {
+  if (
+    routesToComputerUse(config) ||
+    config.subject.source === "app-url" ||
+    config.subject.source === "local-app" ||
+    config.subject.source === "local-tree"
+  ) {
     // app-url subjects with a computer-use actor, local-app subjects (an already-running local
     // dev server driven in-process via a custom executor), clone x e2b-desktop subjects whose
     // first actor resolves to a registered computer-use actor (the lab clones AND serves the app
@@ -157,7 +176,11 @@ function actorLaneCount(config: LabConfig): number | undefined {
 }
 
 /** Resolve dry-run: explicit override wins, else the scenario mode, else the given fallback. */
-export function resolveLabDryRun(config: LabConfig, override: boolean | undefined, fallback: boolean | undefined): boolean | undefined {
+export function resolveLabDryRun(
+  config: LabConfig,
+  override: boolean | undefined,
+  fallback: boolean | undefined,
+): boolean | undefined {
   if (override !== undefined) {
     return override;
   }
@@ -185,33 +208,69 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
   const backend = selectLabBackend(config);
   const analysis = resolveAutomaticAnalysis(config.review?.analysis);
   const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
-  const receivingReason = String(config.comms?.email?.kind) === "real"
-    ? "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study."
-    : undefined;
+  const receivingReason =
+    String(config.comms?.email?.kind) === "real"
+      ? "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study."
+      : undefined;
   const tasksReason = analysisReason ?? taskProtocolValidationReason(config);
   const admissionReason = receivingReason ?? tasksReason;
   if (admissionReason && (backend === "synthetic" || backend === "smoke" || backend === "meta")) {
     const cwd = path.resolve(options.cwd);
-    const code = receivingReason ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
-      : analysisReason ? (analysis.ok ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID") : "HUMANISH_LAB_TASKS_UNSUPPORTED";
+    const code = receivingReason
+      ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
+      : analysisReason
+        ? analysis.ok
+          ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
+          : "HUMANISH_LAB_ANALYSIS_INVALID"
+        : "HUMANISH_LAB_TASKS_UNSUPPORTED";
     const error = { code, message: admissionReason } as const;
-    if (backend === "synthetic") return { backend, result: {
-      schema: "humanish.run-result.v1", ok: false, cwd, warnings: [], error
-    } };
-    if (backend === "meta") return { backend, result: {
-      schema: "humanish.oss-meta-lab-result.v1", ok: false, cwd, warnings: [], error,
-      dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
-      liveRequested: resolveLabDryRun(config, options.dryRun, true) === false,
-      assignments: [], repos: [], sandboxes: []
-    } };
+    if (backend === "synthetic")
+      return {
+        backend,
+        result: {
+          schema: "humanish.run-result.v1",
+          ok: false,
+          cwd,
+          warnings: [],
+          error,
+        },
+      };
+    if (backend === "meta")
+      return {
+        backend,
+        result: {
+          schema: "humanish.oss-meta-lab-result.v1",
+          ok: false,
+          cwd,
+          warnings: [],
+          error,
+          dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
+          liveRequested: resolveLabDryRun(config, options.dryRun, true) === false,
+          assignments: [],
+          repos: [],
+          sandboxes: [],
+        },
+      };
     const at = new Date().toISOString();
-    return { backend, result: {
-      schema: "humanish.oss-lab-result.v1", ok: false, cwd, warnings: [], error,
-      runId: options.runId ?? "not-created", startedAt: at, completedAt: at,
-      sandboxPath: "", repos: [], cleanup: { kept: false, sandboxRemoved: false }
-    } };
+    return {
+      backend,
+      result: {
+        schema: "humanish.oss-lab-result.v1",
+        ok: false,
+        cwd,
+        warnings: [],
+        error,
+        runId: options.runId ?? "not-created",
+        startedAt: at,
+        completedAt: at,
+        sandboxPath: "",
+        repos: [],
+        cleanup: { kept: false, sandboxRemoved: false },
+      },
+    };
   }
-  const fanout = config.subject.clone?.fanout ?? config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
+  const fanout =
+    config.subject.clone?.fanout ?? config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
 
   switch (backend) {
     case "synthetic": {
@@ -220,7 +279,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         cwd: options.cwd,
         dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
         simCount: options.count ?? actorLaneCount(config) ?? 4,
-        ...(options.runId === undefined ? {} : { runId: options.runId })
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
       });
       return { backend, result };
     }
@@ -233,7 +292,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         limit: options.count ?? fanout,
         ...(repos === undefined ? {} : { repos }),
         ...(keep === undefined ? {} : { keep }),
-        ...(options.runId === undefined ? {} : { runId: options.runId })
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
       });
       return { backend, result };
     }
@@ -251,9 +310,13 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
         ...(codexAppServer === undefined ? {} : { codexAppServer }),
         ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.completionTimeoutMs === undefined ? {} : { completionTimeoutMs: options.completionTimeoutMs }),
-        ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
-        ...(options.runId === undefined ? {} : { runId: options.runId })
+        ...(options.completionTimeoutMs === undefined
+          ? {}
+          : { completionTimeoutMs: options.completionTimeoutMs }),
+        ...(options.onObserverReady === undefined
+          ? {}
+          : { onObserverReady: options.onObserverReady }),
+        ...(options.runId === undefined ? {} : { runId: options.runId }),
       });
       return { backend, result };
     }
@@ -265,7 +328,9 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // Spend-safe default: a computer-use lab only goes live when the config (or CLI) says so.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runCuaActorLab({
-        ...(options.automaticAnalysis === undefined ? {} : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
         ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
@@ -274,11 +339,15 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         // is declared — the roster length is authoritative).
         ...(options.count === undefined ? {} : { countOverride: options.count }),
         ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
+        ...(options.onObserverReady === undefined
+          ? {}
+          : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
         ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
-        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
       });
       return { backend, result };
     }
@@ -290,14 +359,16 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // spend. This differs deliberately from `run --app-url`, which actuates on invocation.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runScriptedBrowserLab({
-        ...(options.automaticAnalysis === undefined ? {} : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
         ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks })
+        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
       });
       return { backend, result };
     }
@@ -307,7 +378,9 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // emits contract evidence without creating a sandbox, reading a key, or spending.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runTerminalProductLab({
-        ...(options.automaticAnalysis === undefined ? {} : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
         ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
@@ -315,7 +388,9 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
-        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
       });
       return { backend, result };
     }
@@ -325,7 +400,9 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // proof is fully $0 via the sharedWorldHooks DI seam.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runSharedWorldLab({
-        ...(options.automaticAnalysis === undefined ? {} : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
         ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
@@ -333,7 +410,9 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         ...(options.open === undefined ? {} : { open: options.open }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
-        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
       });
       return { backend, result };
     }
@@ -343,16 +422,22 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // The deterministic PoC proof is fully $0 via the sharedWorldHooks DI seam.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runConcurrentSharedWorld({
-        ...(options.automaticAnalysis === undefined ? {} : { automaticAnalysis: options.automaticAnalysis }),
+        ...(options.automaticAnalysis === undefined
+          ? {}
+          : { automaticAnalysis: options.automaticAnalysis }),
         ...(options.lab === undefined ? {} : { lab: options.lab }),
         cwd: options.cwd,
         config,
         dryRun,
         ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.onObserverReady === undefined ? {} : { onObserverReady: options.onObserverReady }),
+        ...(options.onObserverReady === undefined
+          ? {}
+          : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
         ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
-        ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+        ...(options.scorerProvenance === undefined
+          ? {}
+          : { scorerProvenance: options.scorerProvenance }),
       });
       return { backend, result };
     }

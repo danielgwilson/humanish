@@ -6,12 +6,16 @@ import {
   CODEX_APP_SERVER_CAPABILITIES,
   codexResultToActorTrace,
   codexStatusToCompletionReason,
-  type ActorPersonaRef
+  type ActorPersonaRef,
 } from "../src/actor-contract.js";
 import { actorRegistry, getActor, type ActorId } from "../src/actor-registry.js";
 import { buildCodexResult } from "./actor-fixtures.js";
 
-const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: [], promptDigest: "abc123def456" };
+const persona: ActorPersonaRef = {
+  id: "synthetic-new-user",
+  traitsApplied: [],
+  promptDigest: "abc123def456",
+};
 
 describe("codexResultToActorTrace", () => {
   const actorTrace = codexResultToActorTrace(buildCodexResult(), persona);
@@ -31,19 +35,42 @@ describe("codexResultToActorTrace", () => {
 
   it("threads persona, ids, redaction, counts, and token usage", () => {
     expect(actorTrace.persona).toEqual(persona);
-    expect(actorTrace.ids).toEqual({ sessionId: "session-1", threadId: "thread-1", turnId: "turn-1", model: "synthetic-model" });
-    expect(actorTrace.redaction).toEqual({ status: "passed", screenshots: "n/a", notes: "synthetic redaction note" });
+    expect(actorTrace.ids).toEqual({
+      sessionId: "session-1",
+      threadId: "thread-1",
+      turnId: "turn-1",
+      model: "synthetic-model",
+    });
+    expect(actorTrace.redaction).toEqual({
+      status: "passed",
+      screenshots: "n/a",
+      notes: "synthetic redaction note",
+    });
     expect(actorTrace.counts.envelopes).toBe(9);
     expect(actorTrace.tokenUsage).toEqual({ input: 100, output: 50, total: 150 });
   });
 
   it("flattens every codex evidence kind into items, including sibling-array rows", () => {
     const kinds = new Set(actorTrace.items.map((item) => item.kind));
-    for (const kind of ["message", "reasoning", "command", "file_change", "tool_call", "approval", "plan", "notice"]) {
+    for (const kind of [
+      "message",
+      "reasoning",
+      "command",
+      "file_change",
+      "tool_call",
+      "approval",
+      "plan",
+      "notice",
+    ]) {
       expect(kinds).toContain(kind);
     }
     const command = actorTrace.items.find((item) => item.kind === "command");
-    expect(command?.command).toEqual({ text: "echo hello", cwd: "[target-cwd]", exitCode: 0, outputTail: "hello" });
+    expect(command?.command).toEqual({
+      text: "echo hello",
+      cwd: "[target-cwd]",
+      exitCode: 0,
+      outputTail: "hello",
+    });
     const tool = actorTrace.items.find((item) => item.kind === "tool_call");
     expect(tool?.tool).toEqual({ server: "synthetic-server", name: "synthetic-tool" });
     const message = actorTrace.items.find((item) => item.kind === "message");
@@ -99,10 +126,16 @@ function withStatus(status: CodexAppServerStatus): CodexAppServerRunResult {
 
 describe("codexResultToActorTrace edge cases", () => {
   it("maps every terminal status through the full transform", () => {
-    expect(codexResultToActorTrace(withStatus("blocked"), persona).completionReason).toBe("blocked_approval");
+    expect(codexResultToActorTrace(withStatus("blocked"), persona).completionReason).toBe(
+      "blocked_approval",
+    );
     expect(codexResultToActorTrace(withStatus("blocked"), persona).status).toBe("blocked");
-    expect(codexResultToActorTrace(withStatus("failed"), persona).completionReason).toBe("actor_error");
-    expect(codexResultToActorTrace(withStatus("timed_out"), persona).completionReason).toBe("timed_out");
+    expect(codexResultToActorTrace(withStatus("failed"), persona).completionReason).toBe(
+      "actor_error",
+    );
+    expect(codexResultToActorTrace(withStatus("timed_out"), persona).completionReason).toBe(
+      "timed_out",
+    );
   });
 
   it("omits tokenUsage and optional ids/providerVersion when the codex result lacks them", () => {
@@ -135,7 +168,12 @@ describe("codexResultToActorTrace edge cases", () => {
       { id: "i-unknown", type: "unknownType", lifecycle: "completed", title: "unknown" },
       { id: "i-toolish", type: "toolExecution", lifecycle: "completed", title: "toolish" },
       { id: "i-msgish", type: "someMessageThing", lifecycle: "completed", title: "msgish" },
-      { id: "i-orphan-cmd", type: "commandExecution", lifecycle: "completed", title: "orphan command" }
+      {
+        id: "i-orphan-cmd",
+        type: "commandExecution",
+        lifecycle: "completed",
+        title: "orphan command",
+      },
     ];
     result.trace.commands = [];
     result.trace.approvals = [];
@@ -168,7 +206,9 @@ describe("codexResultToActorTrace edge cases", () => {
   it("falls back to a default plan title when explanation is missing", () => {
     const result = buildCodexResult();
     result.trace.plans = [{ steps: ["only step"] }];
-    const plan = codexResultToActorTrace(result, persona).items.find((item) => item.kind === "plan");
+    const plan = codexResultToActorTrace(result, persona).items.find(
+      (item) => item.kind === "plan",
+    );
     expect(plan?.title).toBe("Plan update");
   });
 

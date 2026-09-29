@@ -4,7 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { containsSensitive, publicPathForTrace, redactText, redactToSecretLabel } from "../src/redaction.js";
+import {
+  containsSensitive,
+  publicPathForTrace,
+  redactText,
+  redactToSecretLabel,
+} from "../src/redaction.js";
 
 describe("codex app-server trace redaction", () => {
   it("labels a symlinked target cwd as [target-cwd] even when the actor reports the realpath form", async () => {
@@ -12,7 +17,9 @@ describe("codex app-server trace redaction", () => {
     // any host: the configured root is the symlinked form, the actor reports the
     // resolved realpath form. Without symlink-aware canonicalization, path.relative
     // returns a "../"-prefixed path and the absolute temp path leaks into the trace.
-    const realRoot = realpathSync.native(await mkdtemp(path.join(os.tmpdir(), "humanish-redaction-real-")));
+    const realRoot = realpathSync.native(
+      await mkdtemp(path.join(os.tmpdir(), "humanish-redaction-real-")),
+    );
     const linkRoot = `${realRoot}-link`;
     await symlink(realRoot, linkRoot);
 
@@ -36,15 +43,17 @@ describe("codex app-server trace redaction", () => {
     // the target cwd, redactText must not let a raw temp path through.
     expect(redactText("ran from /private/tmp/claude-501/job/x")).not.toContain("/private/tmp/");
     expect(redactText("ran from /tmp/build-7f/output")).not.toContain("/tmp/build-7f/output");
-    expect(redactText("ran from /var/folders/aa/bb/T/run")).not.toContain("/var/folders/aa/bb/T/run");
+    expect(redactText("ran from /var/folders/aa/bb/T/run")).not.toContain(
+      "/var/folders/aa/bb/T/run",
+    );
     expect(redactText("/private/tmp/secret/path")).toContain("[REDACTED_LOCAL_PATH]");
   });
 
   it("falls back to redaction for an absolute path under a different root", () => {
     const root = realpathSync.native(os.tmpdir());
-    expect(publicPathForTrace("/tmp/some-other-root/file", `${root}/humanish-unrelated-root`)).toContain(
-      "[REDACTED_LOCAL_PATH]"
-    );
+    expect(
+      publicPathForTrace("/tmp/some-other-root/file", `${root}/humanish-unrelated-root`),
+    ).toContain("[REDACTED_LOCAL_PATH]");
   });
 });
 

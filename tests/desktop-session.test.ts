@@ -3,13 +3,19 @@ import type { CuaExecutor } from "../src/computer-use.js";
 import { ownDesktopAllocation } from "../src/desktop-session.js";
 
 function executor(): CuaExecutor {
-  return { observe: vi.fn(async () => ({ screenshot: Buffer.from("frame"), stateSignature: "state" })), execute: vi.fn(async () => {}) };
+  return {
+    observe: vi.fn(async () => ({ screenshot: Buffer.from("frame"), stateSignature: "state" })),
+    execute: vi.fn(async () => {}),
+  };
 }
 
 describe("owned desktop session", () => {
   it("forwards observations, actions and the original cancellation signal", async () => {
     const backend = executor();
-    const session = ownDesktopAllocation({ resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" }) }).open(backend);
+    const session = ownDesktopAllocation({
+      resourceId: "owned",
+      release: async () => ({ status: "released", reason: "terminated" }),
+    }).open(backend);
     expect(await session.executor.observe()).toEqual(await backend.observe());
     const action = { kind: "click" as const, x: 3, y: 9, button: "left" as const };
     const signal = new AbortController().signal;
@@ -19,8 +25,13 @@ describe("owned desktop session", () => {
 
   it("shares one close attempt and rejects new operations before release settles", async () => {
     let finish!: () => void;
-    const released = new Promise<void>(resolve => { finish = resolve; });
-    const release = vi.fn(async () => { await released; return { status: "released" as const, reason: "terminated" as const }; });
+    const released = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const release = vi.fn(async () => {
+      await released;
+      return { status: "released" as const, reason: "terminated" as const };
+    });
     const allocation = ownDesktopAllocation({ resourceId: "owned", release });
     const backend = executor();
     const session = allocation.open(backend);
@@ -29,10 +40,14 @@ describe("owned desktop session", () => {
     await expect(session.executor.observe()).rejects.toThrow("closed");
     await expect(session.executor.execute({ kind: "wait", ms: 1 })).rejects.toThrow("closed");
     await expect(session.executor.observe()).rejects.toMatchObject({
-      name: "CuaExecutorError", code: "executor_closed", disposition: "not_dispatched"
+      name: "CuaExecutorError",
+      code: "executor_closed",
+      disposition: "not_dispatched",
     });
     await expect(session.executor.execute({ kind: "click", x: 1, y: 1 })).rejects.toMatchObject({
-      name: "CuaExecutorError", code: "executor_closed", disposition: "not_dispatched"
+      name: "CuaExecutorError",
+      code: "executor_closed",
+      disposition: "not_dispatched",
     });
     expect(backend.observe).not.toHaveBeenCalled();
     expect(backend.execute).not.toHaveBeenCalled();
@@ -43,26 +58,36 @@ describe("owned desktop session", () => {
   });
 
   it("preserves the executor's explicit no-recovery policy without changing legacy defaults", () => {
-    const own = (backend: CuaExecutor) => ownDesktopAllocation({
-      resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" })
-    }).open(backend).executor;
+    const own = (backend: CuaExecutor) =>
+      ownDesktopAllocation({
+        resourceId: "owned",
+        release: async () => ({ status: "released", reason: "terminated" }),
+      }).open(backend).executor;
     expect(own({ ...executor(), stallRecovery: "fail_closed" }).stallRecovery).toBe("fail_closed");
     expect(own(executor())).not.toHaveProperty("stallRecovery");
   });
 
   it("preserves an admitted speech capability without inventing one", () => {
-    const own = (backend: CuaExecutor) => ownDesktopAllocation({
-      resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" })
-    }).open(backend).executor;
+    const own = (backend: CuaExecutor) =>
+      ownDesktopAllocation({
+        resourceId: "owned",
+        release: async () => ({ status: "released", reason: "terminated" }),
+      }).open(backend).executor;
     expect(own({ ...executor(), speechEnabled: true }).speechEnabled).toBe(true);
     expect(own(executor())).not.toHaveProperty("speechEnabled");
   });
 
   it("can release a failed allocation before participant binding and prevents rebinding", async () => {
-    const allocation = ownDesktopAllocation({ resourceId: "owned", release: async () => ({ status: "released", reason: "already_gone" }) });
+    const allocation = ownDesktopAllocation({
+      resourceId: "owned",
+      release: async () => ({ status: "released", reason: "already_gone" }),
+    });
     await allocation.close();
     expect(() => allocation.open(executor())).toThrow("closed");
-    const other = ownDesktopAllocation({ resourceId: "other", release: async () => ({ status: "released", reason: "terminated" }) });
+    const other = ownDesktopAllocation({
+      resourceId: "other",
+      release: async () => ({ status: "released", reason: "terminated" }),
+    });
     other.open(executor());
     expect(() => other.open(executor())).toThrow("already has");
     await other.close();
@@ -70,20 +95,36 @@ describe("owned desktop session", () => {
 
   it("preserves unresolved cleanup and never retries it implicitly", async () => {
     const error = new Error("transport unavailable");
-    const release = vi.fn(async () => { throw error; });
+    const release = vi.fn(async () => {
+      throw error;
+    });
     const allocation = ownDesktopAllocation({ resourceId: "owned", release });
     const session = allocation.open(executor());
-    expect(await session.close()).toEqual({ status: "unconfirmed", reason: "release_failed", error });
-    expect(await allocation.close()).toEqual({ status: "unconfirmed", reason: "release_failed", error });
+    expect(await session.close()).toEqual({
+      status: "unconfirmed",
+      reason: "release_failed",
+      error,
+    });
+    expect(await allocation.close()).toEqual({
+      status: "unconfirmed",
+      reason: "release_failed",
+      error,
+    });
     expect(release).toHaveBeenCalledTimes(1);
     await expect(session.executor.observe()).rejects.toThrow("closed");
   });
 
   it("records deliberate retention without dispatching release or permitting further input", async () => {
-    const release = vi.fn(async () => ({ status: "released" as const, reason: "terminated" as const }));
+    const release = vi.fn(async () => ({
+      status: "released" as const,
+      reason: "terminated" as const,
+    }));
     const allocation = ownDesktopAllocation({ resourceId: "owned", release });
     const session = allocation.open(executor());
-    expect(await session.close({ retainForDebug: true })).toEqual({ status: "retained", reason: "debug" });
+    expect(await session.close({ retainForDebug: true })).toEqual({
+      status: "retained",
+      reason: "debug",
+    });
     expect(await session.close()).toEqual({ status: "retained", reason: "debug" });
     expect(release).not.toHaveBeenCalled();
     await expect(session.executor.observe()).rejects.toThrow("closed");
@@ -91,10 +132,18 @@ describe("owned desktop session", () => {
 
   it("can release while an observation is in flight", async () => {
     let finish!: () => void;
-    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
     const backend = executor();
-    backend.observe = async () => { await pending; return { stateSignature: "last" }; };
-    const session = ownDesktopAllocation({ resourceId: "owned", release: async () => ({ status: "released", reason: "terminated" }) }).open(backend);
+    backend.observe = async () => {
+      await pending;
+      return { stateSignature: "last" };
+    };
+    const session = ownDesktopAllocation({
+      resourceId: "owned",
+      release: async () => ({ status: "released", reason: "terminated" }),
+    }).open(backend);
     const observation = session.executor.observe();
     expect((await session.close()).status).toBe("released");
     finish();

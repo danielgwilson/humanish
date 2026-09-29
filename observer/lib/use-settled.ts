@@ -9,7 +9,10 @@ import { useEffect, useState } from "react";
 export function useSettled(value: boolean, delayMs: number): boolean {
   const [settled, setSettled] = useState(false);
   useEffect(() => {
-    if (!value) { setSettled(false); return; }
+    if (!value) {
+      setSettled(false);
+      return;
+    }
     const timer = window.setTimeout(() => setSettled(true), delayMs);
     return () => window.clearTimeout(timer);
   }, [value, delayMs]);

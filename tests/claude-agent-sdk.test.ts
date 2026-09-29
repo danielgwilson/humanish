@@ -1,16 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, CLAUDE_AGENT_SDK_CAPABILITIES, type ActorPersonaRef } from "../src/actor-contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  CLAUDE_AGENT_SDK_CAPABILITIES,
+  type ActorPersonaRef,
+} from "../src/actor-contract.js";
 import {
   claudeResultSubtypeToStatus,
   claudeSessionToActorTrace,
   claudeStatusToCompletionReason,
-  type ClaudeSessionResult
+  type ClaudeSessionResult,
 } from "../src/claude-agent-sdk.js";
 import { actorRegistry, getActor } from "../src/actor-registry.js";
 import { buildClaudeSession } from "./actor-fixtures.js";
 
-const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["patience:medium", "skill:medium"], promptDigest: "cafef00d5678" };
+const persona: ActorPersonaRef = {
+  id: "synthetic-new-user",
+  traitsApplied: ["patience:medium", "skill:medium"],
+  promptDigest: "cafef00d5678",
+};
 
 describe("claudeSessionToActorTrace", () => {
   const trace = claudeSessionToActorTrace(buildClaudeSession(), persona);
@@ -46,9 +54,13 @@ describe("claudeSessionToActorTrace", () => {
     for (const kind of ["message", "reasoning", "tool_call"]) {
       expect(kinds).toContain(kind);
     }
-    const toolStarted = trace.items.find((item) => item.kind === "tool_call" && item.lifecycle === "started");
+    const toolStarted = trace.items.find(
+      (item) => item.kind === "tool_call" && item.lifecycle === "started",
+    );
     expect(toolStarted?.tool).toEqual({ name: "Read" });
-    const toolCompleted = trace.items.find((item) => item.kind === "tool_call" && item.lifecycle === "completed");
+    const toolCompleted = trace.items.find(
+      (item) => item.kind === "tool_call" && item.lifecycle === "completed",
+    );
     expect(toolCompleted?.tool).toEqual({ name: "Read" });
     const message = trace.items.find((item) => item.kind === "message");
     expect(message?.text).toContain("project setup");
@@ -56,7 +68,15 @@ describe("claudeSessionToActorTrace", () => {
 
   it("does not fabricate kinds claude does not emit (command, file_change, screenshot, ui_action, approval, plan, notice)", () => {
     const kinds = new Set<string>(trace.items.map((item) => item.kind));
-    for (const kind of ["command", "file_change", "screenshot", "ui_action", "approval", "plan", "notice"]) {
+    for (const kind of [
+      "command",
+      "file_change",
+      "screenshot",
+      "ui_action",
+      "approval",
+      "plan",
+      "notice",
+    ]) {
       expect(kinds.has(kind)).toBe(false);
     }
   });
@@ -83,7 +103,14 @@ describe("claude status mapping", () => {
     const session: ClaudeSessionResult = buildClaudeSession();
     session.messages = [
       { type: "system", subtype: "init", session_id: "s", model: "m" },
-      { type: "result", subtype: "error_during_execution", is_error: true, duration_ms: 100, session_id: "s", result: `crashed at ${leakyPath}` }
+      {
+        type: "result",
+        subtype: "error_during_execution",
+        is_error: true,
+        duration_ms: 100,
+        session_id: "s",
+        result: `crashed at ${leakyPath}`,
+      },
     ];
     const trace = claudeSessionToActorTrace(session, persona);
     expect(trace.status).toBe("failed");

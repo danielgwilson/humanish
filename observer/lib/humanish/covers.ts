@@ -163,7 +163,7 @@ export function registerCover(c: HTMLCanvasElement, n: string): () => void {
     gw: 0,
     gh: 0,
     W: 0,
-    H: 0
+    H: 0,
   };
   byCanvas.set(c, it);
   items.push(it);

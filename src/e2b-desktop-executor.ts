@@ -55,7 +55,10 @@ import { CuaExecutorError } from "./cua-executor-error.js";
 export interface E2BDesktopLike {
   /** Optional command surface used only for best-effort substrate fallbacks. */
   commands?: {
-    run(command: string, options?: { requestTimeoutMs?: number; timeoutMs?: number }): Promise<{
+    run(
+      command: string,
+      options?: { requestTimeoutMs?: number; timeoutMs?: number },
+    ): Promise<{
       exitCode?: number;
       stderr?: string;
       stdout?: string;
@@ -63,7 +66,11 @@ export interface E2BDesktopLike {
   };
   /** Optional file surface used to transfer typed text without shell-quoting it. */
   files?: {
-    write(path: string, data: string | ArrayBuffer, options?: { requestTimeoutMs?: number; useOctetStream?: boolean }): Promise<unknown>;
+    write(
+      path: string,
+      data: string | ArrayBuffer,
+      options?: { requestTimeoutMs?: number; useOctetStream?: boolean },
+    ): Promise<unknown>;
   };
   /** Capture the current desktop frame as PNG bytes (default/'bytes' overload). */
   screenshot(): Promise<Uint8Array | Buffer> | Uint8Array | Buffer;
@@ -123,11 +130,16 @@ function cursorAlreadyAt(
   desktop: E2BDesktopLike,
   x: number,
   y: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<boolean> {
-  if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || x < 0 || y < 0) return Promise.resolve(false);
+  if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || x < 0 || y < 0)
+    return Promise.resolve(false);
   let readPosition: E2BDesktopLike["getCursorPosition"];
-  try { readPosition = desktop.getCursorPosition; } catch { return Promise.resolve(false); }
+  try {
+    readPosition = desktop.getCursorPosition;
+  } catch {
+    return Promise.resolve(false);
+  }
   if (typeof readPosition !== "function" || signal?.aborted) return Promise.resolve(false);
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -141,18 +153,30 @@ function cursorAlreadyAt(
     const onAbort = (): void => finish(false);
     const timer = setTimeout(() => finish(false), CURSOR_READ_TIMEOUT_MS);
     signal?.addEventListener("abort", onAbort, { once: true });
-    Promise.resolve().then(() => settled ? undefined : readPosition.call(desktop)).then(
-      (position: unknown) => {
-        if (settled) return;
-        if (position === null || typeof position !== "object") { finish(false); return; }
-        // A custom port can return malformed values or throwing accessors; all are uncertainty.
-        try {
-          const point = position as { x?: unknown; y?: unknown };
-          finish(Number.isSafeInteger(point.x) && Number.isSafeInteger(point.y) && point.x === x && point.y === y);
-        } catch { finish(false); }
-      },
-      () => finish(false)
-    );
+    Promise.resolve()
+      .then(() => (settled ? undefined : readPosition.call(desktop)))
+      .then(
+        (position: unknown) => {
+          if (settled) return;
+          if (position === null || typeof position !== "object") {
+            finish(false);
+            return;
+          }
+          // A custom port can return malformed values or throwing accessors; all are uncertainty.
+          try {
+            const point = position as { x?: unknown; y?: unknown };
+            finish(
+              Number.isSafeInteger(point.x) &&
+                Number.isSafeInteger(point.y) &&
+                point.x === x &&
+                point.y === y,
+            );
+          } catch {
+            finish(false);
+          }
+        },
+        () => finish(false),
+      );
   });
 }
 
@@ -196,7 +220,8 @@ export class CuaTypeFallbackError extends Error {
     cause?: unknown,
   ) {
     const chain = attemptChain.join(" -> ");
-    const suffix = stderrTail !== undefined && stderrTail.length > 0 ? ` (stderr: ${stderrTail})` : "";
+    const suffix =
+      stderrTail !== undefined && stderrTail.length > 0 ? ` (stderr: ${stderrTail})` : "";
     super(`type fallback failed at ${phase}: ${chain}${suffix}`);
     this.name = "CuaTypeFallbackError";
     this.phase = phase;
@@ -227,7 +252,9 @@ function throwClipboardCommandFailure(
     "clipboard-command",
     [
       ...attemptChain,
-      exitCode === undefined ? "clipboard command errored" : `clipboard command failed (exit ${exitCode})`,
+      exitCode === undefined
+        ? "clipboard command errored"
+        : `clipboard command failed (exit ${exitCode})`,
     ],
     stderrTail,
     cause,
@@ -269,18 +296,18 @@ async function pasteTextViaClipboard(
 
   const clipboardCommand = [
     "set -euo pipefail",
-    "export DISPLAY=\"${DISPLAY:-:0}\"",
+    'export DISPLAY="${DISPLAY:-:0}"',
     `text_path=${shellSingleQuote(path)}`,
-    "cleanup() { rm -f \"$text_path\"; }",
+    'cleanup() { rm -f "$text_path"; }',
     "trap cleanup EXIT",
     // Try xclip, then fall back to xsel if xclip is absent OR fails; distinguish a
     // missing utility (exit 127) from a utility that ran but failed (exit 1) so the
     // caller can name the phase.
     // Selection owners fork and keep serving the clipboard. Their inherited output pipes
     // must not keep the sandbox command runner waiting after the write command exits.
-    "if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < \"$text_path\" >/dev/null 2>&1; then",
+    'if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard < "$text_path" >/dev/null 2>&1; then',
     "  :",
-    "elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < \"$text_path\" >/dev/null 2>&1; then",
+    'elif command -v xsel >/dev/null 2>&1 && xsel --clipboard --input < "$text_path" >/dev/null 2>&1; then',
     "  :",
     "elif command -v xclip >/dev/null 2>&1 || command -v xsel >/dev/null 2>&1; then",
     "  echo 'clipboard utility present but failed to set the clipboard' >&2",
@@ -288,7 +315,7 @@ async function pasteTextViaClipboard(
     "else",
     "  echo 'no xclip/xsel clipboard utility available for paste fallback' >&2",
     "  exit 127",
-    "fi"
+    "fi",
   ].join("\n");
 
   // The real @e2b/desktop Sandbox THROWS CommandExitError on any non-zero exit
@@ -300,7 +327,7 @@ async function pasteTextViaClipboard(
   try {
     runResult = await commands.run(clipboardCommand, {
       requestTimeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
-      timeoutMs: TYPE_FALLBACK_TIMEOUT_MS
+      timeoutMs: TYPE_FALLBACK_TIMEOUT_MS,
     });
   } catch (error) {
     runError = error;
@@ -311,7 +338,11 @@ async function pasteTextViaClipboard(
     throwClipboardCommandFailure(detail.exitCode, detail.stderrTail, attemptChain, runError);
   }
   if (runResult !== undefined && runResult.exitCode !== undefined && runResult.exitCode !== 0) {
-    throwClipboardCommandFailure(runResult.exitCode, tailOf(runResult.stderr ?? runResult.stdout), attemptChain);
+    throwClipboardCommandFailure(
+      runResult.exitCode,
+      tailOf(runResult.stderr ?? runResult.stdout),
+      attemptChain,
+    );
   }
   attemptChain.push("clipboard write ok");
 
@@ -336,7 +367,7 @@ async function pasteTextViaClipboard(
  */
 export function createE2BDesktopExecutor(
   desktop: E2BDesktopLike,
-  options: E2BDesktopExecutorOptions = {}
+  options: E2BDesktopExecutorOptions = {},
 ): CuaExecutor {
   const defaultWaitMs = options.defaultWaitMs ?? DEFAULT_WAIT_MS;
   const scrollAmountPerTick = options.scrollAmountPerTick ?? DEFAULT_SCROLL_AMOUNT_PER_TICK;
@@ -355,7 +386,7 @@ export function createE2BDesktopExecutor(
         ...(browserState?.url === undefined ? {} : { url: browserState.url }),
         ...(browserState?.title === undefined ? {} : { title: browserState.title }),
         ...(browserState?.text === undefined ? {} : { text: browserState.text }),
-        ...(browserState?.scrollY === undefined ? {} : { scrollY: browserState.scrollY })
+        ...(browserState?.scrollY === undefined ? {} : { scrollY: browserState.scrollY }),
       };
     },
 
@@ -440,6 +471,6 @@ export function createE2BDesktopExecutor(
         case "speak":
           throw new CuaExecutorError("action_rejected", "not_dispatched");
       }
-    }
+    },
   };
 }

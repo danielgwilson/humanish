@@ -7,7 +7,7 @@ import type { ObserverData } from "./observer-data";
 const fixtures: Record<string, () => Promise<{ default: unknown }>> = {
   "first-run": () => import("../../tests/golden/observer-data/first-run.json"),
   oss: () => import("../../tests/golden/observer-data/oss.json"),
-  live: () => import("../../tests/golden/observer-data/live.json")
+  live: () => import("../../tests/golden/observer-data/live.json"),
 };
 
 export async function loadDevFixture(name: string | null): Promise<ObserverData> {

@@ -18,7 +18,7 @@ const INTENTIONALLY_OMITTED = new Map<string, string>([
   ["help", "commander's built-in, not ours"],
   ["humanish", "the root command is the binary name, not an entry"],
   ["lab oss", "maintainer-only meta-lab alias"],
-  ["lab oss-smoke", "maintainer-only smoke harness"]
+  ["lab oss-smoke", "maintainer-only smoke harness"],
 ]);
 
 function walk(command: Command, trail: string[] = []): string[] {
@@ -39,7 +39,7 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
   it("mentions every command and subcommand", async () => {
     const text = await readFile(
       path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
-      "utf8"
+      "utf8",
     );
     const program = createProgram({});
     const all = walk(program).filter((name) => !INTENTIONALLY_OMITTED.has(name));
@@ -54,7 +54,7 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
   it("names both credentials a live study needs, and how to set each", async () => {
     const text = await readFile(
       path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
-      "utf8"
+      "utf8",
     );
     // Three live last-mile runs showed agents reaching these two facts by exploration. Stating
     // them is the cheapest thing we can do for the last mile.
@@ -67,14 +67,18 @@ describe("llms.txt documents the CLI that actually ships (#513)", () => {
   it("tells an agent that tui is for a human", async () => {
     const text = await readFile(
       path.resolve(import.meta.dirname, "..", "site", "public", "llms.txt"),
-      "utf8"
+      "utf8",
     );
     // #495 measured an agent handed a human-shaped job and neither half of the handoff worked.
     const tuiRow = text.split("\n").find((line) => line.startsWith("- `humanish tui`:"))!;
     expect(tuiRow).toMatch(/human/i);
     expect(tuiRow).toMatch(/refuses detected agent sessions/i);
     expect(tuiRow).toContain("non-TTY");
-    for (const command of ["humanish lab list --json", "humanish lab inspect <lab> --json", "humanish runs --json"]) {
+    for (const command of [
+      "humanish lab list --json",
+      "humanish lab inspect <lab> --json",
+      "humanish runs --json",
+    ]) {
       expect(tuiRow).toContain(command);
     }
     expect(text).toContain("HUMANISH_TUI_AGENT_SESSION");

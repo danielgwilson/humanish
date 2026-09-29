@@ -10,7 +10,13 @@ import { setUserKey, userKeyStorePath } from "../src/key-resolution.js";
 import { runDryRun } from "../src/run.js";
 
 import { createProgram, type TuiRuntime } from "../src/program.js";
-import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule, type TuiOptions } from "../src/tui-contract.js";
+import {
+  TUI_MIN_NODE_MAJOR,
+  nodeSupportsTui,
+  tuiBundleUrl,
+  type TuiModule,
+  type TuiOptions,
+} from "../src/tui-contract.js";
 
 interface CliResult {
   exitCode: number;
@@ -19,7 +25,14 @@ interface CliResult {
 }
 
 const fakeTty = (isTTY: boolean): NodeJS.WriteStream =>
-  ({ isTTY, columns: 80, rows: 24, on: () => {}, off: () => {}, write: () => true }) as unknown as NodeJS.WriteStream;
+  ({
+    isTTY,
+    columns: 80,
+    rows: 24,
+    on: () => {},
+    off: () => {},
+    write: () => true,
+  }) as unknown as NodeJS.WriteStream;
 
 async function runCli(args: string[], runtime: Partial<TuiRuntime>): Promise<CliResult> {
   let exitCode = 0;
@@ -32,7 +45,7 @@ async function runCli(args: string[], runtime: Partial<TuiRuntime>): Promise<Cli
       exitCode = code;
     },
     keyDiscovery: async () => [],
-    tuiRuntime: runtime
+    tuiRuntime: runtime,
   });
   program.exitOverride();
   await program.parseAsync(["node", "humanish", ...args], { from: "node" });
@@ -40,13 +53,15 @@ async function runCli(args: string[], runtime: Partial<TuiRuntime>): Promise<Cli
 }
 
 /** A runtime where everything works, so each test can break exactly one thing. */
-function workingRuntime(overrides: Partial<TuiRuntime> = {}): Partial<TuiRuntime> & { seen: TuiOptions[] } {
+function workingRuntime(
+  overrides: Partial<TuiRuntime> = {},
+): Partial<TuiRuntime> & { seen: TuiOptions[] } {
   const seen: TuiOptions[] = [];
   const module: TuiModule = {
     startTui: async (options) => {
       seen.push(options);
       return 0;
-    }
+    },
   };
   return {
     stdin: fakeTty(true) as unknown as NodeJS.ReadStream,
@@ -54,10 +69,23 @@ function workingRuntime(overrides: Partial<TuiRuntime> = {}): Partial<TuiRuntime
     nodeVersion: `v${TUI_MIN_NODE_MAJOR}.0.0`,
     // A plain person's terminal by default. Tests that want an agent session declare it.
     env: {},
-    checkComms: async () => ({ schema: "humanish.comms-check.v1", ok: true, connection: "agentmail", online: true, credentialPresent: true, authenticated: true, ready: null, permissions: "unknown", capacity: "unknown", checkedAt: new Date().toISOString(), code: "authenticated", message: "Authentication passed; fixture transport." }),
+    checkComms: async () => ({
+      schema: "humanish.comms-check.v1",
+      ok: true,
+      connection: "agentmail",
+      online: true,
+      credentialPresent: true,
+      authenticated: true,
+      ready: null,
+      permissions: "unknown",
+      capacity: "unknown",
+      checkedAt: new Date().toISOString(),
+      code: "authenticated",
+      message: "Authentication passed; fixture transport.",
+    }),
     loadTui: async () => module,
     seen,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -68,7 +96,10 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
     // codes and read as a hang. So it fails closed — and the refusal is only useful if it says
     // where to go instead.
     const result = await runCli(["tui", "--json"], workingRuntime({ stdout: fakeTty(false) }));
-    const parsed = JSON.parse(result.stdout) as { ok: boolean; error: { code: string; message: string } };
+    const parsed = JSON.parse(result.stdout) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
 
     expect(parsed.ok).toBe(false);
     expect(parsed.error.code).toBe("HUMANISH_TUI_REQUIRES_TTY");
@@ -80,9 +111,11 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
   it("refuses a non-interactive stdin too — a piped-in keystream is not an operator", async () => {
     const result = await runCli(
       ["tui", "--json"],
-      workingRuntime({ stdin: fakeTty(false) as unknown as NodeJS.ReadStream })
+      workingRuntime({ stdin: fakeTty(false) as unknown as NodeJS.ReadStream }),
     );
-    expect((JSON.parse(result.stdout) as { error: { code: string } }).error.code).toBe("HUMANISH_TUI_REQUIRES_TTY");
+    expect((JSON.parse(result.stdout) as { error: { code: string } }).error.code).toBe(
+      "HUMANISH_TUI_REQUIRES_TTY",
+    );
     expect(result.exitCode).toBe(2);
   });
 
@@ -120,29 +153,46 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
     expect(result.stdout).toBe("");
   });
 
-  it.each([false, true])("closes its real Observer listener when the TUI exits (throws=%s)", async (throws) => {
-    const root = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-lifetime-"));
-    let url = "";
-    vi.spyOn(observer, "openTarget").mockImplementation((target) => { url = target; return { opened: false }; });
-    try {
-      await cp(path.resolve("fixtures/minimal-app"), root, { recursive: true });
-      expect((await runDryRun({ cwd: root, dryRun: true, runId: "lifetime-run" })).ok).toBe(true);
-      const runtime = workingRuntime({ loadTui: async () => ({ startTui: async (options) => {
-        const action = await options.capabilities.openObserver(options.cwd, ".humanish/runs/lifetime-run/observer/index.html");
-        expect(action.ok).toBe(true);
-        expect((await fetch(url)).status).toBe(200);
-        if (throws) throw new Error("synthetic TUI failure");
-        return 0;
-      } }) });
-      const invocation = runCli(["tui", "--cwd", root], runtime);
-      if (throws) expect(await invocation).toMatchObject({ exitCode: 2, stderr: expect.stringContaining("synthetic TUI failure") });
-      else expect((await invocation).exitCode).toBe(0);
-      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:/);
-      await expect(fetch(url)).rejects.toThrow();
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
+  it.each([false, true])(
+    "closes its real Observer listener when the TUI exits (throws=%s)",
+    async (throws) => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-lifetime-"));
+      let url = "";
+      vi.spyOn(observer, "openTarget").mockImplementation((target) => {
+        url = target;
+        return { opened: false };
+      });
+      try {
+        await cp(path.resolve("fixtures/minimal-app"), root, { recursive: true });
+        expect((await runDryRun({ cwd: root, dryRun: true, runId: "lifetime-run" })).ok).toBe(true);
+        const runtime = workingRuntime({
+          loadTui: async () => ({
+            startTui: async (options) => {
+              const action = await options.capabilities.openObserver(
+                options.cwd,
+                ".humanish/runs/lifetime-run/observer/index.html",
+              );
+              expect(action.ok).toBe(true);
+              expect((await fetch(url)).status).toBe(200);
+              if (throws) throw new Error("synthetic TUI failure");
+              return 0;
+            },
+          }),
+        });
+        const invocation = runCli(["tui", "--cwd", root], runtime);
+        if (throws)
+          expect(await invocation).toMatchObject({
+            exitCode: 2,
+            stderr: expect.stringContaining("synthetic TUI failure"),
+          });
+        else expect((await invocation).exitCode).toBe(0);
+        expect(url).toMatch(/^http:\/\/127\.0\.0\.1:/);
+        await expect(fetch(url)).rejects.toThrow();
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("propagates a non-zero exit from the surface", async () => {
     const runtime = workingRuntime({ loadTui: async () => ({ startTui: async () => 1 }) });
@@ -152,85 +202,152 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
 
   it("uses the env file and inherited precedence for both summary and detached launch without exposing values", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-env-"));
-    const inherited = { OPENAI_API_KEY: "synthetic-inherited-key", CODEX_API_KEY: "", HUMANISH_STRICT_KEYS: "1" };
+    const inherited = {
+      OPENAI_API_KEY: "synthetic-inherited-key",
+      CODEX_API_KEY: "",
+      HUMANISH_STRICT_KEYS: "1",
+    };
     const summary = vi.spyOn(summaries, "readLabSummary").mockResolvedValue(null);
-    const start = vi.spyOn(launch, "launchRun").mockResolvedValue({ ok: false, error: { code: "HUMANISH_LAUNCH_FAILED", message: "fixture: no child launched" } });
+    const start = vi.spyOn(launch, "launchRun").mockResolvedValue({
+      ok: false,
+      error: { code: "HUMANISH_LAUNCH_FAILED", message: "fixture: no child launched" },
+    });
     try {
-      await writeFile(path.join(cwd, "provider.env"), "OPENAI_API_KEY=synthetic-file-model\nE2B_API_KEY=synthetic-file-desktop\nCODEX_API_KEY=synthetic-file-codex\n");
-      const runtime = workingRuntime({ env: inherited, loadTui: async () => ({ startTui: async options => {
-        expect(JSON.stringify(options)).not.toContain("synthetic-file");
-        await options.capabilities.readLabSummary(options.cwd, "preview", { checkKeys: true });
-        await options.capabilities.startRun({ cwd: options.cwd, lab: "preview", mode: "live" });
-        return 0;
-      } }) });
+      await writeFile(
+        path.join(cwd, "provider.env"),
+        "OPENAI_API_KEY=synthetic-file-model\nE2B_API_KEY=synthetic-file-desktop\nCODEX_API_KEY=synthetic-file-codex\n",
+      );
+      const runtime = workingRuntime({
+        env: inherited,
+        loadTui: async () => ({
+          startTui: async (options) => {
+            expect(JSON.stringify(options)).not.toContain("synthetic-file");
+            await options.capabilities.readLabSummary(options.cwd, "preview", { checkKeys: true });
+            await options.capabilities.startRun({ cwd: options.cwd, lab: "preview", mode: "live" });
+            return 0;
+          },
+        }),
+      });
       const result = await runCli(["tui", "--cwd", cwd, "--env-file", "provider.env"], runtime);
       expect(result.exitCode).toBe(0);
       const summaryEnv = summary.mock.calls[0]?.[2]?.env;
       const launchEnv = start.mock.calls[0]?.[0].env;
       expect(summaryEnv).toBe(launchEnv);
-      expect(summaryEnv).toMatchObject({ OPENAI_API_KEY: "synthetic-inherited-key", E2B_API_KEY: "synthetic-file-desktop", CODEX_API_KEY: "" });
+      expect(summaryEnv).toMatchObject({
+        OPENAI_API_KEY: "synthetic-inherited-key",
+        E2B_API_KEY: "synthetic-file-desktop",
+        CODEX_API_KEY: "",
+      });
       expect(result.stdout + result.stderr).not.toMatch(/synthetic-(?:file|inherited)/);
-    } finally { await rm(cwd, { recursive: true, force: true }); }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("refuses an invalid env file before opening the TUI and does not partially load it", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-invalid-env-"));
     try {
-      await writeFile(path.join(cwd, "provider.env"), "E2B_API_KEY=synthetic-partial-key\nnot an assignment\n");
+      await writeFile(
+        path.join(cwd, "provider.env"),
+        "E2B_API_KEY=synthetic-partial-key\nnot an assignment\n",
+      );
       const env: NodeJS.ProcessEnv = { HUMANISH_STRICT_KEYS: "1" };
       const runtime = workingRuntime({ env });
-      const result = await runCli(["tui", "--cwd", cwd, "--env-file", "provider.env", "--json"], runtime);
+      const result = await runCli(
+        ["tui", "--cwd", cwd, "--env-file", "provider.env", "--json"],
+        runtime,
+      );
       expect(result.exitCode).toBe(2);
       expect(JSON.parse(result.stdout).error.code).toBe("HUMANISH_ENV_FILE_INVALID");
       expect(runtime.seen).toHaveLength(0);
       expect(env.E2B_API_KEY).toBeUndefined();
       expect(result.stdout + result.stderr).not.toContain("synthetic-partial-key");
-    } finally { await rm(cwd, { recursive: true, force: true }); }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("hands hidden entry to the host, saves outside project config and returns to Connections", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-entry-"));
-    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), E2B_API_KEY: "", GH_TOKEN: "", GITHUB_TOKEN: "" };
+    const env = {
+      XDG_CONFIG_HOME: path.join(cwd, "user-config"),
+      E2B_API_KEY: "",
+      GH_TOKEN: "",
+      GITHUB_TOKEN: "",
+    };
     const canary = "synthetic-hidden-key-canary";
     let entries = 0;
     const views: TuiOptions[] = [];
     try {
-      const result = await runCli(["tui", "--cwd", cwd], workingRuntime({ env,
-        promptSecret: async () => { entries++; return canary; },
-        loadTui: async () => ({ startTui: async options => {
-          views.push(options);
-          if (views.length === 1) return { action: "agentmail-key" };
-          expect(options.initialScreen).toBe("connections");
-          expect(options.connectionNotice).toContain("Key stored");
-          expect(await options.capabilities.comms?.read()).toMatchObject({ ok: true, credential: { present: true, stored: true } });
-          return 0;
-        } })
-      }));
+      const result = await runCli(
+        ["tui", "--cwd", cwd],
+        workingRuntime({
+          env,
+          promptSecret: async () => {
+            entries++;
+            return canary;
+          },
+          loadTui: async () => ({
+            startTui: async (options) => {
+              views.push(options);
+              if (views.length === 1) return { action: "agentmail-key" };
+              expect(options.initialScreen).toBe("connections");
+              expect(options.connectionNotice).toContain("Key stored");
+              expect(await options.capabilities.comms?.read()).toMatchObject({
+                ok: true,
+                credential: { present: true, stored: true },
+              });
+              return 0;
+            },
+          }),
+        }),
+      );
       expect(result.exitCode).toBe(0);
       expect(entries).toBe(1);
       expect(views).toHaveLength(2);
       expect(JSON.stringify(views) + result.stdout + result.stderr).not.toContain(canary);
-      expect(await readFile(path.join(cwd, ".humanish/local/comms.yaml"), "utf8")).not.toContain(canary);
+      expect(await readFile(path.join(cwd, ".humanish/local/comms.yaml"), "utf8")).not.toContain(
+        canary,
+      );
       expect(await readFile(userKeyStorePath(env), "utf8")).toContain(canary);
-    } finally { await rm(cwd, { recursive: true, force: true }); }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("preserves explicit env precedence when replacing a stored key", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-tui-key-replace-"));
-    const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), AGENTMAIL_API_KEY: "synthetic-explicit-key", HUMANISH_STRICT_KEYS: "1" };
+    const env = {
+      XDG_CONFIG_HOME: path.join(cwd, "user-config"),
+      AGENTMAIL_API_KEY: "synthetic-explicit-key",
+      HUMANISH_STRICT_KEYS: "1",
+    };
     let visits = 0;
     try {
       setUserKey("AGENTMAIL_API_KEY", "synthetic-old-key", env);
-      await runCli(["tui", "--cwd", cwd], workingRuntime({ env, promptSecret: async () => "synthetic-new-key",
-        loadTui: async () => ({ startTui: async options => {
-          if (++visits === 1) return { action: "agentmail-key" };
-          expect((await options.capabilities.comms?.read())?.credential).toMatchObject({ present: true, source: "process env", stored: true });
-          return 0;
-        } })
-      }));
+      await runCli(
+        ["tui", "--cwd", cwd],
+        workingRuntime({
+          env,
+          promptSecret: async () => "synthetic-new-key",
+          loadTui: async () => ({
+            startTui: async (options) => {
+              if (++visits === 1) return { action: "agentmail-key" };
+              expect((await options.capabilities.comms?.read())?.credential).toMatchObject({
+                present: true,
+                source: "process env",
+                stored: true,
+              });
+              return 0;
+            },
+          }),
+        }),
+      );
       expect(env.AGENTMAIL_API_KEY).toBe("synthetic-explicit-key");
       expect(await readFile(userKeyStorePath(env), "utf8")).toContain("synthetic-new-key");
-    } finally { await rm(cwd, { recursive: true, force: true }); }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("returns after cancelled entry without creating a key store or project config", async () => {
@@ -238,16 +355,25 @@ describe("humanish tui: the one command that refuses instead of degrading (#455)
     const env = { XDG_CONFIG_HOME: path.join(cwd, "user-config"), HUMANISH_STRICT_KEYS: "1" };
     let visits = 0;
     try {
-      await runCli(["tui", "--cwd", cwd], workingRuntime({ env, promptSecret: async () => null,
-        loadTui: async () => ({ startTui: async options => {
-          if (++visits === 1) return { action: "agentmail-key" };
-          expect(options.connectionNotice).toContain("cancelled");
-          return 0;
-        } })
-      }));
+      await runCli(
+        ["tui", "--cwd", cwd],
+        workingRuntime({
+          env,
+          promptSecret: async () => null,
+          loadTui: async () => ({
+            startTui: async (options) => {
+              if (++visits === 1) return { action: "agentmail-key" };
+              expect(options.connectionNotice).toContain("cancelled");
+              return 0;
+            },
+          }),
+        }),
+      );
       await expect(readFile(userKeyStorePath(env))).rejects.toThrow();
       await expect(readFile(path.join(cwd, ".humanish/local/comms.yaml"))).rejects.toThrow();
-    } finally { await rm(cwd, { recursive: true, force: true }); }
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 });
 
@@ -261,7 +387,9 @@ describe("the Node floor is stated once and read by everyone", () => {
   });
 
   it("resolves the bundle beside the compiled CLI, so the loader and doctor look in one place", () => {
-    expect(tuiBundleUrl("file:///opt/humanish/dist/program.js").pathname).toBe("/opt/humanish/dist/tui-app.js");
+    expect(tuiBundleUrl("file:///opt/humanish/dist/program.js").pathname).toBe(
+      "/opt/humanish/dist/tui-app.js",
+    );
   });
 });
 
@@ -273,9 +401,12 @@ describe("an agent session, even with a real terminal (labs/handed-a-human-surfa
   it("refuses, names the marker that gave it away, and points at the JSON commands", async () => {
     const result = await runCli(
       ["tui", "--json"],
-      workingRuntime({ env: { CODEX_SESSION_ID: "abc123" } })
+      workingRuntime({ env: { CODEX_SESSION_ID: "abc123" } }),
     );
-    const parsed = JSON.parse(result.stdout) as { ok: boolean; error: { code: string; message: string } };
+    const parsed = JSON.parse(result.stdout) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
 
     expect(parsed.ok).toBe(false);
     expect(parsed.error.code).toBe("HUMANISH_TUI_AGENT_SESSION");
@@ -309,7 +440,7 @@ describe("an agent session, even with a real terminal (labs/handed-a-human-surfa
     // terminal is missing, which the reader already knows and cannot fix.
     const result = await runCli(
       ["tui", "--json"],
-      workingRuntime({ stdout: fakeTty(false), env: { CLAUDECODE: "1" } })
+      workingRuntime({ stdout: fakeTty(false), env: { CLAUDECODE: "1" } }),
     );
     const parsed = JSON.parse(result.stdout) as { error: { code: string } };
     expect(parsed.error.code).toBe("HUMANISH_TUI_AGENT_SESSION");

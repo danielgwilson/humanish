@@ -33,7 +33,7 @@ beforeAll(() => {
     removeEventListener: () => undefined,
     addListener: () => undefined,
     removeListener: () => undefined,
-    dispatchEvent: () => false
+    dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 });
 
@@ -84,8 +84,33 @@ describe("the filter funnel (second Base UI adoption: popover/sheet)", () => {
 
 describe("the run library control (D6: first Base UI adoption)", () => {
   it("uses the current run's completion while the library snapshot is older", async () => {
-    const finished: ObserverData = { ...data, runtime: { state: "finished", observedAt: "2026-09-08T20:00:00Z", source: "local-run-status" } };
-    await mount(<Sidebar data={finished} history={{ latestRunId: data.run.runId, runs: [{ runId: data.run.runId, status: "running", runtimeState: "running", href: "", mode: "live", streamCount: 4 }] }} onRuns={() => {}} />);
+    const finished: ObserverData = {
+      ...data,
+      runtime: {
+        state: "finished",
+        observedAt: "2026-09-08T20:00:00Z",
+        source: "local-run-status",
+      },
+    };
+    await mount(
+      <Sidebar
+        data={finished}
+        history={{
+          latestRunId: data.run.runId,
+          runs: [
+            {
+              runId: data.run.runId,
+              status: "running",
+              runtimeState: "running",
+              href: "",
+              mode: "live",
+              streamCount: 4,
+            },
+          ],
+        }}
+        onRuns={() => {}}
+      />,
+    );
     expect(container.querySelector(".dot.active")).toBeNull();
     expect(container.querySelector(".run-entry small")?.textContent).not.toContain("Running");
     await click(container.querySelector('[role="checkbox"]') as Element);
@@ -93,9 +118,29 @@ describe("the run library control (D6: first Base UI adoption)", () => {
   });
 
   it("does not animate an active dot when a formerly running study is unconfirmed", async () => {
-    await mount(<Sidebar data={data} history={{ latestRunId: "other-study", runs: [{ runId: "other-study", status: "running", runtimeState: "unknown", href: "", mode: "live", streamCount: 2 }] }} onRuns={() => {}} />);
+    await mount(
+      <Sidebar
+        data={data}
+        history={{
+          latestRunId: "other-study",
+          runs: [
+            {
+              runId: "other-study",
+              status: "running",
+              runtimeState: "unknown",
+              href: "",
+              mode: "live",
+              streamCount: 2,
+            },
+          ],
+        }}
+        onRuns={() => {}}
+      />,
+    );
     expect(container.querySelector(".dot.active")).toBeNull();
-    expect(container.querySelector(".run-entry small")?.textContent).toContain("Status unconfirmed");
+    expect(container.querySelector(".run-entry small")?.textContent).toContain(
+      "Status unconfirmed",
+    );
   });
 
   it("desktop: collapses and restores the static sidebar, persisted", async () => {
@@ -114,8 +159,12 @@ describe("the run library control (D6: first Base UI adoption)", () => {
     window.localStorage.removeItem("humanish-sidebar");
     const original = window.matchMedia;
     // jsdom has no layout; the click-time width check is the only viewport branch.
-    window.matchMedia = ((query: string) =>
-      ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
     try {
       await mount(<App data={data} />);
       const toggle = container.querySelector('[aria-label="Toggle run library"]') as Element;
@@ -140,10 +189,15 @@ describe("the share chip (#584)", () => {
     });
     const exported: ObserverData = {
       ...data,
-      publicSafety: { ...data.publicSafety, share: { status: "share_ready", verifiedAt: "2026-09-01T20:30:00.000Z", reasons: [] } }
+      publicSafety: {
+        ...data.publicSafety,
+        share: { status: "share_ready", verifiedAt: "2026-09-01T20:30:00.000Z", reasons: [] },
+      },
     };
     await mount(<App data={exported} />);
-    const chip = [...container.querySelectorAll(".chip")].find((el) => el.textContent === "Share-ready");
+    const chip = [...container.querySelectorAll(".chip")].find(
+      (el) => el.textContent === "Share-ready",
+    );
     expect(chip).toBeDefined();
     expect(chip?.getAttribute("title")).toContain("verified 2026-09-01T20:30:00.000Z");
     expect(chip?.classList.contains("chip-mute")).toBe(false);
@@ -154,18 +208,28 @@ describe("the share chip (#584)", () => {
 describe("portable snapshot feed mode", () => {
   it("keeps captured running participants historical in the grid and frameless player", async () => {
     const captured = structuredClone(data);
-    captured.streams = [{ ...captured.streams[0]!, status: "running", statusLabel: "Running",
-      embed: { kind: "iframe", url: "https://desktop.example.test/recorded-preview" } }];
+    captured.streams = [
+      {
+        ...captured.streams[0]!,
+        status: "running",
+        statusLabel: "Running",
+        embed: { kind: "iframe", url: "https://desktop.example.test/recorded-preview" },
+      },
+    ];
     await mount(<App data={captured} snapshot />);
     expect(container.querySelector("iframe")).toBeNull();
     expect(container.querySelector(".card-outcome.active")).toBeNull();
     expect(container.querySelector(".card-outcome")?.textContent).toBe("Snapshot");
     expect(container.textContent).not.toContain("Waiting for the first capture");
     await click(container.querySelector(".card-details-trigger") as Element);
-    expect(document.querySelector(".card-details")?.textContent).toContain("Captured while running");
+    expect(document.querySelector(".card-details")?.textContent).toContain(
+      "Captured while running",
+    );
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector("iframe")).toBeNull();
-    expect(container.textContent).toContain("This participant has no captured screen at the study cursor.");
+    expect(container.textContent).toContain(
+      "This participant has no captured screen at the study cursor.",
+    );
     expect(container.textContent).toContain("Participant status: Running");
   });
 
@@ -184,7 +248,9 @@ describe("portable snapshot feed mode", () => {
       expect(container.querySelector(".run-status-main")?.textContent).toContain("Recorded");
       expect(container.textContent).not.toContain("Updates unavailable");
       expect(container.querySelector(".run-status-update button")).toBeNull();
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("does not infer snapshot mode from a completed run or data-controlled fields", async () => {
@@ -193,9 +259,13 @@ describe("portable snapshot feed mode", () => {
     try {
       await mount(<App data={{ ...data, snapshot: true } as ObserverData} />);
       expect(fetch).toHaveBeenCalledWith("observer-data.json", expect.any(Object));
-      expect(container.querySelector(".run-status-update")?.textContent).toContain("Updates unavailable");
+      expect(container.querySelector(".run-status-update")?.textContent).toContain(
+        "Updates unavailable",
+      );
       expect(container.querySelector(".run-status-update button")?.textContent).toBe("Retry");
-    } finally { vi.unstubAllGlobals(); }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -233,7 +303,9 @@ describe("observer scaffold rendering the first-run golden", () => {
     expect(container.textContent).toContain("no screenshot frames");
     expect(container.querySelector(".pager")).not.toBeNull();
     // Explicit recording navigation lives in its pane, below the shared header.
-    const back = container.querySelector('.study-context-actions [aria-label="Back to participants"]');
+    const back = container.querySelector(
+      '.study-context-actions [aria-label="Back to participants"]',
+    );
     expect(back).not.toBeNull();
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -277,7 +349,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         kind: "screenshot",
         lifecycle: "completed",
         title: "turn-00-start",
-        screenshotRef: { path: "screenshots/lane/turn-00-start.png", redaction: "none" }
+        screenshotRef: { path: "screenshots/lane/turn-00-start.png", redaction: "none" },
       },
       // Reasoning precedes the actions it motivated, exactly as capture orders a turn (#427).
       {
@@ -285,7 +357,7 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         kind: "reasoning",
         lifecycle: "completed",
         title: "reasoning turn 1",
-        text: "**Scanning the form** The form is empty; I will tab to the first field."
+        text: "**Scanning the form** The form is empty; I will tab to the first field.",
       },
       { id: "ui_action-001", kind: "ui_action", lifecycle: "completed", title: "keypress TAB" },
       {
@@ -293,23 +365,23 @@ function liveShapedData(options: { live?: boolean; ended?: boolean } = {}): Obse
         kind: "screenshot",
         lifecycle: "completed",
         title: "turn-01",
-        screenshotRef: { path: "screenshots/lane/turn-01.png", redaction: "none" }
+        screenshotRef: { path: "screenshots/lane/turn-01.png", redaction: "none" },
       },
       {
         id: "reasoning-002",
         kind: "reasoning",
         lifecycle: "completed",
         title: "reasoning turn 2",
-        text: "**Confirming** A confirm dialog appeared, so I will click its primary button."
+        text: "**Confirming** A confirm dialog appeared, so I will click its primary button.",
       },
-      { id: "ui_action-002", kind: "ui_action", lifecycle: "completed", title: "click (700, 420)" }
+      { id: "ui_action-002", kind: "ui_action", lifecycle: "completed", title: "click (700, 420)" },
     ],
     affordanceUse: {
       schema: "humanish.affordance-use.v1",
       counts: { keyboard: 2, pointer: 1 },
       total: 3,
-      shortcutTotal: 0
-    }
+      shortcutTotal: 0,
+    },
   };
   return clone as unknown as ObserverData;
 }
@@ -325,13 +397,24 @@ describe("observer scaffold rendering a live-shaped lane", () => {
   it("uses persona identities for generated labels and distinguishes repeated personas", async () => {
     const snapshot = structuredClone(data);
     snapshot.streams = snapshot.streams.slice(0, 2).map((stream, index) => ({
-      ...stream, label: `CUA lane lane-${index} — synthetic study`, laneId: `lane-${index}`,
-      sim: { ...stream.sim, personaId: "careful-reader" }
+      ...stream,
+      label: `CUA lane lane-${index} — synthetic study`,
+      laneId: `lane-${index}`,
+      sim: { ...stream.sim, personaId: "careful-reader" },
     }));
     await mount(<App data={snapshot} />);
-    expect([...container.querySelectorAll(".card-name")].map((node) => node.textContent)).toEqual(["Careful reader · lane-0", "Careful reader · lane-1"]);
-    await click(container.querySelector('[aria-label="Participant details: Careful reader · lane-0"]') as Element);
-    expect(document.querySelector('[aria-label="Pin participant Careful reader · lane-0"]')).not.toBeNull();
+    expect([...container.querySelectorAll(".card-name")].map((node) => node.textContent)).toEqual([
+      "Careful reader · lane-0",
+      "Careful reader · lane-1",
+    ]);
+    await click(
+      container.querySelector(
+        '[aria-label="Participant details: Careful reader · lane-0"]',
+      ) as Element,
+    );
+    expect(
+      document.querySelector('[aria-label="Pin participant Careful reader · lane-0"]'),
+    ).not.toBeNull();
   });
 
   it("shows the keyframe thumb (last screenshot) and the ⚑ notable reason verbatim", async () => {
@@ -343,7 +426,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(card?.textContent).toContain("estimated spend limit");
     expect(card?.textContent).not.toContain("crossed execution.caps.maxUsd=$5");
     await click(card!.querySelector('[aria-label^="Participant details:"]') as Element);
-    expect(document.querySelector(".card-details")?.textContent).toContain("crossed execution.caps.maxUsd=$5");
+    expect(document.querySelector(".card-details")?.textContent).toContain(
+      "crossed execution.caps.maxUsd=$5",
+    );
     expect(document.querySelector(".card-details")?.textContent).toContain("3m 12s");
   });
 
@@ -369,9 +454,13 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(1);
 
     // Report tab carries the recorded reason verbatim and the RAW chip shows in transport.
-    const reportTab = [...container.querySelectorAll(".itabs button")].find((b) => b.textContent === "Feedback");
+    const reportTab = [...container.querySelectorAll(".itabs button")].find(
+      (b) => b.textContent === "Feedback",
+    );
     await click(reportTab as Element);
-    expect(container.textContent).toContain("crossed execution.caps.maxUsd=$5 after productive activity");
+    expect(container.textContent).toContain(
+      "crossed execution.caps.maxUsd=$5 after productive activity",
+    );
     expect(container.querySelector(".rawchip")).not.toBeNull();
   });
 
@@ -382,7 +471,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     await mount(<App data={data} />);
     // Straight into the player, at the addressed frame (1-based hash → second frame).
     expect(container.querySelector(".player")).not.toBeNull();
-    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe(
+      "../screenshots/lane/turn-01.png",
+    );
     expect(container.querySelector(".counter")?.textContent).toBe("2 / 2");
   });
 
@@ -414,7 +505,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     expect(thoughts[0]?.textContent).not.toContain("**");
     // Each thought anchors to the frame the participant was looking at when it thought it.
     await click(thoughts[1] as Element);
-    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-01.png");
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe(
+      "../screenshots/lane/turn-01.png",
+    );
     // The transport tally separates thoughts from recorded actions.
     expect(container.querySelector(".t-meta")?.textContent).toContain("2 actions");
     expect(container.querySelector(".t-meta")?.textContent).toContain("2 thoughts");
@@ -422,7 +515,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 
   it("keeps the newest reported thought in the live participant details", async () => {
     await mount(<App data={liveShapedData({ live: true })} />);
-    expect(container.querySelector(".card")?.textContent).not.toContain("A confirm dialog appeared");
+    expect(container.querySelector(".card")?.textContent).not.toContain(
+      "A confirm dialog appeared",
+    );
     await click(container.querySelector('[aria-label^="Participant details:"]') as Element);
     const details = document.querySelector(".card-details");
     expect(details?.textContent).toContain("Reported thinking");
@@ -441,7 +536,9 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const thumbs = container.querySelectorAll(".filmstrip .fs");
     await click(thumbs[0] as Element);
     expect(iframe()).toBeNull();
-    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe("../screenshots/lane/turn-00-start.png");
+    expect(container.querySelector(".stage-box img")?.getAttribute("src")).toBe(
+      "../screenshots/lane/turn-00-start.png",
+    );
 
     // …and jump-to-live returns to the stream.
     const jump = container.querySelector(".live-jump");
@@ -452,10 +549,14 @@ describe("observer scaffold rendering a live-shaped lane", () => {
 
   it("a live lane streams before its first frame: the player's live stage, not the stub (#426)", async () => {
     const data = liveShapedData({ live: true });
-    (data as unknown as { streams: Array<{ actor: { items: unknown[] } }> }).streams[0]!.actor.items = [];
+    (
+      data as unknown as { streams: Array<{ actor: { items: unknown[] } }> }
+    ).streams[0]!.actor.items = [];
     await mount(<App data={data} />);
     await click(container.querySelector(".open-overlay") as Element);
-    expect(container.querySelector(".stage-live iframe")?.getAttribute("src")).toBe("https://live.example/desktop");
+    expect(container.querySelector(".stage-live iframe")?.getAttribute("src")).toBe(
+      "https://live.example/desktop",
+    );
     expect(container.textContent).toContain("awaiting the first recorded screenshot");
     expect(container.querySelector(".stub")).toBeNull();
   });
@@ -475,7 +576,7 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     holder.streams = [0, 1, 2, 3, 4].map((index) => ({
       ...structuredClone(first),
       id: `lane-${index}`,
-      sim: { ...(first.sim as Record<string, unknown>), index: index + 1 }
+      sim: { ...(first.sim as Record<string, unknown>), index: index + 1 },
     }));
     await mount(<App data={data} />);
     expect(container.querySelectorAll(".thumb-live")).toHaveLength(4);
@@ -494,16 +595,28 @@ describe("observer scaffold rendering a live-shaped lane", () => {
     const history = {
       latestRunId: "golden-first-run",
       runs: [
-        { runId: "golden-first-run", href: "/_humanish/runs/golden-first-run/observer/index.html", status: "pass", mode: "dry-run", streamCount: 4 },
-        { runId: "other-run", href: "/_humanish/runs/other-run/observer/index.html", status: "failed", mode: "live", streamCount: 2 }
-      ]
+        {
+          runId: "golden-first-run",
+          href: "/_humanish/runs/golden-first-run/observer/index.html",
+          status: "pass",
+          mode: "dry-run",
+          streamCount: 4,
+        },
+        {
+          runId: "other-run",
+          href: "/_humanish/runs/other-run/observer/index.html",
+          status: "failed",
+          mode: "live",
+          streamCount: 2,
+        },
+      ],
     };
     vi.stubGlobal("fetch", (input: RequestInfo | URL) =>
       Promise.resolve(
         String(input).includes("history")
           ? ({ ok: true, json: async () => history } as unknown as Response)
-          : ({ ok: false } as unknown as Response)
-      )
+          : ({ ok: false } as unknown as Response),
+      ),
     );
     try {
       await mount(<App data={data} />);
@@ -511,15 +624,18 @@ describe("observer scaffold rendering a live-shaped lane", () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      const link = container.querySelector('a[href="/_humanish/runs/other-run/observer/index.html"]');
+      const link = container.querySelector(
+        'a[href="/_humanish/runs/other-run/observer/index.html"]',
+      );
       expect(link).not.toBeNull();
-      expect(container.querySelector(".side [data-on]")?.getAttribute("data-study-id")).toBe("golden-first-run");
+      expect(container.querySelector(".side [data-on]")?.getAttribute("data-study-id")).toBe(
+        "golden-first-run",
+      );
     } finally {
       vi.unstubAllGlobals();
     }
   });
 });
-
 
 describe("Frame-free review remains useful", () => {
   it("preparing browser lanes get a live-aware empty player before their first screenshot", async () => {
@@ -532,17 +648,31 @@ describe("Frame-free review remains useful", () => {
   });
   it("all terminal lines remain reachable in bounded pages", async () => {
     const copy = structuredClone(data);
-    copy.streams = [{ ...copy.streams[1]!, terminalPlain: Array.from({ length: 123 }, (_, i) => `Synthetic output line ${i + 1}`).join("\n") }];
+    copy.streams = [
+      {
+        ...copy.streams[1]!,
+        terminalPlain: Array.from({ length: 123 }, (_, i) => `Synthetic output line ${i + 1}`).join(
+          "\n",
+        ),
+      },
+    ];
     await mount(<App data={copy} />);
     await click(container.querySelector(".open-overlay") as Element);
-    expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 123");
-    const previous = () => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Earlier output")!;
-    await click(previous()); await click(previous());
+    expect(container.querySelector(".stub-term")?.textContent).toContain(
+      "Synthetic output line 123",
+    );
+    const previous = () =>
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Earlier output",
+      )!;
+    await click(previous());
+    await click(previous());
     expect(container.querySelector(".stub-term")?.textContent).toContain("Synthetic output line 1");
-    expect(container.querySelector(".stub-term")?.textContent).not.toContain("Synthetic output line 123");
+    expect(container.querySelector(".stub-term")?.textContent).not.toContain(
+      "Synthetic output line 123",
+    );
   });
 });
-
 
 describe("recorded interruption labels across the review surfaces", () => {
   it.each([
@@ -550,13 +680,18 @@ describe("recorded interruption labels across the review surfaces", () => {
     ["time_limit", "time limit"],
     ["spend_limit", "estimated spend limit"],
     ["provider_incomplete", "provider response incomplete"],
-    [undefined, "limit reached"]
+    [undefined, "limit reached"],
   ] as const)("keeps %s distinct on the card, rollup and report", async (stopCause, label) => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     bundle.streams = [bundle.streams[0]!];
     const stream = bundle.streams[0]!;
     stream.status = "incomplete";
-    Object.assign(stream.actor!, { status: "incomplete", completionReason: "budget_reached", reason: "The participant did not report completion.", items: stream.actor!.items.filter(item => item.kind === "screenshot") });
+    Object.assign(stream.actor!, {
+      status: "incomplete",
+      completionReason: "budget_reached",
+      reason: "The participant did not report completion.",
+      items: stream.actor!.items.filter((item) => item.kind === "screenshot"),
+    });
     if (stopCause !== undefined) stream.actor!.stopCause = stopCause as ActorStopCause;
     else delete stream.actor!.stopCause;
     bundle.review.participants = tallyParticipantOutcomes(["incomplete"]);
@@ -566,12 +701,18 @@ describe("recorded interruption labels across the review surfaces", () => {
     expect(container.textContent).toContain(`0/1 recorded completions, 1 interrupted (${label})`);
     expect(container.textContent).not.toContain("ran out of session");
     await click(container.querySelector(".open-overlay") as Element);
-    const reportTab = [...container.querySelectorAll('[role="tab"]')].find(el => el.textContent === "Feedback");
+    const reportTab = [...container.querySelectorAll('[role="tab"]')].find(
+      (el) => el.textContent === "Feedback",
+    );
     await click(reportTab!);
     expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain(label);
     expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain("Interrupted");
-    expect(container.querySelector('[role="tabpanel"]')?.textContent?.toLowerCase()).not.toContain("ran out of session");
-    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain("The participant did not report completion.");
+    expect(container.querySelector('[role="tabpanel"]')?.textContent?.toLowerCase()).not.toContain(
+      "ran out of session",
+    );
+    expect(container.querySelector('[role="tabpanel"]')?.textContent).toContain(
+      "The participant did not report completion.",
+    );
     expect(snapshot.streams[0]!.actor!.completionReason).toBe("budget_reached");
   });
 
@@ -581,7 +722,9 @@ describe("recorded interruption labels across the review surfaces", () => {
     await mount(<App data={snapshot} />);
     await click(container.querySelector(".open-overlay") as Element);
     expect(container.querySelector(".stub")?.textContent).toContain("estimated spend limit");
-    expect(container.querySelector(".stub")?.textContent).toContain(snapshot.streams[0]!.actor!.reason);
+    expect(container.querySelector(".stub")?.textContent).toContain(
+      snapshot.streams[0]!.actor!.reason,
+    );
   });
 
   it("labels an older snapshot without cause metadata conservatively", async () => {
@@ -593,14 +736,22 @@ describe("recorded interruption labels across the review surfaces", () => {
 });
 
 // Even an empty or unavailable report is a pane within the same study shell.
-const emptyReport: StudyReport = { id: "empty", runId: data.run.runId, summary: "", scope: "", findings: [], outcomes: [], methodology: [] };
+const emptyReport: StudyReport = {
+  id: "empty",
+  runId: data.run.runId,
+  summary: "",
+  scope: "",
+  findings: [],
+  outcomes: [],
+  methodology: [],
+};
 describe("study shell continuity", () => {
   it("keeps the same library and its local state while switching study views", async () => {
     await mount(<App data={data} report={emptyReport} />);
     const sidebar = container.querySelector(".side");
     const checkbox = sidebar!.querySelector<HTMLElement>('[role="checkbox"]')!;
     await click(checkbox);
-    const links = container.querySelectorAll<HTMLAnchorElement>('.study-views a');
+    const links = container.querySelectorAll<HTMLAnchorElement>(".study-views a");
     links[1]!.focus();
     await click(links[1]!);
     expect(container.querySelector(".study-report-empty")).not.toBeNull();
@@ -618,16 +769,16 @@ describe("study shell continuity", () => {
   it("uses the same persistent desktop collapse control from Report and Participants", async () => {
     localStorage.setItem("humanish-sidebar", "closed");
     await mount(<App data={data} report={emptyReport} snapshot />);
-    await click(container.querySelector('.study-views a:last-child')!);
+    await click(container.querySelector(".study-views a:last-child")!);
     expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     await click(container.querySelector('[aria-label="Toggle run library"]')!);
     expect(localStorage.getItem("humanish-sidebar")).toBe("open");
     expect(container.querySelector(".side")).not.toBeNull();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    await click(container.querySelector('.study-views a:first-child')!);
+    await click(container.querySelector(".study-views a:first-child")!);
     expect(container.querySelector(".side")).not.toBeNull();
     await click(container.querySelector('[aria-label="Toggle run library"]')!);
-    await click(container.querySelector('.study-views a:last-child')!);
+    await click(container.querySelector(".study-views a:last-child")!);
     expect(container.querySelector(".side")?.hasAttribute("inert")).toBe(true);
     expect(localStorage.getItem("humanish-sidebar")).toBe("closed");
   });
@@ -639,7 +790,7 @@ describe("study shell continuity", () => {
     await click(container.querySelector(".open-overlay")!);
     expect(window.location.hash).toContain("#/lane/");
     expect(container.querySelector(".side")).toBe(sidebar);
-    await click(container.querySelector('.study-views a:first-child')!);
+    await click(container.querySelector(".study-views a:first-child")!);
     expect(container.querySelector(".gallery")).not.toBeNull();
     expect(container.querySelector(".side")).toBe(sidebar);
   });

@@ -22,8 +22,18 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
     await writeFixtureRuns(
       cwd,
       [
-        { runId: "r-live", labId: "signup", state: "running", startedAt: "2026-08-19T10:04:00.000Z" },
-        { runId: "r-stale", labId: "signup", state: "stale", startedAt: "2026-08-19T09:00:00.000Z" },
+        {
+          runId: "r-live",
+          labId: "signup",
+          state: "running",
+          startedAt: "2026-08-19T10:04:00.000Z",
+        },
+        {
+          runId: "r-stale",
+          labId: "signup",
+          state: "stale",
+          startedAt: "2026-08-19T09:00:00.000Z",
+        },
         {
           runId: "r-done",
           labId: "diagram",
@@ -32,10 +42,10 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
           durationMs: 109_000,
           verdict: "pass",
           participants: { total: 1, reachedGoal: 1 },
-          estimatedCostUsd: 0.34
-        }
+          estimatedCostUsd: 0.34,
+        },
       ],
-      NOW
+      NOW,
     );
 
     const index = await readRunIndex(cwd, { nowMs: NOW });
@@ -57,7 +67,11 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
   });
 
   it("falls back to the bundle for pre-contract runs, and reads the legacy lab convention", async () => {
-    await writeFixtureRun(cwd, { runId: "r-old", labId: "legacy-lab", state: "legacy-bundle", verdict: "fail" }, NOW);
+    await writeFixtureRun(
+      cwd,
+      { runId: "r-old", labId: "legacy-lab", state: "legacy-bundle", verdict: "fail" },
+      NOW,
+    );
     const index = await readRunIndex(cwd, { nowMs: NOW });
     const entry = index.runs.find((run) => run.runId === "r-old");
     expect(entry?.derivedFrom).toBe("bundle");
@@ -80,9 +94,9 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
         runId: "r-inflight",
         mode: "live",
         persona: { source: "lab:signup" },
-        simulations: [{ id: "sim-001", status: "running" }]
+        simulations: [{ id: "sim-001", status: "running" }],
       }),
-      "utf8"
+      "utf8",
     );
     const index = await readRunIndex(cwd, { nowMs: NOW });
     const entry = index.runs.find((run) => run.runId === "r-inflight");
@@ -106,7 +120,11 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
   });
 
   it("one malformed run degrades that run, never the listing", async () => {
-    await writeFixtureRun(cwd, { runId: "r-good", labId: "x", state: "finished", verdict: "pass" }, NOW);
+    await writeFixtureRun(
+      cwd,
+      { runId: "r-good", labId: "x", state: "finished", verdict: "pass" },
+      NOW,
+    );
     const badDir = path.join(cwd, ".humanish", "runs", "r-bad");
     await writeFixtureRun(cwd, { runId: "r-bad", state: "orphan" }, NOW);
     await writeFile(path.join(badDir, "run.json"), "{ not json", "utf8");
@@ -136,10 +154,14 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
   });
 
   it("the cache drops runs that no longer exist", async () => {
-    await writeFixtureRuns(cwd, [
-      { runId: "r-1", labId: "x", state: "finished", verdict: "pass" },
-      { runId: "r-2", labId: "x", state: "finished", verdict: "pass" }
-    ], NOW);
+    await writeFixtureRuns(
+      cwd,
+      [
+        { runId: "r-1", labId: "x", state: "finished", verdict: "pass" },
+        { runId: "r-2", labId: "x", state: "finished", verdict: "pass" },
+      ],
+      NOW,
+    );
     const cache = new RunIndexCache();
     await readRunIndex(cwd, { cache, nowMs: NOW });
     expect(cache.size).toBe(2);
@@ -156,9 +178,9 @@ describe("run index: list and classify without parsing bundles (#455)", () => {
         labId: "x",
         state: "finished" as const,
         startedAt: new Date(Date.parse("2026-08-19T09:00:00.000Z") + index * 60_000).toISOString(),
-        verdict: "pass"
+        verdict: "pass",
       })),
-      NOW
+      NOW,
     );
     const index = await readRunIndex(cwd, { nowMs: NOW, limit: 2 });
     expect(index.runs).toHaveLength(2);

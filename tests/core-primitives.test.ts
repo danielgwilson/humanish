@@ -11,7 +11,7 @@ import {
   symlink,
   unlink,
   utimes,
-  writeFile
+  writeFile,
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -26,7 +26,7 @@ import {
   createLatestPointer,
   createLifecycleEvent,
   summarizePorcelainStatus,
-  summarizeTiming
+  summarizeTiming,
 } from "../src/core/index.js";
 
 const execFileAsync = promisify(execFile);
@@ -36,7 +36,7 @@ describe("core run primitives", () => {
     const runId = buildRunId({
       prefix: "Contract Fixture",
       createdAt: "2026-06-02T10:00:00.123Z",
-      entropy: "Issue #6"
+      entropy: "Issue #6",
     });
     const layout = buildArtifactLayout(runId);
 
@@ -46,9 +46,10 @@ describe("core run primitives", () => {
       run: ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/run.json",
       reviewJson: ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.json",
       reviewMarkdown: ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/review.md",
-      observerData: ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/observer/observer-data.json",
+      observerData:
+        ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/observer/observer-data.json",
       events: ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6/events.ndjson",
-      latestPointer: ".humanish/runs/latest.json"
+      latestPointer: ".humanish/runs/latest.json",
     });
   });
 
@@ -56,45 +57,53 @@ describe("core run primitives", () => {
     const runId = "contract-fixture-2026-06-02t10-00-00-123z-issue-6";
     const artifactRoot = ".humanish/runs/contract-fixture-2026-06-02t10-00-00-123z-issue-6";
 
-    expect(createLatestPointer({
-      runId,
-      artifactRoot,
-      updatedAt: "2026-06-02T10:01:00.000Z"
-    })).toEqual({
+    expect(
+      createLatestPointer({
+        runId,
+        artifactRoot,
+        updatedAt: "2026-06-02T10:01:00.000Z",
+      }),
+    ).toEqual({
       schema: "humanish.latest-run.v1",
       runId,
       path: artifactRoot,
-      updatedAt: "2026-06-02T10:01:00.000Z"
+      updatedAt: "2026-06-02T10:01:00.000Z",
     });
-    expect(createHistoryEntry({
-      runId,
-      createdAt: "2026-06-02T10:00:00.123Z",
-      mode: "dry-run",
-      artifactRoot
-    })).toEqual({
+    expect(
+      createHistoryEntry({
+        runId,
+        createdAt: "2026-06-02T10:00:00.123Z",
+        mode: "dry-run",
+        artifactRoot,
+      }),
+    ).toEqual({
       schema: "humanish.run-history-entry.v1",
       runId,
       createdAt: "2026-06-02T10:00:00.123Z",
       mode: "dry-run",
-      path: artifactRoot
+      path: artifactRoot,
     });
-    expect(createLifecycleEvent({
+    expect(
+      createLifecycleEvent({
+        at: "2026-06-02T10:00:00.123Z",
+        event: "run.created",
+        message: "Created contract fixture.",
+      }),
+    ).toEqual({
       at: "2026-06-02T10:00:00.123Z",
       event: "run.created",
-      message: "Created contract fixture."
-    })).toEqual({
-      at: "2026-06-02T10:00:00.123Z",
-      event: "run.created",
-      message: "Created contract fixture."
+      message: "Created contract fixture.",
     });
-    expect(summarizeTiming({
-      startedAt: "2026-06-02T10:00:00.000Z",
-      endedAt: "2026-06-02T10:00:02.500Z"
-    })).toEqual({
+    expect(
+      summarizeTiming({
+        startedAt: "2026-06-02T10:00:00.000Z",
+        endedAt: "2026-06-02T10:00:02.500Z",
+      }),
+    ).toEqual({
       startedAt: "2026-06-02T10:00:00.000Z",
       endedAt: "2026-06-02T10:00:02.500Z",
       durationMs: 2500,
-      status: "complete"
+      status: "complete",
     });
   });
 
@@ -105,31 +114,35 @@ describe("core run primitives", () => {
 
   it("keeps source code free of environment-specific nouns", async () => {
     const sourceRoot = path.resolve("src/core");
-    const files = [
-      "index.ts",
-      "run-primitives.ts",
-      "git-state.ts"
-    ];
-    const joined = await Promise.all(files.map(async (file) => {
-      const text = await import("node:fs/promises").then(({ readFile }) => readFile(path.join(sourceRoot, file), "utf8"));
-      return text;
-    }));
+    const files = ["index.ts", "run-primitives.ts", "git-state.ts"];
+    const joined = await Promise.all(
+      files.map(async (file) => {
+        const text = await import("node:fs/promises").then(({ readFile }) =>
+          readFile(path.join(sourceRoot, file), "utf8"),
+        );
+        return text;
+      }),
+    );
 
-    expect(joined.join("\n")).not.toMatch(/\b(persona|scenario|browser|tui|codex|e2b|openai|github|image|private-web-adapter)\b/i);
+    expect(joined.join("\n")).not.toMatch(
+      /\b(persona|scenario|browser|tui|codex|e2b|openai|github|image|private-web-adapter)\b/i,
+    );
   });
 });
 
 describe("core git state", () => {
   it("summarizes porcelain status without file names", () => {
-    expect(summarizePorcelainStatus([
-      "M  src/private-name.ts",
-      " M docs/private-note.md",
-      "?? scratch/private-file.txt"
-    ].join("\n"))).toEqual({
+    expect(
+      summarizePorcelainStatus(
+        ["M  src/private-name.ts", " M docs/private-note.md", "?? scratch/private-file.txt"].join(
+          "\n",
+        ),
+      ),
+    ).toEqual({
       staged: 1,
       unstaged: 1,
       untracked: 1,
-      total: 3
+      total: 3,
     });
   });
 
@@ -140,25 +153,28 @@ describe("core git state", () => {
       await runGit(["init"], tempRoot);
       await writeFile(path.join(tempRoot, "tracked-private-name.txt"), "initial\n", "utf8");
       await runGit(["add", "tracked-private-name.txt"], tempRoot);
-      await runGit([
-        "-c",
-        "user.name=Humanish Test",
-        "-c",
-        "user.email=test@example.test",
-        "commit",
-        "-m",
-        "initial"
-      ], tempRoot);
+      await runGit(
+        [
+          "-c",
+          "user.name=Humanish Test",
+          "-c",
+          "user.email=test@example.test",
+          "commit",
+          "-m",
+          "initial",
+        ],
+        tempRoot,
+      );
 
       const clean = await captureGitState(tempRoot, {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
       expect(clean.status).toBe("clean");
       expect(clean.changes).toEqual({
         staged: 0,
         unstaged: 0,
         untracked: 0,
-        total: 0
+        total: 0,
       });
       expect(clean.head.shortSha).toMatch(/^[a-f0-9]{7,12}$/);
       expect(clean.head.refState).toBe("attached");
@@ -167,7 +183,7 @@ describe("core git state", () => {
       await writeFile(path.join(tempRoot, "untracked-private-name.txt"), "new\n", "utf8");
 
       const dirty = await captureGitState(tempRoot, {
-        capturedAt: "2026-06-02T10:01:00.000Z"
+        capturedAt: "2026-06-02T10:01:00.000Z",
       });
       const publicJson = JSON.stringify(dirty);
 
@@ -176,7 +192,7 @@ describe("core git state", () => {
         staged: 0,
         unstaged: 1,
         untracked: 1,
-        total: 2
+        total: 2,
       });
       expect(publicJson).not.toContain(tempRoot);
       expect(publicJson).not.toContain("tracked-private-name.txt");
@@ -195,7 +211,7 @@ describe("core git state", () => {
     try {
       await mkdir(path.join(tempRoot, "nested"), { recursive: true });
       const state = await captureGitState(path.join(tempRoot, "nested"), {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
 
       expect(state).toEqual({
@@ -204,15 +220,15 @@ describe("core git state", () => {
         capturedAt: "2026-06-02T10:00:00.000Z",
         head: {
           shortSha: null,
-          refState: "unknown"
+          refState: "unknown",
         },
         changes: {
           staged: 0,
           unstaged: 0,
           untracked: 0,
-          total: 0
+          total: 0,
         },
-        note: "No git work tree was detected."
+        note: "No git work tree was detected.",
       });
       expect(JSON.stringify(state)).not.toContain(tempRoot);
     } finally {
@@ -239,10 +255,10 @@ describe("core git state", () => {
         runner: async () => {
           runnerCalls += 1;
           return { exitCode: 0, stderr: "", stdout: "true\n" };
-        }
+        },
       });
       const actual = await captureGitState(target, {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
 
       expect(runnerCalls).toBe(0);
@@ -267,7 +283,7 @@ describe("core git state", () => {
       await runGit(["worktree", "add", "--detach", linked, "HEAD"], canonical);
 
       const state = await captureGitState(linked, {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
 
       expect(state.status).toBe("clean");
@@ -302,7 +318,7 @@ describe("core git state", () => {
         runner: async () => {
           runnerCalls += 1;
           return { exitCode: 0, stderr: "", stdout: "true\n" };
-        }
+        },
       });
 
       expect(runnerCalls).toBe(0);
@@ -319,7 +335,7 @@ describe("core git state", () => {
     try {
       await runGit(["init"], tempRoot);
       const state = await captureGitState(tempRoot, {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
 
       expect(state.status).toBe("clean");
@@ -353,7 +369,7 @@ describe("core git state", () => {
       GIT_NO_REPLACE_OBJECTS: "0",
       GIT_OBJECT_DIRECTORY: path.join(outside, ".git", "objects"),
       GIT_OPTIONAL_LOCKS: "1",
-      GIT_WORK_TREE: outside
+      GIT_WORK_TREE: outside,
     } satisfies Record<string, string>;
     const previous = new Map<string, string | undefined>();
 
@@ -368,15 +384,18 @@ describe("core git state", () => {
       await runGit(["config", "filter.evil.clean", hook], target);
       await runGit(["config", "filter.evil.required", "true"], target);
       await runGit(["add", ".gitattributes"], target);
-      await runGit([
-        "-c",
-        "user.name=Humanish Test",
-        "-c",
-        "user.email=test@example.test",
-        "commit",
-        "-m",
-        "attributes"
-      ], target);
+      await runGit(
+        [
+          "-c",
+          "user.name=Humanish Test",
+          "-c",
+          "user.email=test@example.test",
+          "commit",
+          "-m",
+          "attributes",
+        ],
+        target,
+      );
       await runGit(["config", "core.worktree", outside], target);
       await runGit(["config", "core.fsmonitor", hook], target);
       await runGit(["config", "core.alternateRefsCommand", hook], target);
@@ -391,7 +410,11 @@ describe("core git state", () => {
       const outsideIndexBefore = await readFile(outsideIndexPath);
       // A same-content mtime change normally invites Git to refresh index stat
       // data. GIT_OPTIONAL_LOCKS=0 must keep the captured index byte-identical.
-      await utimes(path.join(target, "tracked.txt"), new Date("2030-01-01T00:00:00.000Z"), new Date("2030-01-01T00:00:00.000Z"));
+      await utimes(
+        path.join(target, "tracked.txt"),
+        new Date("2030-01-01T00:00:00.000Z"),
+        new Date("2030-01-01T00:00:00.000Z"),
+      );
       await writeFile(path.join(outside, "tracked.txt"), "outside-dirty\n", "utf8");
 
       for (const [name, value] of Object.entries(gitEnvironment)) {
@@ -400,7 +423,7 @@ describe("core git state", () => {
       }
 
       const state = await captureGitState(target, {
-        capturedAt: "2026-06-02T10:00:00.000Z"
+        capturedAt: "2026-06-02T10:00:00.000Z",
       });
 
       expect(state.status).toBe("clean");
@@ -428,42 +451,47 @@ describe("core git state", () => {
     ["index", "fifo"],
     ["config", "symlink"],
     ["config", "hardlink"],
-    ["config", "fifo"]
-  ] as const)("rejects unsafe Git metadata leaf %s (%s) before invoking a runner", async (leafName, kind) => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), `humanish-core-git-${leafName}-${kind}-`));
-    const target = path.join(tempRoot, "target");
-    const outside = path.join(tempRoot, `outside-${leafName}`);
+    ["config", "fifo"],
+  ] as const)(
+    "rejects unsafe Git metadata leaf %s (%s) before invoking a runner",
+    async (leafName, kind) => {
+      const tempRoot = await mkdtemp(
+        path.join(os.tmpdir(), `humanish-core-git-${leafName}-${kind}-`),
+      );
+      const target = path.join(tempRoot, "target");
+      const outside = path.join(tempRoot, `outside-${leafName}`);
 
-    try {
-      await mkdir(target);
-      await initializeCommittedRepo(target, "target\n");
-      const leaf = path.join(target, ".git", leafName);
-      const original = await readFile(leaf);
-      await unlink(leaf);
-      if (kind === "fifo") {
-        await execFileAsync("mkfifo", [leaf]);
-      } else {
-        await writeFile(outside, original);
-        if (kind === "symlink") await symlink(outside, leaf);
-        else await link(outside, leaf);
-      }
-      let runnerCalls = 0;
-
-      const state = await captureGitState(target, {
-        capturedAt: "2026-06-02T10:00:00.000Z",
-        runner: async () => {
-          runnerCalls += 1;
-          return { exitCode: 0, stderr: "", stdout: "true\n" };
+      try {
+        await mkdir(target);
+        await initializeCommittedRepo(target, "target\n");
+        const leaf = path.join(target, ".git", leafName);
+        const original = await readFile(leaf);
+        await unlink(leaf);
+        if (kind === "fifo") {
+          await execFileAsync("mkfifo", [leaf]);
+        } else {
+          await writeFile(outside, original);
+          if (kind === "symlink") await symlink(outside, leaf);
+          else await link(outside, leaf);
         }
-      });
+        let runnerCalls = 0;
 
-      expect(runnerCalls).toBe(0);
-      expect(state.status).toBe("unavailable");
-      expect(state.note).toBe("Git metadata failed containment validation.");
-    } finally {
-      await rm(tempRoot, { force: true, recursive: true });
-    }
-  });
+        const state = await captureGitState(target, {
+          capturedAt: "2026-06-02T10:00:00.000Z",
+          runner: async () => {
+            runnerCalls += 1;
+            return { exitCode: 0, stderr: "", stdout: "true\n" };
+          },
+        });
+
+        expect(runnerCalls).toBe(0);
+        expect(state.status).toBe("unavailable");
+        expect(state.note).toBe("Git metadata failed containment validation.");
+      } finally {
+        await rm(tempRoot, { force: true, recursive: true });
+      }
+    },
+  );
 
   it("returns unavailable when a git command exceeds its deadline", async () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-core-git-timeout-"));
@@ -474,7 +502,7 @@ describe("core git state", () => {
       const state = await captureGitState(tempRoot, {
         capturedAt: "2026-06-02T10:00:00.000Z",
         commandTimeoutMs: 25,
-        runner: async () => await new Promise(() => {})
+        runner: async () => await new Promise(() => {}),
       });
 
       expect(state.status).toBe("unavailable");
@@ -499,13 +527,16 @@ async function initializeCommittedRepo(cwd: string, contents: string): Promise<v
   await runGit(["init"], cwd);
   await writeFile(path.join(cwd, "tracked.txt"), contents, "utf8");
   await runGit(["add", "tracked.txt"], cwd);
-  await runGit([
-    "-c",
-    "user.name=Humanish Test",
-    "-c",
-    "user.email=test@example.test",
-    "commit",
-    "-m",
-    "initial"
-  ], cwd);
+  await runGit(
+    [
+      "-c",
+      "user.name=Humanish Test",
+      "-c",
+      "user.email=test@example.test",
+      "commit",
+      "-m",
+      "initial",
+    ],
+    cwd,
+  );
 }

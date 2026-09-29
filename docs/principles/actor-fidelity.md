@@ -33,7 +33,7 @@ operable.
 WebLINX built its action space from 2,337 real human demonstrations; `load(url)`
 appears in 2,324 of them — 99.4%, roughly 1.6 times per session
 ([arXiv 2402.05930](https://arxiv.org/abs/2402.05930)). Treating address-bar
-navigation as non-human would make a human-declared lane *less* faithful, not more.
+navigation as non-human would make a human-declared lane _less_ faithful, not more.
 The anomalous class is script execution and developer tooling, not URL entry.
 BrowserGym already factors these apart: its `nav` subset is exactly
 `{goto, go_back, go_forward}`, separate from everything else
@@ -67,8 +67,8 @@ measured attempts went the wrong way. A findings-informed realism persona prompt
 lowered overall simulator fidelity (User-Sim Index 70.9 → 64.6) and worsened outcome
 calibration (0.18 → 0.29): "moving some behaviors closer to humans can move others
 further away" ([arXiv 2603.11245](https://arxiv.org/abs/2603.11245)). Explicitly
-licensing persona-faithful failure fixed the *marginal* rate five-fold but left the
-*conditional* structure nearly unchanged — it taught the simulator to disengage
+licensing persona-faithful failure fixed the _marginal_ rate five-fold but left the
+_conditional_ structure nearly unchanged — it taught the simulator to disengage
 uniformly rather than to disengage when a real user would
 ([arXiv 2606.20708](https://arxiv.org/abs/2606.20708)). By contrast, a narrow,
 countable instruction did produce a measured improvement
@@ -152,7 +152,7 @@ gap between agents and people is total and trivially detectable
 affordance/decision level would be dishonest, and this project does not make one.
 
 Two further limits worth stating plainly. Restricting script execution and developer
-tooling for *fidelity* reasons has no precedent — where such restrictions exist
+tooling for _fidelity_ reasons has no precedent — where such restrictions exist
 elsewhere, the stated motive is code-execution safety — so this is new ground rather
 than an inherited convention. And nobody has yet measured whether affordance-class
 recording changes what adopters decide; that is the experiment this layer makes
@@ -163,16 +163,16 @@ possible, not a result it can assume.
 Terms are borrowed rather than coined, so results stay comparable with the
 surrounding literature:
 
-| Term | Source | Meaning here |
-| --- | --- | --- |
-| action space / action set | WebArena, BrowserGym, OSWorld | the set of actions an actor can express |
-| `nav` subset | BrowserGym | `goto`, `go_back`, `go_forward` — direct navigation, a human affordance |
-| naturalistic actions | AndroidWorld | the human-modality subset, contrasted with exposed function-calling APIs |
-| shortcut action | MAS-Bench | a non-UI route to the same outcome (API, deep link, script) |
-| algorithmic fidelity | Argyle et al., *Out of One, Many* | how well a conditioned model emulates a specific population |
-| Agent Experience (AX) | Biilmann (Netlify) | the experience of a product whose users are agents |
+| Term                      | Source                            | Meaning here                                                             |
+| ------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| action space / action set | WebArena, BrowserGym, OSWorld     | the set of actions an actor can express                                  |
+| `nav` subset              | BrowserGym                        | `goto`, `go_back`, `go_forward` — direct navigation, a human affordance  |
+| naturalistic actions      | AndroidWorld                      | the human-modality subset, contrasted with exposed function-calling APIs |
+| shortcut action           | MAS-Bench                         | a non-UI route to the same outcome (API, deep link, script)              |
+| algorithmic fidelity      | Argyle et al., _Out of One, Many_ | how well a conditioned model emulates a specific population              |
+| Agent Experience (AX)     | Biilmann (Netlify)                | the experience of a product whose users are agents                       |
 
 Three collisions to avoid: "agent usability testing" already means an agent
-*simulating* a human, which is the opposite of the agent-population case; `cheat()` in
+_simulating_ a human, which is the opposite of the agent-population case; `cheat()` in
 BrowserGym means the reference solution, not misbehavior; and "reward hacking" refers
 to attacking a grader, which is a different failure from routing around a UI.

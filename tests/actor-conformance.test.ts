@@ -6,16 +6,25 @@ import type { AddressInfo } from "node:net";
 
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorCapabilities, type ActorTrace } from "../src/actor-contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  type ActorCapabilities,
+  type ActorTrace,
+} from "../src/actor-contract.js";
 import { getActor } from "../src/actor-registry.js";
 import {
   runScriptedBrowserSession,
   browserSurfaces,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
-  type ScriptedPageLike
+  type ScriptedPageLike,
 } from "../src/scripted-browser-actor.js";
-import { buildClaudeSession, buildCodexResult, buildPiSession, fixturePersona } from "./actor-fixtures.js";
+import {
+  buildClaudeSession,
+  buildCodexResult,
+  buildPiSession,
+  fixturePersona,
+} from "./actor-fixtures.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
 const PNG_1X1 = syntheticPng1x1();
@@ -34,7 +43,7 @@ const COMPLETION_REASONS = [
   // The scripted-browser lane's reason: a deterministic step/expectation evaluated false —
   // the subject failed the script while the harness executed faithfully.
   "step_failed",
-  "harness_error"
+  "harness_error",
 ];
 const ITEM_KINDS = [
   "message",
@@ -46,13 +55,15 @@ const ITEM_KINDS = [
   "screenshot",
   "ui_action",
   "plan",
-  "notice"
+  "notice",
 ];
 
 function assertConformsToActorTrace(trace: ActorTrace): void {
   expect(trace.schema).toBe(ACTOR_TRACE_SCHEMA);
   expect(typeof trace.provider).toBe("string");
-  expect(["json-rpc", "json-stream", "in-process-sdk", "cua-loop", "scripted-steps"]).toContain(trace.protocol);
+  expect(["json-rpc", "json-stream", "in-process-sdk", "cua-loop", "scripted-steps"]).toContain(
+    trace.protocol,
+  );
   expect(["code", "app", "computer-use", "scripted-browser"]).toContain(trace.lane);
   expect(ACTOR_STATUSES).toContain(trace.status);
   expect(COMPLETION_REASONS).toContain(trace.completionReason);
@@ -73,7 +84,14 @@ function assertConformsToActorTrace(trace: ActorTrace): void {
   expect(typeof trace.persona.promptDigest).toBe("string");
 
   const capabilities = trace.capabilities as unknown as Record<keyof ActorCapabilities, unknown>;
-  for (const key of ["headless", "structuredTrace", "producesScreenshots", "byoModel", "preGrantableApprovals", "inProcessTools"] as const) {
+  for (const key of [
+    "headless",
+    "structuredTrace",
+    "producesScreenshots",
+    "byoModel",
+    "preGrantableApprovals",
+    "inProcessTools",
+  ] as const) {
     expect(typeof capabilities[key]).toBe("boolean");
   }
   expect(Array.isArray(trace.capabilities.lanes)).toBe(true);
@@ -101,7 +119,7 @@ describe("cross-harness ActorTrace conformance", () => {
   const traces = [
     { name: "codex-app-server", trace: codex },
     { name: "pi-agent-core", trace: pi },
-    { name: "claude-agent-sdk", trace: claude }
+    { name: "claude-agent-sdk", trace: claude },
   ];
 
   for (const { name, trace } of traces) {
@@ -168,15 +186,27 @@ describe("scripted-browser ActorTrace conformance", () => {
           sourceDigest: "abcdef123456",
           startPath: "/",
           steps: [
-            { action: "goto", id: "step-01", label: "Load", path: "/", expectation: { selectorVisible: "main" } },
-            { action: "click", id: "step-02", label: "Act", selector: "button", expectation: { stateChanged: true } }
-          ]
+            {
+              action: "goto",
+              id: "step-01",
+              label: "Load",
+              path: "/",
+              expectation: { selectorVisible: "main" },
+            },
+            {
+              action: "click",
+              id: "step-02",
+              label: "Act",
+              selector: "button",
+              expectation: { stateChanged: true },
+            },
+          ],
         },
         surface: browserSurfaces[0]!,
         persona: fixturePersona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => makeConformanceFakeBrowser()
+        launchBrowser: async () => makeConformanceFakeBrowser(),
       });
 
       assertConformsToActorTrace(result.trace);
@@ -202,7 +232,7 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
     },
     count: async () => 1,
     waitFor: async () => undefined,
-    isVisible: async () => true
+    isVisible: async () => true,
   };
   const page: ScriptedPageLike = {
     goto: async (url) => {
@@ -217,10 +247,10 @@ function makeConformanceFakeBrowser(): ScriptedBrowserLike {
       return PNG_1X1;
     },
     url: () => state.url,
-    evaluate: async <T,>() => state.body as unknown as T
+    evaluate: async <T>() => state.body as unknown as T,
   };
   return {
     newContext: async () => ({ newPage: async () => page }),
-    close: async () => undefined
+    close: async () => undefined,
   };
 }

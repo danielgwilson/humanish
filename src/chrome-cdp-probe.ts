@@ -550,7 +550,8 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
   } catch {
     return { unavailable: "probe output was not JSON" };
   }
-  if (!parsed || typeof parsed !== "object") return { unavailable: "probe output was not an object" };
+  if (!parsed || typeof parsed !== "object")
+    return { unavailable: "probe output was not an object" };
   const record = parsed as Record<string, unknown>;
   const applied = Array.isArray(record.applied)
     ? record.applied.filter((item): item is string => typeof item === "string")
@@ -571,8 +572,17 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
     }
     return out;
   };
-  const browserWindow = box(record.browserWindow, ["x", "y", "width", "height"]) as ChromeCdpProbeResult["browserWindow"];
-  const viewport = box(record.viewport, ["width", "height", "deviceScaleFactor"]) as ChromeCdpProbeResult["viewport"];
+  const browserWindow = box(record.browserWindow, [
+    "x",
+    "y",
+    "width",
+    "height",
+  ]) as ChromeCdpProbeResult["browserWindow"];
+  const viewport = box(record.viewport, [
+    "width",
+    "height",
+    "deviceScaleFactor",
+  ]) as ChromeCdpProbeResult["viewport"];
   const cdpPort = numberOr(record.cdpPort);
   const scrollY = numberOr(record.scrollY);
   const fidelity = ((): ChromeFidelityRead | undefined => {
@@ -583,10 +593,23 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
     const innerWidth = numberOr(source.innerWidth);
     const innerHeight = numberOr(source.innerHeight);
     const maxTouchPoints = numberOr(source.maxTouchPoints);
-    if (typeof source.userAgent !== "string" || dpr === undefined || innerWidth === undefined || innerHeight === undefined || maxTouchPoints === undefined) {
+    if (
+      typeof source.userAgent !== "string" ||
+      dpr === undefined ||
+      innerWidth === undefined ||
+      innerHeight === undefined ||
+      maxTouchPoints === undefined
+    ) {
       return undefined;
     }
-    return { userAgent: source.userAgent, devicePixelRatio: dpr, innerWidth, innerHeight, maxTouchPoints, coarsePointer: source.coarsePointer === true };
+    return {
+      userAgent: source.userAgent,
+      devicePixelRatio: dpr,
+      innerWidth,
+      innerHeight,
+      maxTouchPoints,
+      coarsePointer: source.coarsePointer === true,
+    };
   })();
   return {
     ...(applied === undefined ? {} : { applied }),
@@ -596,8 +619,10 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
     ...(typeof record.title === "string" && record.title.length > 0 ? { title: record.title } : {}),
     ...(typeof record.text === "string" && record.text.length > 0 ? { text: record.text } : {}),
     ...(scrollY === undefined ? {} : { scrollY }),
-    ...(typeof record.targetId === "string" && record.targetId.length > 0 ? { targetId: record.targetId } : {}),
+    ...(typeof record.targetId === "string" && record.targetId.length > 0
+      ? { targetId: record.targetId }
+      : {}),
     ...(browserWindow === undefined ? {} : { browserWindow }),
-    ...(viewport === undefined ? {} : { viewport })
+    ...(viewport === undefined ? {} : { viewport }),
   };
 }

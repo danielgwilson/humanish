@@ -73,7 +73,7 @@ interface FoundCommand {
 // --skill humanish --list` reads as our CLI taking a `--list` flag, when every one of those flags
 // belongs to a DIFFERENT cli.
 const INVOCATION =
-  /(?:^|[`'"(]|\$ |&& |\| |npx (?:-y |--no-install )?)humanish ((?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\])(?:[ \t]+(?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\]))*)/gm
+  /(?:^|[`'"(]|\$ |&& |\| |npx (?:-y |--no-install )?)humanish ((?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\])(?:[ \t]+(?:[a-z][a-z0-9-]*|--[a-z][a-z0-9-]*|<[a-z-]+>|\[[a-z-]+\]))*)/gm;
 
 async function collect(): Promise<FoundCommand[]> {
   const root = path.resolve(import.meta.dirname, "..", "src");
@@ -88,7 +88,7 @@ async function collect(): Promise<FoundCommand[]> {
           file: path.relative(root, file),
           line: index + 1,
           raw: `humanish ${words.join(" ")}`,
-          words
+          words,
         });
       }
     });
@@ -114,8 +114,8 @@ describe("shipped command strings are commands the CLI accepts (#516)", () => {
         if (word.startsWith("--")) {
           if (!spec.options.has(word) && !globals.has(word)) {
             problems.push(
-              `${invocation.file}:${invocation.line} — \`${invocation.raw}\`: `
-                + `${word} is not an option of \`humanish ${trail.join(" ") || "<root>"}\``
+              `${invocation.file}:${invocation.line} — \`${invocation.raw}\`: ` +
+                `${word} is not an option of \`humanish ${trail.join(" ") || "<root>"}\``,
             );
           }
           continue;

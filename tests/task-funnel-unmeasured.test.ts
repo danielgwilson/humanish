@@ -15,13 +15,13 @@ import type { LabTask } from "../src/tasks.js";
 const urlTask: LabTask = {
   id: "reach-prices",
   goal: "Find where this product publishes what it charges.",
-  success: { any: [{ id: "on-a-pricing-surface", urlIncludes: "pricing" }] }
+  success: { any: [{ id: "on-a-pricing-surface", urlIncludes: "pricing" }] },
 };
 
 const textTask: LabTask = {
   id: "sees-total",
   goal: "Get to a page showing the total.",
-  success: { any: [{ id: "total-visible", textIncludes: "Total" }] }
+  success: { any: [{ id: "total-visible", textIncludes: "Total" }] },
 };
 
 describe("task funnel distinguishes unmeasured from failed (#514)", () => {
@@ -77,7 +77,15 @@ describe("task funnel distinguishes unmeasured from failed (#514)", () => {
   it("counts a task measured when ANY field its rules read arrived", () => {
     // `any` semantics: one satisfiable rule needing a field we saw is enough to call it measured.
     const tracker = new TaskTracker([
-      { ...urlTask, success: { any: [{ id: "a", urlIncludes: "pricing" }, { id: "b", textIncludes: "Plans" }] } }
+      {
+        ...urlTask,
+        success: {
+          any: [
+            { id: "a", urlIncludes: "pricing" },
+            { id: "b", textIncludes: "Plans" },
+          ],
+        },
+      },
     ]);
     tracker.observe({ text: "Pricing overview" }, 0);
     expect(tracker.funnel().unmeasured).toBe(0);
@@ -95,13 +103,13 @@ describe("task funnel distinguishes unmeasured from failed (#514)", () => {
     const tracker = new TaskTracker([
       textTask,
       urlTask,
-      { id: "narrate", goal: "Say what you think." }
+      { id: "narrate", goal: "Say what you think." },
     ]);
     tracker.observe({ text: "Total: $40" }, 1);
 
     const funnel = tracker.funnel();
-    expect(funnel.completed).toBe(1);   // sees-total: observed and matched
-    expect(funnel.unmeasured).toBe(1);  // reach-prices: url never arrived
+    expect(funnel.completed).toBe(1); // sees-total: observed and matched
+    expect(funnel.unmeasured).toBe(1); // reach-prices: url never arrived
     expect(funnel.unobservable).toBe(1); // narrate: no criterion by declaration
     expect(funnel.stoppedAt).toBeUndefined();
   });

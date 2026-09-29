@@ -61,12 +61,12 @@ preview and local-browser setup need only `humanish`.
 
 Choose how the participant runs:
 
-| Route | Participant authentication | Desktop | Automatic findings |
-| --- | --- | --- | --- |
-| `first-run` preview | None; synthetic evidence only | None | No model analysis |
-| [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default |
-| `openai-computer-use` | `OPENAI_API_KEY` | `E2B_API_KEY` + desktop SDK | Separate OpenAI request |
-| [`local-agent`](https://humanish.dev/docs/local-agents) | Codex or Claude Code's own login | `E2B_API_KEY` + desktop SDK | Still needs `OPENAI_API_KEY`; skipped without it |
+| Route                                                             | Participant authentication            | Desktop                                              | Automatic findings                               |
+| ----------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| `first-run` preview                                               | None; synthetic evidence only         | None                                                 | No model analysis                                |
+| [Local browser study](docs/architecture/local-browser-runtime.md) | Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM or M3+ Mac + Lima; no E2B key | Separate Codex account analyst by default        |
+| `openai-computer-use`                                             | `OPENAI_API_KEY`                      | `E2B_API_KEY` + desktop SDK                          | Separate OpenAI request                          |
+| [`local-agent`](https://humanish.dev/docs/local-agents)           | Codex or Claude Code's own login      | `E2B_API_KEY` + desktop SDK                          | Still needs `OPENAI_API_KEY`; skipped without it |
 
 A Codex ChatGPT login can power a `local-agent` participant. It does not
 authenticate Humanish's OpenAI API requests. Choose the actor explicitly in
@@ -243,28 +243,28 @@ reviewed in Observer without being promoted into a public issue draft.
 Use `npx humanish` from your project. Full arguments and options are generated
 from the shipped CLI in the [command reference](https://humanish.dev/docs/cli).
 
-| Command | Purpose |
-| --- | --- |
-| `humanish init --yes` | Scaffold study source and ignored runtime state. |
-| `humanish doctor --lab <lab> --json` | Check the selected route's setup without exposing key values or spending. |
-| `humanish lab list --json` | List available labs. |
-| `humanish lab inspect <lab> --json` | Read a lab before running it. |
-| `humanish lab preflight <lab> --json` | Check configuration and route warnings. |
-| `humanish run <lab>` | Run the named preview or live study. |
-| `humanish watch <lab>` | Run a lab with an attached Observer. |
-| `humanish runs --json` | List local run history. |
-| `humanish review --run latest --json` | Read an existing run's evidence. |
-| `humanish verify --run latest --json` | Check evidence and share-safety gates. |
-| `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft. |
+| Command                                                  | Purpose                                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `humanish init --yes`                                    | Scaffold study source and ignored runtime state.                          |
+| `humanish doctor --lab <lab> --json`                     | Check the selected route's setup without exposing key values or spending. |
+| `humanish lab list --json`                               | List available labs.                                                      |
+| `humanish lab inspect <lab> --json`                      | Read a lab before running it.                                             |
+| `humanish lab preflight <lab> --json`                    | Check configuration and route warnings.                                   |
+| `humanish run <lab>`                                     | Run the named preview or live study.                                      |
+| `humanish watch <lab>`                                   | Run a lab with an attached Observer.                                      |
+| `humanish runs --json`                                   | List local run history.                                                   |
+| `humanish review --run latest --json`                    | Read an existing run's evidence.                                          |
+| `humanish verify --run latest --json`                    | Check evidence and share-safety gates.                                    |
+| `humanish feedback issue --run latest --repo owner/repo` | Print an eligible feedback draft.                                         |
 
 ## Exit Codes
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Success. |
-| `1` | Commander usage error: unknown command, unknown option, or a missing/invalid argument. |
-| `2` | Humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
-| `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP. |
+| Code    | Meaning                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------- |
+| `0`     | Success.                                                                                  |
+| `1`     | Commander usage error: unknown command, unknown option, or a missing/invalid argument.    |
+| `2`     | Humanish domain or validation failure. Check the JSON envelope's `error.code` for detail. |
+| `128+N` | Terminated by signal `N`: `130` for SIGINT, `143` for SIGTERM, `129` for SIGHUP.          |
 
 ## The Terminal Surface
 

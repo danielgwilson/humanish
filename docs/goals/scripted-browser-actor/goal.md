@@ -18,7 +18,7 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
 - **Registry entry** `scripted-browser` with capability-lane dispatch:
   `isScriptedBrowserActorDescriptor` (mirror of `isCuaActorDescriptor`) — lane
   `"scripted-browser"` ⇒ `runSession(ScriptedBrowserSessionOptions) →
-  ScriptedBrowserSessionResult` with a fully-formed `humanish.actor-trace.v1` at
+ScriptedBrowserSessionResult` with a fully-formed `humanish.actor-trace.v1` at
   `result.trace`. Trace vocabulary additions (ratified): lane `"scripted-browser"`, protocol
   `"scripted-steps"`, completionReason `"step_failed"` (the subject failed the script's
   predicate — distinct from `actor_error`/`harness_error`, where the harness failed).
@@ -32,7 +32,7 @@ a registered actor and a lab route, instead of private code inside `src/run.ts`:
   `count: 2` is the declared override that adds the mobile surface, where isMobile/DSF
   genuinely RENDER via playwright emulation (a fidelity win over the e2b route's
   prompt-signal-only device story).
-- Lab `ok` means *credible evidence*, not *journey passed*: a `step_failed` session is
+- Lab `ok` means _credible evidence_, not _journey passed_: a `step_failed` session is
   successful evidence (review verdict `fail`), deliberately diverging from `run --app-url`
   (`ok = allPassed`). `tokenUsage` records zeros — an affirmative $0 declaration true by
   mechanism (no provider client is importable from this code path).

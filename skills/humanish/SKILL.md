@@ -30,12 +30,12 @@ rendering escape codes into your transcript — but do not invoke it at all.
 
 Everything it shows has a machine-readable equivalent, which is what you want:
 
-| Instead of the TUI | Use |
-| --- | --- |
-| browsing labs | `npx humanish lab list --json` |
-| browsing runs | `npx humanish runs --json` |
-| starting a run | `npx humanish lab run <lab> --json --no-open` |
-| a run's outcome | `npx humanish review --run <id> --json` |
+| Instead of the TUI  | Use                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| browsing labs       | `npx humanish lab list --json`                                                         |
+| browsing runs       | `npx humanish runs --json`                                                             |
+| starting a run      | `npx humanish lab run <lab> --json --no-open`                                          |
+| a run's outcome     | `npx humanish review --run <id> --json`                                                |
 | communication setup | `npx humanish comms providers --json` and `npx humanish comms connections list --json` |
 
 If a human asks you to "open the TUI", tell them the command to type; do not run
@@ -323,7 +323,8 @@ The following configuration selects **local capture**:
 ```yaml
 comms:
   email:
-    injectEnv: RESEND_API_URL # adopter-named: whatever env var YOUR app reads for its
+    injectEnv:
+      RESEND_API_URL # adopter-named: whatever env var YOUR app reads for its
       # email-API base URL. The harness sets it to the in-sandbox catch — do NOT also
       # list it in subject.env. VERIFY the app actually reads this variable: a stock
       # email SDK does not honor a base-URL env unless the app passes it through, and
@@ -339,15 +340,15 @@ address, enter exactly that"), the inbox URL to open, and the wait steering
 customize addresses or limit which lanes do email:
 
 ```yaml
-    recipients:
-      - lane: signup-01 # this lab's REAL lane id — a roster lane's `id`, or the
-        # generated lane-01..lane-NN names when you use `count`. An unknown lane
-        # is a hard parse error listing the lab's actual lane ids (a mismatch
-        # would silently disable the funnel for that seat, which is how a
-        # 6-actor field run lost every inbox at once). Lanes you leave out get
-        # no inbox and are never told one exists — the parser warns which.
-        address: user@example.test # what the actor signs up with; the evidence
-        # drain matches captured mail against it.
+recipients:
+  - lane: signup-01 # this lab's REAL lane id — a roster lane's `id`, or the
+    # generated lane-01..lane-NN names when you use `count`. An unknown lane
+    # is a hard parse error listing the lab's actual lane ids (a mismatch
+    # would silently disable the funnel for that seat, which is how a
+    # 6-actor field run lost every inbox at once). Lanes you leave out get
+    # no inbox and are never told one exists — the parser warns which.
+    address: user@example.test # what the actor signs up with; the evidence
+    # drain matches captured mail against it.
 ```
 
 The app keeps calling its email API normally (Resend/SendGrid-shaped, or a custom
@@ -364,7 +365,7 @@ Sequential `concurrency: 1` shared-world email remains unwired; do not silently
 change study concurrency to work around that limitation. The in-sandbox catch
 needs `python3` (the stock E2B desktop has it).
 Evidence is digest-only (`humanish.comms-thread.v1` — counts and digests, never
-raw mail); the *readable* proof a persona saw the email is its screenshots of the
+raw mail); the _readable_ proof a persona saw the email is its screenshots of the
 inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and
 `humanish <cmd> --help` for run flags — this skill does not restate them.
 

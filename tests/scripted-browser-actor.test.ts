@@ -7,15 +7,23 @@ import type { AddressInfo } from "node:net";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, SCRIPTED_BROWSER_CAPABILITIES, type ActorPersonaRef } from "../src/actor-contract.js";
-import { getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor } from "../src/actor-registry.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  SCRIPTED_BROWSER_CAPABILITIES,
+  type ActorPersonaRef,
+} from "../src/actor-contract.js";
+import {
+  getActor,
+  isCuaActorDescriptor,
+  isScriptedBrowserActorDescriptor,
+} from "../src/actor-registry.js";
 import {
   runScriptedBrowserSession,
   browserSurfaces,
   type BrowserPersonaJourney,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
-  type ScriptedPageLike
+  type ScriptedPageLike,
 } from "../src/scripted-browser-actor.js";
 import { syntheticPng1x1 } from "./image-fixtures.js";
 
@@ -40,7 +48,10 @@ interface FakeAppOptions {
   screenshotHook?: () => Promise<void>;
 }
 
-function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrowserLike; state: { url: string; body: string } } {
+function makeFakeBrowser(options: FakeAppOptions = {}): {
+  browser: ScriptedBrowserLike;
+  state: { url: string; body: string };
+} {
   const state = { url: "about:blank", body: options.initialBody ?? "landing page" };
 
   const locatorFor = (selector: string): ScriptedLocatorLike => {
@@ -55,7 +66,7 @@ function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrows
       waitFor: async () => {
         if (count === 0) throw new Error(`Timeout waiting for selector ${selector}`);
       },
-      isVisible: async () => count > 0
+      isVisible: async () => count > 0,
     };
     return locator;
   };
@@ -85,17 +96,21 @@ function makeFakeBrowser(options: FakeAppOptions = {}): { browser: ScriptedBrows
       return PNG_1X1;
     },
     url: () => state.url,
-    evaluate: async <T,>() => state.body as unknown as T
+    evaluate: async <T>() => state.body as unknown as T,
   };
 
   const browser: ScriptedBrowserLike = {
     newContext: async () => ({ newPage: async () => page }),
-    close: async () => undefined
+    close: async () => undefined,
   };
   return { browser, state };
 }
 
-const persona: ActorPersonaRef = { id: "scripted-journey", traitsApplied: [], promptDigest: "abcd1234abcd1234" };
+const persona: ActorPersonaRef = {
+  id: "scripted-journey",
+  traitsApplied: [],
+  promptDigest: "abcd1234abcd1234",
+};
 
 function demoJourney(): BrowserPersonaJourney {
   return {
@@ -106,11 +121,34 @@ function demoJourney(): BrowserPersonaJourney {
     sourceDigest: "abcd1234abcd",
     startPath: "/",
     steps: [
-      { action: "goto", id: "step-01-load", label: "Load landing page", path: "/", expectation: { selectorVisible: "main" } },
-      { action: "fill", id: "step-02-fill-email", label: "Fill the signup email", selector: "input[type='email']", value: "synthetic.user@example.test" },
-      { action: "click", id: "step-03-submit", label: "Submit the form", selector: "button[type='submit']", expectation: { stateChanged: true } },
-      { action: "waitForText", id: "step-04-confirm", label: "Confirm success copy", expectation: { text: "Welcome" } }
-    ]
+      {
+        action: "goto",
+        id: "step-01-load",
+        label: "Load landing page",
+        path: "/",
+        expectation: { selectorVisible: "main" },
+      },
+      {
+        action: "fill",
+        id: "step-02-fill-email",
+        label: "Fill the signup email",
+        selector: "input[type='email']",
+        value: "synthetic.user@example.test",
+      },
+      {
+        action: "click",
+        id: "step-03-submit",
+        label: "Submit the form",
+        selector: "button[type='submit']",
+        expectation: { stateChanged: true },
+      },
+      {
+        action: "waitForText",
+        id: "step-04-confirm",
+        label: "Confirm success copy",
+        expectation: { text: "Welcome" },
+      },
+    ],
   };
 }
 
@@ -150,13 +188,18 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
 
       expect(result.status).toBe("passed");
       expect(result.completionReason).toBe("goal_satisfied");
       expect(result.capture.ok).toBe(true);
-      expect(result.capture.steps.map((step) => step.status)).toEqual(["passed", "passed", "passed", "passed"]);
+      expect(result.capture.steps.map((step) => step.status)).toEqual([
+        "passed",
+        "passed",
+        "passed",
+        "passed",
+      ]);
 
       // ActorTrace projection pins.
       const trace = result.trace;
@@ -172,10 +215,19 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         expect(item.lifecycle).toBe("completed");
         expect(item.status).toBe("passed");
         expect(item.title.length).toBeLessThanOrEqual(120);
-        expect(item.screenshotRef).toEqual({ path: expect.stringContaining("screenshots/desktop-"), redaction: "none" });
+        expect(item.screenshotRef).toEqual({
+          path: expect.stringContaining("screenshots/desktop-"),
+          redaction: "none",
+        });
       }
       // counts.actions mirrors the engagement-check contract; screenshots are honest (on disk).
-      expect(trace.counts).toEqual({ steps: 4, actions: 4, assertions: 3, blocked: 0, screenshots: 4 });
+      expect(trace.counts).toEqual({
+        steps: 4,
+        actions: 4,
+        assertions: 3,
+        blocked: 0,
+        screenshots: 4,
+      });
       // Affirmative $0 declaration, true by mechanism.
       expect(trace.tokenUsage).toEqual({ input: 0, output: 0, total: 0, costUsd: 0 });
       // No session/model ids exist — absence declared by omission.
@@ -184,7 +236,9 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       expect(trace.redaction.screenshots).toBe("raw");
 
       // The native humanish.browser-persona-trace.v1 is kept on disk.
-      const native = JSON.parse(await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"));
+      const native = JSON.parse(
+        await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"),
+      );
       expect(native.schema).toBe("humanish.browser-persona-trace.v1");
       expect(native.scenario.sourceDigest).toBe("abcd1234abcd");
       expect(native.steps).toHaveLength(4);
@@ -202,7 +256,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
 
       expect(result.status).toBe("failed");
@@ -224,7 +278,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
 
       expect(result.status).toBe("failed");
@@ -233,14 +287,20 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       expect(result.reason).toContain("found no target");
       // Driver behavior preserved: the in-flight step is recorded blocked; steps beyond it are
       // not fabricated as executed.
-      expect(result.capture.steps.map((step) => step.status)).toEqual(["passed", "passed", "blocked"]);
+      expect(result.capture.steps.map((step) => step.status)).toEqual([
+        "passed",
+        "passed",
+        "blocked",
+      ]);
       expect(result.trace.counts.actions).toBe(3);
     });
   });
 
   it("step_failed: unreachable subject (probe refused, first goto throws)", async () => {
     // No HTTP server: the probe fails AND goto rejects — the declared subject was not serving.
-    const { browser } = makeFakeBrowser({ gotoError: "net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9/" });
+    const { browser } = makeFakeBrowser({
+      gotoError: "net::ERR_CONNECTION_REFUSED at http://127.0.0.1:9/",
+    });
     const result = await runScriptedBrowserSession({
       appUrl: "http://127.0.0.1:9/",
       journey: demoJourney(),
@@ -248,7 +308,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       persona,
       timeoutMs: 5_000,
       artifactRoot,
-      launchBrowser: async () => browser
+      launchBrowser: async () => browser,
     });
 
     expect(result.status).toBe("failed");
@@ -266,7 +326,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 50,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
 
       expect(result.status).toBe("timed_out");
@@ -285,16 +345,20 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       artifactRoot,
       launchBrowser: async () => {
         throw new Error("chromium executable missing");
-      }
+      },
     });
 
     expect(result.status).toBe("failed");
     expect(result.completionReason).toBe("harness_error");
     expect(result.reason).toContain("launch failed");
     // The failure still persists an honest native trace (all steps blocked, ok: false).
-    const native = JSON.parse(await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"));
+    const native = JSON.parse(
+      await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8"),
+    );
     expect(native.ok).toBe(false);
-    expect((native.steps as Array<{ status: string }>).every((step) => step.status === "blocked")).toBe(true);
+    expect(
+      (native.steps as Array<{ status: string }>).every((step) => step.status === "blocked"),
+    ).toBe(true);
     // No screenshots exist, so the projection declares none rather than claiming raw frames.
     expect(result.trace.redaction.screenshots).toBe("n/a");
     expect(result.trace.counts.screenshots).toBe(0);
@@ -306,26 +370,30 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
       launches += 1;
       return makeFakeBrowser().browser;
     };
-    await expect(runScriptedBrowserSession({
-      appUrl: "http://127.0.0.1:9/",
-      journey: demoJourney(),
-      surface: { ...surface, id: "../escape" } as unknown as typeof surface,
-      persona,
-      timeoutMs: 5_000,
-      artifactRoot,
-      launchBrowser
-    })).rejects.toThrow(/path segment/i);
+    await expect(
+      runScriptedBrowserSession({
+        appUrl: "http://127.0.0.1:9/",
+        journey: demoJourney(),
+        surface: { ...surface, id: "../escape" } as unknown as typeof surface,
+        persona,
+        timeoutMs: 5_000,
+        artifactRoot,
+        launchBrowser,
+      }),
+    ).rejects.toThrow(/path segment/i);
     const maliciousJourney = demoJourney();
     maliciousJourney.steps[0] = { ...maliciousJourney.steps[0]!, id: "nested\\escape" };
-    await expect(runScriptedBrowserSession({
-      appUrl: "http://127.0.0.1:9/",
-      journey: maliciousJourney,
-      surface,
-      persona,
-      timeoutMs: 5_000,
-      artifactRoot,
-      launchBrowser
-    })).rejects.toThrow(/path segment/i);
+    await expect(
+      runScriptedBrowserSession({
+        appUrl: "http://127.0.0.1:9/",
+        journey: maliciousJourney,
+        surface,
+        persona,
+        timeoutMs: 5_000,
+        artifactRoot,
+        launchBrowser,
+      }),
+    ).rejects.toThrow(/path segment/i);
     expect(launches).toBe(0);
   });
 
@@ -337,18 +405,20 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
     await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
     await symlink(outside, path.join(selected, "screenshots"), "dir");
     let launches = 0;
-    await expect(runScriptedBrowserSession({
-      appUrl: "http://127.0.0.1:9/",
-      journey: demoJourney(),
-      surface,
-      persona,
-      timeoutMs: 5_000,
-      artifactRoot: selected,
-      launchBrowser: async () => {
-        launches += 1;
-        return makeFakeBrowser().browser;
-      }
-    })).rejects.toThrow(/symbolic links/i);
+    await expect(
+      runScriptedBrowserSession({
+        appUrl: "http://127.0.0.1:9/",
+        journey: demoJourney(),
+        surface,
+        persona,
+        timeoutMs: 5_000,
+        artifactRoot: selected,
+        launchBrowser: async () => {
+          launches += 1;
+          return makeFakeBrowser().browser;
+        },
+      }),
+    ).rejects.toThrow(/symbolic links/i);
     expect(launches).toBe(0);
     expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
   });
@@ -365,22 +435,26 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
     let closes = 0;
     const browser: ScriptedBrowserLike = {
       ...fake.browser,
-      close: async () => { closes += 1; }
+      close: async () => {
+        closes += 1;
+      },
     };
 
-    await expect(runScriptedBrowserSession({
-      appUrl: "http://127.0.0.1:9/",
-      journey: demoJourney(),
-      surface,
-      persona,
-      timeoutMs: 5_000,
-      artifactRoot: alias,
-      launchBrowser: async () => {
-        await rm(alias);
-        await symlink(second, alias, "dir");
-        return browser;
-      }
-    })).rejects.toThrow(/changed physical destination/i);
+    await expect(
+      runScriptedBrowserSession({
+        appUrl: "http://127.0.0.1:9/",
+        journey: demoJourney(),
+        surface,
+        persona,
+        timeoutMs: 5_000,
+        artifactRoot: alias,
+        launchBrowser: async () => {
+          await rm(alias);
+          await symlink(second, alias, "dir");
+          return browser;
+        },
+      }),
+    ).rejects.toThrow(/changed physical destination/i);
     expect(closes).toBe(1);
     expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
     await expect(access(path.join(second, "traces", "desktop.json"))).rejects.toThrow();
@@ -404,7 +478,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
             if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
             throw error;
           }
-        }
+        },
       });
       const result = await runScriptedBrowserSession({
         appUrl,
@@ -413,7 +487,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
       expect(result.status).toBe("failed");
       expect(await readFile(outside, "utf8")).toBe("unchanged\n");
@@ -433,7 +507,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         persona,
         timeoutMs: 10_000,
         artifactRoot,
-        launchBrowser: async () => browser
+        launchBrowser: async () => browser,
       });
 
       expect(state.url).toBe(appUrl);
@@ -443,7 +517,7 @@ describe("runScriptedBrowserSession (completion semantics through the REAL step 
         "[provisioned-subject]/",
         "[provisioned-subject]/",
         "[provisioned-subject]/",
-        "[provisioned-subject]/"
+        "[provisioned-subject]/",
       ]);
 
       const nativeText = await readFile(path.join(artifactRoot, "traces", "desktop.json"), "utf8");

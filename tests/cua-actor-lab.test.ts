@@ -19,7 +19,7 @@ import type {
   CuaLoopResult,
   CuaObservation,
   CuaProvider,
-  CuaTurn
+  CuaTurn,
 } from "../src/computer-use.js";
 import {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -33,24 +33,29 @@ import {
   type CuaActorLabHooks,
   participantStatusForCredibility,
   CLOSING_LINE_DIRECTIVE,
-  composeLaneInstructions
+  composeLaneInstructions,
 } from "../src/cua-actor-lab.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
-  E2BDesktopSandbox
+  E2BDesktopSandbox,
 } from "../src/e2b-desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms-sandbox-catch.js";
 import { recipientInboxUrl } from "../src/comms-inbox.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
-import { renderObserver, serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
+import {
+  renderObserver,
+  serveObserver,
+  type ObserverResult,
+  type ObserverServer,
+} from "../src/observer.js";
 import type { FetchLike } from "../src/openai-responses-cu.js";
 import type {
   BrowserLabScoringContext,
   RunAdapterScore,
   RunBundle,
-  RunFeedbackCandidate
+  RunFeedbackCandidate,
 } from "../src/index.js";
 import { containsSensitive } from "../src/redaction.js";
 import { verifyRun } from "../src/run.js";
@@ -82,7 +87,12 @@ function scriptedFetch(responses: unknown[]): FetchLike {
   return async (_url, _init) => {
     const value = responses[Math.min(i, responses.length - 1)];
     i += 1;
-    return { ok: true, status: 200, text: async () => JSON.stringify(value), json: async () => value };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
   };
 }
 
@@ -90,23 +100,29 @@ interface FakeSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
 
-function makeFakeSandbox(options: {
-  withOpen?: boolean;
-  commandHandler?: (command: string) => { stdout?: string; exitCode?: number } | undefined;
-  /**
-   * Throws a CommandExitError-shaped error (real-SDK-accurate: the real @e2b/desktop Sandbox
-   * throws on any non-zero exit rather than returning one) for commands the predicate matches.
-   * Mirrors tests/e2b-desktop-type-fallback.test.ts's makeFakeDesktop convention so both the
-   * throwing shape and the structural non-throwing shape (commandHandler) are coverable from
-   * the same fake.
-   */
-  commandThrow?: (command: string) => { exitCode?: number; stderr?: string; stdout?: string; message?: string } | undefined;
-} = {}): FakeSandbox {
+function makeFakeSandbox(
+  options: {
+    withOpen?: boolean;
+    commandHandler?: (command: string) => { stdout?: string; exitCode?: number } | undefined;
+    /**
+     * Throws a CommandExitError-shaped error (real-SDK-accurate: the real @e2b/desktop Sandbox
+     * throws on any non-zero exit rather than returning one) for commands the predicate matches.
+     * Mirrors tests/e2b-desktop-type-fallback.test.ts's makeFakeDesktop convention so both the
+     * throwing shape and the structural non-throwing shape (commandHandler) are coverable from
+     * the same fake.
+     */
+    commandThrow?: (
+      command: string,
+    ) => { exitCode?: number; stderr?: string; stdout?: string; message?: string } | undefined;
+  } = {},
+): FakeSandbox {
   let frame = 0;
   const calls: Array<[string, ...unknown[]]> = [];
-  const record = (name: string) => async (...args: unknown[]): Promise<void> => {
-    calls.push([name, ...args]);
-  };
+  const record =
+    (name: string) =>
+    async (...args: unknown[]): Promise<void> => {
+      calls.push([name, ...args]);
+    };
   const sandbox = {
     calls,
     sandboxId: "fake-sandbox-001",
@@ -121,23 +137,29 @@ function makeFakeSandbox(options: {
             name: "CommandExitError",
             ...(t.exitCode === undefined ? {} : { exitCode: t.exitCode }),
             ...(t.stderr === undefined ? {} : { stderr: t.stderr }),
-            ...(t.stdout === undefined ? {} : { stdout: t.stdout })
+            ...(t.stdout === undefined ? {} : { stdout: t.stdout }),
           });
         }
         return options.commandHandler?.(command) ?? { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       // Raw data (never String()-coerced): existing callers all write string script content
       // (unchanged behavior), and the local-tree upload path writes a real ArrayBuffer that
       // tests need to inspect directly (byteLength, instanceof ArrayBuffer).
-      write: async (filePath: string, data: string | ArrayBuffer, writeOpts?: { requestTimeoutMs?: number; useOctetStream?: boolean }) => {
+      write: async (
+        filePath: string,
+        data: string | ArrayBuffer,
+        writeOpts?: { requestTimeoutMs?: number; useOctetStream?: boolean },
+      ) => {
         calls.push(["files.write", filePath, data, writeOpts]);
         return undefined;
-      }
+      },
     },
     launch: record("launch") as (application: string, uri?: string) => Promise<void>,
-    ...(options.withOpen === false ? {} : { open: record("open") as (fileOrUrl: string) => Promise<void> }),
+    ...(options.withOpen === false
+      ? {}
+      : { open: record("open") as (fileOrUrl: string) => Promise<void> }),
     async screenshot() {
       frame += 1;
       return makePng(frame);
@@ -150,7 +172,7 @@ function makeFakeSandbox(options: {
       getUrl: () => "https://stream.invalid/fake-auth-key",
       start: async () => {
         calls.push(["stream.start"]);
-      }
+      },
     },
     // E2BDesktopLike actuation surface (driven by the real executor).
     leftClick: record("leftClick"),
@@ -161,7 +183,7 @@ function makeFakeSandbox(options: {
     scroll: record("scroll"),
     write: record("write"),
     press: record("press"),
-    drag: record("drag")
+    drag: record("drag"),
   };
   return sandbox as unknown as FakeSandbox;
 }
@@ -172,7 +194,7 @@ function expectSafeBrowserOpen(calls: Array<[string, ...unknown[]]>, url: string
     (call) =>
       call[0] === "commands.run" &&
       String(call[1]).includes(`target_url='${quotedUrl}'`) &&
-      String(call[1]).includes("launch_browser google-chrome google-chrome")
+      String(call[1]).includes("launch_browser google-chrome google-chrome"),
   );
   expect(index).toBeGreaterThan(-1);
   return index;
@@ -192,9 +214,13 @@ function makeFakeModule(sandbox: FakeSandbox): {
   const killed: string[] = [];
   const module: E2BDesktopModule = {
     Sandbox: {
-      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+      create: async (
+        templateOrOptions: string | E2BDesktopCreateOptions,
+        maybeOptions?: E2BDesktopCreateOptions,
+      ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
-        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        const createOptions =
+          typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         templates.push(template);
         created.push(createOptions);
         return sandbox;
@@ -202,26 +228,64 @@ function makeFakeModule(sandbox: FakeSandbox): {
       kill: async (sandboxId) => {
         killed.push(sandboxId);
         return true;
-      }
-    }
+      },
+    },
   };
   return { module, created, templates, killed };
 }
 
 const TWO_TURN_SESSION = [
-  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
-  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
+  {
+    id: "resp_1",
+    output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }],
+  },
+  {
+    id: "resp_2",
+    output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+  },
 ];
 const SUCCESS_WITH_NEGATED_BLOCKER_SESSION = [
-  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
-  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Success: the target state is visible. No blocker encountered." }] }] }
+  {
+    id: "resp_1",
+    output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }],
+  },
+  {
+    id: "resp_2",
+    output: [
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: "Success: the target state is visible. No blocker encountered.",
+          },
+        ],
+      },
+    ],
+  },
 ];
 // The 2026-08-19 drawDB run (#476): three tables created, then "could not connect the two tables
 // because every new table appeared directly on top of the previous one". goal_satisfied, with a
 // final message that is a blocker report.
 const BLOCKED_AFTER_PARTIAL_SESSION = [
-  { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
-  { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Blocked after partial completion. Created three tables. Could not connect the two tables because every new table appeared directly on top of the previous one, and repeated attempts to drag them apart did not separate them." }] }] }
+  {
+    id: "resp_1",
+    output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }],
+  },
+  {
+    id: "resp_2",
+    output: [
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: "Blocked after partial completion. Created three tables. Could not connect the two tables because every new table appeared directly on top of the previous one, and repeated attempts to drag them apart did not separate them.",
+          },
+        ],
+      },
+    ],
+  },
 ];
 const BROWSER_ADAPTER_NAMESPACE = "browser-adapter-proof";
 
@@ -235,39 +299,53 @@ function failingBrowserScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     data: {
       backend: ctx.backend,
       laneCount: ctx.laneCount,
-      productAcceptance: "missing"
-    }
+      productAcceptance: "missing",
+    },
   };
 }
 
 function browserFeedback(ctx: BrowserLabScoringContext): RunFeedbackCandidate[] {
-  return [{
-    schema: "humanish.feedback-candidate.v1",
-    id: `${BROWSER_ADAPTER_NAMESPACE}-${ctx.runId}`,
-    run_id: ctx.runId,
-    stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
-    adapter_id: BROWSER_ADAPTER_NAMESPACE,
-    scenario_id: ctx.labId,
-    persona_id: ctx.bundle.simulations[0]?.personaId ?? "unknown",
-    actor: "unknown",
-    substrate: "e2b-desktop",
-    failure_owner: "actor",
-    summary: "Browser actor reached a terminal session but did not provide product-visible completion evidence.",
-    expected: "The actor completes the declared browser task and leaves product-visible evidence.",
-    actual: "The generic actor session was terminal, but the adapter rubric found no product completion evidence.",
-    evidence: [{ path: "review.md", kind: "review", note: "Review summary includes the adapter-owned product acceptance gap." }],
-    redaction: { status: "passed", notes: "Synthetic adapter feedback references local public-safe artifacts only." },
-    idempotency_key: `${BROWSER_ADAPTER_NAMESPACE}:${ctx.runId}:missing-product-evidence`,
-    proposed_next_state: "actor-auth",
-    acceptance_proof: [`humanish verify --run ${ctx.runId} --json`],
-    adapter: {
-      namespace: BROWSER_ADAPTER_NAMESPACE,
-      data: {
-        productAcceptance: "missing",
-        suggestedOwner: "adopter-adapter"
-      }
-    }
-  }];
+  return [
+    {
+      schema: "humanish.feedback-candidate.v1",
+      id: `${BROWSER_ADAPTER_NAMESPACE}-${ctx.runId}`,
+      run_id: ctx.runId,
+      stream_id: ctx.bundle.streams[0]?.id ?? "stream-001",
+      adapter_id: BROWSER_ADAPTER_NAMESPACE,
+      scenario_id: ctx.labId,
+      persona_id: ctx.bundle.simulations[0]?.personaId ?? "unknown",
+      actor: "unknown",
+      substrate: "e2b-desktop",
+      failure_owner: "actor",
+      summary:
+        "Browser actor reached a terminal session but did not provide product-visible completion evidence.",
+      expected:
+        "The actor completes the declared browser task and leaves product-visible evidence.",
+      actual:
+        "The generic actor session was terminal, but the adapter rubric found no product completion evidence.",
+      evidence: [
+        {
+          path: "review.md",
+          kind: "review",
+          note: "Review summary includes the adapter-owned product acceptance gap.",
+        },
+      ],
+      redaction: {
+        status: "passed",
+        notes: "Synthetic adapter feedback references local public-safe artifacts only.",
+      },
+      idempotency_key: `${BROWSER_ADAPTER_NAMESPACE}:${ctx.runId}:missing-product-evidence`,
+      proposed_next_state: "actor-auth",
+      acceptance_proof: [`humanish verify --run ${ctx.runId} --json`],
+      adapter: {
+        namespace: BROWSER_ADAPTER_NAMESPACE,
+        data: {
+          productAcceptance: "missing",
+          suggestedOwner: "adopter-adapter",
+        },
+      },
+    },
+  ];
 }
 
 function cuaConfig(appUrl = "http://127.0.0.1:3000/"): LabConfig {
@@ -276,14 +354,16 @@ function cuaConfig(appUrl = "http://127.0.0.1:3000/"): LabConfig {
     id: "cua-routing-proof",
     title: "CUA routing proof",
     subject: { source: "app-url", appUrl },
-    actors: [{
-      type: "openai-computer-use",
-      persona: "first-time-visitor",
-      mission: "Explore the app and stop.",
-      laneFocus: { instruction: "Focus on the landing page." }
-    }],
+    actors: [
+      {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+        laneFocus: { instruction: "Focus on the landing page." },
+      },
+    ],
     execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] } },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -302,7 +382,12 @@ function cloneCommandHandler(overrides?: (command: string) => { stdout?: string 
   };
 }
 
-function cloneCuaConfig(extra?: { env?: string[]; readyTimeoutMs?: number; state?: unknown; keep?: boolean }): LabConfig {
+function cloneCuaConfig(extra?: {
+  env?: string[];
+  readyTimeoutMs?: number;
+  state?: unknown;
+  keep?: boolean;
+}): LabConfig {
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
     id: "cua-clone-proof",
@@ -316,14 +401,20 @@ function cloneCuaConfig(extra?: { env?: string[]; readyTimeoutMs?: number; state
         build: "pnpm build",
         start: "pnpm start",
         url: "http://127.0.0.1:3000/",
-        ...(extra?.readyTimeoutMs === undefined ? {} : { readyTimeoutMs: extra.readyTimeoutMs })
+        ...(extra?.readyTimeoutMs === undefined ? {} : { readyTimeoutMs: extra.readyTimeoutMs }),
       },
       ...(extra?.env ? { env: extra.env } : {}),
-      ...(extra?.state === undefined ? {} : { state: extra.state })
+      ...(extra?.state === undefined ? {} : { state: extra.state }),
     },
-    actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+    actors: [
+      {
+        type: "openai-computer-use",
+        persona: "first-time-visitor",
+        mission: "Explore the app and stop.",
+      },
+    ],
     execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -336,20 +427,20 @@ describe("lab routing (app-url → cua)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "s",
       subject: { source: "this-repo" },
-      actors: [{ type: "synthetic-persona" }]
+      actors: [{ type: "synthetic-persona" }],
     });
     const clone = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "c",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "humanish-setup" }]
+      actors: [{ type: "humanish-setup" }],
     });
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "m",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
     if (!synthetic.ok || !clone.ok || !meta.ok) throw new Error("fixture configs must parse");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
@@ -366,7 +457,7 @@ describe("lab routing (app-url → cua)", () => {
       id: "m2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
       actors: [{ type: "codex-app-server" }],
-      execution: { target: "e2b-desktop" }
+      execution: { target: "e2b-desktop" },
     });
     if (!meta.ok) throw new Error("fixture must parse");
     expect(selectLabBackend(meta.config)).toBe("meta");
@@ -375,7 +466,7 @@ describe("lab routing (app-url → cua)", () => {
       schema: LAB_CONFIG_SCHEMA,
       id: "s2",
       subject: { source: "clone", repos: ["example-org/example-app"] },
-      actors: [{ type: "openai-computer-use" }]
+      actors: [{ type: "openai-computer-use" }],
     });
     if (!smoke.ok) throw new Error("fixture must parse");
     expect(selectLabBackend(smoke.config)).toBe("smoke");
@@ -384,85 +475,120 @@ describe("lab routing (app-url → cua)", () => {
 
 describe("desktop-cli runtime prerequisites (#515)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   function configFor(install?: string): LabConfig {
     const parsed = parseLabConfig({
       ...cuaConfig(),
       subject: {
         source: "desktop-cli",
-        product: { name: "sample-cli", publicSurfaces: ["https://example.com/sample-cli"], ...(install === undefined ? {} : { install }) }
-      }
+        product: {
+          name: "sample-cli",
+          publicSurfaces: ["https://example.com/sample-cli"],
+          ...(install === undefined ? {} : { install }),
+        },
+      },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }
 
   function scriptIndex(sandbox: FakeSandbox, step: string): number {
-    return sandbox.calls.findIndex(([name, file]) => name === "files.write" && String(file).endsWith(`${step}/run.sh`));
+    return sandbox.calls.findIndex(
+      ([name, file]) => name === "files.write" && String(file).endsWith(`${step}/run.sh`),
+    );
   }
 
   it.each([
     { label: "participant-owned installation", install: undefined, runtime: true },
-    { label: "declared npm installation", install: "sudo -n npm install -g sample-cli", runtime: true },
-    { label: "declared Python installation", install: "pip install sample-cli", runtime: false }
-  ])("prepares $label before the participant and keeps product installation explicit", async ({ install, runtime }) => {
-    const config = configFor(install);
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module, created, killed } = makeFakeModule(sandbox);
-    let sessionCallIndex = -1;
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
-      env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-      loadDesktopModule: async () => module,
-      runSession: async (options) => {
-        sessionCallIndex = sandbox.calls.length;
-        return runCuaActorSession({ ...options, openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+    {
+      label: "declared npm installation",
+      install: "sudo -n npm install -g sample-cli",
+      runtime: true,
+    },
+    { label: "declared Python installation", install: "pip install sample-cli", runtime: false },
+  ])(
+    "prepares $label before the participant and keeps product installation explicit",
+    async ({ install, runtime }) => {
+      const config = configFor(install);
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module, created, killed } = makeFakeModule(sandbox);
+      let sessionCallIndex = -1;
+      const result = await runCuaActorLab({
+        cwd,
+        config,
+        dryRun: false,
+        hooks: {
+          env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+          loadDesktopModule: async () => module,
+          runSession: async (options) => {
+            sessionCallIndex = sandbox.calls.length;
+            return runCuaActorSession({
+              ...options,
+              openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            });
+          },
+        },
+      });
+      expect(result.ok).toBe(true);
+      expect(created).toHaveLength(1);
+      expect(created[0]?.envs).toBeUndefined();
+      expect(killed).toEqual([sandbox.sandboxId]);
+      const terminalIndex = scriptIndex(sandbox, "desktop-cli-terminal");
+      expect(terminalIndex).toBeGreaterThan(-1);
+      expect(terminalIndex).toBeLessThan(sessionCallIndex);
+      const runtimeIndex = scriptIndex(sandbox, "desktop-cli-runtime-node");
+      if (runtime) {
+        expect(runtimeIndex).toBeGreaterThan(-1);
+        expect(runtimeIndex).toBeLessThan(terminalIndex);
+        // Use the same checksum-pinned archive and global npm prefix already shell-tested by the
+        // terminal route, including its mutation-free fast path for a working custom runtime.
+        expect(sandbox.calls[runtimeIndex]?.[2]).toContain(TERMINAL_NODE_BOOTSTRAP_COMMAND);
+      } else {
+        expect(runtimeIndex).toBe(-1);
       }
-    } });
-    expect(result.ok).toBe(true);
-    expect(created).toHaveLength(1);
-    expect(created[0]?.envs).toBeUndefined();
-    expect(killed).toEqual([sandbox.sandboxId]);
-    const terminalIndex = scriptIndex(sandbox, "desktop-cli-terminal");
-    expect(terminalIndex).toBeGreaterThan(-1);
-    expect(terminalIndex).toBeLessThan(sessionCallIndex);
-    const runtimeIndex = scriptIndex(sandbox, "desktop-cli-runtime-node");
-    if (runtime) {
-      expect(runtimeIndex).toBeGreaterThan(-1);
-      expect(runtimeIndex).toBeLessThan(terminalIndex);
-      // Use the same checksum-pinned archive and global npm prefix already shell-tested by the
-      // terminal route, including its mutation-free fast path for a working custom runtime.
-      expect(sandbox.calls[runtimeIndex]?.[2]).toContain(TERMINAL_NODE_BOOTSTRAP_COMMAND);
-    } else {
-      expect(runtimeIndex).toBe(-1);
-    }
-    const installIndex = scriptIndex(sandbox, "desktop-cli-install");
-    if (install === undefined) {
-      expect(installIndex).toBe(-1);
-      expect(config.subject.product?.install).toBeUndefined();
-    } else {
-      expect(installIndex).toBeGreaterThan(runtimeIndex);
-      expect(installIndex).toBeLessThan(terminalIndex);
-      expect(sandbox.calls[installIndex]?.[2]).toContain(`( ${install} )`);
-    }
-    expect(sandbox.calls.some(([name]) => name === "open")).toBe(false);
-  });
+      const installIndex = scriptIndex(sandbox, "desktop-cli-install");
+      if (install === undefined) {
+        expect(installIndex).toBe(-1);
+        expect(config.subject.product?.install).toBeUndefined();
+      } else {
+        expect(installIndex).toBeGreaterThan(runtimeIndex);
+        expect(installIndex).toBeLessThan(terminalIndex);
+        expect(sandbox.calls[installIndex]?.[2]).toContain(`( ${install} )`);
+      }
+      expect(sandbox.calls.some(([name]) => name === "open")).toBe(false);
+    },
+  );
 
   it("fails before opening a terminal or starting a participant if the no-install runtime fails", async () => {
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler((command) =>
-      command.includes("desktop-cli-runtime-node/status") ? { stdout: "1" } : undefined
-    ) });
+    const sandbox = makeFakeSandbox({
+      commandHandler: cloneCommandHandler((command) =>
+        command.includes("desktop-cli-runtime-node/status") ? { stdout: "1" } : undefined,
+      ),
+    });
     const { module, killed } = makeFakeModule(sandbox);
     let sessions = 0;
-    const result = await runCuaActorLab({ cwd, config: configFor(), dryRun: false, hooks: {
-      env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
-      loadDesktopModule: async () => module,
-      runSession: async (options) => {
-        sessions += 1;
-        return runCuaActorSession({ ...options, openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-      }
-    } });
+    const result = await runCuaActorLab({
+      cwd,
+      config: configFor(),
+      dryRun: false,
+      hooks: {
+        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) => {
+          sessions += 1;
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
+    });
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("desktop-cli runtime bootstrap failed");
     expect(sessions).toBe(0);
@@ -473,20 +599,30 @@ describe("desktop-cli runtime prerequisites (#515)", () => {
 });
 
 describe("runCuaActorLab", () => {
-  it.each(["missing-artifact", "missing-run"] as const)("classifies the real Observer's %s refusal as invalid evidence", async (kind) => {
-    const result = await runCuaActorLab({ cwd, config: cuaConfig(), dryRun: true, hooks: {
-      renderObserverFn: async (project, runId, options) => {
-        const runDir = path.join(project, ".humanish", "runs", runId);
-        if (kind === "missing-artifact") await rm(path.join(runDir, "review.json"));
-        else await rm(runDir, { recursive: true });
-        return renderObserver(project, runId, options);
-      }
-    } });
-    expect(result.ok).toBe(false);
-    expect(result.observer?.ok).toBe(false);
-    expect(result.observer?.error?.code).toBe(kind === "missing-artifact" ? "HUMANISH_INVALID_RUN_BUNDLE" : "HUMANISH_RUN_NOT_FOUND");
-    expect(result.diagnostics).toEqual({ category: "evidence_invalid" });
-  });
+  it.each(["missing-artifact", "missing-run"] as const)(
+    "classifies the real Observer's %s refusal as invalid evidence",
+    async (kind) => {
+      const result = await runCuaActorLab({
+        cwd,
+        config: cuaConfig(),
+        dryRun: true,
+        hooks: {
+          renderObserverFn: async (project, runId, options) => {
+            const runDir = path.join(project, ".humanish", "runs", runId);
+            if (kind === "missing-artifact") await rm(path.join(runDir, "review.json"));
+            else await rm(runDir, { recursive: true });
+            return renderObserver(project, runId, options);
+          },
+        },
+      });
+      expect(result.ok).toBe(false);
+      expect(result.observer?.ok).toBe(false);
+      expect(result.observer?.error?.code).toBe(
+        kind === "missing-artifact" ? "HUMANISH_INVALID_RUN_BUNDLE" : "HUMANISH_RUN_NOT_FOUND",
+      );
+      expect(result.diagnostics).toEqual({ category: "evidence_invalid" });
+    },
+  );
 
   it("forwards the public output limit into the real provider and retained incomplete trace", async () => {
     const config = cuaConfig();
@@ -494,12 +630,22 @@ describe("runCuaActorLab", () => {
     delete config.review; // Omitted config uses the separate default analysis budget.
     const sandbox = makeFakeSandbox();
     const { module, created, killed } = makeFakeModule(sandbox);
-    const wire = JSON.parse(await readFile(new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url), "utf8"));
+    const wire = JSON.parse(
+      await readFile(
+        new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url),
+        "utf8",
+      ),
+    );
     let requests = 0;
     vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
       expect(JSON.parse(init.body).max_output_tokens).toBe(16);
       requests += 1;
-      return { ok: true, status: 200, text: async () => JSON.stringify(wire), json: async () => wire };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wire),
+        json: async () => wire,
+      };
     });
     const analyze = vi.fn(async (analysisCwd: string, runId: string) => {
       expect(killed).toHaveLength(1);
@@ -510,20 +656,35 @@ describe("runCuaActorLab", () => {
       expect(source.streams[0].actor.status).toBe("incomplete");
       return { state: "failed" as const, reason: "analysis_validation_failed" };
     });
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, automaticAnalysis: { run: analyze }, hooks: {
-      env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" }, loadDesktopModule: async () => module
-    } }).finally(() => vi.unstubAllGlobals());
+    const result = await runCuaActorLab({
+      cwd,
+      config,
+      dryRun: false,
+      automaticAnalysis: { run: analyze },
+      hooks: {
+        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+        loadDesktopModule: async () => module,
+      },
+    }).finally(() => vi.unstubAllGlobals());
     expect(analyze).toHaveBeenCalledOnce();
-    expect(result.automaticAnalysis).toEqual({ state: "failed", reason: "analysis_validation_failed" });
+    expect(result.automaticAnalysis).toEqual({
+      state: "failed",
+      reason: "analysis_validation_failed",
+    });
     expect(created).toHaveLength(1);
     expect(killed).toHaveLength(1);
     expect(requests).toBe(1);
     expect(result.session?.status).toBe("incomplete");
     expect(result.session?.stopCause).toBe("provider_output_limit");
     expect(result.lanes?.[0]?.session?.stopCause).toBe("provider_output_limit");
-    expect(result.diagnostics).toEqual({ category: "session_interrupted", stopCause: "provider_output_limit" });
+    expect(result.diagnostics).toEqual({
+      category: "session_interrupted",
+      stopCause: "provider_output_limit",
+    });
     expect(result.lanes?.[0]?.diagnostics).toEqual(result.diagnostics);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].actor.modelSettings.maxOutputTokens).toBe(16);
     expect(sandbox.calls.some(([name]) => name === "leftClick")).toBe(false);
   });
@@ -532,9 +693,17 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 0;
     let allocations = 0;
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
-      loadDesktopModule: async () => { allocations += 1; throw new Error("must not allocate"); }
-    } });
+    const result = await runCuaActorLab({
+      cwd,
+      config,
+      dryRun: false,
+      hooks: {
+        loadDesktopModule: async () => {
+          allocations += 1;
+          throw new Error("must not allocate");
+        },
+      },
+    });
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("maxOutputTokens");
     expect(allocations).toBe(0);
@@ -544,10 +713,21 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     config.actors[0]!.maxOutputTokens = 16;
     let called = 0;
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
-      runSession: async () => { called += 1; throw new Error("must not dispatch"); },
-      loadDesktopModule: async () => { called += 1; throw new Error("must not allocate"); }
-    } });
+    const result = await runCuaActorLab({
+      cwd,
+      config,
+      dryRun: false,
+      hooks: {
+        runSession: async () => {
+          called += 1;
+          throw new Error("must not dispatch");
+        },
+        loadDesktopModule: async () => {
+          called += 1;
+          throw new Error("must not allocate");
+        },
+      },
+    });
     expect(result.error?.message).toContain("custom runSession");
     expect(called).toBe(0);
   });
@@ -574,14 +754,16 @@ describe("runCuaActorLab", () => {
     expect(result.session).toBeUndefined();
     expect(result.observer?.ok).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.schema).toBe("humanish.run-bundle.v1");
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations[0].status).toBe("contract_proof_only");
     expect(bundle.review.verdict).toBe("contract_proof_only");
     expect(bundle.cwd).toBe("[target-cwd]");
     expect(bundle.streams[0].desktopGeometry).toEqual({
-      screen: { requested: { width: 1280, height: 800 } }
+      screen: { requested: { width: 1280, height: 800 } },
     });
     expect(bundle.streams[0].viewport).toBeUndefined();
   });
@@ -612,17 +794,20 @@ describe("runCuaActorLab", () => {
           preflightCalls += 1;
           unlinkSync(cwdAlias);
           symlinkSync(physicalB, cwdAlias, "dir");
-        }
-      }
+        },
+      },
     });
 
     expect(preflightCalls).toBe(1);
     expect(result.ok).toBe(true);
     expect(result.cwd).toBe(pinnedA);
-    await expect(readFile(path.join(physicalA, ".humanish", "runs", runId, "run.json"), "utf8"))
-      .resolves.toContain(`"runId": "${runId}"`);
-    expect(JSON.parse(await readFile(path.join(physicalA, ".humanish", "runs", "latest.json"), "utf8")).runId)
-      .toBe(runId);
+    await expect(
+      readFile(path.join(physicalA, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ).resolves.toContain(`"runId": "${runId}"`);
+    expect(
+      JSON.parse(await readFile(path.join(physicalA, ".humanish", "runs", "latest.json"), "utf8"))
+        .runId,
+    ).toBe(runId);
     expect(await readFile(decoyLatest, "utf8")).toBe(sentinel);
     expect(await readdir(decoyRuns)).toEqual(["latest.json"]);
 
@@ -638,8 +823,9 @@ describe("runCuaActorLab", () => {
     const writer = makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "lane-01" }, screenshots);
     await expect(writer("../sentinel.png", makePng(1))).rejects.toThrow(/path segment/i);
     await expect(writer("nested/frame.png", makePng(1))).rejects.toThrow(/path segment/i);
-    expect(() => makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "../lane" }, screenshots))
-      .toThrow(/path segment/i);
+    expect(() =>
+      makeLaneWriteScreenshot(preparedRoot, { screenshotDir: "../lane" }, screenshots),
+    ).toThrow(/path segment/i);
 
     const outside = path.join(cwd, "outside-frame.png");
     await writeFile(outside, "unchanged\n", "utf8");
@@ -673,8 +859,11 @@ describe("runCuaActorLab", () => {
       // desktop and writeScreenshot — only the network is faked.
       runSession: async (options) => {
         sessionOptionsSeen.push(options);
-        return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-      }
+        return runCuaActorSession({
+          ...options,
+          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        });
+      },
     };
 
     const outcome = await runLab(config, { cwd, cuaHooks: hooks });
@@ -713,7 +902,11 @@ describe("runCuaActorLab", () => {
 
     // Teardown happened even on success.
     expect(killed).toEqual(["fake-sandbox-001"]);
-    expect(result.sandbox).toEqual({ sandboxId: "fake-sandbox-001", killed: true, streamUrlPresent: true });
+    expect(result.sandbox).toEqual({
+      sandboxId: "fake-sandbox-001",
+      killed: true,
+      streamUrlPresent: true,
+    });
 
     // The persisted bundle fills the provider-neutral actor seam and keeps evidence local.
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -725,17 +918,19 @@ describe("runCuaActorLab", () => {
     // This fake does not expose runtime geometry. The bundle keeps the request but does not
     // falsify it as a measured CSS viewport.
     expect(bundle.streams[0].desktopGeometry).toMatchObject({
-      screen: { requested: { width: 1280, height: 800 } }
+      screen: { requested: { width: 1280, height: 800 } },
     });
-    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(expect.arrayContaining([
-      expect.stringContaining("requested geometry remains unverified"),
-      expect.stringContaining("stream.viewport is omitted")
-    ]));
+    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("requested geometry remains unverified"),
+        expect.stringContaining("stream.viewport is omitted"),
+      ]),
+    );
     expect(bundle.streams[0].viewport).toBeUndefined();
 
     // Screenshots were persisted (redacted upstream) and referenced relatively.
     const screenshotArtifacts = bundle.streams[0].artifacts.filter(
-      (artifact: { kind: string }) => artifact.kind === "screenshot"
+      (artifact: { kind: string }) => artifact.kind === "screenshot",
     );
     expect(screenshotArtifacts.length).toBeGreaterThan(0);
     const screenshotFiles = await readdir(path.join(runDir, "screenshots"));
@@ -763,22 +958,40 @@ describe("runCuaActorLab", () => {
       id: "cua-recording-startup-failure",
       title: "Recording startup failure",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { recording: { audio: false } } },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { recording: { audio: false } },
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const sandbox = makeFakeSandbox(); // Deliberately lacks files.read, like an older optional peer.
     const { module, killed } = makeFakeModule(sandbox);
-    const outcome = await runLab(parsed.config, { cwd, cuaHooks: {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-      loadDesktopModule: async () => module,
-      runSession: async options => runCuaActorSession({ ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-    } });
+    const outcome = await runLab(parsed.config, {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("continues without video"));
+    expect(outcome.result.warnings).toContainEqual(
+      expect.stringContaining("continues without video"),
+    );
     expect(killed).toEqual(["fake-sandbox-001"]);
   });
 
@@ -794,24 +1007,59 @@ describe("runCuaActorLab", () => {
           return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
         }
         if (command.includes("xwininfo -id")) {
-          return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n",
+          };
         }
         // Order matters: every probe command embeds the whole script, so match the JSON args first.
         if (command.includes('"mode":"fidelity"')) {
           return {
             exitCode: 0,
             stdout: JSON.stringify({
-              fidelity: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1", devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true },
-              targetId: "T1"
-            })
+              fidelity: {
+                userAgent:
+                  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1",
+                devicePixelRatio: 3,
+                innerWidth: 414,
+                innerHeight: 896,
+                maxTouchPoints: 5,
+                coarsePointer: true,
+              },
+              targetId: "T1",
+            }),
           };
         }
         if (command.includes("mobile-emulation-") && command.includes("tail -c")) {
-          return { exitCode: 0, stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Emulation.setTouchEmulationEnabled", "Emulation.setEmitTouchEventsForMouse", "Emulation.setUserAgentOverride", "Page.reload"], held: true, targetId: "T1" }) + "\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              JSON.stringify({
+                applied: [
+                  "Emulation.setDeviceMetricsOverride",
+                  "Emulation.setTouchEmulationEnabled",
+                  "Emulation.setEmitTouchEventsForMouse",
+                  "Emulation.setUserAgentOverride",
+                  "Page.reload",
+                ],
+                held: true,
+                targetId: "T1",
+              }) + "\n",
+          };
         }
         // The session's state observations read the emulated target: no drift.
         if (command.includes('"mode":"state"')) {
-          return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/", title: "app", text: "hello", scrollY: 0, targetId: "T1" }) };
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              url: "http://127.0.0.1:3000/",
+              title: "app",
+              text: "hello",
+              scrollY: 0,
+              targetId: "T1",
+            }),
+          };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
           return {
@@ -819,15 +1067,19 @@ describe("runCuaActorLab", () => {
             stdout: JSON.stringify({
               browserWindow: { x: 0, y: 0, width: 500, height: 896 },
               viewport: { width: 414, height: 800, deviceScaleFactor: 3 },
-              targetId: "T1"
-            })
+              targetId: "T1",
+            }),
           };
         }
         if (command.includes("browser_preference='chrome'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n",
+          };
         }
         return undefined;
-      }
+      },
     });
     const { module } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
@@ -835,9 +1087,19 @@ describe("runCuaActorLab", () => {
       id: "cua-mobile-fidelity",
       title: "Mobile fidelity",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } } },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } },
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
@@ -846,8 +1108,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -867,19 +1132,43 @@ describe("runCuaActorLab", () => {
     expect(holderScript).toContain('"deviceScaleFactor":3');
     expect(holderScript).toContain('"touch":true');
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].desktopGeometry.fidelity).toEqual({
       tier: "mobile-emulated",
-      requested: { width: 414, height: 896, deviceScaleFactor: 3, touch: true, userAgent: expect.stringContaining("iPhone") },
-      applied: ["Emulation.setDeviceMetricsOverride", "Emulation.setTouchEmulationEnabled", "Emulation.setEmitTouchEventsForMouse", "Emulation.setUserAgentOverride", "Page.reload"],
-      resolved: { userAgent: expect.stringContaining("iPhone"), devicePixelRatio: 3, innerWidth: 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true, source: "cdp" }
+      requested: {
+        width: 414,
+        height: 896,
+        deviceScaleFactor: 3,
+        touch: true,
+        userAgent: expect.stringContaining("iPhone"),
+      },
+      applied: [
+        "Emulation.setDeviceMetricsOverride",
+        "Emulation.setTouchEmulationEnabled",
+        "Emulation.setEmitTouchEventsForMouse",
+        "Emulation.setUserAgentOverride",
+        "Page.reload",
+      ],
+      resolved: {
+        userAgent: expect.stringContaining("iPhone"),
+        devicePixelRatio: 3,
+        innerWidth: 414,
+        innerHeight: 896,
+        maxTouchPoints: 5,
+        coarsePointer: true,
+        source: "cdp",
+      },
     });
     const geometryWarnings: string[] = bundle.streams[0].desktopGeometry.warnings ?? [];
     expect(geometryWarnings.filter((warning) => warning.includes("Mobile emulation"))).toEqual([]);
     // The advisory must reach the run result consumed by CLI/JSON callers even when every
     // fidelity read-back matches. Correct context flags do not certify repeated-tap behavior.
-    expect(outcome.result.warnings.filter((warning) => warning.includes("pointer-to-touch conversion"))).toEqual([
-      "Mobile emulation uses desktop pointer-to-touch conversion, which can differ for repeated taps. Confirm gesture failures with direct or native touch input before attributing them to the app."
+    expect(
+      outcome.result.warnings.filter((warning) => warning.includes("pointer-to-touch conversion")),
+    ).toEqual([
+      "Mobile emulation uses desktop pointer-to-touch conversion, which can differ for repeated taps. Confirm gesture failures with direct or native touch input before attributing them to the app.",
     ]);
   });
 
@@ -888,38 +1177,83 @@ describe("runCuaActorLab", () => {
   function laterTabSandbox(secondTabInnerWidth: number) {
     return makeFakeSandbox({
       commandHandler: (command) => {
-        if (command.includes("xdpyinfo")) return { exitCode: 0, stdout: "dimensions: 500x896 pixels (300x200 millimeters)\n" };
-        if (command.includes("find_chrome_window")) return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
-        if (command.includes("xwininfo -id")) return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n" };
+        if (command.includes("xdpyinfo"))
+          return { exitCode: 0, stdout: "dimensions: 500x896 pixels (300x200 millimeters)\n" };
+        if (command.includes("find_chrome_window"))
+          return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
+        if (command.includes("xwininfo -id"))
+          return {
+            exitCode: 0,
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 500\nHeight: 896\nMap State: IsViewable\n",
+          };
         if (command.includes('"mode":"fidelity"')) {
           const onSecondTab = command.includes('"targetId":"T2"');
           return {
             exitCode: 0,
             stdout: JSON.stringify({
-              fidelity: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1", devicePixelRatio: onSecondTab && secondTabInnerWidth !== 414 ? 1 : 3, innerWidth: onSecondTab ? secondTabInnerWidth : 414, innerHeight: 896, maxTouchPoints: 5, coarsePointer: true },
-              targetId: onSecondTab ? "T2" : "T1"
-            })
+              fidelity: {
+                userAgent:
+                  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148 Safari/604.1",
+                devicePixelRatio: onSecondTab && secondTabInnerWidth !== 414 ? 1 : 3,
+                innerWidth: onSecondTab ? secondTabInnerWidth : 414,
+                innerHeight: 896,
+                maxTouchPoints: 5,
+                coarsePointer: true,
+              },
+              targetId: onSecondTab ? "T2" : "T1",
+            }),
           };
         }
         if (command.includes("mobile-emulation-") && command.includes("tail -c")) {
           // The holder's log grows as tabs appear: the announce first, then one line per attach.
           return {
             exitCode: 0,
-            stdout: JSON.stringify({ applied: ["Emulation.setDeviceMetricsOverride", "Page.reload"], held: true, targetId: "T1" }) + "\n"
-              + JSON.stringify({ attached: "T2", sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"] }) + "\n"
+            stdout:
+              JSON.stringify({
+                applied: ["Emulation.setDeviceMetricsOverride", "Page.reload"],
+                held: true,
+                targetId: "T1",
+              }) +
+              "\n" +
+              JSON.stringify({
+                attached: "T2",
+                sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"],
+              }) +
+              "\n",
           };
         }
         if (command.includes('"mode":"state"')) {
-          return { exitCode: 0, stdout: JSON.stringify({ url: "http://127.0.0.1:3000/help", title: "help", text: "help", scrollY: 0, targetId: "T2" }) };
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              url: "http://127.0.0.1:3000/help",
+              title: "help",
+              text: "help",
+              scrollY: 0,
+              targetId: "T2",
+            }),
+          };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
-          return { exitCode: 0, stdout: JSON.stringify({ browserWindow: { x: 0, y: 0, width: 500, height: 896 }, viewport: { width: 414, height: 800, deviceScaleFactor: 3 }, targetId: "T1" }) };
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              browserWindow: { x: 0, y: 0, width: 500, height: 896 },
+              viewport: { width: 414, height: 800, deviceScaleFactor: 3 },
+              targetId: "T1",
+            }),
+          };
         }
         if (command.includes("browser_preference='chrome'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n",
+          };
         }
         return undefined;
-      }
+      },
     });
   }
   async function runLaterTabLane(sandbox: ReturnType<typeof makeFakeSandbox>) {
@@ -929,9 +1263,19 @@ describe("runCuaActorLab", () => {
       id: "cua-mobile-fidelity-drift",
       title: "Mobile fidelity drift",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } } },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { device: "mobile", browser: "chrome", fidelity: { mobileEmulation: true } },
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
@@ -940,26 +1284,44 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     return { outcome, bundle };
   }
 
   it("mobile emulation on a later tab (#623): a tab the page itself reports at the phone width is recorded on the bundle, with no drift warning", async () => {
     const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(414));
-    expect((outcome.result.warnings ?? []).filter((warning: string) => warning.includes("Mobile emulation drift"))).toEqual([]);
-    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toEqual([{ targetId: "T2", innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 }]);
+    expect(
+      (outcome.result.warnings ?? []).filter((warning: string) =>
+        warning.includes("Mobile emulation drift"),
+      ),
+    ).toEqual([]);
+    expect(bundle.streams[0].desktopGeometry.fidelity.laterTargets).toEqual([
+      { targetId: "T2", innerWidth: 414, devicePixelRatio: 3, maxTouchPoints: 5 },
+    ]);
     // The holder's own account of the later tab travels with the bundle (after its announce line).
-    expect(bundle.streams[0].desktopGeometry.fidelity.holderLog).toEqual([JSON.stringify({ attached: "T2", sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"] })]);
+    expect(bundle.streams[0].desktopGeometry.fidelity.holderLog).toEqual([
+      JSON.stringify({
+        attached: "T2",
+        sent: ["Emulation.setDeviceMetricsOverride", "Page.reload"],
+      }),
+    ]);
   });
 
   it("mobile emulation drift (#623): a later tab that reports the window width puts one warning on the lane, with the page's number", async () => {
     const { outcome, bundle } = await runLaterTabLane(laterTabSandbox(500));
-    const driftWarnings = (outcome.result.warnings ?? []).filter((warning: string) => warning.includes("Mobile emulation drift"));
+    const driftWarnings = (outcome.result.warnings ?? []).filter((warning: string) =>
+      warning.includes("Mobile emulation drift"),
+    );
     expect(driftWarnings).toHaveLength(1);
     expect(driftWarnings[0]).toContain("reports a 500 px viewport where 414 px was requested");
     expect(driftWarnings[0]).toContain("#623");
@@ -974,17 +1336,24 @@ describe("runCuaActorLab", () => {
       id: "cua-dwell-plumbing",
       title: "Dwell plumbing",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{
-        type: "openai-computer-use",
-        mission: "Watch the room.",
-        dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000 },
-        lanes: [
-          { id: "watcher", persona: "first-time-visitor", instruction: "Watch." },
-          { id: "leaver", persona: "first-time-visitor", instruction: "Watch, then leave.", dwell: { ms: 2_000, everyMs: 1_000, then: "stop" } }
-        ]
-      }],
+      actors: [
+        {
+          type: "openai-computer-use",
+          mission: "Watch the room.",
+          dwell: { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000 },
+          lanes: [
+            { id: "watcher", persona: "first-time-visitor", instruction: "Watch." },
+            {
+              id: "leaver",
+              persona: "first-time-visitor",
+              instruction: "Watch, then leave.",
+              dwell: { ms: 2_000, everyMs: 1_000, then: "stop" },
+            },
+          ],
+        },
+      ],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const seen: unknown[] = [];
@@ -995,18 +1364,28 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seen.push(options.dwell);
-          return runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const verified = await verifyRun(cwd, outcome.result.runId);
-    expect(outcome.result.ok, JSON.stringify(verified.checks.filter((check) => !check.ok))).toBe(true);
+    expect(outcome.result.ok, JSON.stringify(verified.checks.filter((check) => !check.ok))).toBe(
+      true,
+    );
     // The spread that carried it past the type checker is exactly why this test exists: an excess
     // property in a spread is never an error, so a dropped option is silent without it.
     expect(seen).toEqual([
-      { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" },
-      { ms: 2_000, everyMs: 1_000, then: "stop" }
+      {
+        when: { any: [{ id: "in-room", urlIncludes: "/room/" }] },
+        ms: 30_000,
+        everyMs: 10_000,
+        then: "continue",
+      },
+      { ms: 2_000, everyMs: 1_000, then: "stop" },
     ]);
   }, 30_000);
 
@@ -1017,26 +1396,48 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
         commands.push(command);
-        if (command.includes("ffmpeg -y")) return { exitCode: ffmpegExit, stdout: "", ...(ffmpegExit === 0 ? {} : { stderr: "ffmpeg: command not found" }) };
+        if (command.includes("ffmpeg -y"))
+          return {
+            exitCode: ffmpegExit,
+            stdout: "",
+            ...(ffmpegExit === 0 ? {} : { stderr: "ffmpeg: command not found" }),
+          };
         if (command.includes("browser_preference='chrome'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n",
+          };
         }
         return undefined;
-      }
+      },
     });
     return { sandbox, commands };
   }
-  async function runCameraLane(sandbox: ReturnType<typeof makeFakeSandbox>, policies: Record<string, unknown>) {
+  async function runCameraLane(
+    sandbox: ReturnType<typeof makeFakeSandbox>,
+    policies: Record<string, unknown>,
+  ) {
     const { module } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "cua-camera",
       title: "Participant camera",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Turn on the camera and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { browser: "chrome", media: { camera: { source: "synthetic" } } } },
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Turn on the camera and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { browser: "chrome", media: { camera: { source: "synthetic" } } },
+      },
       scenario: { mode: "live" },
-      policies
+      policies,
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
@@ -1045,8 +1446,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     return outcome;
@@ -1061,25 +1465,50 @@ describe("runCuaActorLab", () => {
     expect(ffmpeg).toBeGreaterThan(-1);
     expect(launch).toBeGreaterThan(ffmpeg);
     expect(commands[launch]).toContain("--use-fake-device-for-media-stream");
-    expect(commands[launch]).toContain("--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m");
+    expect(commands[launch]).toContain(
+      "--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m",
+    );
     expect(commands[launch]).not.toContain("--use-fake-ui-for-media-stream");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopBrowser.media).toEqual({
       camera: { source: "synthetic", file: "/dev/shm/humanish-media/camera.y4m" },
       permission: "prompt",
-      flags: ["--use-fake-device-for-media-stream", "--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m"]
+      flags: [
+        "--use-fake-device-for-media-stream",
+        "--use-file-for-fake-video-capture=/dev/shm/humanish-media/camera.y4m",
+      ],
     });
   });
 
   it("rejects a direct-library microphone source before desktop or model dispatch", async () => {
     const config = cuaConfig();
-    config.execution = { ...config.execution, desktop: { template: "synthetic-audio-template", media: { microphone: { source: "./room.wav" } } } };
-    let desktopLoads = 0, modelCalls = 0;
-    const result = await runCuaActorLab({ cwd, config, dryRun: false, hooks: {
-      env: {},
-      loadDesktopModule: async () => { desktopLoads++; throw new Error("must not load desktop"); },
-      runSession: async () => { modelCalls++; throw new Error("must not call model"); }
-    } });
+    config.execution = {
+      ...config.execution,
+      desktop: {
+        template: "synthetic-audio-template",
+        media: { microphone: { source: "./room.wav" } },
+      },
+    };
+    let desktopLoads = 0,
+      modelCalls = 0;
+    const result = await runCuaActorLab({
+      cwd,
+      config,
+      dryRun: false,
+      hooks: {
+        env: {},
+        loadDesktopModule: async () => {
+          desktopLoads++;
+          throw new Error("must not load desktop");
+        },
+        runSession: async () => {
+          modelCalls++;
+          throw new Error("must not call model");
+        },
+      },
+    });
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Microphone source-file injection is unsupported");
     expect(result.runId).toBe("not-created");
@@ -1093,7 +1522,9 @@ describe("runCuaActorLab", () => {
     expect(outcome.result.ok).toBe(true);
     const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
     expect(launch).toContain("--use-fake-ui-for-media-stream");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopBrowser.media.permission).toBe("granted");
     expect(bundle.desktopBrowser.media.flags).toContain("--use-fake-ui-for-media-stream");
   });
@@ -1102,7 +1533,9 @@ describe("runCuaActorLab", () => {
     const { sandbox, commands } = cameraSandbox(127);
     const outcome = await runCameraLane(sandbox, {});
     expect(outcome.result.ok).toBe(false);
-    expect(JSON.stringify(outcome.result.error)).toContain("synthetic camera feed could not be generated");
+    expect(JSON.stringify(outcome.result.error)).toContain(
+      "synthetic camera feed could not be generated",
+    );
     expect(commands.some((command) => command.includes("browser_preference='chrome'"))).toBe(false);
   });
 
@@ -1110,13 +1543,19 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
         if (command.includes("browser_preference='chrome'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n",
+          };
         }
         return undefined;
-      }
+      },
     });
     const { module, created } = makeFakeModule(sandbox);
-    const realCreate = module.Sandbox.create as unknown as (...args: unknown[]) => Promise<E2BDesktopSandbox>;
+    const realCreate = module.Sandbox.create as unknown as (
+      ...args: unknown[]
+    ) => Promise<E2BDesktopSandbox>;
     let attempts = 0;
     const failingOnce = async (...args: unknown[]): Promise<E2BDesktopSandbox> => {
       attempts += 1;
@@ -1131,9 +1570,15 @@ describe("runCuaActorLab", () => {
       id: "cua-create-retry",
       title: "Sandbox create retry",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { browser: "chrome" } },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const phases: string[] = [];
@@ -1144,14 +1589,19 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         onPhase: (event) => phases.push(event.type),
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     expect(attempts).toBe(2);
     expect(created).toHaveLength(1);
-    const retryWarnings = (outcome.result.warnings ?? []).filter((warning: string) => warning.includes("retried once after a transient provider error"));
+    const retryWarnings = (outcome.result.warnings ?? []).filter((warning: string) =>
+      warning.includes("retried once after a transient provider error"),
+    );
     expect(retryWarnings).toHaveLength(1);
     expect(retryWarnings[0]).toContain("[unimplemented] HTTP 404");
     // Cleanup evidence now comes from the guarded SDK error when a handle was acquired.
@@ -1173,9 +1623,15 @@ describe("runCuaActorLab", () => {
       id: "cua-create-no-retry",
       title: "Sandbox create, no retry",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
       execution: { target: "e2b-desktop", timeoutMs: 60_000 },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
@@ -1184,8 +1640,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
@@ -1198,10 +1657,14 @@ describe("runCuaActorLab", () => {
       commandHandler: (command) => {
         commands.push(command);
         if (command.includes("browser_preference='chrome'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\nHUMANISH_BROWSER_CDP_PORT=9222\n",
+          };
         }
         return undefined;
-      }
+      },
     });
     const { module } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
@@ -1209,9 +1672,19 @@ describe("runCuaActorLab", () => {
       id: "cua-mobile-fidelity-desktop-lane",
       title: "Mobile fidelity, desktop lane",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "desktop", browser: "chrome", fidelity: { mobileEmulation: true } } },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { device: "desktop", browser: "chrome", fidelity: { mobileEmulation: true } },
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
@@ -1220,27 +1693,42 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     const launch = commands.find((command) => command.includes("browser_preference='chrome'"))!;
     expect(launch).not.toContain("--user-agent=");
-    expect(sandbox.calls.some((call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"))).toBe(false);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(
+      sandbox.calls.some(
+        (call) => call[0] === "files.write" && String(call[1]).includes("mobile-emulation-"),
+      ),
+    ).toBe(false);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].desktopGeometry.fidelity).toBeUndefined();
-    expect(outcome.result.warnings.some((warning) => warning.includes("pointer-to-touch conversion"))).toBe(false);
+    expect(
+      outcome.result.warnings.some((warning) => warning.includes("pointer-to-touch conversion")),
+    ).toBe(false);
   });
 
   it("mobile emulation fails the lane closed when the launched browser is not Chromium", async () => {
     const sandbox = makeFakeSandbox({
       commandHandler: (command) => {
         if (command.includes("browser_preference='firefox'")) {
-          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=firefox\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "HUMANISH_BROWSER_RESOLVED=firefox\nHUMANISH_BROWSER_PID=4242\nHUMANISH_BROWSER_PROFILE_DIR=/tmp/p\n",
+          };
         }
         return undefined;
-      }
+      },
     });
     const { module, killed } = makeFakeModule(sandbox);
     const parsed = parseLabConfig({
@@ -1248,14 +1736,27 @@ describe("runCuaActorLab", () => {
       id: "cua-mobile-fidelity-firefox",
       title: "Mobile fidelity on Firefox",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { device: "mobile", browser: "firefox", fidelity: { mobileEmulation: true } } },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { device: "mobile", browser: "firefox", fidelity: { mobileEmulation: true } },
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     const outcome = await runLab(parsed.config, {
       cwd,
-      cuaHooks: { env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" }, loadDesktopModule: async () => module }
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+      },
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
@@ -1266,28 +1767,50 @@ describe("runCuaActorLab", () => {
   });
 
   it("stops a clipped browser before the participant session and still reclaims the desktop", async () => {
-    const sandbox = makeFakeSandbox({ commandHandler: (command) => {
-      if (command.includes("xdpyinfo")) return { exitCode: 0, stdout: "dimensions: 1280x800 pixels\n" };
-      if (command.includes("find_chrome_window")) return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
-      if (command.includes("xwininfo -id")) return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n" };
-      if (command.includes("browser_preference='default'")) return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
-      return undefined;
-    } });
+    const sandbox = makeFakeSandbox({
+      commandHandler: (command) => {
+        if (command.includes("xdpyinfo"))
+          return { exitCode: 0, stdout: "dimensions: 1280x800 pixels\n" };
+        if (command.includes("find_chrome_window"))
+          return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
+        if (command.includes("xwininfo -id"))
+          return {
+            exitCode: 0,
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n",
+          };
+        if (command.includes("browser_preference='default'"))
+          return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
+        return undefined;
+      },
+    });
     const { module, killed } = makeFakeModule(sandbox);
     let participantSessions = 0;
-    const outcome = await runLab(cuaConfig(), { cwd, cuaHooks: {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
-      loadDesktopModule: async () => module,
-      runSession: async () => { participantSessions++; throw new Error("participant must not start"); }
-    } });
+    const outcome = await runLab(cuaConfig(), {
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        runSession: async () => {
+          participantSessions++;
+          throw new Error("participant must not start");
+        },
+      },
+    });
     if (outcome.backend !== "cua") throw new Error("wrong route");
     expect(outcome.result.ok).toBe(false);
     expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
     expect(outcome.result.error?.message).toContain("Participant actions were not started");
     expect(participantSessions).toBe(0);
     expect(killed).toEqual(["fake-sandbox-001"]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
-    expect(bundle.streams[0].desktopGeometry.browserWindow).toMatchObject({ y: 32, height: 800, source: "xwininfo" });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.streams[0].desktopGeometry.browserWindow).toMatchObject({
+      y: 32,
+      height: 800,
+      source: "xwininfo",
+    });
     expect(bundle.streams[0].desktopGeometry.warnings.join(" ")).toContain("outside the captured");
   });
 
@@ -1301,22 +1824,26 @@ describe("runCuaActorLab", () => {
           return { exitCode: 0, stdout: "WINDOW_ID=7340035\n" };
         }
         if (command.includes("xwininfo -id")) {
-          return { exitCode: 0, stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n" };
+          return {
+            exitCode: 0,
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n",
+          };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
           return {
             exitCode: 0,
             stdout: JSON.stringify({
               browserWindow: { x: 0, y: 0, width: 1280, height: 800 },
-              viewport: { width: 1280, height: 661, deviceScaleFactor: 1 }
-            })
+              viewport: { width: 1280, height: 661, deviceScaleFactor: 1 },
+            }),
           };
         }
         if (command.includes("browser_preference='default'")) {
           return { exitCode: 0, stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
         }
         return undefined;
-      }
+      },
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(cuaConfig(), {
@@ -1327,39 +1854,40 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) }
-          })
-      }
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
 
-    const bundle = JSON.parse(await readFile(
-      path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
-      "utf8"
-    ));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].desktopGeometry).toEqual({
       screen: {
         requested: { width: 1280, height: 800 },
-        verified: { width: 1280, height: 800, source: "xdpyinfo" }
+        verified: { width: 1280, height: 800, source: "xdpyinfo" },
       },
       browserWindow: { x: 0, y: 0, width: 1280, height: 800, source: "xwininfo" },
-      viewport: { width: 1280, height: 661, deviceScaleFactor: 1, source: "cdp" }
+      viewport: { width: 1280, height: 661, deviceScaleFactor: 1, source: "cdp" },
     });
     expect(bundle.streams[0].viewport).toEqual({
       width: 1280,
       height: 661,
       deviceScaleFactor: 1,
-      isMobile: false
+      isMobile: false,
     });
-    expect(bundle.streams[0].viewport.height).not.toBe(bundle.streams[0].desktopGeometry.screen.requested.height);
+    expect(bundle.streams[0].viewport.height).not.toBe(
+      bundle.streams[0].desktopGeometry.screen.requested.height,
+    );
 
     // Duplicate measured geometry must remain exact; a forged stream-level mismatch is invalid.
     bundle.streams[0].viewport.height = 660;
     await writeFile(
       path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
       `${JSON.stringify(bundle, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     const inconsistent = await verifyRun(cwd, outcome.result.runId);
     expect(inconsistent.ok).toBe(false);
@@ -1371,7 +1899,7 @@ describe("runCuaActorLab", () => {
     await writeFile(
       path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"),
       `${JSON.stringify(bundle, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     const malformed = await verifyRun(cwd, outcome.result.runId);
     expect(malformed.ok).toBe(false);
@@ -1389,9 +1917,12 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(SUCCESS_WITH_NEGATED_BLOCKER_SESSION) }
-          })
-      }
+            openai: {
+              apiKey: "test-openai-key",
+              fetchFn: scriptedFetch(SUCCESS_WITH_NEGATED_BLOCKER_SESSION),
+            },
+          }),
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -1399,16 +1930,22 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
-    expect(result.warnings.some((warning) => warning.includes("NOT counted as a pass"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("NOT counted as a pass"))).toBe(
+      false,
+    );
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.review.verdict).toBe("pass");
-    expect(bundle.review.gaps).toEqual(["Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."]);
+    expect(bundle.review.gaps).toEqual([
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.",
+    ]);
   });
 
   const fakeBlockerSession = (
     reason: string,
-    opts?: { completionReason?: string; stopWhenMatched?: boolean }
+    opts?: { completionReason?: string; stopWhenMatched?: boolean },
   ): CuaLoopResult =>
     ({
       completionReason: opts?.completionReason ?? "goal_satisfied",
@@ -1416,22 +1953,39 @@ describe("runCuaActorLab", () => {
       trace: {
         items: opts?.stopWhenMatched
           ? [{ kind: "notice", status: "matched", title: "stopWhen matched: done" }]
-          : []
-      }
+          : [],
+      },
     }) as unknown as CuaLoopResult;
 
   it("flags a goal_satisfied lane whose OWN narrative reports a real blocker", () => {
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled")))
-      .toContain("could not complete");
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("I could not complete the task; the delete button was disabled"),
+      ),
+    ).toContain("could not complete");
   });
 
   it("tallies a refused goal_satisfied under the status the lane judged, one rule for N=1 and fan-out", () => {
-    expect(participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: true })).toBe("blocked");
-    expect(participantStatusForCredibility("passed", { noEngagement: true, selfReportedBlocker: false })).toBe("incomplete");
-    expect(participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: false })).toBe("passed");
+    expect(
+      participantStatusForCredibility("passed", { noEngagement: false, selfReportedBlocker: true }),
+    ).toBe("blocked");
+    expect(
+      participantStatusForCredibility("passed", { noEngagement: true, selfReportedBlocker: false }),
+    ).toBe("incomplete");
+    expect(
+      participantStatusForCredibility("passed", {
+        noEngagement: false,
+        selfReportedBlocker: false,
+      }),
+    ).toBe("passed");
     expect(participantStatusForCredibility("passed", undefined)).toBe("passed");
     // A session that did not claim a pass is not re-judged.
-    expect(participantStatusForCredibility("abandoned", { noEngagement: false, selfReportedBlocker: true })).toBe("abandoned");
+    expect(
+      participantStatusForCredibility("abandoned", {
+        noEngagement: false,
+        selfReportedBlocker: true,
+      }),
+    ).toBe("abandoned");
   });
 
   it("does NOT flag 'can't' + a perception verb: a display defect reported after the goal", () => {
@@ -1442,7 +1996,7 @@ describe("runCuaActorLab", () => {
       "Done. I renamed the table. I can't tell from the screen whether that rename is persisted or only in memory.",
       "The long task was cut off at \u201cPrepare notes for Friday proje\u201d rather than wrapping, so I could not read its full description.",
       "Clicking Save twice did not close edit mode or give confirmation, so I could not tell whether the rename had actually been saved.",
-      "I was unable to verify from the canvas alone that both tables were still there."
+      "I was unable to verify from the canvas alone that both tables were still there.",
     ]) {
       expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeUndefined();
       // They are still friction, and still count as such.
@@ -1454,10 +2008,12 @@ describe("runCuaActorLab", () => {
     const composed = composeLaneInstructions({
       mission: "Add two tables.",
       instruction: "keyboard only",
-      device: { name: "desktop", preset: DEVICE_PRESETS.desktop }
+      device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
     });
     expect(composed.instructions).toContain(CLOSING_LINE_DIRECTIVE);
-    expect(composed.instructions.indexOf("Lane focus: keyboard only")).toBeLessThan(composed.instructions.indexOf(CLOSING_LINE_DIRECTIVE));
+    expect(composed.instructions.indexOf("Lane focus: keyboard only")).toBeLessThan(
+      composed.instructions.indexOf(CLOSING_LINE_DIRECTIVE),
+    );
     // A report format, never a behavioural instruction: it does not tell the participant what to do.
     expect(CLOSING_LINE_DIRECTIVE).not.toMatch(/never|always|do not (type|click|use)/i);
   });
@@ -1469,12 +2025,24 @@ describe("runCuaActorLab", () => {
       return session;
     };
     // A declared "reached" is not re-read for blocker phrases, however the paragraph is worded.
-    expect(resolveSelfReportedBlocker(declared("I could not complete the last step but marked it done anyway.", "reached"))).toBeUndefined();
+    expect(
+      resolveSelfReportedBlocker(
+        declared("I could not complete the last step but marked it done anyway.", "reached"),
+      ),
+    ).toBeUndefined();
     // A declared "blocked" is a blocker even when the paragraph is mild.
-    expect(resolveSelfReportedBlocker(declared("Stopped at the database dialog.", "blocked"))).toContain("database dialog");
-    expect(resolveSelfReportedFriction(declared("Stopped at the database dialog.", "blocked"))).toContain("database dialog");
+    expect(
+      resolveSelfReportedBlocker(declared("Stopped at the database dialog.", "blocked")),
+    ).toContain("database dialog");
+    expect(
+      resolveSelfReportedFriction(declared("Stopped at the database dialog.", "blocked")),
+    ).toContain("database dialog");
     // No declaration: the paragraph is read, as before.
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("I could not complete the task; the delete button was disabled."))).toBeDefined();
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("I could not complete the task; the delete button was disabled."),
+      ),
+    ).toBeDefined();
   });
 
   it("counts a finished participant's report of defects or confusion as friction, so it becomes a candidate", () => {
@@ -1485,14 +2053,20 @@ describe("runCuaActorLab", () => {
       "Done. Confused by: \u201cAdd table\u201d immediately created a table with a long random name; the renaming method was not obvious.",
       "Created and saved a PostgreSQL diagram. Accessibility defects: the database chooser and confirmation control were not keyboard-accessible; focus escaped behind the modal, requiring mouse clicks.",
       "Done. The second table was placed exactly on top of the first one, so the two overlapped.",
-      "Done. Clicking Save did nothing; pressing Enter saved the name."
+      "Done. Clicking Save did nothing; pressing Enter saved the name.",
     ]) {
       expect(resolveSelfReportedFriction(fakeBlockerSession(message)), message).toBeDefined();
       // Friction, and only friction: none of these refuses the pass.
       expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeUndefined();
     }
     // A report with nothing to say stays silent.
-    expect(resolveSelfReportedFriction(fakeBlockerSession("Done. I added two tables named customers and orders; both are visible in the sidebar."))).toBeUndefined();
+    expect(
+      resolveSelfReportedFriction(
+        fakeBlockerSession(
+          "Done. I added two tables named customers and orders; both are visible in the sidebar.",
+        ),
+      ),
+    ).toBeUndefined();
   });
 
   it("still flags an inability to ACT, which is what a blocker is", () => {
@@ -1500,7 +2074,7 @@ describe("runCuaActorLab", () => {
       "Blocked after partial completion. Could not connect the two tables because every new table appeared on top of the previous one.",
       "I could not complete the task; the delete button was disabled.",
       "I can tab to the signature box but cannot get focus into the typed-signature entry area.",
-      "I was unable to proceed past the login screen."
+      "I was unable to proceed past the login screen.",
     ]) {
       expect(resolveSelfReportedBlocker(fakeBlockerSession(message)), message).toBeDefined();
     }
@@ -1513,8 +2087,8 @@ describe("runCuaActorLab", () => {
     // qualifier "functional" slipped through and the trailing verb "blocked" tripped the scan.
     expect(
       resolveSelfReportedBlocker(
-        fakeBlockerSession("No functional failures blocked me, and cleanup left the app empty.")
-      )
+        fakeBlockerSession("No functional failures blocked me, and cleanup left the app empty."),
+      ),
     ).toBeUndefined();
   });
 
@@ -1525,7 +2099,7 @@ describe("runCuaActorLab", () => {
       "I hit no obvious errors during the trial.",
       "There were no significant problems with the main flow.",
       "Nothing really stopped me from finishing the task.",
-      "No blocking issues prevented me from completing it."
+      "No blocking issues prevented me from completing it.",
     ]) {
       expect(resolveSelfReportedBlocker(fakeBlockerSession(message))).toBeUndefined();
     }
@@ -1536,35 +2110,50 @@ describe("runCuaActorLab", () => {
     // clause than the blocker.
     expect(
       resolveSelfReportedBlocker(
-        fakeBlockerSession("There was no undo button, and I could not complete the checkout at all.")
-      )
+        fakeBlockerSession(
+          "There was no undo button, and I could not complete the checkout at all.",
+        ),
+      ),
     ).toContain("could not complete");
   });
 
   it("does NOT flag a lane that merely QUOTES the subject app's copy containing a blocker word (#329)", () => {
     // The persona faithfully relays the app's banner text; a quoted span is not the actor's own
     // status and must not trip the blocker scan.
-    expect(resolveSelfReportedBlocker(fakeBlockerSession(
-      'I confirmed the deletion. The banner read "This action cannot be undone." The item is gone.'
-    ))).toBeUndefined();
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession(
+          'I confirmed the deletion. The banner read "This action cannot be undone." The item is gone.',
+        ),
+      ),
+    ).toBeUndefined();
   });
 
   it("does NOT flag a blocker narrative when the run's own stopWhen predicate matched (#329)", () => {
     // A matched stopWhen is independent, structured completion evidence and overrides the text scan.
-    expect(resolveSelfReportedBlocker(fakeBlockerSession(
-      "the page shows an error but I reached the target state",
-      { stopWhenMatched: true }
-    ))).toBeUndefined();
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("the page shows an error but I reached the target state", {
+          stopWhenMatched: true,
+        }),
+      ),
+    ).toBeUndefined();
   });
 
   it("does not flag a clean goal_satisfied success", () => {
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("Success: the target state is visible. No blocker encountered.")))
-      .toBeUndefined();
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("Success: the target state is visible. No blocker encountered."),
+      ),
+    ).toBeUndefined();
   });
 
   it("only inspects goal_satisfied lanes", () => {
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("cannot proceed", { completionReason: "timeout" })))
-      .toBeUndefined();
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession("cannot proceed", { completionReason: "timeout" }),
+      ),
+    ).toBeUndefined();
     expect(resolveSelfReportedBlocker(undefined)).toBeUndefined();
   });
 
@@ -1575,7 +2164,7 @@ describe("runCuaActorLab", () => {
       "Done. Created three tables and one relationship. Final state shows Tables (3) and Relationships (1), which matches the requested task.",
       "Notes / defects observed:",
       "- The SQL import editor output was somewhat ambiguous; my first import failed with a parser error that was hard to interpret. A simpler SQL import succeeded.",
-      "- Dragging tables around the canvas did not work reliably for me."
+      "- Dragging tables around the canvas did not work reliably for me.",
     ].join("\n");
     // Strict (verdict): the resolved arc never blocks the pass.
     expect(resolveSelfReportedBlocker(fakeBlockerSession(report))).toBeUndefined();
@@ -1584,11 +2173,21 @@ describe("runCuaActorLab", () => {
   });
 
   it("an UNRESOLVED failure still blocks the verdict — the strip needs the recovery in the segment (#453)", () => {
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("The import failed with a parser error, so I gave up on that path and stopped.")))
-      .toContain("failed");
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession(
+          "The import failed with a parser error, so I gave up on that path and stopped.",
+        ),
+      ),
+    ).toContain("failed");
     // And a recovery in a DIFFERENT segment does not launder an unresolved failure.
-    expect(resolveSelfReportedBlocker(fakeBlockerSession("Login failed and I could not get in. Separately, the search box worked.")))
-      .toContain("Login failed");
+    expect(
+      resolveSelfReportedBlocker(
+        fakeBlockerSession(
+          "Login failed and I could not get in. Separately, the search box worked.",
+        ),
+      ),
+    ).toContain("Login failed");
   });
 
   it("adapter fail score turns an otherwise goal_satisfied browser run red while keeping the bundle verifiable", async () => {
@@ -1600,31 +2199,40 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
         score: failingBrowserScore,
         deriveFeedback: browserFeedback,
         deriveArtifacts: async (ctx) => {
           await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
           await writeFile(
             path.join(ctx.runDir, "adapter", "browser-state-proof.json"),
-            `${JSON.stringify({
-              schema: "example.adapter-state-proof.v1",
-              runId: ctx.runId,
-              status: "failed-product-acceptance",
-              backend: ctx.backend
-            }, null, 2)}\n`,
-            "utf8"
+            `${JSON.stringify(
+              {
+                schema: "example.adapter-state-proof.v1",
+                runId: ctx.runId,
+                status: "failed-product-acceptance",
+                backend: ctx.backend,
+              },
+              null,
+              2,
+            )}\n`,
+            "utf8",
           );
-          return [{
-            schema: "humanish.adapter-artifact.v1",
-            namespace: BROWSER_ADAPTER_NAMESPACE,
-            label: "Browser adapter state proof",
-            path: "adapter/browser-state-proof.json",
-            kind: "state",
-            note: "Adapter-owned product/state readback proof."
-          }];
-        }
-      }
+          return [
+            {
+              schema: "humanish.adapter-artifact.v1",
+              namespace: BROWSER_ADAPTER_NAMESPACE,
+              label: "Browser adapter state proof",
+              path: "adapter/browser-state-proof.json",
+              kind: "state",
+              note: "Adapter-owned product/state readback proof.",
+            },
+          ];
+        },
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -1640,23 +2248,29 @@ describe("runCuaActorLab", () => {
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("Adapter scorer failed the run");
-    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
+      true,
+    );
     expect(bundle.feedbackCandidates).toHaveLength(1);
     expect(bundle.feedbackCandidates[0]?.adapter?.namespace).toBe(BROWSER_ADAPTER_NAMESPACE);
     expect(bundle.feedbackCandidates[0]?.substrate).toBe("e2b-desktop");
-    expect(bundle.adapterArtifacts).toEqual([{
-      schema: "humanish.adapter-artifact.v1",
-      namespace: BROWSER_ADAPTER_NAMESPACE,
-      label: "Browser adapter state proof",
-      path: "adapter/browser-state-proof.json",
-      kind: "state",
-      note: "Adapter-owned product/state readback proof."
-    }]);
-    const observerData = JSON.parse(await readFile(path.join(runDir, "observer", "observer-data.json"), "utf8"));
+    expect(bundle.adapterArtifacts).toEqual([
+      {
+        schema: "humanish.adapter-artifact.v1",
+        namespace: BROWSER_ADAPTER_NAMESPACE,
+        label: "Browser adapter state proof",
+        path: "adapter/browser-state-proof.json",
+        kind: "state",
+        note: "Adapter-owned product/state readback proof.",
+      },
+    ]);
+    const observerData = JSON.parse(
+      await readFile(path.join(runDir, "observer", "observer-data.json"), "utf8"),
+    );
     expect(observerData.artifactLinks).toContainEqual({
       label: "Browser adapter state proof",
       href: "../adapter/browser-state-proof.json",
-      kind: "state"
+      kind: "state",
     });
 
     const verified = await verifyRun(cwd, result.runId);
@@ -1666,8 +2280,9 @@ describe("runCuaActorLab", () => {
     const missing = await verifyRun(cwd, result.runId);
     expect(missing.ok).toBe(false);
     expect(missing.error?.message).toBe("Run bundle failed verification.");
-    expect(missing.checks.find((check) => check.name === "local evidence artifacts exist")?.message)
-      .toContain("adapter/browser-state-proof.json");
+    expect(
+      missing.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+    ).toContain("adapter/browser-state-proof.json");
   });
 
   it("malformed browser adapter outputs are dropped, preserving default green behavior", async () => {
@@ -1679,33 +2294,55 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        score: () => ({ schema: "humanish.adapter-score.v1", namespace: "", status: "fail", score: 0, summary: "bad" }) as RunAdapterScore,
-        deriveArtifacts: () => ([{
-          schema: "humanish.adapter-artifact.v1",
-          namespace: BROWSER_ADAPTER_NAMESPACE,
-          label: "Bad artifact",
-          path: "../secret.json",
-          kind: "state",
-          note: "bad path"
-        }]),
-        deriveFeedback: () => ([{
-          schema: "humanish.feedback-candidate.v1",
-          id: "bad",
-          summary: "Malformed candidate missing required run fields.",
-          evidence: [],
-          redaction: { status: "passed", notes: "shape test" }
-        }] as unknown as RunFeedbackCandidate[])
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        score: () =>
+          ({
+            schema: "humanish.adapter-score.v1",
+            namespace: "",
+            status: "fail",
+            score: 0,
+            summary: "bad",
+          }) as RunAdapterScore,
+        deriveArtifacts: () => [
+          {
+            schema: "humanish.adapter-artifact.v1",
+            namespace: BROWSER_ADAPTER_NAMESPACE,
+            label: "Bad artifact",
+            path: "../secret.json",
+            kind: "state",
+            note: "bad path",
+          },
+        ],
+        deriveFeedback: () =>
+          [
+            {
+              schema: "humanish.feedback-candidate.v1",
+              id: "bad",
+              summary: "Malformed candidate missing required run fields.",
+              evidence: [],
+              redaction: { status: "passed", notes: "shape test" },
+            },
+          ] as unknown as RunFeedbackCandidate[],
+      },
     });
 
     expect(outcome.backend).toBe("cua");
     if (outcome.backend !== "cua") return;
     const result = outcome.result;
     expect(result.ok).toBe(true);
-    expect(result.warnings.some((warning) => warning.includes("adapter-score.v1") || warning.includes("feedback-candidate.v1"))).toBe(true);
+    expect(
+      result.warnings.some(
+        (warning) =>
+          warning.includes("adapter-score.v1") || warning.includes("feedback-candidate.v1"),
+      ),
+    ).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.adapterScore).toBeUndefined();
     expect(bundle.adapterArtifacts).toBeUndefined();
     expect(bundle.feedbackCandidates).toHaveLength(0);
@@ -1724,16 +2361,28 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("raw");
-    expect(bundle.streams[0].actor.items.filter((i: { kind: string }) => i.kind === "screenshot")
-      .every((i: { screenshotRef?: { redaction: string } }) => i.screenshotRef?.redaction === "none")).toBe(true);
-    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity") || w.toLowerCase().includes("raw"))).toBe(true);
+    expect(
+      bundle.streams[0].actor.items
+        .filter((i: { kind: string }) => i.kind === "screenshot")
+        .every(
+          (i: { screenshotRef?: { redaction: string } }) => i.screenshotRef?.redaction === "none",
+        ),
+    ).toBe(true);
+    expect(
+      outcome.result.warnings.some(
+        (w) => w.toLowerCase().includes("full-fidelity") || w.toLowerCase().includes("raw"),
+      ),
+    ).toBe(true);
 
     // Honest labels (invariant 6): a raw run must never be labeled "redacted" anywhere.
     expect(bundle.streams[0].embed.title).toBe("CUA desktop (raw)");
@@ -1760,7 +2409,10 @@ describe("runCuaActorLab", () => {
 
   it("policies.redactScreenshots: true persists blurred screenshots and drops the raw warning", async () => {
     const config = cuaConfig();
-    const redactedConfig: LabConfig = { ...config, policies: { ...config.policies, redactScreenshots: true } };
+    const redactedConfig: LabConfig = {
+      ...config,
+      policies: { ...config.policies, redactScreenshots: true },
+    };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(redactedConfig, {
@@ -1769,14 +2421,19 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.streams[0].actor.redaction.screenshots).toBe("blurred");
-    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(false);
+    expect(outcome.result.warnings.some((w) => w.toLowerCase().includes("full-fidelity"))).toBe(
+      false,
+    );
 
     // Honest labels (invariant 6): the blurred mode is named as such, not a vague "redacted".
     expect(bundle.streams[0].embed.title).toBe("CUA desktop (blurred)");
@@ -1796,7 +2453,7 @@ describe("runCuaActorLab", () => {
     const publicConfig: LabConfig = {
       ...config,
       subject: { source: "app-url", appUrl: "https://preview-xyz.vercel.app/" },
-      policies: { allowPublicTargets: true }
+      policies: { allowPublicTargets: true },
     };
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
@@ -1806,8 +2463,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -1817,10 +2477,16 @@ describe("runCuaActorLab", () => {
     // Without the policy, the engine fails closed even if a config bypasses the parser.
     const sandbox2 = makeFakeSandbox();
     const { module: module2 } = makeFakeModule(sandbox2);
-    const blocked = await runLab({ ...publicConfig, policies: {} }, {
-      cwd,
-      cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => module2 }
-    });
+    const blocked = await runLab(
+      { ...publicConfig, policies: {} },
+      {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module2,
+        },
+      },
+    );
     if (blocked.backend !== "cua") throw new Error("expected cua backend");
     expect(blocked.result.ok).toBe(false);
     expect(blocked.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
@@ -1831,22 +2497,41 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "user", address: "user@example.test" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_API_URL",
+          port: commsPort,
+          recipients: [{ lane: "user", address: "user@example.test" }],
+        },
+      },
     };
     // What the (simulated) subject app POSTed to its Resend-shaped base URL during the run — a
     // verification email to the declared recipient, captured by the in-sandbox catch as NDJSON.
-    const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const verificationHtml =
+      '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["user@example.test"],
+          subject: "Confirm your email",
+          html: verificationHtml,
+        }),
+      }) + "\n";
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
         // the comms catch readiness probe must see OUR service marker (not the subject's plain READY)
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
         // the teardown drain `cat`s the in-sandbox NDJSON of captured sends
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: capturedNdjson };
         return undefined;
-      })
+      }),
     });
     const { module, created } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -1854,25 +2539,44 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The adopter-named base-URL env was injected into the subject sandbox at create (the app boots reading it).
     expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
     // And the in-sandbox capture script was written into the subject sandbox (the catch was deployed).
-    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.py"))).toBe(true);
+    expect(
+      sandbox.calls.some(
+        ([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("catch.py"),
+      ),
+    ).toBe(true);
 
     // The captured mail was drained + routed + written as a digest-only comms-thread artifact, and
     // REGISTERED in the lane's stream artifacts (so the bundle's existence-verify + scan cover it).
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    const commsArtifact = bundle.streams[0].artifacts.find((a: { path: string; kind: string }) => a.path === "comms/thread.json");
+    const commsArtifact = bundle.streams[0].artifacts.find(
+      (a: { path: string; kind: string }) => a.path === "comms/thread.json",
+    );
     expect(commsArtifact).toMatchObject({ kind: "log", label: "comms thread" });
     const threadRaw = await readFile(path.join(runDir, "comms", "thread.json"), "utf8");
-    const thread = JSON.parse(threadRaw) as { schema: string; count: number; thread: Array<{ toDigests: string[]; codeCount: number }> };
+    const thread = JSON.parse(threadRaw) as {
+      schema: string;
+      count: number;
+      thread: Array<{ toDigests: string[]; codeCount: number }>;
+    };
     expect(thread.schema).toBe("humanish.comms-thread.v1");
     expect(thread.count).toBe(1);
     expect(thread.thread[0]!.codeCount).toBe(1); // the OTP is a count, never stored
@@ -1896,16 +2600,18 @@ describe("runCuaActorLab", () => {
           kind: "fake",
           injectEnv: "RESEND_BASE_URL",
           port: commsPort,
-          recipients: [{ lane: "lane-01", address: "signup-a@example.test" }]
-        }
-      }
+          recipients: [{ lane: "lane-01", address: "signup-a@example.test" }],
+        },
+      },
     };
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" };
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: "" };
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     let t = 0;
@@ -1917,10 +2623,18 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions.push(options.instructions);
-          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
         },
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -1933,7 +2647,9 @@ describe("runCuaActorLab", () => {
     expect(prompt).toContain(`http://127.0.0.1:${commsPort}`);
     // Delivery context is supplied without commanding persistence.
     expect(prompt.toLowerCase()).toContain("delivery may take a little time");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].assignment).toEqual({ mission: config.actors[0]!.mission });
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
@@ -1946,14 +2662,23 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_BASE_URL", port: commsPort, recipients: [{ lane: "lane-01" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_BASE_URL",
+          port: commsPort,
+          recipients: [{ lane: "lane-01" }],
+        },
+      },
     };
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" };
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: "" };
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     let t = 0;
@@ -1965,10 +2690,18 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions.push(options.instructions);
-          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
         },
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     expect(seenInstructions[0] ?? "").not.toContain("Email inbox:");
   });
@@ -1977,16 +2710,30 @@ describe("runCuaActorLab", () => {
     const commsPort = 8025;
     const base = cloneCuaConfig();
     // comms declared but NO recipients → the app's send is captured but matches no provisioned inbox.
-    const config: LabConfig = { ...base, comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } } };
+    const config: LabConfig = {
+      ...base,
+      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort } },
+    };
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm", html: "<p>Code: 481920</p>" }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["user@example.test"],
+          subject: "Confirm",
+          html: "<p>Code: 481920</p>",
+        }),
+      }) + "\n";
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: capturedNdjson };
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -1994,17 +2741,32 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // Captured-but-unevidenced mail surfaces as a warning (not lost silently); no artifact registered.
-    expect(outcome.result.warnings.some((w) => w.includes("captured") && w.includes("no comms evidence"))).toBe(true);
+    expect(
+      outcome.result.warnings.some(
+        (w) => w.includes("captured") && w.includes("no comms evidence"),
+      ),
+    ).toBe(true);
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.streams[0].artifacts.find((a: { path: string }) => a.path === "comms/thread.json")).toBeUndefined();
+    expect(
+      bundle.streams[0].artifacts.find((a: { path: string }) => a.path === "comms/thread.json"),
+    ).toBeUndefined();
   });
 
   it("comms:email:fake — tells the persona its inbox URL and renders the LIVE surface mid-run", async () => {
@@ -2013,20 +2775,39 @@ describe("runCuaActorLab", () => {
     // Recipient lane must match the N=1 lane id (lane-01) for the inbox instruction to be injected.
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_API_URL",
+          port: commsPort,
+          recipients: [{ lane: "lane-01", address: "user@example.test" }],
+        },
+      },
     };
-    const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const verificationHtml =
+      '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["user@example.test"],
+          subject: "Confirm your email",
+          html: verificationHtml,
+        }),
+      }) + "\n";
     let t = 0;
     let seenInstructions = "";
     const streamLifecycle: string[] = [];
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: capturedNdjson };
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -2035,15 +2816,27 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         // #357 lifecycle: ready must fire while the sandbox lives, ended after its teardown —
         // the pair is what lets the watch overlay stop serving a dead stream URL.
-        onRuntimeStreamReady: (stream) => { streamLifecycle.push(`ready:${stream.streamId}`); },
-        onRuntimeStreamEnded: (stream) => { streamLifecycle.push(`ended:${stream.streamId}`); },
+        onRuntimeStreamReady: (stream) => {
+          streamLifecycle.push(`ready:${stream.streamId}`);
+        },
+        onRuntimeStreamEnded: (stream) => {
+          streamLifecycle.push(`ended:${stream.streamId}`);
+        },
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           seenInstructions = options.instructions;
-          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
         },
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2055,7 +2848,12 @@ describe("runCuaActorLab", () => {
     expect(seenInstructions).toContain("Your email address is user@example.test");
     expect(seenInstructions).toContain("stop based on your situation and what you observe");
     // The live inbox surface was rendered into the sandbox DURING the run (the mid-run loop wrote the list).
-    expect(sandbox.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
+    expect(
+      sandbox.calls.some(
+        ([name, p]) =>
+          name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"),
+      ),
+    ).toBe(true);
     // #357 lifecycle: the lane announced its live stream while the sandbox lived, and announced
     // the END after teardown — ready strictly before ended, one pair, same stream id.
     expect(streamLifecycle).toEqual(["ready:stream-001", "ended:stream-001"]);
@@ -2066,15 +2864,24 @@ describe("runCuaActorLab", () => {
     const base = cloneCuaConfig();
     const config: LabConfig = {
       ...base,
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "lane-01", address: "user@example.test" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_API_URL",
+          port: commsPort,
+          recipients: [{ lane: "lane-01", address: "user@example.test" }],
+        },
+      },
     };
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
-        if (command.includes(`${commsPort}/health`)) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-        if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: "" }; // NO mail captured
+        if (command.includes(`${commsPort}/health`))
+          return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+        if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+          return { stdout: "" }; // NO mail captured
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -2082,21 +2889,36 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
     // The empty inbox list was written up front, so a persona opening /inbox gets "No messages yet.", not a 404.
-    const write = sandbox.calls.find(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"));
+    const write = sandbox.calls.find(
+      ([name, p]) =>
+        name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"),
+    );
     expect(write).toBeDefined();
     expect(String(write![2])).toContain("No messages yet");
   });
 
   it("honors subject.clone.keep on FAILURE: leaves the sandbox up for debugging instead of killing it", async () => {
     const config = cloneCuaConfig();
-    const keepConfig: LabConfig = { ...config, subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } } };
+    const keepConfig: LabConfig = {
+      ...config,
+      subject: { ...config.subject, clone: { ...config.subject.clone, keep: true } },
+    };
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(keepConfig, {
@@ -2104,8 +2926,10 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        runSession: async () => { throw new Error("boom during session"); }
-      }
+        runSession: async () => {
+          throw new Error("boom during session");
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
@@ -2119,7 +2943,7 @@ describe("runCuaActorLab", () => {
     // Model immediately returns done with no action and no message — i.e. it saw a blank/loading
     // screen and stopped. This must NOT be reported as a pass.
     const noEngagementSession = [
-      { id: "r1", output: [{ type: "message", content: [] }] } // no actions, no text
+      { id: "r1", output: [{ type: "message", content: [] }] }, // no actions, no text
     ];
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
@@ -2129,8 +2953,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(noEngagementSession) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(noEngagementSession) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2159,8 +2986,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(BLOCKED_AFTER_PARTIAL_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(BLOCKED_AFTER_PARTIAL_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2171,16 +3001,27 @@ describe("runCuaActorLab", () => {
     expect(result.error?.message).toContain("not a credible pass");
 
     // The durable evidence now says the same thing the lane said.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.review.verdict).toBe("blocked");
-    expect(bundle.review.summary).toContain("Recorded summary: Not counted as a pass: the participant's final message described a blocker.");
+    expect(bundle.review.summary).toContain(
+      "Recorded summary: Not counted as a pass: the participant's final message described a blocker.",
+    );
     // Zero recorded completions, 1 blocked, 1 reported friction — the honest reading of that run.
-    expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, blocked: 1, reportedFriction: 1 });
+    expect(bundle.review.participants).toMatchObject({
+      total: 1,
+      reachedGoal: 0,
+      blocked: 1,
+      reportedFriction: 1,
+    });
     // The trace keeps the claim: what the actor SAID is evidence, what the harness COUNTED is the review.
     expect(bundle.streams[0].actor.completionReason).toBe("goal_satisfied");
 
     // The status index copies the review verbatim, so it inherits the fix rather than needing one.
-    const status = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"));
+    const status = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "status.json"), "utf8"),
+    );
     expect(status.outcome?.verdict).toBe("blocked");
     expect(status.outcome?.participants).toMatchObject({ total: 1, reachedGoal: 0 });
 
@@ -2194,7 +3035,7 @@ describe("runCuaActorLab", () => {
     const config = cuaConfig();
     const mobileConfig: LabConfig = {
       ...config,
-      execution: { ...config.execution, target: "e2b-desktop", desktop: { device: "mobile" } }
+      execution: { ...config.execution, target: "e2b-desktop", desktop: { device: "mobile" } },
     };
     const sandbox = makeFakeSandbox();
     const { module, created } = makeFakeModule(sandbox);
@@ -2206,9 +3047,12 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async (options) => {
           sessionOptionsSeen.push(options);
-          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2221,7 +3065,9 @@ describe("runCuaActorLab", () => {
     expect(sessionOptionsSeen[0]?.instructions).toContain("414x896");
     // The bundle records the requested screen (the floored render target we actually asked E2B for), but
     // this fake exposes no CDP measurement and therefore cannot honestly claim a CSS viewport.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 500, height: 896 });
     expect(bundle.streams[0].viewport).toBeUndefined();
   });
@@ -2231,32 +3077,59 @@ describe("runCuaActorLab", () => {
     const defMod = makeFakeModule(def);
     const defConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop" } };
     const r1 = await runLab(defConfig, {
-      cwd, cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => defMod.module,
-        runSession: async (o) => runCuaActorSession({ ...o, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }) }
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => defMod.module,
+        runSession: async (o) =>
+          runCuaActorSession({
+            ...o,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (r1.backend !== "cua") throw new Error("expected cua");
     expect(defMod.created[0]?.resolution).toEqual([1440, 950]);
 
     const ov = makeFakeSandbox();
     const ovMod = makeFakeModule(ov);
-    const ovConfig: LabConfig = { ...cuaConfig(), execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } } };
+    const ovConfig: LabConfig = {
+      ...cuaConfig(),
+      execution: { target: "e2b-desktop", desktop: { device: "mobile", resolution: [1024, 768] } },
+    };
     const ovSeen: CuaActorSessionOptions[] = [];
     const r2 = await runLab(ovConfig, {
-      cwd, cuaHooks: { env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" }, loadDesktopModule: async () => ovMod.module,
-        runSession: async (o) => { ovSeen.push(o); return runCuaActorSession({ ...o, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }); } }
+      cwd,
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        loadDesktopModule: async () => ovMod.module,
+        runSession: async (o) => {
+          ovSeen.push(o);
+          return runCuaActorSession({
+            ...o,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (r2.backend !== "cua") throw new Error("expected cua");
     expect(ovMod.created[0]?.resolution).toEqual([1024, 768]);
     // Consistency: a raw resolution override must NOT inherit a named preset's mobile/DSF — the
     // prompt + requested-screen metadata reflect the custom non-mobile geometry, not "mobile".
     expect(ovSeen[0]?.instructions).not.toContain("mobile user");
-    const ovBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", r2.result.runId, "run.json"), "utf8"));
-    expect(ovBundle.streams[0].desktopGeometry.screen.requested).toEqual({ width: 1024, height: 768 });
+    const ovBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", r2.result.runId, "run.json"), "utf8"),
+    );
+    expect(ovBundle.streams[0].desktopGeometry.screen.requested).toEqual({
+      width: 1024,
+      height: 768,
+    });
     expect(ovBundle.streams[0].viewport).toBeUndefined();
   });
 
   it("opens HTTP targets with a shell-quoted browser command so query params survive", async () => {
-    const targetUrl = "http://127.0.0.1:3000/api/bootstrap?origin=http%3A%2F%2F127.0.0.1%3A3000&scenario=alpha&redirect=%2Fdashboard";
+    const targetUrl =
+      "http://127.0.0.1:3000/api/bootstrap?origin=http%3A%2F%2F127.0.0.1%3A3000&scenario=alpha&redirect=%2Fdashboard";
     const sandbox = makeFakeSandbox({ withOpen: false });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(cuaConfig(targetUrl), {
@@ -2265,8 +3138,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2278,22 +3154,27 @@ describe("runCuaActorLab", () => {
     expect(openCommand).toContain("--password-store=basic");
     expect(openCommand).toContain("credentials_enable_service");
     expect(openCommand).toContain('"custom_chrome_frame":false');
-    expect(openCommand).toContain("\"password_manager_enabled\":false");
+    expect(openCommand).toContain('"password_manager_enabled":false');
     expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
   });
 
   it("launches the requested desktop browser and records browser provenance", async () => {
-    const targetUrl = "http://127.0.0.1:3000/api/bootstrap?scenario=chrome-proof&redirect=%2Fdashboard";
+    const targetUrl =
+      "http://127.0.0.1:3000/api/bootstrap?scenario=chrome-proof&redirect=%2Fdashboard";
     const config: LabConfig = {
       ...cuaConfig(targetUrl),
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800], browser: "chrome" } }
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { resolution: [1280, 800], browser: "chrome" },
+      },
     };
     const sandbox = makeFakeSandbox({
       commandHandler: (command) =>
         command.includes("browser_preference='chrome'")
           ? { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 }
-          : undefined
+          : undefined,
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -2302,8 +3183,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2314,14 +3198,20 @@ describe("runCuaActorLab", () => {
     expect(sandbox.calls.some((call) => call[0] === "open")).toBe(false);
     expect(sandbox.calls.some((call) => call[0] === "launch")).toBe(false);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopBrowser).toEqual({ requested: "chrome", resolved: "google-chrome" });
   });
 
   it("attributes explicit Firefox geometry to Firefox even when stale Chrome CDP is present", async () => {
     const config: LabConfig = {
       ...cuaConfig(),
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800], browser: "firefox" } }
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { resolution: [1280, 800], browser: "firefox" },
+      },
     };
     const firefoxWindowId = "9437185";
     const sandbox = makeFakeSandbox({
@@ -2339,19 +3229,23 @@ describe("runCuaActorLab", () => {
           return { stdout: "WINDOW_ID=7340035\n", exitCode: 0 };
         }
         if (command.includes("xwininfo -id")) {
-          return { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n", exitCode: 0 };
+          return {
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1280\nHeight: 800\nMap State: IsViewable\n",
+            exitCode: 0,
+          };
         }
         if (command.includes("browserWindow: { x: window.screenX")) {
           return {
             stdout: JSON.stringify({
               browserWindow: { x: 0, y: 0, width: 777, height: 555 },
-              viewport: { width: 777, height: 444, deviceScaleFactor: 1 }
+              viewport: { width: 777, height: 444, deviceScaleFactor: 1 },
             }),
-            exitCode: 0
+            exitCode: 0,
           };
         }
         return undefined;
-      }
+      },
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -2360,8 +3254,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2371,19 +3268,27 @@ describe("runCuaActorLab", () => {
       .map((call) => String(call[1]));
     expect(commands.some((command) => command.includes("find_firefox_window()"))).toBe(true);
     expect(commands.some((command) => command.includes("find_chrome_window()"))).toBe(false);
-    expect(commands.some((command) => command.includes("browserWindow: { x: window.screenX"))).toBe(false);
+    expect(commands.some((command) => command.includes("browserWindow: { x: window.screenX"))).toBe(
+      false,
+    );
     expect(commands.some((command) => command.includes(`win='${firefoxWindowId}'`))).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
     expect(bundle.streams[0].desktopGeometry.browserWindow).toEqual({
-      x: 0, y: 0, width: 1280, height: 800, source: "xwininfo"
+      x: 0,
+      y: 0,
+      width: 1280,
+      height: 800,
+      source: "xwininfo",
     });
     expect(bundle.streams[0].desktopGeometry.viewport).toBeUndefined();
     expect(bundle.streams[0].viewport).toBeUndefined();
-    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(expect.arrayContaining([
-      expect.stringContaining("unavailable for Firefox")
-    ]));
+    expect(bundle.streams[0].desktopGeometry.warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("unavailable for Firefox")]),
+    );
   });
 
   it("live with missing keys fails closed, names the variables, and never creates a sandbox", async () => {
@@ -2391,7 +3296,7 @@ describe("runCuaActorLab", () => {
     const { module, created } = makeFakeModule(sandbox);
     const outcome = await runLab(cuaConfig(), {
       cwd,
-      cuaHooks: { env: { OPENAI_API_KEY: "present-key" }, loadDesktopModule: async () => module }
+      cuaHooks: { env: { OPENAI_API_KEY: "present-key" }, loadDesktopModule: async () => module },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2414,8 +3319,8 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async () => {
           throw new Error("provider exploded mid-session");
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2426,7 +3331,7 @@ describe("runCuaActorLab", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.simulations[0].status).toBe("failed");
     expect(bundle.review.verdict).toBe("fail");
@@ -2446,7 +3351,7 @@ describe("runCuaActorLab", () => {
     const { laneFocus: _laneFocus, ...actorWithoutLaneFocus } = actor;
     const tampered: LabConfig = {
       ...config,
-      actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }]
+      actors: [{ ...actorWithoutLaneFocus, lanes: [{ id: "../escape" }] }],
     };
     let desktopLoads = 0;
     const result = await runCuaActorLab({
@@ -2457,8 +3362,8 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => {
           desktopLoads += 1;
           throw new Error("must not load");
-        }
-      }
+        },
+      },
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_FANOUT_INVALID");
@@ -2468,7 +3373,10 @@ describe("runCuaActorLab", () => {
 
   it("re-enforces the loopback entry boundary at the engine even if a config bypasses the parser", async () => {
     const config = cuaConfig();
-    const tampered = { ...config, subject: { source: "app-url" as const, appUrl: "https://example.com/" } };
+    const tampered = {
+      ...config,
+      subject: { source: "app-url" as const, appUrl: "https://example.com/" },
+    };
     const result = await runCuaActorLab({ cwd, config: tampered, dryRun: true });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_UNSAFE");
@@ -2490,8 +3398,8 @@ describe("runCuaActorLab", () => {
         loadDesktopModule: async () => module,
         runSession: async () => {
           throw new Error(`request failed with ${secretToken} while reading ${hostPath}`);
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2518,9 +3426,11 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => {
-          throw new Error("Live E2B desktop launch requires optional peer dependency @e2b/desktop.");
-        }
-      }
+          throw new Error(
+            "Live E2B desktop launch requires optional peer dependency @e2b/desktop.",
+          );
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2546,23 +3456,38 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const runId = outcome.result.runId;
 
     // Durable identity on the evidence-of-record.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8")) as {
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "run.json"), "utf8"),
+    ) as {
       lab?: { id: string; path?: string; origin?: string };
       review: { verdict: string };
     };
-    expect(bundle.lab).toEqual({ id: "cua-demo", path: "humanish/labs/cua-demo.yaml", origin: "committed" });
+    expect(bundle.lab).toEqual({
+      id: "cua-demo",
+      path: "humanish/labs/cua-demo.yaml",
+      origin: "committed",
+    });
 
     // And the index/liveness record, finalized from that same bundle — never claiming more.
     const status = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", runId, "status.json"), "utf8")
-    ) as { schema: string; state: string; lab?: { id: string }; outcome?: { verdict?: string }; completedAt?: string };
+      await readFile(path.join(cwd, ".humanish", "runs", runId, "status.json"), "utf8"),
+    ) as {
+      schema: string;
+      state: string;
+      lab?: { id: string };
+      outcome?: { verdict?: string };
+      completedAt?: string;
+    };
     expect(status.schema).toBe("humanish.run-status.v1");
     expect(status.state).toBe("finished");
     expect(status.lab?.id).toBe("cua-demo");
@@ -2576,7 +3501,9 @@ describe("runCuaActorLab", () => {
     const result = outcome.result;
     expect(result.ok).toBe(true);
 
-    const pointer = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"));
+    const pointer = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "latest.json"), "utf8"),
+    );
     expect(pointer.schema).toBe("humanish.latest-run.v1");
     expect(pointer.runId).toBe(result.runId);
 
@@ -2597,8 +3524,8 @@ describe("runCuaActorLab", () => {
         prepareDesktop: async (desktop) => {
           desktop.sandboxId = "unrelated-sandbox";
           throw new Error("synthetic provisioning failure");
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(killed).toEqual(["fake-sandbox-001"]);
@@ -2616,9 +3543,12 @@ describe("runCuaActorLab", () => {
         runSession: async (options) => {
           executor = options.executor;
           expect(options.desktop).toBeUndefined();
-          return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-        }
-      }
+          return runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          });
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(true);
@@ -2634,12 +3564,16 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        prepareDesktop: async () => { throw new Error("synthetic startup failure"); }
-      }
+        prepareDesktop: async () => {
+          throw new Error("synthetic startup failure");
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(true);
-    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("exact termination time is unknown"));
+    expect(outcome.result.warnings).toContainEqual(
+      expect.stringContaining("exact termination time is unknown"),
+    );
   });
 
   it("keeps malformed cleanup responses unconfirmed in the run and its cost evidence", async () => {
@@ -2650,21 +3584,31 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        runSession: async (options) => runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
-    expect(outcome.result.warnings).toContainEqual(expect.stringContaining("release is unconfirmed"));
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    expect(outcome.result.warnings).toContainEqual(
+      expect.stringContaining("release is unconfirmed"),
+    );
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.cost.fullyEstimated).toBe(false);
-    expect(bundle.cost.breakdown).toContainEqual(expect.objectContaining({ reason: "desktop_lifetime_incomplete", estimatedCostUsd: null }));
+    expect(bundle.cost.breakdown).toContainEqual(
+      expect.objectContaining({ reason: "desktop_lifetime_incomplete", estimatedCostUsd: null }),
+    );
   });
 
   it("reports killed=false (with a warning) when the installed SDK lacks Sandbox.kill", async () => {
     const sandbox = makeFakeSandbox();
     const module: E2BDesktopModule = {
-      Sandbox: { create: async () => sandbox }
+      Sandbox: { create: async () => sandbox },
     };
     const outcome = await runLab(cuaConfig(), {
       cwd,
@@ -2672,8 +3616,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
@@ -2690,7 +3637,7 @@ describe("runCuaActorLab", () => {
         if (!command.includes("rev-parse")) return undefined;
         revParseCount += 1;
         return { stdout: `${revParseCount === 1 ? cloneHead : servedHead}\n` };
-      })
+      }),
     });
     const { module, created, killed } = makeFakeModule(sandbox);
 
@@ -2700,12 +3647,15 @@ describe("runCuaActorLab", () => {
         env: {
           OPENAI_API_KEY: "test-openai-key",
           E2B_API_KEY: "test-e2b-key",
-          DATABASE_URL: "postgres-secret-value"
+          DATABASE_URL: "postgres-secret-value",
         },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -2720,12 +3670,15 @@ describe("runCuaActorLab", () => {
     // Provisioning sequence: the wrapper scripts carry the declared commands.
     const scriptFor = (name: string): string => {
       const entry = sandbox.calls.find(
-        (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`)
+        (call): call is [string, string, string] =>
+          call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
       );
       if (!entry) throw new Error(`missing script for ${name}`);
       return entry[2];
     };
-    expect(scriptFor("subject-clone")).toContain("git clone --depth 2 https://github.com/example-org/example-app.git");
+    expect(scriptFor("subject-clone")).toContain(
+      "git clone --depth 2 https://github.com/example-org/example-app.git",
+    );
     expect(scriptFor("subject-install")).toContain("( pnpm install --frozen-lockfile )");
     expect(scriptFor("subject-install")).toContain("cd '/home/user/subject'");
     expect(scriptFor("subject-build")).toContain("( pnpm build )");
@@ -2733,7 +3686,7 @@ describe("runCuaActorLab", () => {
 
     // Readiness was probed before the browser opened on the served URL.
     const probeIndex = sandbox.calls.findIndex(
-      (call) => call[0] === "commands.run" && String(call[1]).includes("curl")
+      (call) => call[0] === "commands.run" && String(call[1]).includes("curl"),
     );
     const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
     expect(probeIndex).toBeGreaterThan(-1);
@@ -2750,14 +3703,16 @@ describe("runCuaActorLab", () => {
       repo: "example-org/example-app",
       commit: servedHead,
       envNames: ["DATABASE_URL"],
-      state: { provenance: "undeclared" }
+      state: { provenance: "undeclared" },
     });
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(revParseCount).toBeGreaterThan(1);
     expect(bundle.subject.commit).toBe(servedHead);
     expect(JSON.stringify(bundle.subject)).not.toContain(cloneHead);
-    const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    const provenance = bundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(provenance?.message).toContain(`example-org/example-app@${servedHead}`);
     expect(provenance?.message).toContain("DATABASE_URL");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
@@ -2776,7 +3731,8 @@ describe("runCuaActorLab", () => {
     const config = cloneCuaConfig();
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
-    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number; message: string }> = [];
+    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number; message: string }> =
+      [];
     const phaseCtxs: Array<{ laneId: string; laneCount: number }> = [];
 
     const outcome = await runLab(config, {
@@ -2785,15 +3741,18 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
         // The default sink is process.stderr.write; a test-injected sink replaces it entirely
         // (the CuaActorLabHooks seam this closes #263 with) so the ordering below is captured
         // deterministically instead of scraping stderr.
         onPhase: (event, ctx) => {
           phaseEvents.push(event);
           phaseCtxs.push(ctx);
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2812,7 +3771,7 @@ describe("runCuaActorLab", () => {
       "cua-lab.subject.build.completed",
       "cua-lab.subject.serve.started",
       "cua-lab.subject.ready.started",
-      "cua-lab.subject.ready.completed"
+      "cua-lab.subject.ready.completed",
     ]);
 
     // Started events (including the lone serve.started) carry neither ok nor durationMs;
@@ -2853,16 +3812,21 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
 
     const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    const phaseRunEvents = (bundle.events as Array<{ type: string; level: string; message: string }>).filter(
-      (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
+    const phaseRunEvents = (
+      bundle.events as Array<{ type: string; level: string; message: string }>
+    ).filter(
+      (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed"),
     );
     // Only COMPLETED phases persist (started events carry no durationMs, so nothing to fold);
     // subject.serve.started never persists here either (no completed pair, no durationMs).
@@ -2871,7 +3835,7 @@ describe("runCuaActorLab", () => {
       "cua-lab.subject.runtime.completed",
       "cua-lab.subject.install.completed",
       "cua-lab.subject.build.completed",
-      "cua-lab.subject.ready.completed"
+      "cua-lab.subject.ready.completed",
     ]);
     for (const event of phaseRunEvents) {
       expect(event.level).toBe("info");
@@ -2893,8 +3857,11 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2903,7 +3870,8 @@ describe("runCuaActorLab", () => {
     expect(created[0]?.envs).toEqual({ GITHUB_TOKEN: "ghp-token-value" });
     // …and the clone script references the VARIABLE, never the value, never a token-in-URL.
     const cloneScript = sandbox.calls.find(
-      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-clone/run.sh")
+      (call): call is [string, string, string] =>
+        call[0] === "files.write" && String(call[1]).endsWith("subject-clone/run.sh"),
     );
     expect(cloneScript?.[2]).toContain("$GITHUB_TOKEN");
     expect(cloneScript?.[2]).toContain("http.extraHeader");
@@ -2925,8 +3893,8 @@ describe("runCuaActorLab", () => {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module
-      }
+        loadDesktopModule: async () => module,
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
@@ -2951,7 +3919,7 @@ describe("runCuaActorLab", () => {
           return { stdout: "npm error code ERR_SSL_CIPHER_OPERATION_FAILED" };
         }
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     const phaseEvents: Array<{ type: string; ok?: boolean; message: string }> = [];
@@ -2961,11 +3929,14 @@ describe("runCuaActorLab", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
         onPhase: (event) => {
           phaseEvents.push(event);
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -2975,12 +3946,14 @@ describe("runCuaActorLab", () => {
       "cua-lab.subject.install.started",
       "cua-lab.subject.install-retry.started",
       "cua-lab.subject.install-retry.completed",
-      "cua-lab.subject.install.completed"
+      "cua-lab.subject.install.completed",
     ]);
     expect(installPhases[1]?.message).toContain("first attempt exited 1; retrying once");
     expect(installPhases[2]?.ok).toBe(true);
     expect(installPhases[3]?.ok).toBe(true);
-    expect(installPhases[3]?.message).toBe("subject dependencies installed (on the second attempt)");
+    expect(installPhases[3]?.message).toBe(
+      "subject dependencies installed (on the second attempt)",
+    );
   });
 
   it("a subject install that fails twice reports one actionable line before npm's own output (#602)", async () => {
@@ -2993,27 +3966,35 @@ describe("runCuaActorLab", () => {
           return { stdout: "1" };
         }
         if (command.includes("subject-install") && command.includes("tail -c")) {
-          return { stdout: "npm error code ERR_SSL_CIPHER_OPERATION_FAILED\nnpm error ossl_gcm_stream_update" };
+          return {
+            stdout:
+              "npm error code ERR_SSL_CIPHER_OPERATION_FAILED\nnpm error ossl_gcm_stream_update",
+          };
         }
         return undefined;
-      })
+      }),
     });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module
-      }
+        loadDesktopModule: async () => module,
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(false);
     expect(attempts).toBe(2);
     expect(killed).toEqual(["fake-sandbox-001"]);
     const message = outcome.result.error?.message ?? "";
-    expect(message.indexOf("subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install"))
-      .toBeGreaterThanOrEqual(0);
-    expect(message.indexOf("subject install failed twice")).toBeLessThan(message.indexOf("ERR_SSL_CIPHER_OPERATION_FAILED"));
+    expect(
+      message.indexOf(
+        "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install",
+      ),
+    ).toBeGreaterThanOrEqual(0);
+    expect(message.indexOf("subject install failed twice")).toBeLessThan(
+      message.indexOf("ERR_SSL_CIPHER_OPERATION_FAILED"),
+    );
   });
 
   it("scrubs PROVISIONED VALUES (no secret shape) from every artifact and the result when a serve step echoes them", async () => {
@@ -3024,20 +4005,21 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
         // Both attempts fail (#602 retries an exit-code failure once under `subject-install-retry`).
-        if (command.includes("subject-install") && command.includes("/status")) return { stdout: "1" };
+        if (command.includes("subject-install") && command.includes("/status"))
+          return { stdout: "1" };
         if (command.includes("subject-install") && command.includes("tail -c")) {
           return { stdout: `boot dump: DATABASE_PASSWORD=${plainValue} (config echo)` };
         }
         return undefined;
-      })
+      }),
     });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_PASSWORD: plainValue },
-        loadDesktopModule: async () => module
-      }
+        loadDesktopModule: async () => module,
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3070,9 +4052,10 @@ describe("runCuaActorLab", () => {
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
         if (command.includes("curl")) return { stdout: "WAIT" };
-        if (command.includes("subject-start") && command.includes("tail -c")) return { stdout: log };
+        if (command.includes("subject-start") && command.includes("tail -c"))
+          return { stdout: log };
         return undefined;
-      })
+      }),
     });
     const { module } = makeFakeModule(sandbox);
     const outcome = await runLab(cloneCuaConfig({ readyTimeoutMs: 5000 }), {
@@ -3080,8 +4063,13 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3101,17 +4089,19 @@ describe("runCuaActorLab", () => {
     const dry = await runLab(cloneCuaConfig(), { cwd, dryRun: true });
     if (dry.backend !== "cua") throw new Error("expected cua backend");
     const dryBundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", dry.result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", dry.result.runId, "run.json"), "utf8"),
     );
-    const dryProvenance = dryBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    const dryProvenance = dryBundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(dryProvenance?.message).toContain("dry-run contract; nothing cloned");
     expect(dryProvenance?.message).not.toContain("Subject cloned from");
 
     // Probe failure: cloned at a real commit, but serving never completed — say exactly that.
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) =>
-        command.includes("curl") ? { stdout: "WAIT" } : undefined
-      )
+        command.includes("curl") ? { stdout: "WAIT" } : undefined,
+      ),
     });
     const { module } = makeFakeModule(sandbox);
     let t = 0;
@@ -3120,14 +4110,21 @@ describe("runCuaActorLab", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (failed.backend !== "cua") throw new Error("expected cua backend");
     const failedBundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", failed.result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", failed.result.runId, "run.json"), "utf8"),
     );
-    const failedProvenance = failedBundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    const failedProvenance = failedBundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(failedProvenance?.message).toContain("did not complete");
     expect(failedProvenance?.message).not.toContain("and served at");
   });
@@ -3140,9 +4137,15 @@ describe("runCuaActorLab", () => {
       env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", GITHUB_TOKEN: "ghp-token-value" },
       loadDesktopModule: async () => module,
       runSession: async (options: Parameters<NonNullable<CuaActorLabHooks["runSession"]>>[0]) =>
-        runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+        runCuaActorSession({
+          ...options,
+          openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        }),
     };
-    const redacted = await runLab(cloneCuaConfig({ env: ["GITHUB_TOKEN"] }), { cwd, cuaHooks: tokenHooks });
+    const redacted = await runLab(cloneCuaConfig({ env: ["GITHUB_TOKEN"] }), {
+      cwd,
+      cuaHooks: tokenHooks,
+    });
     if (redacted.backend !== "cua") throw new Error("expected cua backend");
     expect(redacted.result.subject?.repo).toBe("repo-01");
     const runDir = path.join(cwd, ".humanish", "runs", redacted.result.runId);
@@ -3158,7 +4161,7 @@ describe("runCuaActorLab", () => {
     const { module: module2 } = makeFakeModule(sandbox2);
     const unredacted = await runLab(explicitConfig, {
       cwd,
-      cuaHooks: { ...tokenHooks, loadDesktopModule: async () => module2 }
+      cuaHooks: { ...tokenHooks, loadDesktopModule: async () => module2 },
     });
     if (unredacted.backend !== "cua") throw new Error("expected cua backend");
     expect(unredacted.result.subject?.repo).toBe("example-org/example-app");
@@ -3181,7 +4184,7 @@ describe("runCuaActorLab", () => {
         if (command.includes("curl")) return { stdout: "WAIT" };
         if (command.includes("tail -c")) return { stdout: "server crashed at boot" };
         return undefined;
-      })
+      }),
     });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -3193,9 +4196,9 @@ describe("runCuaActorLab", () => {
           now: () => t,
           sleep: async (ms: number) => {
             t += ms;
-          }
-        }
-      }
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3206,7 +4209,7 @@ describe("runCuaActorLab", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.simulations[0].status).toBe("failed");
   });
@@ -3227,13 +4230,19 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
       id: "cua-template-proof",
       title: "CUA template proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop." }],
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+        },
+      ],
       execution: {
         target: "e2b-desktop",
         timeoutMs: 60_000,
-        desktop: { resolution: [1280, 800], ...(template === undefined ? {} : { template }) }
+        desktop: { resolution: [1280, 800], ...(template === undefined ? {} : { template }) },
       },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -3246,16 +4255,23 @@ describe("execution.desktop.template (custom E2B desktop image, single-lane cua 
       env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
       loadDesktopModule: async () => module,
       runSession: async (options) =>
-        runCuaActorSession({ ...options, openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
+        runCuaActorSession({
+          ...options,
+          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        }),
     };
     const outcome = await runLab(config, { cwd, cuaHooks: hooks });
     if (outcome.backend !== "cua") throw new Error("expected the cua backend");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     return { created, templates, bundle };
   }
 
   it("threads the template into Sandbox.create(template, opts) and records it in the bundle (provenance)", async () => {
-    const { created, templates, bundle } = await runWith(templatedConfig("acme-desktop-with-runtimes"));
+    const { created, templates, bundle } = await runWith(
+      templatedConfig("acme-desktop-with-runtimes"),
+    );
     expect(created).toHaveLength(1);
     // The desktop create received the configured template as its first (template) argument.
     expect(templates).toEqual(["acme-desktop-with-runtimes"]);
@@ -3287,14 +4303,29 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  const sha16 = (command: string): string => createHash("sha256").update(command).digest("hex").slice(0, 16);
+  const sha16 = (command: string): string =>
+    createHash("sha256").update(command).digest("hex").slice(0, 16);
 
   const THREE_PHASE_STATE = {
     seed: [
-      { name: "prebuild", command: "node scripts/prebuild-fixtures.js", when: "before-build", timeoutMs: 300_000 },
-      { name: "db-up", command: "sudo service postgresql start && pg_isready -t 30", timeoutMs: 120_000 },
-      { name: "admin-user", command: "curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin", when: "after-ready", timeoutMs: 60_000 }
-    ]
+      {
+        name: "prebuild",
+        command: "node scripts/prebuild-fixtures.js",
+        when: "before-build",
+        timeoutMs: 300_000,
+      },
+      {
+        name: "db-up",
+        command: "sudo service postgresql start && pg_isready -t 30",
+        timeoutMs: 120_000,
+      },
+      {
+        name: "admin-user",
+        command: "curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin",
+        when: "after-ready",
+        timeoutMs: 60_000,
+      },
+    ],
   };
 
   it("runs seed steps in their declared phases with exact commands, records seeded provenance with digests, and grows the sandbox deadline", async () => {
@@ -3309,8 +4340,11 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         // Fixed clock so per-step durationMs is deterministic (0) in the record assertions.
         detachedTimers: { now: () => 0, sleep: async () => {} },
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3320,22 +4354,27 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // Each step runs through the detached primitive under the reserved prefix, with the
     // EXACT declared command and cwd inside the subject checkout.
     const writeIndexFor = (name: string): number =>
-      sandbox.calls.findIndex((call) => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`));
+      sandbox.calls.findIndex(
+        (call) => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
+      );
     const scriptFor = (name: string): string => {
       const entry = sandbox.calls.find(
-        (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`)
+        (call): call is [string, string, string] =>
+          call[0] === "files.write" && String(call[1]).endsWith(`${name}/run.sh`),
       );
       if (!entry) throw new Error(`missing script for ${name}`);
       return entry[2];
     };
-    expect(scriptFor("subject-state-db-up")).toContain("( sudo service postgresql start && pg_isready -t 30 )");
+    expect(scriptFor("subject-state-db-up")).toContain(
+      "( sudo service postgresql start && pg_isready -t 30 )",
+    );
     expect(scriptFor("subject-state-db-up")).toContain("cd '/home/user/subject'");
     expect(scriptFor("subject-state-admin-user")).toContain("bootstrap-admin");
 
     // Phase ordering from the recorded call sequence: install → before-build → build →
     // before-start → start → readiness probe → after-ready → browser open.
     const probeIndex = sandbox.calls.findIndex(
-      (call) => call[0] === "commands.run" && String(call[1]).includes("curl -sf -o /dev/null")
+      (call) => call[0] === "commands.run" && String(call[1]).includes("curl -sf -o /dev/null"),
     );
     const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
     expect(writeIndexFor("subject-install")).toBeLessThan(writeIndexFor("subject-state-prebuild"));
@@ -3348,18 +4387,39 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 
     // The default sandbox deadline grows by the declared state budget.
     expect(created[0]?.timeoutMs).toBe(
-      60_000 // execution.timeoutMs
-      + 30 * 60_000 // SUBJECT_PROVISION_BUDGET_MS
-      + (300_000 + 120_000 + 60_000) // Σ step.timeoutMs
-      + 10 * 60_000 // SANDBOX_TIMEOUT_BUFFER_MS
+      60_000 + // execution.timeoutMs
+        30 * 60_000 + // SUBJECT_PROVISION_BUDGET_MS
+        (300_000 + 120_000 + 60_000) + // Σ step.timeoutMs
+        10 * 60_000, // SANDBOX_TIMEOUT_BUFFER_MS
     );
 
     // Provenance: marker seeded, per-step records with sha256-16 digests of the EXACT
     // commands — and never the command text itself.
     const expectedSeed = [
-      { name: "prebuild", when: "before-build", commandDigest: sha16("node scripts/prebuild-fixtures.js"), ok: true, exitCode: 0, durationMs: 0 },
-      { name: "db-up", when: "before-start", commandDigest: sha16("sudo service postgresql start && pg_isready -t 30"), ok: true, exitCode: 0, durationMs: 0 },
-      { name: "admin-user", when: "after-ready", commandDigest: sha16("curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin"), ok: true, exitCode: 0, durationMs: 0 }
+      {
+        name: "prebuild",
+        when: "before-build",
+        commandDigest: sha16("node scripts/prebuild-fixtures.js"),
+        ok: true,
+        exitCode: 0,
+        durationMs: 0,
+      },
+      {
+        name: "db-up",
+        when: "before-start",
+        commandDigest: sha16("sudo service postgresql start && pg_isready -t 30"),
+        ok: true,
+        exitCode: 0,
+        durationMs: 0,
+      },
+      {
+        name: "admin-user",
+        when: "after-ready",
+        commandDigest: sha16("curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin"),
+        ok: true,
+        exitCode: 0,
+        durationMs: 0,
+      },
     ];
     expect(result.subject?.state).toEqual({ provenance: "seeded", seed: expectedSeed });
 
@@ -3370,9 +4430,11 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       repo: "example-org/example-app",
       commit: "abc123def4567890abc1",
       envNames: [],
-      state: { provenance: "seeded", seed: expectedSeed }
+      state: { provenance: "seeded", seed: expectedSeed },
     });
-    const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    const provenance = bundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(provenance?.message).toContain("state: seeded (3 step(s): prebuild, db-up, admin-user)");
     const reviewMd = await readFile(path.join(runDir, "review.md"), "utf8");
     expect(reviewMd).toContain("state: seeded");
@@ -3385,7 +4447,9 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // The independent verifier accepts the seeded claim against its evidence.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
-    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
+      true,
+    );
     // No undeclared-state nudge: the state story IS declared.
     expect(verified.warnings.some((w) => w.includes("no state story"))).toBe(false);
   });
@@ -3398,9 +4462,9 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         seed: [
           { name: "db-up", command: "start the db" },
           { name: "db-migrate", command: "run migrations" },
-          { name: "fixtures", command: "load fixtures" }
-        ]
-      }
+          { name: "fixtures", command: "load fixtures" },
+        ],
+      },
     });
     let sessionStarted = false;
     const sandbox = makeFakeSandbox({
@@ -3410,7 +4474,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
           return { stdout: `migration blew up: DATABASE_PASSWORD=${plainValue}` };
         }
         return undefined;
-      })
+      }),
     });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -3422,8 +4486,8 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         runSession: async () => {
           sessionStarted = true;
           throw new Error("session must never start after a failed state step");
-        }
-      }
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3439,8 +4503,22 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // its exit code, the unreached step ABSENT — and the marker stays honest.
     expect(result.subject?.state.provenance).toBe("declared-not-run");
     expect(result.subject?.state.seed).toEqual([
-      { name: "db-up", when: "before-start", commandDigest: sha16("start the db"), ok: true, exitCode: 0, durationMs: 0 },
-      { name: "db-migrate", when: "before-start", commandDigest: sha16("run migrations"), ok: false, exitCode: 1, durationMs: 0 }
+      {
+        name: "db-up",
+        when: "before-start",
+        commandDigest: sha16("start the db"),
+        ok: true,
+        exitCode: 0,
+        durationMs: 0,
+      },
+      {
+        name: "db-migrate",
+        when: "before-start",
+        commandDigest: sha16("run migrations"),
+        ok: false,
+        exitCode: 1,
+        durationMs: 0,
+      },
     ]);
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -3459,21 +4537,24 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // A FAILED bundle with honest partial provenance still verifies its state claim
     // (verdict is fail, so the passed-live-with-failed-step rule does not trip).
     const verified = await verifyRun(cwd, result.runId);
-    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
+      true,
+    );
   });
 
   it("times out a hung state step (kill + timedOut record) and honors clone.keep on that failure", async () => {
     const config = cloneCuaConfig({
       keep: true,
-      state: { seed: [{ name: "slow", command: "sleep forever", timeoutMs: 5_000 }] }
+      state: { seed: [{ name: "slow", command: "sleep forever", timeoutMs: 5_000 }] },
     });
     let t = 0;
     const sandbox = makeFakeSandbox({
       commandHandler: cloneCommandHandler((command) => {
         if (command.includes("subject-state-slow/status")) return { stdout: "" };
-        if (command.includes("subject-state-slow") && command.includes("tail -c")) return { stdout: "still sleeping" };
+        if (command.includes("subject-state-slow") && command.includes("tail -c"))
+          return { stdout: "still sleeping" };
         return undefined;
-      })
+      }),
     });
     const { module, killed } = makeFakeModule(sandbox);
     const outcome = await runLab(config, {
@@ -3481,21 +4562,33 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
         loadDesktopModule: async () => module,
-        detachedTimers: { now: () => t, sleep: async (ms: number) => { t += ms; } }
-      }
+        detachedTimers: {
+          now: () => t,
+          sleep: async (ms: number) => {
+            t += ms;
+          },
+        },
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain('subject state step "slow" timed out after 5000ms');
-    expect(result.subject?.state.seed?.[0]).toMatchObject({ name: "slow", ok: false, timedOut: true });
+    expect(result.subject?.state.seed?.[0]).toMatchObject({
+      name: "slow",
+      ok: false,
+      timedOut: true,
+    });
     // keep-on-failure applies to state failures exactly as to serve failures.
     expect(killed).toEqual([]);
     expect(result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
   });
 
   it("dry-run records the DECLARED recipe as declared-not-run: digests and phases only, no execution fields, honest event wording", async () => {
-    const outcome = await runLab(cloneCuaConfig({ state: THREE_PHASE_STATE }), { cwd, dryRun: true });
+    const outcome = await runLab(cloneCuaConfig({ state: THREE_PHASE_STATE }), {
+      cwd,
+      dryRun: true,
+    });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
     expect(result.ok).toBe(true);
@@ -3503,30 +4596,51 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     expect(result.subject?.state).toEqual({
       provenance: "declared-not-run",
       seed: [
-        { name: "prebuild", when: "before-build", commandDigest: sha16("node scripts/prebuild-fixtures.js") },
-        { name: "db-up", when: "before-start", commandDigest: sha16("sudo service postgresql start && pg_isready -t 30") },
-        { name: "admin-user", when: "after-ready", commandDigest: sha16("curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin") }
-      ]
+        {
+          name: "prebuild",
+          when: "before-build",
+          commandDigest: sha16("node scripts/prebuild-fixtures.js"),
+        },
+        {
+          name: "db-up",
+          when: "before-start",
+          commandDigest: sha16("sudo service postgresql start && pg_isready -t 30"),
+        },
+        {
+          name: "admin-user",
+          when: "after-ready",
+          commandDigest: sha16("curl -sf -X POST http://127.0.0.1:3000/api/test/bootstrap-admin"),
+        },
+      ],
     });
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.subject.state.provenance).toBe("declared-not-run");
-    expect(bundle.subject.state.seed.every((record: Record<string, unknown>) => !("ok" in record))).toBe(true);
-    const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    expect(
+      bundle.subject.state.seed.every((record: Record<string, unknown>) => !("ok" in record)),
+    ).toBe(true);
+    const provenance = bundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(provenance?.message).toContain("state: declared, not run (dry-run contract)");
 
     // The contract bundle verifies — declared-not-run is the honest dry-run marker.
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
-    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
+      true,
+    );
   });
 
   it("declared external state records UNPINNED provenance (seed digests still attached when both are declared)", async () => {
     const config = cloneCuaConfig({
       env: ["DATABASE_URL"],
-      state: { seed: [{ name: "db-migrate", command: "run migrations" }], external: ["DATABASE_URL"] }
+      state: {
+        seed: [{ name: "db-migrate", command: "run migrations" }],
+        external: ["DATABASE_URL"],
+      },
     });
     const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
     const { module } = makeFakeModule(sandbox);
@@ -3536,8 +4650,11 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2", DATABASE_URL: "postgres-external-value" },
         loadDesktopModule: async () => module,
         runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
@@ -3550,7 +4667,9 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    const provenance = bundle.events.find((event: { type: string }) => event.type === "cua-lab.subject.provenance");
+    const provenance = bundle.events.find(
+      (event: { type: string }) => event.type === "cua-lab.subject.provenance",
+    );
     expect(provenance?.message).toContain("state: UNPINNED (external: DATABASE_URL)");
     for (const file of ["run.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(runDir, file), "utf8");
@@ -3558,7 +4677,9 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     }
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
-    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(true);
+    expect(verified.checks.find((check) => check.name === "subject state provenance")?.ok).toBe(
+      true,
+    );
   });
 
   it("app-url bundles carry the uniform subject block: source app-url, state undeclared", async () => {
@@ -3567,7 +4688,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     const result = outcome.result;
     expect(result.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
     const bundle = JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
   });
@@ -3578,7 +4699,11 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
       ({ ...base, subject: { ...base.subject, state } }) as LabConfig;
 
     // Bad step name (interpolates into in-sandbox paths — must fail closed).
-    const badName = await runCuaActorLab({ cwd, config: tamper({ seed: [{ name: "Bad Name!", command: "true" }] }), dryRun: true });
+    const badName = await runCuaActorLab({
+      cwd,
+      config: tamper({ seed: [{ name: "Bad Name!", command: "true" }] }),
+      dryRun: true,
+    });
     expect(badName.ok).toBe(false);
     expect(badName.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
     expect(badName.runId).toBe("not-created");
@@ -3586,20 +4711,29 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
     // Duplicate step names.
     const dupe = await runCuaActorLab({
       cwd,
-      config: tamper({ seed: [{ name: "a", command: "true" }, { name: "a", command: "false" }] }),
-      dryRun: true
+      config: tamper({
+        seed: [
+          { name: "a", command: "true" },
+          { name: "a", command: "false" },
+        ],
+      }),
+      dryRun: true,
     });
     expect(dupe.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
 
     // external must name a provisioned channel (subset of subject.env).
-    const unbacked = await runCuaActorLab({ cwd, config: tamper({ external: ["REDIS_URL"] }), dryRun: true });
+    const unbacked = await runCuaActorLab({
+      cwd,
+      config: tamper({ external: ["REDIS_URL"] }),
+      dryRun: true,
+    });
     expect(unbacked.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
 
     // state on an app-url subject is rejected, never silently inert (invariant 6).
     const appUrlBase = cuaConfig();
     const appUrlTampered = {
       ...appUrlBase,
-      subject: { ...appUrlBase.subject, state: { seed: [{ name: "a", command: "true" }] } }
+      subject: { ...appUrlBase.subject, state: { seed: [{ name: "a", command: "true" }] } },
     } as LabConfig;
     const onAppUrl = await runCuaActorLab({ cwd, config: appUrlTampered, dryRun: true });
     expect(onAppUrl.ok).toBe(false);
@@ -3609,464 +4743,507 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 });
 
 describe("buildCuaBundle", () => {
-describe("local-tree route (subject.source: local-tree, computer-use)", () => {
-  let cwd: string;
-  beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-local-tree-"));
-  });
-  afterEach(async () => {
-    await rm(cwd, { recursive: true, force: true });
-  });
+  describe("local-tree route (subject.source: local-tree, computer-use)", () => {
+    let cwd: string;
+    beforeEach(async () => {
+      cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-local-tree-"));
+    });
+    afterEach(async () => {
+      await rm(cwd, { recursive: true, force: true });
+    });
 
-  function localTreeCuaConfig(extra?: {
-    env?: string[];
-    state?: unknown;
-    count?: number;
-    caps?: { maxUsd?: number };
-    localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
-  }): LabConfig {
-    const parsed = parseLabConfig({
-      schema: LAB_CONFIG_SCHEMA,
-      id: "cua-local-tree-proof",
-      title: "CUA local-tree proof",
-      subject: {
-        source: "local-tree",
-        serve: {
-          install: "pnpm install --frozen-lockfile",
-          build: "pnpm build",
-          start: "pnpm start",
-          url: "http://127.0.0.1:3000/"
+    function localTreeCuaConfig(extra?: {
+      env?: string[];
+      state?: unknown;
+      count?: number;
+      caps?: { maxUsd?: number };
+      localTree?: { keep?: boolean; exclude?: string[]; maxArchiveBytes?: number };
+    }): LabConfig {
+      const parsed = parseLabConfig({
+        schema: LAB_CONFIG_SCHEMA,
+        id: "cua-local-tree-proof",
+        title: "CUA local-tree proof",
+        subject: {
+          source: "local-tree",
+          serve: {
+            install: "pnpm install --frozen-lockfile",
+            build: "pnpm build",
+            start: "pnpm start",
+            url: "http://127.0.0.1:3000/",
+          },
+          ...(extra?.env ? { env: extra.env } : {}),
+          ...(extra?.state === undefined ? {} : { state: extra.state }),
+          ...(extra?.localTree === undefined ? {} : { localTree: extra.localTree }),
         },
-        ...(extra?.env ? { env: extra.env } : {}),
-        ...(extra?.state === undefined ? {} : { state: extra.state }),
-        ...(extra?.localTree === undefined ? {} : { localTree: extra.localTree })
-      },
-      actors: [{
-        type: "openai-computer-use",
-        persona: "first-time-visitor",
-        mission: "Explore the app and stop.",
-        ...(extra?.count === undefined ? {} : { count: extra.count })
-      }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, ...(extra?.caps ? { caps: extra.caps } : {}) },
-      scenario: { mode: "live" }
-    });
-    if (!parsed.ok) throw new Error(parsed.error.message);
-    return parsed.config;
-  }
-
-  // 64-hex archiveSha256 and a 40-hex commit: shape-valid fixtures, not real digests.
-  const FIXED_ARCHIVE: LocalTreeArchive = {
-    archivePath: "/unused-in-fake/source.tar.gz",
-    archiveSha256: "ab".repeat(32),
-    fileCount: 3,
-    totalBytes: 42,
-    git: { commit: "cd".repeat(20), dirty: true }
-  };
-  const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
-
-  it("dry-run yields the contract bundle with subject.source local-tree and NO archiveSha256", async () => {
-    const config = localTreeCuaConfig();
-    const outcome = await runLab(config, { cwd, dryRun: true });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const result = outcome.result;
-
-    expect(result.ok).toBe(true);
-    expect(result.dryRun).toBe(true);
-    expect(result.sandbox).toBeUndefined();
-    expect(result.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
-
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.subject).toEqual({ source: "local-tree", envNames: [], state: { provenance: "undeclared" } });
-    expect("archiveSha256" in bundle.subject).toBe(false);
-
-    const verified = await verifyRun(cwd, result.runId);
-    expect(verified.ok).toBe(true);
-  });
-
-  it("live (single lane): onPhase (injected capture sink) emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
-    const config = localTreeCuaConfig();
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module } = makeFakeModule(sandbox);
-    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        onPhase: (event) => {
-          phaseEvents.push(event);
-        }
-      }
-    });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    expect(outcome.result.ok).toBe(true);
-
-    const types = phaseEvents.map((event) => event.type);
-    expect(types).toEqual([
-      "cua-lab.subject.upload.started",
-      "cua-lab.subject.upload.completed",
-      "cua-lab.subject.extract.started",
-      "cua-lab.subject.extract.completed",
-      "cua-lab.subject.runtime.started",
-      "cua-lab.subject.runtime.completed",
-      "cua-lab.subject.install.started",
-      "cua-lab.subject.install.completed",
-      "cua-lab.subject.build.started",
-      "cua-lab.subject.build.completed",
-      "cua-lab.subject.serve.started",
-      "cua-lab.subject.ready.started",
-      "cua-lab.subject.ready.completed"
-    ]);
-    // The local-tree route never runs git: no clone phase on this route, ever.
-    expect(types.some((type) => type.includes(".clone."))).toBe(false);
-  });
-
-  it("live fan-out (2 lanes): packs the working tree ONCE, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
-    const config = localTreeCuaConfig({ count: 2 });
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module, created, killed } = makeFakeModule(sandbox);
-    const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> = [];
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async (args) => {
-          packCalls.push(args);
-          return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
+        actors: [
+          {
+            type: "openai-computer-use",
+            persona: "first-time-visitor",
+            mission: "Explore the app and stop.",
+            ...(extra?.count === undefined ? {} : { count: extra.count }),
+          },
+        ],
+        execution: {
+          target: "e2b-desktop",
+          timeoutMs: 60_000,
+          ...(extra?.caps ? { caps: extra.caps } : {}),
         },
-        runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
-    });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const result = outcome.result;
-    expect(result.ok).toBe(true);
-    expect(created.length).toBe(2);
-
-    // Packed exactly ONCE for the whole 2-lane fan-out, rooted at the lab resolution cwd.
-    expect(packCalls).toHaveLength(1);
-    expect(packCalls[0]?.root).toBe(await realpath(cwd));
-
-    // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
-    const uploads = sandbox.calls.filter(
-      (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
-        call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
-    );
-    expect(uploads).toHaveLength(2);
-    for (const upload of uploads) {
-      expect(upload[2]).toBeInstanceOf(ArrayBuffer);
-      expect(upload[2]).toBe(FAKE_ARCHIVE_BYTES);
-      expect(upload[3]?.useOctetStream).toBe(true);
+        scenario: { mode: "live" },
+      });
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      return parsed.config;
     }
 
-    // The extract step ran one command: rm -rf/mkdir -p SUBJECT_DIR, tar -xzf, then rm -f the
-    // uploaded archive.
-    const extractScript = sandbox.calls.find(
-      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh")
-    );
-    expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
-    expect(extractScript?.[2]).toContain("mkdir -p /home/user/subject");
-    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject");
-    expect(extractScript?.[2]).toContain("rm -f /home/user/.humanish-source.tar.gz");
-
-    // Provenance: aggregate + every lane carry archiveSha256/commit/dirty from the hook result.
-    const expectedSubject = {
-      source: "local-tree",
-      archiveSha256: FIXED_ARCHIVE.archiveSha256,
-      commit: FIXED_ARCHIVE.git!.commit,
-      dirty: true,
-      envNames: [],
-      state: { provenance: "undeclared" }
+    // 64-hex archiveSha256 and a 40-hex commit: shape-valid fixtures, not real digests.
+    const FIXED_ARCHIVE: LocalTreeArchive = {
+      archivePath: "/unused-in-fake/source.tar.gz",
+      archiveSha256: "ab".repeat(32),
+      fileCount: 3,
+      totalBytes: 42,
+      git: { commit: "cd".repeat(20), dirty: true },
     };
-    expect(result.subject).toEqual(expectedSubject);
-    expect(result.lanes).toHaveLength(2);
-    for (const lane of result.lanes ?? []) {
-      expect(lane.subject).toEqual(expectedSubject);
-    }
+    const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
 
-    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    expect(bundle.subject).toEqual(expectedSubject);
+    it("dry-run yields the contract bundle with subject.source local-tree and NO archiveSha256", async () => {
+      const config = localTreeCuaConfig();
+      const outcome = await runLab(config, { cwd, dryRun: true });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      const result = outcome.result;
 
-    expect(killed.length).toBeGreaterThan(0);
-  });
+      expect(result.ok).toBe(true);
+      expect(result.dryRun).toBe(true);
+      expect(result.sandbox).toBeUndefined();
+      expect(result.subject).toEqual({
+        source: "local-tree",
+        envNames: [],
+        state: { provenance: "undeclared" },
+      });
 
-  it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-LANE cap and cites the ~N × cap ceiling", async () => {
-    const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module } = makeFakeModule(sandbox);
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      );
+      expect(bundle.subject).toEqual({
+        source: "local-tree",
+        envNames: [],
+        state: { provenance: "undeclared" },
+      });
+      expect("archiveSha256" in bundle.subject).toBe(false);
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } })
-      }
+      const verified = await verifyRun(cwd, result.runId);
+      expect(verified.ok).toBe(true);
     });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    const result = outcome.result;
 
-    const capWarning = result.warnings.find((w) => w.includes("PER-LANE cap"));
-    expect(capWarning).toBeDefined();
-    // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3 — and the warning
-    // points at the shared study budget (#299) as the fix, since it exists now.
-    expect(capWarning).toContain("2 × $3");
-    expect(capWarning).toContain("~$6");
-    expect(capWarning).toContain("maxTotalUsd");
-  });
+    it("live (single lane): onPhase (injected capture sink) emits the upload/extract phase boundaries, then install/build/ready (#263)", async () => {
+      const config = localTreeCuaConfig();
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module } = makeFakeModule(sandbox);
+      const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
 
-  it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
-    const config = localTreeCuaConfig({ count: 2 });
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module } = makeFakeModule(sandbox);
-    const phaseCalls: Array<{ event: { type: string; ok?: boolean }; ctx: { laneId: string; laneCount: number } }> = [];
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async (options) =>
-          runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } }),
-        onPhase: (event, ctx) => {
-          phaseCalls.push({ event, ctx });
-        }
-      }
-    });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    expect(outcome.result.ok).toBe(true);
-
-    // (c) laneCount > 1: the default-sink prefix logic (defaultSubjectPhaseSink) reads
-    // ctx.laneCount to decide whether to prefix lines with the lane id. Every captured ctx here
-    // carries the TOTAL fan-out width (2), never a per-lane count.
-    expect(phaseCalls.length).toBeGreaterThan(0);
-    expect(phaseCalls.every(({ ctx }) => ctx.laneCount === 2)).toBe(true);
-
-    // (a) BOTH lanes reported phase events under their OWN distinct lane id, and each lane's own
-    // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
-    // skipped, no cross-lane mixing within a single lane's sequence).
-    const laneIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.laneId))].sort();
-    expect(laneIds).toEqual(["lane-01", "lane-02"]);
-    const expectedTypes = [
-      "cua-lab.subject.upload.started",
-      "cua-lab.subject.upload.completed",
-      "cua-lab.subject.extract.started",
-      "cua-lab.subject.extract.completed",
-      "cua-lab.subject.runtime.started",
-      "cua-lab.subject.runtime.completed",
-      "cua-lab.subject.install.started",
-      "cua-lab.subject.install.completed",
-      "cua-lab.subject.build.started",
-      "cua-lab.subject.build.completed",
-      "cua-lab.subject.serve.started",
-      "cua-lab.subject.ready.started",
-      "cua-lab.subject.ready.completed"
-    ];
-    for (const laneId of laneIds) {
-      const types = phaseCalls.filter(({ ctx }) => ctx.laneId === laneId).map(({ event }) => event.type);
-      expect(types).toEqual(expectedTypes);
-    }
-
-    // (b) the persisted fan-out bundle attributes each lane's COMPLETED phase events to that
-    // lane's OWN simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
-    // no cross-lane leakage into the wrong lane's stream.
-    const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
-    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    const persistedPhaseEvents = (bundle.events as Array<{ id: string; type: string; simId?: string; streamId?: string }>).filter(
-      (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed")
-    );
-    expect(persistedPhaseEvents.length).toBeGreaterThan(0);
-    for (const event of persistedPhaseEvents) {
-      if (event.id.includes("lane-01")) {
-        expect(event.simId).toBe("sim-001");
-        expect(event.streamId).toBe("stream-001");
-      } else if (event.id.includes("lane-02")) {
-        expect(event.simId).toBe("sim-002");
-        expect(event.streamId).toBe("stream-002");
-      } else {
-        throw new Error(`unexpected phase event id shape: ${event.id}`);
-      }
-    }
-    // Both lanes actually persisted (neither lane's phase trail silently swallowed).
-    expect(persistedPhaseEvents.some((event) => event.simId === "sim-001")).toBe(true);
-    expect(persistedPhaseEvents.some((event) => event.simId === "sim-002")).toBe(true);
-
-    const verified = await verifyRun(cwd, outcome.result.runId);
-    expect(verified.ok).toBe(true);
-  });
-
-  it("extract failure, throwing CommandExitError shape: fails the lane with a scrubbed tail", async () => {
-    const config = localTreeCuaConfig();
-    const sandbox = makeFakeSandbox({
-      commandHandler: cloneCommandHandler(),
-      commandThrow: (command) =>
-        command.includes("setsid -f") && command.includes("subject-extract/run.sh")
-          ? { exitCode: 2, message: "tar: unexpected end of archive (extract failed)" }
-          : undefined
-    });
-    const { module, created } = makeFakeModule(sandbox);
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async () => {
-          throw new Error("runSession must not be reached: extract should fail first");
-        }
-      }
-    });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-
-    expect(outcome.result.ok).toBe(false);
-    // The sandbox WAS created (provisioning is in-sandbox); only packing skips sandbox creation.
-    expect(created.length).toBe(1);
-    const message = outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
-    expect(message).toContain("tar: unexpected end of archive");
-  });
-
-  it("extract failure, structural fake returning a nonzero exitCode (not throwing): fails the lane with a scrubbed tail", async () => {
-    const config = localTreeCuaConfig();
-    const sandbox = makeFakeSandbox({
-      commandHandler: cloneCommandHandler((command) => {
-        if (command.includes("subject-extract/status")) return { stdout: "2" };
-        if (command.includes("subject-extract/log.txt")) return { stdout: "tar: unexpected end of archive (exit 2)" };
-        return undefined;
-      })
-    });
-    const { module } = makeFakeModule(sandbox);
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async () => {
-          throw new Error("runSession must not be reached: extract should fail first");
-        }
-      }
-    });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-
-    expect(outcome.result.ok).toBe(false);
-    const message = outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
-    expect(message).toContain("subject extract");
-    expect(message).toContain("tar: unexpected end of archive");
-  });
-
-  it("failing extract: onPhase emits a completed event with ok false before the lane fails (#263)", async () => {
-    const config = localTreeCuaConfig();
-    const sandbox = makeFakeSandbox({
-      commandHandler: cloneCommandHandler((command) => {
-        if (command.includes("subject-extract/status")) return { stdout: "2" };
-        if (command.includes("subject-extract/log.txt")) return { stdout: "tar: unexpected end of archive (exit 2)" };
-        return undefined;
-      })
-    });
-    const { module } = makeFakeModule(sandbox);
-    const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
-
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        onPhase: (event) => {
-          phaseEvents.push(event);
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+          onPhase: (event) => {
+            phaseEvents.push(event);
+          },
         },
-        runSession: async () => {
-          throw new Error("runSession must not be reached: extract should fail first");
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      expect(outcome.result.ok).toBe(true);
+
+      const types = phaseEvents.map((event) => event.type);
+      expect(types).toEqual([
+        "cua-lab.subject.upload.started",
+        "cua-lab.subject.upload.completed",
+        "cua-lab.subject.extract.started",
+        "cua-lab.subject.extract.completed",
+        "cua-lab.subject.runtime.started",
+        "cua-lab.subject.runtime.completed",
+        "cua-lab.subject.install.started",
+        "cua-lab.subject.install.completed",
+        "cua-lab.subject.build.started",
+        "cua-lab.subject.build.completed",
+        "cua-lab.subject.serve.started",
+        "cua-lab.subject.ready.started",
+        "cua-lab.subject.ready.completed",
+      ]);
+      // The local-tree route never runs git: no clone phase on this route, ever.
+      expect(types.some((type) => type.includes(".clone."))).toBe(false);
+    });
+
+    it("live fan-out (2 lanes): packs the working tree ONCE, uploads it per lane, extracts via tar, and carries archive provenance on every lane + the aggregate", async () => {
+      const config = localTreeCuaConfig({ count: 2 });
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module, created, killed } = makeFakeModule(sandbox);
+      const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> =
+        [];
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async (args) => {
+            packCalls.push(args);
+            return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
+          },
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      const result = outcome.result;
+      expect(result.ok).toBe(true);
+      expect(created.length).toBe(2);
+
+      // Packed exactly ONCE for the whole 2-lane fan-out, rooted at the lab resolution cwd.
+      expect(packCalls).toHaveLength(1);
+      expect(packCalls[0]?.root).toBe(await realpath(cwd));
+
+      // Every lane uploaded the SAME archive bytes to the SAME remote path, octet-stream.
+      const uploads = sandbox.calls.filter(
+        (call): call is [string, string, ArrayBuffer, { useOctetStream?: boolean } | undefined] =>
+          call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
+      );
+      expect(uploads).toHaveLength(2);
+      for (const upload of uploads) {
+        expect(upload[2]).toBeInstanceOf(ArrayBuffer);
+        expect(upload[2]).toBe(FAKE_ARCHIVE_BYTES);
+        expect(upload[3]?.useOctetStream).toBe(true);
+      }
+
+      // The extract step ran one command: rm -rf/mkdir -p SUBJECT_DIR, tar -xzf, then rm -f the
+      // uploaded archive.
+      const extractScript = sandbox.calls.find(
+        (call): call is [string, string, string] =>
+          call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh"),
+      );
+      expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
+      expect(extractScript?.[2]).toContain("mkdir -p /home/user/subject");
+      expect(extractScript?.[2]).toContain(
+        "tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject",
+      );
+      expect(extractScript?.[2]).toContain("rm -f /home/user/.humanish-source.tar.gz");
+
+      // Provenance: aggregate + every lane carry archiveSha256/commit/dirty from the hook result.
+      const expectedSubject = {
+        source: "local-tree",
+        archiveSha256: FIXED_ARCHIVE.archiveSha256,
+        commit: FIXED_ARCHIVE.git!.commit,
+        dirty: true,
+        envNames: [],
+        state: { provenance: "undeclared" },
+      };
+      expect(result.subject).toEqual(expectedSubject);
+      expect(result.lanes).toHaveLength(2);
+      for (const lane of result.lanes ?? []) {
+        expect(lane.subject).toEqual(expectedSubject);
+      }
+
+      const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      expect(bundle.subject).toEqual(expectedSubject);
+
+      expect(killed.length).toBeGreaterThan(0);
+    });
+
+    it("live fan-out (2 lanes) with maxUsd: warns that maxUsd is a PER-LANE cap and cites the ~N × cap ceiling", async () => {
+      const config = localTreeCuaConfig({ count: 2, caps: { maxUsd: 3 } });
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module } = makeFakeModule(sandbox);
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      const result = outcome.result;
+
+      const capWarning = result.warnings.find((w) => w.includes("PER-LANE cap"));
+      expect(capWarning).toBeDefined();
+      // 2 lanes × $3 → the true ~$6 ceiling is surfaced, not the per-lane $3 — and the warning
+      // points at the shared study budget (#299) as the fix, since it exists now.
+      expect(capWarning).toContain("2 × $3");
+      expect(capWarning).toContain("~$6");
+      expect(capWarning).toContain("maxTotalUsd");
+    });
+
+    it("live fan-out (2 lanes): onPhase captures BOTH lanes under their OWN lane id with the TOTAL laneCount, and the persisted bundle attributes each lane's phase events to that lane's OWN simId/streamId (#263)", async () => {
+      const config = localTreeCuaConfig({ count: 2 });
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module } = makeFakeModule(sandbox);
+      const phaseCalls: Array<{
+        event: { type: string; ok?: boolean };
+        ctx: { laneId: string; laneCount: number };
+      }> = [];
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async (options) =>
+            runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            }),
+          onPhase: (event, ctx) => {
+            phaseCalls.push({ event, ctx });
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      expect(outcome.result.ok).toBe(true);
+
+      // (c) laneCount > 1: the default-sink prefix logic (defaultSubjectPhaseSink) reads
+      // ctx.laneCount to decide whether to prefix lines with the lane id. Every captured ctx here
+      // carries the TOTAL fan-out width (2), never a per-lane count.
+      expect(phaseCalls.length).toBeGreaterThan(0);
+      expect(phaseCalls.every(({ ctx }) => ctx.laneCount === 2)).toBe(true);
+
+      // (a) BOTH lanes reported phase events under their OWN distinct lane id, and each lane's own
+      // boundary sequence is the full upload/extract/install/build/ready chain (no lane silently
+      // skipped, no cross-lane mixing within a single lane's sequence).
+      const laneIds = [...new Set(phaseCalls.map(({ ctx }) => ctx.laneId))].sort();
+      expect(laneIds).toEqual(["lane-01", "lane-02"]);
+      const expectedTypes = [
+        "cua-lab.subject.upload.started",
+        "cua-lab.subject.upload.completed",
+        "cua-lab.subject.extract.started",
+        "cua-lab.subject.extract.completed",
+        "cua-lab.subject.runtime.started",
+        "cua-lab.subject.runtime.completed",
+        "cua-lab.subject.install.started",
+        "cua-lab.subject.install.completed",
+        "cua-lab.subject.build.started",
+        "cua-lab.subject.build.completed",
+        "cua-lab.subject.serve.started",
+        "cua-lab.subject.ready.started",
+        "cua-lab.subject.ready.completed",
+      ];
+      for (const laneId of laneIds) {
+        const types = phaseCalls
+          .filter(({ ctx }) => ctx.laneId === laneId)
+          .map(({ event }) => event.type);
+        expect(types).toEqual(expectedTypes);
+      }
+
+      // (b) the persisted fan-out bundle attributes each lane's COMPLETED phase events to that
+      // lane's OWN simId/streamId (lane-01 -> sim-001/stream-001, lane-02 -> sim-002/stream-002):
+      // no cross-lane leakage into the wrong lane's stream.
+      const runDir = path.join(cwd, ".humanish", "runs", outcome.result.runId);
+      const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
+      const persistedPhaseEvents = (
+        bundle.events as Array<{ id: string; type: string; simId?: string; streamId?: string }>
+      ).filter(
+        (event) => event.type.startsWith("cua-lab.subject.") && event.type.endsWith(".completed"),
+      );
+      expect(persistedPhaseEvents.length).toBeGreaterThan(0);
+      for (const event of persistedPhaseEvents) {
+        if (event.id.includes("lane-01")) {
+          expect(event.simId).toBe("sim-001");
+          expect(event.streamId).toBe("stream-001");
+        } else if (event.id.includes("lane-02")) {
+          expect(event.simId).toBe("sim-002");
+          expect(event.streamId).toBe("stream-002");
+        } else {
+          throw new Error(`unexpected phase event id shape: ${event.id}`);
         }
       }
+      // Both lanes actually persisted (neither lane's phase trail silently swallowed).
+      expect(persistedPhaseEvents.some((event) => event.simId === "sim-001")).toBe(true);
+      expect(persistedPhaseEvents.some((event) => event.simId === "sim-002")).toBe(true);
+
+      const verified = await verifyRun(cwd, outcome.result.runId);
+      expect(verified.ok).toBe(true);
     });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
-    expect(outcome.result.ok).toBe(false);
 
-    // Upload succeeded (started+completed ok:true); the failing extract still gets its
-    // completed event, with ok false and a real durationMs, BEFORE the thrown error unwinds.
-    // install/build/ready never ran.
-    expect(phaseEvents.map((event) => event.type)).toEqual([
-      "cua-lab.subject.upload.started",
-      "cua-lab.subject.upload.completed",
-      "cua-lab.subject.extract.started",
-      "cua-lab.subject.extract.completed"
-    ]);
-    const extractCompleted = phaseEvents[3];
-    expect(extractCompleted?.ok).toBe(false);
-    expect(typeof extractCompleted?.durationMs).toBe("number");
-    expect(extractCompleted?.durationMs).toBeGreaterThanOrEqual(0);
-  });
+    it("extract failure, throwing CommandExitError shape: fails the lane with a scrubbed tail", async () => {
+      const config = localTreeCuaConfig();
+      const sandbox = makeFakeSandbox({
+        commandHandler: cloneCommandHandler(),
+        commandThrow: (command) =>
+          command.includes("setsid -f") && command.includes("subject-extract/run.sh")
+            ? { exitCode: 2, message: "tar: unexpected end of archive (extract failed)" }
+            : undefined,
+      });
+      const { module, created } = makeFakeModule(sandbox);
 
-  it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
-    const config = localTreeCuaConfig();
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module, created } = makeFakeModule(sandbox);
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async () => {
+            throw new Error("runSession must not be reached: extract should fail first");
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => {
-          // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
-          // absolute path the redaction pipeline must scrub before it reaches the result.
-          // Built from joined fragments (never a literal /Users/... path in source) so this
-          // fixture itself never trips the repo's own public-surface path scan.
-          const fakeAbsoluteRoot = ["", "Users", "fake-operator", "project"].join("/");
-          throw new Error(
-            `Local tree root "${fakeAbsoluteRoot}" produced zero packable entries after the always-on denylist; local-tree packing requires at least one non-denylisted file or symlink.`
-          );
-        }
-      }
+      expect(outcome.result.ok).toBe(false);
+      // The sandbox WAS created (provisioning is in-sandbox); only packing skips sandbox creation.
+      expect(created.length).toBe(1);
+      const message =
+        outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
+      expect(message).toContain("tar: unexpected end of archive");
     });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
-    expect(outcome.result.ok).toBe(false);
-    expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
-    expect(outcome.result.error?.message).toContain("zero packable entries");
-    expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
-    expect(created).toHaveLength(0);
-  });
+    it("extract failure, structural fake returning a nonzero exitCode (not throwing): fails the lane with a scrubbed tail", async () => {
+      const config = localTreeCuaConfig();
+      const sandbox = makeFakeSandbox({
+        commandHandler: cloneCommandHandler((command) => {
+          if (command.includes("subject-extract/status")) return { stdout: "2" };
+          if (command.includes("subject-extract/log.txt"))
+            return { stdout: "tar: unexpected end of archive (exit 2)" };
+          return undefined;
+        }),
+      });
+      const { module } = makeFakeModule(sandbox);
 
-  it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
-    const config = localTreeCuaConfig({ localTree: { keep: true } });
-    const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
-    const { module, killed } = makeFakeModule(sandbox);
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async () => {
+            throw new Error("runSession must not be reached: extract should fail first");
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
-    const outcome = await runLab(config, {
-      cwd,
-      cuaHooks: {
-        env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
-        loadDesktopModule: async () => module,
-        packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
-        runSession: async () => {
-          throw new Error("boom during session");
-        }
-      }
+      expect(outcome.result.ok).toBe(false);
+      const message =
+        outcome.result.lanes?.[0]?.error?.message ?? outcome.result.error?.message ?? "";
+      expect(message).toContain("subject extract");
+      expect(message).toContain("tar: unexpected end of archive");
     });
-    if (outcome.backend !== "cua") throw new Error("expected cua backend");
 
-    expect(outcome.result.ok).toBe(false);
-    // Failure + keep -> NOT killed, with a debug warning naming the flag that caused it.
-    expect(killed).toEqual([]);
-    expect(outcome.result.sandbox?.killed).toBe(false);
-    expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
-    expect(outcome.result.warnings.some((w) => w.includes("subject.localTree.keep"))).toBe(true);
+    it("failing extract: onPhase emits a completed event with ok false before the lane fails (#263)", async () => {
+      const config = localTreeCuaConfig();
+      const sandbox = makeFakeSandbox({
+        commandHandler: cloneCommandHandler((command) => {
+          if (command.includes("subject-extract/status")) return { stdout: "2" };
+          if (command.includes("subject-extract/log.txt"))
+            return { stdout: "tar: unexpected end of archive (exit 2)" };
+          return undefined;
+        }),
+      });
+      const { module } = makeFakeModule(sandbox);
+      const phaseEvents: Array<{ type: string; ok?: boolean; durationMs?: number }> = [];
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          onPhase: (event) => {
+            phaseEvents.push(event);
+          },
+          runSession: async () => {
+            throw new Error("runSession must not be reached: extract should fail first");
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+      expect(outcome.result.ok).toBe(false);
+
+      // Upload succeeded (started+completed ok:true); the failing extract still gets its
+      // completed event, with ok false and a real durationMs, BEFORE the thrown error unwinds.
+      // install/build/ready never ran.
+      expect(phaseEvents.map((event) => event.type)).toEqual([
+        "cua-lab.subject.upload.started",
+        "cua-lab.subject.upload.completed",
+        "cua-lab.subject.extract.started",
+        "cua-lab.subject.extract.completed",
+      ]);
+      const extractCompleted = phaseEvents[3];
+      expect(extractCompleted?.ok).toBe(false);
+      expect(typeof extractCompleted?.durationMs).toBe("number");
+      expect(extractCompleted?.durationMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it("packing failure (hook throws) fails the run closed BEFORE any sandbox is created", async () => {
+      const config = localTreeCuaConfig();
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module, created } = makeFakeModule(sandbox);
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => {
+            // A realistic createLocalTreeArchive-shaped failure: names counts, includes an
+            // absolute path the redaction pipeline must scrub before it reaches the result.
+            // Built from joined fragments (never a literal /Users/... path in source) so this
+            // fixture itself never trips the repo's own public-surface path scan.
+            const fakeAbsoluteRoot = ["", "Users", "fake-operator", "project"].join("/");
+            throw new Error(
+              `Local tree root "${fakeAbsoluteRoot}" produced zero packable entries after the always-on denylist; local-tree packing requires at least one non-denylisted file or symlink.`,
+            );
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+      expect(outcome.result.ok).toBe(false);
+      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_SUBJECT_INVALID");
+      expect(outcome.result.error?.message).toContain("zero packable entries");
+      expect(outcome.result.error?.message).not.toContain(["", "Users", "fake-operator"].join("/"));
+      expect(created).toHaveLength(0);
+    });
+
+    it("subject.localTree.keep: true preserves the sandbox on a failed lane (mirrors subject.clone.keep)", async () => {
+      const config = localTreeCuaConfig({ localTree: { keep: true } });
+      const sandbox = makeFakeSandbox({ commandHandler: cloneCommandHandler() });
+      const { module, killed } = makeFakeModule(sandbox);
+
+      const outcome = await runLab(config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+          loadDesktopModule: async () => module,
+          packLocalTree: async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES }),
+          runSession: async () => {
+            throw new Error("boom during session");
+          },
+        },
+      });
+      if (outcome.backend !== "cua") throw new Error("expected cua backend");
+
+      expect(outcome.result.ok).toBe(false);
+      // Failure + keep -> NOT killed, with a debug warning naming the flag that caused it.
+      expect(killed).toEqual([]);
+      expect(outcome.result.sandbox?.killed).toBe(false);
+      expect(outcome.result.warnings.some((w) => w.includes("kept for debugging"))).toBe(true);
+      expect(outcome.result.warnings.some((w) => w.includes("subject.localTree.keep"))).toBe(true);
+    });
   });
-});
 
   it("dry-run bundle shape: contract verdict, no actor seam, public cwd", () => {
     const bundle = buildCuaBundle({
@@ -4083,8 +5260,14 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       source: {
         packageName: "humanish",
         humanishSource: "present",
-        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
-      }
+        git: {
+          schema: "humanish.git-state.v1",
+          capturedAt: "2026-01-01T00:00:00.000Z",
+          present: false,
+          refState: "unknown",
+          note: "test",
+        } as never,
+      },
     });
     expect(bundle.streams[0]?.actor).toBeUndefined();
     expect(bundle.streams[0]?.embed?.kind).toBe("placeholder");
@@ -4097,7 +5280,8 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(bundle.redaction.notes).toContain("No screenshots captured");
     expect(bundle.redaction.notes).not.toContain("blurred fail-closed");
     // Stream artifact references are unique and relative (verifyRun's evidence rules).
-    const keys = bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
+    const keys =
+      bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
     expect(new Set(keys).size).toBe(keys.length);
     for (const artifact of bundle.streams[0]?.artifacts ?? []) {
       expect(path.isAbsolute(artifact.path)).toBe(false);
@@ -4123,8 +5307,14 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       source: {
         packageName: "humanish",
         humanishSource: "present",
-        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
-      }
+        git: {
+          schema: "humanish.git-state.v1",
+          capturedAt: "2026-01-01T00:00:00.000Z",
+          present: false,
+          refState: "unknown",
+          note: "test",
+        } as never,
+      },
     });
 
     const text = JSON.stringify(bundle);
@@ -4135,7 +5325,7 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     expect(bundle.streams[0]).toMatchObject({
       actorType: "reviewer",
       surface: "inbox",
-      caseGroup: "message-flow"
+      caseGroup: "message-flow",
     });
   });
 
@@ -4157,14 +5347,22 @@ describe("local-tree route (subject.source: local-tree, computer-use)", () => {
       source: {
         packageName: "humanish",
         humanishSource: "present" as const,
-        git: { schema: "humanish.git-state.v1", capturedAt: "2026-01-01T00:00:00.000Z", present: false, refState: "unknown", note: "test" } as never
-      }
+        git: {
+          schema: "humanish.git-state.v1",
+          capturedAt: "2026-01-01T00:00:00.000Z",
+          present: false,
+          refState: "unknown",
+          note: "test",
+        } as never,
+      },
     };
 
     const blurred = buildCuaBundle({ ...base, captureRedaction: "blurred" });
     expect(blurred.simulations[0]?.progress).toBe(100);
     expect(blurred.streams[0]?.embed?.title).toBe("CUA desktop (blurred)");
-    expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(true);
+    expect(blurred.streams[0]?.artifacts.some((a) => a.label === "screenshot 01 (blurred)")).toBe(
+      true,
+    );
     expect(blurred.redaction.notes).toContain("capture policy (blurred)");
 
     const raw = buildCuaBundle({ ...base, captureRedaction: "raw" });
@@ -4187,7 +5385,7 @@ const STATE_CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 // A fake state executor: drives an in-memory app (route advances each action), returns NO
@@ -4203,7 +5401,7 @@ function makeStateExecutor(): CuaExecutor & { actuated: CuaAction[] } {
     },
     async execute(action: CuaAction): Promise<void> {
       actuated.push(action);
-    }
+    },
   };
 }
 
@@ -4219,9 +5417,19 @@ function makeStateProvider(): CuaProvider {
     async nextTurn(): Promise<CuaTurn> {
       i += 1;
       return i >= 2
-        ? { actions: [], pendingSafetyChecks: [], done: true, message: "Reached the goal via getState()." }
-        : { actions: [{ kind: "type", text: "hello" }], pendingSafetyChecks: [], done: false, reasoning: "state looks right" };
-    }
+        ? {
+            actions: [],
+            pendingSafetyChecks: [],
+            done: true,
+            message: "Reached the goal via getState().",
+          }
+        : {
+            actions: [{ kind: "type", text: "hello" }],
+            pendingSafetyChecks: [],
+            done: false,
+            reasoning: "state looks right",
+          };
+    },
   };
 }
 
@@ -4231,8 +5439,14 @@ function localAppConfig(appUrl = "http://localhost:5173/"): LabConfig {
     id: "downstream-local-app-state",
     title: "State-driven local app",
     subject: { source: "local-app", appUrl },
-    actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Drive the app via its state contract." }],
-    scenario: { mode: "live" }
+    actors: [
+      {
+        type: "openai-computer-use",
+        persona: "pixel-pat",
+        mission: "Drive the app via its state contract.",
+      },
+    ],
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
@@ -4261,8 +5475,8 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
         // If anything on this route touched E2B, created[] would grow — this is the proof probe.
         loadDesktopModule: async () => module,
         buildExecutor: async () => stateExecutor,
-        buildProvider: async () => makeStateProvider()
-      }
+        buildProvider: async () => makeStateProvider(),
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -4297,7 +5511,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(shotFiles).toHaveLength(0);
 
     // Honest UNPINNED provenance (invariant 5): the bundle DECLARES the un-pinnable local app.
-    const subjectEvent = bundle.events.find((e: { type: string }) => e.type === "cua-lab.subject.declared");
+    const subjectEvent = bundle.events.find(
+      (e: { type: string }) => e.type === "cua-lab.subject.declared",
+    );
     expect(subjectEvent.message).toContain("UNPINNED");
     expect(subjectEvent.message).toContain("NO E2B");
     expect(bundle.subject).toEqual({ source: "app-url", state: { provenance: "undeclared" } });
@@ -4326,9 +5542,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
           capabilities: STATE_CAPS,
           async nextTurn(): Promise<CuaTurn> {
             return { actions: [], pendingSafetyChecks: [], done: true };
-          }
-        })
-      }
+          },
+        }),
+      },
     });
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
@@ -4351,10 +5567,15 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
           id: "idle-brain",
           capabilities: STATE_CAPS,
           async nextTurn(): Promise<CuaTurn> {
-            return { actions: [{ kind: "wait", ms: 1 }], pendingSafetyChecks: [], done: false, message: "Still waiting." };
-          }
-        })
-      }
+            return {
+              actions: [{ kind: "wait", ms: 1 }],
+              pendingSafetyChecks: [],
+              done: false,
+              message: "Still waiting.",
+            };
+          },
+        }),
+      },
     });
     expect(created).toHaveLength(0);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
@@ -4373,7 +5594,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     // The error names what actually happened to the participant, not a generic failure.
     expect(result.error?.message).toContain("abandoned");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("gave up");
   });
@@ -4388,9 +5611,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       hooks: {
         env: {}, // NO keys — proves the guard precedes key-gating
         loadDesktopModule: async () => module,
-        buildExecutor: async () => makeStateExecutor()
+        buildExecutor: async () => makeStateExecutor(),
         // buildProvider deliberately omitted
-      }
+      },
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
@@ -4406,9 +5629,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
       dryRun: false,
       hooks: {
         env: {}, // NO keys — the local-app guard must win over KEYS_MISSING
-        loadDesktopModule: async () => module
+        loadDesktopModule: async () => module,
         // no buildExecutor / buildProvider
-      }
+      },
     });
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
@@ -4424,7 +5647,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     const outcome = await runLab(cuaConfig(), {
       cwd,
       dryRun: true,
-      cuaHooks: { buildProvider: async () => makeStateProvider() }
+      cuaHooks: { buildProvider: async () => makeStateProvider() },
     });
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.ok).toBe(true);
@@ -4443,10 +5666,13 @@ describe("chromium browser-state observer command (observe-time CDP port re-reso
         run: async (command: string) => {
           commands.push(command);
           return { exitCode: 0, stdout: "{}" };
-        }
-      }
+        },
+      },
     } as unknown as E2BDesktopSandbox;
-    const observe = makeChromeBrowserStateObserver(desktop, 5_000, { profileDir: "/tmp/humanish-profile-x", targetUrl: "http://127.0.0.1:3000/" });
+    const observe = makeChromeBrowserStateObserver(desktop, 5_000, {
+      profileDir: "/tmp/humanish-profile-x",
+      targetUrl: "http://127.0.0.1:3000/",
+    });
     // The fake endpoint answers with an empty page set, so the observer degrades to {}.
     expect(await observe()).toEqual({});
     expect(commands).toHaveLength(1);
@@ -4479,7 +5705,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
         turn += 1;
         return { stateSignature: `sig-${turn}`, appState: { turn, t: clock.t } };
       },
-      async execute(): Promise<void> {}
+      async execute(): Promise<void> {},
     };
   }
 
@@ -4493,7 +5719,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       async nextTurn(): Promise<CuaTurn> {
         clock.t = 1000;
         return { actions: [{ kind: "type", text: "hello" }], pendingSafetyChecks: [], done: false };
-      }
+      },
     };
   }
 
@@ -4507,7 +5733,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       async nextTurn(): Promise<CuaTurn> {
         clock.t = 1000;
         return { actions: [{ kind: "wait", ms: 1 }], pendingSafetyChecks: [], done: false };
-      }
+      },
     };
   }
 
@@ -4526,10 +5752,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
             provider: budgetProvider(clock),
             executor: clockExecutor(clock),
             now: () => clock.t,
-            timeoutMs: 100
+            timeoutMs: 100,
           });
-        }
-      }
+        },
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -4542,12 +5768,19 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(result.session?.status).toBe("incomplete");
     expect(result.ok).toBe(false);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.review.verdict).not.toBe("pass");
     expect(bundle.streams[0].actor.completionReason).toBe("budget_reached");
     // The verdict collapses the run to one word; the participant tally does not. A reader can see
     // that nobody reached the goal AND that the denominator was one (three-roles.md).
-    expect(bundle.review.participants).toMatchObject({ total: 1, reachedGoal: 0, ranOut: 1, harnessFailed: 0 });
+    expect(bundle.review.participants).toMatchObject({
+      total: 1,
+      reachedGoal: 0,
+      ranOut: 1,
+      harnessFailed: 0,
+    });
 
     // The distinction that matters: the STUDY is incomplete, but the EVIDENCE is sound. The harness
     // did exactly what it said it did, so verify still passes — an unfinished study is a finding
@@ -4571,10 +5804,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
             provider: idleTimeoutProvider(clock),
             executor: clockExecutor(clock),
             now: () => clock.t,
-            timeoutMs: 100
+            timeoutMs: 100,
           });
-        }
-      }
+        },
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -4589,10 +5822,22 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const secret = "synthetic-live-assignment-secret";
     const config = cuaConfig();
     config.actors[0]!.mission = `Explore with ${secret}.`;
-    config.actors[0]!.tasks = [{ id: "settings", goal: `Save with ${secret}.`, success: { any: [{ textIncludes: "hidden-success-marker" }] } }];
+    config.actors[0]!.tasks = [
+      {
+        id: "settings",
+        goal: `Save with ${secret}.`,
+        success: { any: [{ textIncludes: "hidden-success-marker" }] },
+      },
+    ];
     const sandbox = makeFakeSandbox();
     const { module } = makeFakeModule(sandbox);
-    type MidRunBundle = { streams: Array<{ status: string; assignment?: unknown; liveActor?: { schema: string; items: Array<{ kind: string; at?: string }> } }> };
+    type MidRunBundle = {
+      streams: Array<{
+        status: string;
+        assignment?: unknown;
+        liveActor?: { schema: string; items: Array<{ kind: string; at?: string }> };
+      }>;
+    };
     let midRunBundle: MidRunBundle | undefined;
 
     // Two material turns then done. Turn 2's nextTurn polls the persisted run.json for the
@@ -4613,19 +5858,31 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
             for (let attempt = 0; attempt < 100 && midRunBundle === undefined; attempt += 1) {
               try {
                 const parsed = JSON.parse(await readFile(runJsonPath(), "utf8")) as MidRunBundle;
-                const flushed = parsed.streams.some((stream) =>
-                  stream.liveActor?.items.some((item) => item.kind === "ui_action") === true
+                const flushed = parsed.streams.some(
+                  (stream) =>
+                    stream.liveActor?.items.some((item) => item.kind === "ui_action") === true,
                 );
                 if (flushed) midRunBundle = parsed;
               } catch {
                 // Bundle mid-write or not yet flushed; keep polling.
               }
-              if (midRunBundle === undefined) await new Promise((resolve) => setTimeout(resolve, 10));
+              if (midRunBundle === undefined)
+                await new Promise((resolve) => setTimeout(resolve, 10));
             }
           }
-          if (turn >= 3) return { actions: [], pendingSafetyChecks: [], done: true, message: "The settings button is hard to find." };
-          return { actions: [{ kind: "type", text: `t${turn}` }], pendingSafetyChecks: [], done: false };
-        }
+          if (turn >= 3)
+            return {
+              actions: [],
+              pendingSafetyChecks: [],
+              done: true,
+              message: "The settings button is hard to find.",
+            };
+          return {
+            actions: [{ kind: "type", text: `t${turn}` }],
+            pendingSafetyChecks: [],
+            done: false,
+          };
+        },
       };
     }
 
@@ -4635,7 +5892,9 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
       onObserverReady: async () => {
         const initial = await readFile(runJsonPath(), "utf8");
         expect(initial).not.toContain(secret);
-        expect(JSON.parse(initial).streams[0].assignment.mission).toBe("Explore with [REDACTED_SECRET].");
+        expect(JSON.parse(initial).streams[0].assignment.mission).toBe(
+          "Explore with [REDACTED_SECRET].",
+        );
       },
       cuaHooks: {
         env: { OPENAI_API_KEY: secret, E2B_API_KEY: "k2" },
@@ -4650,10 +5909,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
             provider: flushProvider(clock),
             executor: clockExecutor(clock),
             now: () => clock.t,
-            timeoutMs: 10_000
+            timeoutMs: 10_000,
           });
-        }
-      }
+        },
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -4665,7 +5924,11 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(JSON.stringify(midRunBundle)).not.toContain(secret);
     const liveStream = midRunBundle?.streams.find((stream) => stream.liveActor !== undefined);
     expect(liveStream?.status).toBe("running");
-    expect(liveStream?.assignment).toEqual({ mission: "Explore with [REDACTED_SECRET].", focus: "Focus on the landing page.", tasks: [{ id: "settings", goal: "Save with [REDACTED_SECRET]." }] });
+    expect(liveStream?.assignment).toEqual({
+      mission: "Explore with [REDACTED_SECRET].",
+      focus: "Focus on the landing page.",
+      tasks: [{ id: "settings", goal: "Save with [REDACTED_SECRET]." }],
+    });
     const live = liveStream?.liveActor;
     expect(live?.schema).toBe("humanish.live-actor.v1");
     expect(live?.items.some((item) => item.kind === "ui_action")).toBe(true);
@@ -4673,13 +5936,23 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
     // Final: the real actor replaces the partial; liveActor never survives completion.
     const finalBundle = JSON.parse(await readFile(runJsonPath(), "utf8")) as {
-      streams: Array<{ status: string; assignment?: unknown; actor?: { items: unknown[] }; liveActor?: unknown }>;
+      streams: Array<{
+        status: string;
+        assignment?: unknown;
+        actor?: { items: unknown[] };
+        liveActor?: unknown;
+      }>;
       feedbackCandidates: unknown[];
     };
     expect(finalBundle.streams[0]?.assignment).toEqual(liveStream?.assignment);
     expect(finalBundle.feedbackCandidates.length).toBeGreaterThan(0);
     expect(JSON.stringify(finalBundle)).not.toContain(secret);
-    expect(await readFile(path.join(path.dirname(runJsonPath()), "observer", "observer-data.json"), "utf8")).not.toContain(secret);
+    expect(
+      await readFile(
+        path.join(path.dirname(runJsonPath()), "observer", "observer-data.json"),
+        "utf8",
+      ),
+    ).not.toContain(secret);
     expect(finalBundle.streams.every((stream) => stream.status !== "running")).toBe(true);
     expect(finalBundle.streams.every((stream) => stream.liveActor === undefined)).toBe(true);
     expect(finalBundle.streams.some((stream) => (stream.actor?.items.length ?? 0) > 0)).toBe(true);
@@ -4710,10 +5983,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
             provider: idleTimeoutProvider(clock),
             executor: clockExecutor(clock),
             now: () => clock.t,
-            timeoutMs: 100
+            timeoutMs: 100,
           });
-        }
-      }
+        },
+      },
     });
 
     expect(outcome.backend).toBe("cua");
@@ -4727,7 +6000,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
     const served = await fetch(new URL("observer-data.json", server!.url));
     expect(served.status).toBe(200);
-    const observerData = await served.json() as {
+    const observerData = (await served.json()) as {
       streams: Array<{ transport?: string; url?: string; embed?: { kind: string } }>;
     };
     // #357: the run is OVER (the lane tore down and fired onRuntimeStreamEnded), so the server no
@@ -4738,7 +6011,10 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(observerData.streams[0]?.url).toBeUndefined();
     expect((observerData.streams[0] as { liveEnded?: boolean } | undefined)?.liveEnded).toBe(true);
     // The runtime URL is NEVER persisted to disk in any state.
-    const persisted = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8");
+    const persisted = await readFile(
+      path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"),
+      "utf8",
+    );
     expect(persisted).not.toContain("fake-auth-key");
     expect(persisted).not.toContain("stream.invalid");
   });
@@ -4746,8 +6022,12 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
 describe("runCuaActorLab cost estimates", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   // A stepped clock: runCuaLane reads it exactly twice — right after create() and right after
   // teardown — so delta == one step == the deterministic billed span.
@@ -4757,8 +6037,18 @@ describe("runCuaActorLab cost estimates", () => {
   }
   // A scripted OpenAI Responses session that reports token usage, so a real estimate is produced.
   const usageSession = (input: number, output: number): unknown[] => [
-    { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }], usage: { input_tokens: input, output_tokens: output } },
-    { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }], usage: { input_tokens: 0, output_tokens: 0 } }
+    {
+      id: "resp_1",
+      output: [
+        { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] },
+      ],
+      usage: { input_tokens: input, output_tokens: output },
+    },
+    {
+      id: "resp_2",
+      output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+      usage: { input_tokens: 0, output_tokens: 0 },
+    },
   ];
   function configWithModel(model?: string, caps?: { maxUsd?: number }): LabConfig {
     const parsed = parseLabConfig({
@@ -4766,9 +6056,21 @@ describe("runCuaActorLab cost estimates", () => {
       id: "cua-cost-proof",
       title: "CUA cost proof",
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", persona: "first-time-visitor", mission: "Explore the app and stop.", ...(model ? { model } : {}) }],
-      execution: { target: "e2b-desktop", timeoutMs: 60_000, desktop: { resolution: [1280, 800] }, ...(caps ? { caps } : {}) },
-      scenario: { mode: "live" }
+      actors: [
+        {
+          type: "openai-computer-use",
+          persona: "first-time-visitor",
+          mission: "Explore the app and stop.",
+          ...(model ? { model } : {}),
+        },
+      ],
+      execution: {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        desktop: { resolution: [1280, 800] },
+        ...(caps ? { caps } : {}),
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -4786,8 +6088,16 @@ describe("runCuaActorLab cost estimates", () => {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
         loadDesktopModule: async () => module,
         now: steppedClock(60_000), // create → 60000ms, teardown → 120000ms → 1 billed minute
-        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(2_000_000, 4_000)) } })
-      }
+        runSession: async (o) =>
+          runCuaActorSession({
+            ...o,
+            openai: {
+              ...o.openai,
+              apiKey: "k",
+              fetchFn: scriptedFetch(usageSession(2_000_000, 4_000)),
+            },
+          }),
+      },
     });
     expect(result.ok).toBe(true);
     expect(killed).toEqual(["fake-sandbox-001"]);
@@ -4821,7 +6131,10 @@ describe("runCuaActorLab cost estimates", () => {
     expect(modelLine.ratesAsOf).toBe("2026-09-03");
     expect(modelLine.source).toContain("developers.openai.com/api/docs/pricing");
     expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00888, 6);
-    expect(desktopLine.desktop).toMatchObject({ resources: { cpuCount: 8, memoryMiB: 8192 }, resourceSource: "e2b.getInfo" });
+    expect(desktopLine.desktop).toMatchObject({
+      resources: { cpuCount: 8, memoryMiB: 8192 },
+      resourceSource: "e2b.getInfo",
+    });
     expect(cost.estimatedTotalUsd).toBeCloseTo(16.12888, 6);
     expect(cost.placeholder).toBe(false);
     expect(cost.fullyEstimated).toBe(true);
@@ -4832,25 +6145,48 @@ describe("runCuaActorLab cost estimates", () => {
     expect(verify.ok).toBe(true);
   });
 
-  it.each(["absent", "rejected"] as const)("keeps metadata %s unpriced while the actual lane still reclaims its handle", async mode => {
-    const sandbox = makeFakeSandbox();
-    if (mode === "absent") delete sandbox.getInfo;
-    else sandbox.getInfo = async () => { throw new Error("synthetic metadata failure"); };
-    const { module, killed } = makeFakeModule(sandbox);
-    const result = await runCuaActorLab({ cwd, config: configWithModel(), dryRun: false, hooks: {
-      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" }, loadDesktopModule: async () => module,
-      now: steppedClock(60_000),
-      runSession: async o => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
-    } });
-    expect(result.ok).toBe(true);
-    expect(killed).toEqual(["fake-sandbox-001"]);
-    const bundle = await readBundle(result.runId);
-    expect(bundle.cost.fullyEstimated).toBe(false);
-    expect(bundle.cost.breakdown.find((line: any) => line.kind === "desktop-minutes")).toMatchObject({ estimatedCostUsd: null, reason: "no_desktop_resources" });
-  });
+  it.each(["absent", "rejected"] as const)(
+    "keeps metadata %s unpriced while the actual lane still reclaims its handle",
+    async (mode) => {
+      const sandbox = makeFakeSandbox();
+      if (mode === "absent") delete sandbox.getInfo;
+      else
+        sandbox.getInfo = async () => {
+          throw new Error("synthetic metadata failure");
+        };
+      const { module, killed } = makeFakeModule(sandbox);
+      const result = await runCuaActorLab({
+        cwd,
+        config: configWithModel(),
+        dryRun: false,
+        hooks: {
+          env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
+          loadDesktopModule: async () => module,
+          now: steppedClock(60_000),
+          runSession: async (o) =>
+            runCuaActorSession({
+              ...o,
+              openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+            }),
+        },
+      });
+      expect(result.ok).toBe(true);
+      expect(killed).toEqual(["fake-sandbox-001"]);
+      const bundle = await readBundle(result.runId);
+      expect(bundle.cost.fullyEstimated).toBe(false);
+      expect(
+        bundle.cost.breakdown.find((line: any) => line.kind === "desktop-minutes"),
+      ).toMatchObject({ estimatedCostUsd: null, reason: "no_desktop_resources" });
+    },
+  );
 
   it("aggregate ratesAsOf is the OLDEST contributing asOf, never the newest — an aggregate is only as fresh as its stalest input", () => {
-    const costTrace = (estimatedCostUsd: number, ratesAsOf: string, input: number, output: number): ActorTrace => ({
+    const costTrace = (
+      estimatedCostUsd: number,
+      ratesAsOf: string,
+      input: number,
+      output: number,
+    ): ActorTrace => ({
       schema: ACTOR_TRACE_SCHEMA,
       provider: "openai-responses-cu",
       protocol: "cua-loop",
@@ -4872,18 +6208,18 @@ describe("runCuaActorLab cost estimates", () => {
         estimatedCostUsd,
         ratesAsOf,
         source: "openai.com/api/pricing",
-        modelId: "computer-use-preview"
+        modelId: "computer-use-preview",
       },
-      capabilities: STATE_CAPS
+      capabilities: STATE_CAPS,
     });
 
     // Two priced model-token lines with DIVERGENT asOf dates (an operator edited one rate later).
     const cost = buildCuaCostSummary({
       lanes: [
         { laneId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
-        { laneId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) }
+        { laneId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) },
       ],
-      desktopMinutes: undefined
+      desktopMinutes: undefined,
     });
 
     expect(cost).toBeDefined();
@@ -4908,8 +6244,12 @@ describe("runCuaActorLab cost estimates", () => {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
         loadDesktopModule: async () => module,
         now: steppedClock(60_000),
-        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
-      }
+        runSession: async (o) =>
+          runCuaActorSession({
+            ...o,
+            openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+          }),
+      },
     });
 
     const bundle = await readBundle(result.runId);
@@ -4934,7 +6274,12 @@ describe("runCuaActorLab cost estimates", () => {
   });
 
   it("DRY-RUN invents no spend: the bundle carries no cost block", async () => {
-    const result = await runCuaActorLab({ cwd, config: configWithModel(), dryRun: true, runId: "cost-dry-run" });
+    const result = await runCuaActorLab({
+      cwd,
+      config: configWithModel(),
+      dryRun: true,
+      runId: "cost-dry-run",
+    });
     expect(result.ok).toBe(true);
     const bundle = await readBundle("cost-dry-run");
     expect(bundle.cost).toBeUndefined();
@@ -4949,8 +6294,10 @@ describe("runCuaActorLab cost estimates", () => {
       hooks: {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
         loadDesktopModule: async () => module,
-        runSession: async () => { throw new Error("a session must never run under an unenforceable cap"); }
-      }
+        runSession: async () => {
+          throw new Error("a session must never run under an unenforceable cap");
+        },
+      },
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
@@ -4967,8 +6314,12 @@ describe("runCuaActorLab cost estimates", () => {
         env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
         loadDesktopModule: async () => module,
         now: steppedClock(60_000),
-        runSession: async (o) => runCuaActorSession({ ...o, openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) } })
-      }
+        runSession: async (o) =>
+          runCuaActorSession({
+            ...o,
+            openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+          }),
+      },
     });
     expect(result.error?.code).not.toBe("HUMANISH_CUA_LAB_UNPRICED_CAP");
     expect(result.ok).toBe(true);
@@ -5001,18 +6352,29 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
     try {
       const port = (server.address() as { port: number }).port;
       const parsed = parseLabConfig({
-        schema: LAB_CONFIG_SCHEMA, id: "older-external-catch",
+        schema: LAB_CONFIG_SCHEMA,
+        id: "older-external-catch",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
         comms: { email: { external: { catchBaseUrl: `http://127.0.0.1:${port}` } } },
         actors: [{ type: "openai-computer-use", mission: "Sign up." }],
-        execution: { target: "e2b-desktop" }, scenario: { mode: "live" }
+        execution: { target: "e2b-desktop" },
+        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
-      const loadDesktopModule = vi.fn(async () => { throw new Error("Desktop allocation must not start"); });
-      const runSession = vi.fn(async () => { throw new Error("Participant must not start"); });
-      const outcome = await runLab(parsed.config, { cwd, cuaHooks: {
-        env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" }, loadDesktopModule, runSession
-      } });
+      const loadDesktopModule = vi.fn(async () => {
+        throw new Error("Desktop allocation must not start");
+      });
+      const runSession = vi.fn(async () => {
+        throw new Error("Participant must not start");
+      });
+      const outcome = await runLab(parsed.config, {
+        cwd,
+        cuaHooks: {
+          env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" },
+          loadDesktopModule,
+          runSession,
+        },
+      });
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       expect(outcome.result.ok).toBe(false);
       expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE");
@@ -5037,7 +6399,11 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     const port = await freePort();
     const baseUrl = `http://127.0.0.1:${port}`;
-    const child = spawn("python3", [scriptPath, String(port), path.join(dir, "deliveries.ndjson"), surface, "0", TOKEN], { stdio: "ignore" });
+    const child = spawn(
+      "python3",
+      [scriptPath, String(port), path.join(dir, "deliveries.ndjson"), surface, "0", TOKEN],
+      { stdio: "ignore" },
+    );
     try {
       let healthy = false;
       for (let i = 0; i < 100 && !healthy; i += 1) {
@@ -5056,8 +6422,8 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
           from: "no-reply@example.test",
           to: ["lane-01@example.test"],
           subject: "Confirm your email",
-          html: "<a href=\"https://app.example.test/verify?token=xyz789\">Verify</a>"
-        })
+          html: '<a href="https://app.example.test/verify?token=xyz789">Verify</a>',
+        }),
       });
       expect(posted.ok).toBe(true);
 
@@ -5067,9 +6433,15 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
         title: "CUA adopter-hosted comms",
         subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
         comms: { email: { external: { catchBaseUrl: baseUrl, authTokenEnv: "CATCH_TOKEN" } } },
-        actors: [{ type: "openai-computer-use", mission: "Sign up using the email address in your instructions.", count: 2 }],
+        actors: [
+          {
+            type: "openai-computer-use",
+            mission: "Sign up using the email address in your instructions.",
+            count: 2,
+          },
+        ],
         execution: { target: "e2b-desktop", desktop: { resolution: [1280, 800] } },
-        scenario: { mode: "live" }
+        scenario: { mode: "live" },
       });
       if (!parsed.ok) throw new Error(parsed.error.message);
 
@@ -5083,9 +6455,12 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
           loadDesktopModule: async () => module,
           runSession: async (options) => {
             seenInstructions.push(options.instructions);
-            return runCuaActorSession({ ...options, openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) } });
-          }
-        }
+            return runCuaActorSession({
+              ...options,
+              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            });
+          },
+        },
       });
       if (outcome.backend !== "cua") throw new Error("expected cua backend");
       const result = outcome.result;
@@ -5095,7 +6470,9 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
       expect(seenInstructions).toHaveLength(2);
       for (const address of ["lane-01@example.test", "lane-02@example.test"]) {
         const scopedUrl = recipientInboxUrl(`${baseUrl}/inbox`, address);
-        expect(seenInstructions.filter((text) => text.includes(scopedUrl) && text.includes(address))).toHaveLength(1);
+        expect(
+          seenInstructions.filter((text) => text.includes(scopedUrl) && text.includes(address)),
+        ).toHaveLength(1);
       }
 
       // The drain ran once at run level, matched the captured send, and wrote the digest-only

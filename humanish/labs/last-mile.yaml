@@ -60,19 +60,19 @@ execution:
   # Verified live 2026-09-01: the participant completed this study under this policy and reached
   # the same next command as the unrestricted runs.
   egressAllow:
-    - 8.8.8.8            # DNS. Domain rules match Host/SNI, which is AFTER resolution (UDP:53).
+    - 8.8.8.8 # DNS. Domain rules match Host/SNI, which is AFTER resolution (UDP:53).
     - 8.8.4.4
     - 1.1.1.1
-    - deb.debian.org     # the runtime bootstrap installs Node with apt before codex can run
+    - deb.debian.org # the runtime bootstrap installs Node with apt before codex can run
     - security.debian.org
     - archive.ubuntu.com
     - security.ubuntu.com
     - deb.nodesource.com
     - registry.npmjs.org # installing humanish and codex
     - "*.npmjs.org"
-    - api.openai.com     # the participant's own model
+    - api.openai.com # the participant's own model
     - chatgpt.com
-    - github.com         # the public surfaces the mission points at
+    - github.com # the public surfaces the mission points at
     - "*.github.com"
     - "*.githubusercontent.com"
     - nodejs.org

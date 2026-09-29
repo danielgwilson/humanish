@@ -8,13 +8,15 @@ export const NOTABLE_COMPLETION: Record<string, string> = {
   budget_reached: "limit reached",
   actor_error: "actor error",
   step_failed: "step failed",
-  harness_error: "harness error"
+  harness_error: "harness error",
 };
 
 export function completionLabel(stream: ObserverStream): string | undefined {
   if (stream.ending) return stream.ending.label;
   const reason = stream.actor?.completionReason;
-  return reason !== undefined && Object.hasOwn(NOTABLE_COMPLETION, reason) ? NOTABLE_COMPLETION[reason] : undefined;
+  return reason !== undefined && Object.hasOwn(NOTABLE_COMPLETION, reason)
+    ? NOTABLE_COMPLETION[reason]
+    : undefined;
 }
 
 export interface SignalLine {

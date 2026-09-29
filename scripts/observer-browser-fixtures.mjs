@@ -8,14 +8,31 @@ export const stamp = (index) => new Date(START + index * 7000).toISOString();
 
 export function screenshot(width, height, index = 0) {
   const png = new PNG({ width, height });
-  const corners = [[241, 55, 76], [46, 181, 113], [52, 120, 238], [245, 181, 32]];
+  const corners = [
+    [241, 55, 76],
+    [46, 181, 113],
+    [52, 120, 238],
+    [245, 181, 32],
+  ];
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const at = (width * y + x) * 4;
-      const corner = x < 48 && y < 48 ? 0 : x >= width - 48 && y < 48 ? 1
-        : x < 48 && y >= height - 48 ? 2 : x >= width - 48 && y >= height - 48 ? 3 : -1;
-      const color = corner >= 0 ? corners[corner] : y > height * 0.72
-        ? [205, 218, 226] : [(x + index * 35) % 80 + 150, 186, 203];
+      const corner =
+        x < 48 && y < 48
+          ? 0
+          : x >= width - 48 && y < 48
+            ? 1
+            : x < 48 && y >= height - 48
+              ? 2
+              : x >= width - 48 && y >= height - 48
+                ? 3
+                : -1;
+      const color =
+        corner >= 0
+          ? corners[corner]
+          : y > height * 0.72
+            ? [205, 218, 226]
+            : [((x + index * 35) % 80) + 150, 186, 203];
       png.data.set([...color, 255], at);
     }
   }
@@ -23,60 +40,201 @@ export function screenshot(width, height, index = 0) {
 }
 
 export function frame(laneId, index, shape = "portrait") {
-  return { id: `${laneId}-frame-${index}`, kind: "screenshot", lifecycle: "completed",
-    title: `Synthetic ${shape} capture ${index}`, at: stamp(index),
-    screenshotRef: { path: `screenshots/${shape}-${index}.png`, redaction: "none" } };
+  return {
+    id: `${laneId}-frame-${index}`,
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: `Synthetic ${shape} capture ${index}`,
+    at: stamp(index),
+    screenshotRef: { path: `screenshots/${shape}-${index}.png`, redaction: "none" },
+  };
 }
 
-export function fixture({ running = false, live = false, laneCount = 3, frames = 4, rows = 0, origin = "" } = {}) {
+export function fixture({
+  running = false,
+  live = false,
+  laneCount = 3,
+  frames = 4,
+  rows = 0,
+  origin = "",
+} = {}) {
   const streams = Array.from({ length: laneCount }, (_, n) => {
     const id = `lane-${n + 1}`;
     const shape = n % 2 === 0 ? "portrait" : "landscape";
     const items = [];
     for (let i = 1; i <= frames; i += 1) {
       items.push(frame(id, i, shape));
-      items.push({ id: `${id}-action-${i}`, kind: "ui_action", lifecycle: "completed",
-        title: `click (120, 240) — synthetic action ${i}`, at: stamp(i), coord: { x: 120, y: 240 } });
+      items.push({
+        id: `${id}-action-${i}`,
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: `click (120, 240) — synthetic action ${i}`,
+        at: stamp(i),
+        coord: { x: 120, y: 240 },
+      });
     }
     for (let i = 0; i < rows; i += 1) {
-      items.push({ id: `${id}-wait-${i}`, kind: "ui_action", lifecycle: "completed",
-        title: `wait 1s`, at: stamp(frames), text: `Synthetic wait ${i + 1}` });
+      items.push({
+        id: `${id}-wait-${i}`,
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: `wait 1s`,
+        at: stamp(frames),
+        text: `Synthetic wait ${i + 1}`,
+      });
     }
-    items.push({ id: `${id}-final`, kind: "message", lifecycle: "completed", title: "Final observation",
-      text: "FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE", at: stamp(frames) });
+    items.push({
+      id: `${id}-final`,
+      kind: "message",
+      lifecycle: "completed",
+      title: "Final observation",
+      text: "FINAL SYNTHETIC EVIDENCE REMAINS INSPECTABLE",
+      at: stamp(frames),
+    });
     const label = n === 0 ? PHONE : `Synthetic participant ${n + 1}`;
-    const sim = { id: `sim-${n + 1}`, index: n + 1, personaId: `persona-${n + 1}`, scenarioId: "synthetic-observer",
-      status: running ? "running" : "passed", streamKind: "browser", currentStep: "Inspect evidence",
-      mode: "browser-sim", progress: running ? 0.5 : 1,
-      summary: "Synthetic participant explored a fictional interface.", streamIds: [id], startedAt: stamp(0), updatedAt: stamp(frames) };
-    const actor = { schema: "humanish.actor-trace.v1", provider: "synthetic-browser-proof", providerVersion: "fixture-v1",
-      protocol: "cua-loop", lane: "computer-use", status: "passed", startedAt: stamp(0),
+    const sim = {
+      id: `sim-${n + 1}`,
+      index: n + 1,
+      personaId: `persona-${n + 1}`,
+      scenarioId: "synthetic-observer",
+      status: running ? "running" : "passed",
+      streamKind: "browser",
+      currentStep: "Inspect evidence",
+      mode: "browser-sim",
+      progress: running ? 0.5 : 1,
+      summary: "Synthetic participant explored a fictional interface.",
+      streamIds: [id],
+      startedAt: stamp(0),
+      updatedAt: stamp(frames),
+    };
+    const actor = {
+      schema: "humanish.actor-trace.v1",
+      provider: "synthetic-browser-proof",
+      providerVersion: "fixture-v1",
+      protocol: "cua-loop",
+      lane: "computer-use",
+      status: "passed",
+      startedAt: stamp(0),
       persona: { id: `persona-${n + 1}`, traitsApplied: [], promptDigest: "synthetic" },
-      completedAt: stamp(frames), durationMs: frames * 7000, completionReason: "goal_satisfied", reason: "Synthetic task completed.",
-      ids: {}, counts: { turns: frames, actions: frames, materialActions: frames, screenshots: frames,
-        reasonings: 0, messages: 1, idleTurns: rows, noProgressTurns: 0 }, items,
-      redaction: { status: "passed", screenshots: "raw", notes: "Generated synthetic pixels only; no actual user data." } };
-    return { id, simId: sim.id, laneId: label, kind: "browser", label, status: sim.status,
-      transport: live ? "sse" : "snapshot", updatedAt: stamp(frames),
-      embed: live ? { kind: "iframe", url: `${origin}/desktop/${id}`, title: "Controlled local desktop fixture" }
-        : { kind: "screenshot", url: `screenshots/${shape}-${frames}.png`, title: "Synthetic recording" },
-      viewport: { width: shape === "portrait" ? 390 : 1200, height: shape === "portrait" ? 844 : 750,
-        deviceScaleFactor: 1, isMobile: shape === "portrait" },
-      ui: { route: "/synthetic", state: "Synthetic evidence", intent: "Inspect a fictional interface" },
-      ...(running ? { liveActor: { schema: "humanish.live-actor.v1", updatedAt: stamp(frames), items } } : { actor }),
-      sim, kindLabel: "Browser", statusLabel: running ? "Running" : "Passed", terminalPlain: "", timeline: [], artifacts: [] };
+      completedAt: stamp(frames),
+      durationMs: frames * 7000,
+      completionReason: "goal_satisfied",
+      reason: "Synthetic task completed.",
+      ids: {},
+      counts: {
+        turns: frames,
+        actions: frames,
+        materialActions: frames,
+        screenshots: frames,
+        reasonings: 0,
+        messages: 1,
+        idleTurns: rows,
+        noProgressTurns: 0,
+      },
+      items,
+      redaction: {
+        status: "passed",
+        screenshots: "raw",
+        notes: "Generated synthetic pixels only; no actual user data.",
+      },
+    };
+    return {
+      id,
+      simId: sim.id,
+      laneId: label,
+      kind: "browser",
+      label,
+      status: sim.status,
+      transport: live ? "sse" : "snapshot",
+      updatedAt: stamp(frames),
+      embed: live
+        ? {
+            kind: "iframe",
+            url: `${origin}/desktop/${id}`,
+            title: "Controlled local desktop fixture",
+          }
+        : {
+            kind: "screenshot",
+            url: `screenshots/${shape}-${frames}.png`,
+            title: "Synthetic recording",
+          },
+      viewport: {
+        width: shape === "portrait" ? 390 : 1200,
+        height: shape === "portrait" ? 844 : 750,
+        deviceScaleFactor: 1,
+        isMobile: shape === "portrait",
+      },
+      ui: {
+        route: "/synthetic",
+        state: "Synthetic evidence",
+        intent: "Inspect a fictional interface",
+      },
+      ...(running
+        ? { liveActor: { schema: "humanish.live-actor.v1", updatedAt: stamp(frames), items } }
+        : { actor }),
+      sim,
+      kindLabel: "Browser",
+      statusLabel: running ? "Running" : "Passed",
+      terminalPlain: "",
+      timeline: [],
+      artifacts: [],
+    };
   });
-  return { schema: "humanish.observer-data.v1", schemaVersion: 1, generatedAt: new Date().toISOString(),
-    run: { runId: "synthetic-observer-browser-proof", mode: "live", status: running ? "contract_proof_only" : "pass",
-      title: "Synthetic mixed-screen evidence review", createdAt: stamp(0), simCount: laneCount,
-      persona: { id: "synthetic", name: "Synthetic participants", source: "fixture", sourceDigest: "synthetic" },
-      scenario: { id: "synthetic-observer", title: "Synthetic mixed-screen evidence review", goal: "Inspect generated evidence.", source: "fixture", sourceDigest: "synthetic" },
-      packageName: "fictional-interface", redaction: { status: "passed", notes: "Synthetic pixels and text only." },
-      lifecycle: [], knownGaps: [], participantsLine: `${laneCount} synthetic participants` },
-    summary: { streams: laneCount, byKind: { ui: 0, browser: laneCount, terminal: 0, tui: 0, "codex-ui": 0, artifact: 0, summary: 0 },
-      active: running ? laneCount : 0, blocked: 0, warnings: 0 }, laneGroups: [], streams, events: [], artifactLinks: [],
+  return {
+    schema: "humanish.observer-data.v1",
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    run: {
+      runId: "synthetic-observer-browser-proof",
+      mode: "live",
+      status: running ? "contract_proof_only" : "pass",
+      title: "Synthetic mixed-screen evidence review",
+      createdAt: stamp(0),
+      simCount: laneCount,
+      persona: {
+        id: "synthetic",
+        name: "Synthetic participants",
+        source: "fixture",
+        sourceDigest: "synthetic",
+      },
+      scenario: {
+        id: "synthetic-observer",
+        title: "Synthetic mixed-screen evidence review",
+        goal: "Inspect generated evidence.",
+        source: "fixture",
+        sourceDigest: "synthetic",
+      },
+      packageName: "fictional-interface",
+      redaction: { status: "passed", notes: "Synthetic pixels and text only." },
+      lifecycle: [],
+      knownGaps: [],
+      participantsLine: `${laneCount} synthetic participants`,
+    },
+    summary: {
+      streams: laneCount,
+      byKind: {
+        ui: 0,
+        browser: laneCount,
+        terminal: 0,
+        tui: 0,
+        "codex-ui": 0,
+        artifact: 0,
+        summary: 0,
+      },
+      active: running ? laneCount : 0,
+      blocked: 0,
+      warnings: 0,
+    },
+    laneGroups: [],
+    streams,
+    events: [],
+    artifactLinks: [],
     publicSafety: { publishable: false, note: "Synthetic local browser acceptance fixture." },
-    raw: { bundleSchema: "humanish.run.v1", artifactRoot: ".humanish/synthetic-observer-browser-proof" } };
+    raw: {
+      bundleSchema: "humanish.run.v1",
+      artifactRoot: ".humanish/synthetic-observer-browser-proof",
+    },
+  };
 }
 
 export function appendFrame(data) {
@@ -93,39 +251,167 @@ export function appendFrame(data) {
 
 /** Synthetic analysis projection; this exercises rendering, not model quality or
  * provider responses. All claims describe the generated fixture pixels/text. */
-export function analysisFixture(data, { status = "complete", state = status === "failed" || status === "cancelled" ? "invalid" : "ready", empty = false, count = 2 } = {}) {
+export function analysisFixture(
+  data,
+  {
+    status = "complete",
+    state = status === "failed" || status === "cancelled" ? "invalid" : "ready",
+    empty = false,
+    count = 2,
+  } = {},
+) {
   const digest = "a".repeat(64);
   const evidence = data.streams.flatMap((stream) => {
-    let frame = -1, capture = null;
+    let frame = -1,
+      capture = null;
     const items = stream.actor?.items ?? stream.liveActor?.items ?? [];
     return items.map((item) => {
-      if (item.screenshotRef) { frame += 1; capture = { eventId: item.id, path: item.screenshotRef.path, sha256: digest, mimeType: "image/png" }; }
-      return { id: `${stream.id}/${item.id}`, streamId: stream.id, eventId: item.id, kind: item.kind,
-        text: item.text ?? item.title, quoteEligible: item.kind === "message", at: item.at ?? null,
-        elapsedMs: frame < 0 ? null : Math.max(0, Date.parse(item.at) - Date.parse(items[0].at)), frame: frame < 0 ? null : frame, capture };
+      if (item.screenshotRef) {
+        frame += 1;
+        capture = {
+          eventId: item.id,
+          path: item.screenshotRef.path,
+          sha256: digest,
+          mimeType: "image/png",
+        };
+      }
+      return {
+        id: `${stream.id}/${item.id}`,
+        streamId: stream.id,
+        eventId: item.id,
+        kind: item.kind,
+        text: item.text ?? item.title,
+        quoteEligible: item.kind === "message",
+        at: item.at ?? null,
+        elapsedMs: frame < 0 ? null : Math.max(0, Date.parse(item.at) - Date.parse(items[0].at)),
+        frame: frame < 0 ? null : frame,
+        capture,
+      };
     });
   });
-  const participants = data.streams.map((stream) => ({ streamId: stream.id, label: stream.label, assignment: null, recordedStatus: stream.status, recordedReason: stream.actor?.reason ?? null,
-    provenance: { actorStatus: stream.actor?.status ?? null, completionReason: stream.actor?.completionReason ?? null,
-      stopCause: null, goalSource: null, declaredOutcome: null, taskOutcomes: null } }));
-  const result = { summary: "Independent review of generated synthetic participant evidence.", limitations: ["Synthetic renderer fixture; this is not a model-quality evaluation."],
-    participants: participants.map((p, i) => ({ streamId: p.streamId, summary: "Recorded synthetic activity.", intent: "Inspect the fictional interface.",
-      outcome: i ? "completed" : "blocked", outcomeReason: "Synthetic interpretation kept separate from actor status.", evidenceIds: evidence.filter((e) => e.streamId === p.streamId).slice(0, 1).map((e) => e.id),
-      feedback: evidence.filter((e) => e.streamId === p.streamId && e.quoteEligible).slice(0, 1).map((e) => ({ evidenceId: e.id, text: e.text })), limitations: [] })),
-    findings: empty ? [] : Array.from({ length: count }, (_, i) => {
-      const e = evidence.filter((e) => e.streamId === participants[i % participants.length].streamId && e.kind !== "screenshot")[1]
-        ?? evidence.find((e) => e.streamId === participants[i % participants.length].streamId);
-      return { id: `F${i + 1}`, title: i === 0 ? "A recorded action needs investigation" : `Review generated evidence ${i + 1}`, summary: "A synthetic observation for testing the evidence review workflow.",
-        impact: i === 0 ? "blocked_task" : "friction", affectedStreamIds: [e.streamId], exposedStreamIds: participants.map((p) => p.streamId), exposureReason: "All fixture participants received the same declared task.",
-        recovery: "unknown", confidence: "medium", observations: [{ claim: "Inspect this exact retained entry.", basis: e.capture ? "action" : "participant_statement", evidenceIds: [e.id], limitation: "The fixture does not establish real participant behavior." }],
-        nextStep: "Review the addressed evidence before deciding on a change.", priorityReason: "The first observation represents the larger synthetic task impact." };
-    }) };
-  return { state, corrections: [], warnings: status === "failed" ? ["ANALYSIS_FAILED"] : status === "cancelled" ? ["ANALYSIS_CANCELLED"] : [], analysis: { schema: "humanish.study-analysis.v1", id: "synthetic-analysis-1", runId: data.run.runId, status,
-    createdAt: new Date(START).toISOString(), completedAt: new Date(START + 40_000).toISOString(), sourceRunSha256: digest, inputDigest: digest, configDigest: digest,
-    config: { model: "synthetic-renderer-fixture", question: null, maxCostUsd: 0, timeoutMs: 1000, maxOutputTokens: 1000 }, promptVersion: "synthetic-v1", provider: "openai",
-    usage: { inputTokens: 0, outputTokens: 0, cachedInputTokens: null, cacheWriteInputTokens: null, estimatedCostUsd: 0, estimatedAdmissionUsd: 0, usageComplete: true, dispatched: false, ratesAsOf: null }, participants,
-    coverage: { includedStreamIds: participants.map((p) => p.streamId), omittedStreamIds: [], evidenceCount: evidence.length, captureCount: evidence.filter((e) => e.kind === "screenshot").length, complete: status === "complete", omissions: [] },
-    evidence, result: status === "failed" || status === "cancelled" ? null : result, error: status === "failed" ? "synthetic_failure" : null } };
+  const participants = data.streams.map((stream) => ({
+    streamId: stream.id,
+    label: stream.label,
+    assignment: null,
+    recordedStatus: stream.status,
+    recordedReason: stream.actor?.reason ?? null,
+    provenance: {
+      actorStatus: stream.actor?.status ?? null,
+      completionReason: stream.actor?.completionReason ?? null,
+      stopCause: null,
+      goalSource: null,
+      declaredOutcome: null,
+      taskOutcomes: null,
+    },
+  }));
+  const result = {
+    summary: "Independent review of generated synthetic participant evidence.",
+    limitations: ["Synthetic renderer fixture; this is not a model-quality evaluation."],
+    participants: participants.map((p, i) => ({
+      streamId: p.streamId,
+      summary: "Recorded synthetic activity.",
+      intent: "Inspect the fictional interface.",
+      outcome: i ? "completed" : "blocked",
+      outcomeReason: "Synthetic interpretation kept separate from actor status.",
+      evidenceIds: evidence
+        .filter((e) => e.streamId === p.streamId)
+        .slice(0, 1)
+        .map((e) => e.id),
+      feedback: evidence
+        .filter((e) => e.streamId === p.streamId && e.quoteEligible)
+        .slice(0, 1)
+        .map((e) => ({ evidenceId: e.id, text: e.text })),
+      limitations: [],
+    })),
+    findings: empty
+      ? []
+      : Array.from({ length: count }, (_, i) => {
+          const e =
+            evidence.filter(
+              (e) =>
+                e.streamId === participants[i % participants.length].streamId &&
+                e.kind !== "screenshot",
+            )[1] ??
+            evidence.find((e) => e.streamId === participants[i % participants.length].streamId);
+          return {
+            id: `F${i + 1}`,
+            title:
+              i === 0
+                ? "A recorded action needs investigation"
+                : `Review generated evidence ${i + 1}`,
+            summary: "A synthetic observation for testing the evidence review workflow.",
+            impact: i === 0 ? "blocked_task" : "friction",
+            affectedStreamIds: [e.streamId],
+            exposedStreamIds: participants.map((p) => p.streamId),
+            exposureReason: "All fixture participants received the same declared task.",
+            recovery: "unknown",
+            confidence: "medium",
+            observations: [
+              {
+                claim: "Inspect this exact retained entry.",
+                basis: e.capture ? "action" : "participant_statement",
+                evidenceIds: [e.id],
+                limitation: "The fixture does not establish real participant behavior.",
+              },
+            ],
+            nextStep: "Review the addressed evidence before deciding on a change.",
+            priorityReason: "The first observation represents the larger synthetic task impact.",
+          };
+        }),
+  };
+  return {
+    state,
+    corrections: [],
+    warnings:
+      status === "failed"
+        ? ["ANALYSIS_FAILED"]
+        : status === "cancelled"
+          ? ["ANALYSIS_CANCELLED"]
+          : [],
+    analysis: {
+      schema: "humanish.study-analysis.v1",
+      id: "synthetic-analysis-1",
+      runId: data.run.runId,
+      status,
+      createdAt: new Date(START).toISOString(),
+      completedAt: new Date(START + 40_000).toISOString(),
+      sourceRunSha256: digest,
+      inputDigest: digest,
+      configDigest: digest,
+      config: {
+        model: "synthetic-renderer-fixture",
+        question: null,
+        maxCostUsd: 0,
+        timeoutMs: 1000,
+        maxOutputTokens: 1000,
+      },
+      promptVersion: "synthetic-v1",
+      provider: "openai",
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cachedInputTokens: null,
+        cacheWriteInputTokens: null,
+        estimatedCostUsd: 0,
+        estimatedAdmissionUsd: 0,
+        usageComplete: true,
+        dispatched: false,
+        ratesAsOf: null,
+      },
+      participants,
+      coverage: {
+        includedStreamIds: participants.map((p) => p.streamId),
+        omittedStreamIds: [],
+        evidenceCount: evidence.length,
+        captureCount: evidence.filter((e) => e.kind === "screenshot").length,
+        complete: status === "complete",
+        omissions: [],
+      },
+      evidence,
+      result: status === "failed" || status === "cancelled" ? null : result,
+      error: status === "failed" ? "synthetic_failure" : null,
+    },
+  };
 }
 
 /** Review presentation fixture: setup, issue, and later context remain separate
@@ -134,16 +420,39 @@ export function reviewPolishFixture(data) {
   const analysis = analysisFixture(data, { count: 1 });
   const finding = analysis.analysis.result.findings[0];
   const id = data.streams[0].id;
-  const limit = "One retained attempt shows this message. The recording does not establish how often other participants encounter it.";
+  const limit =
+    "One retained attempt shows this message. The recording does not establish how often other participants encounter it.";
   finding.title = "A validation message needs review";
-  finding.summary = "The participant encountered a validation message after submitting a fictional form, then continued through another route.";
+  finding.summary =
+    "The participant encountered a validation message after submitting a fictional form, then continued through another route.";
   finding.recovery = "recovered";
   finding.confidence = "medium";
   finding.observations = [
-    { claim: "The initial capture provides the form's setup context.", basis: "visual", evidenceIds: [`${id}/${id}-frame-1`], limitation: limit },
-    { claim: "The third capture is the cited validation state.", basis: "visual", evidenceIds: [`${id}/${id}-frame-3`], limitation: limit },
-    { claim: "A submitted action and its retained result establish the attempted path.", basis: "action", evidenceIds: [`${id}/${id}-action-2`, `${id}/${id}-frame-3`], limitation: "The action trace establishes an attempt, not why the participant chose it." },
-    { claim: "The final capture provides later context, without establishing a cause.", basis: "inference", evidenceIds: [`${id}/${id}-frame-4`], limitation: "The later state does not establish a successful final submission. This deliberately long caveat remains available in full when the reviewer opens the evidence limits, including this final sentence about the unmeasured downstream result." },
+    {
+      claim: "The initial capture provides the form's setup context.",
+      basis: "visual",
+      evidenceIds: [`${id}/${id}-frame-1`],
+      limitation: limit,
+    },
+    {
+      claim: "The third capture is the cited validation state.",
+      basis: "visual",
+      evidenceIds: [`${id}/${id}-frame-3`],
+      limitation: limit,
+    },
+    {
+      claim: "A submitted action and its retained result establish the attempted path.",
+      basis: "action",
+      evidenceIds: [`${id}/${id}-action-2`, `${id}/${id}-frame-3`],
+      limitation: "The action trace establishes an attempt, not why the participant chose it.",
+    },
+    {
+      claim: "The final capture provides later context, without establishing a cause.",
+      basis: "inference",
+      evidenceIds: [`${id}/${id}-frame-4`],
+      limitation:
+        "The later state does not establish a successful final submission. This deliberately long caveat remains available in full when the reviewer opens the evidence limits, including this final sentence about the unmeasured downstream result.",
+    },
   ];
   // Repetition must not manufacture stronger preview support or duplicate the
   // visible limitations. The complete original observations remain available.

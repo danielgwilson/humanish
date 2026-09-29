@@ -20,7 +20,11 @@ function changed(field: string, value: unknown): unknown {
 }
 
 describe("Observer admission at the untrusted JSON boundary", () => {
-  it.each([["first run", firstRun], ["OSS", oss], ["live", live]])("accepts the unchanged %s contract golden", (_name, fixture) => {
+  it.each([
+    ["first run", firstRun],
+    ["OSS", oss],
+    ["live", live],
+  ])("accepts the unchanged %s contract golden", (_name, fixture) => {
     expect(isObserverData(fixture)).toBe(true);
   });
 
@@ -31,9 +35,15 @@ describe("Observer admission at the untrusted JSON boundary", () => {
     ["streams.0.assignment", { mission: "Add a task", tasks: [{ id: "create", goal: {} }] }],
     ["streams.0.desktopGeometry", {}],
     ["streams.0.desktopGeometry", { screen: {} }],
-    ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 }, verified: null } }],
+    [
+      "streams.0.desktopGeometry",
+      { screen: { requested: { width: 360, height: 800 }, verified: null } },
+    ],
     ["streams.0.desktopGeometry", { screen: { requested: { width: 0, height: 800 } } }],
-    ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 }, verified: { width: 360, height: {} } } }],
+    [
+      "streams.0.desktopGeometry",
+      { screen: { requested: { width: 360, height: 800 }, verified: { width: 360, height: {} } } },
+    ],
     ["streams.0.actor.affordanceUse", {}],
     ["streams.0.actor.affordanceUse", { counts: null, shortcutTotal: 0 }],
     ["streams.0.actor.affordanceUse", { counts: [], shortcutTotal: 0 }],
@@ -59,24 +69,55 @@ describe("Observer admission at the untrusted JSON boundary", () => {
     ["streams.0.embed", { kind: "iframe", url: {} }],
     ["streams.0.embed", { kind: "iframe", title: {} }],
     ["streams.0.liveEnded", "true"],
-    ["streams.0.liveActor", { updatedAt: "2026-09-08T00:00:00Z", items: [{ id: "partial", kind: "screenshot", title: "Partial frame", screenshotRef: { path: "screenshots/partial.png", redaction: {} } }] }],
+    [
+      "streams.0.liveActor",
+      {
+        updatedAt: "2026-09-08T00:00:00Z",
+        items: [
+          {
+            id: "partial",
+            kind: "screenshot",
+            title: "Partial frame",
+            screenshotRef: { path: "screenshots/partial.png", redaction: {} },
+          },
+        ],
+      },
+    ],
     ["run.participantsLine", {}],
     ["run.tasksLine", {}],
     ["publicSafety.note", {}],
     ["publicSafety.publishable", "false"],
     ["publicSafety.share", { status: "invented-safe", verifiedAt: "2026-09-08", reasons: [] }],
     ["runtime", { state: "running", observedAt: "invalid", source: "local-run-status" }],
-    ["runtime", { state: "invented", observedAt: "2026-09-08T00:00:00Z", source: "local-run-status" }],
+    [
+      "runtime",
+      { state: "invented", observedAt: "2026-09-08T00:00:00Z", source: "local-run-status" },
+    ],
     ["runtime", { state: "running", observedAt: "2026-09-08T00:00:00Z", source: "unverified" }],
-    ["cost", { estimatedTotalUsd: 1, ratesAsOf: "2026-09-08", placeholder: {} }]
+    ["cost", { estimatedTotalUsd: 1, ratesAsOf: "2026-09-08", placeholder: {} }],
   ])("rejects malformed consumed field %s (%j)", (field, value) => {
     expect(isObserverData(changed(field as string, value))).toBe(false);
   });
 
   it.each([
-    ["streams.0.assignment", { mission: "Add a task", focus: "Use the keyboard", tasks: [{ id: "create", goal: "Create one task" }] }],
+    [
+      "streams.0.assignment",
+      {
+        mission: "Add a task",
+        focus: "Use the keyboard",
+        tasks: [{ id: "create", goal: "Create one task" }],
+      },
+    ],
     ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 } } }],
-    ["streams.0.desktopGeometry", { screen: { requested: { width: 360, height: 800 }, verified: { width: 360, height: 800, source: "xdpyinfo" } } }],
+    [
+      "streams.0.desktopGeometry",
+      {
+        screen: {
+          requested: { width: 360, height: 800 },
+          verified: { width: 360, height: 800, source: "xdpyinfo" },
+        },
+      },
+    ],
     ["streams.0.actor.affordanceUse", { counts: {}, shortcutTotal: 0 }],
     ["streams.0.actor.affordanceUse", { counts: { keyboard: 2 }, shortcutTotal: 1 }],
     ["streams.0.actor.estimatedCost", { estimatedCostUsd: null, ratesAsOf: null }],
@@ -86,7 +127,10 @@ describe("Observer admission at the untrusted JSON boundary", () => {
     ["streams.0.actor.completionReason", "future-completion-reason"],
     ["streams.0.ending", { cause: "time_limit", label: "time limit" }],
     ["streams.0.futureEvidence", { unrelated: [null, {}, "additive field"] }],
-    ["runtime", { state: "unknown", observedAt: "2026-09-08T00:00:00Z", source: "local-run-status" }]
+    [
+      "runtime",
+      { state: "unknown", observedAt: "2026-09-08T00:00:00Z", source: "local-run-status" },
+    ],
   ])("retains compatible optional and additive field %s (%j)", (field, value) => {
     expect(isObserverData(changed(field as string, value))).toBe(true);
   });

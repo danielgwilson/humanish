@@ -27,7 +27,7 @@ agent-facing skill product, and a multi-party clinical platform. Each is a forci
   gap? Zero is not the goal; small, honest, and declared is. The extension seam — how a
   consumer repo plugs code into the registries without forking core — is therefore a
   first-class deliverable, certified by the same conformance suite first-party actors pass.
-- Replacement inherits the bespoke sims' *questions*, never their *flaws*. (Example: a
+- Replacement inherits the bespoke sims' _questions_, never their _flaws_. (Example: a
   bespoke sim that points lanes at an unpinned external database answers its question with
   unreproducible evidence; the humanish replacement records `state: UNPINNED` and the
   consumer decides whether to keep that trade.)
@@ -66,11 +66,11 @@ against the invariants. That is the ecosystem loop.
 The honesty rule extended to the biggest overclaim risk in the category. What a run proves
 depends on how much of the real user distribution the actor can sample:
 
-| Class | When | What a bundle may claim |
-|---|---|---|
-| `user-census` | The users of the product ARE agents, and the lab runs real production harnesses | A genuine user study, modulo scenario realism |
-| `plausible-use` | LLM personas proxy human users at moderate stakes | Plausible-use evidence; supports most product decisions |
-| `coverage-floor` | LLM personas proxy high-stakes human users whose tails matter most | Robustness floor only — never "users will be fine" |
+| Class            | When                                                                            | What a bundle may claim                                 |
+| ---------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `user-census`    | The users of the product ARE agents, and the lab runs real production harnesses | A genuine user study, modulo scenario realism           |
+| `plausible-use`  | LLM personas proxy human users at moderate stakes                               | Plausible-use evidence; supports most product decisions |
+| `coverage-floor` | LLM personas proxy high-stakes human users whose tails matter most              | Robustness floor only — never "users will be fine"      |
 
 The class derives from what the actor is relative to the declared user population — not
 from what the lab author wishes. Calibration against real behavioral traces (e.g. session
@@ -88,7 +88,7 @@ Re-sequenced 2026-06-10 after a first-principles audit against the three mature 
 bespoke sims (a consumer web app, an agent-facing skill product, a multi-party clinical
 platform). The audit found two value-destroying constraints sitting OUTSIDE the ladder that
 silently break every depth phase, and one prerequisite a rung too late. Blurred screenshots
-cannot support a product *decision* (the literal success bar), and the agent-skill target's
+cannot support a product _decision_ (the literal success bar), and the agent-skill target's
 harness cannot run loopback-only at all — so the de-paranoia work precedes the depth phases,
 and a seed primitive joins layer 1. The middle (fan-out, scenario grammar, hybrid
 scripted+LLM actor) is load-bearing, not optional/late as originally framed.

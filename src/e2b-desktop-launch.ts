@@ -126,21 +126,31 @@ export interface E2BCommandResult {
 export interface E2BDesktopSandbox {
   sandboxId: string;
   /** Read the owned allocation's actual resources; available on the current E2B SDK. */
-  getInfo?(options?: { requestTimeoutMs?: number; signal?: AbortSignal }): Promise<{ cpuCount?: number; memoryMB?: number }>;
+  getInfo?(options?: {
+    requestTimeoutMs?: number;
+    signal?: AbortSignal;
+  }): Promise<{ cpuCount?: number; memoryMB?: number }>;
   commands: {
     run(command: string, options?: E2BCommandRunOptions): Promise<E2BCommandResult>;
   };
   files: {
-    read?(path: string, options: {
-      format: "stream";
-      requestTimeoutMs?: number;
-      streamIdleTimeoutMs?: number;
-      signal?: AbortSignal;
-    }): Promise<import("node:stream/web").ReadableStream<Uint8Array>>;
-    write(path: string, data: string | ArrayBuffer, options?: {
-      requestTimeoutMs?: number;
-      useOctetStream?: boolean;
-    }): Promise<unknown>;
+    read?(
+      path: string,
+      options: {
+        format: "stream";
+        requestTimeoutMs?: number;
+        streamIdleTimeoutMs?: number;
+        signal?: AbortSignal;
+      },
+    ): Promise<import("node:stream/web").ReadableStream<Uint8Array>>;
+    write(
+      path: string,
+      data: string | ArrayBuffer,
+      options?: {
+        requestTimeoutMs?: number;
+        useOctetStream?: boolean;
+      },
+    ): Promise<unknown>;
   };
   launch(application: string, uri?: string): Promise<void>;
   /** Open a file or URL with the desktop's default application (present on @e2b/desktop >= 1.x). */
@@ -163,26 +173,23 @@ export interface E2BDesktopSandbox {
       resize?: "off" | "scale" | "remote";
       viewOnly?: boolean;
     }): string;
-    start(options?: {
-      requireAuth?: boolean;
-      windowId?: string;
-    }): Promise<void>;
+    start(options?: { requireAuth?: boolean; windowId?: string }): Promise<void>;
   };
 }
 
 export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
   try {
-    return guardDesktopSandboxCreate(await import("@e2b/desktop") as unknown as E2BDesktopModule);
+    return guardDesktopSandboxCreate((await import("@e2b/desktop")) as unknown as E2BDesktopModule);
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       throw new Error(
         runningFromProject()
-          ? "Live E2B desktop launch requires the optional peer @e2b/desktop. Install it beside humanish "
-            + "in this project: `npm i -D @e2b/desktop`."
-          : "Live E2B desktop launch requires the optional peer @e2b/desktop, and humanish is running from an "
-            + "npx cache rather than from this project — so installing the peer here cannot help, because Node "
-            + "resolves it relative to humanish itself. Install BOTH into the project and run it from there: "
-            + "`npm i -D humanish @e2b/desktop` then `npx humanish run <lab>`."
+          ? "Live E2B desktop launch requires the optional peer @e2b/desktop. Install it beside humanish " +
+              "in this project: `npm i -D @e2b/desktop`."
+          : "Live E2B desktop launch requires the optional peer @e2b/desktop, and humanish is running from an " +
+              "npx cache rather than from this project — so installing the peer here cannot help, because Node " +
+              "resolves it relative to humanish itself. Install BOTH into the project and run it from there: " +
+              "`npm i -D humanish @e2b/desktop` then `npx humanish run <lab>`.",
       );
     }
 
@@ -202,13 +209,17 @@ type DesktopSdkClass = E2BDesktopModule["Sandbox"] & {
 
 /** Startup failed after this call acquired a handle. No credentials/options are included here. */
 export class E2BDesktopStartupError extends Error {
-  constructor(error: unknown, readonly cleanup: DesktopCreateCleanup) {
+  constructor(
+    error: unknown,
+    readonly cleanup: DesktopCreateCleanup,
+  ) {
     const detail = error instanceof Error ? error.message : String(error);
-    const cleanupNote = cleanup === "killed"
-      ? "the allocated sandbox was reclaimed"
-      : cleanup === "already_gone"
-        ? "the allocated sandbox was already gone"
-        : "cleanup of the allocated sandbox was not confirmed; no retry is allowed and its provider timeout remains the backstop";
+    const cleanupNote =
+      cleanup === "killed"
+        ? "the allocated sandbox was reclaimed"
+        : cleanup === "already_gone"
+          ? "the allocated sandbox was already gone"
+          : "cleanup of the allocated sandbox was not confirmed; no retry is allowed and its provider timeout remains the backstop";
     super(`Desktop startup failed after allocation; ${cleanupNote}. ${detail}`, { cause: error });
     this.name = "E2BDesktopStartupError";
   }
@@ -232,13 +243,14 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
   class GuardedSandbox extends SdkSandbox {
     static override async create(
       templateOrOptions: string | E2BDesktopCreateOptions,
-      options?: E2BDesktopCreateOptions
+      options?: E2BDesktopCreateOptions,
     ): Promise<E2BDesktopSandbox> {
       const createOptions = typeof templateOrOptions === "string" ? options : templateOrOptions;
       const requestedTimeout = createOptions?.requestTimeoutMs;
-      const timeoutMs = requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
-        ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
-        : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
+      const timeoutMs =
+        requestedTimeout !== undefined && Number.isFinite(requestedTimeout) && requestedTimeout > 0
+          ? Math.min(requestedTimeout, DESKTOP_CREATE_CLEANUP_TIMEOUT_MS)
+          : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
       let cleanupOwned: (() => Promise<DesktopCreateCleanup>) | undefined;
       let restoreKill: (() => void) | undefined;
       const CallingSandbox = this;
@@ -248,13 +260,14 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
           const kill = this.kill.bind(this);
           const ownKill = Object.getOwnPropertyDescriptor(this, "kill");
           let receipt: Promise<DesktopCreateCleanup> | undefined;
-          const reclaim = () => receipt ??= reclaimFailedDesktopCreate(kill, timeoutMs);
+          const reclaim = () => (receipt ??= reclaimFailedDesktopCreate(kill, timeoutMs));
           cleanupOwned = reclaim;
           // SDK 2.4 calls this method before create rejects. Keep its boolean contract while
           // recording unconfirmed cleanup independently of the SDK's catch-and-discard path.
           this.kill = async () => {
             const cleanup = await reclaim();
-            if (cleanup === "unconfirmed") throw new Error("Desktop startup cleanup was not confirmed");
+            if (cleanup === "unconfirmed")
+              throw new Error("Desktop startup cleanup was not confirmed");
             return cleanup === "killed";
           };
           restoreKill = () => {
@@ -264,8 +277,15 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
         }
       }
       try {
-        const args = typeof templateOrOptions === "string" ? [templateOrOptions, options] : [templateOrOptions];
-        const desktop = await Reflect.apply(SdkSandbox.create, AttemptSandbox, args) as E2BDesktopSandbox;
+        const args =
+          typeof templateOrOptions === "string"
+            ? [templateOrOptions, options]
+            : [templateOrOptions];
+        const desktop = (await Reflect.apply(
+          SdkSandbox.create,
+          AttemptSandbox,
+          args,
+        )) as E2BDesktopSandbox;
         restoreKill?.();
         // The loader also serves direct Sandbox.create callers (terminal/legacy meta routes).
         return protectDesktopScreenshotCleanup(desktop);
@@ -280,7 +300,8 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
 }
 
 async function reclaimFailedDesktopCreate(
-  kill: OwnedDesktop["kill"], timeoutMs: number
+  kill: OwnedDesktop["kill"],
+  timeoutMs: number,
 ): Promise<DesktopCreateCleanup> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -292,7 +313,7 @@ async function reclaimFailedDesktopCreate(
           controller.abort();
           reject(new Error("desktop create cleanup deadline reached"));
         }, timeoutMs);
-      })
+      }),
     ]);
     // The installed SDK documents false as an exact-id 404: already absent is also reclaimed.
     return result === true ? "killed" : result === false ? "already_gone" : "unconfirmed";
@@ -334,7 +355,9 @@ export function isMissingE2BDesktopDependency(error: unknown): boolean {
 export function isSandboxNotFoundError(error: unknown): boolean {
   if (error === null || typeof error !== "object") return false;
   const value = error as { name?: unknown; constructor?: { name?: unknown } };
-  return value.name === "SandboxNotFoundError" || value.constructor?.name === "SandboxNotFoundError";
+  return (
+    value.name === "SandboxNotFoundError" || value.constructor?.name === "SandboxNotFoundError"
+  );
 }
 
 /**
@@ -352,9 +375,12 @@ export async function createDesktopSandbox(
   module: E2BDesktopModule,
   options: E2BDesktopCreateOptions,
   template?: string,
-  retry?: TransientRetryHooks
+  retry?: TransientRetryHooks,
 ): Promise<E2BDesktopSandbox> {
-  const create = () => (template === undefined ? module.Sandbox.create(options) : module.Sandbox.create(template, options));
+  const create = () =>
+    template === undefined
+      ? module.Sandbox.create(options)
+      : module.Sandbox.create(template, options);
   return withOneRetryOnTransientE2BError(create, retry);
 }
 
@@ -389,7 +415,7 @@ export function isTransientE2BError(error: unknown): boolean {
   if (/timeout|timed out|deadline/i.test(message)) return false;
   if (/\b(401|403|429)\b|unauthorized|forbidden|rate limit|quota/i.test(message)) return false;
   return /\[unimplemented\]|\[unavailable\]|HTTP 404|HTTP 50[234]|\b50[234]\b|reading 'envdVersion'|Response data is missing|Expected to receive information about written file|fetch failed|ECONNRESET|ECONNREFUSED|socket hang up|UND_ERR/i.test(
-    message
+    message,
   );
 }
 
@@ -400,14 +426,19 @@ export function isTransientE2BError(error: unknown): boolean {
  * call); the provider's own `timeoutMs` on that sandbox is what reclaims it, which the caller's
  * warning should say.
  */
-export async function withOneRetryOnTransientE2BError<T>(attempt: () => Promise<T>, hooks?: TransientRetryHooks): Promise<T> {
+export async function withOneRetryOnTransientE2BError<T>(
+  attempt: () => Promise<T>,
+  hooks?: TransientRetryHooks,
+): Promise<T> {
   try {
     return await attempt();
   } catch (error) {
     if (!isTransientE2BError(error)) throw error;
     const reason = error instanceof Error ? error.message : String(error);
     hooks?.onRetry?.(reason);
-    await (hooks?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))))(TRANSIENT_RETRY_DELAY_MS);
+    await (
+      hooks?.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
+    )(TRANSIENT_RETRY_DELAY_MS);
     return attempt();
   }
 }

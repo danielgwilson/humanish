@@ -9,7 +9,7 @@ export {
   createLatestPointer,
   createLifecycleEvent,
   isValidRunId,
-  summarizeTiming
+  summarizeTiming,
 } from "./run-primitives.js";
 export type {
   ArtifactLayout,
@@ -18,18 +18,14 @@ export type {
   CoreRunMode,
   LatestRunPointer,
   RunHistoryEntry,
-  TimingSummary
+  TimingSummary,
 } from "./run-primitives.js";
-export {
-  GIT_STATE_SCHEMA,
-  captureGitState,
-  summarizePorcelainStatus
-} from "./git-state.js";
+export { GIT_STATE_SCHEMA, captureGitState, summarizePorcelainStatus } from "./git-state.js";
 export type {
   CapturedGitState,
   GitCommandResult,
   GitCommandRunner,
   GitRefState,
   GitStateChangeSummary,
-  GitStateStatus
+  GitStateStatus,
 } from "./git-state.js";

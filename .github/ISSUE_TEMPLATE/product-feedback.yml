@@ -64,4 +64,3 @@ body:
       description: What proof would close this?
     validations:
       required: true
-

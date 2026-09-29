@@ -9,12 +9,17 @@ import {
   matchRunRoute,
   pinDirectChildDirectory,
   pinDirectory,
-  serveRunPath
+  serveRunPath,
 } from "./observer.js";
 import type { PinnedDirectory } from "./observer.js";
 import { renderLibraryHtml } from "./observer-library.js";
 import type { LibraryHistory } from "./observer-library.js";
-import { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin, type ServeMode } from "./serve-http.js";
+import {
+  buildServeSecurityHeaders,
+  hostAllowed,
+  parsePublicOrigin,
+  type ServeMode,
+} from "./serve-http.js";
 import type { ExposureErrorCode } from "./serve-exposure.js";
 import { listRuns, verifyRun } from "./run.js";
 
@@ -61,7 +66,10 @@ export interface ServeResult {
 // /_humanish/api/* namespace would dispatch into it; v1 always passes undefined
 // and the namespace answers 501.
 export interface ServeControlPlane {
-  startRun?(request: { labId: string; dryRun: boolean }): Promise<{ accepted: boolean; runId?: string }>;
+  startRun?(request: {
+    labId: string;
+    dryRun: boolean;
+  }): Promise<{ accepted: boolean; runId?: string }>;
 }
 
 export interface ShareSafetyAdmission {
@@ -70,7 +78,7 @@ export interface ShareSafetyAdmission {
 
 export function createShareSafetyAdmission(
   cwd: string,
-  options: { verifyImpl?: typeof verifyRun; ttlMs?: number; now?: () => number } = {}
+  options: { verifyImpl?: typeof verifyRun; ttlMs?: number; now?: () => number } = {},
 ): ShareSafetyAdmission {
   const verifyImpl = options.verifyImpl ?? verifyRun;
   const now = options.now ?? (() => Date.now());
@@ -80,11 +88,16 @@ export function createShareSafetyAdmission(
   // bounds that window: any mutation is re-scanned within ttlMs even when
   // run.json never changes. Defense in depth on top of pre-persist redaction.
   const ttlMs = options.ttlMs ?? 30_000;
-  const cache = new Map<string, { identity: string; verifiedAt: number; admitted: Promise<boolean> }>();
+  const cache = new Map<
+    string,
+    { identity: string; verifiedAt: number; admitted: Promise<boolean> }
+  >();
 
   const bundleIdentity = async (runId: string): Promise<string | null> => {
     try {
-      const stats = await lstat(path.join(cwd, ".humanish", "runs", runId, "run.json"), { bigint: true });
+      const stats = await lstat(path.join(cwd, ".humanish", "runs", runId, "run.json"), {
+        bigint: true,
+      });
       if (!stats.isFile()) {
         return null;
       }
@@ -112,7 +125,7 @@ export function createShareSafetyAdmission(
         .catch(() => false);
       cache.set(runId, { identity, verifiedAt: now(), admitted });
       return admitted;
-    }
+    },
   };
 }
 
@@ -130,7 +143,7 @@ export interface ServeRequestHandlerOptions {
 }
 
 export function createServeRequestHandler(
-  options: ServeRequestHandlerOptions
+  options: ServeRequestHandlerOptions,
 ): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   return async (request, response) => {
     try {
@@ -155,13 +168,17 @@ export function createServeRequestHandler(
         writeText(
           response,
           501,
-          `${JSON.stringify({
-            error: {
-              code: "HUMANISH_SERVE_CONTROL_PLANE_DISABLED",
-              message: "control plane not enabled in this version"
-            }
-          }, null, 2)}\n`,
-          "application/json; charset=utf-8"
+          `${JSON.stringify(
+            {
+              error: {
+                code: "HUMANISH_SERVE_CONTROL_PLANE_DISABLED",
+                message: "control plane not enabled in this version",
+              },
+            },
+            null,
+            2,
+          )}\n`,
+          "application/json; charset=utf-8",
         );
         return;
       }
@@ -169,7 +186,7 @@ export function createServeRequestHandler(
       if (url.pathname === "/") {
         if (options.entryRunId) {
           response.writeHead(302, {
-            location: `/_humanish/runs/${encodeURIComponent(options.entryRunId)}/observer/index.html`
+            location: `/_humanish/runs/${encodeURIComponent(options.entryRunId)}/observer/index.html`,
           });
           response.end();
           return;
@@ -181,7 +198,12 @@ export function createServeRequestHandler(
 
       if (url.pathname === "/_humanish/history.json") {
         const history = await loadFilteredHistory(options);
-        writeText(response, 200, JSON.stringify(history, null, 2), "application/json; charset=utf-8");
+        writeText(
+          response,
+          200,
+          JSON.stringify(history, null, 2),
+          "application/json; charset=utf-8",
+        );
         return;
       }
 
@@ -203,7 +225,13 @@ export function createServeRequestHandler(
         }
         // The explicit empty runtimeStreamUrls keeps a future refactor from
         // reintroducing auth-keyed stream injection on the serve surface.
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, [], request);
+        await serveRunPath(
+          targetRoot,
+          runRoute.relativePath || "observer/index.html",
+          response,
+          [],
+          request,
+        );
         return;
       }
 
@@ -221,12 +249,12 @@ async function loadFilteredHistory(options: ServeRequestHandlerOptions): Promise
   }
 
   const admissions = await Promise.all(
-    history.runs.map(async (run) => ((await options.admit(run.runId)) === true ? run : null))
+    history.runs.map(async (run) => ((await options.admit(run.runId)) === true ? run : null)),
   );
   const runs = admissions.filter((run): run is LibraryHistory["runs"][number] => run !== null);
   const latestRunId = runs.some((run) => run.runId === history.latestRunId)
     ? history.latestRunId
-    : runs[0]?.runId ?? null;
+    : (runs[0]?.runId ?? null);
   return { latestRunId, runs };
 }
 
@@ -262,7 +290,7 @@ export type ServeLibraryStart =
 
 export async function serveObserverLibrary(
   cwdInput: string,
-  options: ServeLibraryOptions
+  options: ServeLibraryOptions,
 ): Promise<ServeLibraryStart> {
   const cwd = path.resolve(cwdInput);
   const verifyImpl = options.verifyImpl ?? verifyRun;
@@ -275,44 +303,47 @@ export async function serveObserverLibrary(
       ok: false,
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message: "No run library found under .humanish/runs. Run `humanish watch` to create the first run."
-      }
+        message:
+          "No run library found under .humanish/runs. Run `humanish watch` to create the first run.",
+      },
     };
   }
 
   const admission = createShareSafetyAdmission(cwd, {
     verifyImpl,
-    ...(options.now ? { now: options.now } : {})
+    ...(options.now ? { now: options.now } : {}),
   });
   // Exposure auth is tunnel-edge only. Under --expose, an edge-authed surface (ngrok --oauth or an
   // operator --public-url) serves every run (mode "exposed"); an un-authed surface is admissible
   // only because --safe narrows it to share_ready runs (mode "share-safe-open").
   const mode: ServeMode = options.expose
-    ? options.edgeAuthed ? "exposed" : "share-safe-open"
+    ? options.edgeAuthed
+      ? "exposed"
+      : "share-safe-open"
     : "loopback";
 
   let entryRunId: string | undefined;
   if (options.entryRunId) {
-    const resolved = options.entryRunId === "latest"
-      ? (await listRuns(cwd)).latest ?? null
-      : options.entryRunId;
+    const resolved =
+      options.entryRunId === "latest" ? ((await listRuns(cwd)).latest ?? null) : options.entryRunId;
     const pinned = resolved ? await pinDirectChildDirectory(proofRoot, resolved) : null;
     if (!resolved || !pinned) {
       return {
         ok: false,
-        error: { code: "HUMANISH_RUN_NOT_FOUND", message: `Run not found: ${options.entryRunId}` }
+        error: { code: "HUMANISH_RUN_NOT_FOUND", message: `Run not found: ${options.entryRunId}` },
       };
     }
     if (options.safe && !(await admission.admit(resolved))) {
       const verified = await verifyImpl(cwd, resolved).catch(() => null);
       const status = verified?.shareSafety.status ?? "unverifiable";
-      const reasons = verified?.shareSafety.reasons.map((reason) => reason.code).join(", ") || "VERIFY_FAILED";
+      const reasons =
+        verified?.shareSafety.reasons.map((reason) => reason.code).join(", ") || "VERIFY_FAILED";
       return {
         ok: false,
         error: {
           code: "HUMANISH_SERVE_RUN_NOT_SHAREABLE",
-          message: `Run ${resolved} is not share_ready (shareSafety: ${status}; reasons: ${reasons}); --safe refuses to serve it.`
-        }
+          message: `Run ${resolved} is not share_ready (shareSafety: ${status}; reasons: ${reasons}); --safe refuses to serve it.`,
+        },
       };
     }
     entryRunId = resolved;
@@ -343,12 +374,13 @@ export async function serveObserverLibrary(
     admit: (runId) => admission.admit(runId),
     hostAllowlist,
     ...(entryRunId ? { entryRunId } : {}),
-    renderLibrary: (history) => renderLibraryHtml(history, {
-      mode,
-      safe: options.safe,
-      capabilities: { actions: false }
-    }),
-    ...(options.controlPlane ? { controlPlane: options.controlPlane } : {})
+    renderLibrary: (history) =>
+      renderLibraryHtml(history, {
+        mode,
+        safe: options.safe,
+        capabilities: { actions: false },
+      }),
+    ...(options.controlPlane ? { controlPlane: options.controlPlane } : {}),
   });
 
   const server = createServer((request, response) => {
@@ -396,8 +428,8 @@ export async function serveObserverLibrary(
         // the operator believes Ctrl-C tore the server down.
         server.closeAllConnections?.();
         await closed;
-      }
-    }
+      },
+    },
   };
 }
 
@@ -405,12 +437,11 @@ function writeText(
   response: ServerResponse,
   status: number,
   body: string,
-  contentType = "text/plain; charset=utf-8"
+  contentType = "text/plain; charset=utf-8",
 ): void {
   response.writeHead(status, { "content-type": contentType });
   response.end(body);
 }
-
 
 function closeServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {

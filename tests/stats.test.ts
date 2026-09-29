@@ -19,14 +19,59 @@ describe("humanish stats", () => {
     await writeFixtureRuns(
       cwd,
       [
-        { runId: "r1", labId: "try-live", mode: "live", state: "finished", startedAt: "2026-09-01T18:51:00.000Z", durationMs: 111_000, verdict: "pass", participants: { total: 1, reachedGoal: 1, reportedFriction: 0 }, estimatedCostUsd: 0.165 },
-        { runId: "r2", labId: "try-live", mode: "live", state: "finished", startedAt: "2026-09-01T18:52:00.000Z", durationMs: 108_000, verdict: "pass", participants: { total: 1, reachedGoal: 1, reportedFriction: 1 }, estimatedCostUsd: 0.16 },
+        {
+          runId: "r1",
+          labId: "try-live",
+          mode: "live",
+          state: "finished",
+          startedAt: "2026-09-01T18:51:00.000Z",
+          durationMs: 111_000,
+          verdict: "pass",
+          participants: { total: 1, reachedGoal: 1, reportedFriction: 0 },
+          estimatedCostUsd: 0.165,
+        },
+        {
+          runId: "r2",
+          labId: "try-live",
+          mode: "live",
+          state: "finished",
+          startedAt: "2026-09-01T18:52:00.000Z",
+          durationMs: 108_000,
+          verdict: "pass",
+          participants: { total: 1, reachedGoal: 1, reportedFriction: 1 },
+          estimatedCostUsd: 0.16,
+        },
         // A subscription brain: the run has no price. It must count as unpriced, never as $0.
-        { runId: "r3", labId: "try-live", mode: "live", state: "finished", startedAt: "2026-09-01T19:13:00.000Z", durationMs: 160_000, verdict: "blocked", participants: { total: 1, reachedGoal: 0, reportedFriction: 1 }, estimatedCostUsd: null },
-        { runId: "r4", labId: "first-run", mode: "dry-run", state: "finished", startedAt: "2026-08-31T10:00:00.000Z", durationMs: 800, verdict: "pass", estimatedCostUsd: 0 },
-        { runId: "r5", labId: "try-live", mode: "live", state: "running", startedAt: "2026-09-01T19:59:30.000Z" }
+        {
+          runId: "r3",
+          labId: "try-live",
+          mode: "live",
+          state: "finished",
+          startedAt: "2026-09-01T19:13:00.000Z",
+          durationMs: 160_000,
+          verdict: "blocked",
+          participants: { total: 1, reachedGoal: 0, reportedFriction: 1 },
+          estimatedCostUsd: null,
+        },
+        {
+          runId: "r4",
+          labId: "first-run",
+          mode: "dry-run",
+          state: "finished",
+          startedAt: "2026-08-31T10:00:00.000Z",
+          durationMs: 800,
+          verdict: "pass",
+          estimatedCostUsd: 0,
+        },
+        {
+          runId: "r5",
+          labId: "try-live",
+          mode: "live",
+          state: "running",
+          startedAt: "2026-09-01T19:59:30.000Z",
+        },
       ],
-      NOW
+      NOW,
     );
   });
   afterEach(async () => {
@@ -52,10 +97,30 @@ describe("humanish stats", () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     if (!result.ok) throw new Error(result.error.message);
     const tryLive = result.labs.find((row) => row.lab === "try-live");
-    expect(tryLive).toMatchObject({ runs: 4, live: 4, judged: 3, passed: 2, passRate: 0.666667, durationSamples: 3, medianDurationMs: 111_000, costSamples: 2, medianCostUsd: 0.1625, unpricedRuns: 2 });
+    expect(tryLive).toMatchObject({
+      runs: 4,
+      live: 4,
+      judged: 3,
+      passed: 2,
+      passRate: 0.666667,
+      durationSamples: 3,
+      medianDurationMs: 111_000,
+      costSamples: 2,
+      medianCostUsd: 0.1625,
+      unpricedRuns: 2,
+    });
     const firstRun = result.labs.find((row) => row.lab === "first-run");
     // A dry run priced at $0 is priced; a dry run's duration is not a live duration.
-    expect(firstRun).toMatchObject({ runs: 1, dryRun: 1, judged: 1, passed: 1, passRate: 1, durationSamples: 0, costSamples: 1, medianCostUsd: 0 });
+    expect(firstRun).toMatchObject({
+      runs: 1,
+      dryRun: 1,
+      judged: 1,
+      passed: 1,
+      passRate: 1,
+      durationSamples: 0,
+      costSamples: 1,
+      medianCostUsd: 0,
+    });
     expect(firstRun?.medianDurationMs).toBeUndefined();
   });
 
@@ -68,7 +133,9 @@ describe("humanish stats", () => {
     const since = await computeStats(cwd, { since: "2026-09-01T19:00:00Z", nowMs: NOW });
     if (!since.ok) throw new Error(since.error.message);
     expect(since.totals.runs).toBe(2);
-    expect(since.days).toMatchObject([{ day: "2026-09-01", runs: 2, live: 2, estimatedSpendUsd: 0, unpricedRuns: 2 }]);
+    expect(since.days).toMatchObject([
+      { day: "2026-09-01", runs: 2, live: 2, estimatedSpendUsd: 0, unpricedRuns: 2 },
+    ]);
 
     const bad = await computeStats(cwd, { since: "last tuesday", nowMs: NOW });
     expect(bad.ok).toBe(false);
@@ -80,7 +147,13 @@ describe("humanish stats", () => {
     const result = await computeStats(cwd, { nowMs: NOW });
     if (!result.ok) throw new Error(result.error.message);
     expect(result.days.map((row) => row.day)).toEqual(["2026-08-31", "2026-09-01"]);
-    expect(result.days[1]).toMatchObject({ day: "2026-09-01", runs: 4, live: 4, estimatedSpendUsd: 0.325, unpricedRuns: 2 });
+    expect(result.days[1]).toMatchObject({
+      day: "2026-09-01",
+      runs: 4,
+      live: 4,
+      estimatedSpendUsd: 0.325,
+      unpricedRuns: 2,
+    });
   });
 
   it("reads as a short report, with the unpriced count next to the sum", async () => {
@@ -91,7 +164,9 @@ describe("humanish stats", () => {
     expect(text).toContain("analysis: no retained estimate over 0 recorded attempt(s)");
     expect(text).toContain("analysis history: 5 run(s) missing or uncertain");
     expect(text).toContain("participants: 2/3 recorded goal completions, 2 reported friction");
-    expect(text).toContain("- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced");
+    expect(text).toContain(
+      "- try-live: 4 run(s), 4 live; 2/3 pass; median 1.9m over 3; known study spend $0.33; participant/desktop median $0.16 over 2; 2 unpriced",
+    );
   });
 
   it("an empty project is an empty report, not an error", async () => {

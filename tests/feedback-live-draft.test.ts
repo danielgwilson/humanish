@@ -26,20 +26,24 @@ const FAKE_CAPS: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 function fakeSession(
   status: ActorTrace["status"],
   completionReason: ActorTrace["completionReason"],
-  reason: string
+  reason: string,
 ): CuaLoopResult {
   const trace: ActorTrace = {
     schema: "humanish.actor-trace.v1",
     provider: "fake-cua",
     protocol: "cua-loop",
     lane: "computer-use",
-    persona: { id: "keyboard-first", traitsApplied: ["accessibility:keyboard_first"], promptDigest: "d1" },
+    persona: {
+      id: "keyboard-first",
+      traitsApplied: ["accessibility:keyboard_first"],
+      promptDigest: "d1",
+    },
     redaction: { status: "passed", screenshots: "blurred", notes: "test" },
     startedAt: "2026-08-11T00:00:00.000Z",
     completedAt: "2026-08-11T00:05:00.000Z",
@@ -50,7 +54,7 @@ function fakeSession(
     ids: {},
     counts: { turns: 20, actions: 30 },
     items: [],
-    capabilities: FAKE_CAPS
+    capabilities: FAKE_CAPS,
   };
   return { status, completionReason, reason, trace };
 }
@@ -61,7 +65,7 @@ const LANE_BASE = {
   personaId: "skeptical-power-user",
   traceArtifactPath: "actors/stream-002.json",
   screenshots: ["screenshots/power-user/turn-17.png"],
-  commsArtifactPath: "comms/power-user-thread.json"
+  commsArtifactPath: "comms/power-user-thread.json",
 };
 
 describe("participantFeedbackCandidates (#392)", () => {
@@ -69,7 +73,7 @@ describe("participantFeedbackCandidates (#392)", () => {
     const session = fakeSession(
       "passed",
       "goal_satisfied",
-      "Signed up, but the signature step was not keyboard-completable: I could not get focus into the typed-signature entry area and had to use the mouse."
+      "Signed up, but the signature step was not keyboard-completable: I could not get focus into the typed-signature entry area and had to use the mouse.",
     );
     const candidates = participantFeedbackCandidates({
       runId: "run-1",
@@ -77,13 +81,14 @@ describe("participantFeedbackCandidates (#392)", () => {
       adapterId: "signup-email-verify",
       goal: "Create an account and reach the dashboard.",
       substrate: "e2b-desktop",
-      lanes: [{ ...LANE_BASE, session }]
+      lanes: [{ ...LANE_BASE, session }],
     });
 
     expect(candidates).toHaveLength(1);
     const candidate = candidates[0]!;
     expect(candidate.acceptance_proof).toEqual([
-      "humanish verify --run run-1 --json", "humanish watch --run run-1 --no-open"
+      "humanish verify --run run-1 --json",
+      "humanish watch --run run-1 --no-open",
     ]);
     expect(candidate.actor).toBe("computer-use");
     expect(candidate.failure_owner).toBe("target-app");
@@ -94,14 +99,18 @@ describe("participantFeedbackCandidates (#392)", () => {
   });
 
   it("turns abandonment into a candidate — the finding the study paid for", () => {
-    const session = fakeSession("abandoned", "gave_up", "gave up: 24 consecutive turns with no material UI action (only screenshot/wait)");
+    const session = fakeSession(
+      "abandoned",
+      "gave_up",
+      "gave up: 24 consecutive turns with no material UI action (only screenshot/wait)",
+    );
     const candidates = participantFeedbackCandidates({
       runId: "run-2",
       scenarioId: "cua-lab",
       adapterId: "lab",
       goal: "Complete the flow.",
       substrate: "e2b-desktop",
-      lanes: [{ ...LANE_BASE, session }]
+      lanes: [{ ...LANE_BASE, session }],
     });
     expect(candidates).toHaveLength(1);
     expect(candidates[0]!.summary).toContain("stopped before completing");
@@ -115,14 +124,14 @@ describe("participantFeedbackCandidates (#392)", () => {
         adapterId: "lab",
         goal: "Complete the flow.",
         substrate: "e2b-desktop",
-        lanes: [{ ...LANE_BASE, session: fakeSession("passed", "goal_satisfied", reason) }]
+        lanes: [{ ...LANE_BASE, session: fakeSession("passed", "goal_satisfied", reason) }],
       });
     for (const clean of [
       "REACHED THE GOAL. Two tables linked; nothing confusing.",
       "REACHED THE GOAL. Nothing was confusing and nothing was unclear.",
       "REACHED THE GOAL. No defects, no unexpected behaviour, and I never hesitated.",
       "REACHED THE GOAL. The flow was not confusing; nothing overlapped.",
-      "REACHED THE GOAL. I had no trouble at all and encountered no blockers or unclear error output."
+      "REACHED THE GOAL. I had no trouble at all and encountered no blockers or unclear error output.",
     ]) {
       expect(run(clean), clean).toHaveLength(0);
     }
@@ -135,7 +144,7 @@ describe("participantFeedbackCandidates (#392)", () => {
       "REACHED THE GOAL. I found no keyboard path to the rename and had no visible focus indicator.",
       "REACHED THE GOAL. Pressing Save had no effect.",
       "REACHED THE GOAL. The picker is not keyboard-accessible.",
-      "REACHED THE GOAL. Pressing Save did nothing."
+      "REACHED THE GOAL. Pressing Save did nothing.",
     ]) {
       expect(run(friction), friction).toHaveLength(1);
     }
@@ -149,36 +158,53 @@ describe("participantFeedbackCandidates (#392)", () => {
       adapterId: "lab",
       goal: "Complete the flow.",
       substrate: "e2b-desktop",
-      lanes: [{ ...LANE_BASE, session: clean }, { ...LANE_BASE, laneId: "no-session", streamId: "stream-003" }]
+      lanes: [
+        { ...LANE_BASE, session: clean },
+        { ...LANE_BASE, laneId: "no-session", streamId: "stream-003" },
+      ],
     });
     expect(candidates).toHaveLength(0);
   });
 });
 
 describe("the live fallback draft describes the run that happened (#392)", () => {
-  it.each([undefined, null, {}, { items: null }, { items: [null] }])("keeps old counts and missing-detail fallback for optional actor %j", async (actor) => {
-    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-live-draft-"));
-    const cwd = path.join(tempRoot, "minimal-app");
-    try {
-      await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-      await runDryRun({ cwd, dryRun: true, runId: "legacy-draft-test" });
-      const runJsonPath = path.join(cwd, ".humanish/runs/legacy-draft-test/run.json");
-      const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
-      bundle.mode = "live";
-      bundle.review.participants = { total: 1, reachedGoal: 0, abandoned: 0, ranOut: 1,
-        blocked: 0, harnessFailed: 0, reportedFriction: 0 };
-      bundle.streams[0].actor = actor == null ? actor
-        : { status: "incomplete", completionReason: "budget_reached", ...actor };
-      const original = JSON.stringify(bundle, null, 2) + "\n";
-      await writeFile(runJsonPath, original);
-      const drafted = await draftFeedback(cwd, "legacy-draft-test");
-      expect(drafted.ok).toBe(true);
-      expect(drafted.draft?.actual).toContain("Participants: 0/1 recorded completions, 1 interrupted (stop details unavailable).");
-      expect(await readFile(runJsonPath, "utf8")).toBe(original);
-    } finally {
-      await rm(tempRoot, { force: true, recursive: true });
-    }
-  });
+  it.each([undefined, null, {}, { items: null }, { items: [null] }])(
+    "keeps old counts and missing-detail fallback for optional actor %j",
+    async (actor) => {
+      const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-live-draft-"));
+      const cwd = path.join(tempRoot, "minimal-app");
+      try {
+        await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
+        await runDryRun({ cwd, dryRun: true, runId: "legacy-draft-test" });
+        const runJsonPath = path.join(cwd, ".humanish/runs/legacy-draft-test/run.json");
+        const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
+        bundle.mode = "live";
+        bundle.review.participants = {
+          total: 1,
+          reachedGoal: 0,
+          abandoned: 0,
+          ranOut: 1,
+          blocked: 0,
+          harnessFailed: 0,
+          reportedFriction: 0,
+        };
+        bundle.streams[0].actor =
+          actor == null
+            ? actor
+            : { status: "incomplete", completionReason: "budget_reached", ...actor };
+        const original = JSON.stringify(bundle, null, 2) + "\n";
+        await writeFile(runJsonPath, original);
+        const drafted = await draftFeedback(cwd, "legacy-draft-test");
+        expect(drafted.ok).toBe(true);
+        expect(drafted.draft?.actual).toContain(
+          "Participants: 0/1 recorded completions, 1 interrupted (stop details unavailable).",
+        );
+        expect(await readFile(runJsonPath, "utf8")).toBe(original);
+      } finally {
+        await rm(tempRoot, { force: true, recursive: true });
+      }
+    },
+  );
 
   it("never hands a live bundle the dry-run letter", async () => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-live-draft-"));
@@ -193,7 +219,13 @@ describe("the live fallback draft describes the run that happened (#392)", () =>
       const bundle = JSON.parse(await readFile(runJsonPath, "utf8"));
       bundle.mode = "live";
       bundle.review.participants = {
-        total: 1, reachedGoal: 0, abandoned: 1, ranOut: 0, blocked: 0, harnessFailed: 0, reportedFriction: 1
+        total: 1,
+        reachedGoal: 0,
+        abandoned: 1,
+        ranOut: 0,
+        blocked: 0,
+        harnessFailed: 0,
+        reportedFriction: 1,
       };
       await writeFile(runJsonPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -230,10 +262,39 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
         goal: "Create two related tables.",
         substrate: "e2b-desktop",
         lanes: [
-          { ...LANE_BASE, laneId: "impatient-expert", streamId: "stream-001", session: fakeSession("passed", "goal_satisfied", "REACHED THE GOAL. The database picker was not keyboard-accessible; I had to use the mouse, which is a defect.") },
-          { ...LANE_BASE, laneId: "phone-newcomer", streamId: "stream-003", personaId: "synthetic-new-user", session: fakeSession("abandoned", "gave_up", "gave up: dragging between fields kept opening detail popovers and no relationship was saved") },
-          { ...LANE_BASE, laneId: "patient-newcomer", streamId: "stream-002", personaId: "synthetic-new-user", session: fakeSession("passed", "goal_satisfied", "REACHED THE GOAL. Two tables linked.") }
-        ]
+          {
+            ...LANE_BASE,
+            laneId: "impatient-expert",
+            streamId: "stream-001",
+            session: fakeSession(
+              "passed",
+              "goal_satisfied",
+              "REACHED THE GOAL. The database picker was not keyboard-accessible; I had to use the mouse, which is a defect.",
+            ),
+          },
+          {
+            ...LANE_BASE,
+            laneId: "phone-newcomer",
+            streamId: "stream-003",
+            personaId: "synthetic-new-user",
+            session: fakeSession(
+              "abandoned",
+              "gave_up",
+              "gave up: dragging between fields kept opening detail popovers and no relationship was saved",
+            ),
+          },
+          {
+            ...LANE_BASE,
+            laneId: "patient-newcomer",
+            streamId: "stream-002",
+            personaId: "synthetic-new-user",
+            session: fakeSession(
+              "passed",
+              "goal_satisfied",
+              "REACHED THE GOAL. Two tables linked.",
+            ),
+          },
+        ],
       });
       expect(candidates).toHaveLength(2);
       const runJsonPath = path.join(cwd, ".humanish", "runs", "candidate-test", "run.json");
@@ -246,10 +307,17 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
         for (const evidence of candidate.evidence) {
           const target = path.join(path.dirname(runJsonPath), evidence.path);
           await mkdir(path.dirname(target), { recursive: true });
-          await writeFile(target, evidence.kind === "screenshot" ? syntheticPng1x1()
-            : JSON.stringify(evidence.kind === "trace"
-              ? fakeSession("passed", "goal_satisfied", "Synthetic fixture observation.").trace
-              : { note: "Synthetic comms digest." }));
+          await writeFile(
+            target,
+            evidence.kind === "screenshot"
+              ? syntheticPng1x1()
+              : JSON.stringify(
+                  evidence.kind === "trace"
+                    ? fakeSession("passed", "goal_satisfied", "Synthetic fixture observation.")
+                        .trace
+                    : { note: "Synthetic comms digest." },
+                ),
+          );
         }
       }
 
@@ -268,10 +336,17 @@ describe("a multi-lane study's second finding is one flag away (#609)", () => {
       expect(chosen.draft?.source_candidate_id).toBe(candidates[1]!.id);
       expect(chosen.draft?.actual).toContain("detail popovers");
       // The draft on disk is the chosen one now.
-      const onDisk = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "candidate-test", "feedback", "draft.json"), "utf8"));
+      const onDisk = JSON.parse(
+        await readFile(
+          path.join(cwd, ".humanish", "runs", "candidate-test", "feedback", "draft.json"),
+          "utf8",
+        ),
+      );
       expect(onDisk.source_candidate_id).toBe(candidates[1]!.id);
 
-      const missing = await draftFeedback(cwd, "candidate-test", { candidate: "participant-report-nobody" });
+      const missing = await draftFeedback(cwd, "candidate-test", {
+        candidate: "participant-report-nobody",
+      });
       expect(missing.ok).toBe(false);
       expect(missing.error?.code).toBe("HUMANISH_FEEDBACK_CANDIDATE_NOT_FOUND");
       expect(missing.error?.message).toContain(candidates[0]!.id);

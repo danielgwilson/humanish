@@ -8,7 +8,11 @@
 // tunnel launcher (startExposedObserver), so the CLI just maps flags in and results out.
 
 import { parsePublicOrigin, type ServeMode } from "./serve-http.js";
-import { startNgrokTunnel, type ServeTunnel, type StartNgrokTunnelOptions } from "./serve-tunnel.js";
+import {
+  startNgrokTunnel,
+  type ServeTunnel,
+  type StartNgrokTunnelOptions,
+} from "./serve-tunnel.js";
 
 export type ExposureSurface = "serve" | "watch";
 
@@ -72,50 +76,76 @@ function code(surface: ExposureSurface, suffix: string): ExposureErrorCode {
 export function validateExposure(
   surface: ExposureSurface,
   request: ExposureRequest,
-  live?: WatchLiveContext
+  live?: WatchLiveContext,
 ): ExposureValidation {
   const fail = (suffix: string, message: string): ExposureValidation => ({
     ok: false,
-    error: { code: code(surface, suffix), message }
+    error: { code: code(surface, suffix), message },
   });
 
   // Structural guards (both surfaces), in the fail-closed order documented in the matrix. These run
   // before any bind/spawn so a mis-configured exposure aborts before sandbox/provider spend.
   if ((request.allowEmails.length > 0 || request.allowDomains.length > 0) && !request.oauth) {
-    return fail("ALLOW_REQUIRES_OAUTH", "--allow-email/--allow-domain configure the ngrok edge OAuth allow-list; they require --oauth google.");
+    return fail(
+      "ALLOW_REQUIRES_OAUTH",
+      "--allow-email/--allow-domain configure the ngrok edge OAuth allow-list; they require --oauth google.",
+    );
   }
   if (request.oauth && !request.tunnel) {
-    return fail("OAUTH_REQUIRES_TUNNEL", "--oauth turns on edge OAuth on the ngrok tunnel; it requires --tunnel ngrok (a --public-url operator brings their own edge auth).");
+    return fail(
+      "OAUTH_REQUIRES_TUNNEL",
+      "--oauth turns on edge OAuth on the ngrok tunnel; it requires --tunnel ngrok (a --public-url operator brings their own edge auth).",
+    );
   }
   if (request.tunnel && request.publicUrl !== undefined) {
-    return fail("OPTION_CONFLICT", "Use either --tunnel or --public-url as the public origin, not both.");
+    return fail(
+      "OPTION_CONFLICT",
+      "Use either --tunnel or --public-url as the public origin, not both.",
+    );
   }
   if (request.tunnelDomain !== undefined && !request.tunnel) {
     return fail("OPTION_CONFLICT", "--tunnel-domain requires --tunnel.");
   }
 
-  const publicOrigin = request.publicUrl !== undefined ? parsePublicOrigin(request.publicUrl) : null;
+  const publicOrigin =
+    request.publicUrl !== undefined ? parsePublicOrigin(request.publicUrl) : null;
   if (request.publicUrl !== undefined && !publicOrigin) {
-    return fail("OPTION_CONFLICT", "--public-url must be an http(s) origin like https://observer.example.com.");
+    return fail(
+      "OPTION_CONFLICT",
+      "--public-url must be an http(s) origin like https://observer.example.com.",
+    );
   }
 
   if (!request.expose) {
     // Exposure flags without --expose are refused (no silent wide-open). --safe is orthogonal and
     // stays valid without --expose (a loopback share_ready filter).
     if (request.tunnel) {
-      return fail("TUNNEL_REQUIRES_EXPOSE", "--tunnel exposes the surface; declare that intent with --expose.");
+      return fail(
+        "TUNNEL_REQUIRES_EXPOSE",
+        "--tunnel exposes the surface; declare that intent with --expose.",
+      );
     }
     if (request.publicUrl !== undefined) {
       return fail("OPTION_CONFLICT", "--public-url only applies with --expose.");
     }
     return {
       ok: true,
-      plan: { exposed: false, edgeAuthed: false, mode: "loopback", safe: request.safe, warnings: [] }
+      plan: {
+        exposed: false,
+        edgeAuthed: false,
+        mode: "loopback",
+        safe: request.safe,
+        warnings: [],
+      },
     };
   }
 
   const oauth = request.oauth
-    ? { provider: "google" as const, allowEmails: request.allowEmails, allowDomains: request.allowDomains }
+    ? {
+        provider: "google" as const,
+        allowEmails: request.allowEmails,
+        allowDomains: request.allowDomains,
+      }
     : undefined;
   const edgeAuthed = Boolean(request.oauth) || Boolean(publicOrigin);
   const warnings: string[] = [];
@@ -127,7 +157,7 @@ export function validateExposure(
     if (live && (live.dryRun || live.detach || live.json)) {
       return fail(
         "EXPOSE_REQUIRES_LIVE_FOLLOW",
-        "watch --expose streams a live desktop over an attached follow channel; it cannot combine with --dry-run, --detach, or --json."
+        "watch --expose streams a live desktop over an attached follow channel; it cannot combine with --dry-run, --detach, or --json.",
       );
     }
     // --safe is a share_ready LIBRARY filter for `serve`; watch streams a single live run that is
@@ -135,13 +165,13 @@ export function validateExposure(
     if (request.safe) {
       return fail(
         "SAFE_NOT_APPLICABLE",
-        "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+        "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain.",
       );
     }
     if (!edgeAuthed) {
       return fail(
         "EXPOSE_REQUIRES_EDGE_AUTH",
-        "watch --expose serves a live run that is never share_ready, so --safe cannot gate it; require edge auth: --tunnel ngrok --oauth google, or an operator-secured --public-url."
+        "watch --expose serves a live run that is never share_ready, so --safe cannot gate it; require edge auth: --tunnel ngrok --oauth google, or an operator-secured --public-url.",
       );
     }
   } else {
@@ -151,20 +181,20 @@ export function validateExposure(
     if (!request.tunnel && !publicOrigin) {
       return fail(
         "EXPOSE_REQUIRES_ORIGIN",
-        "--expose needs a declared public origin: pass --tunnel ngrok or --public-url <origin>."
+        "--expose needs a declared public origin: pass --tunnel ngrok or --public-url <origin>.",
       );
     }
     if (!edgeAuthed && !request.safe) {
       return fail(
         "EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
-        "--expose opens a public URL to local run bundles; require edge auth (--oauth google with --tunnel, or a --public-url you secure) OR --safe (share_ready runs only)."
+        "--expose opens a public URL to local run bundles; require edge auth (--oauth google with --tunnel, or a --public-url you secure) OR --safe (share_ready runs only).",
       );
     }
   }
 
   if (request.oauth && request.allowEmails.length === 0 && request.allowDomains.length === 0) {
     warnings.push(
-      "ngrok --oauth google with NO --allow-email/--allow-domain lets ANY Google account that reaches the URL in; add at least one allow rule to restrict who can watch."
+      "ngrok --oauth google with NO --allow-email/--allow-domain lets ANY Google account that reaches the URL in; add at least one allow rule to restrict who can watch.",
     );
   }
 
@@ -180,8 +210,8 @@ export function validateExposure(
       ...(request.tunnelDomain ? { tunnelDomain: request.tunnelDomain } : {}),
       ...(oauth ? { oauth } : {}),
       ...(publicOrigin ? { publicOrigin } : {}),
-      warnings
-    }
+      warnings,
+    },
   };
 }
 
@@ -205,7 +235,7 @@ export interface ExposureResult {
 export async function startExposedObserver(
   server: ExposableServer,
   plan: ExposurePlan,
-  deps: { startTunnel?: (options: StartNgrokTunnelOptions) => Promise<ServeTunnel> } = {}
+  deps: { startTunnel?: (options: StartNgrokTunnelOptions) => Promise<ServeTunnel> } = {},
 ): Promise<ExposureResult> {
   const warnings = [...plan.warnings];
   if (plan.tunnel === "ngrok") {
@@ -217,9 +247,9 @@ export async function startExposedObserver(
         ? {
             oauthProvider: plan.oauth.provider,
             oauthAllowEmails: plan.oauth.allowEmails,
-            oauthAllowDomains: plan.oauth.allowDomains
+            oauthAllowDomains: plan.oauth.allowDomains,
           }
-        : {})
+        : {}),
     });
     server.addPublicOrigin(tunnel.url);
     return { tunnel, publicUrl: tunnel.url.replace(/\/$/, ""), warnings };

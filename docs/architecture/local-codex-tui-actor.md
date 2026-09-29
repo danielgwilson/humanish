@@ -81,17 +81,17 @@ permissions.
 
 The actor should append deterministic events to `events.ndjson`:
 
-| Event | Required fields |
-| --- | --- |
-| `actor.spawned` | `simId`, `streamId`, command name, cwd, startedAt |
-| `actor.prompt.submitted` | prompt digest, prompt class, no raw prompt if unsafe |
-| `actor.running` | running snapshot available in `run.json` and `observer/observer-data.json` |
-| `actor.observation` | sanitized transcript tail, byte count, redaction status |
-| `actor.artifact` | relative artifact path, kind, digest |
-| `actor.verdict` | `passed`, `failed`, `blocked`, or `timed_out`; reason |
-| `actor.exited` | exit code, signal, durationMs |
-| `actor.timeout` | timeoutMs, last safe observation |
-| `actor.cancelled` | signal and operator reason |
+| Event                    | Required fields                                                            |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `actor.spawned`          | `simId`, `streamId`, command name, cwd, startedAt                          |
+| `actor.prompt.submitted` | prompt digest, prompt class, no raw prompt if unsafe                       |
+| `actor.running`          | running snapshot available in `run.json` and `observer/observer-data.json` |
+| `actor.observation`      | sanitized transcript tail, byte count, redaction status                    |
+| `actor.artifact`         | relative artifact path, kind, digest                                       |
+| `actor.verdict`          | `passed`, `failed`, `blocked`, or `timed_out`; reason                      |
+| `actor.exited`           | exit code, signal, durationMs                                              |
+| `actor.timeout`          | timeoutMs, last safe observation                                           |
+| `actor.cancelled`        | signal and operator reason                                                 |
 
 The Observer should be able to render a live terminal stream from those events
 while the actor is active, then render the final transcript and artifacts after

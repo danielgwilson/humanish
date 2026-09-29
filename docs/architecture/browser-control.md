@@ -70,18 +70,18 @@ failure. No exactly-once or rollback guarantee is implied by sequence IDs.
 
 ## Finite bounds
 
-| Input | Version 1 bound |
-| --- | --- |
-| Framed JSON | 12 MiB |
-| PNG bytes | 8 MiB |
-| Image dimensions | 4096 per side, at most 16,000,000 pixels |
-| Typed text and each observed string | 64 KiB UTF-8 |
-| Key chord | 16 keys, 64 characters per key |
-| Drag | 1–1024 points |
-| Coordinates, deltas, scroll position | Finite, within ±1,000,000; fractions preserved |
-| Wait | 0–30 seconds, fractions preserved |
-| Client request | 35 seconds by default; caller may choose 1–60 seconds |
-| Dispatcher request | 35 seconds including acknowledgement write |
+| Input                                | Version 1 bound                                       |
+| ------------------------------------ | ----------------------------------------------------- |
+| Framed JSON                          | 12 MiB                                                |
+| PNG bytes                            | 8 MiB                                                 |
+| Image dimensions                     | 4096 per side, at most 16,000,000 pixels              |
+| Typed text and each observed string  | 64 KiB UTF-8                                          |
+| Key chord                            | 16 keys, 64 characters per key                        |
+| Drag                                 | 1–1024 points                                         |
+| Coordinates, deltas, scroll position | Finite, within ±1,000,000; fractions preserved        |
+| Wait                                 | 0–30 seconds, fractions preserved                     |
+| Client request                       | 35 seconds by default; caller may choose 1–60 seconds |
+| Dispatcher request                   | 35 seconds including acknowledgement write            |
 
 Observation requires a PNG and state signature. It may include bounded URL,
 title, text, and fractional scroll position; those remain runtime-only under the

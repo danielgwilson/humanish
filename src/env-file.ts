@@ -21,7 +21,7 @@ const envNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 export async function loadEnvFile(
   cwd: string,
   envFile: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<EnvFileLoadResult> {
   const resolvedCwd = path.resolve(cwd);
   const envPath = path.resolve(resolvedCwd, envFile);
@@ -41,8 +41,8 @@ export async function loadEnvFile(
       skipped,
       error: {
         code: "HUMANISH_ENV_FILE_NOT_FOUND",
-        message: `Env file was not readable: ${envFile}`
-      }
+        message: `Env file was not readable: ${envFile}`,
+      },
     };
   }
 
@@ -63,8 +63,8 @@ export async function loadEnvFile(
         skipped,
         error: {
           code: "HUMANISH_ENV_FILE_INVALID",
-          message: `Invalid env assignment on line ${index + 1}.`
-        }
+          message: `Invalid env assignment on line ${index + 1}.`,
+        },
       };
     }
 
@@ -83,13 +83,11 @@ export async function loadEnvFile(
     cwd: resolvedCwd,
     envFile,
     loaded,
-    skipped
+    skipped,
   };
 }
 
-type ParsedEnvLine =
-  | { ok: true; name: string; value: string }
-  | { ok: false };
+type ParsedEnvLine = { ok: true; name: string; value: string } | { ok: false };
 
 function parseEnvLine(line: string): ParsedEnvLine | null {
   const trimmed = line.trim();
@@ -97,7 +95,9 @@ function parseEnvLine(line: string): ParsedEnvLine | null {
     return null;
   }
 
-  const assignment = trimmed.startsWith("export ") ? trimmed.slice("export ".length).trim() : trimmed;
+  const assignment = trimmed.startsWith("export ")
+    ? trimmed.slice("export ".length).trim()
+    : trimmed;
   const separator = assignment.indexOf("=");
   if (separator <= 0) {
     return { ok: false };
@@ -124,17 +124,17 @@ function unquoteEnvValue(value: string): string | null {
 
   const first = value[0];
   const last = value[value.length - 1];
-  if ((first === "\"" || first === "'") && last !== first) {
+  if ((first === '"' || first === "'") && last !== first) {
     return null;
   }
 
-  if (first === "\"" && last === "\"") {
+  if (first === '"' && last === '"') {
     return value
       .slice(1, -1)
       .replace(/\\n/g, "\n")
       .replace(/\\r/g, "\r")
       .replace(/\\t/g, "\t")
-      .replace(/\\"/g, "\"")
+      .replace(/\\"/g, '"')
       .replace(/\\\\/g, "\\");
   }
 

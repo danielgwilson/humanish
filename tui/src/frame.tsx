@@ -39,7 +39,13 @@ export interface FrameProps {
   children: React.ReactNode;
 }
 
-export function Frame({ columns, context, breadcrumb, hints, children }: FrameProps): React.ReactElement {
+export function Frame({
+  columns,
+  context,
+  breadcrumb,
+  hints,
+  children,
+}: FrameProps): React.ReactElement {
   const width = contentWidth(columns);
   return (
     <Box flexDirection="column" width={width}>

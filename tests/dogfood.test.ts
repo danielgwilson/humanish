@@ -11,7 +11,7 @@ async function withDogfoodCopy<T>(callback: (cwd: string) => Promise<T>): Promis
   try {
     await writeFile(
       path.join(tempRoot, "package.json"),
-      JSON.stringify({ name: "humanish-dogfood-fixture" }, null, 2)
+      JSON.stringify({ name: "humanish-dogfood-fixture" }, null, 2),
     );
     await cp(path.resolve("humanish"), path.join(tempRoot, "humanish"), { recursive: true });
     return await callback(tempRoot);
@@ -44,9 +44,13 @@ describe("humanish dogfood config", () => {
 
     expect(packageJson.scripts["humanish:run"]).toBe("pnpm humanish -- run --dry-run");
     expect(packageJson.scripts["humanish:watch"]).toBe("pnpm humanish -- watch");
-    expect(packageJson.scripts["humanish:watch:ci"]).toBe("pnpm humanish -- watch --json --no-open");
+    expect(packageJson.scripts["humanish:watch:ci"]).toBe(
+      "pnpm humanish -- watch --json --no-open",
+    );
     expect(packageJson.scripts["humanish:dogfood"]).toBe("pnpm humanish -- watch");
-    expect(packageJson.scripts["humanish:feedback"]).toBe("pnpm humanish -- feedback issue --repo danielgwilson/humanish");
+    expect(packageJson.scripts["humanish:feedback"]).toBe(
+      "pnpm humanish -- feedback issue --repo danielgwilson/humanish",
+    );
     expect(coverage).toContain("codex-exec");
     expect(coverage).toContain("workspace trust is missing");
     expect(readme).toContain("one-command `watch`");
@@ -62,7 +66,7 @@ describe("humanish dogfood config", () => {
       expect(result.warnings).toEqual([]);
 
       const bundle = JSON.parse(
-        await readFile(path.join(cwd, ".humanish/runs/dogfood-source-proof/run.json"), "utf8")
+        await readFile(path.join(cwd, ".humanish/runs/dogfood-source-proof/run.json"), "utf8"),
       ) as {
         persona: { id: string; name: string; source: string; sourceDigest: string };
         scenario: { id: string; title: string; goal: string; source: string; sourceDigest: string };
@@ -71,12 +75,12 @@ describe("humanish dogfood config", () => {
       expect(bundle.persona).toMatchObject({
         id: "synthetic-new-user",
         name: "First-Time Trial User",
-        source: "humanish/personas/synthetic-new-user.yaml"
+        source: "humanish/personas/synthetic-new-user.yaml",
       });
       expect(bundle.scenario).toMatchObject({
         id: "first-run-smoke",
         title: "Humanish CLI first-run smoke",
-        source: "humanish/scenarios/first-run-smoke.yaml"
+        source: "humanish/scenarios/first-run-smoke.yaml",
       });
       expect(bundle.scenario.goal).toContain("run a one-command 4-sim watch");
       expect(bundle.persona.sourceDigest).toMatch(/^[a-f0-9]{12}$/);

@@ -52,7 +52,7 @@ API surface.
 1. **Transport-agnostic contract; Codex stays the reference implementation.** The
    contract describes lifecycle and evidence, not transport. An adapter may be a
    subprocess protocol (Codex stdio JSON-RPC, `pi --mode rpc`, `claude -p
-   --output-format stream-json`) or an in-process SDK (`pi-agent-core`, Claude
+--output-format stream-json`) or an in-process SDK (`pi-agent-core`, Claude
    Agent SDK, Stagehand). The existing Codex app-server integration is the
    reference adapter; `pi-agent-core` is the first in-process-SDK adapter, chosen
    to prove both shapes early.
@@ -107,18 +107,18 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
 export type ActorStatus = "passed" | "failed" | "blocked" | "timed_out";
 
 export type ActorCompletionReason =
-  | "goal_satisfied"      // scenario success predicate met
-  | "turn_completed"      // harness saw an explicit done signal, no predicate
-  | "gave_up"             // persona abandoned in character: friction exceeded its tolerance
-  | "blocked_approval"    // an action was auto-declined and the actor could not proceed
-  | "timed_out"           // wall-clock deadline hit with ZERO material progress → still a FAILURE
-  | "budget_reached"      // wall-clock time budget hit AFTER productive activity (>=1 material
-                          // action) → ActorStatus "passed", a NON-FAILURE open-ended-watch
-                          // completion; distinct from goal_satisfied (no goal was claimed)
+  | "goal_satisfied" // scenario success predicate met
+  | "turn_completed" // harness saw an explicit done signal, no predicate
+  | "gave_up" // persona abandoned in character: friction exceeded its tolerance
+  | "blocked_approval" // an action was auto-declined and the actor could not proceed
+  | "timed_out" // wall-clock deadline hit with ZERO material progress → still a FAILURE
+  | "budget_reached" // wall-clock time budget hit AFTER productive activity (>=1 material
+  // action) → ActorStatus "passed", a NON-FAILURE open-ended-watch
+  // completion; distinct from goal_satisfied (no goal was claimed)
   | "actor_error"
-  | "step_failed"         // a deterministic scripted step/expectation evaluated false: the
-                          // SUBJECT failed the script; the harness executed faithfully
-                          // (distinct from actor_error/harness_error)
+  | "step_failed" // a deterministic scripted step/expectation evaluated false: the
+  // SUBJECT failed the script; the harness executed faithfully
+  // (distinct from actor_error/harness_error)
   | "harness_error";
 
 // One normalized evidence row. Codex item/*, Claude ToolUse/ToolResult,
@@ -126,15 +126,23 @@ export type ActorCompletionReason =
 export interface ActorTraceItem {
   id: string;
   kind:
-    | "message" | "reasoning" | "tool_call" | "command" | "file_change"
-    | "approval" | "screenshot" | "ui_action" | "plan" | "notice";
+    | "message"
+    | "reasoning"
+    | "tool_call"
+    | "command"
+    | "file_change"
+    | "approval"
+    | "screenshot"
+    | "ui_action"
+    | "plan"
+    | "notice";
   lifecycle: "started" | "completed";
   status?: string;
-  title: string;                 // redacted, <= 120 chars
+  title: string; // redacted, <= 120 chars
   tool?: { server?: string; name?: string };
   command?: { text?: string; cwd?: string; exitCode?: number; outputTail?: string };
   screenshotRef?: { path: string; redaction: "blurred" | "ocr_scrubbed" | "none" };
-  text?: string;                 // redacted
+  text?: string; // redacted
 }
 
 export interface ActorCapabilities {
@@ -143,56 +151,68 @@ export interface ActorCapabilities {
   lanes: Array<"code" | "app" | "computer-use" | "scripted-browser" | "terminal">;
   producesScreenshots: boolean;
   byoModel: boolean;
-  preGrantableApprovals: boolean;   // can run unattended without a human prompt
-  inProcessTools: boolean;          // can inject product tools without a subprocess
+  preGrantableApprovals: boolean; // can run unattended without a human prompt
+  inProcessTools: boolean; // can inject product tools without a subprocess
   license: "open" | "source-available" | "proprietary";
   keyPlacement?: "external" | "in-sandbox-command-scoped";
 }
 
 export interface ActorTrace {
   schema: typeof ACTOR_TRACE_SCHEMA;
-  provider: string;              // e.g. "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona" | "codex"
+  provider: string; // e.g. "codex-app-server" | "pi-agent-core" | "claude-agent-sdk" | "openai-responses-cu" | "browser-persona" | "codex"
   providerVersion?: string;
-  protocol: "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
+  protocol:
+    "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
   lane: "code" | "app" | "computer-use" | "scripted-browser" | "terminal";
-  persona: { id: string; traitsApplied: string[]; promptDigest: string };  // proves traits were threaded
+  persona: { id: string; traitsApplied: string[]; promptDigest: string }; // proves traits were threaded
   // "raw" = full-fidelity frames retained (valid for LOCAL use; redact before
   // publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.
-  redaction: { status: "passed"; screenshots: "n/a" | "raw" | "blurred" | "ocr_scrubbed"; notes: string };
-  startedAt: string; completedAt: string; durationMs: number;
-  status: ActorStatus; completionReason: ActorCompletionReason; reason: string;
+  redaction: {
+    status: "passed";
+    screenshots: "n/a" | "raw" | "blurred" | "ocr_scrubbed";
+    notes: string;
+  };
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+  status: ActorStatus;
+  completionReason: ActorCompletionReason;
+  reason: string;
   ids: { sessionId?: string; threadId?: string; turnId?: string; model?: string };
   counts: Record<string, number>;
   items: ActorTraceItem[];
   tokenUsage?: { input?: number; output?: number; total?: number; costUsd?: number };
-  estimatedCost?: ActorEstimatedCost;                // humanish.actor-estimated-cost.v1 (additive)
+  estimatedCost?: ActorEstimatedCost; // humanish.actor-estimated-cost.v1 (additive)
   capabilities: ActorCapabilities;
 }
 
 export interface ApprovalPolicy {
   mode: "auto-decline" | "pre-grant-allowlist" | "deny-all";
-  allow?: string[];                                  // e.g. ["read:*", "bash:git diff *", "mcp__browser__*"]
+  allow?: string[]; // e.g. ["read:*", "bash:git diff *", "mcp__browser__*"]
   onRequest(req: ApprovalRequest): ApprovalDecision; // adapter calls; harness records every call
 }
 
 export interface RedactionHooks {
   redactText(s: string): string;
   publicPath(p: string, root: string): string;
-  redactScreenshot(buf: Buffer, meta: ScreenshotMeta): Promise<{ buf: Buffer; method: "blurred" | "ocr_scrubbed" }>;
+  redactScreenshot(
+    buf: Buffer,
+    meta: ScreenshotMeta,
+  ): Promise<{ buf: Buffer; method: "blurred" | "ocr_scrubbed" }>;
   promptForLog(raw: string): { placeholder: string; digest: string; length: number };
 }
 
 export interface ActorRunInput {
   cwd: string;
-  runRoot: string;                  // where the adapter writes events/summary/transcript
+  runRoot: string; // where the adapter writes events/summary/transcript
   timeoutMs: number;
-  persona: ResolvedPersona;         // FULL traits, not just {id, name}
+  persona: ResolvedPersona; // FULL traits, not just {id, name}
   scenario: { id: string; title: string; goal: string; successText?: string[] };
   laneFocus?: { id: string; label: string; instruction: string };
   approval: ApprovalPolicy;
   redaction: RedactionHooks;
   model?: string;
-  actorCommand?: string[];          // override binary / transport
+  actorCommand?: string[]; // override binary / transport
   signal: AbortSignal;
 }
 
@@ -202,12 +222,14 @@ export interface ActorRunResult {
   reason: string;
   durationMs: number;
   trace: ActorTrace;
-  transcriptPath: string; tracePath: string; eventsPath: string;
+  transcriptPath: string;
+  tracePath: string;
+  eventsPath: string;
   tail: string;
 }
 
 export interface Actor {
-  readonly id: string;             // "codex-app-server"
+  readonly id: string; // "codex-app-server"
   capabilities(): ActorCapabilities;
   run(input: ActorRunInput): Promise<ActorRunResult>;
 }
@@ -381,10 +403,10 @@ Plan:
    imposes no turn cap; its only hard stop is the wall-clock `timeoutMs`.
 4. **Bind the same directives per harness**: pi (`systemPrompt` +
    `beforeToolCall` allow rules), Claude (`system_prompt`/`--append-system-prompt`
-   + `allowedTools`), Codex (prepend to `turn/start` input), Stagehand (agent
-   context + action policy). Each binds the friction-tolerance, skill, and
-   accessibility directives identically; none uses a `max_turns`-style cap as the
-   persona stop condition.
+   - `allowedTools`), Codex (prepend to `turn/start` input), Stagehand (agent
+     context + action policy). Each binds the friction-tolerance, skill, and
+     accessibility directives identically; none uses a `max_turns`-style cap as the
+     persona stop condition.
 5. **Prove it.** `ActorTrace.persona.traitsApplied` lists the injected
    directives; a `persona-fidelity` verify check asserts that the friction and
    accessibility directives reached the actor input and that a `gave_up` run
@@ -441,12 +463,12 @@ turns as a stop signal.
 
 ## Capability matrix (target adapters)
 
-| Adapter | headless | structured trace | sandbox | BYO model | license | actor fit |
-| --- | --- | --- | --- | --- | --- | --- |
-| codex-app-server (reference) | yes (stdio JSON-RPC) | typed item/* | OS Seatbelt/seccomp + approvalPolicy | OpenAI-first | Apache-2.0 | code |
-| pi-agent-core (first new) | yes (SDK + rpc/json) | event stream + session JSONL + token/cost | BYO container + hook gating | 15+ providers, local | MIT | code, app |
-| claude-agent-sdk | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost | OS sandbox + dontAsk/allowedTools | Anthropic-centric | SDK MIT (CLI proprietary) | code, app |
-| stagehand-cua (roadmap, not shipped; `openai-computer-use` is the shipped computer-use actor) | yes (SDK, mode:'cua') | structured results + replay | Playwright/Browserbase isolation | OpenAI/Anthropic/Google | MIT | computer-use |
+| Adapter                                                                                       | headless                     | structured trace                          | sandbox                              | BYO model               | license                   | actor fit    |
+| --------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------- | ------------------------------------ | ----------------------- | ------------------------- | ------------ |
+| codex-app-server (reference)                                                                  | yes (stdio JSON-RPC)         | typed item/*                              | OS Seatbelt/seccomp + approvalPolicy | OpenAI-first            | Apache-2.0                | code         |
+| pi-agent-core (first new)                                                                     | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
+| claude-agent-sdk                                                                              | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
+| stagehand-cua (roadmap, not shipped; `openai-computer-use` is the shipped computer-use actor) | yes (SDK, mode:'cua')        | structured results + replay               | Playwright/Browserbase isolation     | OpenAI/Anthropic/Google | MIT                       | computer-use |
 
 ## Sequencing
 

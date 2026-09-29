@@ -46,7 +46,7 @@ function normalizeBundle(value: unknown, inGitState = false): unknown {
 
 const GOLDENS = [
   { id: "first-run", runId: "golden-first-run" },
-  { id: "oss", runId: "golden-oss" }
+  { id: "oss", runId: "golden-oss" },
 ] as const;
 
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
@@ -63,21 +63,21 @@ describe("lab golden equivalence (rung 2: faithfulness)", () => {
         // The golden is captured through the real CLI, which resolves the manifest and stamps the
         // run's lab provenance (#455). Faithfulness means invoking the same way, so this test
         // supplies exactly what the resolution step supplies.
-        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin }
+        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
       });
       expect(outcome.result.ok ?? true).not.toBe(false);
 
       const producedRaw = await readFile(
         path.join(ROOT, ".humanish", "runs", golden.runId, "run.json"),
-        "utf8"
+        "utf8",
       );
       const goldenRaw = await readFile(
         path.join(ROOT, "tests", "golden", "labs", `${golden.id}.json`),
-        "utf8"
+        "utf8",
       );
 
       expect(normalizeBundle(JSON.parse(producedRaw))).toEqual(
-        normalizeBundle(JSON.parse(goldenRaw))
+        normalizeBundle(JSON.parse(goldenRaw)),
       );
     });
   }

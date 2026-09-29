@@ -37,16 +37,22 @@ const RAIL_ITEMS: Array<[string, string, string, boolean?]> = [
   ["03", "Lane 03", "sketch-shapes · gave up", true],
   ["04", "Lane 04", "export-drawing"],
   ["05", "Bundle", "what landed in .humanish/"],
-  ["06", "Verify", "16/16 checks"]
+  ["06", "Verify", "16/16 checks"],
 ];
 
 const VERIFY_CAST: TerminalLine[] = [
   { kind: "cmd", text: "$ humanish verify" },
   { kind: "ok", text: "redaction passed" },
-  { kind: "ok", text: "actor engagement: live actor traces that claim goal_satisfied carry at least one action or message" },
-  { kind: "ok", text: "actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces" },
+  {
+    kind: "ok",
+    text: "actor engagement: live actor traces that claim goal_satisfied carry at least one action or message",
+  },
+  {
+    kind: "ok",
+    text: "actor verdict consistency: live pass verdicts do not hide failed, blocked, or timed-out actor traces",
+  },
   { kind: "dim", text: "… 13 more checks" },
-  { kind: "sum", text: "16/16 passed → status: local_only", note: "(RAW_SCREENSHOTS)" }
+  { kind: "sum", text: "16/16 passed → status: local_only", note: "(RAW_SCREENSHOTS)" },
 ];
 
 const LANES: Array<{
@@ -65,7 +71,7 @@ const LANES: Array<{
     alt: "Keyframe from lane diagram-login-flow: the Excalidraw canvas on the sandbox desktop with two rectangles labeled Login and Dashboard connected by an arrow",
     reportLabel: "Final report — verbatim",
     report: "Done",
-    passed: true
+    passed: true,
   },
   {
     idx: "02",
@@ -74,7 +80,7 @@ const LANES: Array<{
     alt: "Keyframe from lane sticky-notes: the Excalidraw canvas on the sandbox desktop with three colored to-do notes — Draft plan, Call team, Buy supplies",
     reportLabel: "Final report — verbatim",
     report: "Done.",
-    passed: true
+    passed: true,
   },
   {
     idx: "03",
@@ -83,7 +89,7 @@ const LANES: Array<{
     alt: "Keyframe from lane sketch-shapes: the Excalidraw canvas on the sandbox desktop with an ellipse, a rectangle, stray line strokes, and the freehand tool panel open — the lane gave up here",
     reportLabel: "Recorded reason — verbatim",
     report: "gave up: 8 consecutive turns with no change to the UI state",
-    passed: false
+    passed: false,
   },
   {
     idx: "04",
@@ -92,8 +98,8 @@ const LANES: Array<{
     alt: "Keyframe from lane export-drawing: the Excalidraw canvas on the sandbox desktop with a single large rectangle, deselected after the export flow",
     reportLabel: "Final report — verbatim",
     report: "Done",
-    passed: true
-  }
+    passed: true,
+  },
 ];
 
 export default function PinnedReplay() {
@@ -213,7 +219,7 @@ export default function PinnedReplay() {
             cio?.unobserve(en.target);
           });
         },
-        { threshold: 0.35 }
+        { threshold: 0.35 },
       );
       panels.forEach((p) => {
         if (p.querySelector("canvas.cover")) cio?.observe(p);
@@ -233,31 +239,65 @@ export default function PinnedReplay() {
   return (
     <div className="wt-track" id="runtrack" ref={trackRef}>
       <div className="wt-sticky">
-        <p className="runband" aria-hidden="true"><span>Run <b>cua-2026-08-07T17-44-48-760Z-87389419</b> · 2026-08-07</span><span>3/4 lanes passed · verify 16/16 checks</span></p>
+        <p className="runband" aria-hidden="true">
+          <span>
+            Run <b>cua-2026-08-07T17-44-48-760Z-87389419</b> · 2026-08-07
+          </span>
+          <span>3/4 lanes passed · verify 16/16 checks</span>
+        </p>
         <nav className="rail" aria-label="Run steps">
           <span className="rail-k">Replay · one real run</span>
-          <span className="rtrack" aria-hidden="true"><i id="pf"></i></span>
+          <span className="rtrack" aria-hidden="true">
+            <i id="pf"></i>
+          </span>
           {RAIL_ITEMS.map(([ridx, b, i, fail], k) => (
             <button className={fail ? "ritem ritem-fail" : "ritem"} data-i={k} key={ridx}>
               <span className="ridx">{ridx}</span>
-              <span className="rtx"><b>{b}</b><i>{i}</i></span>
+              <span className="rtx">
+                <b>{b}</b>
+                <i>{i}</i>
+              </span>
             </button>
           ))}
         </nav>
 
         <div className="stage">
           <article className="panel" data-i="0">
-            <header className="pbar"><span className="pl"><b className="pidx">00</b><span className="pname">brief · the lab</span></span><span className="pr">lab.yaml</span></header>
+            <header className="pbar">
+              <span className="pl">
+                <b className="pidx">00</b>
+                <span className="pname">brief · the lab</span>
+              </span>
+              <span className="pr">lab.yaml</span>
+            </header>
             <div className="pbody pbody-brief">
               <dl className="brief-facts">
-                <div><dt>Subject</dt><dd>Excalidraw</dd></div>
-                <div><dt>Desktop</dt><dd>hosted · 1920×1080</dd></div>
-                <div><dt>Lanes</dt><dd>4 · parallel</dd></div>
-                <div><dt>Date</dt><dd>2026-08-07</dd></div>
+                <div>
+                  <dt>Subject</dt>
+                  <dd>Excalidraw</dd>
+                </div>
+                <div>
+                  <dt>Desktop</dt>
+                  <dd>hosted · 1920×1080</dd>
+                </div>
+                <div>
+                  <dt>Lanes</dt>
+                  <dd>4 · parallel</dd>
+                </div>
+                <div>
+                  <dt>Date</dt>
+                  <dd>2026-08-07</dd>
+                </div>
               </dl>
               <pre className="code" dangerouslySetInnerHTML={{ __html: BRIEF_YAML }} />
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The lab</span>One YAML lab declares the persona, its four missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted 1920×1080 desktop.</p></footer>
+            <footer className="pcap">
+              <p className="prep">
+                <span className="plab">The lab</span>One YAML lab declares the persona, its four
+                missions, and a commit-pinned Excalidraw clone. Each lane gets its own hosted
+                1920×1080 desktop.
+              </p>
+            </footer>
           </article>
 
           {LANES.map((lane, i) => (
@@ -265,26 +305,78 @@ export default function PinnedReplay() {
           ))}
 
           <article className="panel" data-i="5">
-            <header className="pbar"><span className="pl"><b className="pidx">05</b><span className="pname">bundle · evidence</span></span><span className="pr">.humanish/ · gitignored</span></header>
+            <header className="pbar">
+              <span className="pl">
+                <b className="pidx">05</b>
+                <span className="pname">bundle · evidence</span>
+              </span>
+              <span className="pr">.humanish/ · gitignored</span>
+            </header>
             <div className="pbody">
               <div className="ledger">
-                <div className="lh">.humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 lanes</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>screenshots</span><span className="ld">every screenshot each lane saw · 28 frames</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>action traces</span><span className="ld">ordered, end to end</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>lifecycle events</span><span className="ld">launch to landing</span></div>
-                <div className="lrow"><span className="ln"><em>├</em>estimated cost</span><span className="ld">~$1.54 · estimated (rates as of 2026-08-05)</span></div>
-                <div className="lrow"><span className="ln"><em>└</em>wall-clock</span><span className="ld">6m 06s · run created → last lane landed</span></div>
+                <div className="lh">
+                  .humanish/runs/cua-2026-08-07T17-44-48-760Z-87389419<span>4 lanes</span>
+                </div>
+                <div className="lrow">
+                  <span className="ln">
+                    <em>├</em>screenshots
+                  </span>
+                  <span className="ld">every screenshot each lane saw · 28 frames</span>
+                </div>
+                <div className="lrow">
+                  <span className="ln">
+                    <em>├</em>action traces
+                  </span>
+                  <span className="ld">ordered, end to end</span>
+                </div>
+                <div className="lrow">
+                  <span className="ln">
+                    <em>├</em>lifecycle events
+                  </span>
+                  <span className="ld">launch to landing</span>
+                </div>
+                <div className="lrow">
+                  <span className="ln">
+                    <em>├</em>estimated cost
+                  </span>
+                  <span className="ld">~$1.54 · estimated (rates as of 2026-08-05)</span>
+                </div>
+                <div className="lrow">
+                  <span className="ln">
+                    <em>└</em>wall-clock
+                  </span>
+                  <span className="ld">6m 06s · run created → last lane landed</span>
+                </div>
               </div>
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">Where it lands</span>The run lands in gitignored <code>.humanish/</code>: every screenshot each lane saw, ordered action traces, lifecycle events, and estimated cost at dated rates.</p></footer>
+            <footer className="pcap">
+              <p className="prep">
+                <span className="plab">Where it lands</span>The run lands in gitignored{" "}
+                <code>.humanish/</code>: every screenshot each lane saw, ordered action traces,
+                lifecycle events, and estimated cost at dated rates.
+              </p>
+            </footer>
           </article>
 
           <article className="panel panel-dark" data-i="6">
-            <header className="pbar"><span className="pl"><b className="pidx">06</b><span className="pname">verify · share-safety</span></span><span className="pr">fail-closed</span></header>
+            <header className="pbar">
+              <span className="pl">
+                <b className="pidx">06</b>
+                <span className="pname">verify · share-safety</span>
+              </span>
+              <span className="pr">fail-closed</span>
+            </header>
             <div className="pbody">
               <TerminalCast lines={VERIFY_CAST} />
             </div>
-            <footer className="pcap"><p className="prep"><span className="plab">The gate</span><code>humanish verify</code> grades the bundle fail-closed. This run: 16/16 checks passed — and the bundle still grades <code>local_only</code>, because it holds full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.</p></footer>
+            <footer className="pcap">
+              <p className="prep">
+                <span className="plab">The gate</span>
+                <code>humanish verify</code> grades the bundle fail-closed. This run: 16/16 checks
+                passed — and the bundle still grades <code>local_only</code>, because it holds
+                full-fidelity screenshots. Publishing these crops was a reviewed, deliberate act.
+              </p>
+            </footer>
           </article>
         </div>
       </div>

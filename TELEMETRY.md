@@ -10,8 +10,8 @@ subject is your product and a lab id can name something you have not announced.
 
 ## Why
 
-humanish shipped sixty-one releases without being able to answer *"does anyone
-get to a working first run?"*. The answer, when it finally arrived, came from an
+humanish shipped sixty-one releases without being able to answer _"does anyone
+get to a working first run?"_. The answer, when it finally arrived, came from an
 adoption post-mortem: the first live run had been impossible for months, because
 the starter labs shipped with a placeholder URL. Nobody reported it. A tool that
 cannot see its own activation is guessing about the thing that matters most.

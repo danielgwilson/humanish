@@ -1,7 +1,13 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 /** Host-only, invocation-local exact values. No serializer, durable identifier or global fallback. */
-type SecretScope = { values: Set<string>; bytes: number; pattern?: RegExp; closed: boolean; failed: boolean };
+type SecretScope = {
+  values: Set<string>;
+  bytes: number;
+  pattern?: RegExp;
+  closed: boolean;
+  failed: boolean;
+};
 const scopes = new AsyncLocalStorage<SecretScope>();
 const MAX_VALUES = 8192;
 const MAX_BYTES = 1024 * 1024;
@@ -21,8 +27,9 @@ function fail(scope: SecretScope): never {
 /** Enclose both participant execution and its automatic analysis in one scope. Nested runs isolate too. */
 export async function withTransientCommsSecrets<T>(work: () => Promise<T>): Promise<T> {
   const scope: SecretScope = { values: new Set(), bytes: 0, closed: false, failed: false };
-  try { return await scopes.run(scope, work); }
-  finally {
+  try {
+    return await scopes.run(scope, work);
+  } finally {
     // Detached work can retain an async context after return. Clear its values and refuse future
     // scrubbing/registration there; never turn an expired scope into an unprotected analysis.
     scope.closed = true;
@@ -41,7 +48,12 @@ export function registerTransientCommsSecrets(values: string[]): void {
     // Received OTP extraction starts at four characters; management keys and addresses are longer.
     if (value.length < 4 || scope.values.has(value)) continue;
     const bytes = Buffer.byteLength(value);
-    if (bytes > MAX_VALUE_BYTES || scope.values.size >= MAX_VALUES || scope.bytes + bytes > MAX_BYTES) fail(scope);
+    if (
+      bytes > MAX_VALUE_BYTES ||
+      scope.values.size >= MAX_VALUES ||
+      scope.bytes + bytes > MAX_BYTES
+    )
+      fail(scope);
     scope.values.add(value);
     scope.bytes += bytes;
     delete scope.pattern;
@@ -55,8 +67,15 @@ export function scrubTransientCommsText(text: string): string {
   usable(scope);
   if (!scope.values.size) return text;
   try {
-    scope.pattern ??= new RegExp([...scope.values].sort((a, b) => b.length - a.length)
-      .map(value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+    scope.pattern ??= new RegExp(
+      [...scope.values]
+        .sort((a, b) => b.length - a.length)
+        .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("|"),
+      "g",
+    );
     return text.replace(scope.pattern, "[REDACTED_SECRET]");
-  } catch { return fail(scope); }
+  } catch {
+    return fail(scope);
+  }
 }

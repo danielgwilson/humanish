@@ -81,7 +81,7 @@ export function buildArtifactLayout(runId: string, runsRoot = ".humanish/runs"):
     reviewMarkdown: `${artifactRoot}/review.md`,
     observerData: `${artifactRoot}/observer/observer-data.json`,
     events: `${artifactRoot}/events.ndjson`,
-    latestPointer: `${normalizedRoot}/latest.json`
+    latestPointer: `${normalizedRoot}/latest.json`,
   };
 }
 
@@ -96,7 +96,7 @@ export function createLatestPointer(options: {
     schema: LATEST_POINTER_SCHEMA,
     runId: options.runId,
     path: normalizeRelativePath(options.artifactRoot),
-    updatedAt: toIsoString(options.updatedAt)
+    updatedAt: toIsoString(options.updatedAt),
   };
 }
 
@@ -113,7 +113,7 @@ export function createHistoryEntry(options: {
     runId: options.runId,
     createdAt: toIsoString(options.createdAt),
     mode: options.mode,
-    path: normalizeRelativePath(options.artifactRoot)
+    path: normalizeRelativePath(options.artifactRoot),
   };
 }
 
@@ -136,7 +136,7 @@ export function createLifecycleEvent(options: {
   return {
     at: toIsoString(options.at),
     event,
-    message
+    message,
   };
 }
 
@@ -151,7 +151,7 @@ export function summarizeTiming(options: {
       startedAt,
       endedAt: null,
       durationMs: null,
-      status: "running"
+      status: "running",
     };
   }
 
@@ -166,7 +166,7 @@ export function summarizeTiming(options: {
     startedAt,
     endedAt,
     durationMs,
-    status: "complete"
+    status: "complete",
   };
 }
 

@@ -10,16 +10,20 @@ describe("env-file loader", () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-env-file-"));
     const envPath = path.join(cwd, ".humanish", "local", ".env");
     const env: NodeJS.ProcessEnv = {
-      OPENAI_API_KEY: "existing-value"
+      OPENAI_API_KEY: "existing-value",
     };
     await mkdir(path.dirname(envPath), { recursive: true });
-    await writeFile(envPath, [
-      "# local only",
-      "OPENAI_API_KEY=should-not-override",
-      "E2B_API_KEY='loaded-e2b-value'",
-      "export HUMANISH_OSS_META_ACTOR_FIRST=1",
-      "HUMANISH_QUOTED=\"two words\""
-    ].join("\n"), "utf8");
+    await writeFile(
+      envPath,
+      [
+        "# local only",
+        "OPENAI_API_KEY=should-not-override",
+        "E2B_API_KEY='loaded-e2b-value'",
+        "export HUMANISH_OSS_META_ACTOR_FIRST=1",
+        'HUMANISH_QUOTED="two words"',
+      ].join("\n"),
+      "utf8",
+    );
 
     const result = await loadEnvFile(cwd, ".humanish/local/.env", env);
 
@@ -27,7 +31,7 @@ describe("env-file loader", () => {
     expect(result.loaded).toEqual([
       "E2B_API_KEY",
       "HUMANISH_OSS_META_ACTOR_FIRST",
-      "HUMANISH_QUOTED"
+      "HUMANISH_QUOTED",
     ]);
     expect(result.skipped).toEqual(["OPENAI_API_KEY"]);
     expect(JSON.stringify(result)).not.toContain("loaded-e2b-value");

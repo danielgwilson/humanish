@@ -40,12 +40,20 @@ function escapeHtml(value: string): string {
 
 export function injectObserverData(html: string, data: unknown): string {
   if (!html.includes(SLOT)) {
-    throw new Error("observer artifact: observer-data slot not found (placeholder missing or already filled)");
+    throw new Error(
+      "observer artifact: observer-data slot not found (placeholder missing or already filled)",
+    );
   }
-  let out = html.replace(SLOT, `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`);
+  let out = html.replace(
+    SLOT,
+    `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`,
+  );
   const runId = (data as { run?: { runId?: unknown } } | null)?.run?.runId;
   if (typeof runId === "string" && runId !== "") {
-    out = out.replace(/<title>[^<]*<\/title>/, `<title>Humanish Observer — ${escapeHtml(runId)}</title>`);
+    out = out.replace(
+      /<title>[^<]*<\/title>/,
+      `<title>Humanish Observer — ${escapeHtml(runId)}</title>`,
+    );
   }
   return out;
 }

@@ -64,7 +64,9 @@ describe("the Observer artifact render path", () => {
 });
 
 describe("observerArtifactNeedsBuild", () => {
-  async function withWorkspace<T>(callback: (workspaceDir: string, artifactPath: string) => Promise<T>): Promise<T> {
+  async function withWorkspace<T>(
+    callback: (workspaceDir: string, artifactPath: string) => Promise<T>,
+  ): Promise<T> {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-observer-stale-"));
     const workspaceDir = path.join(tempRoot, "observer");
     const artifactPath = path.join(workspaceDir, "dist", "index.html");

@@ -13,8 +13,8 @@ function observerData(): ObserverData {
     streams: [
       { id: "stream-a", label: "Lane A", status: "running" },
       { id: "stream-b", label: "Lane B", status: "passed" },
-      { id: "stream-c", label: "Lane C", status: "running" }
-    ]
+      { id: "stream-c", label: "Lane C", status: "running" },
+    ],
   } as unknown as ObserverData;
 }
 
@@ -22,7 +22,7 @@ describe("withRuntimeStreamUrls lifecycle (#357)", () => {
   it("injects live iframes for active streams, falls back (liveEnded) for ended ones, leaves the rest untouched", () => {
     const runtime: ObserverRuntimeStreamUrl[] = [
       { streamId: "stream-a", url: "https://live.example.test/a" },
-      { streamId: "stream-b", url: "https://live.example.test/b", ended: true }
+      { streamId: "stream-b", url: "https://live.example.test/b", ended: true },
     ];
     const merged = withRuntimeStreamUrls(observerData(), runtime);
     const [a, b, c] = merged.streams as unknown as Array<Record<string, unknown>>;
@@ -45,7 +45,7 @@ describe("withRuntimeStreamUrls lifecycle (#357)", () => {
   it("marking an entry ended after attach flips only that stream on the next merge", () => {
     const runtime: ObserverRuntimeStreamUrl[] = [
       { streamId: "stream-a", url: "https://live.example.test/a" },
-      { streamId: "stream-b", url: "https://live.example.test/b" }
+      { streamId: "stream-b", url: "https://live.example.test/b" },
     ];
     const before = withRuntimeStreamUrls(observerData(), runtime);
     expect((before.streams[1] as unknown as Record<string, unknown>).liveEnded).toBeUndefined();

@@ -14,12 +14,54 @@ const stream = data.streams[0]!;
 stream.status = "complete";
 stream.viewport = { width: 800, height: 600 };
 stream.actor!.items = [
-  { id: "capture-a", kind: "screenshot", lifecycle: "completed", title: "First capture", at: "2026-09-01T10:00:00.000Z", screenshotRef: { path: "screenshots/a.png", redaction: "none" } },
-  { id: "past", kind: "ui_action", lifecycle: "completed", title: "Recorded past click", at: "2026-09-01T10:00:00.100Z", coord: { x: 10, y: 10 } },
-  { id: "future", kind: "ui_action", lifecycle: "completed", title: "Recorded future click", at: "2026-09-01T10:00:00.900Z", coord: { x: 20, y: 20 } },
-  { id: "capture-b", kind: "screenshot", lifecycle: "completed", title: "First duplicate", at: "2026-09-01T10:00:01.000Z", screenshotRef: { path: "screenshots/b.png", redaction: "none" } },
-  { id: "capture-c", kind: "screenshot", lifecycle: "completed", title: "Second duplicate", at: "2026-09-01T10:00:01.000Z", screenshotRef: { path: "screenshots/c.png", redaction: "none" } },
-  { id: "capture-d", kind: "screenshot", lifecycle: "completed", title: "Last capture", at: "2026-09-01T10:00:05.000Z", screenshotRef: { path: "screenshots/d.png", redaction: "none" } }
+  {
+    id: "capture-a",
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: "First capture",
+    at: "2026-09-01T10:00:00.000Z",
+    screenshotRef: { path: "screenshots/a.png", redaction: "none" },
+  },
+  {
+    id: "past",
+    kind: "ui_action",
+    lifecycle: "completed",
+    title: "Recorded past click",
+    at: "2026-09-01T10:00:00.100Z",
+    coord: { x: 10, y: 10 },
+  },
+  {
+    id: "future",
+    kind: "ui_action",
+    lifecycle: "completed",
+    title: "Recorded future click",
+    at: "2026-09-01T10:00:00.900Z",
+    coord: { x: 20, y: 20 },
+  },
+  {
+    id: "capture-b",
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: "First duplicate",
+    at: "2026-09-01T10:00:01.000Z",
+    screenshotRef: { path: "screenshots/b.png", redaction: "none" },
+  },
+  {
+    id: "capture-c",
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: "Second duplicate",
+    at: "2026-09-01T10:00:01.000Z",
+    screenshotRef: { path: "screenshots/c.png", redaction: "none" },
+  },
+  {
+    id: "capture-d",
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: "Last capture",
+    at: "2026-09-01T10:00:05.000Z",
+    screenshotRef: { path: "screenshots/d.png", redaction: "none" },
+  },
 ];
 const model = buildPlayerModel(stream)!;
 let container: HTMLDivElement;
@@ -28,22 +70,47 @@ let root: Root;
 function control(index = 1, overrides: Partial<StudyPlayerControl> = {}): StudyPlayerControl {
   return {
     moment: { kind: "capture", frame: model.frames[index]!, ageMs: 0, coverage: "within" },
-    atMs: model.frames[index]!.atMs ?? null, reviewing: true, playing: false, speed: 1, seekRevision: 0, eventId: null,
-    onSeekFrame: vi.fn(), onToggle: vi.fn(), onLive: vi.fn(), ...overrides
+    atMs: model.frames[index]!.atMs ?? null,
+    reviewing: true,
+    playing: false,
+    speed: 1,
+    seekRevision: 0,
+    eventId: null,
+    onSeekFrame: vi.fn(),
+    onToggle: vi.fn(),
+    onLive: vi.fn(),
+    ...overrides,
   };
 }
 
-async function render(studyPlayback: StudyPlayerControl, extra: Partial<Parameters<typeof Player>[0]> = {}) {
+async function render(
+  studyPlayback: StudyPlayerControl,
+  extra: Partial<Parameters<typeof Player>[0]> = {},
+) {
   await act(async () => {
-    root.render(<Tooltip.Provider><div className="main"><Player data={data} stream={stream} model={model} studyPlayback={studyPlayback} {...extra} />
-      <div data-study-dock="" /></div></Tooltip.Provider>);
+    root.render(
+      <Tooltip.Provider>
+        <div className="main">
+          <Player
+            data={data}
+            stream={stream}
+            model={model}
+            studyPlayback={studyPlayback}
+            {...extra}
+          />
+          <div data-study-dock="" />
+        </div>
+      </Tooltip.Provider>,
+    );
   });
 }
 
 async function click(selector: string) {
   const element = container.querySelector(selector);
   expect(element).not.toBeNull();
-  await act(async () => { element!.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  await act(async () => {
+    element!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
 }
 
 const frameSource = () => container.querySelector(".evidence-stage img")?.getAttribute("src");
@@ -60,7 +127,9 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await act(async () => { root.unmount(); });
+  await act(async () => {
+    root.unmount();
+  });
   container.remove();
   localStorage.clear();
   window.history.replaceState(null, "", window.location.pathname);
@@ -86,9 +155,13 @@ describe("Player projects the shared study clock", () => {
     expect(playback.onSeekFrame).toHaveBeenLastCalledWith(3);
     await click('[data-entry-id="future"]');
     expect(playback.onSeekFrame).toHaveBeenLastCalledWith(0, "future");
-    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })); });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    });
     expect(playback.onToggle).toHaveBeenCalledOnce();
-    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })); });
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    });
     expect(playback.onSeekFrame).toHaveBeenLastCalledWith(0);
   });
 
@@ -97,11 +170,15 @@ describe("Player projects the shared study clock", () => {
     const onViewChange = vi.fn();
     const playback = control(0, { playing: true });
     await render(playback, { onViewChange });
-    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
     expect(frameSource()).toBe("../screenshots/a.png");
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: true });
     window.history.replaceState(null, "", `#/lane/${stream.id}/f/4`);
-    await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    await act(async () => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
     expect(frameSource()).toBe("../screenshots/a.png");
     expect(playback.onSeekFrame).not.toHaveBeenCalled();
     expect(playback.onToggle).not.toHaveBeenCalled();
@@ -111,31 +188,50 @@ describe("Player projects the shared study clock", () => {
     const onViewChange = vi.fn();
     await render(control(0, { moment: { kind: "before-first" }, playing: true }), { onViewChange });
     expect(frameSource()).toBeUndefined();
-    expect(container.querySelector(".evidence-empty")?.textContent).toContain("No capture had been recorded");
+    expect(container.querySelector(".evidence-empty")?.textContent).toContain(
+      "No capture had been recorded",
+    );
     expect(window.location.hash).toBe(`#/lane/${stream.id}/replay`);
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: null, mode: "replay", playing: true });
 
     const missingHash = `#/lane/${stream.id}/f/99`;
     window.history.replaceState(null, "", missingHash);
-    await render(control(0, { moment: { kind: "no-captures" }, unavailableFrame: true }), { onViewChange });
+    await render(control(0, { moment: { kind: "no-captures" }, unavailableFrame: true }), {
+      onViewChange,
+    });
     expect(frameSource()).toBeUndefined();
-    expect(container.querySelector(".evidence-empty")?.textContent).toContain("addressed frame is unavailable");
+    expect(container.querySelector(".evidence-empty")?.textContent).toContain(
+      "addressed frame is unavailable",
+    );
     expect(window.location.hash).toBe(missingHash);
     expect(onViewChange).toHaveBeenLastCalledWith({ frame: null, mode: "replay", playing: false });
   });
 
   it("labels held-frame age and excludes future action pins until explicitly selected", async () => {
-    const playback = control(0, { moment: { kind: "capture", frame: model.frames[0]!, ageMs: 500, coverage: "within" } });
+    const playback = control(0, {
+      moment: { kind: "capture", frame: model.frames[0]!, ageMs: 500, coverage: "within" },
+    });
     await render(playback);
     expect(container.querySelector(".pins")?.textContent).toContain("Recorded past click");
     expect(container.querySelector(".pins")?.textContent).not.toContain("Recorded future click");
-    await render(control(3, { moment: { kind: "capture", frame: model.frames[3]!, ageMs: 4000, coverage: "after-last" } }));
-    expect(container.querySelector(".player-evidence-note")?.textContent).toContain("Last capture · 00:04 before study cursor");
+    await render(
+      control(3, {
+        moment: { kind: "capture", frame: model.frames[3]!, ageMs: 4000, coverage: "after-last" },
+      }),
+    );
+    expect(container.querySelector(".player-evidence-note")?.textContent).toContain(
+      "Last capture · 00:04 before study cursor",
+    );
 
     const onViewChange = vi.fn();
     await render({ ...playback, eventId: "future" }, { onViewChange });
     expect(container.querySelector(".pins")?.textContent).toContain("Recorded future click");
-    expect(onViewChange).toHaveBeenLastCalledWith({ frame: 0, mode: "replay", playing: false, eventId: "future" });
+    expect(onViewChange).toHaveBeenLastCalledWith({
+      frame: 0,
+      mode: "replay",
+      playing: false,
+      eventId: "future",
+    });
     expect(window.location.hash).toBe(`#/lane/${stream.id}/f/1/e/future`);
     await render(playback, { onViewChange });
     expect(container.querySelector('[aria-label="Selected evidence"]')).toBeNull();
@@ -143,7 +239,11 @@ describe("Player projects the shared study clock", () => {
   });
 
   it("only follows live by controller intent and never turns an offline snapshot live", async () => {
-    const active = { ...stream, status: "running" as const, embed: { kind: "iframe" as const, title: "Desktop", url: "https://desktop.example.test/" } };
+    const active = {
+      ...stream,
+      status: "running" as const,
+      embed: { kind: "iframe" as const, title: "Desktop", url: "https://desktop.example.test/" },
+    };
     const playback = control(0);
     await render(playback, { stream: active });
     await click('[aria-label="Jump to live"]');
@@ -171,13 +271,22 @@ describe("Player projects the shared study clock", () => {
     const mediaOnly = structuredClone(stream);
     mediaOnly.actor!.items = [];
     mediaOnly.recording = {
-      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
-      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
-      audioSources: ["speaker-output"], complete: true
+      schema: "humanish.desktop-recording.v1",
+      path: "recordings/participant.mp4",
+      mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z",
+      durationMs: 25_000,
+      bytes: 130_346,
+      audioSources: ["speaker-output"],
+      complete: true,
     };
-    await render(control(0, {
-      moment: { kind: "no-captures" }, atMs: Date.parse(mediaOnly.recording.startedAt) + 5000
-    }), { stream: mediaOnly, model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" } });
+    await render(
+      control(0, {
+        moment: { kind: "no-captures" },
+        atMs: Date.parse(mediaOnly.recording.startedAt) + 5000,
+      }),
+      { stream: mediaOnly, model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" } },
+    );
 
     expect(container.querySelector("video")).not.toBeNull();
     expect(container.textContent).toContain("Desktop video · 25s");
@@ -187,16 +296,23 @@ describe("Player projects the shared study clock", () => {
     expect(container.querySelector('[aria-label="Image zoom"]')).toBeNull();
     expect(container.querySelector('[aria-label="Recorded frames"]')).toBeNull();
     expect(container.textContent).not.toContain("0 / 0");
-    expect(container.querySelector(".player-mode")?.textContent).toContain("Desktop video · 2026-09-01T10:00:05.000Z");
+    expect(container.querySelector(".player-mode")?.textContent).toContain(
+      "Desktop video · 2026-09-01T10:00:05.000Z",
+    );
   });
 
   it("falls back to the selected screenshot when desktop video cannot load", async () => {
     vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
     const recorded = structuredClone(stream);
     recorded.recording = {
-      schema: "humanish.desktop-recording.v1", path: "recordings/participant.mp4", mimeType: "video/mp4",
-      startedAt: "2026-09-01T10:00:00.000Z", durationMs: 25_000, bytes: 130_346,
-      audioSources: ["speaker-output"], complete: true
+      schema: "humanish.desktop-recording.v1",
+      path: "recordings/participant.mp4",
+      mimeType: "video/mp4",
+      startedAt: "2026-09-01T10:00:00.000Z",
+      durationMs: 25_000,
+      bytes: 130_346,
+      audioSources: ["speaker-output"],
+      complete: true,
     };
     await render(control(1), { stream: recorded });
     const video = container.querySelector("video")!;
@@ -204,6 +320,8 @@ describe("Player projects the shared study clock", () => {
 
     expect(container.querySelector("video")).toBeNull();
     expect(frameSource()).toBe("../screenshots/b.png");
-    expect(container.textContent).toContain("Desktop video could not load; showing recorded screenshot evidence when available.");
+    expect(container.textContent).toContain(
+      "Desktop video could not load; showing recorded screenshot evidence when available.",
+    );
   });
 });

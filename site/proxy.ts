@@ -34,7 +34,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const response = NextResponse.rewrite(target, { request });
   if (isNew) {
     response.cookies.set(VISITOR_COOKIE, visitorId, {
-      path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", secure: request.nextUrl.protocol === "https:"
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
     });
   }
   return response;

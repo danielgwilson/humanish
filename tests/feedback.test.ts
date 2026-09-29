@@ -1,4 +1,15 @@
-import { cp, link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import {
+  cp,
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { symlinkSync, unlinkSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -11,7 +22,7 @@ import {
   listFeedback,
   renderIssueMarkdown,
   renderIssueUrl,
-  verifyFeedback
+  verifyFeedback,
 } from "../src/feedback.js";
 import { createProgram } from "../src/program.js";
 import { runDryRun } from "../src/run.js";
@@ -28,7 +39,9 @@ async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promis
   }
 }
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stderr: string; stdout: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stderr: string; stdout: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -37,7 +50,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stderr: strin
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
 
   await program.parseAsync(["node", "humanish", ...args], { from: "node" });
@@ -45,55 +58,70 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stderr: strin
   return {
     exitCode,
     stderr: stderr.join(""),
-    stdout: stdout.join("")
+    stdout: stdout.join(""),
   };
 }
 
 describe("feedback issue drafts", () => {
-  it.each(["dry-run", "live"] as const)("explains a candidate-free %s without changing JSON or creating a draft on list", async (mode) => {
-    await withFixtureCopy(async (cwd) => {
-      const runId = "feedback-empty";
-      await runDryRun({ cwd, dryRun: true, runId });
-      if (mode === "live") {
-        // A local contract fixture for the existing live-summary fallback; no provider runs.
-        const runPath = path.join(cwd, ".humanish", "runs", runId, "run.json");
-        const bundle = JSON.parse(await readFile(runPath, "utf8"));
-        bundle.mode = "live";
-        await writeFile(runPath, JSON.stringify(bundle), "utf8");
-      }
-      const args = ["feedback", "list", "--run", runId, "--cwd", cwd];
-      const listed = await runCli(args);
-      expect(listed.exitCode).toBe(0);
-      expect(listed.stdout).toContain("humanish feedback: no recorded candidates");
-      expect(listed.stdout).toContain("run-summary follow-up after share_ready verification");
-      const before = await runCli([...args, "--json"]);
-      expect(JSON.parse(before.stdout)).toEqual(await listFeedback(cwd, runId));
-      expect(JSON.parse(before.stdout).candidates).toEqual([]);
-      expect(JSON.parse(before.stdout)).not.toHaveProperty("draft");
-      await expect(stat(path.join(cwd, ".humanish", "runs", runId, "feedback", "draft.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  it.each(["dry-run", "live"] as const)(
+    "explains a candidate-free %s without changing JSON or creating a draft on list",
+    async (mode) => {
+      await withFixtureCopy(async (cwd) => {
+        const runId = "feedback-empty";
+        await runDryRun({ cwd, dryRun: true, runId });
+        if (mode === "live") {
+          // A local contract fixture for the existing live-summary fallback; no provider runs.
+          const runPath = path.join(cwd, ".humanish", "runs", runId, "run.json");
+          const bundle = JSON.parse(await readFile(runPath, "utf8"));
+          bundle.mode = "live";
+          await writeFile(runPath, JSON.stringify(bundle), "utf8");
+        }
+        const args = ["feedback", "list", "--run", runId, "--cwd", cwd];
+        const listed = await runCli(args);
+        expect(listed.exitCode).toBe(0);
+        expect(listed.stdout).toContain("humanish feedback: no recorded candidates");
+        expect(listed.stdout).toContain("run-summary follow-up after share_ready verification");
+        const before = await runCli([...args, "--json"]);
+        expect(JSON.parse(before.stdout)).toEqual(await listFeedback(cwd, runId));
+        expect(JSON.parse(before.stdout).candidates).toEqual([]);
+        expect(JSON.parse(before.stdout)).not.toHaveProperty("draft");
+        await expect(
+          stat(path.join(cwd, ".humanish", "runs", runId, "feedback", "draft.json")),
+        ).rejects.toMatchObject({ code: "ENOENT" });
 
-      const issue = await runCli(["feedback", "issue", "--run", runId, "--cwd", cwd, "--repo", "example/app"]);
-      expect(issue.exitCode).toBe(0);
-      const summary = mode === "live"
-        ? "Live study completed without a participant-reported finding"
-        : "Dry-run contract proof needs product-evidence follow-up";
-      expect(issue.stdout).toContain(summary);
-      const after = await runCli(args);
-      expect(after.stdout).toContain("candidates: none recorded");
-      expect(after.stdout).toContain(`summary: ${summary}`);
-      const afterJson = await runCli([...args, "--json"]);
-      expect(JSON.parse(afterJson.stdout)).toEqual(await listFeedback(cwd, runId));
-      expect(JSON.parse(afterJson.stdout).candidates).toEqual([]);
-      expect(JSON.parse(afterJson.stdout).draft).not.toHaveProperty("source_candidate_id");
-    });
-  });
+        const issue = await runCli([
+          "feedback",
+          "issue",
+          "--run",
+          runId,
+          "--cwd",
+          cwd,
+          "--repo",
+          "example/app",
+        ]);
+        expect(issue.exitCode).toBe(0);
+        const summary =
+          mode === "live"
+            ? "Live study completed without a participant-reported finding"
+            : "Dry-run contract proof needs product-evidence follow-up";
+        expect(issue.stdout).toContain(summary);
+        const after = await runCli(args);
+        expect(after.stdout).toContain("candidates: none recorded");
+        expect(after.stdout).toContain(`summary: ${summary}`);
+        const afterJson = await runCli([...args, "--json"]);
+        expect(JSON.parse(afterJson.stdout)).toEqual(await listFeedback(cwd, runId));
+        expect(JSON.parse(afterJson.stdout).candidates).toEqual([]);
+        expect(JSON.parse(afterJson.stdout).draft).not.toHaveProperty("source_candidate_id");
+      });
+    },
+  );
 
   it("writes and verifies public-safe feedback draft artifacts", async () => {
     await withFixtureCopy(async (cwd) => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "feedback-test"
+        runId: "feedback-test",
       });
 
       const drafted = await draftFeedback(cwd, "latest");
@@ -103,7 +131,9 @@ describe("feedback issue drafts", () => {
       expect(drafted.draft?.redaction.status).toBe("passed");
       expect(drafted.draft?.idempotency_key).toBe("humanish:feedback-test:dry-run-contract-proof");
 
-      await expect(stat(path.join(cwd, ".humanish/runs/feedback-test/feedback/draft.json"))).resolves.toBeTruthy();
+      await expect(
+        stat(path.join(cwd, ".humanish/runs/feedback-test/feedback/draft.json")),
+      ).resolves.toBeTruthy();
 
       const listed = await listFeedback(cwd, "latest");
       expect(listed.ok).toBe(true);
@@ -119,7 +149,7 @@ describe("feedback issue drafts", () => {
       await runDryRun({ cwd, dryRun: true, runId: "feedback-hardlink" });
       const feedbackDir = path.join(cwd, ".humanish", "runs", "feedback-hardlink", "feedback");
       const external = path.join(path.dirname(cwd), "feedback-external-sentinel.json");
-      const original = "{\"external\":true}\n";
+      const original = '{"external":true}\n';
       await mkdir(feedbackDir);
       await writeFile(external, original, "utf8");
       await link(external, path.join(feedbackDir, "draft.json"));
@@ -143,14 +173,17 @@ describe("feedback issue drafts", () => {
       await runDryRun({ cwd: physicalA, dryRun: true, runId: "feedback-a" });
       await runDryRun({ cwd: physicalB, dryRun: true, runId: "feedback-b" });
       await symlink(physicalA, cwdAlias, "dir");
-      JSON.parse = ((text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
+      JSON.parse = ((
+        text: string,
+        reviver?: (this: unknown, key: string, value: unknown) => unknown,
+      ) => {
         const value = originalJsonParse(text, reviver);
         if (
-          !retargeted
-          && typeof value === "object"
-          && value !== null
-          && (value as { runId?: unknown }).runId === "feedback-a"
-          && (value as { path?: unknown }).path === ".humanish/runs/feedback-a"
+          !retargeted &&
+          typeof value === "object" &&
+          value !== null &&
+          (value as { runId?: unknown }).runId === "feedback-a" &&
+          (value as { path?: unknown }).path === ".humanish/runs/feedback-a"
         ) {
           unlinkSync(cwdAlias);
           symlinkSync(physicalB, cwdAlias, "dir");
@@ -163,10 +196,14 @@ describe("feedback issue drafts", () => {
       expect(retargeted).toBe(true);
       expect(drafted.ok).toBe(true);
       expect(drafted.draft?.run_id).toBe("feedback-a");
-      expect(await stat(path.join(physicalA, ".humanish", "runs", "feedback-a", "feedback", "draft.json")))
-        .toMatchObject({});
-      await expect(stat(path.join(physicalB, ".humanish", "runs", "feedback-a", "feedback", "draft.json")))
-        .rejects.toMatchObject({ code: "ENOENT" });
+      expect(
+        await stat(
+          path.join(physicalA, ".humanish", "runs", "feedback-a", "feedback", "draft.json"),
+        ),
+      ).toMatchObject({});
+      await expect(
+        stat(path.join(physicalB, ".humanish", "runs", "feedback-a", "feedback", "draft.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       JSON.parse = originalJsonParse;
       await unlink(cwdAlias).catch(() => undefined);
@@ -179,7 +216,7 @@ describe("feedback issue drafts", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "feedback-local-only"
+        runId: "feedback-local-only",
       });
 
       const runPath = path.join(cwd, ".humanish/runs/feedback-local-only/run.json");
@@ -191,8 +228,8 @@ describe("feedback issue drafts", () => {
         redaction: {
           status: "passed",
           screenshots: "raw",
-          notes: "Synthetic raw screenshot posture fixture."
-        }
+          notes: "Synthetic raw screenshot posture fixture.",
+        },
       };
       await writeFile(runPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -202,7 +239,9 @@ describe("feedback issue drafts", () => {
       expect(drafted.error?.message).toContain("local_only");
       expect(drafted.error?.message).toContain("RAW_SCREENSHOTS");
       expect(drafted.shareSafety?.status).toBe("local_only");
-      expect(drafted.shareSafety?.reasons.map((reason) => reason.code)).toContain("RAW_SCREENSHOTS");
+      expect(drafted.shareSafety?.reasons.map((reason) => reason.code)).toContain(
+        "RAW_SCREENSHOTS",
+      );
 
       const listed = await runCli(["feedback", "list", "--cwd", cwd]);
       expect(listed.exitCode).toBe(0);
@@ -218,7 +257,7 @@ describe("feedback issue drafts", () => {
         "--format",
         "markdown",
         "--cwd",
-        cwd
+        cwd,
       ]);
       expect(issue.exitCode).toBe(2);
       expect(issue.stdout).toBe("");
@@ -231,7 +270,7 @@ describe("feedback issue drafts", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "feedback-issue"
+        runId: "feedback-issue",
       });
 
       const rendered = await renderIssueMarkdown(cwd, "latest", "example/app");
@@ -244,7 +283,7 @@ describe("feedback issue drafts", () => {
 
       const issueMarkdown = await readFile(
         path.join(cwd, ".humanish/runs/feedback-issue/feedback/issue.md"),
-        "utf8"
+        "utf8",
       );
       expect(issueMarkdown).toBe(rendered.issueMarkdown);
 
@@ -260,13 +299,20 @@ describe("feedback issue drafts", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "feedback-candidate"
+        runId: "feedback-candidate",
       });
 
       const runPath = path.join(cwd, ".humanish/runs/feedback-candidate/run.json");
-      const setupPath = path.join(cwd, ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json");
+      const setupPath = path.join(
+        cwd,
+        ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
+      );
       await mkdir(path.dirname(setupPath), { recursive: true });
-      await writeFile(setupPath, JSON.stringify({ schema: "humanish.setup-quality.v1", status: "needs_review" }, null, 2), "utf8");
+      await writeFile(
+        setupPath,
+        JSON.stringify({ schema: "humanish.setup-quality.v1", status: "needs_review" }, null, 2),
+        "utf8",
+      );
 
       const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
         feedbackCandidates: unknown[];
@@ -290,19 +336,17 @@ describe("feedback issue drafts", () => {
             {
               path: "setup-quality/oss-01-setup-quality.json",
               kind: "filesystem",
-              note: "Setup-quality snapshot."
-            }
+              note: "Setup-quality snapshot.",
+            },
           ],
           redaction: {
             status: "passed",
-            notes: "Public-safe fixture candidate."
+            notes: "Public-safe fixture candidate.",
           },
           idempotency_key: "humanish:feedback-candidate:setup-quality",
           proposed_next_state: "setup-quality-review",
-          acceptance_proof: [
-            "pnpm humanish -- verify --run feedback-candidate --json"
-          ]
-        }
+          acceptance_proof: ["pnpm humanish -- verify --run feedback-candidate --json"],
+        },
       ];
       await writeFile(runPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
 
@@ -317,7 +361,7 @@ describe("feedback issue drafts", () => {
       expect(drafted.draft?.evidence).toContainEqual({
         path: ".humanish/runs/feedback-candidate/setup-quality/oss-01-setup-quality.json",
         kind: "filesystem",
-        note: "Setup-quality snapshot."
+        note: "Setup-quality snapshot.",
       });
 
       const rendered = await renderIssueMarkdown(cwd, "latest", "example/app");
@@ -332,7 +376,7 @@ describe("feedback issue drafts", () => {
       await runDryRun({
         cwd,
         dryRun: true,
-        runId: "feedback-cli"
+        runId: "feedback-cli",
       });
 
       const issue = await runCli([
@@ -345,7 +389,7 @@ describe("feedback issue drafts", () => {
         "--format",
         "markdown",
         "--cwd",
-        cwd
+        cwd,
       ]);
       expect(issue.exitCode).toBe(0);
       expect(issue.stderr).toBe("");
@@ -361,7 +405,7 @@ describe("feedback issue drafts", () => {
         "example/app",
         "--cwd",
         cwd,
-        "--json"
+        "--json",
       ]);
       expect(issueUrl.exitCode).toBe(0);
       const envelope = JSON.parse(issueUrl.stdout) as {

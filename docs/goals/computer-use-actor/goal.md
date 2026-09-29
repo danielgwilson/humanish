@@ -41,7 +41,7 @@ UI sims, so the lane has to become a first-class registered actor.
 
 - **Lab-config dispatch**: making `actors[].type` a real routing key, the `app-url` subject, a
   CUA lab path (`runCuaActorLab` + a bundle builder filling `RunStream.actor`), and Observer
-  surfacing. The `app-url` schema re-add was *reverted* from this slice: with no route consuming
+  surfacing. The `app-url` schema re-add was _reverted_ from this slice: with no route consuming
   it, an app-url lab would have silently downgraded to a synthetic dry-run — the exact
   silent-downgrade failure mode the labs-as-config review flagged.
 - Multi-actor fan-out, approval policy beyond the fail-closed default, `ocr_scrubbed` redaction.

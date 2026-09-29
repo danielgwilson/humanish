@@ -36,52 +36,61 @@ function bundleWith(review: Partial<RunBundle["review"]>): RunBundle {
       verdict: "fail",
       summary: "s",
       gaps: [],
-      ...review
-    }
+      ...review,
+    },
   } as unknown as RunBundle;
 }
 
 describe("observer data: participants", () => {
-  it.each(["passed", "complete"] as const)("shows a declared blocker when the protocol status is %s", (status) => {
-    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
-    const stream = bundle.streams[0]!;
-    stream.status = status;
-    stream.actor!.completionReason = "goal_satisfied";
-    stream.actor!.declaredOutcome = "blocked";
-    stream.actor!.reason = "The edit control was unavailable.";
-    bundle.review.participants = tallyParticipantOutcomes(["blocked"]);
-    const original = structuredClone(bundle);
+  it.each(["passed", "complete"] as const)(
+    "shows a declared blocker when the protocol status is %s",
+    (status) => {
+      const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+      const stream = bundle.streams[0]!;
+      stream.status = status;
+      stream.actor!.completionReason = "goal_satisfied";
+      stream.actor!.declaredOutcome = "blocked";
+      stream.actor!.reason = "The edit control was unavailable.";
+      bundle.review.participants = tallyParticipantOutcomes(["blocked"]);
+      const original = structuredClone(bundle);
 
-    const data = buildObserverData(bundle);
+      const data = buildObserverData(bundle);
 
-    expect(data.streams[0]!.status).toBe("blocked");
-    expect(data.streams[0]!.statusLabel).toBe("Blocked");
-    expect(data.summary.blocked).toBe(1);
-    expect(data.run.participantsLine).toBe("0/1 recorded completions, 1 blocked");
-    expect(data.streams[0]!.actor).toEqual(original.streams[0]!.actor);
-    expect(data.streams[0]!.sim).toEqual(original.simulations[0]);
-    expect(bundle).toEqual(original);
-  });
+      expect(data.streams[0]!.status).toBe("blocked");
+      expect(data.streams[0]!.statusLabel).toBe("Blocked");
+      expect(data.summary.blocked).toBe(1);
+      expect(data.run.participantsLine).toBe("0/1 recorded completions, 1 blocked");
+      expect(data.streams[0]!.actor).toEqual(original.streams[0]!.actor);
+      expect(data.streams[0]!.sim).toEqual(original.simulations[0]);
+      expect(bundle).toEqual(original);
+    },
+  );
 
-  it.each(["running", "preparing", "failed", "timed_out"] as const)("preserves %s even with a blocked declaration", (status) => {
-    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
-    bundle.streams[0]!.status = status;
-    bundle.streams[0]!.actor!.completionReason = "goal_satisfied";
-    bundle.streams[0]!.actor!.declaredOutcome = "blocked";
-    expect(buildObserverData(bundle).streams[0]!.status).toBe(status);
-  });
+  it.each(["running", "preparing", "failed", "timed_out"] as const)(
+    "preserves %s even with a blocked declaration",
+    (status) => {
+      const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+      bundle.streams[0]!.status = status;
+      bundle.streams[0]!.actor!.completionReason = "goal_satisfied";
+      bundle.streams[0]!.actor!.declaredOutcome = "blocked";
+      expect(buildObserverData(bundle).streams[0]!.status).toBe(status);
+    },
+  );
 
-  it.each([undefined, "reached", "not_reached"] as const)("does not reclassify declarations of %s from prose", (declaredOutcome) => {
-    const bundle = structuredClone(liveBundle) as unknown as RunBundle;
-    const stream = bundle.streams[0]!;
-    stream.status = "passed";
-    stream.actor!.completionReason = "goal_satisfied";
-    if (declaredOutcome === undefined) delete stream.actor!.declaredOutcome;
-    else stream.actor!.declaredOutcome = declaredOutcome;
-    stream.actor!.reason = "BLOCKED";
-    expect(buildObserverData(bundle).streams[0]!.status).toBe("passed");
-    expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Reported complete");
-  });
+  it.each([undefined, "reached", "not_reached"] as const)(
+    "does not reclassify declarations of %s from prose",
+    (declaredOutcome) => {
+      const bundle = structuredClone(liveBundle) as unknown as RunBundle;
+      const stream = bundle.streams[0]!;
+      stream.status = "passed";
+      stream.actor!.completionReason = "goal_satisfied";
+      if (declaredOutcome === undefined) delete stream.actor!.declaredOutcome;
+      else stream.actor!.declaredOutcome = declaredOutcome;
+      stream.actor!.reason = "BLOCKED";
+      expect(buildObserverData(bundle).streams[0]!.status).toBe("passed");
+      expect(buildObserverData(bundle).streams[0]!.statusLabel).toBe("Reported complete");
+    },
+  );
 
   it("does not override a different completion reason", () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
@@ -100,8 +109,12 @@ describe("observer data: participants", () => {
   });
 
   it("distinguishes a persona giving up from the harness breaking", () => {
-    const gaveUp = buildObserverData(bundleWith({ participants: tallyParticipantOutcomes(["abandoned"]) }));
-    const broke = buildObserverData(bundleWith({ participants: tallyParticipantOutcomes(["failed"]) }));
+    const gaveUp = buildObserverData(
+      bundleWith({ participants: tallyParticipantOutcomes(["abandoned"]) }),
+    );
+    const broke = buildObserverData(
+      bundleWith({ participants: tallyParticipantOutcomes(["failed"]) }),
+    );
 
     expect(gaveUp.run.participantsLine).toContain("gave up");
     expect(gaveUp.run.participantsLine).not.toContain("harness");
@@ -118,7 +131,10 @@ describe("observer data: participants", () => {
   it("keeps the gate verdict separate from the study result", () => {
     // Both live in the payload, answering different questions: `status` gates, `participants` reports.
     const data = buildObserverData(
-      bundleWith({ verdict: "fail", participants: tallyParticipantOutcomes(["passed", "abandoned"]) })
+      bundleWith({
+        verdict: "fail",
+        participants: tallyParticipantOutcomes(["passed", "abandoned"]),
+      }),
     );
     expect(data.run.status).toBe("fail");
     expect(data.run.participantsLine).toBe("1/2 reached the goal, 1 gave up");

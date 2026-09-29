@@ -73,7 +73,11 @@ export interface TuiCapabilities {
    * resolve right now. Read for the lab being looked at, because it is what someone reads before
    * deciding to spend money.
    */
-  readLabSummary(cwd: string, lab: string, options?: ReadLabSummaryOptions): Promise<LabSummary | null>;
+  readLabSummary(
+    cwd: string,
+    lab: string,
+    options?: ReadLabSummaryOptions,
+  ): Promise<LabSummary | null>;
   /** Whether this directory is a humanish project — an empty project and a wrong directory are
    *  different problems and must not share a screen. */
   readProjectState(cwd: string): TuiProjectState;

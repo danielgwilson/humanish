@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  LAB_APP_RUNNER_PLAN_SCHEMA,
-  buildLabAppRunnerPlan
-} from "../src/lab-app-runner.js";
+import { LAB_APP_RUNNER_PLAN_SCHEMA, buildLabAppRunnerPlan } from "../src/lab-app-runner.js";
 
 describe("lab app runner plan", () => {
   it("plans a conservative Next.js dev server with dependency install and browser surfaces", () => {
@@ -15,9 +12,9 @@ describe("lab app runner plan", () => {
         packageManager: "pnpm@11.5.2",
         scripts: {
           build: "next build",
-          dev: "next dev"
-        }
-      }
+          dev: "next dev",
+        },
+      },
     });
 
     expect(plan.schema).toBe(LAB_APP_RUNNER_PLAN_SCHEMA);
@@ -26,13 +23,14 @@ describe("lab app runner plan", () => {
     expect(plan.packageManager).toBe("pnpm");
     expect(plan.install).toMatchObject({
       command: "pnpm install --frozen-lockfile --ignore-scripts",
-      mode: "run"
+      mode: "run",
     });
     expect(plan.devServer).toMatchObject({
-      command: 'HOST="$APP_HOST" PORT="$APP_PORT" pnpm run dev --hostname "$APP_HOST" --port "$APP_PORT"',
+      command:
+        'HOST="$APP_HOST" PORT="$APP_PORT" pnpm run dev --hostname "$APP_HOST" --port "$APP_PORT"',
       port: 3000,
       scriptName: "dev",
-      url: "http://127.0.0.1:3000"
+      url: "http://127.0.0.1:3000",
     });
     expect(plan.readiness?.command).toBe('wait_for_http "$APP_URL" 120000 1000');
     expect(plan.surfaces.map((surface) => surface.id)).toEqual(["desktop", "mobile"]);
@@ -46,9 +44,9 @@ describe("lab app runner plan", () => {
       packageJson: {
         devDependencies: { vite: "^6.0.0" },
         scripts: {
-          dev: "vite"
-        }
-      }
+          dev: "vite",
+        },
+      },
     });
 
     expect(plan.ok).toBe(true);
@@ -56,12 +54,13 @@ describe("lab app runner plan", () => {
     expect(plan.packageManager).toBe("npm");
     expect(plan.install).toMatchObject({
       command: "npm ci --ignore-scripts --no-audit --no-fund",
-      mode: "when-missing"
+      mode: "when-missing",
     });
     expect(plan.devServer).toMatchObject({
-      command: 'HOST="$APP_HOST" PORT="$APP_PORT" npm run dev -- --host "$APP_HOST" --port "$APP_PORT"',
+      command:
+        'HOST="$APP_HOST" PORT="$APP_PORT" npm run dev -- --host "$APP_HOST" --port "$APP_PORT"',
       port: 5173,
-      url: "http://127.0.0.1:5173"
+      url: "http://127.0.0.1:5173",
     });
     expect(plan.readiness?.url).toBe("http://127.0.0.1:5173");
     expect(plan.shell.commands).toContain("npm ci --ignore-scripts --no-audit --no-fund");
@@ -73,9 +72,9 @@ describe("lab app runner plan", () => {
       packageJson: {
         scripts: {
           build: "some-framework build",
-          dev: "some-framework dev --port 4321"
-        }
-      }
+          dev: "some-framework dev --port 4321",
+        },
+      },
     });
 
     expect(plan.ok).toBe(true);
@@ -85,7 +84,7 @@ describe("lab app runner plan", () => {
       command: 'HOST="$APP_HOST" PORT="$APP_PORT" npm run dev',
       port: 4321,
       scriptName: "dev",
-      url: "http://127.0.0.1:4321"
+      url: "http://127.0.0.1:4321",
     });
     expect(plan.shell.commands).not.toContain("npm install --ignore-scripts --no-audit --no-fund");
     expect(plan.shell.script).toContain("dependencies already present");
@@ -97,9 +96,9 @@ describe("lab app runner plan", () => {
         scripts: {
           build: "tsc -p tsconfig.json",
           lint: "eslint .",
-          test: "vitest run"
-        }
-      }
+          test: "vitest run",
+        },
+      },
     });
 
     expect(plan.ok).toBe(false);
@@ -118,14 +117,16 @@ describe("lab app runner plan", () => {
       packageJson: {
         devDependencies: { vite: "^6.0.0" },
         scripts: {
-          dev: `vite --token ${secretLike} --config ${privateLikePath}`
-        }
-      }
+          dev: `vite --token ${secretLike} --config ${privateLikePath}`,
+        },
+      },
     });
 
     const publicPlan = JSON.stringify(plan);
     expect(publicPlan).not.toContain(secretLike);
     expect(publicPlan).not.toContain(privateLikePath);
-    expect(plan.devServer?.command).toBe('HOST="$APP_HOST" PORT="$APP_PORT" npm run dev -- --host "$APP_HOST" --port "$APP_PORT"');
+    expect(plan.devServer?.command).toBe(
+      'HOST="$APP_HOST" PORT="$APP_PORT" npm run dev -- --host "$APP_HOST" --port "$APP_PORT"',
+    );
   });
 });

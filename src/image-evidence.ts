@@ -3,7 +3,7 @@ import { PNG } from "pngjs";
 import {
   SCREENSHOT_MAX_SOURCE_PIXELS,
   hasPngSignature,
-  readPngDeclaredDimensions
+  readPngDeclaredDimensions,
 } from "./screenshot-image.js";
 
 // A noisy 4K RGBA frame is roughly 32 MiB before PNG compression, so this

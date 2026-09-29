@@ -8,7 +8,7 @@ import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
-  type FetchLike
+  type FetchLike,
 } from "../src/openai-responses-cu.js";
 
 // A distinct, valid PNG per call so the executor's perceptual signature can register progress.
@@ -25,13 +25,21 @@ function makePng(seed: number): Buffer {
 
 // Real OpenAI Responses provider, fake transport. Returns the scripted JSON per call.
 // When a sink is passed, each parsed POST body is recorded so tests can assert wire shapes.
-function scriptedFetch(responses: unknown[], requestBodies?: Array<Record<string, unknown>>): FetchLike {
+function scriptedFetch(
+  responses: unknown[],
+  requestBodies?: Array<Record<string, unknown>>,
+): FetchLike {
   let i = 0;
   return async (_url, init) => {
     if (requestBodies) requestBodies.push(JSON.parse(init.body) as Record<string, unknown>);
     const value = responses[Math.min(i, responses.length - 1)];
     i += 1;
-    return { ok: true, status: 200, text: async () => JSON.stringify(value), json: async () => value };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
   };
 }
 
@@ -42,10 +50,17 @@ interface RecordingDesktop extends E2BDesktopLike {
 function makeFakeDesktop(): RecordingDesktop {
   let frame = 0;
   const calls: Array<[string, ...unknown[]]> = [];
-  const record = (name: string) => (...args: unknown[]): void => { calls.push([name, ...args]); };
+  const record =
+    (name: string) =>
+    (...args: unknown[]): void => {
+      calls.push([name, ...args]);
+    };
   return {
     calls,
-    async screenshot() { frame += 1; return makePng(frame); },
+    async screenshot() {
+      frame += 1;
+      return makePng(frame);
+    },
     leftClick: record("leftClick"),
     rightClick: record("rightClick"),
     middleClick: record("middleClick"),
@@ -55,12 +70,21 @@ function makeFakeDesktop(): RecordingDesktop {
     write: record("write"),
     press: record("press"),
     drag: record("drag"),
-    wait: record("wait")
+    wait: record("wait"),
   };
 }
 
-const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["patience:medium"], promptDigest: "digest" };
-const baseOpts = { instructions: "open the page and stop", persona, timeoutMs: 60_000, now: () => 0 };
+const persona: ActorPersonaRef = {
+  id: "synthetic-new-user",
+  traitsApplied: ["patience:medium"],
+  promptDigest: "digest",
+};
+const baseOpts = {
+  instructions: "open the page and stop",
+  persona,
+  timeoutMs: 60_000,
+  now: () => 0,
+};
 
 describe("openai-computer-use actor (deterministic, no spend)", () => {
   it("T1: is registered with the OpenAI computer-use capabilities", () => {
@@ -72,8 +96,16 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T2: config → real provider → loop → real executor → trace actually flows (anti-theater)", async () => {
     const fetchFn = scriptedFetch([
-      { id: "resp_1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] }] },
-      { id: "resp_2", output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }] }
+      {
+        id: "resp_1",
+        output: [
+          { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 11, y: 22 }] },
+        ],
+      },
+      {
+        id: "resp_2",
+        output: [{ type: "message", content: [{ type: "output_text", text: "Done." }] }],
+      },
     ]);
     const desktop = makeFakeDesktop();
 
@@ -81,7 +113,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     const result = await getActor("openai-computer-use").runSession({
       ...baseOpts,
       openai: { apiKey: "test-key", fetchFn },
-      desktop
+      desktop,
     });
 
     expect(result.status).toBe("passed");
@@ -95,9 +127,13 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T3: emits a conformant humanish.actor-trace.v1", async () => {
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
+      { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] },
     ]);
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop: makeFakeDesktop() });
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop: makeFakeDesktop(),
+    });
     const trace = result.trace;
     expect(trace.schema).toBe(ACTOR_TRACE_SCHEMA);
     expect(["passed", "failed", "blocked", "timed_out"]).toContain(trace.status);
@@ -109,7 +145,10 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T3b: threads stopWhen and runtime browser state through the E2B executor wrapper", async () => {
     const fetchFn = scriptedFetch([
-      { id: "should-not-be-called", output: [{ type: "message", content: [{ type: "output_text", text: "unexpected" }] }] }
+      {
+        id: "should-not-be-called",
+        output: [{ type: "message", content: [{ type: "output_text", text: "unexpected" }] }],
+      },
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
@@ -119,10 +158,10 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
         observeBrowserState: async () => ({
           url: "http://127.0.0.1:3000/items/123",
           title: "Item saved",
-          text: "Saved successfully"
-        })
+          text: "Saved successfully",
+        }),
       },
-      stopWhen: { any: [{ id: "saved", textIncludes: "Saved successfully" }] }
+      stopWhen: { any: [{ id: "saved", textIncludes: "Saved successfully" }] },
     });
 
     expect(result.status).toBe("passed");
@@ -130,16 +169,30 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(result.reason).toBe("stopWhen matched saved (textIncludes)");
     expect(result.trace.counts.turns).toBe(0);
     expect(JSON.stringify(result.trace)).not.toContain("Saved successfully");
-    expect(result.trace.items.some((item) => item.kind === "notice" && item.status === "matched")).toBe(true);
+    expect(
+      result.trace.items.some((item) => item.kind === "notice" && item.status === "matched"),
+    ).toBe(true);
   });
 
   it("T4: typed secrets never reach the trace; screenshots default to RAW (full fidelity, local)", async () => {
     const secret = "hunter2@example.test";
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "type", text: secret }] }] },
-      { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "typed" }] }] }
+      {
+        id: "r1",
+        output: [
+          { type: "computer_call", call_id: "c1", actions: [{ type: "type", text: secret }] },
+        ],
+      },
+      {
+        id: "r2",
+        output: [{ type: "message", content: [{ type: "output_text", text: "typed" }] }],
+      },
     ]);
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop: makeFakeDesktop() });
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop: makeFakeDesktop(),
+    });
 
     // Typed text redaction is UNCONDITIONAL (the value never enters the trace).
     expect(JSON.stringify(result.trace)).not.toContain(secret);
@@ -152,14 +205,19 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
   it("T4b: redactScreenshots: true blurs the persisted frames (publish-safe posture)", async () => {
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 5, y: 6 }] }] },
-      { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
+      {
+        id: "r1",
+        output: [
+          { type: "computer_call", call_id: "c1", actions: [{ type: "click", x: 5, y: 6 }] },
+        ],
+      },
+      { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] },
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
       openai: { apiKey: "test-key", fetchFn },
       desktop: makeFakeDesktop(),
-      redactScreenshots: true
+      redactScreenshots: true,
     });
     const shots = result.trace.items.filter((item) => item.kind === "screenshot");
     expect(shots.length).toBeGreaterThan(0);
@@ -171,16 +229,24 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     const fetchFn = scriptedFetch([
       {
         id: "r1",
-        output: [{
-          type: "computer_call",
-          call_id: "c1",
-          actions: [{ type: "click", x: 1, y: 2 }],
-          pending_safety_checks: [{ id: "s1", code: "malicious_instructions", message: "blocked" }]
-        }]
-      }
+        output: [
+          {
+            type: "computer_call",
+            call_id: "c1",
+            actions: [{ type: "click", x: 1, y: 2 }],
+            pending_safety_checks: [
+              { id: "s1", code: "malicious_instructions", message: "blocked" },
+            ],
+          },
+        ],
+      },
     ]);
     const desktop = makeFakeDesktop();
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey: "test-key", fetchFn }, desktop });
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey: "test-key", fetchFn },
+      desktop,
+    });
 
     expect(result.status).toBe("blocked");
     expect(result.completionReason).toBe("blocked_approval");
@@ -194,16 +260,23 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
       [
         {
           id: "r1",
-          output: [{
-            type: "computer_call",
-            call_id: "c1",
-            actions: [{ type: "click", x: 1, y: 2 }],
-            pending_safety_checks: [{ id: "s1", code: "malicious_instructions", message: "be careful" }]
-          }]
+          output: [
+            {
+              type: "computer_call",
+              call_id: "c1",
+              actions: [{ type: "click", x: 1, y: 2 }],
+              pending_safety_checks: [
+                { id: "s1", code: "malicious_instructions", message: "be careful" },
+              ],
+            },
+          ],
         },
-        { id: "r2", output: [{ type: "message", content: [{ type: "output_text", text: "done" }] }] }
+        {
+          id: "r2",
+          output: [{ type: "message", content: [{ type: "output_text", text: "done" }] }],
+        },
       ],
-      bodies
+      bodies,
     );
     const desktop = makeFakeDesktop();
 
@@ -211,7 +284,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
       ...baseOpts,
       openai: { apiKey: "test-key", fetchFn },
       desktop,
-      acknowledgeSafetyChecks: (checks) => checks
+      acknowledgeSafetyChecks: (checks) => checks,
     });
 
     expect(result.status).toBe("passed");
@@ -223,16 +296,20 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
       | { acknowledged_safety_checks?: unknown }
       | undefined;
     expect(callOutput?.acknowledged_safety_checks).toEqual([
-      { id: "s1", code: "malicious_instructions", message: "be careful" }
+      { id: "s1", code: "malicious_instructions", message: "be careful" },
     ]);
   });
 
   it("T6: the API key never escapes into the trace", async () => {
     const apiKey = "sk-proj-do-not-leak-me";
     const fetchFn = scriptedFetch([
-      { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] }
+      { id: "r1", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] },
     ]);
-    const result = await runCuaActorSession({ ...baseOpts, openai: { apiKey, fetchFn }, desktop: makeFakeDesktop() });
+    const result = await runCuaActorSession({
+      ...baseOpts,
+      openai: { apiKey, fetchFn },
+      desktop: makeFakeDesktop(),
+    });
     expect(JSON.stringify(result.trace)).not.toContain(apiKey);
   });
 });

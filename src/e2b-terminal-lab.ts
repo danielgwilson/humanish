@@ -38,14 +38,26 @@
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
-import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
+import {
+  completeAutomaticAnalysis,
+  markFinalizedStudyResult,
+  type AutomaticAnalysisHooks,
+  type AutomaticAnalysisResult,
+} from "./automatic-analysis-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";
 import { describeTokenUsage, parseTerminalTokenUsage } from "./terminal-token-usage.js";
 import { countTerminalParticipantItems } from "./terminal-participant-activity.js";
 import type { ActorTokenUsage, ActorRuntimeProvenance } from "./actor-contract.js";
-import { buildRuntimeExecPrefix, buildRuntimeVersionCommand, declaredRuntimeProvenance, isExactRuntimeVersion, parseTerminalRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./terminal-runtime.js";
+import {
+  buildRuntimeExecPrefix,
+  buildRuntimeVersionCommand,
+  declaredRuntimeProvenance,
+  isExactRuntimeVersion,
+  parseTerminalRuntimeVersion,
+  TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
+} from "./terminal-runtime.js";
 import { isReasoningEffort } from "./reasoning-effort.js";
 import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
@@ -53,19 +65,34 @@ import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
 export { resolveCommittedPersona as resolveTerminalPersona } from "./persona-resolve.js";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTrace, ActorTraceItem } from "./actor-contract.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
+import type {
+  ActorCompletionReason,
+  ActorPersonaRef,
+  ActorStatus,
+  ActorTrace,
+  ActorTraceItem,
+} from "./actor-contract.js";
+import {
+  beginRunStatus,
+  type RunLabProvenance,
+  type RunStatusHandle,
+  withRunStatusScope,
+} from "./run-status.js";
 import { ACTOR_TRACE_SCHEMA, TERMINAL_AGENT_CAPABILITIES } from "./actor-contract.js";
 import { actorRegistry, isTerminalActorDescriptor } from "./actor-registry.js";
 import { toErrorMessage } from "./command-failure.js";
-import { buildOpenAiEgressNetwork, E2B_SYSTEM_CA_BUNDLE, OPENAI_EGRESS_PLACEHOLDER } from "./terminal-runtime-auth.js";
+import {
+  buildOpenAiEgressNetwork,
+  E2B_SYSTEM_CA_BUNDLE,
+  OPENAI_EGRESS_PLACEHOLDER,
+} from "./terminal-runtime-auth.js";
 import type { LabConfig, LabScenarioCaps, LabRuntimeAuth } from "./lab-config.js";
 import {
   E2BDesktopStartupError,
   isSandboxNotFoundError,
   loadE2BDesktopModule,
   type E2BDesktopModule,
-  type E2BDesktopSandbox
+  type E2BDesktopSandbox,
 } from "./e2b-desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./persona.js";
@@ -92,16 +119,20 @@ import {
   type RunScorerProvenance,
   type RunSimulation,
   type RunSimulationStatus,
-  type RunStream
+  type RunStream,
 } from "./run.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
-import { applyAdapterScoreFailureToReview, frozenBundleView, recordDeclaredScorerVerdictFailure } from "./adapter-extension.js";
+import {
+  applyAdapterScoreFailureToReview,
+  frozenBundleView,
+  recordDeclaredScorerVerdictFailure,
+} from "./adapter-extension.js";
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
 
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
 export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
-  tool: "humanish"
+  tool: "humanish",
 } as const;
 
 // The terminal-product ledger schemas the verifier asserts present on a LIVE bundle. They ride the
@@ -185,7 +216,9 @@ export interface TerminalProductLabHooks {
    * the provider line from trace tokenUsage when present. Tests and adapters can inject KNOWN spend
    * lines; absent signals retain the null-discipline default.
    */
-  costProbe?: (context: { tokenCostUsd?: number }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
+  costProbe?: (context: {
+    tokenCostUsd?: number;
+  }) => Partial<Record<"product" | "media" | "payment" | "provider", CostLine>> | undefined;
   /**
    * THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8: "product-adapter hooks WITHOUT forking
    * core"). A thin in-repo/out-of-tree adapter registers a product scorer here. The lane calls it
@@ -205,7 +238,9 @@ export interface TerminalProductLabHooks {
    * NON-core nouns" list). The candidates must still satisfy core's feedback-candidate shape (which
    * the bundle verifier enforces), so a malformed adapter candidate fails closed.
    */
-  deriveFeedback?: (ctx: TerminalProductScoringContext) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
+  deriveFeedback?: (
+    ctx: TerminalProductScoringContext,
+  ) => RunFeedbackCandidate[] | Promise<RunFeedbackCandidate[]>;
 }
 
 export interface RunTerminalProductLabOptions {
@@ -299,14 +334,23 @@ export interface TerminalProductLabResult extends AutomaticAnalysisResult {
  * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
-export async function runTerminalProductLab(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
+export async function runTerminalProductLab(
+  options: RunTerminalProductLabOptions,
+): Promise<TerminalProductLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runTerminalProductLabInScope(options));
-  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
+  return completeAutomaticAnalysis(
+    result,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    options.config.review?.analysis === undefined ? "default" : "explicit",
+    analysis.ok && analysis.preferLargerOutput === true,
+  );
 }
 
-async function runTerminalProductLabInScope(options: RunTerminalProductLabOptions): Promise<TerminalProductLabResult> {
+async function runTerminalProductLabInScope(
+  options: RunTerminalProductLabOptions,
+): Promise<TerminalProductLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
@@ -318,7 +362,7 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   const failed = (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; product?: string }
+    extras?: { actor?: string; product?: string },
   ): TerminalProductLabResult => ({
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok: false,
@@ -329,11 +373,14 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     dryRun,
     runId: options.runId ?? "not-created",
     warnings,
-    error: { code, message }
+    error: { code, message },
   });
 
   if (String(config.comms?.email?.kind) === "real") {
-    return failed("HUMANISH_TERMINAL_LAB_SUBJECT_INVALID", "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study.");
+    return failed(
+      "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study.",
+    );
   }
 
   // Resolve the actor through the registry — the parse layer already validated this, but the
@@ -351,16 +398,22 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   if (!descriptor || !isTerminalActorDescriptor(descriptor)) {
     return failed(
       "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered terminal actor.`
+      `actors[0].type "${actorType}" is not a registered terminal actor.`,
     );
   }
 
   const runtimeVersion = config.execution?.runtime?.version;
   const actor = config.actors[0];
-  if ((config.execution?.runtime !== undefined && !isExactRuntimeVersion(runtimeVersion))
-    || (actor?.model !== undefined && (typeof actor.model !== "string" || actor.model.trim().length === 0))
-    || (actor?.reasoningEffort !== undefined && !isReasoningEffort(actor.reasoningEffort))) {
-    return failed("HUMANISH_TERMINAL_LAB_FAILED", "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value.");
+  if (
+    (config.execution?.runtime !== undefined && !isExactRuntimeVersion(runtimeVersion)) ||
+    (actor?.model !== undefined &&
+      (typeof actor.model !== "string" || actor.model.trim().length === 0)) ||
+    (actor?.reasoningEffort !== undefined && !isReasoningEffort(actor.reasoningEffort))
+  ) {
+    return failed(
+      "HUMANISH_TERMINAL_LAB_FAILED",
+      "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value.",
+    );
   }
 
   // Re-enforce the subject shape at the engine (the parser rejects these too, but this is exported
@@ -369,7 +422,7 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
     return failed(
       "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
       "terminal-product subjects require `subject.product` with a name and at least one public surface URL.",
-      { actor: descriptor.id }
+      { actor: descriptor.id },
     );
   }
 
@@ -379,15 +432,28 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // keyPlacement-routed command-scoped key, the deny-by-default allowlist, the fail-closed cap,
   // the proven cleanup) and fails closed before any sandbox/key/spend on any precondition miss.
   if (!dryRun) {
-    return runLiveTerminalSession({ options, cwd, config, descriptorId: descriptor.id, product, warnings, render, failed });
+    return runLiveTerminalSession({
+      options,
+      cwd,
+      config,
+      descriptorId: descriptor.id,
+      product,
+      warnings,
+      render,
+      failed,
+    });
   }
 
   const mission = config.actors[0]?.mission ?? defaultMission(product.name);
   const env = hooks.env ?? process.env;
   const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
-    .map((value) => value?.trim() ?? "").filter((value) => value.length >= 4);
+    .map((value) => value?.trim() ?? "")
+    .filter((value) => value.length >= 4);
   const evidenceMission = participantAssignment({ mission }, (text) =>
-    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text)
+    knownSecretValues.reduce(
+      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
+      text,
+    ),
   ).mission;
   const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(cwd);
@@ -405,10 +471,28 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   // The composed prompt = mission + persona + public-surface manifest. Only the AUTHOR mission
   // goes plaintext into evidence (it is public-safe committed lab text); the full composed prompt
   // is recorded as a DIGEST (the safety contract's mission ruling).
-  const composedPrompt = composePrompt({ mission, personaLine, productName: product.name, publicSurfaces: product.publicSurfaces });
+  const composedPrompt = composePrompt({
+    mission,
+    personaLine,
+    productName: product.name,
+    publicSurfaces: product.publicSurfaces,
+  });
   const promptDigest = digestText(composedPrompt);
-  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest,
-    ...(resolvedPersona.persona ? { brief: personaBrief(resolvedPersona.persona, text => knownSecretValues.reduce((out, value) => out.split(value).join("[REDACTED_SECRET]"), text)) } : {}) };
+  const persona: ActorPersonaRef = {
+    id: personaId,
+    traitsApplied,
+    promptDigest,
+    ...(resolvedPersona.persona
+      ? {
+          brief: personaBrief(resolvedPersona.persona, (text) =>
+            knownSecretValues.reduce(
+              (out, value) => out.split(value).join("[REDACTED_SECRET]"),
+              text,
+            ),
+          ),
+        }
+      : {}),
+  };
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
@@ -417,14 +501,14 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const createdAt = new Date().toISOString();
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd: physicalCwd,
     humanishSource: "present",
-    packageName: "humanish"
+    packageName: "humanish",
   });
 
   const bundle = buildTerminalProductBundle({
@@ -445,24 +529,37 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
       allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
       allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
       allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false
+      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
     },
     runId,
-    source
+    source,
   });
   bundle.events.push({
     id: "event-terminal-runtime-declared",
     at: createdAt,
     level: "info",
     type: "terminal-lab.runtime.declared",
-    message: redactText(JSON.stringify(declaredRuntimeProvenance({
-      ...(config.execution?.runtime?.version === undefined ? {} : { version: config.execution.runtime.version }),
-      ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-      ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
-    })))
+    message: redactText(
+      JSON.stringify(
+        declaredRuntimeProvenance({
+          ...(config.execution?.runtime?.version === undefined
+            ? {}
+            : { version: config.execution.runtime.version }),
+          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
+          ...(config.actors[0]?.reasoningEffort === undefined
+            ? {}
+            : { reasoningEffort: config.actors[0].reasoningEffort }),
+        }),
+      ),
+    ),
   });
 
-  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "run.json",
+    `${JSON.stringify(bundle, null, 2)}\n`,
+    "utf8",
+  );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
   await runStatus.finish({
@@ -475,24 +572,45 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
             reachedGoal: bundle.review.participants.reachedGoal,
             ...(bundle.review.participants.reportedFriction === undefined
               ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction })
-          }
+              : { reportedFriction: bundle.review.participants.reportedFriction }),
+          },
         }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
   });
-  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "review.json",
+    `${JSON.stringify(bundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "review.md",
+    renderTerminalReviewMarkdown(bundle),
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
   // Keep `verify --run latest` honest: point it at THIS run (mirrors run.ts's RunPointer).
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: runPaths.relativeRunRoot,
-      updatedAt: createdAt
-    }, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: runPaths.relativeRunRoot,
+        updatedAt: createdAt,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   const observer = await render(physicalCwd, runId, { open: options.open === true });
@@ -515,9 +633,9 @@ async function runTerminalProductLabInScope(options: RunTerminalProductLabOption
       : {
           error: {
             code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run."
-          }
-        })
+            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+          },
+        }),
   };
 }
 
@@ -676,7 +794,12 @@ export interface TerminalLedgers {
 }
 
 /** The four cost categories, in a fixed order so the ledger shape is stable across runs. */
-const COST_CATEGORIES: readonly CostCategory[] = ["product", "media", "payment", "provider"] as const;
+const COST_CATEGORIES: readonly CostCategory[] = [
+  "product",
+  "media",
+  "payment",
+  "provider",
+] as const;
 
 /**
  * Build the spend ledger from the captured session. THE NULL DISCIPLINE (issue #154):
@@ -699,39 +822,39 @@ function buildCostLedger(args: {
       ? {
           usd: args.tokenCostUsd,
           source: "provider-token-usage",
-          note: `Provider spend metered from the actor trace tokenUsage.costUsd (${args.tokenCostUsd} USD).`
+          note: `Provider spend metered from the actor trace tokenUsage.costUsd (${args.tokenCostUsd} USD).`,
         }
       : args.tokenUsage
-      ? {
-          // Tokens counted, no rate to price them. This stays `usd: null` because a guessed
-          // dollar figure would be worse than none, but the note carries the measured fact so a
-          // reader never mistakes "no charge recorded" for "nothing was consumed" (#531).
-          usd: null,
-          source: "unpriced-token-usage",
-          note:
-            `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, `
-            + "but the terminal lane records the model as `codex` and src/pricing.ts carries no "
-            + "rate for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the "
-            + "price is the unknown. Recorded null (never guessed to 0)."
-        }
-      : {
-          usd: null,
-          source: "unmeasured",
-          note: "Provider spend NOT MEASURED: the actor trace carried no tokenUsage.costUsd this run. Recorded null (not guessed to 0)."
-        };
+        ? {
+            // Tokens counted, no rate to price them. This stays `usd: null` because a guessed
+            // dollar figure would be worse than none, but the note carries the measured fact so a
+            // reader never mistakes "no charge recorded" for "nothing was consumed" (#531).
+            usd: null,
+            source: "unpriced-token-usage",
+            note:
+              `Provider spend UNPRICED: the run consumed ${describeTokenUsage(args.tokenUsage)}, ` +
+              "but the terminal lane records the model as `codex` and src/pricing.ts carries no " +
+              "rate for it, so no dollar figure is claimed. Tokens are a MEASURED fact here; the " +
+              "price is the unknown. Recorded null (never guessed to 0).",
+          }
+        : {
+            usd: null,
+            source: "unmeasured",
+            note: "Provider spend NOT MEASURED: the actor trace carried no tokenUsage.costUsd this run. Recorded null (not guessed to 0).",
+          };
 
   const unmeasured = (category: CostCategory): CostLine => ({
     usd: null,
     count: null,
     source: "unmeasured",
-    note: `${category} spend NOT MEASURED: core has no ${category}-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0).`
+    note: `${category} spend NOT MEASURED: core has no ${category}-spend signal for this run; an adapter may supply one through costProbe. Recorded null (never guessed to 0).`,
   });
 
   const lines: Record<CostCategory, CostLine> = {
     product: args.injectedLines?.product ?? unmeasured("product"),
     media: args.injectedLines?.media ?? unmeasured("media"),
     payment: args.injectedLines?.payment ?? unmeasured("payment"),
-    provider: args.injectedLines?.provider ?? providerLine
+    provider: args.injectedLines?.provider ?? providerLine,
   };
 
   // knownTotalUsd sums ONLY the non-null lines. A null line contributes NOTHING — it is never
@@ -751,7 +874,7 @@ function buildCostLedger(args: {
     currency: "usd",
     lines,
     knownTotalUsd: roundUsd(knownTotalUsd),
-    fullyMeasured
+    fullyMeasured,
   };
 }
 
@@ -782,14 +905,14 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
       ? `Provider tokens WERE consumed on this run and are counted in the ledger; they are unpriced, not zero.`
       : "",
     unmeasuredLines.length > 0
-      ? `UNPRICED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these. `
-        + (ledger.lines.provider.source === "unpriced-token-usage"
-            // provider has a signal here (a token count), it just has no rate. Saying it "carries
+      ? `UNPRICED (null, NOT claimed zero): ${unmeasuredLines.join(", ")}. The proof does not vouch for these. ` +
+        (ledger.lines.provider.source === "unpriced-token-usage"
+          ? // provider has a signal here (a token count), it just has no rate. Saying it "carries
             // no spend signal" one sentence after reporting its token total would contradict the
             // line above it.
-            ? "Of these, provider has a measured token count but no rate; the rest carry no spend signal for this run."
-            : "They carry no spend signal for this run.")
-      : "All applicable spend lines were measured."
+            "Of these, provider has a measured token count but no rate; the rest carry no spend signal for this run."
+          : "They carry no spend signal for this run.")
+      : "All applicable spend lines were measured.",
   ]
     .filter((part) => part.length > 0)
     .join(" ");
@@ -801,7 +924,7 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
     knownNonZeroLines,
     unmeasuredLines,
     knownTotalUsd: ledger.knownTotalUsd,
-    statement
+    statement,
   };
 }
 
@@ -814,13 +937,15 @@ function buildNoSpendProof(ledger: TerminalCostLedger, maxUsd: number | null): N
  */
 function evaluateCapsAgainstLedger(
   ledger: TerminalCostLedger,
-  caps: LabScenarioCaps
+  caps: LabScenarioCaps,
 ): { ok: true } | { ok: false; message: string } {
   if (caps.maxUsd !== undefined && ledger.knownTotalUsd > caps.maxUsd) {
-    const overLines = COST_CATEGORIES.filter((c) => ledger.lines[c].usd !== null && (ledger.lines[c].usd as number) > 0);
+    const overLines = COST_CATEGORIES.filter(
+      (c) => ledger.lines[c].usd !== null && (ledger.lines[c].usd as number) > 0,
+    );
     return {
       ok: false,
-      message: `Observed KNOWN spend ${ledger.knownTotalUsd} USD exceeds scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The run fails closed: the cap is a fail-closed mechanism, not an advisory.`
+      message: `Observed KNOWN spend ${ledger.knownTotalUsd} USD exceeds scenario.caps.maxUsd=${caps.maxUsd}${overLines.length > 0 ? ` (non-zero lines: ${overLines.join(", ")})` : ""}. The run fails closed: the cap is a fail-closed mechanism, not an advisory.`,
     };
   }
   if (caps.maxJobs !== undefined) {
@@ -832,7 +957,7 @@ function evaluateCapsAgainstLedger(
     if (knownJobs > caps.maxJobs) {
       return {
         ok: false,
-        message: `Observed KNOWN billable-job count ${knownJobs} exceeds scenario.caps.maxJobs=${caps.maxJobs}. The run fails closed.`
+        message: `Observed KNOWN billable-job count ${knownJobs} exceeds scenario.caps.maxJobs=${caps.maxJobs}. The run fails closed.`,
       };
     }
   }
@@ -856,8 +981,20 @@ function buildRuntimeAuth(args: {
   /** The operator environment the key value is read from (process.env or a test fake). */
   env: Record<string, string | undefined>;
 }):
-  | { ok: true; mode: LabRuntimeAuth; envs: Record<string, string>; keyName: string; keyValue: string }
-  | { ok: false; code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED"; message: string } {
+  | {
+      ok: true;
+      mode: LabRuntimeAuth;
+      envs: Record<string, string>;
+      keyName: string;
+      keyValue: string;
+    }
+  | {
+      ok: false;
+      code:
+        | "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING"
+        | "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED";
+      message: string;
+    } {
   // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key SOURCE
   // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
   // (developers.openai.com/codex/noninteractive) document it as the channel for a SINGLE codex exec
@@ -881,15 +1018,18 @@ function buildRuntimeAuth(args: {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_LAB_CREDENTIAL_DENIED",
-      message: "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db)."
+      message:
+        "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db).",
     };
   }
-  const keyName = ALLOWED_RUNTIME_KEY_NAMES.find((name) => (args.env[name]?.trim() ?? "").length > 0);
+  const keyName = ALLOWED_RUNTIME_KEY_NAMES.find(
+    (name) => (args.env[name]?.trim() ?? "").length > 0,
+  );
   if (!keyName) {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_LAB_RUNTIME_AUTH_MISSING",
-      message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`
+      message: `Live terminal-product labs declare runtimeAuth "${String(args.runtimeAuth)}" and need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment (pass via --env-file; the selected auth mode places the value in command-scoped env or an external E2B header transform; the value is never persisted).`,
     };
   }
   const keyValue = args.env[keyName] as string;
@@ -898,17 +1038,20 @@ function buildRuntimeAuth(args: {
   // SOURCE was OPENAI_API_KEY, the SAME value is also injected as CODEX_API_KEY so codex exec's
   // documented single-invocation auth channel is populated either way (see the comment above).
   const mode = args.runtimeAuth ?? "openai-env";
-  const envs: Record<string, string> = mode === "openai-egress"
-    // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA
-    // file can be absent even though E2B has installed its proxy CA in the system bundle.
-    ? { CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE }
-    : keyName === "OPENAI_API_KEY" ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue } : { [keyName]: keyValue };
+  const envs: Record<string, string> =
+    mode === "openai-egress"
+      ? // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA
+        // file can be absent even though E2B has installed its proxy CA in the system bundle.
+        { CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE }
+      : keyName === "OPENAI_API_KEY"
+        ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue }
+        : { [keyName]: keyValue };
   return {
     ok: true,
     mode,
     envs,
     keyName,
-    keyValue
+    keyValue,
   };
 }
 
@@ -921,13 +1064,13 @@ function buildRuntimeAuth(args: {
 const NON_RUNTIME_CREDENTIAL_NAME_PATTERNS: RegExp[] = [
   /^GITHUB_TOKEN$/i,
   /^GH_TOKEN$/i,
-  /TOKEN$/i,        // deploy tokens, write tokens
-  /SECRET/i,        // *_SECRET, payment secrets
+  /TOKEN$/i, // deploy tokens, write tokens
+  /SECRET/i, // *_SECRET, payment secrets
   /PASSWORD/i,
   /DATABASE_URL/i,
   /(^|_)DSN$/i,
   /STRIPE/i,
-  /AWS_/i
+  /AWS_/i,
 ];
 
 /** True when `name` is a clearly-non-runtime credential (cannot be a runtime-key allowlist entry). */
@@ -953,7 +1096,7 @@ export function buildSandboxMetadata(allowlist: {
     labId: allowlist.labId,
     simId: allowlist.simId,
     // The run id is a harness-minted token (terminal-<ts>-<hex>), not user data.
-    runId: allowlist.runId
+    runId: allowlist.runId,
   };
 }
 
@@ -968,7 +1111,7 @@ interface RunLiveTerminalSessionArgs {
   failed: (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; product?: string }
+    extras?: { actor?: string; product?: string },
   ) => TerminalProductLabResult;
 }
 
@@ -979,7 +1122,9 @@ interface RunLiveTerminalSessionArgs {
  * the redacted terminal event stream + normalized transcript, the agent report, and the
  * provider-neutral actor trace; tears the sandbox down in a finally and proves the teardown.
  */
-async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise<TerminalProductLabResult> {
+async function runLiveTerminalSession(
+  args: RunLiveTerminalSessionArgs,
+): Promise<TerminalProductLabResult> {
   const { options, cwd, config, descriptorId, product, warnings, render, failed } = args;
   const hooks = options.hooks ?? {};
   const env = hooks.env ?? process.env;
@@ -995,7 +1140,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     return failed(
       "HUMANISH_TERMINAL_LAB_KEYPLACEMENT_INVALID",
       `Terminal actor "${descriptorId}" must declare keyPlacement "in-sandbox-command-scoped" for the live lane (got "${String(keyPlacement)}"). The engine requires this registered default before applying the declared runtime-auth mode.`,
-      { actor: descriptorId }
+      { actor: descriptorId },
     );
   }
 
@@ -1007,7 +1152,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     return failed(
       "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
       "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force.",
-      { actor: descriptorId }
+      { actor: descriptorId },
     );
   }
   // maxUsd is ENFORCED fail-closed against the cost ledger (evaluateCapsAgainstLedger after the
@@ -1018,7 +1163,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // unmeasured lines rather than guessing them zero. Warn so the operator knows a positive budget is
   // only as strong as the (currently provider-only) spend signal.
   if (maxUsd > 0) {
-    warnings.push(`scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. maxUsd is enforced fail-closed against the cost ledger, but core meters only the provider line from tokenUsage; product/media/payment stay null (UNMEASURED, never guessed zero) unless an adapter supplies those signals through costProbe. The no-spend proof reports unmeasured lines honestly.`);
+    warnings.push(
+      `scenario.caps.maxUsd=${maxUsd} declares a non-zero spend budget. maxUsd is enforced fail-closed against the cost ledger, but core meters only the provider line from tokenUsage; product/media/payment stay null (UNMEASURED, never guessed zero) unless an adapter supplies those signals through costProbe. The no-spend proof reports unmeasured lines honestly.`,
+    );
   }
 
   // --- Safety contract item 4: deny-by-default credentials; build the command-scoped allowlist. ---
@@ -1050,7 +1197,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     personaLine,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
-    verdictNonce
+    verdictNonce,
   });
   const promptDigest = digestText(composedPrompt);
 
@@ -1059,12 +1206,23 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // anything persists (a key has no detectable "shape" if it is an arbitrary token); redactText is
   // the second pass for secret-SHAPED content. Applied PRE-truncation so a cut can never split a
   // value past the scrubber.
-  const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter((v) => v.length >= 4);
+  const knownSecretValues = [runtimeEnv.keyValue, env.E2B_API_KEY?.trim() ?? ""].filter(
+    (v) => v.length >= 4,
+  );
   const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+    knownSecretValues.reduce(
+      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
+      text,
+    );
   const sanitize = (text: string): string => redactText(scrubKnownValues(text));
-  const persona: ActorPersonaRef = { id: personaId, traitsApplied, promptDigest,
-    ...(resolvedPersona.persona ? { brief: personaBrief(resolvedPersona.persona, scrubKnownValues) } : {}) };
+  const persona: ActorPersonaRef = {
+    id: personaId,
+    traitsApplied,
+    promptDigest,
+    ...(resolvedPersona.persona
+      ? { brief: personaBrief(resolvedPersona.persona, scrubKnownValues) }
+      : {}),
+  };
 
   const runId = options.runId ?? makeTerminalRunId();
   const runPaths = await prepareRunArtifactPaths(physicalCwd, runId);
@@ -1074,10 +1232,15 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     runId,
     // This entry point IS the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const createdAt = nowIso();
-  const source = await buildRunSource({ capturedAt: createdAt, cwd: physicalCwd, humanishSource: "present", packageName: "humanish" });
+  const source = await buildRunSource({
+    capturedAt: createdAt,
+    cwd: physicalCwd,
+    humanishSource: "present",
+    packageName: "humanish",
+  });
 
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   // Declared egress allowlist, or undefined for the historical unrestricted default (#538).
@@ -1090,10 +1253,17 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // Capture may stop inside a known key. Keep only enough following characters to finish the
   // cross-chunk redaction below; this overlap is never added to terminal events/artifacts.
   const discardedPrefixes = { stdout: "", stderr: "", combined: "" };
-  const maxDiscardedPrefixChars = Math.max(0, ...knownSecretValues.map((value) => value.length - 1));
+  const maxDiscardedPrefixChars = Math.max(
+    0,
+    ...knownSecretValues.map((value) => value.length - 1),
+  );
   const interventions: InterventionRecord[] = []; // ALWAYS empty while no assisted-input path ships.
   let transcriptBytes = 0;
-  let cleanup: TerminalLedgers["cleanup"] = { killed: false, remaining: -1, reason: "teardown not reached" };
+  let cleanup: TerminalLedgers["cleanup"] = {
+    killed: false,
+    remaining: -1,
+    reason: "teardown not reached",
+  };
 
   const recordLifecycle = (event: string, message: string): void => {
     lifecycle.push({ at: nowIso(), event, message: sanitize(message) });
@@ -1118,7 +1288,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // Delivery tracking retains only counts and hashes; payloads still pass the artifact sanitizer.
   const streamedOutput = {
     stdout: { bytes: 0, hash: createHash("sha256") },
-    stderr: { bytes: 0, hash: createHash("sha256") }
+    stderr: { bytes: 0, hash: createHash("sha256") },
   };
   const recordStreamedTerminalChunk = (stream: "stdout" | "stderr", raw: string): void => {
     streamedOutput[stream].bytes += Buffer.byteLength(raw, "utf8");
@@ -1129,7 +1299,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     const delivered = streamedOutput[stream];
     const returned = Buffer.from(raw, "utf8");
     if (delivered.bytes > 0 && returned.length >= delivered.bytes) {
-      const returnedPrefixHash = createHash("sha256").update(returned.subarray(0, delivered.bytes)).digest("hex");
+      const returnedPrefixHash = createHash("sha256")
+        .update(returned.subarray(0, delivered.bytes))
+        .digest("hex");
       if (returnedPrefixHash === delivered.hash.copy().digest("hex")) {
         // A complete replay adds nothing; a partly streamed prefix keeps only the unseen tail.
         const suffix = returned.subarray(delivered.bytes).toString("utf8");
@@ -1152,12 +1324,19 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   let startupCleanup: E2BDesktopStartupError["cleanup"] | undefined;
   let timedOut = false;
   const runtime = declaredRuntimeProvenance({
-    ...(config.execution?.runtime?.version === undefined ? {} : { version: config.execution.runtime.version }),
+    ...(config.execution?.runtime?.version === undefined
+      ? {}
+      : { version: config.execution.runtime.version }),
     ...(config.actors[0]?.model === undefined ? {} : { model: sanitize(config.actors[0].model) }),
-    ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
+    ...(config.actors[0]?.reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort: config.actors[0].reasoningEffort }),
   });
 
-  recordLifecycle("terminal-lab.run.created", `Created live terminal-product run ${runId} (actor ${descriptorId}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`);
+  recordLifecycle(
+    "terminal-lab.run.created",
+    `Created live terminal-product run ${runId} (actor ${descriptorId}, product ${product.name}). Caps: maxUsd=${maxUsd}, maxMinutes=${maxMinutes}. Subject provenance UNPINNED (public surfaces only).`,
+  );
 
   const requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
   const wallClockMs = maxMinutes * 60_000;
@@ -1170,42 +1349,63 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     // No sandbox-global env in either mode. In openai-egress, only this host-side SDK request
     // carries the real runtime key; participant commands receive an inert placeholder. The proxy
     // capability is available from sandbox creation, including during bootstrap/product setup.
-    const routing = egressAllow === undefined ? undefined : { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] };
-    const network = runtimeEnv.mode === "openai-egress"
-      ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
-      : routing;
+    const routing =
+      egressAllow === undefined ? undefined : { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] };
+    const network =
+      runtimeEnv.mode === "openai-egress"
+        ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
+        : routing;
     sandbox = await sandboxModule.Sandbox.create({
       apiKey: e2bApiKey,
       requestTimeoutMs,
       timeoutMs: sandboxTimeoutMs,
       metadata,
       ...(network === undefined ? {} : { network }),
-      lifecycle: { onTimeout: "kill" }
+      lifecycle: { onTimeout: "kill" },
     });
     await validatePreparedRunArtifactPaths(runPaths);
     sandboxId = sandbox.sandboxId;
     // #358 salvage: durable id receipt the moment the sandbox exists (reclaim by exact id).
-    await appendSandboxReceipt(runPaths, { at: nowIso(), laneId: "terminal", sandboxId, timeoutMs: sandboxTimeoutMs });
-    recordLifecycle("terminal-lab.sandbox.created", `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`);
+    await appendSandboxReceipt(runPaths, {
+      at: nowIso(),
+      laneId: "terminal",
+      sandboxId,
+      timeoutMs: sandboxTimeoutMs,
+    });
+    recordLifecycle(
+      "terminal-lab.sandbox.created",
+      `E2B shell sandbox ${sandboxId} created with positive-allowlist metadata and kill-on-timeout; NO sandbox-global env.`,
+    );
     // The allowlist is evidence: a reader of the ledger can see exactly what the participant was
     // able to reach, without the ledger carrying any secret.
     recordLifecycle(
       "terminal-lab.egress.policy",
       egressAllow === undefined
         ? "Egress UNRESTRICTED (no execution.egressAllow declared)."
-        : `Egress routing allowlist: ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`
+        : `Egress routing allowlist: ${egressAllow.length} declared host(s): ${egressAllow.join(", ")}; deny-all fallback. Domain routing is not strict destination isolation on shared infrastructure.`,
     );
 
-    recordLifecycle("terminal-lab.runtime-auth", runtimeEnv.mode === "openai-egress"
-      ? "Runtime auth openai-egress: raw key remains outside the sandbox in the api.openai.com HTTPS Authorization transform; Codex receives an inert CODEX_API_KEY placeholder and the default OpenAI endpoint. Every sandbox process, including bootstrap/setup, can spend via this proxy; no added routing restriction or provider spending limit."
-      : `Runtime auth openai-env: raw key from ${runtimeEnv.keyName} is passed command-scoped to Codex and inherited by its child processes.`);
+    recordLifecycle(
+      "terminal-lab.runtime-auth",
+      runtimeEnv.mode === "openai-egress"
+        ? "Runtime auth openai-egress: raw key remains outside the sandbox in the api.openai.com HTTPS Authorization transform; Codex receives an inert CODEX_API_KEY placeholder and the default OpenAI endpoint. Every sandbox process, including bootstrap/setup, can spend via this proxy; no added routing restriction or provider spending limit."
+        : `Runtime auth openai-env: raw key from ${runtimeEnv.keyName} is passed command-scoped to Codex and inherited by its child processes.`,
+    );
     if (runtimeEnv.mode === "openai-egress") {
-      warnings.push("openai-egress keeps the raw runtime key outside the sandbox, but every sandbox process can spend through the api.openai.com proxy from creation until teardown. It adds no egress restriction or provider-enforced budget; extra provider calls may be absent from the Codex usage ledger.");
+      warnings.push(
+        "openai-egress keeps the raw runtime key outside the sandbox, but every sandbox process can spend through the api.openai.com proxy from creation until teardown. It adds no egress restriction or provider-enforced budget; extra provider calls may be absent from the Codex usage ledger.",
+      );
     }
 
     // Readiness: a tiny probe receives no runtime env; openai-egress's proxy is already available.
-    const ready = await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR} && echo HUMANISH_SHELL_READY`, { requestTimeoutMs });
-    recordLifecycle("terminal-lab.sandbox.ready", `Shell readiness probe exit=${ready.exitCode ?? "null"}; workdir ${SANDBOX_WORKDIR} prepared.`);
+    const ready = await sandbox.commands.run(
+      `mkdir -p ${SANDBOX_WORKDIR} && echo HUMANISH_SHELL_READY`,
+      { requestTimeoutMs },
+    );
+    recordLifecycle(
+      "terminal-lab.sandbox.ready",
+      `Shell readiness probe exit=${ready.exitCode ?? "null"}; workdir ${SANDBOX_WORKDIR} prepared.`,
+    );
 
     // --- Runtime bootstrap: no runtime env; openai-egress proxy capability is already available. ---
     // The stock desktop needs Node/npm on PATH before npx can run Codex. Reuse a working
@@ -1216,7 +1416,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     try {
       const bootstrap = await sandbox.commands.run(TERMINAL_NODE_BOOTSTRAP_COMMAND, {
         requestTimeoutMs,
-        timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
+        timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS,
       });
       if ((bootstrap.exitCode ?? 1) !== 0) {
         bootstrapError = `runtime bootstrap exited ${bootstrap.exitCode ?? "null"}`;
@@ -1229,7 +1429,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       "terminal-lab.runtime.bootstrapped",
       bootstrapError
         ? `Runtime bootstrap FAILED after ${bootstrapDurationMs}ms: ${bootstrapError}. codex exec runs via npx and needs Node/npm present; the lane fails closed rather than attempting an exec with no runtime.`
-        : `Runtime bootstrap ensured Node/npm present in ${bootstrapDurationMs}ms (codex exec runs via npx).`
+        : `Runtime bootstrap ensured Node/npm present in ${bootstrapDurationMs}ms (codex exec runs via npx).`,
     );
 
     if (bootstrapError) {
@@ -1240,126 +1440,159 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       completionReason = "harness_error";
       sessionError = sanitize(bootstrapError);
       sessionReason = `runtime bootstrap could not ensure Node/npm before codex exec: ${sessionError}`;
-    } else if (await (async (): Promise<boolean> => {
-      // Observe the executable without command-scoped auth, then use only that exact version.
-      // The SDK bounds the request and command; version failures reach the owned cleanup path.
-      try {
-        const versionProbe = await sandbox.commands.run(buildRuntimeVersionCommand(config.execution?.runtime?.version), {
-          requestTimeoutMs,
-          timeoutMs: TERMINAL_RUNTIME_VERSION_TIMEOUT_MS
-        });
-        const observed = parseTerminalRuntimeVersion(versionProbe.stdout ?? "");
-        if (observed !== undefined) runtime.observedVersion = observed;
-        if (versionProbe.exitCode !== 0 || observed === undefined) throw new Error("Codex version probe did not return a successful `codex-cli <exact-version>` result.");
-        if (config.execution?.runtime?.version !== undefined && observed !== config.execution.runtime.version) {
-          throw new Error(`Codex version mismatch: requested ${config.execution.runtime.version}, observed ${observed}.`);
-        }
-        runtime.versionStatus = "verified";
-        recordLifecycle("terminal-lab.runtime.version", `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "runtime default (unobserved)"}; reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`);
-      } catch (error) {
-        runtime.versionStatus = "failed";
-        sessionStatus = "failed";
-        completionReason = "harness_error";
-        sessionError = sanitize(toErrorMessage(error));
-        sessionReason = `Codex runtime version could not be verified before execution: ${sessionError}`;
-        recordLifecycle("terminal-lab.runtime.version.error", sessionReason);
-        return false;
-      }
-      // --- Optional product setup (no runtime env), before the Codex exec. ---
-      // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
-      // and a failure fails the lane closed rather than handing the agent a half-built world. It
-      // exists so a study can put the participant IN a prepared project — asking an agent what
-      // studies a project contains, in an empty directory, measures the lab and not the product
-      // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
-      const install = config.subject.product?.install;
-      if (install === undefined) return true;
-
-      // An optional local file, put on the machine before the install runs, so a study can meet a
-      // build that is not published yet. Read and checked HERE rather than trusted from the
-      // manifest: this puts a file from the operator's disk onto a machine an autonomous agent is
-      // about to drive, so it stays inside the project, must be a regular file, and is size-capped.
-      let uploadAssignment = "";
-      const uploadRel = config.subject.product?.upload;
-      if (uploadRel !== undefined) {
-        const uploadStartedAt = now();
+    } else if (
+      await (async (): Promise<boolean> => {
+        // Observe the executable without command-scoped auth, then use only that exact version.
+        // The SDK bounds the request and command; version failures reach the owned cleanup path.
         try {
-          const resolved = path.resolve(cwd, uploadRel);
-          const projectRoot = await realpath(cwd);
-          const real = await realpath(resolved);
-          if (real !== projectRoot && !real.startsWith(`${projectRoot}${path.sep}`)) {
-            throw new Error("subject.product.upload resolved outside the project");
+          const versionProbe = await sandbox.commands.run(
+            buildRuntimeVersionCommand(config.execution?.runtime?.version),
+            {
+              requestTimeoutMs,
+              timeoutMs: TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
+            },
+          );
+          const observed = parseTerminalRuntimeVersion(versionProbe.stdout ?? "");
+          if (observed !== undefined) runtime.observedVersion = observed;
+          if (versionProbe.exitCode !== 0 || observed === undefined)
+            throw new Error(
+              "Codex version probe did not return a successful `codex-cli <exact-version>` result.",
+            );
+          if (
+            config.execution?.runtime?.version !== undefined &&
+            observed !== config.execution.runtime.version
+          ) {
+            throw new Error(
+              `Codex version mismatch: requested ${config.execution.runtime.version}, observed ${observed}.`,
+            );
           }
-          const info = await stat(real);
-          if (!info.isFile()) throw new Error("subject.product.upload is not a regular file");
-          if (info.size > UPLOAD_MAX_BYTES) {
-            throw new Error(`subject.product.upload is ${info.size} bytes; the cap is ${UPLOAD_MAX_BYTES}`);
-          }
-          const destination = `${SANDBOX_WORKDIR}/.humanish-upload/${path.basename(real)}`;
-          await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR}/.humanish-upload`, { requestTimeoutMs });
-          const bytes = await readFile(real);
-          await sandbox.files.write(destination, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-          // Inlined into the command string rather than passed as `envs`: the ONLY call in this
-          // lane that carries envs is the keyed codex exec, and that invariant is worth more than
-          // the convenience of a second envs channel.
-          uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD='${destination.replace(/'/g, "'\\''")}'; `;
+          runtime.versionStatus = "verified";
           recordLifecycle(
-            "terminal-lab.product.uploaded",
-            `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (no runtime env; declared egress auth may already be available).`
+            "terminal-lab.runtime.version",
+            `Codex requested ${runtime.requestedVersion}, observed ${observed}; exact version selected for execution. Model ${runtime.requestedModel ?? "runtime default (unobserved)"}; reasoning effort ${runtime.requestedReasoningEffort ?? "runtime default (unobserved)"}.`,
           );
         } catch (error) {
+          runtime.versionStatus = "failed";
           sessionStatus = "failed";
           completionReason = "harness_error";
           sessionError = sanitize(toErrorMessage(error));
-          sessionReason = `subject.product.upload could not be placed in the sandbox: ${sessionError}`;
+          sessionReason = `Codex runtime version could not be verified before execution: ${sessionError}`;
+          recordLifecycle("terminal-lab.runtime.version.error", sessionReason);
           return false;
         }
-      }
-      const setupStartedAt = now();
-      let setupError: string | undefined;
-      try {
-        const setup = await sandbox.commands.run(`${uploadAssignment}cd ${SANDBOX_WORKDIR} && ${install}`, {
-          // The install step may run the product itself (release:dogfood's does: `humanish init
-          // --yes`); on the 0.67.0 dogfood that one command arrived unmarked while the participant's
-          // nine others carried the marker (#546).
-          envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
-          requestTimeoutMs,
-          timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS
-        });
-        if ((setup.exitCode ?? 1) !== 0) {
-          setupError = `product setup exited ${setup.exitCode ?? "null"}`;
+        // --- Optional product setup (no runtime env), before the Codex exec. ---
+        // Same channel and same guarantees as the runtime bootstrap above: no runtime key touches it,
+        // and a failure fails the lane closed rather than handing the agent a half-built world. It
+        // exists so a study can put the participant IN a prepared project — asking an agent what
+        // studies a project contains, in an empty directory, measures the lab and not the product
+        // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
+        const install = config.subject.product?.install;
+        if (install === undefined) return true;
+
+        // An optional local file, put on the machine before the install runs, so a study can meet a
+        // build that is not published yet. Read and checked HERE rather than trusted from the
+        // manifest: this puts a file from the operator's disk onto a machine an autonomous agent is
+        // about to drive, so it stays inside the project, must be a regular file, and is size-capped.
+        let uploadAssignment = "";
+        const uploadRel = config.subject.product?.upload;
+        if (uploadRel !== undefined) {
+          const uploadStartedAt = now();
+          try {
+            const resolved = path.resolve(cwd, uploadRel);
+            const projectRoot = await realpath(cwd);
+            const real = await realpath(resolved);
+            if (real !== projectRoot && !real.startsWith(`${projectRoot}${path.sep}`)) {
+              throw new Error("subject.product.upload resolved outside the project");
+            }
+            const info = await stat(real);
+            if (!info.isFile()) throw new Error("subject.product.upload is not a regular file");
+            if (info.size > UPLOAD_MAX_BYTES) {
+              throw new Error(
+                `subject.product.upload is ${info.size} bytes; the cap is ${UPLOAD_MAX_BYTES}`,
+              );
+            }
+            const destination = `${SANDBOX_WORKDIR}/.humanish-upload/${path.basename(real)}`;
+            await sandbox.commands.run(`mkdir -p ${SANDBOX_WORKDIR}/.humanish-upload`, {
+              requestTimeoutMs,
+            });
+            const bytes = await readFile(real);
+            await sandbox.files.write(
+              destination,
+              bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+            );
+            // Inlined into the command string rather than passed as `envs`: the ONLY call in this
+            // lane that carries envs is the keyed codex exec, and that invariant is worth more than
+            // the convenience of a second envs channel.
+            uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD='${destination.replace(/'/g, "'\\''")}'; `;
+            recordLifecycle(
+              "terminal-lab.product.uploaded",
+              `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (no runtime env; declared egress auth may already be available).`,
+            );
+          } catch (error) {
+            sessionStatus = "failed";
+            completionReason = "harness_error";
+            sessionError = sanitize(toErrorMessage(error));
+            sessionReason = `subject.product.upload could not be placed in the sandbox: ${sessionError}`;
+            return false;
+          }
         }
-      } catch (error) {
-        setupError = toErrorMessage(error);
-      }
-      recordLifecycle(
-        "terminal-lab.product.prepared",
-        setupError
-          ? `Product setup FAILED after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
-          : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (no runtime env; declared egress auth may already be available).`
-      );
-      if (setupError) {
-        sessionStatus = "failed";
-        completionReason = "harness_error";
-        sessionError = sanitize(setupError);
-        sessionReason = `subject.product.install could not prepare the world before codex exec: ${sessionError}`;
-        return false;
-      }
-      return true;
-    })()) {
+        const setupStartedAt = now();
+        let setupError: string | undefined;
+        try {
+          const setup = await sandbox.commands.run(
+            `${uploadAssignment}cd ${SANDBOX_WORKDIR} && ${install}`,
+            {
+              // The install step may run the product itself (release:dogfood's does: `humanish init
+              // --yes`); on the 0.67.0 dogfood that one command arrived unmarked while the participant's
+              // nine others carried the marker (#546).
+              envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
+              requestTimeoutMs,
+              timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS,
+            },
+          );
+          if ((setup.exitCode ?? 1) !== 0) {
+            setupError = `product setup exited ${setup.exitCode ?? "null"}`;
+          }
+        } catch (error) {
+          setupError = toErrorMessage(error);
+        }
+        recordLifecycle(
+          "terminal-lab.product.prepared",
+          setupError
+            ? `Product setup FAILED after ${Math.max(0, now() - setupStartedAt)}ms: ${sanitize(setupError)}`
+            : `Product setup completed in ${Math.max(0, now() - setupStartedAt)}ms (no runtime env; declared egress auth may already be available).`,
+        );
+        if (setupError) {
+          sessionStatus = "failed";
+          completionReason = "harness_error";
+          sessionError = sanitize(setupError);
+          sessionReason = `subject.product.install could not prepare the world before codex exec: ${sessionError}`;
+          return false;
+        }
+        return true;
+      })()
+    ) {
       // --- The keyed run: `codex exec --json` non-interactively (stdin disabled). ---
       // openai-env passes the real key here; openai-egress passes an inert placeholder. stdin is
       // never wired (safety contract item 7) — commands.run takes no stdin channel. The command's
       // wall-clock is bounded by maxMinutes (safety contract item 2): commands.run timeoutMs +
       // an injected-clock guard so a mock/real run that exceeds it is killed and fails closed.
       const codexCommand = buildCodexExecCommand({
-        workdir: SANDBOX_WORKDIR, prompt: composedPrompt, runtimeAuth: runtimeEnv.mode,
+        workdir: SANDBOX_WORKDIR,
+        prompt: composedPrompt,
+        runtimeAuth: runtimeEnv.mode,
         version: runtime.observedVersion!,
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        ...(config.actors[0]?.reasoningEffort === undefined ? {} : { reasoningEffort: config.actors[0].reasoningEffort })
+        ...(config.actors[0]?.reasoningEffort === undefined
+          ? {}
+          : { reasoningEffort: config.actors[0].reasoningEffort }),
       });
       const commandDigest = digestText(codexCommand);
       const startedAt = now();
-      recordLifecycle("terminal-lab.exec.started", `Launching codex exec (runtime auth ${runtimeEnv.mode}; command env names: ${Object.keys(runtimeEnv.envs).join(", ")}); wall-clock bound ${wallClockMs}ms.`);
+      recordLifecycle(
+        "terminal-lab.exec.started",
+        `Launching codex exec (runtime auth ${runtimeEnv.mode}; command env names: ${Object.keys(runtimeEnv.envs).join(", ")}); wall-clock bound ${wallClockMs}ms.`,
+      );
 
       let exitCode: number | undefined;
       let runError: string | undefined;
@@ -1374,10 +1607,10 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
             requestTimeoutMs,
             timeoutMs: wallClockMs,
             onStdout: (data: string) => recordStreamedTerminalChunk("stdout", data),
-            onStderr: (data: string) => recordStreamedTerminalChunk("stderr", data)
+            onStderr: (data: string) => recordStreamedTerminalChunk("stderr", data),
           }),
           wallClockMs,
-          now
+          now,
         );
         if (result.timedOut) {
           timedOut = true;
@@ -1400,7 +1633,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
         envNames: Object.keys(runtimeEnv.envs), // NAMES only — the credential evidence (item 4).
         ...(exitCode === undefined ? {} : { exitCode }),
         ...(timedOut ? { timedOut: true } : {}),
-        durationMs
+        durationMs,
       });
 
       // Score by the verdict-nonce marker over the SCRUBBED+REDACTED, NORMALIZED transcript — the
@@ -1422,9 +1655,17 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
         recordLifecycle("terminal-lab.exec.error", sessionReason);
       } else if (markerStatus) {
         sessionStatus = markerStatus;
-        completionReason = markerStatus === "passed" ? "goal_satisfied" : markerStatus === "blocked" ? "blocked_approval" : "gave_up";
+        completionReason =
+          markerStatus === "passed"
+            ? "goal_satisfied"
+            : markerStatus === "blocked"
+              ? "blocked_approval"
+              : "gave_up";
         sessionReason = `agent reported ${markerStatus} verdict marker (nonce-verified)`;
-        recordLifecycle("terminal-lab.exec.completed", `codex exec exit=${exitCode ?? "null"}; ${sessionReason}.`);
+        recordLifecycle(
+          "terminal-lab.exec.completed",
+          `codex exec exit=${exitCode ?? "null"}; ${sessionReason}.`,
+        );
       } else {
         // No nonce-verified verdict: the agent did not (credibly) report a terminal status. A run
         // that exited 0 but printed no verified marker is BLOCKED evidence (the failure IS the
@@ -1451,7 +1692,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       requestTimeoutMs,
       sanitize,
       recordLifecycle,
-      warnings
+      warnings,
     });
   }
 
@@ -1461,7 +1702,9 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   scrubSplitKnownValues(terminalEvents, knownSecretValues, discardedPrefixes);
 
   // Build the actor trace FIRST (the cost ledger reads its tokenUsage).
-  const normalizedTranscript = normalizeLocalActorTranscript(terminalEvents.map((e) => e.chunk).join(""));
+  const normalizedTranscript = normalizeLocalActorTranscript(
+    terminalEvents.map((e) => e.chunk).join(""),
+  );
   // Parsed from the FULL stream, not the tail: usage records arrive once per turn and the tail
   // would drop all but the last (#531).
   const terminalTokenUsage = parseTerminalTokenUsage(normalizedTranscript);
@@ -1479,7 +1722,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     transcriptTail: tailOf(normalizedTranscript),
     runtimeAuth: runtimeEnv.mode,
     runtime,
-    ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage })
+    ...(terminalTokenUsage === undefined ? {} : { tokenUsage: terminalTokenUsage }),
   });
 
   // --- Spend ledger + no-spend proof + full caps enforcement (fail-closed). ---
@@ -1487,17 +1730,19 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // tokenUsage.costUsd when present (else null = NOT MEASURED), product/media/payment null by
   // default (core has no signal). The costProbe hook lets tests or adapters inject KNOWN
   // spend to exercise the fail-closed cap without a real billable run.
-  const injectedLines = hooks.costProbe?.({ ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }) });
+  const injectedLines = hooks.costProbe?.({
+    ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
+  });
   if (hooks.costProbe) await validatePreparedRunArtifactPaths(runPaths);
   const cost = buildCostLedger({
     ...(trace.tokenUsage?.costUsd === undefined ? {} : { tokenCostUsd: trace.tokenUsage.costUsd }),
     ...(trace.tokenUsage === undefined ? {} : { tokenUsage: trace.tokenUsage }),
-    ...(injectedLines ? { injectedLines } : {})
+    ...(injectedLines ? { injectedLines } : {}),
   });
   const noSpendProof = buildNoSpendProof(cost, maxUsd ?? null);
   recordLifecycle(
     "terminal-lab.cost.measured",
-    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : ` (lower bound; unmeasured: ${noSpendProof.unmeasuredLines.join(", ") || "none"})`}. No-spend proof ${noSpendProof.satisfied ? "satisfied" : "NOT satisfied"} for maxUsd=${maxUsd ?? "null"}.`
+    `Cost ledger: known total ${cost.knownTotalUsd} USD${cost.fullyMeasured ? " (fully measured)" : ` (lower bound; unmeasured: ${noSpendProof.unmeasuredLines.join(", ") || "none"})`}. No-spend proof ${noSpendProof.satisfied ? "satisfied" : "NOT satisfied"} for maxUsd=${maxUsd ?? "null"}.`,
   );
 
   // FULL caps enforcement (fail-closed, NOT advisory): if a KNOWN spend line exceeds maxUsd (or a
@@ -1530,18 +1775,33 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     interventions, // ALWAYS present, ALWAYS empty while no assisted-input path ships.
     cleanup,
     cost,
-    noSpendProof
+    noSpendProof,
   };
 
   await writeContainedOutputFile(
     runPaths,
     TERMINAL_EVENTS_ARTIFACT,
     `${terminalEvents.map((e) => JSON.stringify(e)).join("\n")}${terminalEvents.length > 0 ? "\n" : ""}`,
-    "utf8"
+    "utf8",
   );
-  await writeContainedOutputFile(runPaths, TERMINAL_TRANSCRIPT_ARTIFACT, `${normalizedTranscript}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, TERMINAL_LEDGERS_ARTIFACT, `${JSON.stringify(ledgers, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "actor.json", `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_TRANSCRIPT_ARTIFACT,
+    `${normalizedTranscript}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    TERMINAL_LEDGERS_ARTIFACT,
+    `${JSON.stringify(ledgers, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "actor.json",
+    `${JSON.stringify(trace, null, 2)}\n`,
+    "utf8",
+  );
 
   const bundle = buildLiveTerminalProductBundle({
     ...(options.lab === undefined ? {} : { lab: options.lab }),
@@ -1560,7 +1820,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
       allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
       allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
       allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false
+      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
     },
     runId,
     source,
@@ -1568,7 +1828,7 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
     ledgers,
     ...(sandboxId ? { sandboxId } : {}),
     ...(sessionError ? { sessionError } : {}),
-    sessionReason: sanitize(sessionReason)
+    sessionReason: sanitize(sessionReason),
   });
 
   // --- THE LAYER-6 EXTENSION SEAM (issue #154 acceptance #8). ---
@@ -1580,10 +1840,29 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // adapter score is additive, not a replacement. The adapter payloads pass the same scrub+redact
   // the rest of the bundle does (the adapter is trusted in-repo code, but the harness never relies
   // on that for secret values) and are validated fail-closed by the bundle verifier downstream.
-  const declaredScorerFailure = await applyAdapterExtensionSeam({ hooks, bundle, trace, ledgers, transcript: normalizedTranscript, product: product.name, labId: config.id, runId, sanitize, warnings, ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance }) });
+  const declaredScorerFailure = await applyAdapterExtensionSeam({
+    hooks,
+    bundle,
+    trace,
+    ledgers,
+    transcript: normalizedTranscript,
+    product: product.name,
+    labId: config.id,
+    runId,
+    sanitize,
+    warnings,
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
+  });
   await validatePreparedRunArtifactPaths(runPaths);
 
-  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "run.json",
+    `${JSON.stringify(bundle, null, 2)}\n`,
+    "utf8",
+  );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
   await runStatus.finish({
@@ -1596,18 +1875,35 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
             reachedGoal: bundle.review.participants.reachedGoal,
             ...(bundle.review.participants.reportedFriction === undefined
               ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction })
-          }
+              : { reportedFriction: bundle.review.participants.reportedFriction }),
+          },
         }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
   });
-  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "review.md", renderTerminalReviewMarkdown(bundle), "utf8");
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "review.json",
+    `${JSON.stringify(bundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "review.md",
+    renderTerminalReviewMarkdown(bundle),
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: runPaths.relativeRunRoot, updatedAt: createdAt }, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
 
   const observer = await render(physicalCwd, runId, { open: options.open === true });
@@ -1622,54 +1918,66 @@ async function runLiveTerminalSession(args: RunLiveTerminalSessionArgs): Promise
   // A CONFIG-DECLARED scorer that failed to render a pass (status:"fail" / malformed / throw) fails the
   // run RESULT too, not just the persisted verdict — the keystone lane's declared rubric is a gate, so
   // its fail must drive exit code. Library callers never set this (additive, back-compat).
-  const ok = observer.ok && completionReason !== "harness_error" && cleanupProven && declaredScorerFailure === undefined;
+  const ok =
+    observer.ok &&
+    completionReason !== "harness_error" &&
+    cleanupProven &&
+    declaredScorerFailure === undefined;
 
-  return markFinalizedStudyResult({
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
-    ok,
-    cwd,
-    labId: config.id,
-    actor: descriptorId,
-    product: product.name,
-    dryRun: false,
-    runId,
-    session: { status: sessionStatus, completionReason, reason: sanitize(sessionReason) },
-    ...(sandboxId
-      ? { sandbox: { sandboxId, killed: cleanup.killed, remaining: cleanup.remaining } }
-      : {}),
-    cost: {
-      knownTotalUsd: cost.knownTotalUsd,
-      fullyMeasured: cost.fullyMeasured,
-      lines: {
-        product: cost.lines.product.usd,
-        media: cost.lines.media.usd,
-        payment: cost.lines.payment.usd,
-        provider: cost.lines.provider.usd
-      }
+  return markFinalizedStudyResult(
+    {
+      schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+      ok,
+      cwd,
+      labId: config.id,
+      actor: descriptorId,
+      product: product.name,
+      dryRun: false,
+      runId,
+      session: { status: sessionStatus, completionReason, reason: sanitize(sessionReason) },
+      ...(sandboxId
+        ? { sandbox: { sandboxId, killed: cleanup.killed, remaining: cleanup.remaining } }
+        : {}),
+      cost: {
+        knownTotalUsd: cost.knownTotalUsd,
+        fullyMeasured: cost.fullyMeasured,
+        lines: {
+          product: cost.lines.product.usd,
+          media: cost.lines.media.usd,
+          payment: cost.lines.payment.usd,
+          provider: cost.lines.provider.usd,
+        },
+      },
+      noSpend: {
+        satisfied: noSpendProof.satisfied,
+        maxUsd: noSpendProof.maxUsd,
+        knownZeroLines: noSpendProof.knownZeroLines,
+        unmeasuredLines: noSpendProof.unmeasuredLines,
+      },
+      observer,
+      warnings: [...warnings, ...observer.warnings],
+      ...(ok
+        ? {}
+        : {
+            error: {
+              code: (!cleanupProven
+                ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
+                : capsExceeded
+                  ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
+                  : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<
+                TerminalProductLabResult["error"]
+              >["code"],
+              message: !cleanupProven
+                ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.${sessionError ? ` Session failure: ${sessionError}` : ""}`
+                : (declaredScorerFailure ??
+                  sessionError ??
+                  observer.error?.message ??
+                  sessionReason),
+            },
+          }),
     },
-    noSpend: {
-      satisfied: noSpendProof.satisfied,
-      maxUsd: noSpendProof.maxUsd,
-      knownZeroLines: noSpendProof.knownZeroLines,
-      unmeasuredLines: noSpendProof.unmeasuredLines
-    },
-    observer,
-    warnings: [...warnings, ...observer.warnings],
-    ...(ok
-      ? {}
-      : {
-          error: {
-            code: (!cleanupProven
-              ? "HUMANISH_TERMINAL_LAB_CLEANUP_UNPROVEN"
-              : capsExceeded
-                ? "HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED"
-                : "HUMANISH_TERMINAL_LAB_FAILED") as NonNullable<TerminalProductLabResult["error"]>["code"],
-            message: !cleanupProven
-              ? `Live terminal-product run could not prove sandbox teardown (killed=${cleanup.killed}, remaining=${cleanup.remaining}): ${cleanup.reason}. A run that cannot prove teardown fails closed.${sessionError ? ` Session failure: ${sessionError}` : ""}`
-              : declaredScorerFailure ?? sessionError ?? observer.error?.message ?? sessionReason
-          }
-        })
-  }, runPaths);
+    runPaths,
+  );
 }
 
 /**
@@ -1705,7 +2013,19 @@ async function applyAdapterExtensionSeam(args: {
    *  terminal route into flip-on-fail. Absent for library callers (additive, back-compat). */
   scorerProvenance?: RunScorerProvenance;
 }): Promise<string | undefined> {
-  const { hooks, bundle, trace, ledgers, transcript, product, labId, runId, sanitize, warnings, scorerProvenance } = args;
+  const {
+    hooks,
+    bundle,
+    trace,
+    ledgers,
+    transcript,
+    product,
+    labId,
+    runId,
+    sanitize,
+    warnings,
+    scorerProvenance,
+  } = args;
   if (!hooks.score && !hooks.deriveFeedback) return undefined;
   const declared = scorerProvenance !== undefined;
   // Record the loaded scorer's identity regardless of hook outcome (a throwing/invalid scorer was
@@ -1716,7 +2036,15 @@ async function applyAdapterExtensionSeam(args: {
   // launder a verdict (a tamper attempt throws and is caught as a hook failure below). The seam stamps
   // the REAL bundle. The transcript is the SAME normalized, source-scrubbed text the run persists as
   // terminal-transcript.txt — no new exposure beyond what disk already holds (#341).
-  const ctx: TerminalProductScoringContext = { bundle: frozenBundleView(bundle), trace, ledgers, transcript, product, labId, runId };
+  const ctx: TerminalProductScoringContext = {
+    bundle: frozenBundleView(bundle),
+    trace,
+    ledgers,
+    transcript,
+    product,
+    labId,
+    runId,
+  };
   // Best-effort re-scrub of the adapter payload: round-trip the whole JSON through the run's denylist
   // sanitizer. This is NOT containment — it catches recognizable secret shapes and known local paths,
   // but not encoded/split/custom secrets, DB passwords, PII, or abs paths outside the denylist. A
@@ -1744,16 +2072,21 @@ async function applyAdapterExtensionSeam(args: {
           if (message !== undefined) declaredVerdictFailure = message;
         }
       } else {
-        warnings.push("terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.");
+        warnings.push(
+          "terminalHooks.score returned a value that is not a well-formed humanish.adapter-score.v1 (non-empty namespace + status + numeric score + summary); dropped so the bundle stays verifiable.",
+        );
         // A declared gate that returned a MALFORMED value never rendered a verdict — fail closed.
         if (declared) {
-          declaredVerdictFailure = "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
+          declaredVerdictFailure =
+            "Declared product scorer returned a malformed value instead of a verdict; a declared gate that cannot render a pass is recorded as a fail, never a silent pass.";
           recordDeclaredScorerVerdictFailure(bundle, declaredVerdictFailure);
         }
       }
     } catch (error) {
       const detail = sanitize(error instanceof Error ? error.message : String(error));
-      warnings.push(`terminalHooks.score threw (${detail}); dropped so the bundle stays verifiable.`);
+      warnings.push(
+        `terminalHooks.score threw (${detail}); dropped so the bundle stays verifiable.`,
+      );
       // A crashed DECLARED gate must be visible, never a silent pass: surface it as a review gap +
       // verdict downgrade AND fail the run result.
       if (declared) {
@@ -1770,13 +2103,18 @@ async function applyAdapterExtensionSeam(args: {
       for (const candidate of Array.isArray(candidates) ? candidates : []) {
         const cleaned = scrubValue(candidate);
         if (isAdapterFeedbackCandidateShape(cleaned)) accepted.push(cleaned);
-        else warnings.push("terminalHooks.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.");
+        else
+          warnings.push(
+            "terminalHooks.deriveFeedback returned a candidate that is not a well-formed humanish.feedback-candidate.v1 (or its adapter block lacked a non-empty namespace + data record); dropped so the bundle stays verifiable.",
+          );
       }
       if (accepted.length > 0) {
         bundle.feedbackCandidates = [...bundle.feedbackCandidates, ...accepted];
       }
     } catch (error) {
-      warnings.push(`terminalHooks.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`);
+      warnings.push(
+        `terminalHooks.deriveFeedback threw (${sanitize(error instanceof Error ? error.message : String(error))}); dropped so the bundle stays verifiable.`,
+      );
     }
   }
 
@@ -1786,103 +2124,122 @@ async function applyAdapterExtensionSeam(args: {
 /** Structural guard for an adapter-returned RunAdapterScore (mirrors run.ts isRunAdapterScore, kept
  *  local so the lane fails closed at the seam BEFORE the bundle verifier re-checks it). */
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    && (value as RunAdapterScore).schema === "humanish.adapter-score.v1"
-    && typeof (value as RunAdapterScore).namespace === "string"
-    && (value as RunAdapterScore).namespace.trim().length > 0
-    && ["pass", "partial", "fail"].includes((value as RunAdapterScore).status)
-    && typeof (value as RunAdapterScore).score === "number"
-    && Number.isFinite((value as RunAdapterScore).score)
-    && typeof (value as RunAdapterScore).summary === "string";
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as RunAdapterScore).schema === "humanish.adapter-score.v1" &&
+    typeof (value as RunAdapterScore).namespace === "string" &&
+    (value as RunAdapterScore).namespace.trim().length > 0 &&
+    ["pass", "partial", "fail"].includes((value as RunAdapterScore).status) &&
+    typeof (value as RunAdapterScore).score === "number" &&
+    Number.isFinite((value as RunAdapterScore).score) &&
+    typeof (value as RunAdapterScore).summary === "string"
+  );
 }
 
 /** Structural guard for an adapter-returned feedback candidate. This mirrors run.ts's full
  * isRunFeedbackCandidate predicate, including its local evidence-path contract, so a malformed
  * candidate is dropped at the extension seam instead of poisoning the persisted bundle. */
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {
-  return isAdapterRecord(value)
-    && value.schema === "humanish.feedback-candidate.v1"
-    && typeof value.id === "string"
-    && typeof value.run_id === "string"
-    && (typeof value.stream_id === "string" || value.stream_id === undefined)
-    && typeof value.adapter_id === "string"
-    && typeof value.scenario_id === "string"
-    && typeof value.persona_id === "string"
-    && isAdapterFeedbackActor(value.actor)
-    && isAdapterFeedbackSubstrate(value.substrate)
-    && isAdapterFeedbackFailureOwner(value.failure_owner)
-    && typeof value.summary === "string"
-    && value.summary.trim().length > 0
-    && typeof value.expected === "string"
-    && typeof value.actual === "string"
-    && Array.isArray(value.evidence)
-    && value.evidence.every(isAdapterFeedbackEvidence)
-    && isAdapterRecord(value.redaction)
-    && value.redaction.status === "passed"
-    && typeof value.redaction.notes === "string"
-    && typeof value.idempotency_key === "string"
-    && isAdapterFeedbackNextState(value.proposed_next_state)
-    && Array.isArray(value.acceptance_proof)
-    && value.acceptance_proof.every((item) => typeof item === "string")
-    && (value.adapter === undefined || (
-      isAdapterRecord(value.adapter)
-      && typeof value.adapter.namespace === "string"
-      && value.adapter.namespace.trim().length > 0
-      && isAdapterRecord(value.adapter.data)
-    ));
+  return (
+    isAdapterRecord(value) &&
+    value.schema === "humanish.feedback-candidate.v1" &&
+    typeof value.id === "string" &&
+    typeof value.run_id === "string" &&
+    (typeof value.stream_id === "string" || value.stream_id === undefined) &&
+    typeof value.adapter_id === "string" &&
+    typeof value.scenario_id === "string" &&
+    typeof value.persona_id === "string" &&
+    isAdapterFeedbackActor(value.actor) &&
+    isAdapterFeedbackSubstrate(value.substrate) &&
+    isAdapterFeedbackFailureOwner(value.failure_owner) &&
+    typeof value.summary === "string" &&
+    value.summary.trim().length > 0 &&
+    typeof value.expected === "string" &&
+    typeof value.actual === "string" &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every(isAdapterFeedbackEvidence) &&
+    isAdapterRecord(value.redaction) &&
+    value.redaction.status === "passed" &&
+    typeof value.redaction.notes === "string" &&
+    typeof value.idempotency_key === "string" &&
+    isAdapterFeedbackNextState(value.proposed_next_state) &&
+    Array.isArray(value.acceptance_proof) &&
+    value.acceptance_proof.every((item) => typeof item === "string") &&
+    (value.adapter === undefined ||
+      (isAdapterRecord(value.adapter) &&
+        typeof value.adapter.namespace === "string" &&
+        value.adapter.namespace.trim().length > 0 &&
+        isAdapterRecord(value.adapter.data)))
+  );
 }
 
-function isAdapterFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
-  return isAdapterRecord(value)
-    && typeof value.path === "string"
-    && value.path.length > 0
-    && !path.isAbsolute(value.path)
-    && !value.path.includes("://")
-    && !value.path.includes("..")
-    && (
-      value.kind === "review"
-      || value.kind === "state"
-      || value.kind === "log"
-      || value.kind === "trace"
-      || value.kind === "screenshot"
-      || value.kind === "filesystem"
-    )
-    && typeof value.note === "string";
+function isAdapterFeedbackEvidence(
+  value: unknown,
+): value is RunFeedbackCandidate["evidence"][number] {
+  return (
+    isAdapterRecord(value) &&
+    typeof value.path === "string" &&
+    value.path.length > 0 &&
+    !path.isAbsolute(value.path) &&
+    !value.path.includes("://") &&
+    !value.path.includes("..") &&
+    (value.kind === "review" ||
+      value.kind === "state" ||
+      value.kind === "log" ||
+      value.kind === "trace" ||
+      value.kind === "screenshot" ||
+      value.kind === "filesystem") &&
+    typeof value.note === "string"
+  );
 }
 
 function isAdapterFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
-  return value === "codex-tui"
-    || value === "codex-exec"
-    || value === "codex-app-server"
-    || value === "computer-use"
-    || value === "synthetic-dry-run"
-    || value === "unknown";
+  return (
+    value === "codex-tui" ||
+    value === "codex-exec" ||
+    value === "codex-app-server" ||
+    value === "computer-use" ||
+    value === "synthetic-dry-run" ||
+    value === "unknown"
+  );
 }
 
 function isAdapterFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
-  return value === "e2b-desktop"
-    || value === "local-desktop"
-    || value === "e2b-terminal"
-    || value === "local-filesystem"
-    || value === "codex-app-server"
-    || value === "unknown";
+  return (
+    value === "e2b-desktop" ||
+    value === "local-desktop" ||
+    value === "e2b-terminal" ||
+    value === "local-filesystem" ||
+    value === "codex-app-server" ||
+    value === "unknown"
+  );
 }
 
-function isAdapterFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
-  return value === "harness"
-    || value === "target-app"
-    || value === "actor"
-    || value === "environment"
-    || value === "unknown";
+function isAdapterFeedbackFailureOwner(
+  value: unknown,
+): value is RunFeedbackCandidate["failure_owner"] {
+  return (
+    value === "harness" ||
+    value === "target-app" ||
+    value === "actor" ||
+    value === "environment" ||
+    value === "unknown"
+  );
 }
 
-function isAdapterFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
-  return value === "watch"
-    || value === "adapter-hardening"
-    || value === "target-app-setup"
-    || value === "actor-auth"
-    || value === "setup-quality-review"
-    || value === "study-quality-review";
+function isAdapterFeedbackNextState(
+  value: unknown,
+): value is RunFeedbackCandidate["proposed_next_state"] {
+  return (
+    value === "watch" ||
+    value === "adapter-hardening" ||
+    value === "target-app-setup" ||
+    value === "actor-auth" ||
+    value === "setup-quality-review" ||
+    value === "study-quality-review"
+  );
 }
 
 function isAdapterRecord(value: unknown): value is Record<string, unknown> {
@@ -1907,7 +2264,15 @@ async function teardownSandbox(args: {
   recordLifecycle: (event: string, message: string) => void;
   warnings: string[];
 }): Promise<TerminalLedgers["cleanup"]> {
-  const { sandboxModule, sandbox, startupCleanup, requestTimeoutMs, sanitize, recordLifecycle, warnings } = args;
+  const {
+    sandboxModule,
+    sandbox,
+    startupCleanup,
+    requestTimeoutMs,
+    sanitize,
+    recordLifecycle,
+    warnings,
+  } = args;
   if (!sandbox || !sandboxModule) {
     // create() can reject AFTER its constructor acquired a handle. The default loader retains
     // that authority and reclaims it before rejecting; the lane itself never receives its ID.
@@ -1916,24 +2281,40 @@ async function teardownSandbox(args: {
       recordLifecycle("terminal-lab.cleanup.killed", reason);
       return { killed: true, remaining: 0, reason };
     }
-    const reason = startupCleanup === "unconfirmed"
-      ? "desktop startup guard could not confirm cleanup of its acquired sandbox; provider timeout remains the backstop"
-      : "create did not return a sandbox; the lane has no acquired handle and cannot establish allocation or cleanup";
+    const reason =
+      startupCleanup === "unconfirmed"
+        ? "desktop startup guard could not confirm cleanup of its acquired sandbox; provider timeout remains the backstop"
+        : "create did not return a sandbox; the lane has no acquired handle and cannot establish allocation or cleanup";
     recordLifecycle("terminal-lab.cleanup.unconfirmed", reason);
     return { killed: false, remaining: -1, reason };
   }
   if (typeof sandboxModule.Sandbox.kill !== "function") {
-    return { killed: false, remaining: -1, reason: "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox" };
+    return {
+      killed: false,
+      remaining: -1,
+      reason:
+        "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
+    };
   }
 
   let killResult = false;
   try {
-    killResult = (await sandboxModule.Sandbox.kill(sandbox.sandboxId, { requestTimeoutMs })) === true;
+    killResult =
+      (await sandboxModule.Sandbox.kill(sandbox.sandboxId, { requestTimeoutMs })) === true;
   } catch (error) {
     const sanitizedError = sanitize(toErrorMessage(error));
-    warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${sanitizedError}`);
-    recordLifecycle("terminal-lab.cleanup.kill_error", `Sandbox ${sandbox.sandboxId} kill(id) failed: ${sanitizedError}`);
-    return { killed: false, remaining: -1, reason: `kill(id) failed: ${sanitizedError} (server-side kill-on-timeout will reclaim it)` };
+    warnings.push(
+      `Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${sanitizedError}`,
+    );
+    recordLifecycle(
+      "terminal-lab.cleanup.kill_error",
+      `Sandbox ${sandbox.sandboxId} kill(id) failed: ${sanitizedError}`,
+    );
+    return {
+      killed: false,
+      remaining: -1,
+      reason: `kill(id) failed: ${sanitizedError} (server-side kill-on-timeout will reclaim it)`,
+    };
   }
 
   // BY-ID verification only, from here down: NEVER Sandbox.list. A kill(id) call that RESOLVES is
@@ -1947,26 +2328,54 @@ async function teardownSandbox(args: {
     : "kill(id) returned false (404: the exact sandbox was already gone)";
 
   if (typeof sandboxModule.Sandbox.getInfo !== "function") {
-    recordLifecycle("terminal-lab.cleanup.killed", `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; the installed SDK has no getInfo(id) to re-verify, so kill(id)'s own result is the proof.`);
-    return { killed: true, remaining: 0, reason: `reclaimed by id; ${killNote} and the installed SDK does not expose Sandbox.getInfo to re-verify` };
+    recordLifecycle(
+      "terminal-lab.cleanup.killed",
+      `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; the installed SDK has no getInfo(id) to re-verify, so kill(id)'s own result is the proof.`,
+    );
+    return {
+      killed: true,
+      remaining: 0,
+      reason: `reclaimed by id; ${killNote} and the installed SDK does not expose Sandbox.getInfo to re-verify`,
+    };
   }
 
   try {
     const info = await sandboxModule.Sandbox.getInfo(sandbox.sandboxId, { requestTimeoutMs });
     const state = info.state ?? "unknown";
-    recordLifecycle("terminal-lab.cleanup.unconfirmed", `Sandbox ${sandbox.sandboxId} ${killNote}, but getInfo(id) still reports state=${state} (not confirmed reclaimed by id).`);
-    return { killed: true, remaining: 1, reason: `${killNote} but getInfo(id) still reports state=${state}; this sandbox's teardown is not confirmed by id` };
+    recordLifecycle(
+      "terminal-lab.cleanup.unconfirmed",
+      `Sandbox ${sandbox.sandboxId} ${killNote}, but getInfo(id) still reports state=${state} (not confirmed reclaimed by id).`,
+    );
+    return {
+      killed: true,
+      remaining: 1,
+      reason: `${killNote} but getInfo(id) still reports state=${state}; this sandbox's teardown is not confirmed by id`,
+    };
   } catch (error) {
     if (isSandboxNotFoundError(error)) {
-      recordLifecycle("terminal-lab.cleanup.verified", `Sandbox ${sandbox.sandboxId} reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.`);
-      return { killed: true, remaining: 0, reason: `reclaimed by id; getInfo(id) confirms the exact sandbox no longer exists (SandboxNotFoundError)` };
+      recordLifecycle(
+        "terminal-lab.cleanup.verified",
+        `Sandbox ${sandbox.sandboxId} reclaimed; getInfo(id) confirms it no longer exists (SandboxNotFoundError) -- by exact id, never re-listed.`,
+      );
+      return {
+        killed: true,
+        remaining: 0,
+        reason: `reclaimed by id; getInfo(id) confirms the exact sandbox no longer exists (SandboxNotFoundError)`,
+      };
     }
     // getInfo(id) failed for a reason OTHER than "not found" (e.g. a transient network error):
     // no second by-id confirmation is available, so the RESOLVED kill(id) call stands as the proof
     // of absence. Never fall back to Sandbox.list.
     const sanitizedError = sanitize(toErrorMessage(error));
-    recordLifecycle("terminal-lab.cleanup.killed", `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof.`);
-    return { killed: true, remaining: 0, reason: `reclaimed by id; ${killNote} and getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof` };
+    recordLifecycle(
+      "terminal-lab.cleanup.killed",
+      `Sandbox ${sandbox.sandboxId} reclaimed: ${killNote}; getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof.`,
+    );
+    return {
+      killed: true,
+      remaining: 0,
+      reason: `reclaimed by id; ${killNote} and getInfo(id) re-verification errored (${sanitizedError}), so kill(id)'s resolved result is the proof`,
+    };
   }
 }
 
@@ -1978,7 +2387,7 @@ async function teardownSandbox(args: {
 async function runWithWallClock<T>(
   promise: Promise<T>,
   wallClockMs: number,
-  now: () => number
+  now: () => number,
 ): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
   let timer: NodeJS.Timeout | undefined;
   const start = now();
@@ -1988,7 +2397,7 @@ async function runWithWallClock<T>(
   });
   const value = await Promise.race([
     promise.then((v) => ({ timedOut: false as const, value: v })),
-    timeout
+    timeout,
   ]);
   if (timer) clearTimeout(timer);
   // Guard against a clock that advanced past the budget even if the race resolved on the promise.
@@ -2006,12 +2415,11 @@ async function runWithWallClock<T>(
 function scrubSplitKnownValues(
   events: TerminalEventRecord[],
   knownValues: string[],
-  discardedPrefixes: Record<"stdout" | "stderr" | "combined", string>
+  discardedPrefixes: Record<"stdout" | "stderr" | "combined", string>,
 ): void {
   for (const order of ["stdout", "stderr", "combined"] as const) {
-    const chunks: Array<{ chunk: string }> = order === "combined"
-      ? [...events]
-      : events.filter((event) => event.stream === order);
+    const chunks: Array<{ chunk: string }> =
+      order === "combined" ? [...events] : events.filter((event) => event.stream === order);
     // A virtual final chunk makes a key crossing the capture cap recognizable. Edits to retained
     // events redact evidence; the raw overlap and this virtual chunk are never persisted.
     if (discardedPrefixes[order]) chunks.push({ chunk: discardedPrefixes[order] });
@@ -2025,12 +2433,14 @@ function scrubSplitKnownValues(
       });
       const text = chunks.map((event) => event.chunk).join("");
       const matches: number[] = [];
-      for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + value.length)) matches.push(at);
+      for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + value.length))
+        matches.push(at);
       for (const at of matches.reverse()) {
         let first = 0;
         while (first + 1 < starts.length && (starts[first + 1] ?? Infinity) <= at) first += 1;
         let last = first;
-        while (last + 1 < starts.length && (starts[last + 1] ?? Infinity) < at + value.length) last += 1;
+        while (last + 1 < starts.length && (starts[last + 1] ?? Infinity) < at + value.length)
+          last += 1;
         const firstChunk = chunks[first];
         const lastChunk = chunks[last];
         if (!firstChunk || !lastChunk) continue;
@@ -2048,7 +2458,14 @@ function scrubSplitKnownValues(
 }
 
 /** Build the in-sandbox `codex exec` command (non-interactive, JSON, stdin disabled by mechanism). */
-function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeAuth: LabRuntimeAuth; version: string; model?: string; reasoningEffort?: import("./reasoning-effort.js").ReasoningEffort }): string {
+function buildCodexExecCommand(args: {
+  workdir: string;
+  prompt: string;
+  runtimeAuth: LabRuntimeAuth;
+  version: string;
+  model?: string;
+  reasoningEffort?: import("./reasoning-effort.js").ReasoningEffort;
+}): string {
   // The prompt is passed via a heredoc on stdin of a wrapper? NO, stdin is DISABLED (item 7), so
   // the prompt rides as the final positional arg, shell-quoted. codex exec --json runs once and
   // exits (no interactive loop). --skip-git-repo-check: the workdir is a fresh scratch dir.
@@ -2064,9 +2481,10 @@ function buildCodexExecCommand(args: { workdir: string; prompt: string; runtimeA
   // The egress transform protects only the default OpenAI host. Pin the effective built-in
   // provider/base URL above config-file settings so setup-written custom endpoints cannot make
   // this invocation silently claim protection for another provider. openai-env is unchanged.
-  const providerConfig = args.runtimeAuth === "openai-egress"
-    ? ` -c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`
-    : "";
+  const providerConfig =
+    args.runtimeAuth === "openai-egress"
+      ? ` -c 'model_provider="openai"' -c 'openai_base_url="https://api.openai.com/v1"'`
+      : "";
   return `cd ${args.workdir} && ${buildRuntimeExecPrefix(args.version, args.model, args.reasoningEffort)} --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check${providerConfig} --json ${quotedPrompt}`;
 }
 
@@ -2085,7 +2503,7 @@ function composeLivePrompt(args: {
     `mission: ${args.mission}`,
     "",
     "Work ONLY from the public surfaces above. Do NOT clone or inspect any private repository.",
-    `When finished, print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${args.verdictNonce} where <status> is passed, blocked, or failed.`
+    `When finished, print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${args.verdictNonce} where <status> is passed, blocked, or failed.`,
   ].join("\n");
 }
 
@@ -2126,19 +2544,29 @@ function buildTerminalActorTrace(args: {
       title: `${entry.label} (${entry.envNames.join(",") || "no command-scoped env"})`,
       command: {
         ...(entry.exitCode === undefined ? {} : { exitCode: entry.exitCode }),
-        outputTail: args.transcriptTail
-      }
+        outputTail: args.transcriptTail,
+      },
     })),
     // One message item carrying the (already-redacted) transcript tail so the trace shows the agent
     // narrated SOMETHING — the engagement signal the no-engagement guard reads.
     ...(args.terminalEvents.length > 0
-      ? [{ id: "message-001", kind: "message", lifecycle: "completed", title: "agent terminal output", text: args.transcriptTail } as ActorTraceItem]
-      : [])
+      ? [
+          {
+            id: "message-001",
+            kind: "message",
+            lifecycle: "completed",
+            title: "agent terminal output",
+            text: args.transcriptTail,
+          } as ActorTraceItem,
+        ]
+      : []),
   ];
   return {
     schema: ACTOR_TRACE_SCHEMA,
     provider: "codex",
-    ...(args.runtime.versionStatus === "verified" ? { providerVersion: args.runtime.observedVersion } : {}),
+    ...(args.runtime.versionStatus === "verified"
+      ? { providerVersion: args.runtime.observedVersion }
+      : {}),
     runtime: args.runtime,
     protocol: "terminal-exec",
     lane: "terminal",
@@ -2146,7 +2574,8 @@ function buildTerminalActorTrace(args: {
     redaction: {
       status: "passed",
       screenshots: "n/a",
-      notes: "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane."
+      notes:
+        "Terminal exec output captured via commands.run onStdout/onStderr, scrubbed (literal known values) then redacted (shape patterns) AT THE SOURCE before persisting; no screenshots on this lane.",
     },
     startedAt: args.createdAt,
     completedAt: args.completedAt,
@@ -2161,19 +2590,25 @@ function buildTerminalActorTrace(args: {
       // Unlike the legacy transcript message/actions counts, this establishes
       // actual runtime item activity. Stderr and bootstrap commands never count.
       // Read the full retained stdout: its early items may no longer be in the tail.
-      runtimeParticipantItems: countTerminalParticipantItems(normalizeLocalActorTranscript(
-        args.terminalEvents.filter(event => event.stream === "stdout").map(event => event.chunk).join("")
-      )),
+      runtimeParticipantItems: countTerminalParticipantItems(
+        normalizeLocalActorTranscript(
+          args.terminalEvents
+            .filter((event) => event.stream === "stdout")
+            .map((event) => event.chunk)
+            .join(""),
+        ),
+      ),
       // actions == executed commands; messages == 1 when the agent produced any output. The
       // no-engagement guard (run.ts) reads these: a real run bumps them, a no-op is caught.
       actions: args.commandLog.length,
       messages: args.terminalEvents.length > 0 ? 1 : 0,
-      terminalEvents: args.terminalEvents.length
+      terminalEvents: args.terminalEvents.length,
     },
     items,
-    capabilities: args.runtimeAuth === "openai-egress"
-      ? { ...TERMINAL_AGENT_CAPABILITIES, keyPlacement: "external" }
-      : TERMINAL_AGENT_CAPABILITIES
+    capabilities:
+      args.runtimeAuth === "openai-egress"
+        ? { ...TERMINAL_AGENT_CAPABILITIES, keyPlacement: "external" }
+        : TERMINAL_AGENT_CAPABILITIES,
   };
 }
 
@@ -2208,7 +2643,8 @@ export function buildTerminalProductBundle(args: {
   runId: string;
   source: RunBundle["source"];
 }): RunBundle {
-  const reason = "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
+  const reason =
+    "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
 
   const simulation: RunSimulation = {
     id: "sim-001",
@@ -2223,7 +2659,7 @@ export function buildTerminalProductBundle(args: {
     summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
     streamIds: ["stream-001"],
     startedAt: args.createdAt,
-    updatedAt: args.createdAt
+    updatedAt: args.createdAt,
   };
 
   // The terminal stream is a CONTRACT PLACEHOLDER on the dry-run path: stdin is disabled and no
@@ -2244,17 +2680,17 @@ export function buildTerminalProductBundle(args: {
       title: `${args.actorId} exec (stdin ${args.stdin})`,
       format: "plain",
       stdin: args.stdin,
-      tail: ""
+      tail: "",
     },
     ui: {
       intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
-      state: reason
+      state: reason,
     },
     artifacts: [
       { label: "run bundle", path: "run.json", kind: "bundle" as const },
       { label: "review", path: "review.md", kind: "review" as const },
-      { label: "events", path: "events.ndjson", kind: "events" as const }
-    ]
+      { label: "events", path: "events.ndjson", kind: "events" as const },
+    ],
   };
 
   const capsText = describeCaps(args.caps);
@@ -2264,7 +2700,7 @@ export function buildTerminalProductBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.run.created",
-      message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`
+      message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
     },
     {
       id: "event-001-subject",
@@ -2276,7 +2712,7 @@ export function buildTerminalProductBundle(args: {
       // composed-prompt digest. Public surfaces are recorded (they are public by declaration).
       message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest ${args.persona.promptDigest}.`,
       simId: "sim-001",
-      streamId: "stream-001"
+      streamId: "stream-001",
     },
     {
       id: "event-002-credentials",
@@ -2287,7 +2723,7 @@ export function buildTerminalProductBundle(args: {
       // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
       message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
       simId: "sim-001",
-      streamId: "stream-001"
+      streamId: "stream-001",
     },
     {
       id: "event-003-caps",
@@ -2296,17 +2732,18 @@ export function buildTerminalProductBundle(args: {
       type: "terminal-lab.caps.declared",
       message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
       simId: "sim-001",
-      streamId: "stream-001"
+      streamId: "stream-001",
     },
     {
       id: "event-004-contract",
       at: args.createdAt,
       level: "info",
       type: "terminal-lab.contract.ready",
-      message: "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+      message:
+        "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
       simId: "sim-001",
-      streamId: "stream-001"
-    }
+      streamId: "stream-001",
+    },
   ];
 
   const review: ReviewSummary = {
@@ -2315,8 +2752,8 @@ export function buildTerminalProductBundle(args: {
     summary: reason,
     gaps: [
       "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
-      "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
-    ]
+      "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.",
+    ],
   };
 
   return {
@@ -2333,7 +2770,7 @@ export function buildTerminalProductBundle(args: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
     scenario: {
       id: `terminal-${args.labId}`,
@@ -2343,31 +2780,32 @@ export function buildTerminalProductBundle(args: {
       // trusts that). The full composed prompt is bound by digest, not text.
       goal: redactText(args.mission),
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
     lifecycle: [
       {
         at: args.createdAt,
         event: "terminal-lab.run.created",
-        message: `Created terminal-product lab run with one in-sandbox agent lane (actor ${args.actorId}, product ${args.productName}).`
-      }
+        message: `Created terminal-product lab run with one in-sandbox agent lane (actor ${args.actorId}, product ${args.productName}).`,
+      },
     ],
     simulations: [simulation],
     streams: [stream],
     events,
     redaction: {
       status: "passed",
-      notes: "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence."
+      notes:
+        "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 }
 
@@ -2406,13 +2844,14 @@ export function buildLiveTerminalProductBundle(args: {
   sessionError?: string;
   sessionReason: string;
 }): RunBundle {
-  const simStatus: RunSimulationStatus = args.trace.status === "passed"
-    ? "passed"
-    : args.trace.status === "blocked"
-      ? "blocked"
-      : args.trace.status === "timed_out"
-        ? "timed_out"
-        : "failed";
+  const simStatus: RunSimulationStatus =
+    args.trace.status === "passed"
+      ? "passed"
+      : args.trace.status === "blocked"
+        ? "blocked"
+        : args.trace.status === "timed_out"
+          ? "timed_out"
+          : "failed";
   const messageItem = args.trace.items.find((item) => item.kind === "message");
   const tail = (messageItem?.text ?? args.trace.reason).slice(0, 2000);
 
@@ -2429,7 +2868,7 @@ export function buildLiveTerminalProductBundle(args: {
     summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
     streamIds: ["stream-001"],
     startedAt: args.createdAt,
-    updatedAt: args.trace.completedAt
+    updatedAt: args.trace.completedAt,
   };
 
   // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
@@ -2448,11 +2887,11 @@ export function buildLiveTerminalProductBundle(args: {
       title: `${args.actorId} exec (stdin disabled)`,
       format: "plain",
       stdin: "disabled",
-      tail
+      tail,
     },
     ui: {
       intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
-      state: args.sessionReason
+      state: args.sessionReason,
     },
     actor: args.trace,
     artifacts: [
@@ -2462,19 +2901,24 @@ export function buildLiveTerminalProductBundle(args: {
       { label: "actor trace", path: "actor.json", kind: "trace" as const },
       { label: "terminal event stream", path: TERMINAL_EVENTS_ARTIFACT, kind: "log" as const },
       { label: "terminal transcript", path: TERMINAL_TRANSCRIPT_ARTIFACT, kind: "log" as const },
-      { label: "terminal ledgers", path: TERMINAL_LEDGERS_ARTIFACT, kind: "log" as const }
-    ]
+      { label: "terminal ledgers", path: TERMINAL_LEDGERS_ARTIFACT, kind: "log" as const },
+    ],
   };
 
   // Substrate-lifecycle ledger -> bundle events (each already sanitized when recorded).
   const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
     id: `event-${String(index).padStart(3, "0")}-${record.event}`,
     at: record.at,
-    level: record.event.includes("error") || record.event.includes("timed_out") || record.event.includes("exceeded") ? "warn" : "info",
+    level:
+      record.event.includes("error") ||
+      record.event.includes("timed_out") ||
+      record.event.includes("exceeded")
+        ? "warn"
+        : "info",
     type: record.event,
     message: record.message,
     simId: "sim-001",
-    streamId: "stream-001"
+    streamId: "stream-001",
   }));
 
   // Surface the no-spend proof as a first-class bundle event so the Observer/review can SHOW it.
@@ -2488,28 +2932,33 @@ export function buildLiveTerminalProductBundle(args: {
     type: "terminal-lab.no-spend.proof",
     message: noSpend.statement,
     simId: "sim-001",
-    streamId: "stream-001"
+    streamId: "stream-001",
   });
 
-  const verdict: ReviewSummary["verdict"] = args.trace.status === "passed"
-    ? "pass"
-    : args.trace.status === "blocked"
-      ? "blocked"
-      : args.trace.status === "timed_out"
-        ? "timed_out"
-        : "fail";
+  const verdict: ReviewSummary["verdict"] =
+    args.trace.status === "passed"
+      ? "pass"
+      : args.trace.status === "blocked"
+        ? "blocked"
+        : args.trace.status === "timed_out"
+          ? "timed_out"
+          : "fail";
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
     verdict,
     summary: args.sessionReason,
     gaps: [
-      ...(args.trace.status === "passed" ? [] : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
+      ...(args.trace.status === "passed"
+        ? []
+        : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
       // Honesty gap: the no-spend proof always declares which spend lines it could NOT measure, so a
       // green run never silently over-claims a fully-proven $0.
       ...(noSpend.unmeasuredLines.length > 0
-        ? [`No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).`]
-        : [])
-    ]
+        ? [
+            `No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).`,
+          ]
+        : []),
+    ],
   };
 
   return {
@@ -2526,32 +2975,36 @@ export function buildLiveTerminalProductBundle(args: {
       id: args.persona.id,
       name: `Autonomous terminal agent (${args.persona.id})`,
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
     scenario: {
       id: `terminal-${args.labId}`,
       title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
       goal: redactText(args.mission),
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
-    lifecycle: args.ledgers.lifecycle.map((record) => ({ at: record.at, event: record.event, message: record.message })),
+    lifecycle: args.ledgers.lifecycle.map((record) => ({
+      at: record.at,
+      event: record.event,
+      message: record.message,
+    })),
     simulations: [simulation],
     streams: [stream],
     events: lifecycleEvents,
     redaction: {
       status: "passed",
-      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`
+      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`,
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 }
 
@@ -2570,18 +3023,25 @@ function defaultMission(productName: string): string {
 }
 
 /** Compose the full prompt the agent would run. Bound to evidence by DIGEST only. */
-function composePrompt(args: { mission: string; personaLine: string; productName: string; publicSurfaces: string[] }): string {
+function composePrompt(args: {
+  mission: string;
+  personaLine: string;
+  productName: string;
+  publicSurfaces: string[];
+}): string {
   return [
     args.personaLine,
     `product: ${args.productName}`,
     `public-surfaces: ${args.publicSurfaces.join(" ")}`,
-    `mission: ${args.mission}`
+    `mission: ${args.mission}`,
   ].join("\n");
 }
 
 function renderTerminalReviewMarkdown(bundle: RunBundle): string {
   const subject = bundle.events.find((event) => event.type === "terminal-lab.subject.declared");
-  const credentials = bundle.events.find((event) => event.type === "terminal-lab.credentials.declared");
+  const credentials = bundle.events.find(
+    (event) => event.type === "terminal-lab.credentials.declared",
+  );
   const caps = bundle.events.find((event) => event.type === "terminal-lab.caps.declared");
   return [
     `# ${bundle.scenario.title}`,
@@ -2594,8 +3054,10 @@ function renderTerminalReviewMarkdown(bundle: RunBundle): string {
     ...(subject ? [`- subject: ${subject.message}`] : []),
     ...(credentials ? [`- credentials: ${credentials.message}`] : []),
     ...(caps ? [`- caps: ${caps.message}`] : []),
-    ...(bundle.review.gaps.length > 0 ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)] : []),
-    ""
+    ...(bundle.review.gaps.length > 0
+      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
+      : []),
+    "",
   ].join("\n");
 }
 

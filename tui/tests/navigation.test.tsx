@@ -23,30 +23,62 @@ async function expectGolden(name: string, actual: string): Promise<void> {
     return;
   }
   const expected = await readFile(file, "utf8").catch(() => {
-    throw new Error(`missing golden ${file}. Create it with UPDATE_TUI_GOLDENS=1 and read the diff.`);
+    throw new Error(
+      `missing golden ${file}. Create it with UPDATE_TUI_GOLDENS=1 and read the diff.`,
+    );
   });
   expect(actual).toBe(expected.replace(/\n$/, ""));
 }
 
-const options = (): TuiOptions =>
-  ({
-    cwd: "/projects/acme-app",
-    version: { cli: "9.9.9" },
-    capabilities: {
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
-      startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
-      readLaunchLog: async () => "",
-      readRunDetail: async () => null,
-      readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
-      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" })
-    },
-    stdin: process.stdin,
-    stdout: process.stdout
-  });
+const options = (): TuiOptions => ({
+  cwd: "/projects/acme-app",
+  version: { cli: "9.9.9" },
+  capabilities: {
+    readRunIndex: async () => ({
+      schema: "humanish.run-index.v1",
+      cwd: "/projects/acme-app",
+      runs: RUNS,
+      unreadable: [],
+    }),
+    listLabs: async () => ({
+      schema: "humanish.lab-list.v1",
+      ok: true,
+      cwd: "/projects/acme-app",
+      labs: LABS,
+      warnings: [],
+    }),
+    startRun: async () => ({ ok: true, run: { pid: 4242, logPath: "/tmp/x.log", command: [] } }),
+    readLaunchLog: async () => "",
+    readRunDetail: async () => null,
+    readLabSummary: async () => null,
+    readProjectState: () => ({
+      schema: "humanish.tui-project.v1" as const,
+      initialized: true,
+      hasRuntime: true,
+    }),
+    openObserver: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "opened",
+    }),
+    reclaimRun: async () => ({
+      schema: "humanish.reclaim-result.v1" as const,
+      ok: true,
+      cwd: "/x",
+      runId: "r",
+      receiptCount: 0,
+      outcomes: [],
+      warnings: [],
+    }),
+    stopRun: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "asked the run to stop",
+    }),
+  },
+  stdin: process.stdin,
+  stdout: process.stdout,
+});
 
 /**
  * Press a key until the screen shows what the test is after.
@@ -58,7 +90,7 @@ async function pressUntil(
   surface: Awaited<ReturnType<typeof openSurface>>,
   key: string,
   predicate: (frame: string) => boolean,
-  limit = 8
+  limit = 8,
 ): Promise<string> {
   // Waits for the frame the predicate wants BEFORE deciding to press again. Pressing and then
   // testing whatever frame came back overshoots, because Ink's first frame after a key can predate
@@ -71,13 +103,15 @@ async function pressUntil(
       last = error instanceof Error ? error.message : String(error);
     }
   }
-  throw new Error(`pressUntil: never reached the wanted row after ${limit} presses. Last: ${last.slice(0, 400)}`);
+  throw new Error(
+    `pressUntil: never reached the wanted row after ${limit} presses. Last: ${last.slice(0, 400)}`,
+  );
 }
 
 async function openSurface(columns = 80) {
   return renderToText(<App options={options()} now={NOW} tick={0} />, {
     columns,
-    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
+    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project"),
   });
 }
 
@@ -99,7 +133,10 @@ describe("moving through the surface", () => {
   it("Escape returns to the labs list, with the selection where it was left", async () => {
     const surface = await openSurface();
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
-    const lab = await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run") || frame.includes("no manifest"));
+    const lab = await surface.press(
+      KEY.enter,
+      (frame) => frame.includes("❯ Start a dry run") || frame.includes("no manifest"),
+    );
     expect(lab).toContain("0/1 reached the goal");
 
     const back = await surface.press(KEY.escape, (frame) => frame.includes("never-run-lab"));
@@ -162,7 +199,10 @@ describe("moving through the surface", () => {
     await surface.press(KEY.down, (frame) => /❯[^\n]*diagram-editor/.test(frame));
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     await pressUntil(surface, KEY.down, (frame) => /❯[^\n]*0\/1 reached the goal/.test(frame));
-    const run = await surface.press(KEY.enter, (frame) => frame.includes("cost declared absent") || frame.includes("Run again"));
+    const run = await surface.press(
+      KEY.enter,
+      (frame) => frame.includes("cost declared absent") || frame.includes("Run again"),
+    );
     surface.unmount();
 
     // `null` is a DECLARED absent cost. Rendering it as $0.00 would claim the run was free.

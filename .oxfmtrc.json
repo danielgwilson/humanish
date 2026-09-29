@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "site/public/**",
+    "site/registry/css/**",
+    "site/content/docs/cli.mdx",
+    "runtime/**",
+    "bench/**",
+    "fixtures/**",
+    "adapters/fixtures/**",
+    "humanish/fixtures/**",
+    "scripts/fixtures/**",
+    "tests/fixtures/**",
+    "tests/golden/**",
+    "docs/goals/**/receipts/**",
+    "observer/index.html"
+  ]
+}

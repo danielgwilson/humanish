@@ -6,25 +6,45 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  type ActorCompletionReason,
+  type ActorStatus,
+  type ActorTrace,
+} from "../src/actor-contract.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import type { CuaLoopResult, CuaTurn } from "../src/computer-use.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
-  E2BDesktopSandbox
+  E2BDesktopSandbox,
 } from "../src/e2b-desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig, type LabDesktopBrowser } from "../src/lab-config.js";
+import {
+  LAB_CONFIG_SCHEMA,
+  parseLabConfig,
+  type LabConfig,
+  type LabDesktopBrowser,
+} from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import {
   buildSeatBrowserTerminationCommand,
   runSharedWorldLab,
   seatProfilePkillPattern,
-  type SharedWorldLabHooks
+  type SharedWorldLabHooks,
 } from "../src/shared-world-lab.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
+import type {
+  BrowserLabScoringContext,
+  RunAdapterScore,
+  RunBundle,
+  SubjectPhaseEvent,
+} from "../src/index.js";
 import { verifyRun } from "../src/run.js";
-import { createOpenAiResponsesProvider, DEFAULT_OPENAI_CU_REASONING_EFFORT, OPENAI_RESPONSES_CU_CAPABILITIES, parseOpenAiResponse } from "../src/openai-responses-cu.js";
+import {
+  createOpenAiResponsesProvider,
+  DEFAULT_OPENAI_CU_REASONING_EFFORT,
+  OPENAI_RESPONSES_CU_CAPABILITIES,
+  parseOpenAiResponse,
+} from "../src/openai-responses-cu.js";
 import { estimateActorCost } from "../src/pricing.js";
 import { readRunDetail } from "../src/run-detail.js";
 import { actorEnding } from "../src/actor-stop-cause.js";
@@ -49,7 +69,9 @@ const FAKE_BROWSER_WINDOW = { x: 0, y: 0, width: 1440, height: 950 } as const;
 // window so the sequential shared-world contract cannot regress to copying requested resolution.
 const FAKE_CSS_VIEWPORT = { width: 1440, height: 817, deviceScaleFactor: 1 } as const;
 
-function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string; exitCode?: number } | undefined): FakeSandbox {
+function makeFakeSandbox(
+  commandHandler: (command: string) => { stdout?: string; exitCode?: number } | undefined,
+): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
   const sandbox = {
     calls,
@@ -58,7 +80,7 @@ function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string;
       run: async (command: string) => {
         calls.push(["commands.run", command]);
         return commandHandler(command) ?? { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       // Raw data (never String()-coerced): existing callers write string script content
@@ -67,7 +89,7 @@ function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string;
       write: async (filePath: string, data: string | ArrayBuffer) => {
         calls.push(["files.write", filePath, data]);
         return undefined;
-      }
+      },
     },
     launch: async () => undefined,
     open: async () => undefined,
@@ -80,13 +102,18 @@ function makeFakeSandbox(commandHandler: (command: string) => { stdout?: string;
     stream: {
       getAuthKey: () => "fake-auth-key",
       getUrl: () => "https://stream.invalid/fake-auth-key",
-      start: async () => undefined
-    }
+      start: async () => undefined,
+    },
   };
   return sandbox as unknown as FakeSandbox;
 }
 
-function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; created: E2BDesktopCreateOptions[]; templates: (string | undefined)[]; killed: string[] } {
+function makeFakeModule(sandbox: FakeSandbox): {
+  module: E2BDesktopModule;
+  created: E2BDesktopCreateOptions[];
+  templates: (string | undefined)[];
+  killed: string[];
+} {
   const created: E2BDesktopCreateOptions[] = [];
   // Parallel to `created`: the custom template each create() got (undefined == byte-stable default).
   const templates: (string | undefined)[] = [];
@@ -94,9 +121,13 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
   const module: E2BDesktopModule = {
     Sandbox: {
       // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
-      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+      create: async (
+        templateOrOptions: string | E2BDesktopCreateOptions,
+        maybeOptions?: E2BDesktopCreateOptions,
+      ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
-        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        const createOptions =
+          typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         templates.push(template);
         created.push(createOptions);
         return sandbox;
@@ -104,9 +135,9 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
       kill: async (sandboxId) => {
         killed.push(sandboxId);
         return true;
-      }
+      },
       // NOTE: NO `list` method — enumerate-and-kill is impossible here by construction.
-    }
+    },
   };
   return { module, created, templates, killed };
 }
@@ -114,14 +145,19 @@ function makeFakeModule(sandbox: FakeSandbox): { module: E2BDesktopModule; creat
 /** A scripted command handler whose checkpoint output reflects the shared world version. */
 function makeCommandHandler(
   state: { worldVersion: number },
-  options: { cdpGeometry?: "measured" | "unavailable" } = {}
+  options: { cdpGeometry?: "measured" | "unavailable" } = {},
 ): (command: string) => { stdout?: string; exitCode?: number } | undefined {
   return (command: string): { stdout?: string; exitCode?: number } | undefined => {
     if (command.includes("xdpyinfo") && command.includes("dimensions")) {
-      return { stdout: `  dimensions:    ${FAKE_SCREEN_GEOMETRY.width}x${FAKE_SCREEN_GEOMETRY.height} pixels (381x251 millimeters)\n`, exitCode: 0 };
+      return {
+        stdout: `  dimensions:    ${FAKE_SCREEN_GEOMETRY.width}x${FAKE_SCREEN_GEOMETRY.height} pixels (381x251 millimeters)\n`,
+        exitCode: 0,
+      };
     }
-    if (command.includes("find_chrome_window()")) return { stdout: "WINDOW_ID=10485761\n", exitCode: 0 };
-    if (command.includes("find_firefox_window()")) return { stdout: "WINDOW_ID=20971522\n", exitCode: 0 };
+    if (command.includes("find_chrome_window()"))
+      return { stdout: "WINDOW_ID=10485761\n", exitCode: 0 };
+    if (command.includes("find_firefox_window()"))
+      return { stdout: "WINDOW_ID=20971522\n", exitCode: 0 };
     if (command.includes("xwininfo -id")) {
       return {
         stdout: [
@@ -129,22 +165,26 @@ function makeCommandHandler(
           `Absolute upper-left Y: ${FAKE_BROWSER_WINDOW.y}`,
           `Width: ${FAKE_BROWSER_WINDOW.width}`,
           `Height: ${FAKE_BROWSER_WINDOW.height}`,
-          "Map State: IsViewable"
+          "Map State: IsViewable",
         ].join("\n"),
-        exitCode: 0
+        exitCode: 0,
       };
     }
     if (command.includes("browserWindow: { x: window.screenX")) {
       if (options.cdpGeometry === "unavailable") return { stdout: "{}", exitCode: 0 };
       return {
         stdout: JSON.stringify({ browserWindow: FAKE_BROWSER_WINDOW, viewport: FAKE_CSS_VIEWPORT }),
-        exitCode: 0
+        exitCode: 0,
       };
     }
-    if (command.includes("browser_preference='firefox'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
-    if (command.includes("browser_preference='chrome'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
-    if (command.includes("browser_preference='chromium'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
-    if (command.includes("browser_preference='default'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='firefox'"))
+      return { stdout: "HUMANISH_BROWSER_RESOLVED=firefox\n", exitCode: 0 };
+    if (command.includes("browser_preference='chrome'"))
+      return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
+    if (command.includes("browser_preference='chromium'"))
+      return { stdout: "HUMANISH_BROWSER_RESOLVED=chromium\n", exitCode: 0 };
+    if (command.includes("browser_preference='default'"))
+      return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n", exitCode: 0 };
     if (command.includes("/status")) return { stdout: "0" }; // every detached step exits 0
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" }; // commit SHA
     if (command.includes("curl")) return { stdout: "READY" }; // readiness probe
@@ -180,8 +220,27 @@ function makeTrace(args: {
     ids: {},
     counts: { actions: args.actions, messages: args.messages, screenshots: 0 },
     items: [
-      ...(args.messages > 0 ? [{ id: "i-msg", kind: "message" as const, lifecycle: "completed" as const, title: "message", text: "did my role's task" }] : []),
-      ...(args.actions > 0 ? [{ id: "i-act", kind: "ui_action" as const, lifecycle: "completed" as const, title: "click" }] : [])
+      ...(args.messages > 0
+        ? [
+            {
+              id: "i-msg",
+              kind: "message" as const,
+              lifecycle: "completed" as const,
+              title: "message",
+              text: "did my role's task",
+            },
+          ]
+        : []),
+      ...(args.actions > 0
+        ? [
+            {
+              id: "i-act",
+              kind: "ui_action" as const,
+              lifecycle: "completed" as const,
+              title: "click",
+            },
+          ]
+        : []),
     ],
     capabilities: {
       headless: true,
@@ -191,8 +250,8 @@ function makeTrace(args: {
       byoModel: false,
       preGrantableApprovals: false,
       inProcessTools: false,
-      license: "proprietary"
-    }
+      license: "proprietary",
+    },
   };
 }
 
@@ -200,7 +259,18 @@ function makeTrace(args: {
  *  engaged trace — unless a per-call override (harness error / mission failure / throw) applies. */
 function makeRunSession(
   state: { worldVersion: number },
-  override?: (index: number, options: CuaActorSessionOptions) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason; actions?: number; messages?: number } | undefined
+  override?: (
+    index: number,
+    options: CuaActorSessionOptions,
+  ) =>
+    | {
+        throwMessage?: string;
+        status?: ActorStatus;
+        completionReason?: ActorCompletionReason;
+        actions?: number;
+        messages?: number;
+      }
+    | undefined,
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
   let index = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -217,16 +287,20 @@ function makeRunSession(
       status,
       completionReason,
       actions: o?.actions ?? 1,
-      messages: o?.messages ?? 1
+      messages: o?.messages ?? 1,
     });
     return { status, completionReason, reason: trace.reason, trace };
   };
 }
 
-function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: string[]; template?: string }): LabConfig {
+function sharedWorldConfig(overrides?: {
+  browser?: LabDesktopBrowser;
+  env?: string[];
+  template?: string;
+}): LabConfig {
   const desktop = {
     ...(overrides?.browser === undefined ? {} : { browser: overrides.browser }),
-    ...(overrides?.template === undefined ? {} : { template: overrides.template })
+    ...(overrides?.template === undefined ? {} : { template: overrides.template }),
   };
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
@@ -242,19 +316,29 @@ function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: stri
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [
           { name: "notes-count", command: "psql query notes" },
-          { name: "reviews-count", command: "psql query reviews" }
-        ]
-      }
+          { name: "reviews-count", command: "psql query reviews" },
+        ],
+      },
     },
     actors: [
       {
         type: "openai-computer-use",
         mission: "Use the shared app.",
         lanes: [
-          { id: "role-author", persona: "author", entry: "/compose", instruction: "Create a note." },
-          { id: "role-reviewer", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
-        ]
-      }
+          {
+            id: "role-author",
+            persona: "author",
+            entry: "/compose",
+            instruction: "Create a note.",
+          },
+          {
+            id: "role-reviewer",
+            persona: "reviewer",
+            entry: "/inbox",
+            instruction: "Review the note.",
+          },
+        ],
+      },
     ],
     execution: {
       target: "e2b-desktop",
@@ -262,15 +346,18 @@ function sharedWorldConfig(overrides?: { browser?: LabDesktopBrowser; env?: stri
       // Sequential PoC by explicit choice: since #350 an omitted concurrency runs all seats at
       // once (routing to the CONCURRENT substrate); this suite proves the turn-taking route.
       concurrency: 1,
-      ...(Object.keys(desktop).length === 0 ? {} : { desktop })
+      ...(Object.keys(desktop).length === 0 ? {} : { desktop }),
     },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
 
-function baseHooks(state: { worldVersion: number }, options: { cdpGeometry?: "measured" | "unavailable" } = {}): {
+function baseHooks(
+  state: { worldVersion: number },
+  options: { cdpGeometry?: "measured" | "unavailable" } = {},
+): {
   hooks: SharedWorldLabHooks;
   created: E2BDesktopCreateOptions[];
   templates: (string | undefined)[];
@@ -282,13 +369,19 @@ function baseHooks(state: { worldVersion: number }, options: { cdpGeometry?: "me
   const { module, created, templates, killed } = makeFakeModule(sandbox);
   const phaseEvents: SubjectPhaseEvent[] = [];
   const hooks: SharedWorldLabHooks = {
-    env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+    env: {
+      OPENAI_API_KEY: "test-openai-key",
+      E2B_API_KEY: "test-e2b-key",
+      DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
+    },
     loadDesktopModule: async () => module,
     runSession: makeRunSession(state),
     detachedTimers: { now: () => 0, sleep: async () => {} },
     // Captures instead of writing to real stderr (the call-site default when this is absent);
     // also lets tests assert the ordered phase-boundary sequence.
-    onPhase: (event) => { phaseEvents.push(event); }
+    onPhase: (event) => {
+      phaseEvents.push(event);
+    },
   };
   return { hooks, created, templates, killed, sandbox, phaseEvents };
 }
@@ -304,8 +397,8 @@ function sharedWorldFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     summary: `${ctx.backend} adapter found no product-level shared-world success evidence.`,
     data: {
       backend: ctx.backend,
-      laneCount: ctx.laneCount
-    }
+      laneCount: ctx.laneCount,
+    },
   };
 }
 
@@ -321,11 +414,25 @@ describe("sequential shared-world model-spend caps (#766)", () => {
   // Usage and action parsing come from the kept Sept 5 wire fixture. Completion and missing-
   // usage cases below are explicit neutral-loop mutations, not additional provider captures.
   async function capturedTurn(): Promise<CuaTurn> {
-    const raw = JSON.parse(await readFile(new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url), "utf8"));
+    const raw = JSON.parse(
+      await readFile(
+        new URL("./fixtures/openai-closing-report/pending-computer-call.json", import.meta.url),
+        "utf8",
+      ),
+    );
     return parseOpenAiResponse(raw).turn;
   }
-  const finish = (turn: CuaTurn): CuaTurn => ({ ...turn, actions: [], done: true, message: "Finished the synthetic task." });
-  async function exercise(config: LabConfig, turns: Array<Array<CuaTurn | Error>>, closing?: CuaTurn) {
+  const finish = (turn: CuaTurn): CuaTurn => ({
+    ...turn,
+    actions: [],
+    done: true,
+    message: "Finished the synthetic task.",
+  });
+  async function exercise(
+    config: LabConfig,
+    turns: Array<Array<CuaTurn | Error>>,
+    closing?: CuaTurn,
+  ) {
     const state = { worldVersion: 0 };
     const setup = baseHooks(state);
     const calls: number[] = [];
@@ -333,11 +440,16 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const debriefs: number[] = [];
     setup.hooks.runSession = async (options) => {
       const seat = calls.length;
-      calls.push(0); actions.push(0); debriefs.push(0);
+      calls.push(0);
+      actions.push(0);
+      debriefs.push(0);
       let observation = 0;
-      return runCuaActorSession({ ...options,
+      return runCuaActorSession({
+        ...options,
         provider: {
-          id: "captured-usage-fixture", version: "gpt-5.6-sol", capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+          id: "captured-usage-fixture",
+          version: "gpt-5.6-sol",
+          capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
           nextTurn: async () => {
             const next = turns[seat]?.[calls[seat]!];
             calls[seat]! += 1;
@@ -349,16 +461,24 @@ describe("sequential shared-world model-spend caps (#766)", () => {
             debriefs[seat]! += 1;
             if (!closing) throw new Error("Unexpected debrief dispatch");
             return structuredClone(closing);
-          }
+          },
         },
         executor: {
-          observe: async () => ({ stateSignature: `state-${observation++}`, text: actions[seat]! > 0 ? "after-action" : "before-action" }),
-          execute: async () => { actions[seat]! += 1; state.worldVersion += 1; }
-        }
+          observe: async () => ({
+            stateSignature: `state-${observation++}`,
+            text: actions[seat]! > 0 ? "after-action" : "before-action",
+          }),
+          execute: async () => {
+            actions[seat]! += 1;
+            state.worldVersion += 1;
+          },
+        },
       });
     };
     const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks: setup.hooks });
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     return { result, bundle, calls, actions, debriefs, ...setup };
   }
 
@@ -367,23 +487,41 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
     const config = sharedWorldConfig();
     config.execution!.caps = { maxUsd: unit * 1.5 };
-    const proof = await exercise(config, [[turn, turn], [turn, turn]]);
+    const proof = await exercise(config, [
+      [turn, turn],
+      [turn, turn],
+    ]);
     expect(proof.calls).toEqual([2, 2]);
     expect(proof.actions).toEqual([turn.actions.length, turn.actions.length]);
     expect(proof.debriefs).toEqual([0, 0]);
-    expect(proof.result.roles.map(role => role.session?.completionReason)).toEqual(["budget_reached", "budget_reached"]);
+    expect(proof.result.roles.map((role) => role.session?.completionReason)).toEqual([
+      "budget_reached",
+      "budget_reached",
+    ]);
     for (const stream of proof.bundle.streams) {
       expect(stream.actor).toMatchObject({ status: "incomplete", stopCause: "spend_limit" });
       expect(stream.actor?.reason).toContain("after productive activity");
-      expect(stream.actor?.estimatedCost).toMatchObject({ estimatedCostUsd: 0.033953, ratesAsOf: "2026-09-03" });
-      expect(actorEnding(stream.actor)).toEqual({ cause: "spend_limit", label: "estimated spend limit" });
+      expect(stream.actor?.estimatedCost).toMatchObject({
+        estimatedCostUsd: 0.033953,
+        ratesAsOf: "2026-09-03",
+      });
+      expect(actorEnding(stream.actor)).toEqual({
+        cause: "spend_limit",
+        label: "estimated spend limit",
+      });
     }
     expect(proof.bundle.cost).toMatchObject({ fullyEstimated: false, estimatedTotalUsd: 0.067906 });
-    expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ kind: "desktop-minutes", estimatedCostUsd: null, reason: "no_duration" }));
+    expect(proof.bundle.cost?.breakdown).toContainEqual(
+      expect.objectContaining({
+        kind: "desktop-minutes",
+        estimatedCostUsd: null,
+        reason: "no_duration",
+      }),
+    );
     expect(proof.bundle.cost?.note).toContain("Desktop compute is unmeasured");
     expect(proof.bundle.cost?.note).not.toContain("uses observed CPU/RAM");
     const detail = await readRunDetail(cwd, proof.result.runId);
-    expect(detail?.participants.map(role => role.estimatedCostUsd)).toEqual([0.033953, 0.033953]);
+    expect(detail?.participants.map((role) => role.estimatedCostUsd)).toEqual([0.033953, 0.033953]);
     expect(proof.killed).toHaveLength(1);
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
@@ -392,17 +530,26 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const turn = await capturedTurn();
     const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
     const config = sharedWorldConfig();
-    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.actors[0]!.lanes!.push({
+      id: "role-later",
+      persona: "later",
+      instruction: "Review the final note.",
+    });
     config.execution!.caps = { maxTotalUsd: unit * 2.5 };
     const proof = await exercise(config, [[turn, finish(turn)], [turn]]);
     expect(proof.calls).toEqual([2, 1]);
     expect(proof.result.sequence).toEqual(["role-author", "role-reviewer"]);
-    expect(proof.result.roles[1]?.session).toMatchObject({ status: "incomplete", completionReason: "budget_reached" });
+    expect(proof.result.roles[1]?.session).toMatchObject({
+      status: "incomplete",
+      completionReason: "budget_reached",
+    });
     expect(proof.bundle.streams[1]?.actor?.stopCause).toBe("study_spend_limit");
     expect(proof.result.roles[2]).toMatchObject({ status: "blocked", ok: false });
     expect(proof.result.roles[2]?.skippedReason).toContain("study budget reached");
     expect(proof.bundle.streams[2]?.actor).toBeUndefined();
-    expect(proof.bundle.sharedWorld?.timeline?.filter(item => item.kind === "checkpoint")).toHaveLength(3);
+    expect(
+      proof.bundle.sharedWorld?.timeline?.filter((item) => item.kind === "checkpoint"),
+    ).toHaveLength(3);
     expect(proof.killed).toHaveLength(1);
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
@@ -419,44 +566,74 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
 
-  it.each([true, false])("reconciles closing-request spend before another seat (usage reported: %s)", async reported => {
-    const turn = await capturedTurn();
-    const raw = JSON.parse(await readFile(new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url), "utf8"));
-    const closing = parseOpenAiResponse(raw).turn;
-    closing.closingReport = JSON.parse(closing.message!);
-    if (!reported) delete closing.usage;
-    const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
-    const config = sharedWorldConfig();
-    config.actors[0]!.stopWhen = { any: [{ textIncludes: "after-action" }] };
-    config.execution!.caps = { maxTotalUsd: unit * 1.5 };
-    const proof = await exercise(config, [[turn]], closing);
-    expect(proof.calls).toEqual([1]); expect(proof.debriefs).toEqual([1]);
-    expect(proof.result.roles[0]?.session?.completionReason).toBe("goal_satisfied");
-    expect(proof.bundle.streams[0]?.actor?.items.some(item => item.title.startsWith("stopWhen matched:"))).toBe(true);
-    expect(proof.bundle.streams[0]?.actor?.debrief?.usageReported).toBe(reported);
-    expect(proof.result.roles[1]?.skippedReason).toContain(reported ? "study budget reached" : "budget is unknown");
-    if (!reported) expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "closing_usage_unreported", estimatedCostUsd: null }));
-    expect(proof.killed).toHaveLength(1);
-    expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
-  });
+  it.each([true, false])(
+    "reconciles closing-request spend before another seat (usage reported: %s)",
+    async (reported) => {
+      const turn = await capturedTurn();
+      const raw = JSON.parse(
+        await readFile(
+          new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+          "utf8",
+        ),
+      );
+      const closing = parseOpenAiResponse(raw).turn;
+      closing.closingReport = JSON.parse(closing.message!);
+      if (!reported) delete closing.usage;
+      const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
+      const config = sharedWorldConfig();
+      config.actors[0]!.stopWhen = { any: [{ textIncludes: "after-action" }] };
+      config.execution!.caps = { maxTotalUsd: unit * 1.5 };
+      const proof = await exercise(config, [[turn]], closing);
+      expect(proof.calls).toEqual([1]);
+      expect(proof.debriefs).toEqual([1]);
+      expect(proof.result.roles[0]?.session?.completionReason).toBe("goal_satisfied");
+      expect(
+        proof.bundle.streams[0]?.actor?.items.some((item) =>
+          item.title.startsWith("stopWhen matched:"),
+        ),
+      ).toBe(true);
+      expect(proof.bundle.streams[0]?.actor?.debrief?.usageReported).toBe(reported);
+      expect(proof.result.roles[1]?.skippedReason).toContain(
+        reported ? "study budget reached" : "budget is unknown",
+      );
+      if (!reported)
+        expect(proof.bundle.cost?.breakdown).toContainEqual(
+          expect.objectContaining({ reason: "closing_usage_unreported", estimatedCostUsd: null }),
+        );
+      expect(proof.killed).toHaveLength(1);
+      expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
+    },
+  );
 
   it("verifies the live timeout cohort's synthesized passed/error/blocked shape without changing its outcome", async () => {
     const turn = await capturedTurn();
     turn.actions = Array.from({ length: 5 }, () => structuredClone(turn.actions[0]!));
     const config = sharedWorldConfig();
-    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.actors[0]!.lanes!.push({
+      id: "role-later",
+      persona: "later",
+      instruction: "Review the final note.",
+    });
     config.execution!.caps = { maxUsd: 2, maxTotalUsd: 0.15 };
-    const proof = await exercise(config, [[turn, finish(turn)], [new Error("Synthetic unreported provider timeout")]]);
+    const proof = await exercise(config, [
+      [turn, finish(turn)],
+      [new Error("Synthetic unreported provider timeout")],
+    ]);
     expect(proof.actions).toEqual([5, 0]);
     expect(proof.calls).toEqual([2, 1]);
     expect(proof.result.ok).toBe(false);
-    expect(proof.bundle.streams.map(stream => stream.status)).toEqual(["passed", "failed", "blocked"]);
+    expect(proof.bundle.streams.map((stream) => stream.status)).toEqual([
+      "passed",
+      "failed",
+      "blocked",
+    ]);
     expect(proof.bundle.streams[1]?.actor?.stopCause).toBe("usage_unreported");
     expect(proof.bundle.simulations[1]?.summary).toContain("session ended with harness_error");
     expect(proof.bundle.simulations[1]?.summary).not.toContain("drove the shared app");
     expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
-      afterRoleId: "role-reviewer", cause: "usage_unreported",
-      roles: [{ roleId: "role-later", simId: "sim-003", streamId: "stream-003" }]
+      afterRoleId: "role-reviewer",
+      cause: "usage_unreported",
+      roles: [{ roleId: "role-later", simId: "sim-003", streamId: "stream-003" }],
     });
     const verified = await verifyRun(cwd, proof.result.runId);
     expect(verified.ok).toBe(true);
@@ -471,7 +648,9 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const proof = await exercise(config, [[turn]]);
     expect(proof.calls).toEqual([1]);
     expect(proof.bundle.sharedWorld?.skippedTail).toMatchObject({
-      cause: "study_spend_limit", maxTotalUsd: unit - 0.00000001, estimatedTotalUsd: unit
+      cause: "study_spend_limit",
+      maxTotalUsd: unit - 0.00000001,
+      estimatedTotalUsd: unit,
     });
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
@@ -480,40 +659,177 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const turn = await capturedTurn();
     const unit = estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd!;
     const config = sharedWorldConfig();
-    config.actors[0]!.lanes!.push({ id: "role-later", persona: "later", instruction: "Review the final note." });
+    config.actors[0]!.lanes!.push({
+      id: "role-later",
+      persona: "later",
+      instruction: "Review the final note.",
+    });
     config.execution!.caps = { maxTotalUsd: unit * 2.5 };
     const proof = await exercise(config, [[turn, finish(turn)], [turn]]);
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
     const mutations: Array<[string, (bundle: RunBundle) => void]> = [
-      ["no explicit tail", b => { delete b.sharedWorld!.skippedTail; }],
-      ["empty tail", b => { b.sharedWorld!.skippedTail!.roles = []; }],
-      ["wrong blocker", b => { b.sharedWorld!.skippedTail!.afterRoleId = "role-author"; }],
-      ["unknown cause", b => { Object.assign(b.sharedWorld!.skippedTail!, { cause: "because it stopped" }); }],
-      ["unsupported usage cause", b => { b.sharedWorld!.skippedTail!.cause = "usage_unreported"; }],
-      ["invented threshold crossing", b => { b.sharedWorld!.skippedTail!.maxTotalUsd = 100; }],
-      ["invented cost", b => { b.sharedWorld!.skippedTail!.estimatedTotalUsd = 100; }],
-      ["dropped simulation", b => { b.simulations.splice(1, 1); }],
-      ["dropped stream", b => { b.streams.splice(1, 1); }],
-      ["duplicate role", b => { b.sharedWorld!.skippedTail!.roles[0]!.roleId = "role-reviewer"; }],
-      ["duplicate sim", b => { b.sharedWorld!.skippedTail!.roles[0]!.simId = "sim-002"; }],
-      ["duplicate stream", b => { b.sharedWorld!.skippedTail!.roles[0]!.streamId = "stream-002"; }],
-      ["wrong stream mapping", b => { b.streams[1]!.simId = "sim-001"; }],
-      ["wrong simulation mapping", b => { b.simulations[1]!.streamIds = ["stream-001"]; }],
-      ["missing executed actor", b => { delete b.streams[1]!.actor; }],
-      ["blocked middle", b => { [b.streams[1], b.streams[2]] = [b.streams[2]!, b.streams[1]!]; }],
-      ["fabricated blocked actor", b => { b.streams[2]!.actor = b.streams[0]!.actor!; }],
-      ["fabricated live actor", b => { Object.assign(b.streams[2]!, { liveActor: { items: [] } }); }],
-      ["fabricated blocked trace", b => { b.streams[2]!.artifacts.push({ kind: "trace", path: "actors/stream-001.json", label: "invented" }); }],
-      ["fabricated blocked screenshot", b => { b.streams[2]!.embed = { kind: "screenshot", url: "invented.png" }; }],
-      ["fabricated skipped checkpoint", b => { Object.assign(b.sharedWorld!.timeline![4]!, { name: "cp-after-role-later" }); }],
-      ["missing blocked event", b => { b.events = b.events.filter(event => event.type !== "shared-world.session.blocked"); }],
-      ["passed review", b => { b.review.verdict = "pass"; }],
-      ["concurrent tail", b => { b.sharedWorld!.topologyMode = "concurrent"; }],
-      ["dry-run tail", b => { b.mode = "dry-run"; }]
+      [
+        "no explicit tail",
+        (b) => {
+          delete b.sharedWorld!.skippedTail;
+        },
+      ],
+      [
+        "empty tail",
+        (b) => {
+          b.sharedWorld!.skippedTail!.roles = [];
+        },
+      ],
+      [
+        "wrong blocker",
+        (b) => {
+          b.sharedWorld!.skippedTail!.afterRoleId = "role-author";
+        },
+      ],
+      [
+        "unknown cause",
+        (b) => {
+          Object.assign(b.sharedWorld!.skippedTail!, { cause: "because it stopped" });
+        },
+      ],
+      [
+        "unsupported usage cause",
+        (b) => {
+          b.sharedWorld!.skippedTail!.cause = "usage_unreported";
+        },
+      ],
+      [
+        "invented threshold crossing",
+        (b) => {
+          b.sharedWorld!.skippedTail!.maxTotalUsd = 100;
+        },
+      ],
+      [
+        "invented cost",
+        (b) => {
+          b.sharedWorld!.skippedTail!.estimatedTotalUsd = 100;
+        },
+      ],
+      [
+        "dropped simulation",
+        (b) => {
+          b.simulations.splice(1, 1);
+        },
+      ],
+      [
+        "dropped stream",
+        (b) => {
+          b.streams.splice(1, 1);
+        },
+      ],
+      [
+        "duplicate role",
+        (b) => {
+          b.sharedWorld!.skippedTail!.roles[0]!.roleId = "role-reviewer";
+        },
+      ],
+      [
+        "duplicate sim",
+        (b) => {
+          b.sharedWorld!.skippedTail!.roles[0]!.simId = "sim-002";
+        },
+      ],
+      [
+        "duplicate stream",
+        (b) => {
+          b.sharedWorld!.skippedTail!.roles[0]!.streamId = "stream-002";
+        },
+      ],
+      [
+        "wrong stream mapping",
+        (b) => {
+          b.streams[1]!.simId = "sim-001";
+        },
+      ],
+      [
+        "wrong simulation mapping",
+        (b) => {
+          b.simulations[1]!.streamIds = ["stream-001"];
+        },
+      ],
+      [
+        "missing executed actor",
+        (b) => {
+          delete b.streams[1]!.actor;
+        },
+      ],
+      [
+        "blocked middle",
+        (b) => {
+          [b.streams[1], b.streams[2]] = [b.streams[2]!, b.streams[1]!];
+        },
+      ],
+      [
+        "fabricated blocked actor",
+        (b) => {
+          b.streams[2]!.actor = b.streams[0]!.actor!;
+        },
+      ],
+      [
+        "fabricated live actor",
+        (b) => {
+          Object.assign(b.streams[2]!, { liveActor: { items: [] } });
+        },
+      ],
+      [
+        "fabricated blocked trace",
+        (b) => {
+          b.streams[2]!.artifacts.push({
+            kind: "trace",
+            path: "actors/stream-001.json",
+            label: "invented",
+          });
+        },
+      ],
+      [
+        "fabricated blocked screenshot",
+        (b) => {
+          b.streams[2]!.embed = { kind: "screenshot", url: "invented.png" };
+        },
+      ],
+      [
+        "fabricated skipped checkpoint",
+        (b) => {
+          Object.assign(b.sharedWorld!.timeline![4]!, { name: "cp-after-role-later" });
+        },
+      ],
+      [
+        "missing blocked event",
+        (b) => {
+          b.events = b.events.filter((event) => event.type !== "shared-world.session.blocked");
+        },
+      ],
+      [
+        "passed review",
+        (b) => {
+          b.review.verdict = "pass";
+        },
+      ],
+      [
+        "concurrent tail",
+        (b) => {
+          b.sharedWorld!.topologyMode = "concurrent";
+        },
+      ],
+      [
+        "dry-run tail",
+        (b) => {
+          b.mode = "dry-run";
+        },
+      ],
     ];
     for (const [name, mutate] of mutations) {
-      const bundle = structuredClone(proof.bundle); mutate(bundle);
-      await writeFile(path.join(cwd, ".humanish/runs", proof.result.runId, "run.json"), JSON.stringify(bundle));
+      const bundle = structuredClone(proof.bundle);
+      mutate(bundle);
+      await writeFile(
+        path.join(cwd, ".humanish/runs", proof.result.runId, "run.json"),
+        JSON.stringify(bundle),
+      );
       expect((await verifyRun(cwd, proof.result.runId)).ok, name).toBe(false);
     }
   });
@@ -525,141 +841,227 @@ describe("sequential shared-world model-spend caps (#766)", () => {
     const proof = await exercise(config, [[turn], [turn]]);
     expect(proof.calls).toEqual([1, 1]);
     expect(proof.actions).toEqual([0, 0]);
-    expect(proof.result.roles.every(role => role.session?.status === "incomplete")).toBe(true);
+    expect(proof.result.roles.every((role) => role.session?.status === "incomplete")).toBe(true);
     expect(proof.bundle.streams[0]?.actor?.reason).toContain("no material progress");
   });
 
-  it.each(["clone", "local-tree"] as const)("refuses either unknown-model cap before %s allocation through parsed and direct entrypoints", async source => {
-    for (const caps of [{ maxUsd: 1 }, { maxTotalUsd: 1 }]) {
+  it.each(["clone", "local-tree"] as const)(
+    "refuses either unknown-model cap before %s allocation through parsed and direct entrypoints",
+    async (source) => {
+      for (const caps of [{ maxUsd: 1 }, { maxTotalUsd: 1 }]) {
+        const config = sharedWorldConfig();
+        config.actors[0]!.model = "synthetic-unknown-model";
+        config.execution!.caps = caps;
+        if (source === "local-tree") {
+          config.subject.source = source;
+          config.subject.localTree = {};
+          delete config.subject.repos;
+        }
+        const parsed = parseLabConfig(config);
+        expect(parsed.ok).toBe(true);
+        if (!parsed.ok) throw new Error(parsed.error.message);
+        expect(parsed.warnings).toEqual([]);
+        const { hooks, created } = baseHooks({ worldVersion: 0 });
+        const direct = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+        const routed = await runLab(parsed.config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+        expect(direct.error?.message).toContain("unpriced model");
+        expect(routed.result.ok).toBe(false);
+        expect(created).toHaveLength(0);
+      }
+    },
+  );
+
+  it.each(["constructor", "__proto__", "toString"])(
+    "never accepts prototype key %s as a model rate",
+    async (model) => {
       const config = sharedWorldConfig();
-      config.actors[0]!.model = "synthetic-unknown-model";
-      config.execution!.caps = caps;
-      if (source === "local-tree") { config.subject.source = source; config.subject.localTree = {}; delete config.subject.repos; }
-      const parsed = parseLabConfig(config);
-      expect(parsed.ok).toBe(true);
-      if (!parsed.ok) throw new Error(parsed.error.message);
-      expect(parsed.warnings).toEqual([]);
-      const { hooks, created } = baseHooks({ worldVersion: 0 });
-      const direct = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
-      const routed = await runLab(parsed.config, { cwd, dryRun: false, sharedWorldHooks: hooks });
-      expect(direct.error?.message).toContain("unpriced model");
-      expect(routed.result.ok).toBe(false);
-      expect(created).toHaveLength(0);
-    }
-  });
-
-  it.each(["constructor", "__proto__", "toString"])("never accepts prototype key %s as a model rate", async model => {
-    const config = sharedWorldConfig(); config.actors[0]!.model = model; config.execution!.caps = { maxUsd: 1 };
-    const { hooks, created } = baseHooks({ worldVersion: 0 });
-    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
-    expect(result.error?.message).toContain("unpriced model"); expect(created).toHaveLength(0);
-  });
-
-  it.each([NaN, Infinity, -1])("rejects direct-library invalid threshold %s before allocation", async value => {
-    for (const key of ["maxUsd", "maxTotalUsd"] as const) {
-      const config = sharedWorldConfig(); config.execution!.caps = { [key]: value };
+      config.actors[0]!.model = model;
+      config.execution!.caps = { maxUsd: 1 };
       const { hooks, created } = baseHooks({ worldVersion: 0 });
       const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
-      expect(result.error?.message).toContain(`execution.caps.${key} must be a finite nonnegative number`);
+      expect(result.error?.message).toContain("unpriced model");
       expect(created).toHaveLength(0);
-    }
-  });
+    },
+  );
 
-  it.each([{ maxUsd: 1 }, { maxTotalUsd: 1 }])("fails capped custom-session model mismatch without rewriting the participant (%j)", async caps => {
-    const config = sharedWorldConfig(); config.execution!.caps = caps;
-    const state = { worldVersion: 0 };
-    const { hooks, created, killed } = baseHooks(state);
-    const original = hooks.runSession!;
-    let sessionCalls = 0;
-    hooks.runSession = async options => {
-      sessionCalls++;
-      const session = await original(options);
-      session.trace.ids.model = "gpt-5.6-terra";
-      session.trace.tokenUsage = { input: 1000, output: 100 };
-      return session;
-    };
-    const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
-    expect(result.ok).toBe(false); expect(sessionCalls).toBe(1);
-    expect(result.roles[0]).toMatchObject({ ok: false, session: { status: "passed", completionReason: "goal_satisfied" } });
-    expect(result.roles[0]?.error?.message).toContain("differs from the declared cap model");
-    expect(result.roles[1]?.status).toBe("blocked");
-    expect(bundle.streams[0]?.actor).toMatchObject({ status: "passed", completionReason: "goal_satisfied",
-      ids: { model: "gpt-5.6-terra" }, estimatedCost: { estimatedCostUsd: 0.0032, modelId: "gpt-5.6-terra" } });
-    expect(bundle.review?.verdict).toBe("fail");
-    expect(created).toHaveLength(1); expect(killed).toHaveLength(1);
-    expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
-    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
-  });
+  it.each([NaN, Infinity, -1])(
+    "rejects direct-library invalid threshold %s before allocation",
+    async (value) => {
+      for (const key of ["maxUsd", "maxTotalUsd"] as const) {
+        const config = sharedWorldConfig();
+        config.execution!.caps = { [key]: value };
+        const { hooks, created } = baseHooks({ worldVersion: 0 });
+        const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+        expect(result.error?.message).toContain(
+          `execution.caps.${key} must be a finite nonnegative number`,
+        );
+        expect(created).toHaveLength(0);
+      }
+    },
+  );
+
+  it.each([{ maxUsd: 1 }, { maxTotalUsd: 1 }])(
+    "fails capped custom-session model mismatch without rewriting the participant (%j)",
+    async (caps) => {
+      const config = sharedWorldConfig();
+      config.execution!.caps = caps;
+      const state = { worldVersion: 0 };
+      const { hooks, created, killed } = baseHooks(state);
+      const original = hooks.runSession!;
+      let sessionCalls = 0;
+      hooks.runSession = async (options) => {
+        sessionCalls++;
+        const session = await original(options);
+        session.trace.ids.model = "gpt-5.6-terra";
+        session.trace.tokenUsage = { input: 1000, output: 100 };
+        return session;
+      };
+      const result = await runSharedWorldLab({ cwd, config, dryRun: false, hooks });
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      expect(result.ok).toBe(false);
+      expect(sessionCalls).toBe(1);
+      expect(result.roles[0]).toMatchObject({
+        ok: false,
+        session: { status: "passed", completionReason: "goal_satisfied" },
+      });
+      expect(result.roles[0]?.error?.message).toContain("differs from the declared cap model");
+      expect(result.roles[1]?.status).toBe("blocked");
+      expect(bundle.streams[0]?.actor).toMatchObject({
+        status: "passed",
+        completionReason: "goal_satisfied",
+        ids: { model: "gpt-5.6-terra" },
+        estimatedCost: { estimatedCostUsd: 0.0032, modelId: "gpt-5.6-terra" },
+      });
+      expect(bundle.review?.verdict).toBe("fail");
+      expect(created).toHaveLength(1);
+      expect(killed).toHaveLength(1);
+      expect(bundle.sharedWorld?.skippedTail?.cause).toBe("session_error");
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    },
+  );
 
   it("retains known partial usage and stops before more requests when later usage is absent", async () => {
     const turn = await capturedTurn();
-    const missing = finish(turn); delete missing.usage;
-    const config = sharedWorldConfig(); config.execution!.caps = { maxTotalUsd: 5 };
+    const missing = finish(turn);
+    delete missing.usage;
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxTotalUsd: 5 };
     const proof = await exercise(config, [[turn, missing]]);
-    expect(proof.calls).toEqual([2]); expect(proof.debriefs).toEqual([0]);
-    expect(proof.bundle.streams[0]?.actor).toMatchObject({ completionReason: "harness_error", stopCause: "usage_unreported", interactionUsageIncomplete: true });
-    expect(proof.bundle.streams[0]?.actor?.estimatedCost?.estimatedCostUsd).toBe(estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd);
+    expect(proof.calls).toEqual([2]);
+    expect(proof.debriefs).toEqual([0]);
+    expect(proof.bundle.streams[0]?.actor).toMatchObject({
+      completionReason: "harness_error",
+      stopCause: "usage_unreported",
+      interactionUsageIncomplete: true,
+    });
+    expect(proof.bundle.streams[0]?.actor?.estimatedCost?.estimatedCostUsd).toBe(
+      estimateActorCost(turn.usage, "gpt-5.6-sol").estimatedCostUsd,
+    );
     expect(proof.bundle.cost?.fullyEstimated).toBe(false);
-    expect(proof.bundle.cost?.breakdown).toContainEqual(expect.objectContaining({ reason: "interaction_usage_unreported", estimatedCostUsd: null }));
+    expect(proof.bundle.cost?.breakdown).toContainEqual(
+      expect.objectContaining({ reason: "interaction_usage_unreported", estimatedCostUsd: null }),
+    );
     expect(proof.result.roles[1]?.status).toBe("blocked");
     expect(actorEnding(proof.bundle.streams[0]?.actor)?.label).toBe("provider usage unavailable");
     expect((await verifyRun(cwd, proof.result.runId)).ok).toBe(true);
   });
 
   it("distinguishes genuinely reported zero usage from no usage", async () => {
-    const turn = finish(await capturedTurn()); turn.usage = { input: 0, output: 0 };
-    const config = sharedWorldConfig(); config.execution!.caps = { maxUsd: 0, maxTotalUsd: 0 };
+    const turn = finish(await capturedTurn());
+    turn.usage = { input: 0, output: 0 };
+    const config = sharedWorldConfig();
+    config.execution!.caps = { maxUsd: 0, maxTotalUsd: 0 };
     const action = { ...turn, actions: (await capturedTurn()).actions, done: false };
-    const proof = await exercise(config, [[action, turn], [action, turn]]);
+    const proof = await exercise(config, [
+      [action, turn],
+      [action, turn],
+    ]);
     expect(proof.calls).toEqual([2, 2]);
-    expect((await verifyRun(cwd, proof.result.runId)).checks.filter(check => !check.ok)).toEqual([]);
+    expect((await verifyRun(cwd, proof.result.runId)).checks.filter((check) => !check.ok)).toEqual(
+      [],
+    );
     expect(proof.result.error).toBeUndefined();
     expect(proof.result.ok).toBe(true);
-    expect(proof.bundle.streams.map(stream => stream.actor?.estimatedCost?.estimatedCostUsd)).toEqual([0, 0]);
-    expect(proof.bundle.streams.every(stream => stream.actor?.interactionUsageIncomplete !== true)).toBe(true);
+    expect(
+      proof.bundle.streams.map((stream) => stream.actor?.estimatedCost?.estimatedCostUsd),
+    ).toEqual([0, 0]);
+    expect(
+      proof.bundle.streams.every((stream) => stream.actor?.interactionUsageIncomplete !== true),
+    ).toBe(true);
   });
 
   it("preserves uncapped completion when a provider omits usage", async () => {
-    const turn = finish(await capturedTurn()); delete turn.usage;
+    const turn = finish(await capturedTurn());
+    delete turn.usage;
     const action = { ...turn, actions: (await capturedTurn()).actions, done: false };
-    const proof = await exercise(sharedWorldConfig(), [[action, turn], [action, turn]]);
-    expect((await verifyRun(cwd, proof.result.runId)).checks.filter(check => !check.ok)).toEqual([]);
+    const proof = await exercise(sharedWorldConfig(), [
+      [action, turn],
+      [action, turn],
+    ]);
+    expect((await verifyRun(cwd, proof.result.runId)).checks.filter((check) => !check.ok)).toEqual(
+      [],
+    );
     expect(proof.result.error).toBeUndefined();
     expect(proof.result.ok).toBe(true);
     expect(proof.calls).toEqual([2, 2]);
-    expect(proof.bundle.streams.map(stream => stream.actor?.estimatedCost?.reason)).toEqual(["no_token_usage", "no_token_usage"]);
+    expect(proof.bundle.streams.map((stream) => stream.actor?.estimatedCost?.reason)).toEqual([
+      "no_token_usage",
+      "no_token_usage",
+    ]);
   });
 });
 
 describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () => {
-  it.each([true, false])("preserves distinct role assignments for mission-only studies (dryRun %s)", async (dryRun) => {
-    const config = sharedWorldConfig();
-    delete config.review; // Omitted config uses the separate default analysis budget.
-    const analyze = automaticAnalysisBoundary();
-    config.actors[0]!.mission = "Use the shared app with test-openai-key.";
-    const { hooks } = baseHooks({ worldVersion: 0 });
-    const seen: string[] = [];
-    const runSession = hooks.runSession!;
-    hooks.runSession = (options) => { seen.push(options.instructions); return runSession(options); };
-    const result = await runSharedWorldLab({ cwd, config, dryRun, hooks, automaticAnalysis: { run: analyze } });
-    expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
-    expect(result.automaticAnalysis?.reason).toBe(dryRun ? "analysis_dry_run" : "synthetic_no_provider");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
-    expect(bundle.streams.map((stream) => stream.assignment)).toEqual([
-      { mission: "Use the shared app with [REDACTED_SECRET].", focus: "Create a note." },
-      { mission: "Use the shared app with [REDACTED_SECRET].", focus: "Review the note." }
-    ]);
-    if (!dryRun) {
-      expect(seen).toHaveLength(2);
-      expect(seen.every((prompt) => prompt.includes("test-openai-key"))).toBe(true);
-      expect(seen[0]).toContain("Create a note.");
-      expect(seen[1]).toContain("Review the note.");
-    }
-    expect(JSON.stringify(bundle)).not.toContain("test-openai-key");
-    expect(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8")).not.toContain("test-openai-key");
-    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
-  });
+  it.each([true, false])(
+    "preserves distinct role assignments for mission-only studies (dryRun %s)",
+    async (dryRun) => {
+      const config = sharedWorldConfig();
+      delete config.review; // Omitted config uses the separate default analysis budget.
+      const analyze = automaticAnalysisBoundary();
+      config.actors[0]!.mission = "Use the shared app with test-openai-key.";
+      const { hooks } = baseHooks({ worldVersion: 0 });
+      const seen: string[] = [];
+      const runSession = hooks.runSession!;
+      hooks.runSession = (options) => {
+        seen.push(options.instructions);
+        return runSession(options);
+      };
+      const result = await runSharedWorldLab({
+        cwd,
+        config,
+        dryRun,
+        hooks,
+        automaticAnalysis: { run: analyze },
+      });
+      expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
+      expect(result.automaticAnalysis?.reason).toBe(
+        dryRun ? "analysis_dry_run" : "synthetic_no_provider",
+      );
+      const bundle = JSON.parse(
+        await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+      ) as RunBundle;
+      expect(bundle.streams.map((stream) => stream.assignment)).toEqual([
+        { mission: "Use the shared app with [REDACTED_SECRET].", focus: "Create a note." },
+        { mission: "Use the shared app with [REDACTED_SECRET].", focus: "Review the note." },
+      ]);
+      if (!dryRun) {
+        expect(seen).toHaveLength(2);
+        expect(seen.every((prompt) => prompt.includes("test-openai-key"))).toBe(true);
+        expect(seen[0]).toContain("Create a note.");
+        expect(seen[1]).toContain("Review the note.");
+      }
+      expect(JSON.stringify(bundle)).not.toContain("test-openai-key");
+      expect(
+        await readFile(
+          path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"),
+          "utf8",
+        ),
+      ).not.toContain("test-openai-key");
+      expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+    },
+  );
 
   it("forwards the actor output limit to both sequential role constructors", async () => {
     const config = sharedWorldConfig();
@@ -667,13 +1069,25 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const { hooks, killed, sandbox } = baseHooks({ worldVersion: 0 });
     delete hooks.runSession;
     sandbox.screenshot = async () => PNG.sync.write(new PNG({ ...FAKE_SCREEN_GEOMETRY }));
-    const wire = JSON.parse(await readFile(new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url), "utf8"));
+    const wire = JSON.parse(
+      await readFile(
+        new URL("./fixtures/openai-incomplete/reasoning-only.json", import.meta.url),
+        "utf8",
+      ),
+    );
     const seen: Array<number | undefined> = [];
     vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
       seen.push(JSON.parse(init.body).max_output_tokens);
-      return { ok: true, status: 200, text: async () => JSON.stringify(wire), json: async () => wire };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(wire),
+        json: async () => wire,
+      };
     });
-    await runSharedWorldLab({ cwd, config, dryRun: false, hooks }).finally(() => vi.unstubAllGlobals());
+    await runSharedWorldLab({ cwd, config, dryRun: false, hooks }).finally(() =>
+      vi.unstubAllGlobals(),
+    );
     expect(seen).toEqual([16, 16]);
     expect(killed).toHaveLength(1);
   });
@@ -704,18 +1118,24 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.topology).toBe("shared-world");
     expect(result.roleCount).toBe(2);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.schema).toBe("humanish.shared-world.v1");
     expect(bundle.sharedWorld.attributionLimits).toEqual(
-      expect.arrayContaining(["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"])
+      expect.arrayContaining([
+        "sequential-only",
+        "no-concurrent-races",
+        "delta-attributed-to-turn-not-action",
+      ]),
     );
     expect(bundle.mode).toBe("dry-run");
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
     for (const stream of bundle.streams) {
       expect(stream.viewport).toBeUndefined();
       expect(stream.desktopGeometry).toEqual({
-        screen: { requested: FAKE_SCREEN_GEOMETRY }
+        screen: { requested: FAKE_SCREEN_GEOMETRY },
       });
     }
 
@@ -728,49 +1148,89 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // With a custom template configured.
     const withState = { worldVersion: 0 };
     const withTemplate = baseHooks(withState);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig({ template: "acme-desktop-with-runtimes" }), dryRun: false, hooks: withTemplate.hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig({ template: "acme-desktop-with-runtimes" }),
+      dryRun: false,
+      hooks: withTemplate.hooks,
+    });
     expect(result.ok).toBe(true);
     expect(withTemplate.created).toHaveLength(1);
     expect(withTemplate.templates).toEqual(["acme-desktop-with-runtimes"]);
-    const withBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const withBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
     // Byte-stable default: NO template → create called with NO template arg, bundle omits the field.
     const noState = { worldVersion: 0 };
     const noTemplate = baseHooks(noState);
-    const result2 = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks: noTemplate.hooks });
+    const result2 = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks: noTemplate.hooks,
+    });
     expect(result2.ok).toBe(true);
     expect(noTemplate.templates).toEqual([undefined]);
-    const noBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"));
+    const noBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"),
+    );
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
   it("execution.desktop.browser: sequential shared-world seats honor explicit browser preference and record provenance", async () => {
     const state = { worldVersion: 0 };
     const { hooks, sandbox } = baseHooks(state);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig({ browser: "firefox" }), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig({ browser: "firefox" }),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     const seatLaunches = sandbox.calls
       .map((call, index) => ({ call, index }))
-      .filter(({ call }) => call[0] === "commands.run" && String(call[1]).includes("browser_preference="));
+      .filter(
+        ({ call }) => call[0] === "commands.run" && String(call[1]).includes("browser_preference="),
+      );
     expect(seatLaunches).toHaveLength(2);
     expect(String(seatLaunches[0]!.call[1])).toContain("browser_preference='firefox'");
     expect(String(seatLaunches[0]!.call[1])).toContain("launch_firefox");
     expect(String(seatLaunches[0]!.call[1])).not.toContain("setsid -f google-chrome");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.desktopBrowser).toEqual({ requested: "firefox", resolved: "firefox" });
-    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("find_firefox_window()"))).toBe(true);
-    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("find_chrome_window()"))).toBe(false);
-    expect(sandbox.calls.some((call) => call[0] === "commands.run" && String(call[1]).includes("browserWindow: { x: window.screenX"))).toBe(false);
+    expect(
+      sandbox.calls.some(
+        (call) => call[0] === "commands.run" && String(call[1]).includes("find_firefox_window()"),
+      ),
+    ).toBe(true);
+    expect(
+      sandbox.calls.some(
+        (call) => call[0] === "commands.run" && String(call[1]).includes("find_chrome_window()"),
+      ),
+    ).toBe(false);
+    expect(
+      sandbox.calls.some(
+        (call) =>
+          call[0] === "commands.run" &&
+          String(call[1]).includes("browserWindow: { x: window.screenX"),
+      ),
+    ).toBe(false);
     for (const stream of bundle.streams) {
-      expect(stream.desktopGeometry.browserWindow).toEqual({ ...FAKE_BROWSER_WINDOW, source: "xwininfo" });
+      expect(stream.desktopGeometry.browserWindow).toEqual({
+        ...FAKE_BROWSER_WINDOW,
+        source: "xwininfo",
+      });
       expect(stream.desktopGeometry.viewport).toBeUndefined();
       expect(stream.viewport).toBeUndefined();
-      expect(stream.desktopGeometry.warnings).toEqual(expect.arrayContaining([
-        expect.stringContaining("unavailable for Firefox")
-      ]));
+      expect(stream.desktopGeometry.warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining("unavailable for Firefox")]),
+      );
     }
 
     const verify = await verifyRun(cwd, result.runId);
@@ -780,16 +1240,31 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   it("refuses clipped sequential seats before participant actions and cleans the shared desktop", async () => {
     const { hooks, sandbox, killed } = baseHooks({ worldVersion: 0 });
     const run = sandbox.commands.run.bind(sandbox.commands);
-    sandbox.commands.run = async (command, options) => command.includes("xwininfo -id")
-      ? { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n", exitCode: 0 }
-      : run(command, options);
+    sandbox.commands.run = async (command, options) =>
+      command.includes("xwininfo -id")
+        ? {
+            stdout:
+              "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n",
+            exitCode: 0,
+          }
+        : run(command, options);
     let participantSessions = 0;
-    hooks.runSession = async () => { participantSessions++; throw new Error("participant must not start"); };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    hooks.runSession = async () => {
+      participantSessions++;
+      throw new Error("participant must not start");
+    };
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(false);
     expect(participantSessions).toBe(0);
     expect(killed).toEqual([sandbox.sandboxId]);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.streams).toHaveLength(2);
     expect(bundle.streams[0].desktopGeometry.warnings.join(" ")).toContain("outside the captured");
     // A failed first seat ends the sequential run; the unstarted seat has no invented bounds.
@@ -799,22 +1274,29 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   it("records requested + verified screen, browser outer bounds, and the measured CSS viewport as distinct geometry", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     for (const stream of bundle.streams) {
       expect(stream.desktopGeometry).toEqual({
         screen: {
           requested: FAKE_SCREEN_GEOMETRY,
-          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
+          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" },
         },
         browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xwininfo" },
-        viewport: { ...FAKE_CSS_VIEWPORT, source: "cdp" }
+        viewport: { ...FAKE_CSS_VIEWPORT, source: "cdp" },
       });
       expect(stream.viewport).toEqual({
         ...FAKE_CSS_VIEWPORT,
-        isMobile: false
+        isMobile: false,
       });
       expect(stream.viewport).not.toEqual(expect.objectContaining(FAKE_SCREEN_GEOMETRY));
     }
@@ -826,22 +1308,33 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   it("omits stream.viewport when live CSS viewport measurement is unavailable instead of copying the requested screen", async () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, { cdpGeometry: "unavailable" });
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
-    expect(result.warnings).toEqual(expect.arrayContaining([
-      expect.stringContaining("stream.viewport is omitted instead of copying the requested screen resolution")
-    ]));
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "stream.viewport is omitted instead of copying the requested screen resolution",
+        ),
+      ]),
+    );
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     for (const stream of bundle.streams) {
       expect(stream.viewport).toBeUndefined();
       expect(stream.desktopGeometry).toEqual({
         screen: {
           requested: FAKE_SCREEN_GEOMETRY,
-          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" }
+          verified: { ...FAKE_SCREEN_GEOMETRY, source: "xdpyinfo" },
         },
         browserWindow: { ...FAKE_BROWSER_WINDOW, source: "xwininfo" },
-        warnings: [expect.stringContaining("stream.viewport is omitted")]
+        warnings: [expect.stringContaining("stream.viewport is omitted")],
       });
     }
 
@@ -852,7 +1345,12 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   it("GOOD run: ONE sandbox by-id, plane provisioned ONCE, sequential distinct profiles, interaction proof, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandbox } = baseHooks(state);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
@@ -868,13 +1366,17 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(created[0]?.envs).toEqual({ DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" });
 
     // provisionCloneSubject ran EXACTLY once (one plane, not N): one `git clone` script written.
-    const cloneWrites = sandbox.calls.filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    const cloneWrites = sandbox.calls.filter(
+      ([name, , data]) => name === "files.write" && String(data).includes("git clone"),
+    );
     expect(cloneWrites).toHaveLength(1);
 
     // Seats are sequential with DISTINCT --user-data-dir per role, in declared order.
     const seatLaunches = sandbox.calls
       .map((call, index) => ({ call, index }))
-      .filter(({ call }) => call[0] === "commands.run" && String(call[1]).includes("--user-data-dir="));
+      .filter(
+        ({ call }) => call[0] === "commands.run" && String(call[1]).includes("--user-data-dir="),
+      );
     expect(seatLaunches).toHaveLength(2);
     expect(String(seatLaunches[0]!.call[1])).toContain("profile_dir='/tmp/seat-role-author'");
     expect(String(seatLaunches[1]!.call[1])).toContain("profile_dir='/tmp/seat-role-reviewer'");
@@ -885,13 +1387,26 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(firstSeatCommand).toContain("--password-store=basic");
     expect(firstSeatCommand).toContain("credentials_enable_service");
     expect(firstSeatCommand).toContain('"custom_chrome_frame":false');
-    expect(firstSeatCommand).toContain("\"password_manager_enabled\":false");
+    expect(firstSeatCommand).toContain('"password_manager_enabled":false');
 
     // A checkpoint at baseline + after each turn → timeline = cp, turn, cp, turn, cp.
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100]);
-    const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; name?: string; deltaFromPrev?: boolean; roleId?: string }>;
-    expect(timeline.map((e) => e.kind)).toEqual(["checkpoint", "turn", "checkpoint", "turn", "checkpoint"]);
+    const timeline = bundle.sharedWorld.timeline as Array<{
+      kind: string;
+      name?: string;
+      deltaFromPrev?: boolean;
+      roleId?: string;
+    }>;
+    expect(timeline.map((e) => e.kind)).toEqual([
+      "checkpoint",
+      "turn",
+      "checkpoint",
+      "turn",
+      "checkpoint",
+    ]);
     expect(timeline[0]!.name).toBe("cp-baseline");
     expect(bundle.sharedWorld.sequence).toEqual(["role-author", "role-reviewer"]);
     expect(bundle.sharedWorld.roleCount).toBe(2);
@@ -899,14 +1414,21 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
 
     // THE INTERACTION PROOF: the checkpoint after role-author carries deltaFromPrev == true AND
     // appears strictly BEFORE role-reviewer's turn in the one harness clock.
-    const cpAfterAuthorIndex = timeline.findIndex((e) => e.kind === "checkpoint" && e.name === "cp-after-role-author");
-    const reviewerTurnIndex = timeline.findIndex((e) => e.kind === "turn" && e.roleId === "role-reviewer");
+    const cpAfterAuthorIndex = timeline.findIndex(
+      (e) => e.kind === "checkpoint" && e.name === "cp-after-role-author",
+    );
+    const reviewerTurnIndex = timeline.findIndex(
+      (e) => e.kind === "turn" && e.roleId === "role-reviewer",
+    );
     expect(cpAfterAuthorIndex).toBeGreaterThanOrEqual(0);
     expect(timeline[cpAfterAuthorIndex]!.deltaFromPrev).toBe(true);
     expect(cpAfterAuthorIndex).toBeLessThan(reviewerTurnIndex);
 
     // Single-plane provenance: every turn shares the one commit + seedDigest.
-    const turns = timeline.filter((e) => e.kind === "turn") as Array<{ commit?: string; seedDigest?: string }>;
+    const turns = timeline.filter((e) => e.kind === "turn") as Array<{
+      commit?: string;
+      seedDigest?: string;
+    }>;
     expect(new Set(turns.map((t) => `${t.commit}:${t.seedDigest}`)).size).toBe(1);
     expect(bundle.sharedWorld.plane.commit).toBe("abc123def4567890abc1");
 
@@ -926,7 +1448,10 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // The default chrome seat launch also reports its PID (the real launch script records it).
     const sandbox = makeFakeSandbox((command) => {
       if (command.includes("browser_preference='default'")) {
-        return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\n", exitCode: 0 };
+        return {
+          stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\nHUMANISH_BROWSER_PID=4242\n",
+          exitCode: 0,
+        };
       }
       return base(command);
     });
@@ -937,9 +1462,14 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       runSession: makeRunSession(state),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
-      onPhase: () => {}
+      onPhase: () => {},
     };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
 
     const runs = sandbox.calls
@@ -972,23 +1502,40 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const pattern = seatProfilePkillPattern("/tmp/seat-role-author");
     const regex = new RegExp(pattern);
     // Matches the launched browser's real cmdline (the expanded --user-data-dir path)...
-    expect(regex.test("chromium --new-window --user-data-dir=/tmp/seat-role-author http://127.0.0.1:3000/")).toBe(true);
+    expect(
+      regex.test(
+        "chromium --new-window --user-data-dir=/tmp/seat-role-author http://127.0.0.1:3000/",
+      ),
+    ).toBe(true);
     // ...but never the termination command itself (its text carries only the bracketed
     // pattern), so pkill/pgrep -f can never match the shell running the termination.
-    expect(regex.test(buildSeatBrowserTerminationCommand("4242", "/tmp/seat-role-author"))).toBe(false);
+    expect(regex.test(buildSeatBrowserTerminationCommand("4242", "/tmp/seat-role-author"))).toBe(
+      false,
+    );
   });
 
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(phaseEvents.length).toBeGreaterThan(0);
 
-    const cloneStartedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.started");
-    const cloneCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.completed");
-    const readyCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    const cloneStartedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.clone.started",
+    );
+    const cloneCompletedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.clone.completed",
+    );
+    const readyCompletedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.ready.completed",
+    );
     expect(cloneStartedIndex).toBeGreaterThanOrEqual(0);
     expect(cloneCompletedIndex).toBeGreaterThan(cloneStartedIndex);
     expect(readyCompletedIndex).toBeGreaterThan(cloneCompletedIndex);
@@ -1005,35 +1552,50 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
       await writeFile(
         path.join(ctx.runDir, "adapter", "shared-world-readback.json"),
-        `${JSON.stringify({
-          schema: "example.shared-world-readback.v1",
-          status: "review-required",
-          backend: ctx.backend,
-          laneCount: ctx.laneCount
-        }, null, 2)}\n`,
-        "utf8"
+        `${JSON.stringify(
+          {
+            schema: "example.shared-world-readback.v1",
+            status: "review-required",
+            backend: ctx.backend,
+            laneCount: ctx.laneCount,
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
       );
-      return [{
-        schema: "humanish.adapter-artifact.v1",
-        namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
-        label: "Shared-world adapter readback",
-        path: "adapter/shared-world-readback.json",
-        kind: "state",
-        note: "Adapter-owned shared-world state readback."
-      }];
+      return [
+        {
+          schema: "humanish.adapter-artifact.v1",
+          namespace: SHARED_WORLD_ADAPTER_NAMESPACE,
+          label: "Shared-world adapter readback",
+          path: "adapter/shared-world-readback.json",
+          kind: "state",
+          note: "Adapter-owned shared-world state readback.",
+        },
+      ];
     };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(SHARED_WORLD_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("shared-world");
     expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/shared-world-readback.json");
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
+      true,
+    );
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -1073,30 +1635,51 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
   });
 
   it.each([
-    { actor: "low" as const, lane: "high" as const, declared: ["low", "high"], effective: ["low", "high"] },
-    { actor: undefined, lane: "high" as const, declared: [undefined, "high"], effective: [DEFAULT_OPENAI_CU_REASONING_EFFORT, "high"] },
-    { actor: undefined, lane: undefined, declared: [undefined, undefined], effective: [DEFAULT_OPENAI_CU_REASONING_EFFORT, DEFAULT_OPENAI_CU_REASONING_EFFORT] }
-  ])("forwards sequential role reasoning effort with lane precedence and omission preserved: $declared", async ({ actor, lane, declared, effective }) => {
-    const state = { worldVersion: 0 };
-    const { hooks } = baseHooks(state);
-    const config = sharedWorldConfig();
-    if (actor !== undefined) config.actors[0]!.reasoningEffort = actor;
-    if (lane !== undefined) config.actors[0]!.lanes![1]!.reasoningEffort = lane;
-    const seen: Array<string | undefined> = [];
-    const settings: Array<string | undefined> = [];
-    hooks.runSession = makeRunSession(state, (_index, options) => {
-      seen.push(options.openai?.reasoningEffort);
-      settings.push(createOpenAiResponsesProvider(options.openai!).modelSettings?.reasoningEffort);
-      if (options.openai?.reasoningEffort === undefined) expect(options.openai).not.toHaveProperty("reasoningEffort");
-      return undefined;
-    });
+    {
+      actor: "low" as const,
+      lane: "high" as const,
+      declared: ["low", "high"],
+      effective: ["low", "high"],
+    },
+    {
+      actor: undefined,
+      lane: "high" as const,
+      declared: [undefined, "high"],
+      effective: [DEFAULT_OPENAI_CU_REASONING_EFFORT, "high"],
+    },
+    {
+      actor: undefined,
+      lane: undefined,
+      declared: [undefined, undefined],
+      effective: [DEFAULT_OPENAI_CU_REASONING_EFFORT, DEFAULT_OPENAI_CU_REASONING_EFFORT],
+    },
+  ])(
+    "forwards sequential role reasoning effort with lane precedence and omission preserved: $declared",
+    async ({ actor, lane, declared, effective }) => {
+      const state = { worldVersion: 0 };
+      const { hooks } = baseHooks(state);
+      const config = sharedWorldConfig();
+      if (actor !== undefined) config.actors[0]!.reasoningEffort = actor;
+      if (lane !== undefined) config.actors[0]!.lanes![1]!.reasoningEffort = lane;
+      const seen: Array<string | undefined> = [];
+      const settings: Array<string | undefined> = [];
+      hooks.runSession = makeRunSession(state, (_index, options) => {
+        seen.push(options.openai?.reasoningEffort);
+        settings.push(
+          createOpenAiResponsesProvider(options.openai!).modelSettings?.reasoningEffort,
+        );
+        if (options.openai?.reasoningEffort === undefined)
+          expect(options.openai).not.toHaveProperty("reasoningEffort");
+        return undefined;
+      });
 
-    const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
+      const outcome = await runLab(config, { cwd, dryRun: false, sharedWorldHooks: hooks });
 
-    expect(outcome.result.ok).toBe(true);
-    expect(seen).toEqual(declared);
-    expect(settings).toEqual(effective);
-  });
+      expect(outcome.result.ok).toBe(true);
+      expect(seen).toEqual(declared);
+      expect(settings).toEqual(effective);
+    },
+  );
 
   it("an explicit per-role budget that would push the ONE sandbox past the provider's 60-minute cap fails closed before any create, with the arithmetic", async () => {
     const state = { worldVersion: 0 };
@@ -1109,9 +1692,11 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
       loadDesktopModule: async () => module,
       runSession: makeRunSession(state, () => undefined),
       detachedTimers: { now: () => 0, sleep: async () => {} },
-      onPhase: () => {}
+      onPhase: () => {},
     };
-    await expect(runSharedWorldLab({ cwd, config, dryRun: false, hooks })).rejects.toThrow(/over the provider's 60-minute sandbox cap; set execution\.timeoutMs to at most \d+ ms per role/);
+    await expect(runSharedWorldLab({ cwd, config, dryRun: false, hooks })).rejects.toThrow(
+      /over the provider's 60-minute sandbox cap; set execution\.timeoutMs to at most \d+ ms per role/,
+    );
     expect(created).toHaveLength(0);
   });
 
@@ -1119,7 +1704,12 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
     const config = sharedWorldConfig();
-    const actorDefault = { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" as const };
+    const actorDefault = {
+      when: { any: [{ id: "in-room", urlIncludes: "/room/" }] },
+      ms: 30_000,
+      everyMs: 10_000,
+      then: "continue" as const,
+    };
     const laneOverride = { ms: 5_000, everyMs: 1_000, then: "stop" as const };
     config.actors[0]!.dwell = actorDefault;
     config.actors[0]!.lanes![1]!.dwell = laneOverride;
@@ -1143,12 +1733,19 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const hooks: SharedWorldLabHooks = {
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
       loadDesktopModule: async () => module,
-      runSession: makeRunSession(state, (index) => (index === 0 ? { status: "failed", completionReason: "harness_error" } : undefined)),
+      runSession: makeRunSession(state, (index) =>
+        index === 0 ? { status: "failed", completionReason: "harness_error" } : undefined,
+      ),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
-      onPhase: () => {}
+      onPhase: () => {},
     };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.roles[0]?.id).toBe("role-author");
@@ -1159,17 +1756,30 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     // Still ONE sandbox, still killed by id.
     expect(killed).toEqual([sandbox.sandboxId]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
-    expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(true);
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
+    expect(bundle.events.some((e: { type: string }) => e.type === "shared-world.fail-fast")).toBe(
+      true,
+    );
     expect(bundle.sharedWorld.skippedTail.cause).toBe("harness_error");
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
   it("verifies an attempted session error separately from the unstarted tail", async () => {
     const { hooks } = baseHooks({ worldVersion: 0 });
-    hooks.runSession = async () => { throw new Error("Synthetic session setup failed before an actor trace"); };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    hooks.runSession = async () => {
+      throw new Error("Synthetic session setup failed before an actor trace");
+    };
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish/runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.streams[0]?.actor).toBeUndefined();
     expect(bundle.streams[0]?.status).toBe("failed");
     expect(bundle.sharedWorld?.sequence).toEqual(["role-author"]);
@@ -1184,12 +1794,19 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const hooks: SharedWorldLabHooks = {
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: "v" },
       loadDesktopModule: async () => module,
-      runSession: makeRunSession(state, (index) => (index === 0 ? { status: "failed", completionReason: "gave_up" } : undefined)),
+      runSession: makeRunSession(state, (index) =>
+        index === 0 ? { status: "failed", completionReason: "gave_up" } : undefined,
+      ),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
-      onPhase: () => {}
+      onPhase: () => {},
     };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     // role-author failed its MISSION but did NOT trip fail-fast: role-reviewer still took its turn.
     expect(result.ok).toBe(false);
@@ -1198,7 +1815,9 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     expect(result.roles[1]?.status).not.toBe("blocked");
     expect(result.sequence).toEqual(["role-author", "role-reviewer"]);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("1/2 role(s)");
     expect(bundle.review.gaps[0]).toContain("failed (gave_up)");
@@ -1212,12 +1831,19 @@ describe("runSharedWorldLab (the heart: real orchestration vs fakes, $0)", () =>
     const hooks: SharedWorldLabHooks = {
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k2", DATABASE_URL: secret },
       loadDesktopModule: async () => module,
-      runSession: makeRunSession(state, (index) => (index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined)),
+      runSession: makeRunSession(state, (index) =>
+        index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined,
+      ),
       detachedTimers: { now: () => 0, sleep: async () => {} },
       // No-op: keeps this live-path test off real stderr (baseHooks captures elsewhere).
-      onPhase: () => {}
+      onPhase: () => {},
     };
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(false);
 
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
@@ -1237,11 +1863,14 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     archiveSha256: "ab".repeat(32),
     fileCount: 3,
     totalBytes: 42,
-    git: { commit: "cd".repeat(20), dirty: true }
+    git: { commit: "cd".repeat(20), dirty: true },
   };
   const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
 
-  function localTreeSharedWorldConfig(overrides?: { subject?: Record<string, unknown>; execution?: Record<string, unknown> }): LabConfig {
+  function localTreeSharedWorldConfig(overrides?: {
+    subject?: Record<string, unknown>;
+    execution?: Record<string, unknown>;
+  }): LabConfig {
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "shared-world-local-tree-proof",
@@ -1255,36 +1884,63 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
           seed: [{ name: "migrate", command: "pnpm db:migrate" }],
           checkpoint: [
             { name: "notes-count", command: "psql query notes" },
-            { name: "reviews-count", command: "psql query reviews" }
-          ]
+            { name: "reviews-count", command: "psql query reviews" },
+          ],
         },
-        ...(overrides?.subject ?? {})
+        ...(overrides?.subject ?? {}),
       },
       actors: [
         {
           type: "openai-computer-use",
           mission: "Use the shared app.",
           lanes: [
-            { id: "role-author", persona: "author", entry: "/compose", instruction: "Create a note." },
-            { id: "role-reviewer", persona: "reviewer", entry: "/inbox", instruction: "Review the note." }
-          ]
-        }
+            {
+              id: "role-author",
+              persona: "author",
+              entry: "/compose",
+              instruction: "Create a note.",
+            },
+            {
+              id: "role-reviewer",
+              persona: "reviewer",
+              entry: "/inbox",
+              instruction: "Review the note.",
+            },
+          ],
+        },
       ],
-      execution: overrides?.execution ?? { target: "e2b-desktop", timeoutMs: 60_000, concurrency: 1 },
-      scenario: { mode: "live" }
+      execution: overrides?.execution ?? {
+        target: "e2b-desktop",
+        timeoutMs: 60_000,
+        concurrency: 1,
+      },
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }
 
   it("dry-run: subject.source local-tree, no archiveSha256 (nothing packed), verified contract bundle", async () => {
-    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: true });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig(),
+      dryRun: true,
+    });
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.sandbox).toBeUndefined();
-    expect(result.subject).toEqual({ source: "local-tree", envNames: ["DATABASE_URL"], state: { provenance: "declared-not-run", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String) }] } });
+    expect(result.subject).toEqual({
+      source: "local-tree",
+      envNames: ["DATABASE_URL"],
+      state: {
+        provenance: "declared-not-run",
+        seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String) }],
+      },
+    });
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.subject.source).toBe("local-tree");
     expect("archiveSha256" in bundle.subject).toBe(false);
     expect(bundle.attributionClass).toBe("shared-world");
@@ -1296,12 +1952,18 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
   it("GOOD live run: packs ONCE, uploads to the ONE subject sandbox, extracts, provisions via provisionLocalTreeSubject; bundle provenance carries archiveSha256 + commit + dirty; verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandbox } = baseHooks(state);
-    const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> = [];
+    const packCalls: Array<{ root: string; extraExclude?: string[]; maxArchiveBytes?: number }> =
+      [];
     hooks.packLocalTree = async (args) => {
       packCalls.push(args);
       return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
     };
-    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
@@ -1314,21 +1976,27 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
 
     // The archive uploaded to the ONE subject sandbox at the known remote path, octet-stream.
     const uploads = sandbox.calls.filter(
-      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
+      (call): call is [string, string, ArrayBuffer] =>
+        call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
     );
     expect(uploads).toHaveLength(1);
     expect(uploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
 
     // The local-tree route never runs git: no clone script written, ever.
-    const cloneWrites = sandbox.calls.filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    const cloneWrites = sandbox.calls.filter(
+      ([name, , data]) => name === "files.write" && String(data).includes("git clone"),
+    );
     expect(cloneWrites).toHaveLength(0);
 
     // The extract step ran: rm -rf/mkdir -p SUBJECT_DIR, tar -xzf, then rm -f the uploaded archive.
     const extractScript = sandbox.calls.find(
-      (call): call is [string, string, string] => call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh")
+      (call): call is [string, string, string] =>
+        call[0] === "files.write" && String(call[1]).endsWith("subject-extract/run.sh"),
     );
     expect(extractScript?.[2]).toContain("rm -rf /home/user/subject");
-    expect(extractScript?.[2]).toContain("tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject");
+    expect(extractScript?.[2]).toContain(
+      "tar -xzf /home/user/.humanish-source.tar.gz -C /home/user/subject",
+    );
 
     // Provenance: source local-tree + archiveSha256 (the pin) + commit/dirty from the host-packed
     // archive (never resolved in-sandbox: no repo/publicRepo for local-tree).
@@ -1338,16 +2006,35 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       commit: FIXED_ARCHIVE.git!.commit,
       dirty: true,
       envNames: ["DATABASE_URL"],
-      state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
+      state: {
+        provenance: "seeded",
+        seed: [
+          {
+            name: "migrate",
+            when: "before-start",
+            commandDigest: expect.any(String),
+            ok: true,
+            exitCode: 0,
+            durationMs: expect.any(Number),
+          },
+        ],
+      },
     };
     expect(result.subject).toEqual(expectedSubject);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.subject).toEqual(expectedSubject);
     expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
 
     // The interaction proof still holds (single-plane checkpoint delta) on the local-tree route.
-    const timeline = bundle.sharedWorld.timeline as Array<{ kind: string; deltaFromPrev?: boolean }>;
-    expect(timeline.some((entry) => entry.kind === "checkpoint" && entry.deltaFromPrev === true)).toBe(true);
+    const timeline = bundle.sharedWorld.timeline as Array<{
+      kind: string;
+      deltaFromPrev?: boolean;
+    }>;
+    expect(
+      timeline.some((entry) => entry.kind === "checkpoint" && entry.deltaFromPrev === true),
+    ).toBe(true);
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -1358,7 +2045,12 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
     hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
-    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
 
@@ -1375,7 +2067,12 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state);
     hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
-    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     const types = phaseEvents.map((event) => event.type);
@@ -1392,7 +2089,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       "cua-lab.subject.state.before-start.completed",
       "cua-lab.subject.serve.started",
       "cua-lab.subject.ready.started",
-      "cua-lab.subject.ready.completed"
+      "cua-lab.subject.ready.completed",
     ]);
     expect(types.some((type) => type.includes(".clone."))).toBe(false);
   });
@@ -1401,9 +2098,16 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
     const state = { worldVersion: 0 };
     const { hooks, created } = baseHooks(state);
     hooks.packLocalTree = async () => {
-      throw new Error("Local tree root produced zero packable entries after the always-on denylist.");
+      throw new Error(
+        "Local tree root produced zero packable entries after the always-on denylist.",
+      );
     };
-    const result = await runSharedWorldLab({ cwd, config: localTreeSharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: localTreeSharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_FAILED");
@@ -1422,7 +2126,7 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
       cwd,
       config: localTreeSharedWorldConfig({ subject: { localTree: { keep: true } } }),
       dryRun: false,
-      hooks
+      hooks,
     });
 
     expect(result.ok).toBe(false);
@@ -1445,7 +2149,9 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
   it("engine re-enforcement rejects path-shaped role ids before loading a desktop", async () => {
     const valid = sharedWorldConfig();
     const actor = valid.actors[0]!;
-    const lanes = actor.lanes!.map((lane, index) => index === 0 ? { ...lane, id: "../escape" } : lane);
+    const lanes = actor.lanes!.map((lane, index) =>
+      index === 0 ? { ...lane, id: "../escape" } : lane,
+    );
     const broken: LabConfig = { ...valid, actors: [{ ...actor, lanes }] };
     let desktopLoads = 0;
     const result = await runSharedWorldLab({
@@ -1456,8 +2162,8 @@ describe("runSharedWorldLab (local-tree route: subject.source: local-tree)", () 
         loadDesktopModule: async () => {
           desktopLoads += 1;
           throw new Error("must not load");
-        }
-      }
+        },
+      },
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_SHARED_WORLD_LAB_INVALID");
@@ -1493,14 +2199,24 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
   async function goodBundlePath(): Promise<{ runId: string; bundlePath: string }> {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state);
-    const result = await runSharedWorldLab({ cwd, config: sharedWorldConfig(), dryRun: false, hooks });
+    const result = await runSharedWorldLab({
+      cwd,
+      config: sharedWorldConfig(),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
     const baseline = await verifyRun(cwd, result.runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return { runId: result.runId, bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json") };
+    return {
+      runId: result.runId,
+      bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
+    };
   }
 
-  async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {
+  async function mutateAndVerify(
+    mutate: (bundle: Record<string, unknown>) => void,
+  ): Promise<boolean> {
     const { runId, bundlePath } = await goodBundlePath();
     const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
     mutate(bundle);
@@ -1512,7 +2228,9 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
   it("(a) attributionLimits missing no-concurrent-races", async () => {
     const ok = await mutateAndVerify((bundle) => {
       const sw = bundle.sharedWorld as { attributionLimits: string[] };
-      sw.attributionLimits = sw.attributionLimits.filter((limit) => limit !== "no-concurrent-races");
+      sw.attributionLimits = sw.attributionLimits.filter(
+        (limit) => limit !== "no-concurrent-races",
+      );
     });
     expect(ok).toBe(false);
   });
@@ -1555,7 +2273,9 @@ describe("verifyRun fails closed on each injected shared-world overclaim", () =>
 
   it("(f) a role with goal_satisfied + zero engagement", async () => {
     const ok = await mutateAndVerify((bundle) => {
-      const streams = bundle.streams as Array<{ actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] } }>;
+      const streams = bundle.streams as Array<{
+        actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] };
+      }>;
       const stream = streams.find((s) => s.actor)!;
       stream.actor!.completionReason = "goal_satisfied";
       stream.actor!.counts = { actions: 0, messages: 0, screenshots: 0 };

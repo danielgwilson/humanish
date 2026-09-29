@@ -1,5 +1,9 @@
 import type { AffordanceUse } from "./affordance.js";
-import type { CodexAppServerRunResult, CodexAppServerStatus, CodexAppServerTrace } from "./codex-app-server.js";
+import type {
+  CodexAppServerRunResult,
+  CodexAppServerStatus,
+  CodexAppServerTrace,
+} from "./codex-app-server.js";
 import type { ActorEstimatedCost } from "./pricing.js";
 import type { TaskFunnel } from "./tasks.js";
 import { redactText } from "./redaction.js";
@@ -32,7 +36,13 @@ export const ACTOR_TRACE_SCHEMA = "humanish.actor-trace.v1";
  * - `timed_out`   the session hit its deadline with no productive activity at all
  * - `failed`      the HARNESS failed: a dead sandbox, a provider error, a broken artifact
  */
-export type ActorStatus = "passed" | "abandoned" | "incomplete" | "blocked" | "timed_out" | "failed";
+export type ActorStatus =
+  | "passed"
+  | "abandoned"
+  | "incomplete"
+  | "blocked"
+  | "timed_out"
+  | "failed";
 
 /**
  * What the PARTICIPANT said happened, in a field rather than a paragraph (#570). Providers whose
@@ -49,8 +59,17 @@ export type ParticipantDeclaredOutcome = "reached" | "not_reached" | "blocked";
 export const PARTICIPANT_OUTCOME_STATUSES: readonly ActorStatus[] = ["abandoned", "incomplete"];
 
 /** Optional precise interruption cause; completionReason and status retain their original meaning. */
-export type ActorStopCause = "provider_output_limit" | "provider_token_limit" | "time_limit" | "spend_limit"
-  | "study_spend_limit" | "adapter_limit" | "provider_incomplete" | "provider_status" | "harness_aborted" | "usage_unreported";
+export type ActorStopCause =
+  | "provider_output_limit"
+  | "provider_token_limit"
+  | "time_limit"
+  | "spend_limit"
+  | "study_spend_limit"
+  | "adapter_limit"
+  | "provider_incomplete"
+  | "provider_status"
+  | "harness_aborted"
+  | "usage_unreported";
 
 export type ActorCompletionReason =
   | "goal_satisfied"
@@ -80,7 +99,13 @@ export type ActorLane = "code" | "app" | "computer-use" | "scripted-browser" | "
 // interactive duplex PTY — labeling captured exec output as an interactive transport would be a
 // claim/mechanism mismatch (invariant 6 + the goal packet's PTY ruling), so it gets its own
 // honest protocol label distinct from "cua-loop"/"scripted-steps".
-export type ActorProtocol = "json-rpc" | "json-stream" | "in-process-sdk" | "cua-loop" | "scripted-steps" | "terminal-exec";
+export type ActorProtocol =
+  | "json-rpc"
+  | "json-stream"
+  | "in-process-sdk"
+  | "cua-loop"
+  | "scripted-steps"
+  | "terminal-exec";
 
 export type ActorTraceItemKind =
   | "message"
@@ -143,7 +168,13 @@ export interface ActorPersonaRef {
   traitsApplied: string[];
   promptDigest: string;
   /** Authored persona section only. Redacted evidence is not a byte-exact prompt. */
-  brief?: { compilerVersion: number; text: string; digest: string; redacted: boolean; sourceDigest?: string };
+  brief?: {
+    compilerVersion: number;
+    text: string;
+    digest: string;
+    redacted: boolean;
+    sourceDigest?: string;
+  };
 }
 
 export interface ActorTokenUsage {
@@ -202,45 +233,107 @@ export interface ActorProviderRequest extends ProviderRequestReceipt {
 
 /** Durable reader profile. Append new qualified profiles; never rewrite old evidence. */
 export function validActorExecutionProfile(value: unknown): value is ActorExecutionProfile {
-  const expected = { schema: "humanish.actor-execution-profile.v1", transport: "codex-app-server",
-    authentication: "chatgpt-account", billing: "account-unknown",
-    cliVersion: "0.154.0" };
+  const expected = {
+    schema: "humanish.actor-execution-profile.v1",
+    transport: "codex-app-server",
+    authentication: "chatgpt-account",
+    billing: "account-unknown",
+    cliVersion: "0.154.0",
+  };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const object = value as Record<string, unknown>;
-  if (Object.keys(object).length !== Object.keys(expected).length + 5 ||
-    !Object.entries(expected).every(([key, expectedValue]) => object[key] === expectedValue)) return false;
-  const legacy = object.requestedModel === "gpt-6-astra" && object.reasoningEffort === "low"
-    && object.toolPolicy === "restricted-codex-v1"
-    && object.participantSchema === "humanish.restricted-participant-turn.v1"
-    && (object.memoryPolicy === "recent-eight-16k-v1" || object.memoryPolicy === "continuing-thread-v1");
-  const uiTools = typeof object.requestedModel === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(object.requestedModel)
-    && typeof object.reasoningEffort === "string" && ["none", "minimal", "low", "medium", "high", "xhigh", "max"].includes(object.reasoningEffort)
-    && object.toolPolicy === "codex-ui-tools-v1"
-    && object.participantSchema === "humanish.codex-ui-tool.v1"
-    && object.memoryPolicy === "continuing-thread-v1";
+  if (
+    Object.keys(object).length !== Object.keys(expected).length + 5 ||
+    !Object.entries(expected).every(([key, expectedValue]) => object[key] === expectedValue)
+  )
+    return false;
+  const legacy =
+    object.requestedModel === "gpt-6-astra" &&
+    object.reasoningEffort === "low" &&
+    object.toolPolicy === "restricted-codex-v1" &&
+    object.participantSchema === "humanish.restricted-participant-turn.v1" &&
+    (object.memoryPolicy === "recent-eight-16k-v1" ||
+      object.memoryPolicy === "continuing-thread-v1");
+  const uiTools =
+    typeof object.requestedModel === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(object.requestedModel) &&
+    typeof object.reasoningEffort === "string" &&
+    ["none", "minimal", "low", "medium", "high", "xhigh", "max"].includes(object.reasoningEffort) &&
+    object.toolPolicy === "codex-ui-tools-v1" &&
+    object.participantSchema === "humanish.codex-ui-tool.v1" &&
+    object.memoryPolicy === "continuing-thread-v1";
   return legacy || uiTools;
 }
 
 /** Closed per-attempt evidence; dollar amounts are never part of account usage. */
 export function validActorProviderRequests(value: unknown): value is ActorProviderRequest[] {
   if (!Array.isArray(value)) return false;
-  const codes = ["request_rejected", "unavailable", "busy", "refused", "invalid_response", "protocol_error", "timeout", "cancelled", "process_failed", "cleanup_unconfirmed"];
+  const codes = [
+    "request_rejected",
+    "unavailable",
+    "busy",
+    "refused",
+    "invalid_response",
+    "protocol_error",
+    "timeout",
+    "cancelled",
+    "process_failed",
+    "cleanup_unconfirmed",
+  ];
   return value.every((raw: unknown, index) => {
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return false;
     const r = raw as Record<string, unknown>;
-    if (Object.keys(r).some(k => !["ordinal", "kind", "dispatched", "usageComplete", "cleanup", "profileVerified", "errorCode", "failurePhase", "usage"].includes(k)) ||
-      r.ordinal !== index + 1 || (typeof r.kind !== "string" || !["interaction", "debrief"].includes(r.kind)) ||
-      !(typeof r.dispatched === "boolean" || r.dispatched === "unknown") || typeof r.usageComplete !== "boolean" ||
-      (typeof r.cleanup !== "string" || !["confirmed", "unconfirmed"].includes(r.cleanup)) || typeof r.profileVerified !== "boolean" ||
-      (r.profileVerified && r.dispatched !== true) || (r.errorCode !== undefined && (typeof r.errorCode !== "string" || !codes.includes(r.errorCode))) ||
-      (r.failurePhase !== undefined && (r.errorCode === undefined || !isCuaProviderFailurePhase(r.failurePhase)))) return false;
+    if (
+      Object.keys(r).some(
+        (k) =>
+          ![
+            "ordinal",
+            "kind",
+            "dispatched",
+            "usageComplete",
+            "cleanup",
+            "profileVerified",
+            "errorCode",
+            "failurePhase",
+            "usage",
+          ].includes(k),
+      ) ||
+      r.ordinal !== index + 1 ||
+      typeof r.kind !== "string" ||
+      !["interaction", "debrief"].includes(r.kind) ||
+      !(typeof r.dispatched === "boolean" || r.dispatched === "unknown") ||
+      typeof r.usageComplete !== "boolean" ||
+      typeof r.cleanup !== "string" ||
+      !["confirmed", "unconfirmed"].includes(r.cleanup) ||
+      typeof r.profileVerified !== "boolean" ||
+      (r.profileVerified && r.dispatched !== true) ||
+      (r.errorCode !== undefined &&
+        (typeof r.errorCode !== "string" || !codes.includes(r.errorCode))) ||
+      (r.failurePhase !== undefined &&
+        (r.errorCode === undefined || !isCuaProviderFailurePhase(r.failurePhase)))
+    )
+      return false;
     if (r.usage === undefined) return !r.usageComplete;
     if (r.usage === null || typeof r.usage !== "object" || Array.isArray(r.usage)) return false;
     const usage = r.usage as Record<string, unknown>;
-    if (Object.entries(usage).some(([k, v]) => !["input", "output", "cachedInput", "cacheWriteInput", "total"].includes(k) ||
-      typeof v !== "number" || !Number.isSafeInteger(v) || v < 0)) return false;
-    return !r.usageComplete || (typeof usage.input === "number" && typeof usage.output === "number" &&
-      ((usage.cachedInput as number | undefined) ?? 0) + ((usage.cacheWriteInput as number | undefined) ?? 0) <= usage.input);
+    if (
+      Object.entries(usage).some(
+        ([k, v]) =>
+          !["input", "output", "cachedInput", "cacheWriteInput", "total"].includes(k) ||
+          typeof v !== "number" ||
+          !Number.isSafeInteger(v) ||
+          v < 0,
+      )
+    )
+      return false;
+    return (
+      !r.usageComplete ||
+      (typeof usage.input === "number" &&
+        typeof usage.output === "number" &&
+        ((usage.cachedInput as number | undefined) ?? 0) +
+          ((usage.cacheWriteInput as number | undefined) ?? 0) <=
+          usage.input)
+    );
   });
 }
 
@@ -278,7 +371,11 @@ export interface ActorTrace {
   // status: "passed" means the trace conforms to its declared redaction policy and carries no
   // secret VALUES in text. screenshots: "raw" = full-fidelity frames retained (valid for LOCAL
   // use; redact before publishing); "blurred"/"ocr_scrubbed" = publish-safe; "n/a" = none captured.
-  redaction: { status: "passed"; screenshots: "n/a" | "raw" | "blurred" | "ocr_scrubbed"; notes: string };
+  redaction: {
+    status: "passed";
+    screenshots: "n/a" | "raw" | "blurred" | "ocr_scrubbed";
+    notes: string;
+  };
   startedAt: string;
   completedAt: string;
   durationMs: number;
@@ -363,7 +460,7 @@ export const CODEX_APP_SERVER_CAPABILITIES: ActorCapabilities = {
   byoModel: false,
   preGrantableApprovals: true,
   inProcessTools: false,
-  license: "open"
+  license: "open",
 };
 
 // pi-agent-core (@earendil-works/pi-agent-core): an embeddable, provider-agnostic
@@ -377,7 +474,7 @@ export const PI_AGENT_CORE_CAPABILITIES: ActorCapabilities = {
   byoModel: true,
   preGrantableApprovals: false,
   inProcessTools: true,
-  license: "open"
+  license: "open",
 };
 
 // Claude Agent SDK (@anthropic-ai/claude-agent-sdk): in-process query() stream
@@ -391,7 +488,7 @@ export const CLAUDE_AGENT_SDK_CAPABILITIES: ActorCapabilities = {
   byoModel: false,
   preGrantableApprovals: true,
   inProcessTools: true,
-  license: "open"
+  license: "open",
 };
 
 // Scripted browser driver (src/scripted-browser-actor.ts): deterministic Playwright step
@@ -405,7 +502,7 @@ export const SCRIPTED_BROWSER_CAPABILITIES: ActorCapabilities = {
   byoModel: false,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "open" // playwright-core (Apache-2.0), already a lazy-imported production dependency
+  license: "open", // playwright-core (Apache-2.0), already a lazy-imported production dependency
 };
 
 // Terminal agent (src/e2b-terminal-lab.ts): a real autonomous coding agent (Codex) discovering
@@ -425,7 +522,7 @@ export const TERMINAL_AGENT_CAPABILITIES: ActorCapabilities = {
   preGrantableApprovals: false,
   inProcessTools: false,
   license: "open", // the Codex CLI is invoked as a subprocess inside the sandbox; no peer dep here
-  keyPlacement: "in-sandbox-command-scoped"
+  keyPlacement: "in-sandbox-command-scoped",
 };
 
 // Codex app-server reports four terminal statuses but no explicit completion
@@ -494,7 +591,7 @@ function pickTokenUsage(raw: CodexAppServerTrace["tokenUsage"]): ActorTokenUsage
     ...(input === undefined ? {} : { input }),
     ...(output === undefined ? {} : { output }),
     ...(total === undefined ? {} : { total }),
-    ...(costUsd === undefined ? {} : { costUsd })
+    ...(costUsd === undefined ? {} : { costUsd }),
   };
   return Object.keys(usage).length > 0 ? usage : undefined;
 }
@@ -517,7 +614,7 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
       kind,
       lifecycle: item.lifecycle,
       title: item.title,
-      ...(item.status === undefined ? {} : { status: item.status })
+      ...(item.status === undefined ? {} : { status: item.status }),
     };
     if (kind === "command") {
       const command = commandByItem.get(item.id);
@@ -528,8 +625,8 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
             ...(command.command === undefined ? {} : { text: command.command }),
             ...(command.cwd === undefined ? {} : { cwd: command.cwd }),
             ...(command.exitCode === undefined ? {} : { exitCode: command.exitCode }),
-            ...(command.outputTail === undefined ? {} : { outputTail: command.outputTail })
-          }
+            ...(command.outputTail === undefined ? {} : { outputTail: command.outputTail }),
+          },
         };
       }
     }
@@ -540,8 +637,8 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
           ...base,
           tool: {
             ...(tool.server === undefined ? {} : { server: tool.server }),
-            ...(tool.tool === undefined ? {} : { name: tool.tool })
-          }
+            ...(tool.tool === undefined ? {} : { name: tool.tool }),
+          },
         };
       }
     }
@@ -573,7 +670,7 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
       lifecycle: "completed",
       status: approval.decision,
       title: `${approval.method} (${approval.decision})`,
-      ...(approval.reason ? { text: approval.reason } : {})
+      ...(approval.reason ? { text: approval.reason } : {}),
     });
   }
   trace.plans.forEach((plan, index) => {
@@ -582,7 +679,7 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
       kind: "plan",
       lifecycle: "completed",
       title: plan.explanation ?? "Plan update",
-      ...(plan.steps.length > 0 ? { text: plan.steps.join("\n") } : {})
+      ...(plan.steps.length > 0 ? { text: plan.steps.join("\n") } : {}),
     });
   });
   [...trace.warnings, ...trace.errors].forEach((notice, index) => {
@@ -591,7 +688,7 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
       kind: "notice",
       lifecycle: "completed",
       title: notice.method,
-      ...(notice.message ? { text: notice.message } : {})
+      ...(notice.message ? { text: notice.message } : {}),
     });
   });
 
@@ -604,13 +701,18 @@ function codexTraceToActorItems(trace: CodexAppServerTrace): ActorTraceItem[] {
  * personas are load-bearing it is a minimal stub ({ id, traitsApplied: [],
  * promptDigest }).
  */
-export function codexResultToActorTrace(result: CodexAppServerRunResult, persona: ActorPersonaRef): ActorTrace {
+export function codexResultToActorTrace(
+  result: CodexAppServerRunResult,
+  persona: ActorPersonaRef,
+): ActorTrace {
   const trace = result.trace;
   const tokenUsage = pickTokenUsage(trace.tokenUsage);
   return {
     schema: ACTOR_TRACE_SCHEMA,
     provider: "codex-app-server",
-    ...(trace.server.codexCliVersion === undefined ? {} : { providerVersion: trace.server.codexCliVersion }),
+    ...(trace.server.codexCliVersion === undefined
+      ? {}
+      : { providerVersion: trace.server.codexCliVersion }),
     protocol: "json-rpc",
     lane: "code",
     persona,
@@ -627,11 +729,11 @@ export function codexResultToActorTrace(result: CodexAppServerRunResult, persona
       ...(result.sessionId === undefined ? {} : { sessionId: result.sessionId }),
       ...(result.threadId === undefined ? {} : { threadId: result.threadId }),
       ...(result.turnId === undefined ? {} : { turnId: result.turnId }),
-      ...(result.model === undefined ? {} : { model: result.model })
+      ...(result.model === undefined ? {} : { model: result.model }),
     },
     counts: { ...trace.counts },
     items: codexTraceToActorItems(trace),
     ...(tokenUsage === undefined ? {} : { tokenUsage }),
-    capabilities: CODEX_APP_SERVER_CAPABILITIES
+    capabilities: CODEX_APP_SERVER_CAPABILITIES,
   };
 }
