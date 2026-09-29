@@ -1,4 +1,4 @@
-import { Dialog } from "@base-ui-components/react/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import type { ReactNode } from "react";
 
 // The first Base UI primitive in the tree (D6: adopt on first need — the need is the

@@ -81,7 +81,7 @@
     "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "oxlint --max-warnings=564",
+    "lint": "oxlint --max-warnings=560",
     "knip": "knip",
     "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=446 --max-fix-tags=38 --max-caps=2041"
   },

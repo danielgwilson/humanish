@@ -12,7 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@base-ui-components/react": "catalog:",
+    "@base-ui/react": "catalog:",
     "lucide-react": "1.48.0",
     "react": "catalog:",
     "react-dom": "catalog:"

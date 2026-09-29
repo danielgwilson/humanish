@@ -2,7 +2,7 @@
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
-import { Tooltip } from "@base-ui-components/react/tooltip";
+import { Tooltip } from "@base-ui/react/tooltip";
 import { ParticipantCard } from "../components/participant-card";
 import type { ObserverData } from "../lib/observer-data";
 import fixture from "../../tests/golden/observer-data/first-run.json";

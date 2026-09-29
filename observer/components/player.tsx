@@ -2,7 +2,7 @@ import { Select } from "./ui/select";
 import { Checkbox } from "./ui/checkbox";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
-import { Tabs } from "@base-ui-components/react/tabs";
+import { Tabs } from "@base-ui/react/tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatDuration } from "@/lib/artifact-href";
@@ -850,7 +850,6 @@ export function Player({
           ) : (
             <label>
               <Checkbox
-                label="Skip waits"
                 checked={preferences.skipWaits}
                 onCheckedChange={(checked) =>
                   setPreferences((value) => ({ ...value, skipWaits: checked }))
@@ -1122,21 +1121,11 @@ export function Player({
                   />
                 </label>
                 <label>
-                  <Checkbox
-                    label="Group waits"
-                    checked={groupWaits}
-                    onCheckedChange={setGroupWaits}
-                  />{" "}
-                  Group waits
+                  <Checkbox checked={groupWaits} onCheckedChange={setGroupWaits} /> Group waits
                 </label>
                 {filter === "all" ? (
                   <label>
-                    <Checkbox
-                      label="Thinking"
-                      checked={showThoughts}
-                      onCheckedChange={setShowThoughts}
-                    />{" "}
-                    Thinking
+                    <Checkbox checked={showThoughts} onCheckedChange={setShowThoughts} /> Thinking
                   </label>
                 ) : null}
               </div>

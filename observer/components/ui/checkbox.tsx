@@ -1,20 +1,19 @@
-import { Checkbox as BaseCheckbox } from "@base-ui-components/react/checkbox";
+import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { ReviewIcon } from "../review-icon";
 import "@/styles/controls.css";
 
+// Render inside a <label> with visible text. Base UI points aria-labelledby at that label,
+// which names the checkbox; an aria-label here would be read twice.
 export function Checkbox({
-  label,
   checked,
   onCheckedChange,
 }: {
-  label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
     <BaseCheckbox.Root
       className="observer-checkbox"
-      aria-label={label}
       checked={checked}
       onCheckedChange={onCheckedChange}
     >

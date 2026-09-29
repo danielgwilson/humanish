@@ -1,4 +1,4 @@
-import { Popover as BasePopover } from "@base-ui-components/react/popover";
+import { Popover as BasePopover } from "@base-ui/react/popover";
 import { IconButton } from "./icon-button";
 import { ReviewIcon } from "../review-icon";
 import type { ReactNode } from "react";

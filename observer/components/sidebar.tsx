@@ -97,7 +97,6 @@ export function Sidebar({
           {!library && updating ? (
             <label className="library-running">
               <Checkbox
-                label="Running only"
                 checked={onlyRunning}
                 onCheckedChange={(checked) => {
                   setOnlyRunning(checked);

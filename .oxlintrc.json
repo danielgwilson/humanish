@@ -61,7 +61,10 @@
     "react/preserve-manual-memoization": "warn",
     "react-hooks/exhaustive-deps": "warn",
     "jsx-a11y/prefer-tag-over-role": "warn",
-    "jsx-a11y/label-has-associated-control": "warn",
+    "jsx-a11y/label-has-associated-control": [
+      "warn",
+      { "controlComponents": ["Checkbox", "Select"] }
+    ],
     "jsx-a11y/media-has-caption": "warn",
     "jsx-a11y/no-noninteractive-element-interactions": "warn",
     "jsx-a11y/alt-text": "warn",

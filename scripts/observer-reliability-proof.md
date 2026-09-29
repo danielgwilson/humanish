@@ -56,11 +56,11 @@ in light mode and 4.70:1 in dark mode. Existing registry tokens were sufficient;
 no palette changes were made. The playback control group gained a named region
 to ensure it is contained by a landmark.
 
-Incomplete checks stay in the receipt. The Base UI checkbox naming checks need
-human review because a wrapping label and explicit ARIA name coexist; the names
-match the visible “Running only”, “Group waits” and “Thinking” labels. Phone
-player text partly outside its scrollable feed is checked again after scrolling
-the row fully into view; that contrast recheck passes. The existing browser
+Incomplete checks stay in the receipt. The checkboxes take their names only from
+their wrapping labels (“Running only”, “Group waits”, “Thinking”), so axe no
+longer reports them for review. Phone player text partly outside its scrollable
+feed is checked again after scrolling the row fully into view; that contrast
+recheck passes. The existing browser
 suite separately exercises these controls by keyboard and accessible name.
 
 This is Chromium renderer proof with an emulated phone viewport. It is not
