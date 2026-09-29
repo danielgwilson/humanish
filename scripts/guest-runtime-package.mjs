@@ -14,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import { parseSync } from "oxc-parser";
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
 export function canonical(value) {
@@ -50,32 +50,27 @@ async function closure() {
     if (seen.has(name)) return;
     if (!/^[a-z0-9-]+\.js$/.test(name)) throw new Error("Unqualified runtime import");
     seen.add(name);
-    const source = ts.createSourceFile(
-      name,
-      await readFile(join(repository, "dist", name), "utf8"),
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.JS,
-    );
-    const references = [];
-    function walk(node) {
-      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
-        references.push(node.moduleSpecifier);
-      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-        if (node.arguments.length !== 1) throw new Error("Dynamic runtime import");
-        references.push(node.arguments[0]);
-      }
-      ts.forEachChild(node, walk);
+    const text = await readFile(join(repository, "dist", name), "utf8");
+    const { module, errors } = parseSync(name, text, { sourceType: "module" });
+    if (errors.length > 0) throw new Error("Unparseable runtime module");
+    const references = new Set([
+      ...module.staticImports.map((entry) => entry.moduleRequest.value),
+      ...module.staticExports.flatMap((entry) =>
+        entry.entries.flatMap((item) => (item.moduleRequest ? [item.moduleRequest.value] : [])),
+      ),
+    ]);
+    for (const entry of module.dynamicImports) {
+      const literal = text.slice(entry.moduleRequest.start, entry.moduleRequest.end);
+      if (!/^(["'])[^"'\\]*\1$/.test(literal)) throw new Error("Dynamic runtime import");
+      references.add(literal.slice(1, -1));
     }
-    walk(source);
-    for (const node of references) {
-      if (!ts.isStringLiteral(node)) throw new Error("Dynamic runtime import");
-      if (node.text.startsWith("node:")) continue;
-      if (node.text.startsWith("./")) await visit(node.text.slice(2));
+    for (const reference of references) {
+      if (reference.startsWith("node:")) continue;
+      if (reference.startsWith("./")) await visit(reference.slice(2));
       else {
-        if (!["playwright-core", "pngjs", "zod"].includes(node.text))
+        if (!["playwright-core", "pngjs", "zod"].includes(reference))
           throw new Error("Unqualified guest dependency");
-        packages.add(node.text);
+        packages.add(reference);
       }
     }
   }
