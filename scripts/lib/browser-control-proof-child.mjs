@@ -22,8 +22,9 @@ function startupPhase(phase) {
   process.send?.({ event: "startup", phase });
 }
 startupPhase("launch");
+// A first Chrome launch on a shared CI runner has taken over 30 s.
 const context = await chromium.launchPersistentContext(profilePath, {
-  timeout: 30000,
+  timeout: 60000,
   headless: true,
   chromiumSandbox: true,
   executablePath,
