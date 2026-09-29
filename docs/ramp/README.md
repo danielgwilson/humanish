@@ -15,7 +15,7 @@ context.
 
 Start with three things:
 
-1. [`AGENTS.md`](../../AGENTS.md) for engineering judgment and public boundaries.
+1. [`AGENTS.md`](../../AGENTS.md) for commands, layout, conventions and public boundaries.
 2. The current task and [`docs/goals/current.md`](../goals/current.md) for current
    product status. Explicit task direction takes precedence over historical queues.
 3. Instructions in the component being changed, then its relevant contracts.
