@@ -2,7 +2,7 @@
 
 Status: public-safe contributor and agent ramp.
 
-Package/source version in this tree: `0.105.0` (2026-09-28). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to `0.42.0`. The containment boundary introduced in
+The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to `0.42.0`. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
 cleanup authority.
@@ -53,143 +53,8 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 
 ## Current State
 
-The [0.105.0 release note](../release/0.105.0-participant-backgrounds.md)
-describes rich persona backgrounds, resolution diagnostics, inspectable recorded
-briefs and reduced participant coaching. Supplied context does not certify human
-behavior or persona adherence.
-
-The [0.104.3 release note](../release/0.104.3-local-smtp-catch.md)
-describes SMTP capture for apps hosted by the study operator.
-
-The [0.104.2 release note](../release/0.104.2-recording-timestamps.md)
-describes video capture timestamp precision and retained recording limits.
-
-The [0.104.1 release note](../release/0.104.1-recording-startup.md)
-describes the recording mix buffer correction for early video capture.
-
-The [0.104.0 release note](../release/0.104.0-local-captured-inboxes.md)
-describes captured inboxes for local browser studies.
-
-The [0.103.2 release note](../release/0.103.2-analysis-ending-context.md)
-describes adjacent ending captures for outcome review within the existing budget.
-
-The [0.103.1 release note](../release/0.103.1-analysis-capture-allocation.md)
-describes fairer capture allocation after image-byte reservations are released.
-Evidence limits and completion requirements remain unchanged.
-
-The [0.103.0 release note](../release/0.103.0-desktop-recording.md) describes
-optional desktop video and audio, playback on the shared Observer clock, and
-local-only media evidence. Screenshots remain the default.
-
-The [0.102.0 release note](../release/0.102.0-participant-media.md) describes
-optional native camera and speech. Linux and Mac conversations passed, including
-spoken clarification of a misheard answer. The retained Mac recording also
-produced a validated report after the analysis citation instructions were
-clarified; the validator and original evidence remain unchanged.
-
-The [0.101.0 release note](../release/0.101.0-codex-ui-tools.md) describes native
-Codex UI tools shared by local Firecracker and hosted E2B participants.
-
-The [0.100.1 release note](../release/0.100.1-participant-continuity.md) describes
-continuing local participant conversations and per-turn usage accounting.
-
-The [0.100.0 release note](../release/0.100.0-local-setup.md) describes local
-browser setup discovery, initial navigation readiness and Codex failure stages.
-
-The [0.99.1 release note](../release/0.99.1-action-recovery.md) describes
-participant recovery from browser actions rejected before dispatch.
-
-The [0.99.0 release note](../release/0.99.0-local-browser-mac.md) describes
-local browser studies on supported Apple Silicon Macs through Lima, public ARM
-runtime setup, Codex account participants and automatic analysis.
-
-The [0.98.0 release note](../release/0.98.0-local-browser-studies.md) describes
-installed Linux browser studies with managed runtime images, Codex account
-participants and automatic analysis, and shared CLI/TUI setup checks.
-
-The [0.97.0 release note](../release/0.97.0-codex-account-analysis.md) describes
-explicit Codex account analysis on a qualified Linux CLI/login profile, with
-separate analyst authority, evidence-linked reports and unknown-dollar accounting.
-Existing API defaults remain unchanged; managed local desktops and Mac account
-analysis are not qualified by this release.
-
-The [0.96.1 release note](../release/0.96.1-browser-navigation.md) describes
-accurate physical browser measurements and bounded fitting that preserves normal
-browser controls when they fit. Narrow screens retain the fullscreen fallback.
-
-The [0.96.0 release note](../release/0.96.0-real-email-receiving.md) describes
-fresh per-participant AgentMail inboxes, isolated desktop mail views, host-owned
-cleanup/recovery, local-only evidence publication, and authentication/configuration
-in Connections. SMS and local-agent receiving remain unsupported.
-
-The [0.95.0 release note](../release/0.95.0-connections-setup.md) introduced
-connection profiles and hidden key entry; 0.96.0 makes those connections usable
-in supported browser studies.
-
-The [0.94.0 release note](../release/0.94.0-reliability.md) describes analysis
-request deadlines and budget-aware output, smaller portable recordings,
-recipient-scoped synthetic inboxes, route-aware setup checks, decoded capture
-transitions, pin movement, and explicit camera-support boundaries.
-
-The [0.93.1 release note](../release/0.93.1-observer-review-controls.md) describes
-a compact findings overview, separate analysis-attempt details, styled Observer
-selects and checkboxes, clearer pin/theme states, and smoother navigation.
-
-The [0.93.0 release note](../release/0.93.0-global-playback.md) describes
-a compact bottom transport whose study time and playback state persist across
-the participant grid and individual recordings.
-
-The [0.92.0 release note](../release/0.92.0-grid-playback.md) describes
-whole-grid recording playback, capture-time scrubbing, explicit coverage gaps,
-and returning from an individual frame to the same paused grid.
-
-The [0.91.1 release note](../release/0.91.1-study-review-polish.md) describes
-retained analysis costs in study totals, finding previews and caveats, final
-active-page viewport measurements, and corrected setup guidance.
-
-The [0.91.0 release note](../release/0.91.0-analysis-quality-and-defaults.md)
-describes automatic analysis by default on supported live recordings, its
-separate disclosed budget and opt-out, fairer evidence selection, and
-evidence-linked review of material concerns and exclusions.
-
-The [0.90.0 release note](../release/0.90.0-automatic-analysis.md) describes
-opt-in analysis after live runs, truthful job states, cancellation, and scripted
-captures and assignments in findings and playback.
-
-The [0.89.1 release note](../release/0.89.1-analysis-finished-notice.md)
-clarifies that an analysis with limitations has finished.
-
-The [0.89.0 release note](../release/0.89.0-study-findings.md) describes explicit
-analysis of completed studies, versioned findings and review corrections, exact
-evidence links, and Participants / Findings within one Observer shell. Analysis
-remains separate from participant feedback and recorded outcomes.
-
-The [0.88.2 release note](../release/0.88.2-sequential-study-budgets.md)
-describes model-spend thresholds on sequential shared-world studies, blocked
-later participants, and explicit unknown-usage accounting.
-
-The [0.88.1 release note](../release/0.88.1-completion-evidence-and-local-app.md)
-describes computer-use labels that distinguish participant reports from
-recorded condition matches. It also covers the complete npm local-app example
-and public `stableProgressKey` export, plus the clipboard fallback correction
-for inherited output pipes.
-
-The [0.88.0 release note](../release/0.88.0-study-diagnostics.md) describes
-computer-use CLI diagnostics, explicit local admission limits and retained
-uncertainty when an earlier provider request did not report usage.
-
-The [0.87.0 release note](../release/0.87.0-participant-endings-and-phone-review.md)
-describes recorded interruption causes, phone playback controls beside fitted
-captures, and credential and evidence-sharing guidance by execution route.
-
-The [0.86.1 release note](../release/0.86.1-task-preflight-saved-recordings.md)
-describes task preflight on unsupported execution paths and saved HTML recordings
-that remain snapshots when served over HTTP.
-
-The [0.86.0 release note](../release/0.86.0-participant-evidence.md) describes
-participant assignments, action-specific replay links and bounded cleanup with
-the current desktop SDK. Old runs without assignment fields remain readable;
-the Observer labels that absence instead of borrowing another participant's goal.
+[CHANGELOG.md](../../CHANGELOG.md) lists what each version changed. This section describes
+what the source supports now.
 
 Humanish has a working public package shape and a safe first-run path:
 

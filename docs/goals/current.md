@@ -1,31 +1,7 @@
 # Current Goals
 
-Status date: 2026-09-28. Source baseline: `0.105.0`.
-
-This page guides work on current source. Version `0.105.0` preserves optional rich
-persona backgrounds, diagnoses dropped context and retains the compiled persona
-brief for inspection in Participants; see the
-[release note](../release/0.105.0-participant-backgrounds.md).
-Version `0.104.3` exposes the documented
-loopback SMTP catch for operator-hosted apps and fails startup if its port is busy; see the
-[release note](../release/0.104.3-local-smtp-catch.md). Version `0.104.2` preserves video
-capture timestamp precision through encoding; see its
-[release note](../release/0.104.2-recording-timestamps.md). Version `0.104.1` bounds the recording
-mix buffer to remove the reproduced initial video gap; see its
-[release note](../release/0.104.1-recording-startup.md).
-Version `0.104.0` connects local browser
-participants to captured email inboxes; see its
-[release note](../release/0.104.0-local-captured-inboxes.md).
-Version `0.103.2` retains adjacent ending views for outcome review within the
-existing capture budget; see its
-[release note](../release/0.103.2-analysis-ending-context.md).
-Version `0.103.1` fixes capture
-redistribution after image-byte reservations; its
-[release note](../release/0.103.1-analysis-capture-allocation.md) describes the
-bounded allocation correction, separate from the 0.103.2 ending-context fix.
-Version `0.103.0` adds optional desktop
-video and audio; its [release note](../release/0.103.0-desktop-recording.md)
-records the supported routes, playback behavior and local-only evidence limits.
+This page guides work on current source. [CHANGELOG.md](../../CHANGELOG.md) lists what each
+version changed.
 The [September 9 history](https://github.com/danielgwilson/humanish/blob/main/docs/goals/current-history-2026-09-09.md)
 preserves the former status log; its queues do not supersede this page.
 
@@ -110,7 +86,7 @@ requires decision-equivalent retained evidence and a real deletion branch.
 No first-party deletion branch has met that gate. Public demonstrations do not
 substitute for it.
 
-## Current Program Truth (source `0.105.0`)
+## Current Program Truth
 
 | Surface               | Available in source                                                                                                                                                                                                                                                                                                                  | Remaining boundary                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
