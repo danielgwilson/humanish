@@ -8,8 +8,8 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./local-runtime-config.
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
-import type { AutomaticAnalysisHooks } from "./automatic-analysis-completion.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
+import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import path from "node:path";
 import { runCuaActorLab, type CuaActorLabHooks, type CuaActorLabResult } from "./cua-actor-lab.js";
 import {

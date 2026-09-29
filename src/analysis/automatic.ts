@@ -1,19 +1,16 @@
 import path from "node:path";
-import { renderObserver } from "./observer.js";
-import { resolveRunPath, type RunBundle } from "./run.js";
+import { renderObserver } from "../observer.js";
+import { resolveRunPath, type RunBundle } from "../run.js";
 import {
   analyzeStudy,
   readCompletedStudyAnalysisSource,
   resolveStudyAnalysisRun,
   type AnalyzeDeps,
   type AnalyzeResult,
-} from "./study-analysis-service.js";
-import {
-  preferLargerStudyAnalysisOutput,
-  STUDY_ANALYSIS_PROMPT_VERSION,
-} from "./study-analysis-engine.js";
-import { captureStudyEvidence } from "./study-analysis-evidence.js";
-import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
+} from "./service.js";
+import { preferLargerStudyAnalysisOutput, STUDY_ANALYSIS_PROMPT_VERSION } from "./engine.js";
+import { captureStudyEvidence } from "./evidence.js";
+import { hashStudyAnalysisValue } from "./validation.js";
 import {
   claimAutomaticStudyAnalysis,
   readAutomaticStudyAnalysisPrepared,
@@ -22,15 +19,15 @@ import {
   type AutomaticStudyAnalysisOutcome,
   type AutomaticStudyAnalysisCancellation,
   type AutomaticStudyAnalysisJob,
-} from "./study-analysis-job.js";
+} from "./job.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./study-analysis-store.js";
+import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
 
 export type {
   AutomaticStudyAnalysisView,
   AutomaticStudyAnalysisOutcome,
   AutomaticStudyAnalysisCancellation,
-} from "./study-analysis-job.js";
+} from "./job.js";
 export type AutomaticStudyAnalysisDeps = Omit<AnalyzeDeps, "analysisId" | "beforeDispatch"> & {
   /** A missing default key records a skip before admission, preserving a successful recording. */
   defaultRequest?: boolean;

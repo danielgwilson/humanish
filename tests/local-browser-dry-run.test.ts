@@ -9,8 +9,8 @@ vi.mock("../src/local-runtime.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/local-runtime.js")>()),
   prepareLocalRuntime: calls.prepare,
 }));
-vi.mock("../src/restricted-codex-analysis.js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/restricted-codex-analysis.js")>()),
+vi.mock("../src/analysis/restricted-codex.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/analysis/restricted-codex.js")>()),
   checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 

@@ -38,13 +38,13 @@ import { receivingEmailValidationReason } from "./lab-config.js";
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
 // gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";

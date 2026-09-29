@@ -1,7 +1,7 @@
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
-} from "../src/run-narration-secrets.js";
+} from "../../src/run-narration-secrets.js";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,36 +10,36 @@ import {
   automaticAnalysisBudget,
   formatAutomaticAnalysisBudget,
   resolveAutomaticAnalysis,
-} from "../src/automatic-analysis-config.js";
+} from "../../src/analysis/automatic-config.js";
 import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,
-} from "../src/automatic-study-analysis.js";
-import { parseLabConfig } from "../src/lab-config.js";
-import { createProgram } from "../src/program.js";
-import { resolveRunPath, runDryRun } from "../src/run.js";
+} from "../../src/analysis/automatic.js";
+import { parseLabConfig } from "../../src/lab-config.js";
+import { createProgram } from "../../src/program.js";
+import { resolveRunPath, runDryRun } from "../../src/run.js";
 import {
   estimateStudyAnalysisAdmission,
   runStudyAnalysis,
   STUDY_ANALYSIS_PROMPT_VERSION,
-} from "../src/study-analysis-engine.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
-import type { StudyAnalysisProvider } from "../src/study-analysis-provider.js";
-import { analyzeStudy, showStudyAnalysis } from "../src/study-analysis-service.js";
-import { listStudyAnalysisExecutions, writeStudyAnalysis } from "../src/study-analysis-store.js";
+} from "../../src/analysis/engine.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import type { StudyAnalysisProvider } from "../../src/analysis/provider.js";
+import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
+import { listStudyAnalysisExecutions, writeStudyAnalysis } from "../../src/analysis/store.js";
 import {
   digestStudyAnalysisInput,
   hashStudyAnalysisValue,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-validation.js";
+} from "../../src/analysis/validation.js";
 import type {
   CodexStudyAnalysisConfig,
   StudyAnalysisConfig,
   StudyAnalysisInput,
-} from "../src/study-analysis.js";
-import { computeStats } from "../src/stats.js";
-import { syntheticArtifact, syntheticInput, syntheticResult } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/study-analysis.js";
+import { computeStats } from "../../src/stats.js";
+import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
 // These are domain-provider contract tests, not fabricated Codex RPC fixtures or live claims.
 // The restricted transport owns wire-shape and process-isolation qualification separately.
@@ -519,7 +519,7 @@ describe("explicit Codex account analysis", () => {
 
   it("does not invoke the account launcher or readiness probe during evidence admission", async () => {
     const f = await study();
-    const launcher = await import("../src/restricted-codex-analysis.js");
+    const launcher = await import("../../src/analysis/restricted-codex.js");
     const create = vi
       .spyOn(launcher, "createRestrictedCodexAnalysisProvider")
       .mockImplementation(() => {

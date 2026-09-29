@@ -3,15 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { createServeRequestHandler, createShareSafetyAdmission } from "../src/observer-serve.js";
-import { pinDirectory } from "../src/observer.js";
-import { resolveRunPath, runDryRun, verifyRun } from "../src/run.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+import { createServeRequestHandler, createShareSafetyAdmission } from "../../src/observer-serve.js";
+import { pinDirectory } from "../../src/observer.js";
+import { resolveRunPath, runDryRun, verifyRun } from "../../src/run.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-store.js";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/store.js";
+import { syntheticArtifact } from "./fixtures.js";
 
 // Constructed synthetic marker, not a credential; never output its value in assertions.
 const marker = "sk-" + "syntheticvalue1234567890abcdef";

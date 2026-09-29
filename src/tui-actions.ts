@@ -1,4 +1,4 @@
-import { requestAutomaticStudyAnalysisCancellation } from "./automatic-study-analysis.js";
+import { requestAutomaticStudyAnalysisCancellation } from "./analysis/automatic.js";
 // The two things a run card can DO (#455 rev 8).
 //
 // The mock's run screen is an outcome CARD with actions, not a field list, and an action that does

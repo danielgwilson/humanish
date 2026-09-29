@@ -7,15 +7,12 @@ import { bindExistingRunArtifactPaths } from "../src/run-paths.js";
 import {
   beginStudyAnalysisExecution,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-store.js";
-import { claimAutomaticStudyAnalysis } from "../src/study-analysis-job.js";
-import {
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-} from "../src/study-analysis-validation.js";
-import { syntheticArtifact, syntheticInput } from "./study-analysis-fixtures.js";
+} from "../src/analysis/store.js";
+import { claimAutomaticStudyAnalysis } from "../src/analysis/job.js";
+import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../src/analysis/validation.js";
+import { syntheticArtifact, syntheticInput } from "./analysis/fixtures.js";
 import { writeFixtureRun } from "./helpers/run-fixtures.js";
-import type { StudyAnalysisArtifact } from "../src/study-analysis.js";
+import type { StudyAnalysisArtifact } from "../src/analysis/study-analysis.js";
 
 describe("retained study cost accounting", () => {
   let cwd: string;

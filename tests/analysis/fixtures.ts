@@ -2,11 +2,8 @@ import type {
   StudyAnalysisArtifact,
   StudyAnalysisInput,
   StudyAnalysisResult,
-} from "../src/study-analysis.js";
-import {
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-} from "../src/study-analysis-validation.js";
+} from "../../src/analysis/study-analysis.js";
+import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 
 export function syntheticInput(): StudyAnalysisInput {
   const input: StudyAnalysisInput = {

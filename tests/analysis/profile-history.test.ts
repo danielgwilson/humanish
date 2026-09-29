@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
-import type { StudyAnalysisArtifact } from "../src/study-analysis.js";
+import { syntheticArtifact } from "./fixtures.js";
+import type { StudyAnalysisArtifact } from "../../src/analysis/study-analysis.js";
 
 // Literal persisted profile: do not derive this historical fixture from the current launcher.
 function historical(): StudyAnalysisArtifact {
@@ -35,7 +35,7 @@ describe("durable analyst profile reading", () => {
   it("retains the literal historical profile after the current launcher qualification changes", async () => {
     vi.resetModules();
     // A hypothetical later qualification is a policy mutation test, not a claimed supported CLI.
-    vi.doMock("../src/restricted-codex-policy.js", () => ({
+    vi.doMock("../../src/restricted-codex-policy.js", () => ({
       RESTRICTED_CODEX_ANALYSIS_IDENTITY: {
         provider: "codex",
         authMode: "chatgpt",
@@ -46,8 +46,8 @@ describe("durable analyst profile reading", () => {
       },
       RESTRICTED_CODEX_ANALYSIS_MODELS: ["gpt-6-astra"],
     }));
-    const config = await import("../src/study-analysis-codex-config.js");
-    const validator = await import("../src/study-analysis-validation.js");
+    const config = await import("../../src/analysis/codex-config.js");
+    const validator = await import("../../src/analysis/validation.js");
     const artifact = historical();
     artifact.configDigest = validator.hashStudyAnalysisValue(artifact.config);
     const before = JSON.stringify(artifact);

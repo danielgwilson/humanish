@@ -3,15 +3,15 @@ import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActorTraceItem } from "../src/actor-contract.js";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
+import type { ActorTraceItem } from "../../src/actor-contract.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
 import {
   captureStudyEvidence,
   validateStudyAnalysisEvidence,
-} from "../src/study-analysis-evidence.js";
-import { digestStudyAnalysisInput } from "../src/study-analysis-validation.js";
-import { loadStudyAnalysis, writeStudyAnalysis } from "../src/study-analysis-store.js";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/evidence.js";
+import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
+import { loadStudyAnalysis, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { syntheticArtifact } from "./fixtures.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>();

@@ -13,8 +13,8 @@ import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
@@ -24,17 +24,14 @@ import {
   loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-store.js";
-import {
-  digestStudyAnalysisInput,
-  hashStudyAnalysisValue,
-} from "../src/study-analysis-validation.js";
+} from "../../src/analysis/store.js";
+import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import type {
   StudyAnalysisArtifact,
   StudyAnalysisCorrection,
   StudyAnalysisInput,
-} from "../src/study-analysis.js";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/study-analysis.js";
+import { syntheticArtifact } from "./fixtures.js";
 
 describe("immutable study analysis store", () => {
   let cwd: string;

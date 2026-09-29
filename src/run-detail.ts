@@ -12,8 +12,8 @@
 // Reading both means the same screen renders a run the whole way through rather than going blank
 // at the moment it completes.
 
-import { readAutomaticStudyAnalysis } from "./automatic-study-analysis.js";
-import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
+import { readAutomaticStudyAnalysis } from "./analysis/automatic.js";
+import type { AutomaticStudyAnalysisView } from "./analysis/job.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 

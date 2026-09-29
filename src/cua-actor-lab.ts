@@ -67,8 +67,8 @@ import {
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+} from "./analysis/automatic-completion.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import { describeMissingKeys } from "./key-resolution.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 

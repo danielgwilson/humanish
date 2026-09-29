@@ -1,20 +1,20 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, opendir } from "node:fs/promises";
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "./run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "../selected-output-paths.js";
 import {
   isStudyEvidencePath,
   readBoundedStudyFile,
   STUDY_EVIDENCE_LIMITS,
   validateStudyAnalysisEvidence,
-} from "./study-analysis-evidence.js";
+} from "./evidence.js";
 import {
   hashStudyAnalysisValue,
   validateStudyAnalysisExecutionReceipt,
@@ -23,13 +23,13 @@ import {
   type StudyAnalysisExecutionReceipt,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisCorrection,
-} from "./study-analysis-validation.js";
+} from "./validation.js";
 import type {
   LoadedStudyAnalysis,
   StudyAnalysisArtifact,
   StudyAnalysisCorrection,
 } from "./study-analysis.js";
-import { readAutomaticStudyAnalysisPrepared } from "./study-analysis-job.js";
+import { readAutomaticStudyAnalysisPrepared } from "./job.js";
 
 const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
@@ -438,7 +438,7 @@ export async function appendStudyAnalysisCorrection(
   );
 }
 
-export type { StudyAnalysisExecutionReceipt } from "./study-analysis-validation.js";
+export type { StudyAnalysisExecutionReceipt } from "./validation.js";
 const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
 const EXECUTION_BINDING_KEYS = [
   "id",

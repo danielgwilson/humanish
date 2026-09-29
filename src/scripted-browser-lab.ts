@@ -20,13 +20,13 @@
 // digest instead. Provisioned clone runs persist structured commit/env-name/state provenance
 // plus a host digest while never writing the raw getHost URL or secret values into artifacts.
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";

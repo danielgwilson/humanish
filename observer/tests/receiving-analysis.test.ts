@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildObserverData } from "../../src/observer-data.js";
 import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
 import type { RunBundle } from "../../src/run.js";
-import { captureStudyEvidence } from "../../src/study-analysis-evidence.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import { parseStudyAnalysis, projectStudyAnalysis } from "../lib/study-analysis.js";
 import { reportProblem, resolveReportMoment } from "../lib/study-report.js";
 import { isObserverData } from "../lib/validate.js";
-import { syntheticArtifact } from "../../tests/study-analysis-fixtures.js";
+import { syntheticArtifact } from "../../tests/analysis/fixtures.js";
 
 // Synthetic local bundle, not a provider wire fixture. This checks the full
 // evidence-producer -> Observer -> report-admission seam without provider calls.

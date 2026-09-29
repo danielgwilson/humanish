@@ -117,7 +117,7 @@ describe("selected lab setup without paid dispatch", () => {
     });
   });
   it("uses the doctor's selected environment for the restricted account readiness check", async () => {
-    const launcher = await import("../src/restricted-codex-analysis.js");
+    const launcher = await import("../src/analysis/restricted-codex.js");
     const readiness = vi
       .spyOn(launcher, "checkRestrictedCodexAnalysisReadiness")
       .mockResolvedValue({ ready: false, errorCode: "codex_login_required" });

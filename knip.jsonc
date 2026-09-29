@@ -65,7 +65,7 @@
     // Known cycles, removed by the run.ts and study-analysis splits. Any new cycle fails `pnpm knip`.
     "allow": [
       ["src/observer-data.ts", "src/run.ts"],
-      ["src/study-analysis-store.ts", "src/study-analysis-job.ts"],
+      ["src/analysis/store.ts", "src/analysis/job.ts"],
     ],
   },
 }

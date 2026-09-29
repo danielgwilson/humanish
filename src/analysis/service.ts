@@ -1,18 +1,14 @@
-import { validCodexAnalysisConfig } from "./study-analysis-codex-config.js";
-import type { AnalysisFetch, StudyAnalysisProvider } from "./study-analysis-provider.js";
+import { validCodexAnalysisConfig } from "./codex-config.js";
+import type { AnalysisFetch, StudyAnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
 import path from "node:path";
-import { renderObserver } from "./observer.js";
-import { containsSensitive } from "./redaction.js";
-import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared } from "./run.js";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "./run-paths.js";
-import { isRunStatusRecord, RUN_STATUS_FILE } from "./run-status.js";
-import {
-  captureStudyEvidence,
-  readBoundedStudyFile,
-  STUDY_EVIDENCE_LIMITS,
-} from "./study-analysis-evidence.js";
+import { renderObserver } from "../observer.js";
+import { containsSensitive } from "../redaction.js";
+import { loadRunBundlePrepared, resolveRunPath, verifyRunPrepared } from "../run.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
+import { isRunStatusRecord, RUN_STATUS_FILE } from "../run-status.js";
+import { captureStudyEvidence, readBoundedStudyFile, STUDY_EVIDENCE_LIMITS } from "./evidence.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
@@ -21,7 +17,7 @@ import {
   type StudyAnalysisAdmission,
   type StudyAnalysisProgress,
   type StudyAnalysisDispatchContext,
-} from "./study-analysis-engine.js";
+} from "./engine.js";
 import {
   appendStudyAnalysisCorrection,
   assertStudyAnalysisPublicationCapacity,
@@ -30,8 +26,8 @@ import {
   loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "./study-analysis-store.js";
-import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
+} from "./store.js";
+import { hashStudyAnalysisValue } from "./validation.js";
 import {
   STUDY_ANALYSIS_CORRECTION_SCHEMA,
   type StudyAnalysisArtifact,

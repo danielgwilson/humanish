@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AUTOMATIC_STUDY_ANALYSIS_STALE_MS } from "../../src/study-analysis-job";
+import { AUTOMATIC_STUDY_ANALYSIS_STALE_MS } from "../../src/analysis/job";
 import {
   AUTOMATIC_ANALYSIS_STALE_MS,
   automaticAnalysisNotice,

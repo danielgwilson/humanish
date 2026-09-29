@@ -3,12 +3,12 @@ import {
   automaticAnalysisBudget,
   formatAutomaticAnalysisBudget,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
-} from "./automatic-analysis-config.js";
+} from "./analysis/automatic-config.js";
 import {
   automaticAnalysisSucceeded,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
@@ -105,8 +105,8 @@ import {
   type TuiModule,
 } from "./tui-contract.js";
 import { forTerminal } from "./terminal-encoding.js";
-import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./study-analysis-service.js";
-import { listStudyAnalyses, listStudyAnalysisExecutions } from "./study-analysis-store.js";
+import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./analysis/service.js";
+import { listStudyAnalyses, listStudyAnalysisExecutions } from "./analysis/store.js";
 import { resolveRunPath } from "./run.js";
 import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms/catch-host.js";

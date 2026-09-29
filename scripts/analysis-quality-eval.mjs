@@ -34,9 +34,9 @@ const json = async (file, value, exclusive = false) =>
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 const mod = (name) => import(pathToFileURL(path.join(packageRoot, "dist", `${name}.js`)).href);
 const runtime = await mod("run");
-const evidence = await mod("study-analysis-evidence");
-const service = await mod("study-analysis-service");
-const engine = await mod("study-analysis-engine");
+const evidence = await mod("analysis/evidence");
+const service = await mod("analysis/service");
+const engine = await mod("analysis/engine");
 const config = {
   model: "gpt-6-astra",
   question: null,
@@ -51,11 +51,11 @@ async function packagePin() {
   const metadata = await readJson(path.join(packageRoot, "package.json"));
   const files = {};
   for (const name of [
-    "study-analysis-engine",
-    "study-analysis-provider",
-    "study-analysis-validation",
-    "study-analysis-evidence",
-    "study-analysis-service",
+    "analysis/engine",
+    "analysis/provider",
+    "analysis/validation",
+    "analysis/evidence",
+    "analysis/service",
   ]) {
     files[`dist/${name}.js`] = hash(await readFile(path.join(packageRoot, "dist", `${name}.js`)));
   }

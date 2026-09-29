@@ -5,11 +5,11 @@ import { expect, it } from "vitest";
 import {
   createStudyAnalysisProvider,
   type StudyAnalysisProviderRequest,
-} from "../src/study-analysis-provider.js";
+} from "../../src/analysis/provider.js";
 
-// Captured envelope, as in study-analysis-provider.test.ts; no model request here.
+// Captured envelope, as in provider.test.ts; no model request here.
 const captured = readFileSync(
-  new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+  new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
   "utf8",
 );
 const request: StudyAnalysisProviderRequest = {

@@ -18,7 +18,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "./run-paths.js";
-import { isStudyAnalysisRecordPath } from "./study-analysis-sharing.js";
+import { isStudyAnalysisRecordPath } from "./analysis/sharing.js";
 import {
   assertPreparedSelectedOutputDirectory,
   prepareManagedHumanishOutputDirectory,

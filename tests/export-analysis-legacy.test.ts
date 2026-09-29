@@ -10,15 +10,15 @@ import {
 } from "../src/actor-contract.js";
 import { exportRun } from "../src/export.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+import { captureStudyEvidence } from "../src/analysis/evidence.js";
 import {
   appendStudyAnalysisCorrection,
   loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-store.js";
-import { hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
+} from "../src/analysis/store.js";
+import { hashStudyAnalysisValue } from "../src/analysis/validation.js";
+import { syntheticArtifact } from "./analysis/fixtures.js";
 
 it("redacts legacy analysis-directory evidence while omitting generated analysis records", async () => {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-analysis-export-"));

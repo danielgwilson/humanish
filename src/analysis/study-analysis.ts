@@ -3,9 +3,9 @@ import type {
   ActorCompletionReason,
   ActorStopCause,
   ParticipantDeclaredOutcome,
-} from "./actor-contract.js";
-import type { CuaGoalSource } from "./actor-goal-source.js";
-import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
+} from "../actor-contract.js";
+import type { CuaGoalSource } from "../actor-goal-source.js";
+import type { AutomaticStudyAnalysisView } from "./job.js";
 
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
