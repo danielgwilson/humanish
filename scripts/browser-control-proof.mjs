@@ -327,6 +327,7 @@ async function runCase(mode) {
     let cleanupConfirmed = false;
     try {
       if (result.failure && (child.exitCode !== null || child.signalCode !== null)) {
+        // oxlint-disable-next-line no-unsafe-finally -- caught by the catch below, which records unconfirmed cleanup
         throw new Error("Fixture exited before browser close acknowledgment");
       }
       const closed = await next("closed");
@@ -350,6 +351,7 @@ async function runCase(mode) {
       // Killing the direct controller does not establish that Chromium exited. Preserve its
       // private profile and socket directory rather than deleting possibly active state.
       result.retainedRecoveryDirectoryName = path.basename(owned);
+      // oxlint-disable-next-line no-unsafe-finally -- unconfirmed cleanup fails a proof that otherwise passed
       if (!result.failure) throw error;
     } finally {
       server.close();

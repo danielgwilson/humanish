@@ -485,7 +485,7 @@ export async function deployCommsCatch(
   const probe = {
     timeoutMs: options.readyTimeoutMs ?? 15_000,
     requestTimeoutMs,
-    ...(options.timers ?? {}),
+    ...options.timers,
   };
   const ready = await catchHealthy(desktop, port, probe);
   // Confirm the read-only inbox listener bound too (loopback-reachable at its own port), when requested —

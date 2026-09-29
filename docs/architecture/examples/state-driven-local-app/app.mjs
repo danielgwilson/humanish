@@ -7,7 +7,7 @@ export async function startLocalApp() {
   let greeted = false;
   let messages = 0;
   let stateReads = 0;
-  const server = createServer(async (request, response) => {
+  const handleRequest = async (request, response) => {
     if (request.method === "GET" && request.url === "/state") {
       stateReads += 1;
       response.writeHead(200, { "content-type": "application/json" });
@@ -28,6 +28,9 @@ export async function startLocalApp() {
     } else {
       response.writeHead(404).end();
     }
+  };
+  const server = createServer((request, response) => {
+    void handleRequest(request, response);
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");

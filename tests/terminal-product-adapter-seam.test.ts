@@ -265,9 +265,9 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(bundle.adapterScore?.namespace).toBe(ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("pass");
     // The adopter's product breakdown rides under `data` (core never read it).
-    expect((bundle.adapterScore?.data as Record<string, unknown>).hostedProductSucceeded).toBe(
-      true,
-    );
+    expect(
+      (bundle.adapterScore?.data as Record<string, unknown> | undefined)?.hostedProductSucceeded,
+    ).toBe(true);
 
     // (2) The derived feedback candidate is in the bundle, and its product nouns are NAMESPACED.
     expect(bundle.feedbackCandidates.length).toBe(1);

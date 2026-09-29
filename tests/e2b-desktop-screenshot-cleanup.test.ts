@@ -186,6 +186,7 @@ describe("SDK screenshot cleanup compatibility (#662)", () => {
     protectDesktopScreenshotCleanup(desktop);
     const returned = desktop.files.remove("/tmp/ordinary-file");
     expect(returned).toBe(pending.promise);
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(returned).rejects.toBe(error);
     pending.reject(error);
     await rejected;

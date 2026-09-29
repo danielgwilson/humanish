@@ -43,7 +43,7 @@ export default function ParticipantsGrid({
   const t0 =
     lanes
       .map((l) => l.frames[0]?.at)
-      .filter(Boolean)
+      .filter((at): at is string => Boolean(at))
       .sort()[0] ?? "";
 
   return (

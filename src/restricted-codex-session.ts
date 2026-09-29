@@ -244,6 +244,7 @@ async function checkVersion(
     clearTimeout(timer);
     if (!(await closeOwnedCodexProcess(owned))) {
       retainUnclosedChild(owned.closed);
+      // oxlint-disable-next-line no-unsafe-finally -- a Codex process that did not close invalidates the version check
       throw new RestrictedCodexStop("codex_cleanup_failed");
     }
   }

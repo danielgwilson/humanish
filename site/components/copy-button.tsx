@@ -41,7 +41,7 @@ export default function CopyButton({ text, label = "copy" }: { text: string; lab
         className="copy"
         type="button"
         data-copy={text}
-        onClick={onClick}
+        onClick={() => void onClick()}
         disabled={status === "copying"}
         aria-busy={status === "copying"}
         aria-describedby={statusId}

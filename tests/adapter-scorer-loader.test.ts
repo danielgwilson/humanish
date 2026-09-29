@@ -508,7 +508,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
 
-    const hooks = passingHooks({ ...(loaded.hooks.score ? { score: loaded.hooks.score } : {}) });
+    const hooks = passingHooks(loaded.hooks.score ? { score: loaded.hooks.score } : {});
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),
@@ -855,7 +855,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
     const loaded = await loadAdapterScorer({ cwd, ref, backend: "terminal", source: "manifest" });
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    const hooks = passingHooks({ ...(loaded.hooks.score ? { score: loaded.hooks.score } : {}) });
+    const hooks = passingHooks(loaded.hooks.score ? { score: loaded.hooks.score } : {});
     const result = await runTerminalProductLab({
       cwd,
       config: terminalConfig(),

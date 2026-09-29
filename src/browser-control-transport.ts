@@ -134,7 +134,8 @@ export class BrowserControlTransport {
         if (!this.pendingWrite) return;
         this.pendingWrite = undefined;
         this.sending = false;
-        error ? reject(error) : resolve();
+        if (error) reject(error);
+        else resolve();
       };
       this.pendingWrite = done;
       try {

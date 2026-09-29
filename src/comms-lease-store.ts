@@ -473,6 +473,7 @@ export class CommsLeaseStore {
         try {
           await unlink(path.join(this.dir.root, temporary));
         } catch (error) {
+          // oxlint-disable-next-line no-unsafe-finally -- a leftover temporary lease file other than ENOENT must surface
           if (!missing(error)) throw error;
         }
       }

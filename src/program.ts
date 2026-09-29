@@ -413,7 +413,6 @@ class HumanishCommand extends Command {
         return noticed.then(() => {
           finish(true);
         });
-        return result;
       } catch (error) {
         reportUnexpectedActionError(this, cliIo, error);
         return undefined;
@@ -2148,7 +2147,7 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
     .option(
       "--recipient <address>",
       "Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed.",
-      (value: string, previous: string[] = []) => [...previous, value],
+      (value: string, previous: string[] | undefined) => [...(previous ?? []), value],
     )
     .action(
       async (options: {
@@ -5549,7 +5548,7 @@ export async function followObserver(
       }
       io.setExitCode(exitCodeForSignal(signal));
 
-      (async () => {
+      void (async () => {
         try {
           await server.close();
         } catch (error: unknown) {

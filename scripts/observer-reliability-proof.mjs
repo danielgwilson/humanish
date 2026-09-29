@@ -47,7 +47,7 @@ for (const [id, value] of [
 const delays = new Map(),
   pixels = new Map(),
   requests = [];
-const server = createServer(async (req, res) => {
+const handleRequest = async (req, res) => {
   const pathname = new URL(req.url, "http://127.0.0.1").pathname;
   res.setHeader("cache-control", "no-store");
   if (pathname === "/observer/index.html") {
@@ -89,6 +89,9 @@ const server = createServer(async (req, res) => {
     );
   res.setHeader("content-type", "image/png");
   res.end(pixels.get(pathname));
+};
+const server = createServer((req, res) => {
+  void handleRequest(req, res);
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const origin = `http://127.0.0.1:${server.address().port}`;

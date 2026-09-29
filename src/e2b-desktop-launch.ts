@@ -253,6 +253,7 @@ export function guardDesktopSandboxCreate(module: E2BDesktopModule): E2BDesktopM
           : DESKTOP_CREATE_CLEANUP_TIMEOUT_MS;
       let cleanupOwned: (() => Promise<DesktopCreateCleanup>) | undefined;
       let restoreKill: (() => void) | undefined;
+      // oxlint-disable-next-line typescript/no-this-alias -- the attempt subclasses whichever SDK class was called
       const CallingSandbox = this;
       class AttemptSandbox extends CallingSandbox {
         constructor(...args: unknown[]) {

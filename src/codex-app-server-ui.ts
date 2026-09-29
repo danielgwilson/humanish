@@ -1,4 +1,4 @@
-import { createServer, type Server, type ServerResponse } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 
 import {
@@ -109,7 +109,10 @@ export async function startCodexAppServerUi(
     }
   };
 
-  const server = createServer(async (request, response) => {
+  const handleRequest = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
     if (request.url === "/state") {
       response.writeHead(200, {
         "cache-control": "no-store",
@@ -141,6 +144,9 @@ export async function startCodexAppServerUi(
       "content-type": "text/html; charset=utf-8",
     });
     response.end(renderCodexAppServerUiHtml());
+  };
+  const server = createServer((request, response) => {
+    void handleRequest(request, response);
   });
 
   const url = await listen(server, options.port ?? 0);

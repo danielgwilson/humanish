@@ -335,6 +335,7 @@ describe("owned Chromium text port", () => {
       handle = await prepared(f),
       waiting = deferred<void>();
     f.assertFocusedWindow.mockImplementationOnce(async () => waiting.promise);
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(handle.paste()).rejects.toMatchObject({
       code: "cancelled",
       disposition: "not_dispatched",
@@ -351,6 +352,7 @@ describe("owned Chromium text port", () => {
     const f = fixture(),
       waiting = deferred<CDPSession>();
     f.newCDPSession.mockReturnValueOnce(waiting.promise);
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(f.port.prepareText("x", f.abort.signal)).rejects.toMatchObject({
       code: "deadline_exceeded",
       disposition: "not_dispatched",
@@ -380,6 +382,7 @@ describe("owned Chromium text port", () => {
         if (mode === "close") void f.port.close();
         return waiting.promise;
       });
+      // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
       const rejected = expect(handle.paste()).rejects.toMatchObject({
         disposition: "outcome_uncertain",
       });
@@ -400,6 +403,7 @@ describe("owned Chromium text port", () => {
       handle = await prepared(f),
       waiting = deferred<void>();
     f.detach.mockReturnValueOnce(waiting.promise);
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(handle.close()).rejects.toMatchObject({
       code: "transport_failed",
       disposition: "not_dispatched",

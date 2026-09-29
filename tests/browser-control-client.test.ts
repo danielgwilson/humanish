@@ -425,6 +425,7 @@ describe("browser control client and dispatcher", () => {
     const abort = new AbortController();
     await f.client.ready();
     const pending = f.client.executor.execute(click, abort.signal);
+    // oxlint-disable-next-line vitest/valid-expect -- awaited below, after the rejection is triggered
     const rejected = expect(pending).rejects.toMatchObject({
       code: "cancelled",
       disposition: "outcome_uncertain",

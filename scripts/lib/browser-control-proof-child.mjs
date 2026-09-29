@@ -177,7 +177,7 @@ async function stop() {
   })();
   return stopping;
 }
-process.on("message", async (message) => {
+const handleMessage = async (message) => {
   try {
     if (message?.command === "snapshot")
       process.send?.({ event: "snapshot", state: await snapshot() });
@@ -191,6 +191,9 @@ process.on("message", async (message) => {
     await stop();
     process.exitCode = 1;
   }
+};
+process.on("message", (message) => {
+  void handleMessage(message);
 });
 process.once("disconnect", () => {
   void stop();

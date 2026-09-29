@@ -34,8 +34,8 @@ const secretPatterns = [
     "db_connection_with_credentials",
     /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis):\/\/[^:@/\s]+:[^@/\s]+@\S+/g,
   ],
-  ["npm_auth_token", /_authToken\s*=\s*[A-Za-z0-9._~+\/=-]{20,}/g],
-  ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+\/-]{24,}\b/g],
+  ["npm_auth_token", /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g],
+  ["bearer_token", /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g],
   // ngrok authtokens are two base62 chunks joined by "_"; require the literal
   // "authtoken" nearby so ordinary underscore-joined identifiers do not match.
   ["ngrok_authtoken", /\bauthtoken['":=\s]+[0-9A-Za-z]{20,}_[0-9A-Za-z]{18,}\b/gi],

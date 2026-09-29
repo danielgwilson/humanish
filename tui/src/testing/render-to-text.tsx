@@ -43,7 +43,6 @@ export const KEY = {
  * silently lost by any tool that normalizes control characters.
  */
 export function stripAnsi(value: string): string {
-  // eslint-disable-next-line no-control-regex
   return value.replace(/\u001B\[[0-9;?]*[A-Za-z]/g, "").replace(/\u001B[()][A-Za-z0-9]/g, "");
 }
 

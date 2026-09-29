@@ -64,7 +64,7 @@ async function attachScreenshotToObserverProofRun(
     url: screenshotPath,
     title: "Synthetic screenshot evidence",
   };
-  stream.ui = { ...(stream.ui ?? {}), screenshotUrl: screenshotPath };
+  stream.ui = { ...stream.ui, screenshotUrl: screenshotPath };
   stream.artifacts.push({
     label: "synthetic screenshot evidence",
     path: screenshotPath,

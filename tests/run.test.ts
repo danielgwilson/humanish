@@ -827,7 +827,7 @@ describe("dry-run bundles", () => {
 
       await writeFile(
         path.join(cwd, ".humanish/runs/events-secret-regression/events.ndjson"),
-        `{\"message\":\"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}\"}\n`,
+        `{"message":"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}"}\n`,
         "utf8",
       );
 
@@ -920,7 +920,7 @@ describe("dry-run bundles", () => {
         url: screenshotPath,
         title: "Invalid screenshot evidence",
       };
-      stream!.ui = { ...(stream!.ui ?? {}), screenshotUrl: screenshotPath };
+      stream!.ui = { ...stream!.ui, screenshotUrl: screenshotPath };
       stream!.artifacts.push({
         label: "invalid screenshot evidence",
         path: screenshotPath,
@@ -950,7 +950,7 @@ describe("dry-run bundles", () => {
         streams: Array<{ ui?: { nestedObserverPath?: string } }>;
       };
       bundle.streams[0]!.ui = {
-        ...(bundle.streams[0]?.ui ?? {}),
+        ...bundle.streams[0]?.ui,
         nestedObserverPath: "nested-evidence/missing-nested-proof.json",
       };
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
@@ -980,7 +980,7 @@ describe("dry-run bundles", () => {
         streams: Array<{ ui?: { nestedObserverPath?: string } }>;
       };
       bundle.streams[0]!.ui = {
-        ...(bundle.streams[0]?.ui ?? {}),
+        ...bundle.streams[0]?.ui,
         nestedObserverPath: "[remote-nested-observer]",
       };
       await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");

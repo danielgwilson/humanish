@@ -169,7 +169,7 @@ export async function configureCommsLab(args: {
         message:
           "This lab uses local capture. Preserve it or make a separate lab before selecting real email.",
       };
-    lab.comms = { ...(existing ?? {}), email: { ...existing?.email, connection: args.connection } };
+    lab.comms = { ...existing, email: { ...existing?.email, connection: args.connection } };
     const validated = parseLabConfig(lab);
     if (!validated.ok)
       return {

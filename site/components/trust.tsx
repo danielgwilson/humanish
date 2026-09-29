@@ -1,5 +1,3 @@
-const GITHUB = "https://github.com/danielgwilson/humanish";
-
 export default function Trust() {
   return (
     <section id="trust" className="band band-dark">

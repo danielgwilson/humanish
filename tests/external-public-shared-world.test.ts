@@ -860,7 +860,8 @@ describe("observed-origin convergence (redirect tolerated)", () => {
     ) as RunBundle;
     // Divergent observed origins -> no single observed origin -> publicOriginDigest absent.
     expect(
-      (bundle.sharedWorld?.plane as { publicOriginDigest?: string }).publicOriginDigest,
+      (bundle.sharedWorld?.plane as { publicOriginDigest?: string } | undefined)
+        ?.publicOriginDigest,
     ).toBeUndefined();
     const distinct = new Set((bundle.sharedWorld?.laneWindows ?? []).map((w) => w.routeHostDigest));
     expect(distinct.size).toBe(2);

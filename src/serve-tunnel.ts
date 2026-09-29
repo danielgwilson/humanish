@@ -72,7 +72,7 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
       if ("url" in outcome) {
         resolve(outcome.url);
       } else {
-        killChild(child);
+        void killChild(child);
         reject(outcome.error);
       }
     };
