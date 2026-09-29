@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
@@ -41,7 +42,7 @@ const LINK = `https://example.test/verify?code=${OTP}&proof=synthetic-value`;
 function transport(answer: StudyAnalysisResult, gate?: Promise<void>) {
   const wire = structuredClone(captured);
   wire.output[0].content[0].text = JSON.stringify(answer);
-  return vi.fn<typeof fetch>(async () => {
+  return vi.fn<AnalysisFetch>(async () => {
     await gate;
     return new Response(JSON.stringify(wire));
   });

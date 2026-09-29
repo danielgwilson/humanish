@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
 import {
   automaticAnalysisBudget,
@@ -145,7 +146,7 @@ describe("automatic analysis admission and producer boundary", () => {
       await writeFile(file, JSON.stringify(source));
       await rm(path.join(prepared.physicalRunRoot, "status.json"));
       const original = await readFile(file);
-      const fetch = vi.fn<typeof globalThis.fetch>(async () => {
+      const fetch = vi.fn<AnalysisFetch>(async () => {
         throw new Error("No provider dispatch permitted");
       });
       const result = await completeAutomaticAnalysis(
@@ -369,7 +370,7 @@ describe("automatic analysis admission and producer boundary", () => {
       { cwd, runId: "pinned-source", dryRun: false, ok: true },
       prepared,
     );
-    const fetch = vi.fn<typeof globalThis.fetch>(async () => {
+    const fetch = vi.fn<AnalysisFetch>(async () => {
       throw new Error("unexpected provider call");
     });
     const cleanup = vi.fn();

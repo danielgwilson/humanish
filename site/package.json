@@ -13,29 +13,28 @@
     "registry:check": "pnpm registry:build && git add -N -- registry/css public/r && git diff --exit-code -- registry/css public/r"
   },
   "dependencies": {
-    "@flags-sdk/posthog": "^1.0.1",
+    "@flags-sdk/posthog": "^1.1.0",
     "@types/mdx": "^2.0.14",
     "@vercel/analytics": "^2.0.1",
-    "clsx": "^2.1.1",
+    "clsx": "catalog:",
     "flags": "^4.3.1",
-    "fumadocs-core": "16.15.7",
-    "fumadocs-mdx": "15.4.0",
-    "fumadocs-ui": "16.15.7",
-    "next": "16.3.0",
-    "posthog-js": "^1.434.2",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3"
+    "fumadocs-core": "16.15.15",
+    "fumadocs-mdx": "15.4.5",
+    "fumadocs-ui": "16.15.15",
+    "next": "16.3.6",
+    "posthog-js": "^1.434.17",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^20.19.41",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "shadcn": "^4.16.2",
-    "sharp": "0.34.3",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "shadcn": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
   }
 }

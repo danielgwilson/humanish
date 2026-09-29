@@ -1,4 +1,4 @@
-import { Agent, type Dispatcher } from "undici";
+import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
 
 /** Deliberately separate from the stateful computer-use actor: one request, no tools or retries. */
 export interface StudyAnalysisProviderRequest {
@@ -72,13 +72,15 @@ const record = (value: unknown): Record<string, unknown> =>
 const count = (value: unknown): value is number =>
   Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1e12;
 
-/** Node's fetch has a separate response-header deadline. The caller's wall-clock
+/** Undici's fetch has a separate response-header deadline. The caller's wall-clock
  * deadline must govern this one request, including uploads and body reads, without
- * changing transport behavior for other requests in the process. */
+ * changing transport behavior for other requests in the process. The agent is used with
+ * fetch from the same undici package: Node's built-in fetch bundles its own undici, and an
+ * undici 8 agent fails there with "invalid onRequestStart method". */
 class AnalysisAgent extends Agent {
   override dispatch(
     options: Dispatcher.DispatchOptions,
-    handler: Dispatcher.DispatchHandlers,
+    handler: Dispatcher.DispatchHandler,
   ): boolean {
     return super.dispatch({ ...options, headersTimeout: 0, bodyTimeout: 0 }, handler);
   }
@@ -177,12 +179,25 @@ export function parseStudyAnalysisResponse(raw: unknown): StudyAnalysisProviderR
   }
 }
 
+/** The part of fetch this provider uses; undici's fetch and test doubles both satisfy it. */
+export type AnalysisFetch = (
+  url: string,
+  init: {
+    method: "POST";
+    redirect: "error";
+    signal: AbortSignal;
+    headers: Record<string, string>;
+    body: string;
+    dispatcher: Dispatcher;
+  },
+) => Promise<{ ok: boolean; status: number; body: ReadableStream<Uint8Array> | null }>;
+
 /** No alternate endpoint or env-derived base URL: evidence and credentials have one destination. */
 export function createStudyAnalysisProvider(options: {
   apiKey: string;
-  fetchFn?: typeof fetch;
+  fetchFn?: AnalysisFetch;
 }): StudyAnalysisProvider {
-  const fetchFn = options.fetchFn ?? fetch;
+  const fetchFn = options.fetchFn ?? undiciFetch;
   return async (request) => {
     const failure = (
       errorCode: StudyAnalysisProviderResult["errorCode"],
@@ -259,9 +274,7 @@ export function createStudyAnalysisProvider(options: {
         headers: { Authorization: `Bearer ${options.apiKey}`, "Content-Type": "application/json" },
         body,
         dispatcher,
-        // Node accepts a custom dispatcher; its bundled Undici declarations may be
-        // older than this compatible dispatcher (browser RequestInit omits it).
-      } as unknown as RequestInit);
+      });
       if (!response.ok) {
         // Never read provider error prose: it may echo evidence or credentials.
         await response.body?.cancel();

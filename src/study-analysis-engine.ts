@@ -12,6 +12,7 @@ import {
   type StudyAnalysisResult,
 } from "./study-analysis.js";
 import {
+  type AnalysisFetch,
   createStudyAnalysisProvider,
   type StudyAnalysisProvider,
 } from "./study-analysis-provider.js";
@@ -401,7 +402,7 @@ export async function runStudyAnalysis(
     codexProvider?: StudyAnalysisProvider;
     signal?: AbortSignal;
     onProgress?: (progress: StudyAnalysisProgress) => void;
-    fetch?: typeof fetch;
+    fetch?: AnalysisFetch;
     /** Internal orchestration: bind a permanent automatic claim before any provider call. */
     analysisId?: string;
     beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;

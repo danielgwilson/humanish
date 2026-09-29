@@ -1,6 +1,6 @@
 import { createServer, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
-import { Agent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
+import { Agent, fetch as undiciFetch, getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import { expect, it } from "vitest";
 import {
   createStudyAnalysisProvider,
@@ -53,15 +53,16 @@ it("survives a delayed response past the process fetch header timeout without re
   const shortDeadline = new Agent({ headersTimeout: 100, bodyTimeout: 100 });
   setGlobalDispatcher(shortDeadline);
   try {
-    // Control proves the runtime/fixture reproduces the hidden timeout.
-    await expect(fetch(server.url)).rejects.toMatchObject({
+    // Control proves the runtime/fixture reproduces the hidden timeout through the same fetch
+    // the provider uses.
+    await expect(undiciFetch(server.url)).rejects.toMatchObject({
       cause: { code: "UND_ERR_HEADERS_TIMEOUT" },
     });
     const provider = createStudyAnalysisProvider({
       apiKey: "synthetic-key",
       fetchFn: async (url, init) => {
         expect(url).toBe("https://api.openai.com/v1/responses");
-        return fetch(server.url, init);
+        return undiciFetch(server.url, init);
       },
     });
     expect(await provider(request)).toMatchObject({ status: "completed", dispatched: true });
@@ -92,7 +93,7 @@ it.each(["headers", "body", "caller"])(
     try {
       const result = await createStudyAnalysisProvider({
         apiKey: "synthetic-key",
-        fetchFn: (_url, init) => fetch(server.url, init),
+        fetchFn: (_url, init) => undiciFetch(server.url, init),
       })({ ...request, timeoutMs: kind === "caller" ? 4000 : 150, signal: controller.signal });
       expect(result).toMatchObject({
         status: kind === "caller" ? "cancelled" : "timed_out",

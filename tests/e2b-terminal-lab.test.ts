@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 
 import {
   LAB_CONFIG_SCHEMA,
@@ -779,7 +780,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     const eligible = ["command-only", "message-only", "split-stdout", "early-item"].includes(mode);
     // The real service, admission, receipts, and job owner run. Only transport
     // rejects locally, so this fixture cannot allocate a provider request.
-    const fetch = vi.fn<typeof globalThis.fetch>(async () => {
+    const fetch = vi.fn<AnalysisFetch>(async () => {
       throw new Error("Synthetic request boundary");
     });
     const result = await runTerminalProductLab({

@@ -406,6 +406,8 @@ describe("independent analysis admission and projection", () => {
     expect(readInlineStudyAnalysis(document, data)).toEqual(NO_ANALYSIS);
     const slot = document.createElement("script");
     slot.id = "study-analysis";
+    // Matches observer/index.html; a classic script would execute the placeholder text.
+    slot.type = "application/json";
     document.body.append(slot);
     try {
       slot.textContent = STUDY_ANALYSIS_PLACEHOLDER;

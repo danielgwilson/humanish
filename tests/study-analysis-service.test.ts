@@ -2,6 +2,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/pr
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisFetch } from "../src/study-analysis-provider.js";
 import { createProgram } from "../src/program.js";
 import {
   analyzeStudy,
@@ -69,7 +70,7 @@ describe("ordinary study analysis flow", () => {
   async function transport() {
     const wire = JSON.parse(await readFile(wirePath, "utf8"));
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
-    return vi.fn<typeof fetch>(async () => new Response(JSON.stringify(wire)));
+    return vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
   }
 
   it("preflights a completed legacy stream without credentials, provider requests or artifacts", async () => {
@@ -159,7 +160,7 @@ describe("ordinary study analysis flow", () => {
 
   it("retains an unresolved accounting marker before transport and resolves it exactly once", async () => {
     const respond = await transport();
-    const fetch = vi.fn<typeof globalThis.fetch>(async (...args) => {
+    const fetch = vi.fn<AnalysisFetch>(async (...args) => {
       const attempts = await readdir(path.join(runRoot, "analysis-attempts"));
       expect(attempts).toHaveLength(1);
       const files = await readdir(path.join(runRoot, "analysis-attempts", attempts[0]!));
@@ -427,7 +428,7 @@ describe("ordinary study analysis flow", () => {
     wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
     // Perturb captured usage to exercise a provider exceeding the requested token bound.
     wire.usage.output_tokens = config.maxOutputTokens + 1;
-    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(JSON.stringify(wire)));
+    const fetch = vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
     const result = await analyzeStudy(
       cwd,
       "analysis-flow",
@@ -485,7 +486,7 @@ describe("ordinary study analysis flow", () => {
       { config },
       {
         apiKey: "synthetic-key",
-        fetch: vi.fn<typeof globalThis.fetch>(async () => new Response("", { status: 503 })),
+        fetch: vi.fn<AnalysisFetch>(async () => new Response("", { status: 503 })),
       },
     );
     expect(failed).toMatchObject({ ok: false, status: "failed", usage: { dispatched: true } });
@@ -545,7 +546,7 @@ describe("ordinary study analysis flow", () => {
 
   it("retains paid accounting even when changed source prevents publication", async () => {
     const ordinary = await transport();
-    const fetch = vi.fn<typeof globalThis.fetch>(async (...args) => {
+    const fetch = vi.fn<AnalysisFetch>(async (...args) => {
       const bundle = JSON.parse(original.toString()) as RunBundle;
       bundle.scenario.goal = "Changed synthetic assignment.";
       await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
