@@ -6,7 +6,9 @@ source of truth; the Observer is their review surface.
 
 Sub-guides take precedence inside their directories: [observer/](observer/AGENTS.md),
 [tui/](tui/AGENTS.md), [site/](site/AGENTS.md). The reasoning behind the rules below is in
-[docs/principles/engineering.md](docs/principles/engineering.md).
+[docs/principles/engineering.md](docs/principles/engineering.md). [CONTEXT.md](CONTEXT.md) defines
+the domain terms, and [docs/decisions/](docs/decisions/README.md) records the decisions that
+shape the code.
 
 ## Commands
 
@@ -88,7 +90,7 @@ Assume this repository is public.
 ## Working
 
 - Start from the [ramp](docs/ramp/README.md) and the current task; read the contract for the
-  boundary you are changing. Historical plans are context, not a backlog to resume.
+  boundary you are changing. Historical plans do not authorize work.
 - Keep `main` clean: one worktree and branch per task, reviewable commits, squash merges.
 - Before adding a service, protocol, mode or framework, state the concrete need in the PR.
   Prefer removing an unnecessary mechanism to documenting around it.
