@@ -152,7 +152,7 @@ over local publication:
 ```bash
 pnpm release:check
 npm version patch --no-git-tag-version
-# Open and merge the release PR.
+# Add the version's entry at the top of CHANGELOG.md, then open and merge the release PR.
 git fetch origin main --tags
 git switch main
 git pull --ff-only origin main
@@ -160,6 +160,9 @@ VERSION="$(node -p "require('./package.json').version")"
 git tag "v${VERSION}"
 git push origin "v${VERSION}"
 ```
+
+The GitHub Release for the tag carries the full notes; its opening paragraph is the
+CHANGELOG.md entry.
 
 No agent should run `npm publish` locally without explicit human approval in the
 current thread. That approval must come from the maintainer responsible for the

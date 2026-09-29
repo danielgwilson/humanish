@@ -34,6 +34,7 @@ describe("release readiness", () => {
     expect(packageJson.keywords).toContain("persona-simulation");
     expect(packageJson.files).toEqual([
       "AGENTS.md",
+      "CHANGELOG.md",
       "dist",
       "docs/architecture",
       "docs/assets",

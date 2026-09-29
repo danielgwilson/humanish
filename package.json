@@ -24,6 +24,7 @@
   },
   "files": [
     "AGENTS.md",
+    "CHANGELOG.md",
     "dist",
     "docs/architecture",
     "docs/assets",
