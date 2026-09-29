@@ -249,7 +249,7 @@ function InterruptedFacts({
             ? "cost unknown — it ended before pricing itself"
             : costLine(run, participant)}
         </Text>
-        <Text color={PALETTE.warn}> sandboxes may still be running</Text>
+        <Text color={PALETTE.warn}>{"  sandboxes may still be running"}</Text>
       </Box>
     </Box>
   );

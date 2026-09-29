@@ -106,6 +106,9 @@ So, if a real terminal is genuinely needed:
 - Ink's `<Text>` props are not optional-with-undefined and this repo compiles
   with `exactOptionalPropertyTypes`, so pass colour through `src/text-props.ts`
   (`{...color(maybe)}`) rather than `color={maybe}`.
+- Put spaces that matter in terminal output inside a string literal:
+  `<Text>{"  none yet"}</Text>`. oxfmt, like Prettier, collapses runs of spaces in
+  JSX text, which is harmless in a browser and changes an Ink layout.
 - Measure terminal size from Ink's own `useStdout`, never from a prop. Two
   different stdout objects means laying out to one width and drawing into
   another — silently, and only visibly at narrow widths.

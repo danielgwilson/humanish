@@ -196,7 +196,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           </Text>
         )}
         {runs.length === 0 ? (
-          <Text dimColor> none yet</Text>
+          <Text dimColor>{"  none yet"}</Text>
         ) : (
           <RunList
             runs={runs}
@@ -289,7 +289,7 @@ function RunList({
   const window = listWindow({ total: runs.length, selected, viewport });
   return (
     <Box flexDirection="column">
-      {window.start > 0 ? <Text dimColor> ↑ {window.start} more</Text> : null}
+      {window.start > 0 ? <Text dimColor>{`  ↑ ${window.start} more`}</Text> : null}
       {runs
         .slice(window.start, window.end)
         .map((run, offset) =>
@@ -313,7 +313,9 @@ function RunList({
             />
           ),
         )}
-      {window.end < runs.length ? <Text dimColor> ↓ {runs.length - window.end} more</Text> : null}
+      {window.end < runs.length ? (
+        <Text dimColor>{`  ↓ ${runs.length - window.end} more`}</Text>
+      ) : null}
     </Box>
   );
 }

@@ -109,7 +109,7 @@ export function LabsScreen({
   const window = listWindow({ total: rows.length, selected, viewport });
   return (
     <Box flexDirection="column">
-      {window.start > 0 ? <Text dimColor> ↑ {window.start} more</Text> : null}
+      {window.start > 0 ? <Text dimColor>{`  ↑ ${window.start} more`}</Text> : null}
       {rows.slice(window.start, window.end).map((row, offset) => {
         const index = window.start + offset;
         // The list is already sorted so everything with history comes first. Marking the seam
@@ -135,7 +135,9 @@ export function LabsScreen({
           </React.Fragment>
         );
       })}
-      {window.end < rows.length ? <Text dimColor> ↓ {rows.length - window.end} more</Text> : null}
+      {window.end < rows.length ? (
+        <Text dimColor>{`  ↓ ${rows.length - window.end} more`}</Text>
+      ) : null}
       {/* A global destination, and a peer rather than a lifecycle state — it is somewhere you go,
           not something the app decides you are in. */}
       <Box marginTop={1}>
@@ -144,9 +146,9 @@ export function LabsScreen({
           bold={peerSelected}
           dimColor={!peerSelected}
         >
-          {gutter(peerSelected)} All runs
+          {`${gutter(peerSelected)}   All runs`}
         </Text>
-        {liveTotal > 0 ? <Text color={PALETTE.ok}> {liveTotal} working</Text> : null}
+        {liveTotal > 0 ? <Text color={PALETTE.ok}>{`   ${liveTotal} working`}</Text> : null}
       </Box>
       {unattributed > 0 ? (
         <Box marginTop={1}>
