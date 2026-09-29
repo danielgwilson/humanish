@@ -1,115 +1,82 @@
 ---
 title: Run your first study
-description: Install Humanish, send a synthetic participant into a real app, and inspect what happened.
+description: Install humanish, point one synthetic participant at an example app, and read what came back.
 ---
 
-Humanish runs synthetic user research. Participants use an app in isolated local or hosted desktops and leave screenshots, action traces, and their own account of what worked or got confusing.
+You can't run a user study on an app that has no users yet. humanish runs one anyway: one command puts a synthetic participant with a persona and a task in front of your app in a real browser, and what comes back is what they did, where they got stuck, and what it cost.
 
-If your app is running locally and you use Codex, start with [a local browser study](/docs/your-app#study-your-running-local-app). To try a hosted study before configuring your app, use the included drawDB example below.
+This page goes from install to a finished study on an example app. It takes about ten minutes and about twenty cents of provider fees. [Your own app](/docs/your-app) is the next page.
 
 ## Install
 
-Use **Node.js 20 or newer**, in a project directory:
+Use Node 20 or newer, in a project directory:
 
 ```bash
-node --version
-npm install --save-dev humanish
+npm install --save-dev humanish @e2b/desktop
 npx humanish init --yes
 ```
 
-`humanish` is enough for the preview and local browser route. Hosted desktops also
-need `npm install --save-dev @e2b/desktop` in the same project; a one-shot
-`npx humanish@latest` can miss the desktop dependency even if you installed it elsewhere.
+`init` writes example labs and personas under `humanish/`, ignores `.humanish/` (where runs land), and prints the next command for your machine. `@e2b/desktop` is the hosted desktop; install it in the same project, because a one-shot `npx humanish@latest` cannot see a copy installed elsewhere. The keyless preview and the local-browser route work without it.
 
-`init` creates editable labs and personas under `humanish/`, adds package scripts, and ignores `.humanish/`, where run evidence goes. It tells you the next command for your machine.
+## Add two keys
 
-## Connect a desktop and a model
-
-A live run needs both a desktop and a participant model. Automatic findings use a separate analysis request:
-
-| Route | Participant model | Desktop | Automatic findings |
-| --- | --- | --- | --- |
-| [Local browser](/docs/your-app#study-your-running-local-app) | Supported Codex ChatGPT login; remote inference | Linux x64 + Docker/KVM/TUN, or M3+ Mac + Lima | Separate Codex account analyst by default |
-| `openai-computer-use` | OpenAI API with `OPENAI_API_KEY` | `E2B_API_KEY` and `@e2b/desktop` | OpenAI API, separate budget |
-| [Account participant on E2B](/docs/local-agents) | Your signed-in Codex or Claude Code | `E2B_API_KEY` and `@e2b/desktop` | OpenAI API by default; skipped without its key |
-| `first-run` preview | None; synthetic evidence only | None | None |
-
-Codex's ChatGPT login and an OpenAI API key are separate authentication paths.
-The local-browser starter explicitly selects account participants and analysis;
-installing Codex does not switch an existing API lab. Account inference consumes
-plan quota and is not offline or free.
-
-For the default API route, set your keys with the hidden prompts:
+A live study needs a desktop and a model. The default route uses E2B for the desktop and the OpenAI API for the participant:
 
 ```bash
-npm install --save-dev @e2b/desktop
 npx humanish keys set e2b
 npx humanish keys set openai
 npx humanish doctor --lab try-live
 ```
 
-Existing `E2B_API_KEY` and `OPENAI_API_KEY` environment variables also work. If you use a local env file, pass the same `--env-file <path>` to `doctor` and `run`. `doctor --lab` checks the selected route without creating a desktop or making a model request. It reports key presence and CLI-reported login status without printing credentials or account details; remote key validity, model access and quota remain untested. See [budgets and privacy](/docs/budgets-and-privacy) for storage and costs.
+The prompts hide what you type and write to a user-level store with mode `0600`. `E2B_API_KEY` and `OPENAI_API_KEY` in the environment work too, and `--env-file <path>` loads an ignored file for one command; pass it to both `doctor` and `run`. `doctor --lab` checks that the route's keys or logins are present without creating a desktop or calling a model. It cannot check quota or whether a key is still valid.
 
-## Run the hosted example
+Two alternatives, each on its own page:
+
+- Your signed-in Codex or Claude Code can drive the participant instead of the OpenAI key. You still need E2B. See [a signed-in coding agent](/docs/local-agents).
+- If the app runs on your machine and you use Codex, the [local-browser route](/docs/your-app#study-your-running-local-app) needs neither key.
+
+## Run the example
 
 ```bash
-npx humanish lab inspect try-live
-npx humanish lab preflight try-live
 npx humanish run try-live
 ```
 
-The included lab clones drawDB, builds it inside a hosted desktop, and asks one synthetic newcomer to add and name two tables. **It studies drawDB, not your project.** drawDB is the application studied, not a Humanish adopter or endorser.
+`try-live` is the starter lab `init` wrote. It clones drawDB, an open-source database diagram editor, builds it inside the hosted desktop, and asks one synthetic newcomer to add two tables and name them. It studies drawDB, not your project; drawDB is the application studied, not a humanish adopter or endorser.
 
-Allow a few minutes for the app to build and the participant to work. The lab sets a **$2 estimated model-spend cap**. Desktop time is billed separately; estimates and turn-boundary checks are not a provider billing ceiling. Read [how budgets work](/docs/budgets-and-privacy#set-a-study-budget) before increasing the panel.
+Allow a few minutes for the build and the participant. The lab caps estimated model spend at $2. Three fresh installs on September 1, 2026 finished in 108 to 111 seconds at about $0.16 of model spend each, plus a few cents of desktop time; the [receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md) has the run ids. Your run will differ.
 
-For context, three fresh installs measured on September 1, 2026 completed this study in 108–111 seconds at about $0.16 per run. Those are [dated observations](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md), not a promise about your next run.
+To watch the desktop while it runs, use `npx humanish watch try-live` instead.
 
-`preflight` checks configuration metadata by default; it does not check credentials, installed dependencies or target reachability. Use `doctor --lab` for local setup. Neither check proves the app will build or complete a task. A participant who gets stuck can still produce the most useful result: a concrete place to investigate.
-
-## Read the result
+## Read what came back
 
 ```bash
-npx humanish runs
 npx humanish observe --run latest --open
 ```
 
-Observer opens the finished run in your browser. Read the participant's closing report, replay their actions, and inspect the screenshot at the point they hesitated. The loopback server stays attached until Ctrl-C.
+The Observer opens the finished run in your browser: the participant's closing report, a replay of every action, and the screenshot at each moment. Read the report, then find the screenshot behind each claim. The server stays attached until Ctrl-C.
 
-In another terminal, check the evidence and cost summary:
+In another terminal:
 
 ```bash
 npx humanish verify --run latest --json
-npx humanish review --run latest --json
 npx humanish stats --lab try-live
 ```
 
-[Read results and draft feedback](/docs/read-results) explains the outcome, verification grade, and what you can share.
+`verify` grades the bundle for sharing (`share_ready`, `local_only` or `blocked`), and `stats` totals duration and estimated cost. [Read results](/docs/read-results) explains how to tell a finding from a broken run, and what you can share.
+
+A participant who gets stuck is often the useful result: it gives you a concrete place in the app to look.
 
 ## Preview without keys
-
-If you want to inspect the evidence format before setting up providers:
 
 ```bash
 npx humanish run first-run
 npx humanish observe --run latest --open
 ```
 
-This creates a **synthetic preview with no provider spend**. It does not open your app or send an actor into a browser. Installing `humanish` alone is enough for this path.
+This writes a synthetic sample bundle and opens it. Nothing is spent and no participant visits any app; it exists so you can see the evidence format before adding keys. `humanish run` and `humanish watch` with no lab do the same.
 
-Running `humanish run` or `humanish watch` without a lab also creates a synthetic preview. To watch a live study while it runs, name the lab:
+## Next
 
-```bash
-npx humanish watch try-live
-```
-
-## Set up your own study
-
-[Your own app](/docs/your-app) covers a running local app, a hosted preview or staging URL, and an isolated clone-and-build path.
-
-If a coding agent is setting up Humanish for you, install the companion skill:
-
-```bash
-npx skills add danielgwilson/humanish --skill humanish
-```
-
-Agents should use the CLI and `--json` outputs. `npx humanish tui` is the interactive terminal to hand to a human; it requires Node 22+, interactive stdin/stdout, and refuses detected agent sessions. See [JSON alternatives and TUI behavior](/docs/review-surfaces#for-coding-agents-and-scripts).
+- [Your own app](/docs/your-app): a preview URL, a repository built inside the desktop, or the app running on your machine.
+- [What a study costs](/docs/what-a-study-costs): measured numbers and what the caps do.
+- For a coding agent setting this up for you: `npx skills add danielgwilson/humanish --skill humanish`. Agents should use the CLI with `--json`. `npx humanish tui` is for a person at a terminal; it needs Node 22 and refuses agent sessions. See [Observer and terminal](/docs/review-surfaces#for-coding-agents-and-scripts).

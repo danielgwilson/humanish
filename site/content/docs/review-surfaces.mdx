@@ -5,34 +5,19 @@ description: Browse studies as a person, read results through JSON as an agent, 
 
 ## Browse in a human terminal
 
-Every other humanish command is built so an agent can drive it. `humanish tui`
-takes the screen and waits for a person.
+`humanish tui` is the one command built for a person rather than an agent:
 
 ```bash
 npx humanish tui
 ```
 
-Arrow keys move, `enter` opens, `esc` goes back, `q` quits. There are three
-screens, and you move between objects rather than between states: the set of
-labs, one lab, one run. A run's lifecycle
-renders in place, so a run you are watching changes from running to its verdict
-without the screen moving under you.
+Arrow keys move, Enter opens, Esc goes back, q quits. There are three screens: all labs, one lab, one run. A run you are watching updates in place, from running to its verdict, without the screen jumping.
 
-- **labs**: every lab in the project, whether or not it has ever run. Labs with
-  something running now sort first. Each row carries what to expect from a live
-  run of it; a lab with no live history says `no live runs yet` and does not
-  quote a median from dry runs, which spend nothing and take no time.
-- **lab**: that lab's history, and two ways to start it. A dry run starts on one
-  keypress because it cannot cost anything; a live run is armed by the first
-  `enter` and committed by the second, restating the cost in between.
-- **run**: who is in the run, what they are currently thinking, and how far they
-  have got, with time and money underneath. A terminal cannot show screenshots,
-  so the run's self-contained Observer artifact is named for you to open.
+- **labs**: every lab in the project, with the ones running now listed first. Each row shows what a live run of it usually takes. A lab with no live history says `no live runs yet`; dry runs spend nothing and take no time, so they are not averaged.
+- **lab**: that lab's history and two ways to start it. A dry run starts on one keypress because it costs nothing. A live run takes two, with the cost shown between them.
+- **run**: who is in the run, what each participant is doing now, and how far along it is, with time and money underneath. A terminal cannot show screenshots, so the run's Observer file is named for you to open.
 
-A run you start from the surface is detached: it keeps going if you quit the
-TUI, and it survives losing the SSH session you started it over. The surface
-follows it by reading `.humanish/runs/<id>/status.json`, holding no handle on
-it, so you can quit mid-run, reopen, and find it still there.
+A run started from the TUI is detached: it keeps going if you quit, and it survives a dropped SSH session. The TUI follows it by reading `.humanish/runs/<id>/status.json` and holds no handle on it, so you can quit mid-run, reopen, and find it still there.
 
 ## For coding agents and scripts
 

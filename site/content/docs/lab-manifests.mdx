@@ -103,35 +103,3 @@ Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
 and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
 `urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
 `.humanish/runs/<run>/traces/` and summarized in the Observer.
-
-## Maintainer OSS meta-lab example
-
-This repository includes a contract-only authorized-repo dogfood lab:
-
-```bash
-pnpm humanish -- lab run oss --dry-run --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy
-```
-
-Default lab targets are intentionally app/tool-like repos with visible,
-locally runnable user surfaces. Avoid libraries and frameworks for public
-dogfood unless the scenario is explicitly testing developer experience.
-
-The bundled manifest defaults to dry-run and creates contract evidence without
-cloning repos, launching a provider sandbox, or forwarding credentials. Use:
-
-```bash
-pnpm humanish -- lab run oss --dry-run --json --no-open
-```
-
-Live OSS meta-lab execution is unavailable until repository-derived instructions
-have an isolated credential boundary. A live manifest fails closed with
-`HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED` before callbacks, filesystem writes,
-network access, or provider launch.
-
-The `oss` lab accepts GitHub `owner/repo` slugs. A CLI `--repos` override redacts
-repo labels in durable artifacts by default; pass `--no-redact-repos` only for a
-public-safe selection. Dry-run does not access or clone repositories and does
-not need or use private-repository credentials. Private-repository execution
-remains unavailable while the live lane is disabled. Local bundles remain
-ignored under `.humanish/`; do not publish private screenshots, logs, or
-upstream details.
