@@ -62,13 +62,13 @@ export interface DesktopMediaEvidence {
 /** Where a lane's synthetic camera feed lives inside the sandbox: a tmpfs the sandbox user can
  *  write, and a path that contains neither /tmp/ nor /home/, which the public-safety scan reads
  *  as an operator's local path (this one is the harness's own and belongs in the bundle). */
-export const SANDBOX_MEDIA_DIR = "/dev/shm/humanish-media";
+const SANDBOX_MEDIA_DIR = "/dev/shm/humanish-media";
 
-export const SANDBOX_CAMERA_PATH = `${SANDBOX_MEDIA_DIR}/camera.y4m`;
+const SANDBOX_CAMERA_PATH = `${SANDBOX_MEDIA_DIR}/camera.y4m`;
 
 /** The synthetic feed: ffmpeg's test pattern, 640x480 at 10 fps, six seconds (about 28 MB of
  *  raw Y4M on the tmpfs), looped by Chrome's fake capture device. */
-export const SYNTHETIC_CAMERA_COMMAND = `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -loglevel error -f lavfi -i testsrc=size=640x480:rate=10 -t 6 -pix_fmt yuv420p ${SANDBOX_CAMERA_PATH}`;
+const SYNTHETIC_CAMERA_COMMAND = `mkdir -p ${SANDBOX_MEDIA_DIR} && ffmpeg -y -loglevel error -f lavfi -i testsrc=size=640x480:rate=10 -t 6 -pix_fmt yuv420p ${SANDBOX_CAMERA_PATH}`;
 
 /**
  * Put the declared camera feed in the sandbox and return the Chromium flags that present it as a

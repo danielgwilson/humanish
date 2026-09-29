@@ -25,7 +25,7 @@ import {
   validateStudyAnalysisEvidence,
 } from "./study-analysis-evidence.js";
 
-export const EXPORT_SCHEMA = "humanish.export-result.v1";
+const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */
 export const DEFAULT_EXPORT_MAX_BYTES = 25 * 1024 * 1024;
 // The portable browser loader applies the same per-raster allocation bound.

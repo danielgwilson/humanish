@@ -1,6 +1,6 @@
 import type { ActorTokenUsage, ProviderRequestReceipt } from "./actor-contract.js";
 
-export const CUA_PROVIDER_FAILURE_PHASES = [
+const CUA_PROVIDER_FAILURE_PHASES = [
   "startup",
   "initialize",
   "config/read",

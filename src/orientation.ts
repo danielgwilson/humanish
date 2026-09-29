@@ -33,7 +33,7 @@ export interface OrientationState {
   nextCommands: OrientationCommand[];
 }
 
-export interface OrientationCommand {
+interface OrientationCommand {
   command: string;
   why: string;
 }

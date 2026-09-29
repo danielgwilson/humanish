@@ -66,7 +66,7 @@ export interface ChromeMobileEmulationRequest {
 }
 
 /** What the page reports after emulation: the proof, never copied from the request. */
-export interface ChromeFidelityRead {
+interface ChromeFidelityRead {
   userAgent: string;
   devicePixelRatio: number;
   innerWidth: number;

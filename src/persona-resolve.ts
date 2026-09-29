@@ -12,7 +12,7 @@ import { digestText, redactText } from "./redaction.js";
 import { realpath } from "node:fs/promises";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal lane enforces. */
-export const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /** Title-case an id for the fallback display name (`skeptical-power-user` -> `Skeptical Power User`). */
 export function personaTitleFromId(personaId: string): string {

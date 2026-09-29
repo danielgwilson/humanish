@@ -26,7 +26,7 @@ import type { CommsCheckResult, CommsConfigureResult } from "./comms-setup.js";
 import type { CommsRecoveryEntry } from "./comms-receiving.js";
 
 /** The humanish version string shown in the frame, so a screenshot in a bug report is datable. */
-export interface TuiVersionInfo {
+interface TuiVersionInfo {
   cli: string;
 }
 

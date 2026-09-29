@@ -17,7 +17,7 @@ import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./study-an
 import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
 
 export const AUTOMATIC_STUDY_ANALYSIS_DIRECTORY = "analysis-automatic";
-export const AUTOMATIC_STUDY_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
+const AUTOMATIC_STUDY_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";
 export const AUTOMATIC_STUDY_ANALYSIS_STALE_MS = 15_000;
 
 /** Execution metadata only. Never a participant outcome or permission to dispatch. */

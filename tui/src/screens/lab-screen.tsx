@@ -23,7 +23,7 @@ import { color } from "../text-props.js";
  */
 export type LabItem = { kind: "start"; mode: LabRunMode } | { kind: "run"; run: RunIndexEntry };
 
-export type LabRunMode = "dry-run" | "live";
+type LabRunMode = "dry-run" | "live";
 
 /**
  * TWO start rows, not one row with a hidden mode.

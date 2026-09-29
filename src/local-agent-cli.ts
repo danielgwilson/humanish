@@ -33,7 +33,7 @@ import { restrictedCodexNpmTarget } from "./restricted-codex-session.js";
 
 export type LocalAgentId = "codex" | "claude";
 
-export interface LocalAgentDescriptor {
+interface LocalAgentDescriptor {
   id: LocalAgentId;
   /** The command a person types. */
   bin: string;
@@ -43,7 +43,7 @@ export interface LocalAgentDescriptor {
   credentialPath: string;
 }
 
-export const LOCAL_AGENTS: readonly LocalAgentDescriptor[] = [
+const LOCAL_AGENTS: readonly LocalAgentDescriptor[] = [
   { id: "codex", bin: "codex", label: "Codex", credentialPath: ".codex/auth.json" },
   {
     id: "claude",

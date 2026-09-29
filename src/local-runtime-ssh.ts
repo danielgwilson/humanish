@@ -4,7 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { hostExec, LIMA_INSTANCE } from "./local-runtime-host.js";
 
 /** Standard OpenSSH streamlocal forwarding; no browser-control protocol here. */
-export async function openRuntimeSshTunnel(options: {
+async function openRuntimeSshTunnel(options: {
   config: string;
   destination: string;
   localSocket: string;

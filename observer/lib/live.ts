@@ -44,7 +44,7 @@ export async function fetchObserverData(
   }
 }
 
-export interface HistoryRun {
+interface HistoryRun {
   runId: string;
   href: string;
   status: string;

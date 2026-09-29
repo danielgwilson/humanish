@@ -12,7 +12,7 @@ import {
   writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
-export const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
+const COMMS_CONNECTIONS_SCHEMA = "humanish.comms-connections.v1";
 export const COMMS_CONFIG_PATH = ".humanish/local/comms.yaml";
 export const COMMS_PROVIDERS = [
   {

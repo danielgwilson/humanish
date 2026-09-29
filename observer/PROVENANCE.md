@@ -5,11 +5,11 @@ This workspace consumes the `@humanish` registry the way any adopter would —
 Vendored files are registry output: do not hand-edit them; re-vendor with
 `pnpm exec shadcn add <item> --overwrite` and record the refresh here.
 
-| Registry item               | Files                                                                                                                                               | Source                                      |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `@humanish/humanish-tokens` | `styles/humanish/humanish-tokens.css`                                                                                                               | https://humanish.dev/r/humanish-tokens.json |
-| `@humanish/persona-lane`    | `components/persona-lane.tsx`, `components/cover-canvas.tsx`, `lib/humanish/covers.ts`, `lib/humanish/theme.ts`, `styles/humanish/persona-lane.css` | https://humanish.dev/r/persona-lane.json    |
-| `@humanish/terminal-cast`   | `components/terminal-cast.tsx`, `styles/humanish/terminal-cast.css`                                                                                 | https://humanish.dev/r/terminal-cast.json   |
+| Registry item               | Files                                                                                                                                   | Source                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `@humanish/humanish-tokens` | `styles/humanish/humanish-tokens.css`                                                                                                   | https://humanish.dev/r/humanish-tokens.json |
+| `@humanish/persona-lane`    | `lib/humanish/theme.ts`, `styles/humanish/persona-lane.css` (the Observer renders no persona lane, so the component files were removed) | https://humanish.dev/r/persona-lane.json    |
+| `@humanish/terminal-cast`   | `components/terminal-cast.tsx`, `styles/humanish/terminal-cast.css`                                                                     | https://humanish.dev/r/terminal-cast.json   |
 
 Last vendored: 2026-08-12, registry as published from site commit `c7a3c07`
 (the registry serves built output of `site/registry.json`; regenerate there

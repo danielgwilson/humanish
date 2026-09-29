@@ -581,7 +581,7 @@ export async function runCheckpointSnapshot(args: {
 }
 
 /** The DECLARED (dry-run) checkpoint snapshot: digest the probe RECIPE (command digests), no run. */
-export function declaredCheckpointSnapshot(
+function declaredCheckpointSnapshot(
   name: string,
   checkpoints: LabSubjectStateCheckpoint[],
 ): SharedWorldCheckpoint {

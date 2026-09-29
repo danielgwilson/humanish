@@ -22,7 +22,7 @@ import {
   type StopWhen,
 } from "./stop-conditions.js";
 
-export const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
+const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
 
 /**
  * One task in a protocol. It has two halves that belong to two different people, and keeping them

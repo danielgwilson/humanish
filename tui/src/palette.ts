@@ -19,5 +19,3 @@ export const PALETTE = {
   /** A failed verdict. */
   bad: "#e0796b",
 } as const;
-
-export type PaletteName = keyof typeof PALETTE;

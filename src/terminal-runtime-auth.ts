@@ -1,6 +1,6 @@
 import type { E2BNetworkOptions } from "./e2b-desktop-launch.js";
 
-export const OPENAI_EGRESS_HOST = "api.openai.com";
+const OPENAI_EGRESS_HOST = "api.openai.com";
 /** E2B envd installs the sandbox-specific proxy CA into this system bundle before routing. */
 export const E2B_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 /** An inert nonsecret value satisfies Codex exec's auth prerequisite. E2B replaces the header. */

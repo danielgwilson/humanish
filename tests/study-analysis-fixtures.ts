@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type {
   StudyAnalysisArtifact,
   StudyAnalysisInput,
@@ -9,8 +8,6 @@ import {
   hashStudyAnalysisValue,
 } from "../src/study-analysis-validation.js";
 
-export const hashBytes = (bytes: Buffer): string =>
-  createHash("sha256").update(bytes).digest("hex");
 export function syntheticInput(): StudyAnalysisInput {
   const input: StudyAnalysisInput = {
     runId: "synthetic-study",

@@ -3,7 +3,7 @@ import { pipeline } from "node:stream/promises";
 import { CuaExecutorError } from "./cua-executor-error.js";
 import { DESKTOP_RECORDING_MAX_BYTES } from "./desktop-recording-types.js";
 
-export const BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS = 120_000;
+const BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS = 120_000;
 
 function exactBytes(expected: number): Transform {
   let received = 0;

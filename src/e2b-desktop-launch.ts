@@ -49,12 +49,12 @@ export interface E2BDesktopModule {
   };
 }
 
-export interface E2BSandboxListOptions {
+interface E2BSandboxListOptions {
   metadata?: Record<string, string>;
   requestTimeoutMs?: number;
 }
 
-export interface E2BSandboxInfo {
+interface E2BSandboxInfo {
   id?: string;
   metadata?: Record<string, string>;
   sandboxID?: string;
@@ -62,7 +62,7 @@ export interface E2BSandboxInfo {
   state?: string;
 }
 
-export interface E2BSandboxPaginator {
+interface E2BSandboxPaginator {
   hasNext: boolean;
   nextItems(options?: { requestTimeoutMs?: number }): Promise<E2BSandboxInfo[]>;
 }
@@ -337,7 +337,7 @@ function runningFromProject(): boolean {
   return here.startsWith(`${process.cwd()}${sep}node_modules${sep}`);
 }
 
-export function isMissingE2BDesktopDependency(error: unknown): boolean {
+function isMissingE2BDesktopDependency(error: unknown): boolean {
   const value = error as { code?: string; message?: string };
   return value.code === "ERR_MODULE_NOT_FOUND" && value.message?.includes("@e2b/desktop") === true;
 }

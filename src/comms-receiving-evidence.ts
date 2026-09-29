@@ -5,7 +5,7 @@ const localId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/);
 const count = z.number().int().min(0).max(100_000);
 const limitations = z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,100}$/)).max(128);
 const time = z.string().datetime();
-export const commsReceivingEvidenceSchema = z
+const commsReceivingEvidenceSchema = z
   .object({
     schema: z.literal(COMMS_RECEIVING_SCHEMA),
     channel: z.literal("email"),

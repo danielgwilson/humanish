@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-export const TUI_PROJECT_SCHEMA = "humanish.tui-project.v1";
+const TUI_PROJECT_SCHEMA = "humanish.tui-project.v1";
 
 export interface TuiProjectState {
   schema: typeof TUI_PROJECT_SCHEMA;

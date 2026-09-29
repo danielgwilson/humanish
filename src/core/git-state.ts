@@ -5,8 +5,8 @@ import { inspectVerifiedGitWorkspace, type VerifiedGitWorkspace } from "./git-wo
 
 export const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 
-export type GitStateStatus = "clean" | "dirty" | "missing" | "unavailable";
-export type GitRefState = "attached" | "detached" | "unborn" | "unknown";
+type GitStateStatus = "clean" | "dirty" | "missing" | "unavailable";
+type GitRefState = "attached" | "detached" | "unborn" | "unknown";
 
 export interface GitStateChangeSummary {
   staged: number;
@@ -27,7 +27,7 @@ export interface CapturedGitState {
   note: string;
 }
 
-export interface GitCommandResult {
+interface GitCommandResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;

@@ -36,13 +36,13 @@ export type ClaudeResultSubtype =
   | "error_max_budget_usd"
   | "error_max_structured_output_retries";
 
-export type ClaudeContentBlock =
+type ClaudeContentBlock =
   | { type: "text"; text: string }
   | { type: "thinking"; thinking: string }
   | { type: "tool_use"; id: string; name: string }
   | { type: "tool_result"; tool_use_id: string; is_error?: boolean };
 
-export type ClaudeMessage =
+type ClaudeMessage =
   // The SDK emits many system subtypes (init, hook_started, hook_response, ...).
   // Only the init message carries model/session config; the rest are ignored.
   | { type: "system"; subtype: string; session_id?: string; model?: string }

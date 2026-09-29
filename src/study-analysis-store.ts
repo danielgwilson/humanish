@@ -31,7 +31,7 @@ import type {
 } from "./study-analysis.js";
 import { readAutomaticStudyAnalysisPrepared } from "./study-analysis-job.js";
 
-export const STUDY_ANALYSIS_DIRECTORY = "analysis";
+const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
 const MAX_VERSIONS = 256;
 const MAX_CORRECTIONS = 256;
@@ -439,7 +439,7 @@ export async function appendStudyAnalysisCorrection(
 }
 
 export type { StudyAnalysisExecutionReceipt } from "./study-analysis-validation.js";
-export const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
+const STUDY_ANALYSIS_EXECUTION_DIRECTORY = "analysis-attempts";
 const EXECUTION_BINDING_KEYS = [
   "id",
   "runId",

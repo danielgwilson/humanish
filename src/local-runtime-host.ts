@@ -71,7 +71,7 @@ export async function runtimeDocker(
 
 // No host mounts, agent forwarding or automatic app-port discovery. Per-study
 // OpenSSH forwards grant just the selected app and browser-control sockets.
-export const LIMA_TEMPLATE = `minimumLimaVersion: 2.2.0
+const LIMA_TEMPLATE = `minimumLimaVersion: 2.2.0
 vmType: vz
 arch: aarch64
 nestedVirtualization: true

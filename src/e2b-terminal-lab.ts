@@ -130,7 +130,7 @@ import {
 import { TERMINAL_AGENT_NOT_IMPLEMENTED_CODE } from "./terminal-agent-actor.js";
 
 /** Provider-neutral metadata constant: the lane's non-secret tag (mirrors CUA_ACTOR_LAB_PROVIDER_METADATA). */
-export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
+const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
   mode: "terminal-product-lab",
   tool: "humanish",
 } as const;
@@ -138,9 +138,9 @@ export const TERMINAL_PRODUCT_LAB_PROVIDER_METADATA = {
 // The terminal-product ledger schemas the verifier asserts present on a LIVE bundle. They ride the
 // existing terminal stream + events (humanish.run-bundle.v1 is unchanged); these constants name the
 // artifact files so the producer and verifier cannot drift on the path.
-export const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
-export const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";
-export const TERMINAL_LEDGERS_ARTIFACT = "terminal-ledgers.json";
+const TERMINAL_EVENTS_ARTIFACT = "terminal-events.ndjson";
+const TERMINAL_TRANSCRIPT_ARTIFACT = "terminal-transcript.txt";
+const TERMINAL_LEDGERS_ARTIFACT = "terminal-ledgers.json";
 
 /** The in-sandbox working directory for the agent (a scratch dir; nothing is cloned into it). */
 const SANDBOX_WORKDIR = "/home/user/study";
@@ -1084,7 +1084,7 @@ function isNonRuntimeCredentialName(name: string): boolean {
  * value that is not a plain short label. A verifier check asserts the persisted metadata has no
  * prompt/token/secret shapes; this builder makes that true by construction.
  */
-export function buildSandboxMetadata(allowlist: {
+function buildSandboxMetadata(allowlist: {
   labId: string;
   simId: string;
   runId: string;
@@ -2815,7 +2815,7 @@ export function buildTerminalProductBundle(args: {
  * stream, transcript, ledgers, actor trace). verifyRun's terminal-product check (gated on
  * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
  */
-export function buildLiveTerminalProductBundle(args: {
+function buildLiveTerminalProductBundle(args: {
   /** Lab provenance for the bundle\'s own `lab` field (#455). */
   lab?: RunLabProvenance;
   actorId: string;

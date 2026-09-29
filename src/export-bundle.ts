@@ -28,7 +28,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
 
-export const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
+const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
 const MAX_FILES = 10_000;
 const TEXT_EXTENSIONS = new Set([
   ".json",

@@ -1,6 +1,6 @@
-export const CORE_RUN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/;
-export const LATEST_POINTER_SCHEMA = "humanish.latest-run.v1";
-export const HISTORY_ENTRY_SCHEMA = "humanish.run-history-entry.v1";
+const CORE_RUN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,127}$/;
+const LATEST_POINTER_SCHEMA = "humanish.latest-run.v1";
+const HISTORY_ENTRY_SCHEMA = "humanish.run-history-entry.v1";
 
 export type CoreRunMode = "dry-run" | "live";
 
@@ -58,11 +58,11 @@ export function buildRunId(options: BuildRunIdOptions): string {
   return runId;
 }
 
-export function isValidRunId(value: string): boolean {
+function isValidRunId(value: string): boolean {
   return CORE_RUN_ID_PATTERN.test(value) && !value.includes("--");
 }
 
-export function assertRunId(value: string): void {
+function assertRunId(value: string): void {
   if (!isValidRunId(value)) {
     throw new Error(`Invalid run id: ${value}`);
   }

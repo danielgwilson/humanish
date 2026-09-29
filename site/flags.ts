@@ -15,12 +15,9 @@ export interface Entities {
   distinctId: string;
 }
 
-export const identify = dedupe(({ cookies }: { cookies: ReadonlyRequestCookies }): Entities => {
+const identify = dedupe(({ cookies }: { cookies: ReadonlyRequestCookies }): Entities => {
   return { distinctId: cookies.get(VISITOR_COOKIE)?.value ?? "anonymous" };
 });
-
-export const HOMEPAGE_VARIANTS = ["current", "option-1"] as const;
-export type HomepageVariant = (typeof HOMEPAGE_VARIANTS)[number];
 
 /**
  * The PostHog adapter reads POSTHOG_PROJECT_API_KEY when it is constructed and throws without

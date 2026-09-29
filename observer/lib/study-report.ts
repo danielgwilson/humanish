@@ -57,7 +57,7 @@ export interface ParticipantAnalysis {
   }[];
 }
 
-export interface StudyFinding {
+interface StudyFinding {
   id: string;
   title: string;
   shortTitle?: string;

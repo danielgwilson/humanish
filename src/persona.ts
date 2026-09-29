@@ -1,9 +1,9 @@
 import { digestText, redactText } from "./redaction.js";
 import type { ActorPersonaRef } from "./actor-contract.js";
 
-export type PersonaLevel = "low" | "medium" | "high";
+type PersonaLevel = "low" | "medium" | "high";
 export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;
-export const PERSONA_COMPILER_VERSION = 2;
+const PERSONA_COMPILER_VERSION = 2;
 
 export class PersonaConfigError extends Error {
   constructor(message: string) {

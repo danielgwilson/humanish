@@ -3,7 +3,7 @@
 // see PROVENANCE.md. Keep byte-faithful to the site's markup.
 
 /** The human(ish) wordmark: serif (ish) device with accent parens. */
-export function Ish() {
+function Ish() {
   return (
     <span className="ish">
       <span className="p">(</span>

@@ -2,8 +2,8 @@ import { constants } from "node:fs";
 import { lstat, open, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-export const GIT_METADATA_INSPECTION_FAILED_NOTE = "Git metadata could not be inspected safely.";
-export const GIT_METADATA_CONTAINMENT_FAILED_NOTE = "Git metadata failed containment validation.";
+const GIT_METADATA_INSPECTION_FAILED_NOTE = "Git metadata could not be inspected safely.";
+const GIT_METADATA_CONTAINMENT_FAILED_NOTE = "Git metadata failed containment validation.";
 
 interface FileIdentity {
   readonly dev: bigint;

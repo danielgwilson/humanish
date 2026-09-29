@@ -117,7 +117,7 @@ export async function assertPreparedSelectedOutputDirectory(
   await assertDirectoryIdentity(prepared.physicalPath, prepared.identity, "Selected output root");
 }
 
-export async function assertPreparedSelectedOutputFile(
+async function assertPreparedSelectedOutputFile(
   prepared: PreparedSelectedOutputFile,
 ): Promise<void> {
   const requestedPhysicalParent = await realpath(path.dirname(prepared.requestedPath));

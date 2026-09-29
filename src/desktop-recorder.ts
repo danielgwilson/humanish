@@ -25,7 +25,7 @@ export interface DesktopRecorderCommandOptions {
   audioSources?: readonly DesktopRecordingAudioSource[];
 }
 
-export interface DesktopRecorderResult {
+interface DesktopRecorderResult {
   metadata: DesktopRecordingMetadata;
   outputPath: string;
 }

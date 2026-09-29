@@ -1,6 +1,6 @@
 export type StopConditionPrimitive = string | number | boolean | null;
 
-export interface StopWhenAppStatePathEquals {
+interface StopWhenAppStatePathEquals {
   path: string;
   equals: StopConditionPrimitive;
 }

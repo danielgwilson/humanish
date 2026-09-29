@@ -2,7 +2,7 @@
 // https://nodejs.org/en/about/previous-releases
 // https://nodejs.org/dist/v22.23.2/SHASUMS256.txt (checked 2026-09-05)
 // A checksum fetched alongside the archive at runtime would not pin what we trust.
-export const TERMINAL_NODE_VERSION = "22.23.2";
+const TERMINAL_NODE_VERSION = "22.23.2";
 
 // npm normally derives its global prefix from the real Node executable. This distribution
 // lives under /opt, while its public executables use /usr/local/bin. Set only a missing

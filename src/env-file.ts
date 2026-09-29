@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export const ENV_FILE_RESULT_SCHEMA = "humanish.env-file-result.v1";
+const ENV_FILE_RESULT_SCHEMA = "humanish.env-file-result.v1";
 
 export interface EnvFileLoadResult {
   schema: typeof ENV_FILE_RESULT_SCHEMA;

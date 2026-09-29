@@ -6,7 +6,7 @@ import { curTheme, onThemeRedraw, syncTheme } from "@/lib/humanish/theme";
 // The same register contract as humanish.dev (site components/theme-toggle.tsx):
 // system scheme by default, an explicit choice writes data-theme on <html> and
 // persists to localStorage (restored pre-paint by the index.html init script).
-export const THEME_STORAGE_KEY = "humanish-theme";
+const THEME_STORAGE_KEY = "humanish-theme";
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(onThemeRedraw, curTheme, () => "light");

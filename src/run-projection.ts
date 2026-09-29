@@ -351,7 +351,7 @@ export interface LabRow {
 }
 
 /** The addressable handle for a manifest: its filename without directory or extension. */
-export function labNameFromPath(manifestPath: string): string {
+function labNameFromPath(manifestPath: string): string {
   const base = manifestPath.split("/").pop() ?? manifestPath;
   return base.replace(/\.(ya?ml)$/i, "");
 }

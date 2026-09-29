@@ -1,7 +1,7 @@
 import type { LocalRuntimeRelease } from "./local-runtime.js";
 
 /** Updated with the verified, public runtime artifact before release. */
-export const LOCAL_RUNTIME_RELEASE: LocalRuntimeRelease = {
+const LOCAL_RUNTIME_RELEASE: LocalRuntimeRelease = {
   url: "https://github.com/danielgwilson/humanish/releases/download/runtime-2026.09.28.1/runtime-linux-amd64.tar.gz",
   sha256: "224be52467d6a808c79f156c6537d8a34c2dfb7b71daa836d34c8611fbbb6647",
   bytes: 596142100,

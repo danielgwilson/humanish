@@ -31,7 +31,7 @@ const RECHECK = `(() => {
   return !!state && state.editable() === true;
 })()`;
 
-export interface PreparedGuestChromiumText {
+interface PreparedGuestChromiumText {
   paste(): Promise<void>;
   close(): Promise<void>;
 }

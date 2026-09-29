@@ -35,13 +35,11 @@ import path from "node:path";
 
 import { loadEnvFile } from "./env-file.js";
 
-export const KEY_RESOLUTION_SCHEMA = "humanish.key-resolution.v1";
-
 /** The ONLY names implicit discovery may fill (and `humanish keys set` may store). Everything
  *  else in an overlay/store file is ignored-and-named: a repo-planted NODE_OPTIONS/LD_PRELOAD
  *  must never enter process env off a file the operator did not explicitly pass (an explicit
  *  --env-file remains the operator's own full-file load). Red-team finding, #436. */
-export const KNOWN_PROVIDER_KEYS = [
+const KNOWN_PROVIDER_KEYS = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
   "E2B_API_KEY",
@@ -53,7 +51,7 @@ export const KNOWN_PROVIDER_KEYS = [
 const PROVIDER_KEY_SET = new Set<string>(KNOWN_PROVIDER_KEYS);
 
 /** `humanish keys set <vendor>` aliases; a raw ENV_NAME is also accepted. */
-export const KEY_VENDOR_ALIASES: Record<string, string> = {
+const KEY_VENDOR_ALIASES: Record<string, string> = {
   openai: "OPENAI_API_KEY",
   e2b: "E2B_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
@@ -74,7 +72,7 @@ export interface KeyResolutionDeps {
   homeDir?: string;
 }
 
-export const PROJECT_OVERLAY_RELATIVE = path.join(".humanish", "local", "provider.env");
+const PROJECT_OVERLAY_RELATIVE = path.join(".humanish", "local", "provider.env");
 
 export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): string {
   const home = deps.homeDir ?? homedir();

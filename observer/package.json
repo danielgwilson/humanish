@@ -13,11 +13,9 @@
   },
   "dependencies": {
     "@base-ui-components/react": "catalog:",
-    "clsx": "catalog:",
     "lucide-react": "1.48.0",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwind-merge": "catalog:"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",

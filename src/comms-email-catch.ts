@@ -16,7 +16,7 @@ import { capturedInlineImages } from "./comms-images.js";
 import type { CommsChannel, CommsInlineImage, InboundRaw } from "./comms-types.js";
 
 /** One send, normalized across providers. `body` is html-preferred, else text. */
-export interface NormalizedSend {
+interface NormalizedSend {
   from: string;
   to: string[];
   subject?: string;
@@ -86,7 +86,7 @@ function toAddresses(value: unknown): string[] {
 
 /** The flat-JSON shape: `{ from, to, subject, html, text }`. Matches Resend (POST /emails) AND a
  *  custom app that sends the common shape AND Postmark's TitleCase keys (From/To/HtmlBody/…). */
-export const genericEmailProfile: EmailSendProfile = {
+const genericEmailProfile: EmailSendProfile = {
   name: "generic",
   sendPaths: ["/emails", "/emails/batch", "/email", "/email/batch", "/send"],
   parse(_path, body) {
@@ -115,7 +115,7 @@ export const genericEmailProfile: EmailSendProfile = {
 
 /** SendGrid's nested shape: `from.email`, `personalizations[].to[].email`, `content[].value`. Proves
  *  the seam handles a structurally different vendor, not just a field-name rename. */
-export const sendgridEmailProfile: EmailSendProfile = {
+const sendgridEmailProfile: EmailSendProfile = {
   name: "sendgrid",
   sendPaths: ["/v3/mail/send"],
   parse(_path, body) {

@@ -33,7 +33,7 @@ export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefi
   return detail?.observerPath === undefined ? ["again"] : ["observer", "again"];
 }
 
-export function actionLabel(action: RunAction): string {
+function actionLabel(action: RunAction): string {
   switch (action) {
     case "observer":
       return "Open in Observer";

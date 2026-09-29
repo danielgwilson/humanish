@@ -1,5 +1,4 @@
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
-export { CUA_SPEECH_LIMITS, type HeardSpeech } from "./cua-speech.js";
 import {
   ACTOR_TRACE_SCHEMA,
   type ActorCapabilities,
@@ -419,7 +418,7 @@ export type CuaLiveMetadata = Pick<
   ActorTrace,
   "executionProfile" | "providerRequests" | "historyTurnsOmitted"
 >;
-export const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
+const CUA_PROVIDER_CLEANUP_GRACE_MS = 5000;
 
 export interface CuaLoopResult {
   status: ActorStatus;
@@ -737,8 +736,8 @@ class CuaStallError extends Error {
   }
 }
 
-export const DEFAULT_TURN_TIMEOUT_MS = 180_000;
-export const DEFAULT_OBSERVATION_TIMEOUT_MS = 60_000;
+const DEFAULT_TURN_TIMEOUT_MS = 180_000;
+const DEFAULT_OBSERVATION_TIMEOUT_MS = 60_000;
 // Internal control-flow signal: the per-turn frame guard already set completionReason/reason
 // to a structured harness_error; this just unwinds the loop without being misread as an adapter
 // failure in the catch block (it carries no message to persist).

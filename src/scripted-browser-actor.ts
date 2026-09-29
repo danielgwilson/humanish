@@ -100,7 +100,7 @@ const LOOPBACK_EVIDENCE_URL_POLICY: ScriptedBrowserEvidenceUrlPolicy = { kind: "
 
 /** Production default: lazy playwright-core import + chromium.launch, exactly as the driver
  *  always did. Kept in ONE place so the optional peer is touched by exactly one code path. */
-export async function launchPlaywrightChromium(
+async function launchPlaywrightChromium(
   args: ScriptedBrowserLaunchArgs,
 ): Promise<ScriptedBrowserLike> {
   const { chromium } = await import("playwright-core");
@@ -146,7 +146,7 @@ export interface BrowserSurfaceCapture {
   tracePath: string;
 }
 
-export type BrowserPersonaAction =
+type BrowserPersonaAction =
   | "goto"
   | "click"
   | "fill"
@@ -154,13 +154,13 @@ export type BrowserPersonaAction =
   | "waitForText"
   | "waitForSelector";
 
-export interface BrowserPersonaAssertionCapture {
+interface BrowserPersonaAssertionCapture {
   id: string;
   reason: string;
   status: "passed" | "blocked";
 }
 
-export interface BrowserPersonaStepCapture {
+interface BrowserPersonaStepCapture {
   action: string;
   assertions?: BrowserPersonaAssertionCapture[];
   completedAt: string;
@@ -180,14 +180,14 @@ export interface BrowserPersonaStepCapture {
   url: string;
 }
 
-export interface BrowserPersonaStepExpectation {
+interface BrowserPersonaStepExpectation {
   selectorVisible?: string;
   stateChanged?: boolean;
   text?: string;
   urlIncludes?: string;
 }
 
-export interface BrowserPersonaStepManifest {
+interface BrowserPersonaStepManifest {
   action: BrowserPersonaAction;
   expectation?: BrowserPersonaStepExpectation;
   id: string;
@@ -252,7 +252,7 @@ export async function captureBrowserSurface(args: {
   return captureBrowserSurfaceWithPlaywright(args);
 }
 
-export async function captureBrowserSurfaceFixture(args: {
+async function captureBrowserSurfaceFixture(args: {
   absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserCommand: string;
@@ -416,7 +416,7 @@ export async function captureBrowserSurfaceFixture(args: {
   };
 }
 
-export async function captureBrowserSurfaceWithPlaywright(args: {
+async function captureBrowserSurfaceWithPlaywright(args: {
   absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserCommand: string;
@@ -548,7 +548,7 @@ export async function captureBrowserSurfaceWithPlaywright(args: {
   };
 }
 
-export async function executeBrowserPersonaStep(args: {
+async function executeBrowserPersonaStep(args: {
   absoluteArtifactRoot: PreparedOutputDirectory;
   appUrl: string;
   browserJourney: BrowserPersonaJourney;
@@ -652,7 +652,7 @@ export async function executeBrowserPersonaStep(args: {
   };
 }
 
-export async function evaluateBrowserStepExpectations(args: {
+async function evaluateBrowserStepExpectations(args: {
   afterState: { bodyDigest: string; url: string };
   beforeState: { bodyDigest: string; url: string };
   page: ScriptedPageLike;
@@ -751,7 +751,7 @@ function browserScreenshotArgs(args: {
   ];
 }
 
-export function buildBlockedBrowserPersonaSteps(args: {
+function buildBlockedBrowserPersonaSteps(args: {
   browserJourney: BrowserPersonaJourney;
   currentUrl: string;
   reason: string;
@@ -799,7 +799,7 @@ function fixtureAssertionsForBrowserStep(
   }));
 }
 
-export function screenshotPathForBrowserStep(
+function screenshotPathForBrowserStep(
   surface: BrowserSurface,
   step: BrowserPersonaStepManifest | undefined,
 ): string {
@@ -856,7 +856,7 @@ async function captureBlockedStepScreenshot(
  * is the failure itself), so the producer never synthesizes a path to a file it did
  * not write. See src/artifact-reference.ts.
  */
-export function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): string | undefined {
+function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): string | undefined {
   for (let index = steps.length - 1; index >= 0; index -= 1) {
     const candidate = steps[index]?.screenshotPath?.trim();
     if (candidate) {
@@ -866,11 +866,11 @@ export function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): strin
   return undefined;
 }
 
-export function resolveBrowserStepUrl(appUrl: string, value: string | undefined): string {
+function resolveBrowserStepUrl(appUrl: string, value: string | undefined): string {
   return resolveBrowserStepUrlForPolicy(appUrl, value, LOOPBACK_EVIDENCE_URL_POLICY);
 }
 
-export function resolveBrowserStepUrlForPolicy(
+function resolveBrowserStepUrlForPolicy(
   appUrl: string,
   value: string | undefined,
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy = LOOPBACK_EVIDENCE_URL_POLICY,
@@ -904,7 +904,7 @@ async function browserPersonaPageState(
   };
 }
 
-export function buildBrowserTrace(args: {
+function buildBrowserTrace(args: {
   appUrl: string;
   browserCommand: string;
   browserJourney: BrowserPersonaJourney;
@@ -940,7 +940,7 @@ export function buildBrowserTrace(args: {
   };
 }
 
-export function sanitizeLoopbackUrl(value: string): string {
+function sanitizeLoopbackUrl(value: string): string {
   try {
     const parsed = new URL(value);
     if (
@@ -959,7 +959,7 @@ export function sanitizeLoopbackUrl(value: string): string {
   return "[redacted-url]";
 }
 
-export function sanitizeBrowserEvidenceUrl(
+function sanitizeBrowserEvidenceUrl(
   value: string,
   urlPolicy: ScriptedBrowserEvidenceUrlPolicy = LOOPBACK_EVIDENCE_URL_POLICY,
 ): string {
@@ -978,7 +978,7 @@ export function sanitizeBrowserEvidenceUrl(
   }
 }
 
-export async function captureScreenshotWithBrowser(args: {
+async function captureScreenshotWithBrowser(args: {
   args: string[];
   browserCommand: string;
   screenshotPath: string;
@@ -1075,7 +1075,7 @@ async function wait(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function probeAppUrl(
+async function probeAppUrl(
   appUrl: string,
   timeoutMs: number,
 ): Promise<{ ok: boolean; reason: string; status?: number }> {
@@ -1247,7 +1247,7 @@ export function parseBrowserPersonaJourneyFromScenario(args: {
   };
 }
 
-export function parseBrowserPersonaStep(
+function parseBrowserPersonaStep(
   rawStep: unknown,
   index: number,
 ): { failure?: string; step?: BrowserPersonaStepManifest } {
