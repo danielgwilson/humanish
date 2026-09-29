@@ -101,12 +101,6 @@ mismatched records omit the observation. A stale heartbeat alone does not prove
 interruption, and stored PIDs are neither probed nor returned. Static rendering
 and export do not create this served-only observation.
 
-Local `codex-exec` actor runs now publish an initial running `run.json` and
-`observer/observer-data.json` before actor completion, then refresh both after
-sanitized transcripts, traces, and verdict events are available. This gives a
-served Observer a truthful active state to poll while noninteractive local
-actors are still running.
-
 Watch is deliberately distinct from `humanish serve`. Watch serves ONE
 attached run, and the process that created it may inject runtime stream URLs
 (live hosted-desktop viewers) into the observer data it serves. Serve is the
