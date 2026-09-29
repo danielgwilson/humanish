@@ -1266,18 +1266,14 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       "--app-url <url>",
       "Capture live desktop/mobile browser evidence against a running loopback app URL.",
     )
-    .addOption(
-      new Option("--actor <actor>", "Explicit live actor to run.").choices([
-        "codex-tui",
-        "codex-exec",
-        "codex-app-server",
-      ]),
-    )
     .option(
       "--sims <count>",
-      "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.",
+      "Simulation count. A dry run accepts any positive count; --app-url captures at most 2.",
     )
-    .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(900_000))
+    .option(
+      "--timeout-ms <ms>",
+      "Per-surface --app-url capture timeout in milliseconds (default 300000).",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
@@ -1286,7 +1282,6 @@ function registerRunCommand(parent: Command, io: CliIo): void {
       async (
         lab: string | undefined,
         options: {
-          actor?: string;
           appUrl?: string;
           cwd: string;
           dryRun?: boolean;
@@ -1310,7 +1305,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
         }
 
         if (lab) {
-          if (options.appUrl !== undefined || options.actor !== undefined) {
+          if (options.appUrl !== undefined) {
             const result: RunResult = {
               schema: "humanish.run-result.v1",
               ok: false,
@@ -1319,7 +1314,7 @@ function registerRunCommand(parent: Command, io: CliIo): void {
               error: {
                 code: "HUMANISH_APP_URL_OPTION_CONFLICT",
                 message:
-                  "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `humanish run`.",
+                  "Use lab manifests with lab-compatible options only; --app-url belongs to direct `humanish run`.",
               },
             };
             writeResult(command, io, result, formatRunHuman);
@@ -1376,7 +1371,6 @@ function registerRunCommand(parent: Command, io: CliIo): void {
 
         const result = await runDryRun({
           cwd: options.cwd,
-          ...(options.actor === undefined ? {} : { actor: options.actor }),
           ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
           ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
           ...(options.runId === undefined ? {} : { runId: options.runId }),

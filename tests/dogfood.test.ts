@@ -45,7 +45,6 @@ describe("humanish dogfood config", () => {
       "pnpm humanish -- feedback issue --repo danielgwilson/humanish",
     );
     expect(coverage).toContain("codex-exec");
-    expect(coverage).toContain("workspace trust is missing");
   });
 
   it("feeds committed persona and scenario content into the dry-run bundle", async () => {

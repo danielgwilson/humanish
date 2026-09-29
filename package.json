@@ -89,7 +89,7 @@
     "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "oxlint --max-warnings=574"
+    "lint": "oxlint --max-warnings=565"
   },
   "dependencies": {
     "commander": "^15.0.0",
