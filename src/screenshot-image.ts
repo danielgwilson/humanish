@@ -11,8 +11,10 @@ export interface PngDimensions {
 }
 
 export function hasPngSignature(bytes: Buffer): boolean {
-  return bytes.length >= PNG_SIGNATURE.length
-    && bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
+  return (
+    bytes.length >= PNG_SIGNATURE.length &&
+    bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
+  );
 }
 
 /**
@@ -21,16 +23,16 @@ export function hasPngSignature(bytes: Buffer): boolean {
  */
 export function readPngDeclaredDimensions(bytes: Buffer): PngDimensions | null {
   if (
-    !hasPngSignature(bytes)
-    || bytes.length < 24
-    || bytes.readUInt32BE(8) !== PNG_IHDR_LENGTH
-    || bytes.subarray(12, 16).toString("ascii") !== "IHDR"
+    !hasPngSignature(bytes) ||
+    bytes.length < 24 ||
+    bytes.readUInt32BE(8) !== PNG_IHDR_LENGTH ||
+    bytes.subarray(12, 16).toString("ascii") !== "IHDR"
   ) {
     return null;
   }
 
   return {
     width: bytes.readUInt32BE(16),
-    height: bytes.readUInt32BE(20)
+    height: bytes.readUInt32BE(20),
   };
 }

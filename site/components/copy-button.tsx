@@ -13,10 +13,13 @@ export default function CopyButton({ text, label = "copy" }: { text: string; lab
   const attempt = useRef(0);
   const busy = useRef(false);
 
-  useEffect(() => () => {
-    attempt.current += 1;
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      attempt.current += 1;
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
   const onClick = async () => {
     if (busy.current) return;
@@ -34,13 +37,29 @@ export default function CopyButton({ text, label = "copy" }: { text: string; lab
 
   return (
     <span className="copy-control">
-      <button className="copy" type="button" data-copy={text} onClick={onClick}
-        disabled={status === "copying"} aria-busy={status === "copying"} aria-describedby={statusId}>
+      <button
+        className="copy"
+        type="button"
+        data-copy={text}
+        onClick={onClick}
+        disabled={status === "copying"}
+        aria-busy={status === "copying"}
+        aria-describedby={statusId}
+      >
         {status === "copied" ? "copied" : status === "copying" ? "copying" : label}
       </button>
-      <span id={statusId} role="status" aria-live="polite" aria-atomic="true"
-        className={status === "failed" ? "copy-feedback" : "sr-only"}>
-        {status === "failed" ? "Couldn’t copy. Select the command text to copy it." : status === "copied" ? "Command copied." : ""}
+      <span
+        id={statusId}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={status === "failed" ? "copy-feedback" : "sr-only"}
+      >
+        {status === "failed"
+          ? "Couldn’t copy. Select the command text to copy it."
+          : status === "copied"
+            ? "Command copied."
+            : ""}
       </span>
     </span>
   );

@@ -23,24 +23,39 @@ import { scrubPersonaBrief } from "./persona.js";
 // topology's job. Each role records its measured browser viewport separately from that screen.
 
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
-import { completeAutomaticAnalysis, markFinalizedStudyResult, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
+import {
+  completeAutomaticAnalysis,
+  markFinalizedStudyResult,
+  type AutomaticAnalysisHooks,
+  type AutomaticAnalysisResult,
+} from "./automatic-analysis-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
+import {
+  beginRunStatus,
+  type RunLabProvenance,
+  type RunStatusHandle,
+  withRunStatusScope,
+} from "./run-status.js";
 import path from "node:path";
 import { runDesktopCommandOrThrow, toErrorMessage } from "./command-failure.js";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorTokenUsage } from "./actor-contract.js";
+import type {
+  ActorCompletionReason,
+  ActorPersonaRef,
+  ActorStatus,
+  ActorTokenUsage,
+} from "./actor-contract.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
-  type BrowserLabAdapterHooks
+  type BrowserLabAdapterHooks,
 } from "./adapter-extension.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import {
   CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
-  chromiumEvidenceProfilePreferencesJson
+  chromiumEvidenceProfilePreferencesJson,
 } from "./browser-evidence-hygiene.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaLoopResult } from "./computer-use.js";
@@ -67,14 +82,14 @@ import {
   type DesktopBrowserLaunchIdentity,
   type DesktopBrowserLaunchResult,
   desktopBrowserFamily,
-  type SubjectPhaseEvent
+  type SubjectPhaseEvent,
 } from "./cua-actor-lab.js";
 import type { E2BDesktopLike } from "./e2b-desktop-executor.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
-  type E2BDesktopSandbox
+  type E2BDesktopSandbox,
 } from "./e2b-desktop-launch.js";
 import { runDetachedStep, type DetachedTimers } from "./e2b-detached.js";
 import type { DevicePreset } from "./device-presets.js";
@@ -85,13 +100,16 @@ import {
   type LabActorLane,
   type LabConfig,
   type LabDesktopBrowser,
-  type LabSubjectStateCheckpoint
+  type LabSubjectStateCheckpoint,
 } from "./lab-config.js";
 import { renderObserver, type ObserverResult } from "./observer.js";
 import { redactText } from "./redaction.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "./run-paths.js";
-import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./selected-output-paths.js";
+import {
+  writeContainedOutputFile,
+  writePreparedRunLatestPointer,
+} from "./selected-output-paths.js";
 import type { LocalTreeArchive } from "./source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
 import {
@@ -112,17 +130,22 @@ import {
   type RunSubjectStateStepRecord,
   type SharedWorldCheckpoint,
   type SharedWorldEvidence,
-  type SharedWorldTimelineEntry
+  type SharedWorldTimelineEntry,
 } from "./run.js";
 import { appendSandboxReceipt } from "./sandbox-receipts.js";
-import { estimateActorCost, estimateActorCostForExecution, MODEL_RATES, round6 } from "./pricing.js";
+import {
+  estimateActorCost,
+  estimateActorCostForExecution,
+  MODEL_RATES,
+  round6,
+} from "./pricing.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 
 export const SHARED_WORLD_LAB_SCHEMA = "humanish.shared-world-lab-result.v1";
 
 export const SHARED_WORLD_LAB_PROVIDER_METADATA = {
   mode: "shared-world-lab",
-  tool: "humanish"
+  tool: "humanish",
 } as const;
 
 // The DEFAULT per-role session budget is DERIVED, not flat: every role's turn shares ONE sandbox
@@ -136,10 +159,12 @@ const MAX_DERIVED_ROLE_SESSION_MS = 15 * 60_000;
 const MIN_DERIVED_ROLE_SESSION_MS = 300_000;
 function defaultRoleSessionTimeoutMs(config: LabConfig, roleCount: number): number {
   const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0);
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+    0,
+  );
   const room = Math.floor(
-    (MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS)
-      / Math.max(1, roleCount)
+    (MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS) /
+      Math.max(1, roleCount),
   );
   return Math.max(MIN_DERIVED_ROLE_SESSION_MS, Math.min(MAX_DERIVED_ROLE_SESSION_MS, room));
 }
@@ -367,7 +392,7 @@ async function launchSeatBrowser(
     profileDir: string;
     requestTimeoutMs: number;
     seatUrl: string;
-  }
+  },
 ): Promise<DesktopBrowserLaunchResult> {
   const requested = args.browserPreference ?? "default";
   const chromiumFlags = CHROMIUM_EVIDENCE_HYGIENE_FLAGS.map(shellQuote).join(" ");
@@ -380,21 +405,21 @@ async function launchSeatBrowser(
     'mkdir -p "$profile_dir"',
     "chrome_debug_flags=(" + chromiumFlags + ")",
     "prepare_chrome_profile() {",
-    "  mkdir -p \"$profile_dir/Default\"",
-    "  printf '%s\\n' \"$chrome_preferences_json\" > \"$profile_dir/Default/Preferences\"",
+    '  mkdir -p "$profile_dir/Default"',
+    '  printf \'%s\\n\' "$chrome_preferences_json" > "$profile_dir/Default/Preferences"',
     "}",
     "launch_chrome() {",
-    "  local label=\"$1\"",
-    "  local binary=\"$2\"",
-    "  if ! command -v \"$binary\" >/dev/null 2>&1; then return 127; fi",
+    '  local label="$1"',
+    '  local binary="$2"',
+    '  if ! command -v "$binary" >/dev/null 2>&1; then return 127; fi',
     "  prepare_chrome_profile",
-    "  rm -f \"$profile_dir/DevToolsActivePort\"",
-    "  setsid \"$binary\" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 --user-data-dir=\"$profile_dir\" \"${chrome_debug_flags[@]}\" \"$seat_url\" > /dev/null 2>&1 < /dev/null &",
+    '  rm -f "$profile_dir/DevToolsActivePort"',
+    '  setsid "$binary" --new-window --remote-debugging-address=127.0.0.1 --remote-debugging-port=0 --user-data-dir="$profile_dir" "${chrome_debug_flags[@]}" "$seat_url" > /dev/null 2>&1 < /dev/null &',
     "  local launch_pid=$!",
-    "  echo \"HUMANISH_BROWSER_RESOLVED=$label\"",
-    "  echo \"HUMANISH_BROWSER_PID=$launch_pid\"",
+    '  echo "HUMANISH_BROWSER_RESOLVED=$label"',
+    '  echo "HUMANISH_BROWSER_PID=$launch_pid"',
     "  for _ in $(seq 1 30); do",
-    "    if [ -s \"$profile_dir/DevToolsActivePort\" ]; then",
+    '    if [ -s "$profile_dir/DevToolsActivePort" ]; then',
     "      head -n 1 \"$profile_dir/DevToolsActivePort\" | sed 's/^/HUMANISH_BROWSER_CDP_PORT=/'",
     "      break",
     "    fi",
@@ -403,13 +428,13 @@ async function launchSeatBrowser(
     "}",
     "launch_firefox() {",
     "  if ! command -v firefox >/dev/null 2>&1; then return 127; fi",
-    "  setsid firefox --new-instance --no-remote --new-window --profile \"$profile_dir\" \"$seat_url\" > /dev/null 2>&1 < /dev/null &",
+    '  setsid firefox --new-instance --no-remote --new-window --profile "$profile_dir" "$seat_url" > /dev/null 2>&1 < /dev/null &',
     "  local launch_pid=$!",
-    "  echo \"HUMANISH_BROWSER_RESOLVED=firefox\"",
-    "  echo \"HUMANISH_BROWSER_PID=$launch_pid\"",
-    "  echo \"HUMANISH_BROWSER_PROFILE_DIR=$profile_dir\"",
+    '  echo "HUMANISH_BROWSER_RESOLVED=firefox"',
+    '  echo "HUMANISH_BROWSER_PID=$launch_pid"',
+    '  echo "HUMANISH_BROWSER_PROFILE_DIR=$profile_dir"',
     "}",
-    "case \"$browser_preference\" in",
+    'case "$browser_preference" in',
     "  chrome)",
     "    launch_chrome google-chrome google-chrome || launch_chrome google-chrome-stable google-chrome-stable",
     "    ;;",
@@ -422,31 +447,48 @@ async function launchSeatBrowser(
     "  default)",
     "    launch_chrome google-chrome google-chrome || true",
     "    ;;",
-    "esac"
+    "esac",
   ].join("\n");
   const result = await runDesktopCommandOrThrow(
     () => desktop.commands.run(command, { requestTimeoutMs: args.requestTimeoutMs }),
     (_info, error) =>
       args.browserPreference !== undefined && args.browserPreference !== "default"
-        ? new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`)
+        ? new Error(
+            `requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`,
+          )
         : error,
   );
-  if (args.browserPreference !== undefined && args.browserPreference !== "default" && result.exitCode !== undefined && result.exitCode !== 0) {
-    throw new Error(`requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`);
+  if (
+    args.browserPreference !== undefined &&
+    args.browserPreference !== "default" &&
+    result.exitCode !== undefined &&
+    result.exitCode !== 0
+  ) {
+    throw new Error(
+      `requested desktop browser "${args.browserPreference}" could not be launched for shared-world seat`,
+    );
   }
   const resolved = (result.stdout ?? "").match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
   const processId = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PID=(\d+)$/m)?.[1];
-  const profileDir = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1] ?? args.profileDir;
+  const profileDir =
+    (result.stdout ?? "").match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1] ?? args.profileDir;
   const cdpPortRaw = (result.stdout ?? "").match(/^HUMANISH_BROWSER_CDP_PORT=(\d+)$/m)?.[1];
   const cdpPort = cdpPortRaw === undefined ? undefined : Number(cdpPortRaw);
   return {
     family: desktopBrowserFamily(resolved ?? requested),
     ...(processId === undefined
       ? {}
-      : { identity: { processId, profileDir, targetUrl: args.seatUrl, ...(cdpPort === undefined ? {} : { cdpPort }) } }),
+      : {
+          identity: {
+            processId,
+            profileDir,
+            targetUrl: args.seatUrl,
+            ...(cdpPort === undefined ? {} : { cdpPort }),
+          },
+        }),
     ...(args.browserPreference === undefined
       ? {}
-      : { evidence: { requested, ...(resolved === undefined ? {} : { resolved }) } })
+      : { evidence: { requested, ...(resolved === undefined ? {} : { resolved }) } }),
   };
 }
 
@@ -471,7 +513,10 @@ export function seatProfilePkillPattern(profileDir: string): string {
  * wait escalates to SIGKILL. Exit is always 0: a termination failure degrades to the caller's
  * warning, never a failed run.
  */
-export function buildSeatBrowserTerminationCommand(processId: string | undefined, profileDir: string): string {
+export function buildSeatBrowserTerminationCommand(
+  processId: string | undefined,
+  profileDir: string,
+): string {
   return [
     "set -u",
     `launch_pid=${shellQuote(processId ?? "")}`,
@@ -487,7 +532,7 @@ export function buildSeatBrowserTerminationCommand(processId: string | undefined
     "  sleep 0.1",
     "done",
     'pkill -KILL -f "$profile_pattern" 2>/dev/null || true',
-    "exit 0"
+    "exit 0",
   ].join("\n");
 }
 
@@ -521,7 +566,7 @@ export async function runCheckpointSnapshot(args: {
       cwd: SUBJECT_DIR,
       timeoutMs: CHECKPOINT_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
-      ...args.timers
+      ...args.timers,
     });
     const scrubbed = redactText(args.scrub(result.logTail));
     parts.push(`${probe.name}=${commandDigestOf(scrubbed)}`);
@@ -531,12 +576,15 @@ export async function runCheckpointSnapshot(args: {
     kind: "checkpoint",
     name: args.name,
     digest,
-    deltaFromPrev: args.prevDigest !== undefined && digest !== args.prevDigest
+    deltaFromPrev: args.prevDigest !== undefined && digest !== args.prevDigest,
   };
 }
 
 /** The DECLARED (dry-run) checkpoint snapshot: digest the probe RECIPE (command digests), no run. */
-export function declaredCheckpointSnapshot(name: string, checkpoints: LabSubjectStateCheckpoint[]): SharedWorldCheckpoint {
+export function declaredCheckpointSnapshot(
+  name: string,
+  checkpoints: LabSubjectStateCheckpoint[],
+): SharedWorldCheckpoint {
   const parts = checkpoints.map((probe) => `${probe.name}=${commandDigestOf(probe.command)}`);
   return { kind: "checkpoint", name, digest: combineCheckpointDigest(parts), deltaFromPrev: false };
 }
@@ -544,14 +592,16 @@ export function declaredCheckpointSnapshot(name: string, checkpoints: LabSubject
 /** sha256-16 over the ordered seed-step command digests — the seeded-state RECIPE identity. */
 export function seedRecipeDigest(config: LabConfig): string {
   const seed = config.subject.state?.seed ?? [];
-  return commandDigestOf(seed.map((step) => `${step.name}:${commandDigestOf(step.command)}`).join("\n"));
+  return commandDigestOf(
+    seed.map((step) => `${step.name}:${commandDigestOf(step.command)}`).join("\n"),
+  );
 }
 
 /** Build the resolved role roster from actors[0].lanes (the role roster). */
 function buildRoleSpecs(
   config: LabConfig,
   serveUrl: string,
-  personas: Map<string, ResolvedPersona>
+  personas: Map<string, ResolvedPersona>,
 ): RoleSpec[] {
   const actor = config.actors[0];
   const mission = actor?.mission ?? DEFAULT_MISSION;
@@ -565,7 +615,7 @@ function buildRoleSpecs(
       ...(lane.persona === undefined ? {} : { persona: lane.persona }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
       ...(lane.instruction === undefined ? {} : { instruction: lane.instruction }),
-      device: { name: device.name, preset: device.preset }
+      device: { name: device.name, preset: device.preset },
     });
     return {
       roleId,
@@ -574,18 +624,25 @@ function buildRoleSpecs(
       streamId: `stream-${String(i + 1).padStart(3, "0")}`,
       persona: composed.persona,
       instructions: composed.instructions,
-      assignment: { mission, ...(lane.instruction === undefined ? {} : { focus: lane.instruction }) },
+      assignment: {
+        mission,
+        ...(lane.instruction === undefined ? {} : { focus: lane.instruction }),
+      },
       deviceName: device.name,
       ...((lane.reasoningEffort ?? actor?.reasoningEffort) === undefined
         ? {}
         : { reasoningEffort: (lane.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort }),
-      ...((lane.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane.stopWhen ?? actor?.stopWhen) as StopWhen }),
-      ...((lane.dwell ?? actor?.dwell) === undefined ? {} : { dwell: (lane.dwell ?? actor?.dwell) as DwellWindow }),
+      ...((lane.stopWhen ?? actor?.stopWhen) === undefined
+        ? {}
+        : { stopWhen: (lane.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...((lane.dwell ?? actor?.dwell) === undefined
+        ? {}
+        : { dwell: (lane.dwell ?? actor?.dwell) as DwellWindow }),
       ...(lane.entry === undefined ? {} : { entry: lane.entry }),
       seatUrl: resolveSeatUrl(serveUrl, lane.entry) ?? serveUrl,
       screenshotDir: roleId,
       traceArtifactPath: `actors/${`stream-${String(i + 1).padStart(3, "0")}`}.json`,
-      profileDir: `/tmp/seat-${roleId}`
+      profileDir: `/tmp/seat-${roleId}`,
     };
   });
 }
@@ -597,14 +654,23 @@ function buildRoleSpecs(
  * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
  * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
  */
-export async function runSharedWorldLab(options: RunSharedWorldLabOptions): Promise<SharedWorldLabResult> {
+export async function runSharedWorldLab(
+  options: RunSharedWorldLabOptions,
+): Promise<SharedWorldLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runSharedWorldLabInScope(options));
-  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
+  return completeAutomaticAnalysis(
+    result,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    options.config.review?.analysis === undefined ? "default" : "explicit",
+    analysis.ok && analysis.preferLargerOutput === true,
+  );
 }
 
-async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Promise<SharedWorldLabResult> {
+async function runSharedWorldLabInScope(
+  options: RunSharedWorldLabOptions,
+): Promise<SharedWorldLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
@@ -612,7 +678,11 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   const render = hooks.renderObserverFn ?? renderObserver;
   const actorType = config.actors[0]?.type ?? "";
 
-  const fail = (code: SharedWorldLabErrorCode, message: string, actorLabel?: string): SharedWorldLabResult => ({
+  const fail = (
+    code: SharedWorldLabErrorCode,
+    message: string,
+    actorLabel?: string,
+  ): SharedWorldLabResult => ({
     schema: SHARED_WORLD_LAB_SCHEMA,
     ok: false,
     cwd,
@@ -625,12 +695,15 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     runId: options.runId ?? "not-created",
     roles: [],
     warnings: [],
-    error: { code, message }
+    error: { code, message },
   });
 
   // Direct library entrypoints must reject declarations this backend cannot execute.
   if (String(config.comms?.email?.kind) === "real") {
-    return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", "Real email receiving is unsupported on the sequential shared-world backend. Use a supported concurrent or independent hosted computer-use study.");
+    return fail(
+      "HUMANISH_SHARED_WORLD_LAB_INVALID",
+      "Real email receiving is unsupported on the sequential shared-world backend. Use a supported concurrent or independent hosted computer-use study.",
+    );
   }
 
   // Resolve the actor through the registry — the parser validated this, but the engine fails closed
@@ -645,30 +718,50 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
 
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail("HUMANISH_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+    return fail(
+      "HUMANISH_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
+      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
+    );
   }
 
   // Re-enforce the shared-world cross-validation (library API surface).
-  const invalidReason = outputTokenLimitValidationReason(config) ?? sharedWorldValidationReason(config);
+  const invalidReason =
+    outputTokenLimitValidationReason(config) ?? sharedWorldValidationReason(config);
   if (invalidReason) {
     return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
   }
   if (config.actors[0]?.maxOutputTokens !== undefined && hooks.runSession) {
-    return fail("HUMANISH_SHARED_WORLD_LAB_INVALID", "maxOutputTokens cannot be enforced by a custom runSession.", descriptor.id);
+    return fail(
+      "HUMANISH_SHARED_WORLD_LAB_INVALID",
+      "maxOutputTokens cannot be enforced by a custom runSession.",
+      descriptor.id,
+    );
   }
 
   const caps = config.execution?.caps;
   const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
-  const invalidCap = (["maxUsd", "maxTotalUsd"] as const).find(key =>
-    caps?.[key] !== undefined && (!Number.isFinite(caps[key]) || caps[key]! < 0));
-  if (invalidCap) return fail("HUMANISH_SHARED_WORLD_LAB_INVALID",
-    `execution.caps.${invalidCap} must be a finite nonnegative number.`, descriptor.id);
-  if (!dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)
-    && !Object.hasOwn(MODEL_RATES, capModelId.trim().toLowerCase())) {
-    return fail("HUMANISH_SHARED_WORLD_LAB_INVALID",
-      `The declared spend cap cannot be enforced for unpriced model "${capModelId}".`, descriptor.id);
+  const invalidCap = (["maxUsd", "maxTotalUsd"] as const).find(
+    (key) => caps?.[key] !== undefined && (!Number.isFinite(caps[key]) || caps[key]! < 0),
+  );
+  if (invalidCap)
+    return fail(
+      "HUMANISH_SHARED_WORLD_LAB_INVALID",
+      `execution.caps.${invalidCap} must be a finite nonnegative number.`,
+      descriptor.id,
+    );
+  if (
+    !dryRun &&
+    (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined) &&
+    !Object.hasOwn(MODEL_RATES, capModelId.trim().toLowerCase())
+  ) {
+    return fail(
+      "HUMANISH_SHARED_WORLD_LAB_INVALID",
+      `The declared spend cap cannot be enforced for unpriced model "${capModelId}".`,
+      descriptor.id,
+    );
   }
-  const runBudget = !dryRun && caps?.maxTotalUsd !== undefined ? makeCuaRunBudget(caps.maxTotalUsd) : undefined;
+  const runBudget =
+    !dryRun && caps?.maxTotalUsd !== undefined ? makeCuaRunBudget(caps.maxTotalUsd) : undefined;
   let budgetBlockedReason: string | undefined;
   const noteModelEstimate = (roleId: string, estimate: number | null): string | undefined => {
     if (!runBudget) return undefined;
@@ -699,10 +792,13 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     openaiApiKey,
     e2bApiKey,
     ...subjectEnvNames.map((name) => env[name] ?? ""),
-    ...checkpoints.flatMap((probe) => probe.redact ?? [])
+    ...checkpoints.flatMap((probe) => probe.redact ?? []),
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+    knownSecretValues.reduce(
+      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
+      text,
+    );
   for (const spec of roleSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
     spec.evidenceInstructions = redactText(scrubKnownValues(spec.instructions));
@@ -716,13 +812,13 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   if (!dryRun) {
     const missingKeys = [
       ...(openaiApiKey ? [] : ["OPENAI_API_KEY"]),
-      ...(e2bApiKey ? [] : ["E2B_API_KEY"])
+      ...(e2bApiKey ? [] : ["E2B_API_KEY"]),
     ];
     if (missingKeys.length > 0) {
       return fail(
         "HUMANISH_SHARED_WORLD_LAB_KEYS_MISSING",
         `Live shared-world labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}`,
-        descriptor.id
+        descriptor.id,
       );
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
@@ -730,7 +826,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       return fail(
         "HUMANISH_SHARED_WORLD_LAB_SUBJECT_ENV_MISSING",
         `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
-        descriptor.id
+        descriptor.id,
       );
     }
   }
@@ -742,7 +838,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const physicalArtifactRoot = runPaths.physicalRunRoot;
   const createdAt = new Date().toISOString();
@@ -754,11 +850,15 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   const sandboxDevice = resolveLaneDevice(config, undefined);
   const sandboxResolution = sandboxDevice.resolution;
   const sandboxPreset: DevicePreset = sandboxDevice.preset;
-  const perRunSandboxMs = config.execution?.desktop?.sandboxTimeoutMs
-    ?? timeoutMs * Math.max(1, roleCount)
-      + SUBJECT_PROVISION_BUDGET_MS
-      + (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
-      + SANDBOX_TIMEOUT_BUFFER_MS;
+  const perRunSandboxMs =
+    config.execution?.desktop?.sandboxTimeoutMs ??
+    timeoutMs * Math.max(1, roleCount) +
+      SUBJECT_PROVISION_BUDGET_MS +
+      (config.subject.state?.seed ?? []).reduce(
+        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+        0,
+      ) +
+      SANDBOX_TIMEOUT_BUFFER_MS;
 
   // The provider caps a sandbox at MAX_SANDBOX_MS and refuses a longer request at create, after
   // nothing but a paid API call; on 2026-09-04 an explicit 15-minute execution.timeoutMs for two
@@ -766,19 +866,29 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   // surfaced as a bundle that failed verification. Say the arithmetic here, before any call.
   if (perRunSandboxMs > MAX_SANDBOX_MS) {
     const perRoleCeilingMs = Math.floor(
-      (MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - SANDBOX_TIMEOUT_BUFFER_MS
-        - (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0))
-      / Math.max(1, roleCount)
+      (MAX_SANDBOX_MS -
+        SUBJECT_PROVISION_BUDGET_MS -
+        SANDBOX_TIMEOUT_BUFFER_MS -
+        (config.subject.state?.seed ?? []).reduce(
+          (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+          0,
+        )) /
+        Math.max(1, roleCount),
     );
     throw new Error(
-      `the sequential shared-world sandbox would need ${Math.round(perRunSandboxMs / 60_000)} minutes `
-        + `(${roleCount} role(s) x ${Math.round(timeoutMs / 1000)} s of session budget, plus ${SUBJECT_PROVISION_BUDGET_MS / 60_000} minutes of provisioning `
-        + `and a ${SANDBOX_TIMEOUT_BUFFER_MS / 60_000}-minute reclamation buffer), over the provider's ${MAX_SANDBOX_MS / 60_000}-minute sandbox cap; `
-        + `set execution.timeoutMs to at most ${perRoleCeilingMs} ms per role, or execution.desktop.sandboxTimeoutMs explicitly`
+      `the sequential shared-world sandbox would need ${Math.round(perRunSandboxMs / 60_000)} minutes ` +
+        `(${roleCount} role(s) x ${Math.round(timeoutMs / 1000)} s of session budget, plus ${SUBJECT_PROVISION_BUDGET_MS / 60_000} minutes of provisioning ` +
+        `and a ${SANDBOX_TIMEOUT_BUFFER_MS / 60_000}-minute reclamation buffer), over the provider's ${MAX_SANDBOX_MS / 60_000}-minute sandbox cap; ` +
+        `set execution.timeoutMs to at most ${perRoleCeilingMs} ms per role, or execution.desktop.sandboxTimeoutMs explicitly`,
     );
   }
 
-  const source = await buildRunSource({ capturedAt: createdAt, cwd, humanishSource: "present", packageName: "humanish" });
+  const source = await buildRunSource({
+    capturedAt: createdAt,
+    cwd,
+    humanishSource: "present",
+    packageName: "humanish",
+  });
 
   const warnings: string[] = [];
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
@@ -790,7 +900,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   let killed = false;
   let failFastReason: string | undefined;
   let sharedScreenGeometry: RunDesktopGeometry = {
-    screen: { requested: { width: sandboxResolution[0], height: sandboxResolution[1] } }
+    screen: { requested: { width: sandboxResolution[0], height: sandboxResolution[1] } },
   };
 
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox is created (mirrors the
@@ -803,20 +913,24 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     try {
       const packed = await packLocalTree({
         root: cwd,
-        ...(config.subject.localTree?.exclude === undefined ? {} : { extraExclude: config.subject.localTree.exclude }),
-        ...(config.subject.localTree?.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes })
+        ...(config.subject.localTree?.exclude === undefined
+          ? {}
+          : { extraExclude: config.subject.localTree.exclude }),
+        ...(config.subject.localTree?.maxArchiveBytes === undefined
+          ? {}
+          : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes }),
       });
       localTreeArchive = packed.archive;
       localTreeArchiveBuffer = packed.buffer;
       process.stderr.write(
-        `humanish shared-world local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
-        + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
+        `humanish shared-world local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}` +
+          `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`,
       );
     } catch (error) {
       return fail(
         "HUMANISH_SHARED_WORLD_LAB_FAILED",
         `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-        descriptor.id
+        descriptor.id,
       );
     }
   }
@@ -831,26 +945,38 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       // provisioned here on the clone route — the ACTOR key never enters the sandbox). An optional
       // custom desktop template (image) selects Sandbox.create(template, opts); absent keeps the
       // byte-stable Sandbox.create(opts) default.
-      desktop = await createDesktopSandbox(desktopModule, {
-        apiKey: e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs: perRunSandboxMs,
-        metadata: {
-          ...SHARED_WORLD_LAB_PROVIDER_METADATA,
-          labId: config.id,
-          topology: "shared-world",
-          roleCount: String(roleCount)
+      desktop = await createDesktopSandbox(
+        desktopModule,
+        {
+          apiKey: e2bApiKey,
+          requestTimeoutMs,
+          timeoutMs: perRunSandboxMs,
+          metadata: {
+            ...SHARED_WORLD_LAB_PROVIDER_METADATA,
+            labId: config.id,
+            topology: "shared-world",
+            roleCount: String(roleCount),
+          },
+          ...(subjectEnvNames.length > 0
+            ? {
+                envs: Object.fromEntries(
+                  subjectEnvNames.map((name) => [name, env[name] as string]),
+                ),
+              }
+            : {}),
+          resolution: sandboxResolution,
+          dpi: 96,
+          lifecycle: { onTimeout: "kill" },
         },
-        ...(subjectEnvNames.length > 0
-          ? { envs: Object.fromEntries(subjectEnvNames.map((name) => [name, env[name] as string])) }
-          : {}),
-        resolution: sandboxResolution,
-        dpi: 96,
-        lifecycle: { onTimeout: "kill" }
-      }, config.execution?.desktop?.template);
+        config.execution?.desktop?.template,
+      );
       sandboxId = desktop.sandboxId;
       // #358 salvage: durable id receipt the moment the plane sandbox exists.
-      await appendSandboxReceipt(runPaths, { at: new Date().toISOString(), laneId: "subject", sandboxId });
+      await appendSandboxReceipt(runPaths, {
+        at: new Date().toISOString(),
+        laneId: "subject",
+        sandboxId,
+      });
 
       if (hooks.prepareDesktop) {
         await hooks.prepareDesktop(desktop);
@@ -860,11 +986,11 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         desktop,
         laneId: "shared-world",
         requestedScreen: sandboxResolution,
-        requestTimeoutMs
+        requestTimeoutMs,
       });
       if (screenGeometry.verified) {
         sharedScreenGeometry = {
-          screen: { ...sharedScreenGeometry.screen, verified: screenGeometry.verified }
+          screen: { ...sharedScreenGeometry.screen, verified: screenGeometry.verified },
         };
       }
       if (screenGeometry.warning) {
@@ -878,11 +1004,13 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       // pipeline (local-tree route). One stderr line per phase boundary by default; hooks.onPhase
       // (DI seam, mirrors CuaActorLabHooks) overrides it so tests capture instead of writing to
       // real stderr.
-      const onSubjectPhase = hooks.onPhase ?? ((event: SubjectPhaseEvent) => {
-        process.stderr.write(
-          `humanish shared-world: ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`
-        );
-      });
+      const onSubjectPhase =
+        hooks.onPhase ??
+        ((event: SubjectPhaseEvent) => {
+          process.stderr.write(
+            `humanish shared-world: ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`,
+          );
+        });
       if (localTreeRoute) {
         await provisionLocalTreeSubject(desktop, {
           archiveBuffer: localTreeArchiveBuffer!,
@@ -890,9 +1018,11 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
           requestTimeoutMs,
           scrub: scrubKnownValues,
-          onStateStep: (record) => { stateStepRecords.push(record); },
+          onStateStep: (record) => {
+            stateStepRecords.push(record);
+          },
           onPhase: onSubjectPhase,
-          ...timers
+          ...timers,
         });
       } else {
         subjectCommit = await provisionCloneSubject(desktop, {
@@ -903,10 +1033,14 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           hasGithubToken,
           requestTimeoutMs,
           scrub: scrubKnownValues,
-          onCommit: (commit) => { subjectCommit = commit; },
-          onStateStep: (record) => { stateStepRecords.push(record); },
+          onCommit: (commit) => {
+            subjectCommit = commit;
+          },
+          onStateStep: (record) => {
+            stateStepRecords.push(record);
+          },
           onPhase: onSubjectPhase,
-          ...timers
+          ...timers,
         });
       }
 
@@ -919,7 +1053,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         prevDigest: undefined,
         scrub: scrubKnownValues,
         requestTimeoutMs,
-        timers
+        timers,
       });
       let prevDigest = baselineCheckpoint.digest;
 
@@ -932,30 +1066,38 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             screenshots: [],
             skippedReason: `skipped: ${failFastReason ?? budgetBlockedReason}`,
             noEngagement: false,
-            harnessError: false
+            harnessError: false,
           });
           continue;
         }
 
         const screenshots: string[] = [];
-        const writeScreenshot = makeLaneWriteScreenshot(runPaths, { screenshotDir: spec.screenshotDir }, screenshots);
+        const writeScreenshot = makeLaneWriteScreenshot(
+          runPaths,
+          { screenshotDir: spec.screenshotDir },
+          screenshots,
+        );
         let session: CuaLoopResult | undefined;
         let sessionError: string | undefined;
         let desktopBrowser: DesktopBrowserEvidence | undefined;
         let launchedBrowserFamily: DesktopBrowserFamily = "unknown";
         let browserLaunchIdentity: DesktopBrowserLaunchIdentity | undefined;
         let browserLaunched = false;
-        let initialBrowserGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> | undefined;
+        let initialBrowserGeometry:
+          | Awaited<ReturnType<typeof captureDesktopBrowserGeometry>>
+          | undefined;
         let browserWindowId: string | undefined;
         let browserTargetId: string | undefined;
         let desktopGeometry = sharedScreenGeometry;
         try {
           // Fresh isolated browser profile per seat, opened at the role's same-origin loopback entry.
           const browserLaunch = await launchSeatBrowser(desktop, {
-            ...(config.execution?.desktop?.browser === undefined ? {} : { browserPreference: config.execution.desktop.browser }),
+            ...(config.execution?.desktop?.browser === undefined
+              ? {}
+              : { browserPreference: config.execution.desktop.browser }),
             profileDir: spec.profileDir,
             seatUrl: spec.seatUrl,
-            requestTimeoutMs
+            requestTimeoutMs,
           });
           desktopBrowser = browserLaunch.evidence;
           launchedBrowserFamily = browserLaunch.family;
@@ -965,35 +1107,54 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           const browserGeometry = await captureDesktopBrowserGeometry({
             desktop,
             browserFamily: launchedBrowserFamily,
-            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
+            ...(browserLaunchIdentity === undefined
+              ? {}
+              : { launchIdentity: browserLaunchIdentity }),
             laneId: spec.roleId,
             targetUrl: spec.seatUrl,
             requestedScreen: sandboxResolution,
-            requestTimeoutMs
+            requestTimeoutMs,
           });
           initialBrowserGeometry = browserGeometry;
           browserWindowId = browserGeometry.browserWindowId;
           browserTargetId = browserGeometry.browserTargetId;
           if (browserGeometry.unusable !== undefined) {
-            throw new Error(`HUMANISH_CUA_LAB_DEVICE_GEOMETRY: ${browserGeometry.unusable} Participant actions were not started.`);
+            throw new Error(
+              `HUMANISH_CUA_LAB_DEVICE_GEOMETRY: ${browserGeometry.unusable} Participant actions were not started.`,
+            );
           }
           const sessionOptions: CuaActorSessionOptions = {
-            ...(caps?.maxUsd === undefined ? {} : {
-              maxUsd: caps.maxUsd,
-              estimateTurnCostUsd: (usage: ActorTokenUsage) => estimateActorCost(usage, capModelId).estimatedCostUsd
-            }),
-            ...(caps?.maxUsd === undefined && runBudget === undefined ? {} : { requireReportedUsageForSpendCap: true }),
-            ...(runBudget === undefined ? {} : {
-              overRunBudget: (usage: ActorTokenUsage) => noteModelEstimate(spec.roleId, estimateActorCost(usage, capModelId).estimatedCostUsd) ?? null
-            }),
+            ...(caps?.maxUsd === undefined
+              ? {}
+              : {
+                  maxUsd: caps.maxUsd,
+                  estimateTurnCostUsd: (usage: ActorTokenUsage) =>
+                    estimateActorCost(usage, capModelId).estimatedCostUsd,
+                }),
+            ...(caps?.maxUsd === undefined && runBudget === undefined
+              ? {}
+              : { requireReportedUsageForSpendCap: true }),
+            ...(runBudget === undefined
+              ? {}
+              : {
+                  overRunBudget: (usage: ActorTokenUsage) =>
+                    noteModelEstimate(
+                      spec.roleId,
+                      estimateActorCost(usage, capModelId).estimatedCostUsd,
+                    ) ?? null,
+                }),
             instructions: spec.instructions,
             persona: spec.persona,
             timeoutMs,
             openai: {
               apiKey: openaiApiKey,
               ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
-              ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-              ...(config.actors[0]?.maxOutputTokens === undefined ? {} : { maxOutputTokens: config.actors[0].maxOutputTokens })
+              ...(spec.reasoningEffort === undefined
+                ? {}
+                : { reasoningEffort: spec.reasoningEffort }),
+              ...(config.actors[0]?.maxOutputTokens === undefined
+                ? {}
+                : { maxOutputTokens: config.actors[0].maxOutputTokens }),
             },
             desktop: desktop as unknown as E2BDesktopLike,
             ...(launchedBrowserFamily === "chromium"
@@ -1003,20 +1164,24 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
                       desktop,
                       requestTimeoutMs,
                       {
-                        ...(browserLaunchIdentity?.cdpPort === undefined ? {} : { cdpPort: browserLaunchIdentity.cdpPort }),
-                        ...(browserLaunchIdentity?.profileDir === undefined ? {} : { profileDir: browserLaunchIdentity.profileDir }),
-                        targetUrl: spec.seatUrl
+                        ...(browserLaunchIdentity?.cdpPort === undefined
+                          ? {}
+                          : { cdpPort: browserLaunchIdentity.cdpPort }),
+                        ...(browserLaunchIdentity?.profileDir === undefined
+                          ? {}
+                          : { profileDir: browserLaunchIdentity.profileDir }),
+                        targetUrl: spec.seatUrl,
                       },
-                      browserTargetId
-                    )
-                  }
+                      browserTargetId,
+                    ),
+                  },
                 }
               : {}),
             redactScreenshots,
             scrubText: scrubKnownValues,
             writeScreenshot,
             ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
-            ...(spec.dwell === undefined ? {} : { dwell: spec.dwell })
+            ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
           };
           session = await runSession(sessionOptions);
         } catch (error) {
@@ -1024,37 +1189,51 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         }
 
         if (browserLaunched) {
-          const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> = await captureDesktopBrowserGeometry({
-            desktop,
-            browserFamily: launchedBrowserFamily,
-            ...(browserLaunchIdentity === undefined ? {} : { launchIdentity: browserLaunchIdentity }),
-            ...(browserWindowId === undefined ? {} : { browserWindowId }),
-            ...(browserTargetId === undefined ? {} : { browserTargetId }),
-            laneId: spec.roleId,
-            targetUrl: spec.seatUrl,
-            requestedScreen: sandboxResolution,
-            requestTimeoutMs,
-            pagePreference: "active",
-            resize: false
-          }).catch((error: unknown) => ({
-            warnings: [`Final browser geometry measurement failed for lane ${spec.roleId}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`]
-          }));
+          const finalGeometry: Awaited<ReturnType<typeof captureDesktopBrowserGeometry>> =
+            await captureDesktopBrowserGeometry({
+              desktop,
+              browserFamily: launchedBrowserFamily,
+              ...(browserLaunchIdentity === undefined
+                ? {}
+                : { launchIdentity: browserLaunchIdentity }),
+              ...(browserWindowId === undefined ? {} : { browserWindowId }),
+              ...(browserTargetId === undefined ? {} : { browserTargetId }),
+              laneId: spec.roleId,
+              targetUrl: spec.seatUrl,
+              requestedScreen: sandboxResolution,
+              requestTimeoutMs,
+              pagePreference: "active",
+              resize: false,
+            }).catch((error: unknown) => ({
+              warnings: [
+                `Final browser geometry measurement failed for lane ${spec.roleId}: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+              ],
+            }));
           // Chosen capture rule (mirrors runCuaLane): seat-end-if-it-measured-anything, else
           // seat-open. A seat-end capture that measured EITHER field wins whole, so a partial
           // seat-end capture omits fields the seat-open capture had (honest omission); only a
           // seat-end capture that measured NOTHING falls back to the seat-open capture.
-          const chosenGeometry = finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
-            ? finalGeometry
-            : initialBrowserGeometry ?? finalGeometry;
-          const geometryWarnings = [...new Set([...(initialBrowserGeometry?.warnings ?? []), ...chosenGeometry.warnings].map((warning) => scrubKnownValues(warning)))];
+          const chosenGeometry =
+            finalGeometry.browserWindow !== undefined || finalGeometry.viewport !== undefined
+              ? finalGeometry
+              : (initialBrowserGeometry ?? finalGeometry);
+          const geometryWarnings = [
+            ...new Set(
+              [...(initialBrowserGeometry?.warnings ?? []), ...chosenGeometry.warnings].map(
+                (warning) => scrubKnownValues(warning),
+              ),
+            ),
+          ];
           warnings.push(...geometryWarnings);
           desktopGeometry = {
             ...sharedScreenGeometry,
-            ...(chosenGeometry.browserWindow === undefined ? {} : { browserWindow: chosenGeometry.browserWindow }),
+            ...(chosenGeometry.browserWindow === undefined
+              ? {}
+              : { browserWindow: chosenGeometry.browserWindow }),
             ...(chosenGeometry.viewport === undefined ? {} : { viewport: chosenGeometry.viewport }),
             ...((sharedScreenGeometry.warnings?.length ?? 0) + geometryWarnings.length === 0
               ? {}
-              : { warnings: [...(sharedScreenGeometry.warnings ?? []), ...geometryWarnings] })
+              : { warnings: [...(sharedScreenGeometry.warnings ?? []), ...geometryWarnings] }),
           };
 
           // End THIS seat's browser now that its turn (and its final geometry capture) is done:
@@ -1064,43 +1243,69 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           try {
             await desktop.commands.run(
               buildSeatBrowserTerminationCommand(browserLaunchIdentity?.processId, spec.profileDir),
-              { requestTimeoutMs, timeoutMs: SEAT_BROWSER_TERMINATION_TIMEOUT_MS }
+              { requestTimeoutMs, timeoutMs: SEAT_BROWSER_TERMINATION_TIMEOUT_MS },
             );
           } catch (error) {
-            warnings.push(`Seat browser termination failed for role ${spec.roleId} (run continues; the seat's browser may remain open on the shared desktop): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+            warnings.push(
+              `Seat browser termination failed for role ${spec.roleId} (run continues; the seat's browser may remain open on the shared desktop): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+            );
           }
         }
 
         if (session) {
-          session.trace.estimatedCost = estimateActorCostForExecution(session.trace.tokenUsage, session.trace.ids.model, session.trace.executionProfile);
+          session.trace.estimatedCost = estimateActorCostForExecution(
+            session.trace.tokenUsage,
+            session.trace.ids.model,
+            session.trace.executionProfile,
+          );
           // A per-seat stop can occur before the shared callback. Closing-report usage is also
           // part of this participant's total, so reconcile the final trace before admitting a seat.
-          budgetBlockedReason = noteModelEstimate(spec.roleId, session.trace.estimatedCost.estimatedCostUsd);
-          if ((caps?.maxUsd !== undefined || runBudget !== undefined)
-            && session.trace.ids.model?.trim().toLowerCase() !== capModelId.trim().toLowerCase()) {
+          budgetBlockedReason = noteModelEstimate(
+            spec.roleId,
+            session.trace.estimatedCost.estimatedCostUsd,
+          );
+          if (
+            (caps?.maxUsd !== undefined || runBudget !== undefined) &&
+            session.trace.ids.model?.trim().toLowerCase() !== capModelId.trim().toLowerCase()
+          ) {
             // A custom session owns its provider. We cannot retrospectively enforce the declared
             // rate against a different model, or rewrite its already-recorded participant outcome.
             sessionError = `Role "${spec.roleId}" returned a model identity that differs from the declared cap model; model-spend enforcement cannot be established. The original participant trace and its returned-model estimate are retained; later participants will not start.`;
             warnings.push(sessionError);
           }
-          if (runBudget && (session.trace.estimatedCost.estimatedCostUsd === null
-            || session.trace.interactionUsageIncomplete === true || session.trace.debrief?.usageReported === false)) {
+          if (
+            runBudget &&
+            (session.trace.estimatedCost.estimatedCostUsd === null ||
+              session.trace.interactionUsageIncomplete === true ||
+              session.trace.debrief?.usageReported === false)
+          ) {
             budgetBlockedReason = `study model budget is unknown after role "${spec.roleId}" because provider usage was unavailable; subsequent sequential participants will not start`;
           }
-          await writeContainedOutputFile(runPaths, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+          await writeContainedOutputFile(
+            runPaths,
+            spec.traceArtifactPath,
+            `${JSON.stringify(session.trace, null, 2)}\n`,
+            "utf8",
+          );
           if (session.trace.redaction.screenshots === "raw") {
-            warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+            warnings.push(
+              "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+            );
           }
         }
 
-        const noEngagement = session !== undefined
-          && session.completionReason === "goal_satisfied"
-          && (session.trace.counts.actions ?? 0) === 0
-          && (session.trace.counts.messages ?? 0) === 0;
+        const noEngagement =
+          session !== undefined &&
+          session.completionReason === "goal_satisfied" &&
+          (session.trace.counts.actions ?? 0) === 0 &&
+          (session.trace.counts.messages ?? 0) === 0;
         if (noEngagement) {
-          warnings.push(`Role ${spec.roleId} returned goal_satisfied with ZERO actions and ZERO messages — likely a blank/still-loading screen; NOT counted as a pass.`);
+          warnings.push(
+            `Role ${spec.roleId} returned goal_satisfied with ZERO actions and ZERO messages — likely a blank/still-loading screen; NOT counted as a pass.`,
+          );
         }
-        const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
+        const harnessError =
+          sessionError !== undefined || session?.completionReason === "harness_error";
 
         // Checkpoint AFTER this role's turn (the interaction-proof snapshot). Runs even on a
         // harness-errored turn (the probe is read-only state, independent of the browser seat).
@@ -1112,7 +1317,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           prevDigest,
           scrub: scrubKnownValues,
           requestTimeoutMs,
-          timers
+          timers,
         });
         prevDigest = afterCheckpoint.digest;
 
@@ -1125,41 +1330,55 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
           desktopGeometry,
           noEngagement,
           harnessError,
-          afterCheckpoint
+          afterCheckpoint,
         });
 
         if (harnessError && !failFastReason) {
-          failFastReason = sessionError ?? `role "${spec.roleId}" ended in a harness error — the shared-state premise is broken (fail-fast)`;
+          failFastReason =
+            sessionError ??
+            `role "${spec.roleId}" ended in a harness error — the shared-state premise is broken (fail-fast)`;
         }
       }
     } catch (error) {
       runFailed = true;
-      warnings.push(`Shared-world run failed before completion: ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+      warnings.push(
+        `Shared-world run failed before completion: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+      );
     } finally {
       // ONE teardown BY exact sandboxId — NEVER Sandbox.list (the 2026-06-16 prod-incident rail).
       if (desktop && desktopModule) {
-        const anyRoleFailed = runFailed
-          || failFastReason !== undefined
-          || roleOutcomes.some((outcome) => outcome.harnessError || outcome.sessionError !== undefined);
+        const anyRoleFailed =
+          runFailed ||
+          failFastReason !== undefined ||
+          roleOutcomes.some(
+            (outcome) => outcome.harnessError || outcome.sessionError !== undefined,
+          );
         // Each route's own keep flag gates its own run only: a clone.keep can never leak into a
         // local-tree run's teardown decision, and vice versa (mirrors runCuaLane's keepReason).
-        const keepReason = config.subject.clone?.keep === true
-          ? "subject.clone.keep"
-          : config.subject.localTree?.keep === true
-            ? "subject.localTree.keep"
-            : undefined;
+        const keepReason =
+          config.subject.clone?.keep === true
+            ? "subject.clone.keep"
+            : config.subject.localTree?.keep === true
+              ? "subject.localTree.keep"
+              : undefined;
         const keepForDebug = keepReason !== undefined && anyRoleFailed;
         if (keepForDebug) {
-          warnings.push(`Sandbox ${desktop.sandboxId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`);
+          warnings.push(
+            `Sandbox ${desktop.sandboxId} kept for debugging (${keepReason} on failure); reclaim it via E2B or it will be killed on its server-side timeout.`,
+          );
         } else if (typeof desktopModule.Sandbox.kill === "function") {
           try {
             await desktopModule.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: 60_000 });
             killed = true;
           } catch (error) {
-            warnings.push(`Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+            warnings.push(
+              `Sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+            );
           }
         } else {
-          warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.");
+          warnings.push(
+            "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox.",
+          );
         }
       }
     }
@@ -1172,24 +1391,26 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   const subjectState = resolveSubjectState({
     declared: config.subject.state,
     dryRun,
-    executed: stateStepRecords
+    executed: stateStepRecords,
   });
   const planeCommit = localTreeRoute ? localTreeArchive?.git?.commit : subjectCommit;
   const subject: RunSubjectProvenance = localTreeRoute
     ? {
         source: "local-tree",
-        ...(localTreeArchive === undefined ? {} : { archiveSha256: localTreeArchive.archiveSha256 }),
+        ...(localTreeArchive === undefined
+          ? {}
+          : { archiveSha256: localTreeArchive.archiveSha256 }),
         ...(planeCommit === undefined ? {} : { commit: planeCommit }),
         ...(localTreeArchive?.git === undefined ? {} : { dirty: localTreeArchive.git.dirty }),
         envNames: subjectEnvNames,
-        state: subjectState
+        state: subjectState,
       }
     : {
         source: "clone",
         repo: publicRepo,
         ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
         envNames: subjectEnvNames,
-        state: subjectState
+        state: subjectState,
       };
 
   const bundle = buildSharedWorldBundle({
@@ -1211,7 +1432,7 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     desktopGeometry: sharedScreenGeometry,
     seedDigest: seedRecipeDigest(config),
     ...(planeCommit === undefined ? {} : { subjectCommit: planeCommit }),
-    ...(failFastReason === undefined ? {} : { failFastReason })
+    ...(failFastReason === undefined ? {} : { failFastReason }),
   });
 
   const adapterWarnings: string[] = [];
@@ -1226,16 +1447,23 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       actor: descriptor.id,
       backend: "shared-world",
       dryRun,
-      laneCount: roleSpecs.length
+      laneCount: roleSpecs.length,
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
     hookLabel: "sharedWorldHooks",
-    ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
   });
 
   await validatePreparedRunArtifactPaths(runPaths);
-  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "run.json",
+    `${JSON.stringify(bundle, null, 2)}\n`,
+    "utf8",
+  );
   // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
   // stale, which reads as interrupted rather than as a false outcome (#455).
   await runStatus.finish({
@@ -1248,18 +1476,35 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
             reachedGoal: bundle.review.participants.reachedGoal,
             ...(bundle.review.participants.reportedFriction === undefined
               ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction })
-          }
+              : { reportedFriction: bundle.review.participants.reportedFriction }),
+          },
         }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
   });
-  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(bundle.review, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "review.md", renderSharedWorldReviewMarkdown(bundle), "utf8");
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "review.json",
+    `${JSON.stringify(bundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "review.md",
+    renderSharedWorldReviewMarkdown(bundle),
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
   await writePreparedRunLatestPointer(
     runPaths,
     `${JSON.stringify({ schema: "humanish.latest-run.v1", runId, path: runPaths.relativeRunRoot, updatedAt: createdAt }, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
 
   const observer = await render(cwd, runId, { open: options.open === true });
@@ -1269,12 +1514,22 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
   };
   const allRolesOk = roleSpecs.every((_, index) => roleOk(roleOutcomes[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && allRolesOk && failFastReason === undefined && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
+  const ok =
+    observer.ok &&
+    allRolesOk &&
+    failFastReason === undefined &&
+    adapterFailure === undefined &&
+    scorerResult.declaredVerdictFailure === undefined;
   const allWarnings = [...warnings, ...adapterWarnings, ...observer.warnings];
 
   const roles: SharedWorldRoleResult[] = roleSpecs.map((spec, index) => {
     const outcome = roleOutcomes[index];
-    const base = { id: spec.roleId, index: spec.roleIndex + 1, persona: spec.persona.id, profileDir: spec.profileDir };
+    const base = {
+      id: spec.roleId,
+      index: spec.roleIndex + 1,
+      persona: spec.persona.id,
+      profileDir: spec.profileDir,
+    };
     if (dryRun || !outcome) {
       return { ...base, status: "contract_proof_only" as const, ok: dryRun };
     }
@@ -1284,7 +1539,10 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
         status: "blocked" as const,
         ok: false,
         skippedReason: outcome.skippedReason,
-        error: { code: "HUMANISH_SHARED_WORLD_LAB_FAILED" as const, message: outcome.skippedReason }
+        error: {
+          code: "HUMANISH_SHARED_WORLD_LAB_FAILED" as const,
+          message: outcome.skippedReason,
+        },
       };
     }
     const session = outcome.session;
@@ -1294,32 +1552,45 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
       status: session ? session.status : ("failed" as const),
       ok: thisOk,
       ...(session
-        ? { session: { status: session.status, completionReason: session.completionReason, reason: session.reason, screenshots: outcome.screenshots.length } }
+        ? {
+            session: {
+              status: session.status,
+              completionReason: session.completionReason,
+              reason: session.reason,
+              screenshots: outcome.screenshots.length,
+            },
+          }
         : {}),
       ...(thisOk
         ? {}
         : {
             error: {
               code: "HUMANISH_SHARED_WORLD_LAB_FAILED" as const,
-              message: outcome.sessionError
-                ?? (outcome.noEngagement
+              message:
+                outcome.sessionError ??
+                (outcome.noEngagement
                   ? "Role took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
                   : session?.completionReason === "harness_error"
                     ? `Role seat ended with a harness error: ${session.reason}`
-                    : "Role did not produce a terminal session.")
-            }
-          })
+                    : "Role did not produce a terminal session."),
+            },
+          }),
     };
   });
 
   const sequence = roleOutcomes
-    .filter((outcome) => outcome.skippedReason === undefined && outcome.afterCheckpoint !== undefined)
+    .filter(
+      (outcome) => outcome.skippedReason === undefined && outcome.afterCheckpoint !== undefined,
+    )
     .map((outcome) => outcome.spec.roleId);
 
   const errorResult = ((): SharedWorldLabResult["error"] | undefined => {
     if (ok) return undefined;
     if (!observer.ok) {
-      return { code: "HUMANISH_SHARED_WORLD_LAB_FAILED", message: observer.error?.message ?? "Observer failed for the shared-world run." };
+      return {
+        code: "HUMANISH_SHARED_WORLD_LAB_FAILED",
+        message: observer.error?.message ?? "Observer failed for the shared-world run.",
+      };
     }
     if (adapterFailure !== undefined) {
       return { code: "HUMANISH_SHARED_WORLD_LAB_FAILED", message: adapterFailure };
@@ -1327,28 +1598,31 @@ async function runSharedWorldLabInScope(options: RunSharedWorldLabOptions): Prom
     const passed = roles.filter((role) => role.ok).length;
     return {
       code: "HUMANISH_SHARED_WORLD_LAB_FAILED",
-      message: `Shared-world run failed: ${passed}/${roleCount} role(s) passed${failFastReason ? ` (fail-fast: ${failFastReason})` : ""}.`
+      message: `Shared-world run failed: ${passed}/${roleCount} role(s) passed${failFastReason ? ` (fail-fast: ${failFastReason})` : ""}.`,
     };
   })();
 
-  return markFinalizedStudyResult({
-    schema: SHARED_WORLD_LAB_SCHEMA,
-    ok,
-    cwd,
-    labId: config.id,
-    actor: descriptor.id,
-    topology: "shared-world",
-    roleCount,
-    sequence,
-    dryRun,
-    runId,
-    ...(sandboxId === undefined ? {} : { sandbox: { sandboxId, killed } }),
-    subject,
-    roles,
-    observer,
-    warnings: allWarnings,
-    ...(errorResult === undefined ? {} : { error: errorResult })
-  }, runPaths);
+  return markFinalizedStudyResult(
+    {
+      schema: SHARED_WORLD_LAB_SCHEMA,
+      ok,
+      cwd,
+      labId: config.id,
+      actor: descriptor.id,
+      topology: "shared-world",
+      roleCount,
+      sequence,
+      dryRun,
+      runId,
+      ...(sandboxId === undefined ? {} : { sandbox: { sandboxId, killed } }),
+      subject,
+      roles,
+      observer,
+      warnings: allWarnings,
+      ...(errorResult === undefined ? {} : { error: errorResult }),
+    },
+    runPaths,
+  );
 }
 
 /** Project the shared-world run into a humanish.run-bundle.v1 with the sharedWorld evidence block. */
@@ -1385,19 +1659,19 @@ export function buildSharedWorldBundle(args: {
     at: createdAt,
     level: "info",
     type: "shared-world.run.created",
-    message: `Created shared-world run for ${config.id} (actor ${descriptor.id}, ${roleSpecs.length} role(s), ONE shared plane, sequential turns).`
+    message: `Created shared-world run for ${config.id} (actor ${descriptor.id}, ${roleSpecs.length} role(s), ONE shared plane, sequential turns).`,
   });
   // Human-readable plane label, byte-stable for the clone route: "clone of <repo>[@<commit>]".
   // The local-tree route has no repo slug, so it labels the packed archive instead (archiveSha256
   // + dirty/clean when the packed root was a git work tree).
-  const dryRunPlaneLabel = args.subject.source === "local-tree"
-    ? "packed working tree"
-    : `clone of ${args.subject.repo}`;
-  const livePlaneLabel = args.subject.source === "local-tree"
-    ? (args.subject.archiveSha256
+  const dryRunPlaneLabel =
+    args.subject.source === "local-tree" ? "packed working tree" : `clone of ${args.subject.repo}`;
+  const livePlaneLabel =
+    args.subject.source === "local-tree"
+      ? args.subject.archiveSha256
         ? `packed working tree (archiveSha256 ${args.subject.archiveSha256}${args.subject.dirty === true ? ", dirty working tree" : args.subject.dirty === false ? ", clean working tree" : ""})`
-        : "packed working tree (archive digest unresolved; provisioning failed before resolution)")
-    : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
+        : "packed working tree (archive digest unresolved; provisioning failed before resolution)"
+      : `clone of ${args.subject.repo}${args.subjectCommit ? `@${args.subjectCommit}` : ""}`;
   events.push({
     id: "event-001-plane",
     at: createdAt,
@@ -1407,36 +1681,44 @@ export function buildSharedWorldBundle(args: {
       ? `Shared plane declared: ${dryRunPlaneLabel}, served at ${appUrl} in-sandbox (dry-run contract; nothing ${args.subject.source === "local-tree" ? "packed" : "cloned"}). Seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`
       : `Shared plane: ${livePlaneLabel}, served at ${appUrl} in-sandbox; seed recipe ${args.seedDigest}; env names: ${args.subject.envNames?.join(", ") || "none"} (values never persisted).`,
     simId: roleSpecs[0]?.simId ?? "sim-001",
-    streamId: roleSpecs[0]?.streamId ?? "stream-001"
+    streamId: roleSpecs[0]?.streamId ?? "stream-001",
   });
 
   let eventSeq = 2;
-  const nextEventId = (suffix: string): string => `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
+  const nextEventId = (suffix: string): string =>
+    `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
 
   roleSpecs.forEach((spec, index) => {
     const outcome = roleOutcomes[index];
     const session = outcome?.session;
-    const desktopGeometry = outcome?.desktopGeometry ?? args.desktopGeometry ?? {
-      screen: { requested: { width: args.sandboxResolution[0], height: args.sandboxResolution[1] } }
-    };
+    const desktopGeometry = outcome?.desktopGeometry ??
+      args.desktopGeometry ?? {
+        screen: {
+          requested: { width: args.sandboxResolution[0], height: args.sandboxResolution[1] },
+        },
+      };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];
-    const status: RunSimulationStatus = outcome?.skippedReason !== undefined
-      ? "blocked"
-      : session
-        ? session.status
-        : outcome?.sessionError
-          ? "failed"
-          : "contract_proof_only";
-    const reason = outcome?.skippedReason
-      ?? session?.reason
-      ?? outcome?.sessionError
-      ?? "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
+    const status: RunSimulationStatus =
+      outcome?.skippedReason !== undefined
+        ? "blocked"
+        : session
+          ? session.status
+          : outcome?.sessionError
+            ? "failed"
+            : "contract_proof_only";
+    const reason =
+      outcome?.skippedReason ??
+      session?.reason ??
+      outcome?.sessionError ??
+      "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
     const traceScreenshotMode = session?.trace.redaction.screenshots;
     const screenshotMode: "raw" | "blurred" =
       traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
         ? traceScreenshotMode
-        : config.policies?.redactScreenshots === true ? "blurred" : "raw";
+        : config.policies?.redactScreenshots === true
+          ? "blurred"
+          : "raw";
 
     simulations.push({
       id: spec.simId,
@@ -1457,20 +1739,26 @@ export function buildSharedWorldBundle(args: {
             : `Contract role ${spec.roleId} (${spec.persona.id}) for ${descriptor.id} against the shared plane at ${appUrl}.`,
       streamIds: [spec.streamId],
       startedAt: createdAt,
-      updatedAt: createdAt
+      updatedAt: createdAt,
     });
 
     streams.push({
       id: spec.streamId,
       simId: spec.simId,
-      ...(spec.assignment === undefined ? {} : { assignment: participantAssignment(spec.assignment) }),
+      ...(spec.assignment === undefined
+        ? {}
+        : { assignment: participantAssignment(spec.assignment) }),
       kind: "browser",
       label: `Shared-world role ${spec.roleId} — ${config.id}`,
       status,
       transport: "snapshot",
       updatedAt: createdAt,
       embed: lastScreenshot
-        ? { kind: "screenshot", url: lastScreenshot, title: `Shared desktop, role ${spec.roleId} (${screenshotMode})` }
+        ? {
+            kind: "screenshot",
+            url: lastScreenshot,
+            title: `Shared desktop, role ${spec.roleId} (${screenshotMode})`,
+          }
         : { kind: "placeholder", title: `Shared desktop, role ${spec.roleId}` },
       ...(desktopGeometry.viewport === undefined
         ? {}
@@ -1479,8 +1767,8 @@ export function buildSharedWorldBundle(args: {
               width: desktopGeometry.viewport.width,
               height: desktopGeometry.viewport.height,
               deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-              isMobile: args.sandboxPreset.isMobile
-            }
+              isMobile: args.sandboxPreset.isMobile,
+            },
           }),
       desktopGeometry,
       ui: {
@@ -1488,7 +1776,7 @@ export function buildSharedWorldBundle(args: {
         intent: `Watch role ${spec.roleId} (${spec.persona.id}) drive the SHARED app (one plane; sequential turn).`,
         state: reason,
         ...(session ? { actorStatus: session.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {})
+        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
       },
       ...(session ? { actor: session.trace } : {}),
       artifacts: [
@@ -1496,14 +1784,20 @@ export function buildSharedWorldBundle(args: {
         { label: "review", path: "review.md", kind: "review" as const },
         { label: "events", path: "events.ndjson", kind: "events" as const },
         ...(session
-          ? [{ label: `role ${spec.roleId} actor trace`, path: spec.traceArtifactPath, kind: "trace" as const }]
+          ? [
+              {
+                label: `role ${spec.roleId} actor trace`,
+                path: spec.traceArtifactPath,
+                kind: "trace" as const,
+              },
+            ]
           : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `role ${spec.roleId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,
-          kind: "screenshot" as const
-        }))
-      ]
+          kind: "screenshot" as const,
+        })),
+      ],
     });
 
     // Per-role session event.
@@ -1515,7 +1809,7 @@ export function buildSharedWorldBundle(args: {
         type: `shared-world.session.${session.completionReason}`,
         message: `Role ${spec.roleId}: ${session.status} — ${session.reason}`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (outcome?.skippedReason !== undefined) {
       events.push({
@@ -1525,7 +1819,7 @@ export function buildSharedWorldBundle(args: {
         type: "shared-world.session.blocked",
         message: `Role ${spec.roleId} ${outcome.skippedReason}.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (outcome?.sessionError) {
       events.push({
@@ -1535,7 +1829,7 @@ export function buildSharedWorldBundle(args: {
         type: "shared-world.session.error",
         message: `Role ${spec.roleId}: ${outcome.sessionError}`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else {
       events.push({
@@ -1545,16 +1839,20 @@ export function buildSharedWorldBundle(args: {
         type: "shared-world.contract.ready",
         message: `Role ${spec.roleId}: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
     // A custom session can return a valid actor trace while orchestration fails (for example,
     // a capped model mismatch). Preserve the actor and record the wrapper failure separately.
     if (session && outcome?.sessionError) {
       events.push({
-        id: nextEventId(`session-error-${spec.roleId}`), at: createdAt, level: "error",
-        type: "shared-world.session.error", message: outcome.sessionError,
-        simId: spec.simId, streamId: spec.streamId
+        id: nextEventId(`session-error-${spec.roleId}`),
+        at: createdAt,
+        level: "error",
+        type: "shared-world.session.error",
+        message: outcome.sessionError,
+        simId: spec.simId,
+        streamId: spec.streamId,
       });
     }
 
@@ -1566,7 +1864,7 @@ export function buildSharedWorldBundle(args: {
         type: "shared-world.geometry.warning",
         message: warning,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
   });
@@ -1584,9 +1882,14 @@ export function buildSharedWorldBundle(args: {
         roleId: spec.roleId,
         simId: spec.simId,
         streamId: spec.streamId,
-        seedDigest
+        seedDigest,
       });
-      timeline.push(declaredCheckpointSnapshot(`cp-after-${spec.roleId}`, config.subject.state?.checkpoint ?? []));
+      timeline.push(
+        declaredCheckpointSnapshot(
+          `cp-after-${spec.roleId}`,
+          config.subject.state?.checkpoint ?? [],
+        ),
+      );
       sequence.push(spec.roleId);
     });
   } else {
@@ -1601,7 +1904,7 @@ export function buildSharedWorldBundle(args: {
         simId: outcome.spec.simId,
         streamId: outcome.spec.streamId,
         ...(planeCommit === undefined ? {} : { commit: planeCommit }),
-        seedDigest
+        seedDigest,
       });
       timeline.push(outcome.afterCheckpoint);
       sequence.push(outcome.spec.roleId);
@@ -1616,31 +1919,50 @@ export function buildSharedWorldBundle(args: {
     plane: {
       ...(planeCommit === undefined ? {} : { commit: planeCommit }),
       seedDigest,
-      envNames: args.subject.envNames ?? []
+      envNames: args.subject.envNames ?? [],
     },
     sequence,
     timeline,
-    attributionLimits: ["sequential-only", "no-concurrent-races", "delta-attributed-to-turn-not-action"]
+    attributionLimits: [
+      "sequential-only",
+      "no-concurrent-races",
+      "delta-attributed-to-turn-not-action",
+    ],
   };
-  const firstSkipped = roleOutcomes.findIndex(outcome => outcome.skippedReason !== undefined);
+  const firstSkipped = roleOutcomes.findIndex((outcome) => outcome.skippedReason !== undefined);
   const blocker = roleOutcomes[firstSkipped - 1];
   if (!dryRun && firstSkipped > 0 && blocker?.afterCheckpoint) {
     const actor = blocker.session?.trace;
-    const cause = blocker.sessionError !== undefined ? "session_error"
-      : actor?.interactionUsageIncomplete === true || actor?.debrief?.usageReported === false ? "usage_unreported"
-      : blocker.harnessError ? "harness_error"
-      : actor?.estimatedCost?.estimatedCostUsd === null ? "usage_unreported" : "study_spend_limit";
+    const cause =
+      blocker.sessionError !== undefined
+        ? "session_error"
+        : actor?.interactionUsageIncomplete === true || actor?.debrief?.usageReported === false
+          ? "usage_unreported"
+          : blocker.harnessError
+            ? "harness_error"
+            : actor?.estimatedCost?.estimatedCostUsd === null
+              ? "usage_unreported"
+              : "study_spend_limit";
     sharedWorld.skippedTail = {
       afterRoleId: blocker.spec.roleId,
       roles: roleOutcomes.slice(firstSkipped).map(({ spec }) => ({
-        roleId: spec.roleId, simId: spec.simId, streamId: spec.streamId
+        roleId: spec.roleId,
+        simId: spec.simId,
+        streamId: spec.streamId,
       })),
       cause,
-      ...(cause === "study_spend_limit" ? {
-        maxTotalUsd: config.execution!.caps!.maxTotalUsd!,
-        estimatedTotalUsd: roleOutcomes.slice(0, firstSkipped)
-          .reduce((total, outcome) => total + (outcome.session?.trace.estimatedCost?.estimatedCostUsd ?? 0), 0)
-      } : {})
+      ...(cause === "study_spend_limit"
+        ? {
+            maxTotalUsd: config.execution!.caps!.maxTotalUsd!,
+            estimatedTotalUsd: roleOutcomes
+              .slice(0, firstSkipped)
+              .reduce(
+                (total, outcome) =>
+                  total + (outcome.session?.trace.estimatedCost?.estimatedCostUsd ?? 0),
+                0,
+              ),
+          }
+        : {}),
     };
   }
 
@@ -1649,7 +1971,12 @@ export function buildSharedWorldBundle(args: {
     at: createdAt,
     level: "info",
     type: "shared-world.timeline",
-    message: `Interaction timeline: ${timeline.length} entries (${sequence.length} turn(s) interleaved with checkpoints); deltas observed on ${timeline.filter((entry) => entry.kind === "checkpoint" && entry.deltaFromPrev).map((entry) => (entry as SharedWorldCheckpoint).name).join(", ") || "none"}. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}.`
+    message: `Interaction timeline: ${timeline.length} entries (${sequence.length} turn(s) interleaved with checkpoints); deltas observed on ${
+      timeline
+        .filter((entry) => entry.kind === "checkpoint" && entry.deltaFromPrev)
+        .map((entry) => (entry as SharedWorldCheckpoint).name)
+        .join(", ") || "none"
+    }. Attribution ceiling: ${sharedWorld.attributionLimits.join(", ")}.`,
   });
   if (args.failFastReason) {
     events.push({
@@ -1657,7 +1984,7 @@ export function buildSharedWorldBundle(args: {
       at: createdAt,
       level: "warn",
       type: "shared-world.fail-fast",
-      message: `Fail-fast: ${args.failFastReason}. Remaining roles were blocked; completed evidence is retained.`
+      message: `Fail-fast: ${args.failFastReason}. Remaining roles were blocked; completed evidence is retained.`,
     });
   }
 
@@ -1665,30 +1992,36 @@ export function buildSharedWorldBundle(args: {
   const verdict: ReviewSummary["verdict"] = dryRun
     ? "contract_proof_only"
     : (() => {
-        const allPassed = roleOutcomes.length === roleSpecs.length
-          && roleOutcomes.every((outcome) => sharedWorldRoleOutcomeOk(outcome, false));
+        const allPassed =
+          roleOutcomes.length === roleSpecs.length &&
+          roleOutcomes.every((outcome) => sharedWorldRoleOutcomeOk(outcome, false));
         if (allPassed) return "pass";
-        const anyFail = roleOutcomes.some((outcome) =>
-          outcome.skippedReason !== undefined
-          || outcome.harnessError
-          || outcome.noEngagement
-          || outcome.sessionError !== undefined
-          || outcome.session === undefined
-          || outcome.session.status === "failed"
-          || outcome.session.status === "blocked");
+        const anyFail = roleOutcomes.some(
+          (outcome) =>
+            outcome.skippedReason !== undefined ||
+            outcome.harnessError ||
+            outcome.noEngagement ||
+            outcome.sessionError !== undefined ||
+            outcome.session === undefined ||
+            outcome.session.status === "failed" ||
+            outcome.session.status === "blocked",
+        );
         if (anyFail) return "fail";
-        if (roleOutcomes.some((outcome) => outcome.session?.status === "timed_out")) return "timed_out";
+        if (roleOutcomes.some((outcome) => outcome.session?.status === "timed_out"))
+          return "timed_out";
         return "fail";
       })();
   const passedRoles = roleOutcomes.filter((outcome) =>
-    sharedWorldRoleOutcomeOk(outcome, dryRun)).length;
+    sharedWorldRoleOutcomeOk(outcome, dryRun),
+  ).length;
   const configuredBrowser = config.execution?.desktop?.browser;
   const resolvedBrowsers = roleOutcomes
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
-  const unanimousResolvedBrowser = resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
-    ? resolvedBrowsers[0]
-    : undefined;
+  const unanimousResolvedBrowser =
+    resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
+      ? resolvedBrowsers[0]
+      : undefined;
 
   const review: ReviewSummary = {
     schema: REVIEW_SCHEMA,
@@ -1699,24 +2032,43 @@ export function buildSharedWorldBundle(args: {
     gaps: dryRun
       ? ["Live shared-world session not yet run (dry-run contract only)."]
       : roleOutcomes
-          .filter((outcome) =>
-            outcome.skippedReason !== undefined
-            || outcome.sessionError !== undefined
-            || outcome.noEngagement
-            || outcome.session === undefined
-            || outcome.session.status !== "passed")
-          .map((outcome) => `${outcome.spec.roleId}: ${outcome.skippedReason ?? outcome.sessionError ?? outcome.session?.reason ?? "did not pass"}`)
+          .filter(
+            (outcome) =>
+              outcome.skippedReason !== undefined ||
+              outcome.sessionError !== undefined ||
+              outcome.noEngagement ||
+              outcome.session === undefined ||
+              outcome.session.status !== "passed",
+          )
+          .map(
+            (outcome) =>
+              `${outcome.spec.roleId}: ${outcome.skippedReason ?? outcome.sessionError ?? outcome.session?.reason ?? "did not pass"}`,
+          ),
   };
 
-  const anyRaw = roleOutcomes.some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
-  const ranLive = roleOutcomes.some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
+  const anyRaw = roleOutcomes.some(
+    (outcome) => outcome.session?.trace.redaction.screenshots === "raw",
+  );
+  const ranLive = roleOutcomes.some(
+    (outcome) => outcome.session !== undefined || outcome.sessionError !== undefined,
+  );
   // Sequential studies now retain model estimates. Desktop resources/lifetime have no measured
   // cost on this route; include an unknown line so a model subtotal is never labeled a full total.
   const cost = buildCuaCostSummary({
-    lanes: roleOutcomes.flatMap((outcome) => outcome.session
-      ? [{ laneId: outcome.spec.roleId, trace: outcome.session.trace }] : []),
-    ...(args.desktopAllocated ? { desktops: [{ minutes: undefined, observation: undefined,
-      lifetimeComplete: args.desktopLifetimeComplete === true }] } : {})
+    lanes: roleOutcomes.flatMap((outcome) =>
+      outcome.session ? [{ laneId: outcome.spec.roleId, trace: outcome.session.trace }] : [],
+    ),
+    ...(args.desktopAllocated
+      ? {
+          desktops: [
+            {
+              minutes: undefined,
+              observation: undefined,
+              lifetimeComplete: args.desktopLifetimeComplete === true,
+            },
+          ],
+        }
+      : {}),
   });
 
   return {
@@ -1733,21 +2085,25 @@ export function buildSharedWorldBundle(args: {
       id: roleSpecs[0]?.persona.id ?? "shared-world-role",
       name: `Shared-world roster (${roleSpecs.length} roles)`,
       source: `lab:${config.id}`,
-      sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest
+      sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest,
     },
     scenario: {
       id: `shared-world-${config.id}`,
       title: config.title ?? `Shared-world: ${config.id}`,
-      goal: redactText(roleSpecs[0]?.evidenceInstructions ?? roleSpecs[0]?.instructions ?? "Shared-world sequential interaction."),
+      goal: redactText(
+        roleSpecs[0]?.evidenceInstructions ??
+          roleSpecs[0]?.instructions ??
+          "Shared-world sequential interaction.",
+      ),
       source: `lab:${config.id}`,
-      sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest
+      sourceDigest: roleSpecs[0]?.persona.promptDigest ?? seedDigest,
     },
     lifecycle: [
       {
         at: createdAt,
         event: "shared-world.run.created",
-        message: `Created shared-world run with ONE shared plane and ${roleSpecs.length} sequential role seats (actor ${descriptor.id}).`
-      }
+        message: `Created shared-world run with ONE shared plane and ${roleSpecs.length} sequential role seats (actor ${descriptor.id}).`,
+      },
     ],
     simulations,
     streams,
@@ -1758,37 +2114,48 @@ export function buildSharedWorldBundle(args: {
         ? anyRaw
           ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some roles captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle. Checkpoints persist digest-only."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle. Checkpoints persist digest-only."
-        : "Dry-run shared-world contract bundle: no desktop launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. Checkpoints persist digest-only."
+        : "Dry-run shared-world contract bundle: no desktop launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. Checkpoints persist digest-only.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
     ...(cost === undefined ? {} : { cost }),
     feedbackCandidates: [],
     // Custom desktop image provenance (the ONE shared plane launched on it); omitted on the default.
-    ...(config.execution?.desktop?.template === undefined ? {} : { desktopTemplate: config.execution.desktop.template }),
+    ...(config.execution?.desktop?.template === undefined
+      ? {}
+      : { desktopTemplate: config.execution.desktop.template }),
     ...(configuredBrowser === undefined
       ? {}
-      : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),
+      : {
+          desktopBrowser: {
+            requested: configuredBrowser,
+            ...(unanimousResolvedBrowser === undefined
+              ? {}
+              : { resolved: unanimousResolvedBrowser }),
+          },
+        }),
     subject: args.subject,
     attributionClass: "shared-world",
-    sharedWorld
+    sharedWorld,
   };
 }
 
 function sharedWorldRoleOutcomeOk(outcome: RoleOutcome | undefined, dryRun: boolean): boolean {
   if (dryRun) return true;
   if (!outcome || outcome.skippedReason !== undefined) return false;
-  return outcome.session !== undefined
-    && outcome.session.status === "passed"
-    && outcome.session.completionReason !== "harness_error"
-    && outcome.sessionError === undefined
-    && !outcome.noEngagement;
+  return (
+    outcome.session !== undefined &&
+    outcome.session.status === "passed" &&
+    outcome.session.completionReason !== "harness_error" &&
+    outcome.sessionError === undefined &&
+    !outcome.noEngagement
+  );
 }
 
 function renderSharedWorldReviewMarkdown(bundle: RunBundle): string {
@@ -1806,8 +2173,12 @@ function renderSharedWorldReviewMarkdown(bundle: RunBundle): string {
     `- summary: ${bundle.review.summary}`,
     ...(plane ? [`- plane: ${plane.message}`] : []),
     ...(timeline ? [`- timeline: ${timeline.message}`] : []),
-    ...(bundle.sharedWorld ? [`- attribution limits: ${bundle.sharedWorld.attributionLimits.join(", ")}`] : []),
-    ...(bundle.review.gaps.length > 0 ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)] : []),
-    ""
+    ...(bundle.sharedWorld
+      ? [`- attribution limits: ${bundle.sharedWorld.attributionLimits.join(", ")}`]
+      : []),
+    ...(bundle.review.gaps.length > 0
+      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
+      : []),
+    "",
   ].join("\n");
 }

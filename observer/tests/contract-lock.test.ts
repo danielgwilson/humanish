@@ -31,15 +31,29 @@ function runtimeCliEdges(file: string, source: string): string[] {
   const edges: string[] = [];
   function visit(node: ts.Node): void {
     let specifier: ts.Expression | undefined;
-    if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly) specifier = node.moduleSpecifier;
+    if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly)
+      specifier = node.moduleSpecifier;
     else if (ts.isExportDeclaration(node) && !node.isTypeOnly) specifier = node.moduleSpecifier;
-    else if (ts.isImportEqualsDeclaration(node) && !node.isTypeOnly && ts.isExternalModuleReference(node.moduleReference)) specifier = node.moduleReference.expression;
-    else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword
-      || ts.isIdentifier(node.expression) && node.expression.text === "require")) specifier = node.arguments[0];
+    else if (
+      ts.isImportEqualsDeclaration(node) &&
+      !node.isTypeOnly &&
+      ts.isExternalModuleReference(node.moduleReference)
+    )
+      specifier = node.moduleReference.expression;
+    else if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+    )
+      specifier = node.arguments[0];
     if (specifier && ts.isStringLiteralLike(specifier)) {
-      const target = specifier.text.startsWith(".") ? path.resolve(path.dirname(file), specifier.text)
-        : specifier.text.startsWith("@/") ? path.resolve(OBSERVER_ROOT, specifier.text.slice(2))
-        : path.isAbsolute(specifier.text) ? path.resolve(specifier.text) : null;
+      const target = specifier.text.startsWith(".")
+        ? path.resolve(path.dirname(file), specifier.text)
+        : specifier.text.startsWith("@/")
+          ? path.resolve(OBSERVER_ROOT, specifier.text.slice(2))
+          : path.isAbsolute(specifier.text)
+            ? path.resolve(specifier.text)
+            : null;
       if (target === CLI_ROOT || target?.startsWith(`${CLI_ROOT}${path.sep}`)) {
         const line = tree.getLineAndCharacterOfPosition(node.getStart()).line + 1;
         edges.push(`${path.relative(OBSERVER_ROOT, file)}:${line}: ${specifier.text}`);
@@ -53,17 +67,32 @@ function runtimeCliEdges(file: string, source: string): string[] {
 
 async function runtimeFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
-  return (await Promise.all(entries.map(async entry => {
-    const file = path.join(directory, entry.name);
-    return entry.isDirectory() ? runtimeFiles(file)
-      : /\.[cm]?[jt]sx?$/.test(entry.name) && !/\.d\.[cm]?ts$/.test(entry.name) ? [file] : [];
-  }))).flat();
+  return (
+    await Promise.all(
+      entries.map(async (entry) => {
+        const file = path.join(directory, entry.name);
+        return entry.isDirectory()
+          ? runtimeFiles(file)
+          : /\.[cm]?[jt]sx?$/.test(entry.name) && !/\.d\.[cm]?ts$/.test(entry.name)
+            ? [file]
+            : [];
+      }),
+    )
+  ).flat();
 }
 
 it("Observer runtime modules never import CLI values", async () => {
-  const files = [path.join(OBSERVER_ROOT, "app.tsx"), path.join(OBSERVER_ROOT, "main.tsx"),
-    ...await runtimeFiles(path.join(OBSERVER_ROOT, "components")), ...await runtimeFiles(path.join(OBSERVER_ROOT, "lib"))];
-  const edges = (await Promise.all(files.map(async file => runtimeCliEdges(file, await readFile(file, "utf8"))))).flat();
+  const files = [
+    path.join(OBSERVER_ROOT, "app.tsx"),
+    path.join(OBSERVER_ROOT, "main.tsx"),
+    ...(await runtimeFiles(path.join(OBSERVER_ROOT, "components"))),
+    ...(await runtimeFiles(path.join(OBSERVER_ROOT, "lib"))),
+  ];
+  const edges = (
+    await Promise.all(
+      files.map(async (file) => runtimeCliEdges(file, await readFile(file, "utf8"))),
+    )
+  ).flat();
   expect(edges).toEqual([]);
 });
 
@@ -78,9 +107,11 @@ it.each([
   'import { value } from "@/../src/fake";',
   // Under verbatimModuleSyntax these emit import/export {} from, retaining a runtime edge.
   'import { type Value } from "../../src/fake";',
-  'export { type Value } from "../../src/fake";'
-])("the boundary guard rejects a synthetic runtime edge: %s", source => {
-  expect(runtimeCliEdges(path.join(OBSERVER_ROOT, "lib/boundary-fixture.ts"), source)).toHaveLength(1);
+  'export { type Value } from "../../src/fake";',
+])("the boundary guard rejects a synthetic runtime edge: %s", (source) => {
+  expect(runtimeCliEdges(path.join(OBSERVER_ROOT, "lib/boundary-fixture.ts"), source)).toHaveLength(
+    1,
+  );
 });
 
 it("the boundary guard permits erased types and Observer-local values", () => {
@@ -93,7 +124,7 @@ it("the boundary guard permits erased types and Observer-local values", () => {
     'import { value } from "./local";',
     'const value = import("@/lib/local");',
     '// import { value } from "../../src/fake";',
-    'const example = \'import("../../src/fake")\';'
+    "const example = 'import(\"../../src/fake\")';",
   ].join("\n");
   expect(runtimeCliEdges(path.join(OBSERVER_ROOT, "lib/boundary-fixture.ts"), source)).toEqual([]);
 });

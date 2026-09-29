@@ -20,9 +20,12 @@ Thanks for helping make Humanish better.
 
 ```bash
 pnpm install
+pnpm format
 pnpm check
 pnpm public-surface:scan
 ```
+
+`pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
 
 ## Useful Commands
 

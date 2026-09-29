@@ -3,7 +3,11 @@ import { PNG } from "pngjs";
 
 import type { CuaAction } from "../src/computer-use.js";
 import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
-import { createE2BDesktopExecutor, CuaTypeFallbackError, perceptualSignature } from "../src/e2b-desktop-executor.js";
+import {
+  createE2BDesktopExecutor,
+  CuaTypeFallbackError,
+  perceptualSignature,
+} from "../src/e2b-desktop-executor.js";
 
 // A recorded desktop call: the method name and the arguments it received.
 interface Call {
@@ -17,7 +21,7 @@ interface Call {
 // returns a caller-provided PNG buffer.
 function makeFakeDesktop(
   screenshotBytes: Uint8Array | Buffer,
-  opts: { sync?: boolean; writeError?: Error; withClipboardFallback?: boolean } = {}
+  opts: { sync?: boolean; writeError?: Error; withClipboardFallback?: boolean } = {},
 ): { desktop: E2BDesktopLike; calls: Call[] } {
   const calls: Call[] = [];
   const record = (method: string, ...args: unknown[]): Promise<void> | void => {
@@ -40,19 +44,19 @@ function makeFakeDesktop(
     write: (text) => record("write", text),
     press: (key) => record("press", key),
     drag: (from, to) => record("drag", from, to),
-    wait: (ms) => record("wait", ms)
+    wait: (ms) => record("wait", ms),
   };
   if (opts.withClipboardFallback) {
     desktop.files = {
       write: async (remotePath, data, options) => {
         calls.push({ method: "files.write", args: [remotePath, data, options] });
-      }
+      },
     };
     desktop.commands = {
       run: async (command, options) => {
         calls.push({ method: "commands.run", args: [command, options] });
         return { exitCode: 0, stdout: "", stderr: "" };
-      }
+      },
     };
   }
   return { desktop, calls };
@@ -152,7 +156,7 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
   it("falls back to clipboard paste when desktop.write fails and clipboard surfaces are present", async () => {
     const { desktop, calls } = makeFakeDesktop(SHOT, {
       writeError: new Error("exit status 1"),
-      withClipboardFallback: true
+      withClipboardFallback: true,
     });
     const executor = createE2BDesktopExecutor(desktop);
 
@@ -162,7 +166,7 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
       "write",
       "files.write",
       "commands.run",
-      "press"
+      "press",
     ]);
     expect(calls[1]?.args[1]).toBe("hello — with punctuation");
     expect(String(calls[2]?.args[0])).not.toContain("hello");
@@ -171,13 +175,11 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
 
   it("throws a structured type-fallback error when clipboard fallback surfaces are unavailable", async () => {
     const { desktop } = makeFakeDesktop(SHOT, {
-      writeError: new Error("exit status 1")
+      writeError: new Error("exit status 1"),
     });
     const executor = createE2BDesktopExecutor(desktop);
 
-    const error = await executor
-      .execute({ kind: "type", text: "hello" })
-      .catch((e: unknown) => e);
+    const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CuaTypeFallbackError);
     expect((error as CuaTypeFallbackError).phase).toBe("clipboard-unavailable");
   });
@@ -218,7 +220,7 @@ describe("createE2BDesktopExecutor scroll mapping", () => {
     // round(250 / 100) === 3 (round half up: 2.5 -> 3)
     expect(calls).toEqual([
       { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 3] }
+      { method: "scroll", args: ["down", 3] },
     ]);
   });
 
@@ -229,7 +231,7 @@ describe("createE2BDesktopExecutor scroll mapping", () => {
     // round(120 / 100) === 1
     expect(calls).toEqual([
       { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["up", 1] }
+      { method: "scroll", args: ["up", 1] },
     ]);
   });
 
@@ -239,7 +241,7 @@ describe("createE2BDesktopExecutor scroll mapping", () => {
     await executor.execute({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 5 });
     expect(calls).toEqual([
       { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 1] }
+      { method: "scroll", args: ["down", 1] },
     ]);
   });
 
@@ -249,7 +251,7 @@ describe("createE2BDesktopExecutor scroll mapping", () => {
     await executor.execute({ kind: "scroll", x: 40, y: 60, dx: 999, dy: 100 });
     expect(calls).toEqual([
       { method: "moveMouse", args: [40, 60] },
-      { method: "scroll", args: ["down", 2] }
+      { method: "scroll", args: ["down", 2] },
     ]);
   });
 
@@ -262,7 +264,7 @@ describe("createE2BDesktopExecutor scroll mapping", () => {
     const calls = await run({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 300 });
     expect(calls).toEqual([
       { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 3] }
+      { method: "scroll", args: ["down", 3] },
     ]);
   });
 });
@@ -274,10 +276,18 @@ describe("createE2BDesktopExecutor drag mapping", () => {
       path: [
         { x: 1, y: 2 },
         { x: 5, y: 6 },
-        { x: 9, y: 10 }
-      ]
+        { x: 9, y: 10 },
+      ],
     });
-    expect(calls).toEqual([{ method: "drag", args: [[1, 2], [9, 10]] }]);
+    expect(calls).toEqual([
+      {
+        method: "drag",
+        args: [
+          [1, 2],
+          [9, 10],
+        ],
+      },
+    ]);
   });
 
   it("is a safe no-op for an empty path (does not throw)", async () => {
@@ -378,7 +388,7 @@ describe("await-correctness across sync and async desktops", () => {
       },
       press: () => Promise.resolve(),
       drag: () => Promise.resolve(),
-      wait: () => Promise.resolve()
+      wait: () => Promise.resolve(),
     };
     const executor = createE2BDesktopExecutor(desktop);
     await executor.execute({ kind: "type", text: "abc" });

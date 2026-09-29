@@ -65,30 +65,33 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   const steps: FirstRunStep[] = [
     {
       command: "humanish run first-run",
-      why: "an evidence preview: no browser or model runs, no keys, no spend"
-    }
+      why: "an evidence preview: no browser or model runs, no keys, no spend",
+    },
   ];
 
-  const localPlatform = env.platform === "linux" && env.arch === "x64"
-    || env.platform === "darwin" && env.arch === "arm64";
+  const localPlatform =
+    (env.platform === "linux" && env.arch === "x64") ||
+    (env.platform === "darwin" && env.arch === "arm64");
   if (localPlatform) {
-    const prerequisites = env.platform === "darwin"
-      ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
-      : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
+    const prerequisites =
+      env.platform === "darwin"
+        ? "M3-or-newer Mac, native ARM64 Node, Lima 2.2+, and a supported signed-in Codex CLI"
+        : "local rootful Docker, KVM, TUN, and a supported signed-in Codex CLI";
     steps.push({
       command: "humanish doctor --lab local-browser",
-      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`
+      why: `check the local browser study (${prerequisites}); no resources or quota used. Run \`humanish runtime setup\` to prepare it, then start your app and run \`humanish run local-browser\`; no E2B or model API key`,
     });
     return steps;
   }
-  const localUnavailable = env.platform === undefined
-    ? ""
-    : " Local browsers are unavailable on this host; they support Linux x64 or M3-or-newer Apple Silicon Macs.";
+  const localUnavailable =
+    env.platform === undefined
+      ? ""
+      : " Local browsers are unavailable on this host; they support Linux x64 or M3-or-newer Apple Silicon Macs.";
 
   if (!env.hasE2bKey) {
     steps.push({
       command: "humanish keys set e2b",
-      why: `the hosted starter needs an E2B desktop.${localUnavailable}`
+      why: `the hosted starter needs an E2B desktop.${localUnavailable}`,
     });
     return steps;
   }
@@ -103,23 +106,27 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
       ? "humanish run try-live"
       : env.installedInProject
         ? "npm i -D @e2b/desktop && humanish run try-live"
-        // Running from an npx cache: installing only the peer here would not be found, because
-        // Node resolves it relative to humanish. Both, or neither.
-        : "npm i -D humanish @e2b/desktop && npx humanish run try-live";
+        : // Running from an npx cache: installing only the peer here would not be found, because
+          // Node resolves it relative to humanish. Both, or neither.
+          "npm i -D humanish @e2b/desktop && npx humanish run try-live";
     steps.push({
       command,
-      why: `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}`
-        + (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)")
-        + (!env.hasProviderKey ? "; automatic findings analysis is skipped without OPENAI_API_KEY" : "")
-        + localUnavailable
+      why:
+        `a REAL study: one participant drives a real app in a hosted desktop, using ${brain}` +
+        (env.hasDesktopSdk ? "" : " (the desktop SDK is an optional peer, so it installs first)") +
+        (!env.hasProviderKey
+          ? "; automatic findings analysis is skipped without OPENAI_API_KEY"
+          : "") +
+        localUnavailable,
     });
     return steps;
   }
 
   steps.push({
     command: "humanish keys set openai",
-    why: "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the lab to actors[0].type: local-agent"
-      + localUnavailable
+    why:
+      "openai-computer-use needs an API key; to use a Codex or Claude Code login instead, sign in and change the lab to actors[0].type: local-agent" +
+      localUnavailable,
   });
   return steps;
 }
@@ -127,11 +134,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
 /** The block init prints after its changes. */
 export function firstRunGuidance(env: FirstRunEnvironment): string[] {
   const steps = firstRunSteps(env);
-  return [
-    "",
-    "next:",
-    ...steps.flatMap((step) => [`  ${step.command}`, `      ${step.why}`])
-  ];
+  return ["", "next:", ...steps.flatMap((step) => [`  ${step.command}`, `      ${step.why}`])];
 }
 
 /** Lets init recognise its own section without rewriting a file someone else wrote. */
@@ -165,13 +168,13 @@ export function agentsSection(): string {
     "- Studies are declared in `humanish/labs/*.yaml`. Edit `try-live.yaml`'s `subject` to point at",
     "  this project's own app once you have seen a run work.",
     "- Configure the local study without editing YAML: `humanish init --yes --local-browser",
-    "  http://127.0.0.1:3000 --local-mission \"Complete the primary flow\"` on first setup.",
+    '  http://127.0.0.1:3000 --local-mission "Complete the primary flow"` on first setup.',
     "- Evidence lands in gitignored `.humanish/runs/`. Never commit it, and never paste raw run",
     "  bundles into an issue — `humanish feedback issue` produces a redacted, share-safe draft.",
     "- `humanish tui` is a HUMAN surface and refuses to run in an agent session. Use the `--json`",
     "  commands above instead, and tell the person you are working for that `humanish tui` exists.",
     "- A live run spends money. `execution.caps.maxUsd` in each lab is a fail-closed ceiling; do not",
     "  raise it without asking the person you are working for.",
-    ""
+    "",
   ].join("\n");
 }

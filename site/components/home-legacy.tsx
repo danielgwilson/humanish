@@ -10,12 +10,14 @@ import Trust from "@/components/trust";
 export default function HomeLegacy() {
   return (
     <>
-      <Nav links={[
-        { label: "Study", href: "#study" },
-        { label: "Commands", href: "#commands" },
-        { label: "Trust", href: "#trust" },
-        { label: "Docs", href: "/docs" }
-      ]} />
+      <Nav
+        links={[
+          { label: "Study", href: "#study" },
+          { label: "Commands", href: "#commands" },
+          { label: "Trust", href: "#trust" },
+          { label: "Docs", href: "/docs" },
+        ]}
+      />
       <main id="main">
         <Hero />
         <Study />

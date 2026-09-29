@@ -37,7 +37,7 @@ export interface TuiObserverSession {
  */
 export function createTuiObserverSession(
   cwdInput: string,
-  options: { openTarget?: typeof openTarget } = {}
+  options: { openTarget?: typeof openTarget } = {},
 ): TuiObserverSession {
   const cwd = path.resolve(cwdInput);
   const open = options.openTarget ?? openTarget;
@@ -45,12 +45,21 @@ export function createTuiObserverSession(
   let closed = false;
   let closePromise: Promise<void> | undefined;
 
-  const result = (ok: boolean, message: string): TuiActionResult => ({ schema: TUI_ACTION_SCHEMA, ok, message });
+  const result = (ok: boolean, message: string): TuiActionResult => ({
+    schema: TUI_ACTION_SCHEMA,
+    ok,
+    message,
+  });
 
   return {
     async open(targetCwd, observerPath) {
-      if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
-      if (path.resolve(targetCwd) !== cwd) return result(false, "Observer can only open runs from this terminal session's project");
+      if (closed)
+        return result(
+          false,
+          "this terminal session has closed — reopen humanish tui to view the run",
+        );
+      if (path.resolve(targetCwd) !== cwd)
+        return result(false, "Observer can only open runs from this terminal session's project");
 
       // The capability takes the run-card path, not an arbitrary file, URL, or second project.
       // Validate the exact shape before using its id, then enforce the existing physical storage
@@ -59,35 +68,67 @@ export function createTuiObserverSession(
       const relative = path.relative(cwd, path.resolve(cwd, observerPath));
       const segments = relative.split(path.sep);
       const runId = segments[2];
-      if (segments.length !== 5 || segments[0] !== ".humanish" || segments[1] !== "runs"
-        || !runId || !isSafeRunIdSegment(runId) || segments[3] !== "observer" || segments[4] !== "index.html") {
-        return result(false, "Observer requires a run under this project's .humanish/runs directory");
+      if (
+        segments.length !== 5 ||
+        segments[0] !== ".humanish" ||
+        segments[1] !== "runs" ||
+        !runId ||
+        !isSafeRunIdSegment(runId) ||
+        segments[3] !== "observer" ||
+        segments[4] !== "index.html"
+      ) {
+        return result(
+          false,
+          "Observer requires a run under this project's .humanish/runs directory",
+        );
       }
       try {
         await bindExistingRunArtifactPaths(cwd, runId);
       } catch {
         return result(false, "this run's evidence directory is missing or unsafe to open");
       }
-      if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
+      if (closed)
+        return result(
+          false,
+          "this terminal session has closed — reopen humanish tui to view the run",
+        );
 
       try {
         // Share the pending start too: two quick selections must not create two listeners.
         serverPromise ??= serveObserverLibrary(cwd, {
-          port: 0, safe: false, expose: false, edgeAuthed: false
-        }).then((started) => {
-          if (!started.ok) throw new Error(started.error.message);
-          return started.server;
-        }).catch((error: unknown) => {
-          serverPromise = undefined;
-          throw error;
-        });
+          port: 0,
+          safe: false,
+          expose: false,
+          edgeAuthed: false,
+        })
+          .then((started) => {
+            if (!started.ok) throw new Error(started.error.message);
+            return started.server;
+          })
+          .catch((error: unknown) => {
+            serverPromise = undefined;
+            throw error;
+          });
         const server = await serverPromise;
-        if (closed) return result(false, "this terminal session has closed — reopen humanish tui to view the run");
-        const url = new URL(`_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`, server.url).href;
+        if (closed)
+          return result(
+            false,
+            "this terminal session has closed — reopen humanish tui to view the run",
+          );
+        const url = new URL(
+          `_humanish/runs/${encodeURIComponent(runId)}/observer/index.html`,
+          server.url,
+        ).href;
         const opened = open(url);
-        return result(true, `${url} — follows saved captures; keep this TUI open.${opened.warning ? ` ${opened.warning}` : " If no browser appeared, open this URL on this machine or forward its port over SSH."}`);
+        return result(
+          true,
+          `${url} — follows saved captures; keep this TUI open.${opened.warning ? ` ${opened.warning}` : " If no browser appeared, open this URL on this machine or forward its port over SSH."}`,
+        );
       } catch {
-        return result(false, "Observer could not start — try humanish observe --run with this run's id in another terminal");
+        return result(
+          false,
+          "Observer could not start — try humanish observe --run with this run's id in another terminal",
+        );
       }
     },
     close() {
@@ -98,10 +139,9 @@ export function createTuiObserverSession(
         await server?.close();
       })();
       return closePromise;
-    }
+    },
   };
 }
-
 
 /**
  * Stop a run that is still going.
@@ -120,16 +160,25 @@ export function createTuiObserverSession(
  * This stops the PROCESS. Sandboxes it created are a separate resource with their own receipts, and
  * `Reclaim` is what stops those — the run screen offers it as soon as this succeeds.
  */
-export async function stopRun(cwd: string, runId: string, intent: "run" | "analysis" = "run"): Promise<TuiActionResult> {
+export async function stopRun(
+  cwd: string,
+  runId: string,
+  intent: "run" | "analysis" = "run",
+): Promise<TuiActionResult> {
   // The selected action carries its authority. Never infer permission to signal a process from
   // mutable status metadata after the operator asked only to cancel analysis.
   if (intent === "analysis") {
     const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
-    return { schema: TUI_ACTION_SCHEMA, ok: analysis.requested, message: analysis.requested
-      ? "asked analysis to cancel; no participant process was signalled"
-      : "analysis is not available for cancellation; no participant process was signalled" };
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: analysis.requested,
+      message: analysis.requested
+        ? "asked analysis to cancel; no participant process was signalled"
+        : "analysis is not available for cancellation; no participant process was signalled",
+    };
   }
-  if (intent !== "run") return { schema: TUI_ACTION_SCHEMA, ok: false, message: "unknown stop action" };
+  if (intent !== "run")
+    return { schema: TUI_ACTION_SCHEMA, ok: false, message: "unknown stop action" };
 
   const runPaths = await resolveRunPath(path.resolve(cwd), runId).catch(() => null);
   if (runPaths === null) {
@@ -138,20 +187,32 @@ export async function stopRun(cwd: string, runId: string, intent: "run" | "analy
 
   let record: unknown;
   try {
-    record = JSON.parse(await readFile(path.join(runPaths.absoluteRunRoot, RUN_STATUS_FILE), "utf8"));
+    record = JSON.parse(
+      await readFile(path.join(runPaths.absoluteRunRoot, RUN_STATUS_FILE), "utf8"),
+    );
   } catch {
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: false,
-      message: "this run has no status record, so there is no pid to stop — it predates the contract or never started"
+      message:
+        "this run has no status record, so there is no pid to stop — it predates the contract or never started",
     };
   }
   if (!isRunStatusRecord(record)) {
-    return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run's status record is unreadable" };
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: "this run's status record is unreadable",
+    };
   }
   if (record.state === "finished") {
     const analysis = await requestAutomaticStudyAnalysisCancellation(cwd, runId);
-    if (analysis.requested) return { schema: TUI_ACTION_SCHEMA, ok: true, message: "asked analysis to cancel; the participant recording is already finished" };
+    if (analysis.requested)
+      return {
+        schema: TUI_ACTION_SCHEMA,
+        ok: true,
+        message: "asked analysis to cancel; the participant recording is already finished",
+      };
     return { schema: TUI_ACTION_SCHEMA, ok: false, message: "this run already finished" };
   }
 
@@ -169,7 +230,7 @@ export async function stopRun(cwd: string, runId: string, intent: "run" | "analy
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: false,
-      message: `nothing is running under pid ${pid} — it has already stopped, and its record will read as interrupted`
+      message: `nothing is running under pid ${pid} — it has already stopped, and its record will read as interrupted`,
     };
   }
 
@@ -183,13 +244,14 @@ export async function stopRun(cwd: string, runId: string, intent: "run" | "analy
       return {
         schema: TUI_ACTION_SCHEMA,
         ok: false,
-        message: `could not stop it: ${cause instanceof Error ? cause.message : String(cause)}`
+        message: `could not stop it: ${cause instanceof Error ? cause.message : String(cause)}`,
       };
     }
   }
   return {
     schema: TUI_ACTION_SCHEMA,
     ok: true,
-    message: "asked the run to stop — its sandboxes are separate, so Reclaim them once it reports interrupted"
+    message:
+      "asked the run to stop — its sandboxes are separate, so Reclaim them once it reports interrupted",
   };
 }

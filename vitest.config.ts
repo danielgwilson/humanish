@@ -14,7 +14,13 @@ export default defineConfig({
     // a test that constructs its own cwd in a temp dir would slip past that check alone.
     env: { HUMANISH_STRICT_KEYS: "1", HUMANISH_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" },
     // Never let a stray scratch file (a reviewer probe, a half-written experiment) red the gate.
-    exclude: ["**/node_modules/**", "**/_throwaway*", "**/zz-*", "**/zzz-*", "**/*.scratch.test.ts"],
-    restoreMocks: true
-  }
+    exclude: [
+      "**/node_modules/**",
+      "**/_throwaway*",
+      "**/zz-*",
+      "**/zzz-*",
+      "**/*.scratch.test.ts",
+    ],
+    restoreMocks: true,
+  },
 });

@@ -47,42 +47,87 @@ const LIVE_DETAIL: RunDetail = {
       thought: {
         text: "**Connecting fields for relationships**\n\nI'm thinking about connecting fields to establish relationships between the notes and projects. The naming of owner_id seems a bit off.",
         title: "reasoning turn 12",
-        at: "2026-08-19T11:58:00.000Z"
-      }
-    }
-  ]
+        at: "2026-08-19T11:58:00.000Z",
+      },
+    },
+  ],
 };
 
-function options(detail: RunDetail | null, runs = RUNS, overrides: Partial<TuiCapabilities> = {}): TuiOptions {
+function options(
+  detail: RunDetail | null,
+  runs = RUNS,
+  overrides: Partial<TuiCapabilities> = {},
+): TuiOptions {
   const capabilities: TuiCapabilities = {
-    readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs, unreadable: [] }),
-    listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
-    startRun: async () => ({ ok: true, run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x", command: [] } }),
+    readRunIndex: async () => ({
+      schema: "humanish.run-index.v1",
+      cwd: "/projects/acme-app",
+      runs,
+      unreadable: [],
+    }),
+    listLabs: async () => ({
+      schema: "humanish.lab-list.v1",
+      ok: true,
+      cwd: "/projects/acme-app",
+      labs: LABS,
+      warnings: [],
+    }),
+    startRun: async () => ({
+      ok: true,
+      run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x", command: [] },
+    }),
     readLaunchLog: async () => "",
     readRunDetail: async () => detail,
     readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
-      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
-    ...overrides
+    readProjectState: () => ({
+      schema: "humanish.tui-project.v1" as const,
+      initialized: true,
+      hasRuntime: true,
+    }),
+    openObserver: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "opened",
+    }),
+    reclaimRun: async () => ({
+      schema: "humanish.reclaim-result.v1" as const,
+      ok: true,
+      cwd: "/x",
+      runId: "r",
+      receiptCount: 0,
+      outcomes: [],
+      warnings: [],
+    }),
+    stopRun: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "asked the run to stop",
+    }),
+    ...overrides,
   };
   return {
     cwd: "/projects/acme-app",
     version: { cli: "9.9.9" },
     capabilities,
     stdin: process.stdin,
-    stdout: process.stdout
+    stdout: process.stdout,
   };
 }
 
 /** Open the first lab, then its live run (the newest, top of the history list). */
-async function openLiveRun(detail: RunDetail | null, columns = 80, overrides: Partial<TuiCapabilities> = {}) {
-  const surface = await renderToText(<App options={options(detail, RUNS, overrides)} now={NOW} tick={0} />, {
-    columns,
-    rows: 30,
-    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
-  });
+async function openLiveRun(
+  detail: RunDetail | null,
+  columns = 80,
+  overrides: Partial<TuiCapabilities> = {},
+) {
+  const surface = await renderToText(
+    <App options={options(detail, RUNS, overrides)} now={NOW} tick={0} />,
+    {
+      columns,
+      rows: 30,
+      until: (frame) => frame.trim().length > 0 && !frame.includes("reading project"),
+    },
+  );
   await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
   // Past the Start action to the newest run, which is the live one.
   for (let index = 0; index < 4; index += 1) {
@@ -92,9 +137,8 @@ async function openLiveRun(detail: RunDetail | null, columns = 80, overrides: Pa
   // Wait for the DETAIL-bearing frame: entering the run screen renders its own facts first and the
   // participants a moment later, so matching the status line alone captures the frame before the
   // thing under test has arrived.
-  const frame = await surface.press(
-    KEY.enter,
-    (candidate) => candidate.includes(detail === null ? "starting…" : "Connecting fields")
+  const frame = await surface.press(KEY.enter, (candidate) =>
+    candidate.includes(detail === null ? "starting…" : "Connecting fields"),
   );
   return { surface, frame };
 }
@@ -174,35 +218,65 @@ describe("the interrupted card", () => {
     lab: { id: "diagram-editor" },
     startedAt: new Date(NOW - 40 * 60_000).toISOString(),
     updatedAt: new Date(NOW - 35 * 60_000).toISOString(),
-    estimatedCostUsd: 0.62
+    estimatedCostUsd: 0.62,
   };
 
   it("says what it spent and offers the action that stops the bleeding", async () => {
     // An interrupted run may have left sandboxes running, and those cost money until something
     // stops them. This card is not an apology — it is the place that says so and does something.
     const capabilities: TuiCapabilities = {
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [interrupted], unreadable: [] }),
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
-      startRun: async () => ({ ok: true, run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/t", command: [] } }),
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: [interrupted],
+        unreadable: [],
+      }),
+      listLabs: async () => ({
+        schema: "humanish.lab-list.v1",
+        ok: true,
+        cwd: "/projects/acme-app",
+        labs: LABS,
+        warnings: [],
+      }),
+      startRun: async () => ({
+        ok: true,
+        run: { pid: 1, launchedAt: new Date(NOW).toISOString(), logPath: "/t", command: [] },
+      }),
       readLaunchLog: async () => "",
       readRunDetail: async () => null,
       readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1", initialized: true, hasRuntime: true }),
+      readProjectState: () => ({
+        schema: "humanish.tui-project.v1",
+        initialized: true,
+        hasRuntime: true,
+      }),
       openObserver: async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1", ok: true, cwd: "/x", runId: "r", receiptCount: 2, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "asked the run to stop" })
+      reclaimRun: async () => ({
+        schema: "humanish.reclaim-result.v1",
+        ok: true,
+        cwd: "/x",
+        runId: "r",
+        receiptCount: 2,
+        outcomes: [],
+        warnings: [],
+      }),
+      stopRun: async () => ({
+        schema: "humanish.tui-action.v1",
+        ok: true,
+        message: "asked the run to stop",
+      }),
     };
     const options: TuiOptions = {
       cwd: "/projects/acme-app",
       version: { cli: "9.9.9" },
       capabilities,
       stdin: process.stdin,
-      stdout: process.stdout
+      stdout: process.stdout,
     };
     const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
       columns: 80,
       rows: 26,
-      until: (frame) => frame.includes("diagram-editor")
+      until: (frame) => frame.includes("diagram-editor"),
     });
     await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
     // Down until the cursor is on the interrupted run: the number of start rows above it is a
@@ -233,12 +307,17 @@ describe("stopping a run that is still going", () => {
     const { surface, frame } = await openLiveRun(LIVE_DETAIL);
     expect(frame).toContain("Stop this run");
 
-    const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("⏎ again to confirm"));
+    const armed = await surface.press(KEY.enter, (candidate) =>
+      candidate.includes("⏎ again to confirm"),
+    );
     // Nothing has been stopped yet — one keystroke must not be able to end a running study.
     expect(stopped).toHaveLength(0);
     expect(armed).toContain("stop this run?");
 
-    const cancelled = await surface.press(KEY.escape, (candidate) => !candidate.includes("stop this run?") && candidate.includes("Stop this run"));
+    const cancelled = await surface.press(
+      KEY.escape,
+      (candidate) => !candidate.includes("stop this run?") && candidate.includes("Stop this run"),
+    );
     surface.unmount();
     // Escape cancels the confirmation before it means "go back", same as a live start.
     expect(cancelled).toContain("Stop this run");
@@ -250,28 +329,46 @@ describe("stopping a run that is still going", () => {
     const { surface } = await openLiveRun(LIVE_DETAIL);
     await surface.press(KEY.enter, (candidate) => candidate.includes("⏎ again to confirm"));
     await new Promise((resolve) => setTimeout(resolve, 450));
-    const done = await surface.press(KEY.enter, (candidate) => candidate.includes("asked the run to stop"));
+    const done = await surface.press(KEY.enter, (candidate) =>
+      candidate.includes("asked the run to stop"),
+    );
     surface.unmount();
     expect(done).toContain("asked the run to stop");
   }, 20_000);
 });
 
-
 describe("analysis cancellation authority", () => {
   it("carries marker-only intent even when the run index says the participant is running", async () => {
-    const stop = vi.fn<TuiCapabilities["stopRun"]>(async () => ({ schema: "humanish.tui-action.v1", ok: true, message: "analysis cancellation requested" }));
-    const detail: RunDetail = { ...LIVE_DETAIL, automaticAnalysis: {
-      state: "queued", analysisId: null, reason: null, updatedAt: new Date(NOW).toISOString()
-    } };
+    const stop = vi.fn<TuiCapabilities["stopRun"]>(async () => ({
+      schema: "humanish.tui-action.v1",
+      ok: true,
+      message: "analysis cancellation requested",
+    }));
+    const detail: RunDetail = {
+      ...LIVE_DETAIL,
+      automaticAnalysis: {
+        state: "queued",
+        analysisId: null,
+        reason: null,
+        updatedAt: new Date(NOW).toISOString(),
+      },
+    };
     const { surface } = await openLiveRun(detail, 80, { stopRun: stop });
     let clock: ReturnType<typeof vi.spyOn> | undefined;
     try {
-      await surface.press(KEY.down, frame => frame.includes("❯ Cancel analysis"));
-      await surface.press(KEY.enter, frame => frame.includes("cancel analysis?"));
+      await surface.press(KEY.down, (frame) => frame.includes("❯ Cancel analysis"));
+      await surface.press(KEY.enter, (frame) => frame.includes("cancel analysis?"));
       expect(stop).not.toHaveBeenCalled();
       clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 500);
-      await surface.press(KEY.enter, frame => frame.includes("analysis cancellation requested"));
-      expect(stop).toHaveBeenCalledExactlyOnceWith("/projects/acme-app", LIVE_DETAIL.runId, "analysis");
-    } finally { clock?.mockRestore(); surface.unmount(); }
+      await surface.press(KEY.enter, (frame) => frame.includes("analysis cancellation requested"));
+      expect(stop).toHaveBeenCalledExactlyOnceWith(
+        "/projects/acme-app",
+        LIVE_DETAIL.runId,
+        "analysis",
+      );
+    } finally {
+      clock?.mockRestore();
+      surface.unmount();
+    }
   }, 20000);
 });

@@ -3,24 +3,53 @@ import type { PlayerFrame, PlayerRow } from "@/lib/player-model";
 import { useDecodedImage } from "@/lib/use-decoded-image";
 
 export type Zoom = "fit" | "actual" | number;
-export interface Size { width: number; height: number }
+export interface Size {
+  width: number;
+  height: number;
+}
 
 /** The wrapper is the raster rectangle, not an object-fit letterbox. Pins share it. */
 export function fittedSize(image: Size, available: Size, zoom: Zoom): Size {
-  const factor = zoom === "fit"
-    ? Math.min(available.width / image.width, available.height / image.height)
-    : zoom === "actual" ? 1 : zoom;
+  const factor =
+    zoom === "fit"
+      ? Math.min(available.width / image.width, available.height / image.height)
+      : zoom === "actual"
+        ? 1
+        : zoom;
   const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
   return { width: image.width * safeFactor, height: image.height * safeFactor };
 }
 
 export function pinPosition(coord: { x: number; y: number }, viewport: Size): CSSProperties | null {
-  if (!Number.isFinite(coord.x) || !Number.isFinite(coord.y) || viewport.width <= 0 || viewport.height <= 0
-    || coord.x < 0 || coord.y < 0 || coord.x > viewport.width || coord.y > viewport.height) return null;
-  return { left: `${100 * coord.x / viewport.width}%`, top: `${100 * coord.y / viewport.height}%` };
+  if (
+    !Number.isFinite(coord.x) ||
+    !Number.isFinite(coord.y) ||
+    viewport.width <= 0 ||
+    viewport.height <= 0 ||
+    coord.x < 0 ||
+    coord.y < 0 ||
+    coord.x > viewport.width ||
+    coord.y > viewport.height
+  )
+    return null;
+  return {
+    left: `${(100 * coord.x) / viewport.width}%`,
+    top: `${(100 * coord.y) / viewport.height}%`,
+  };
 }
 
-export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, emptyText, sandbox = "allow-scripts", streamRevision = 0 }: {
+export function PlayerStage({
+  frame,
+  count,
+  viewport,
+  pins,
+  zoom,
+  live,
+  label,
+  emptyText,
+  sandbox = "allow-scripts",
+  streamRevision = 0,
+}: {
   frame: PlayerFrame | undefined;
   count: number;
   viewport: Size | undefined;
@@ -36,8 +65,13 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
   const [available, setAvailable] = useState<Size>({ width: 640, height: 480 });
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const captureHref = live ? frame?.href : undefined;
-  const [captureDimensions, setCaptureDimensions] = useState<(Size & { label: string }) | null>(null);
-  const recordDimensions = useCallback((size: Size) => setCaptureDimensions({ ...size, label }), [label]);
+  const [captureDimensions, setCaptureDimensions] = useState<(Size & { label: string }) | null>(
+    null,
+  );
+  const recordDimensions = useCallback(
+    (size: Size) => setCaptureDimensions({ ...size, label }),
+    [label],
+  );
   useEffect(() => {
     if (!captureHref) return;
     const image = new Image();
@@ -51,60 +85,145 @@ export function PlayerStage({ frame, count, viewport, pins, zoom, live, label, e
     if (image.complete) measured();
     // Keep the previous known proportions while the next capture loads or fails.
     // A late image response must not change another participant or an unmounted stage.
-    return () => { active = false; image.onload = null; image.onerror = null; };
+    return () => {
+      active = false;
+      image.onload = null;
+      image.onerror = null;
+    };
   }, [captureHref, label]);
   useEffect(() => {
     const node = stageRef.current;
     if (!node) return;
     const measure = () => {
-      if (node.clientWidth > 0 && node.clientHeight > 0) setAvailable({ width: Math.max(1, node.clientWidth - 24), height: Math.max(1, node.clientHeight - 24) });
+      if (node.clientWidth > 0 && node.clientHeight > 0)
+        setAvailable({
+          width: Math.max(1, node.clientWidth - 24),
+          height: Math.max(1, node.clientHeight - 24),
+        });
     };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(node);
     window.addEventListener("resize", measure);
-    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
   // Mid-run bundles may omit desktopGeometry/viewport. The recorded raster still
   // establishes the actual screen proportions, including redacted/downscaled images.
   const liveDimensions = captureDimensions?.label === label ? captureDimensions : viewport;
   const fitDimensions = liveDimensions ?? { width: 1280, height: 800 };
-  const fitHeight = available.width * fitDimensions.height / fitDimensions.width + 24;
+  const fitHeight = (available.width * fitDimensions.height) / fitDimensions.width + 24;
   const liveSize = fittedSize(liveDimensions ?? { width: 1280, height: 800 }, available, "fit");
-  return <div className="stage evidence-stage" role="region" ref={stageRef}
-    data-fit-recording={!live && zoom === "fit" && frame ? "" : undefined}
-    style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties} tabIndex={live ? -1 : 0}
-    aria-label={zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"}
-    onKeyDown={(event) => {
-      // A focused zoomed stage owns native scrolling; global playback shortcuts
-      // continue to work when focus is elsewhere in the recording.
-      if (!live && zoom !== "fit" && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) event.stopPropagation();
-    }}
-    onPointerDown={(event) => {
-      if (zoom === "fit" || live || event.pointerType !== "mouse" || event.button !== 0) return;
-      const node = event.currentTarget;
-      drag.current = { x: event.clientX, y: event.clientY, left: node.scrollLeft, top: node.scrollTop };
-      node.setPointerCapture(event.pointerId);
-    }}
-    onPointerMove={(event) => {
-      if (!drag.current) return;
-      event.currentTarget.scrollLeft = drag.current.left + drag.current.x - event.clientX;
-      event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY;
-    }}
-    onPointerUp={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}>
-    {live && !liveDimensions ? <p className="live-size-note" role="status">Preview proportions are provisional until a captured screen is available.</p> : null}
-    <div className="evidence-canvas">
-      {live ? <div className="stage-live" style={liveSize}>
-        <iframe key={streamRevision} sandbox={sandbox} src={live} title={`Live view — ${label}`} tabIndex={-1} aria-hidden="true" referrerPolicy="no-referrer" />
-
-      </div> : frame ? <RecordedImage frame={frame} count={count} viewport={viewport} available={available} zoom={zoom} pins={pins} onDimensions={recordDimensions} />
-        : <p className="evidence-empty" role="status">{emptyText}</p>}
+  return (
+    <div
+      className="stage evidence-stage"
+      role="region"
+      ref={stageRef}
+      data-fit-recording={!live && zoom === "fit" && frame ? "" : undefined}
+      style={{ "--fit-stage-height": `${fitHeight}px` } as CSSProperties}
+      tabIndex={live ? -1 : 0}
+      aria-label={
+        zoom === "fit" || live ? "Evidence stage" : "Zoomed evidence; scroll or drag to pan"
+      }
+      onKeyDown={(event) => {
+        // A focused zoomed stage owns native scrolling; global playback shortcuts
+        // continue to work when focus is elsewhere in the recording.
+        if (
+          !live &&
+          zoom !== "fit" &&
+          [
+            "ArrowLeft",
+            "ArrowRight",
+            "ArrowUp",
+            "ArrowDown",
+            "PageUp",
+            "PageDown",
+            "Home",
+            "End",
+            " ",
+          ].includes(event.key)
+        )
+          event.stopPropagation();
+      }}
+      onPointerDown={(event) => {
+        if (zoom === "fit" || live || event.pointerType !== "mouse" || event.button !== 0) return;
+        const node = event.currentTarget;
+        drag.current = {
+          x: event.clientX,
+          y: event.clientY,
+          left: node.scrollLeft,
+          top: node.scrollTop,
+        };
+        node.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!drag.current) return;
+        event.currentTarget.scrollLeft = drag.current.left + drag.current.x - event.clientX;
+        event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY;
+      }}
+      onPointerUp={() => {
+        drag.current = null;
+      }}
+      onLostPointerCapture={() => {
+        drag.current = null;
+      }}
+    >
+      {live && !liveDimensions ? (
+        <p className="live-size-note" role="status">
+          Preview proportions are provisional until a captured screen is available.
+        </p>
+      ) : null}
+      <div className="evidence-canvas">
+        {live ? (
+          <div className="stage-live" style={liveSize}>
+            <iframe
+              key={streamRevision}
+              sandbox={sandbox}
+              src={live}
+              title={`Live view — ${label}`}
+              tabIndex={-1}
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        ) : frame ? (
+          <RecordedImage
+            frame={frame}
+            count={count}
+            viewport={viewport}
+            available={available}
+            zoom={zoom}
+            pins={pins}
+            onDimensions={recordDimensions}
+          />
+        ) : (
+          <p className="evidence-empty" role="status">
+            {emptyText}
+          </p>
+        )}
+      </div>
     </div>
-  </div>;
+  );
 }
 
-function RecordedImage({ frame, count, viewport, available, zoom, pins, onDimensions }: {
-  frame: PlayerFrame; count: number; viewport: Size | undefined; available: Size; zoom: Zoom; pins: PlayerRow[]; onDimensions: (size: Size) => void;
+function RecordedImage({
+  frame,
+  count,
+  viewport,
+  available,
+  zoom,
+  pins,
+  onDimensions,
+}: {
+  frame: PlayerFrame;
+  count: number;
+  viewport: Size | undefined;
+  available: Size;
+  zoom: Zoom;
+  pins: PlayerRow[];
+  onDimensions: (size: Size) => void;
 }) {
   const { decoded, slots, status, loaded, errored, retry } = useDecodedImage(frame.href);
   // Raster dimensions are authoritative; viewport is only a stable loading fallback.
@@ -113,27 +232,83 @@ function RecordedImage({ frame, count, viewport, available, zoom, pins, onDimens
   useEffect(() => {
     if (decoded) onDimensions(decoded);
   }, [decoded, onDimensions]);
-  return <div className="stage-box evidence-image" style={size} data-image-state={status} data-retained-image={decoded && status === "loading" ? "" : undefined} aria-busy={status === "loading"}>
-    {slots.map((slot) => <img key={slot.key} src={slot.href} className={slot.pending ? "capture-pending" : undefined} data-requested-src={frame.href}
-      alt={slot.pending ? "" : status !== "ready" && decoded ? "Previous capture while the selected frame is unavailable" : `Frame ${frame.index + 1} of ${count} — ${frame.title}`}
-      aria-hidden={slot.pending || undefined} decoding="async" draggable={false}
-      onLoad={(event) => { void loaded(event.currentTarget, slot.key); }} onError={() => errored(slot.key)} />)}
-    {status !== "ready" ? <div className="evidence-message" role="status">
-      {status === "loading" ? "Loading recorded frame…" : <>This recorded image could not be loaded.<button type="button" className="tbtn" onClick={retry}>Retry image</button></>}
-      {decoded && status === "loading" ? <span>Previous capture shown.</span> : null}
-    </div> : null}
-    {/* The pins stay mounted while loading for stable geometry, but are not displayed
+  return (
+    <div
+      className="stage-box evidence-image"
+      style={size}
+      data-image-state={status}
+      data-retained-image={decoded && status === "loading" ? "" : undefined}
+      aria-busy={status === "loading"}
+    >
+      {slots.map((slot) => (
+        <img
+          key={slot.key}
+          src={slot.href}
+          className={slot.pending ? "capture-pending" : undefined}
+          data-requested-src={frame.href}
+          alt={
+            slot.pending
+              ? ""
+              : status !== "ready" && decoded
+                ? "Previous capture while the selected frame is unavailable"
+                : `Frame ${frame.index + 1} of ${count} — ${frame.title}`
+          }
+          aria-hidden={slot.pending || undefined}
+          decoding="async"
+          draggable={false}
+          onLoad={(event) => {
+            void loaded(event.currentTarget, slot.key);
+          }}
+          onError={() => errored(slot.key)}
+        />
+      ))}
+      {status !== "ready" ? (
+        <div className="evidence-message" role="status">
+          {status === "loading" ? (
+            "Loading recorded frame…"
+          ) : (
+            <>
+              This recorded image could not be loaded.
+              <button type="button" className="tbtn" onClick={retry}>
+                Retry image
+              </button>
+            </>
+          )}
+          {decoded && status === "loading" ? <span>Previous capture shown.</span> : null}
+        </div>
+      ) : null}
+      {/* The pins stay mounted while loading for stable geometry, but are not displayed
         until the selected raster is ready. A previous image can never masquerade as it. */}
-    {viewport ? <div className="pins" aria-hidden="true" style={{ visibility: status === "ready" ? "visible" : "hidden" }}>
-      {pins.map((row) => {
-        const position = row.coord ? pinPosition(row.coord, viewport) : null;
-        const fraction = (row.coord?.x ?? 0) / viewport.width;
-        const side = fraction > 0.5 ? "left" : "right";
-        const room = Math.max(32, (side === "left" ? fraction : 1 - fraction) * size.width - 20);
-        return position ? <span key={row.id} className="spin" data-tip-side={side} data-tip-vertical={(row.coord?.y ?? 0) / viewport.height > 0.75 ? "above" : "below"} style={position}>
-          <span className="tip" style={{ maxWidth: Math.min(180, room) }}>{row.title}</span>
-        </span> : null;
-      })}
-    </div> : null}
-  </div>;
+      {viewport ? (
+        <div
+          className="pins"
+          aria-hidden="true"
+          style={{ visibility: status === "ready" ? "visible" : "hidden" }}
+        >
+          {pins.map((row) => {
+            const position = row.coord ? pinPosition(row.coord, viewport) : null;
+            const fraction = (row.coord?.x ?? 0) / viewport.width;
+            const side = fraction > 0.5 ? "left" : "right";
+            const room = Math.max(
+              32,
+              (side === "left" ? fraction : 1 - fraction) * size.width - 20,
+            );
+            return position ? (
+              <span
+                key={row.id}
+                className="spin"
+                data-tip-side={side}
+                data-tip-vertical={(row.coord?.y ?? 0) / viewport.height > 0.75 ? "above" : "below"}
+                style={position}
+              >
+                <span className="tip" style={{ maxWidth: Math.min(180, room) }}>
+                  {row.title}
+                </span>
+              </span>
+            ) : null;
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }

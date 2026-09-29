@@ -13,7 +13,7 @@ import {
   sendTelemetry,
   telemetryStatePath,
   writeTelemetryState,
-  TELEMETRY_NOTICE
+  TELEMETRY_NOTICE,
 } from "../src/telemetry.js";
 
 // Default-on collection is only honest if the promises are enforced rather than written down.
@@ -29,16 +29,34 @@ describe("what telemetry can possibly contain", () => {
       platform: "linux",
       nodeVersion: "v24.0.0",
       env: {},
-      properties: { command: "run", lab: "try-live", mode: "live", outcome: "passed", durationBucket: "1-5m", ok: true }
+      properties: {
+        command: "run",
+        lab: "try-live",
+        mode: "live",
+        outcome: "passed",
+        durationBucket: "1-5m",
+        ok: true,
+      },
     });
     expect(Object.keys(payload.properties).sort()).toEqual(
       // studyParticipant joins the allowlist deliberately (#546): a boolean marking traffic from
       // a humanish study participant, so our own instrument stays separable from real adopters.
       // Same shape and same privacy profile as `ci`; it carries no identity and no free text.
       [
-        "$geoip_disable", "$process_person_profile", "ci", "command", "duration", "lab", "mode", "node", "ok", "os", "outcome",
-        "studyParticipant", "version"
-      ].sort()
+        "$geoip_disable",
+        "$process_person_profile",
+        "ci",
+        "command",
+        "duration",
+        "lab",
+        "mode",
+        "node",
+        "ok",
+        "os",
+        "outcome",
+        "studyParticipant",
+        "version",
+      ].sort(),
     );
     // No exact duration: a millisecond timing is a fingerprint.
     expect(JSON.stringify(payload)).not.toMatch(/\d{4,}/);
@@ -48,19 +66,42 @@ describe("what telemetry can possibly contain", () => {
     // PostHog enriches events with GeoIP city/coordinates from the request's source address by
     // default. "Anonymous" was written in the doc while the dataset carried a postal code per
     // event. The opt-out rides the payload so no console setting can reintroduce it.
-    const payload = buildPayload({ event: "cli_command", anonymousId: "a", version: "1.0.0", env: {} });
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: "a",
+      version: "1.0.0",
+      env: {},
+    });
     expect(payload.properties.$geoip_disable).toBe(true);
     // And no person profile: there is no person, only a random machine id.
     expect(payload.properties.$process_person_profile).toBe(false);
   });
 
   it("forwards only humanish's own error codes, never a message", () => {
-    const own = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING" } });
+    const own = buildPayload({
+      event: "cli_command",
+      anonymousId: "a",
+      version: "1",
+      env: {},
+      properties: { errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING" },
+    });
     expect(own.properties.error_code).toBe("HUMANISH_CUA_LAB_KEYS_MISSING");
     // A provider's error or an OS error is free text and can carry anything.
-    const foreign = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "ENOENT: no such file or directory, open acme-launch/lab.yaml" } });
+    const foreign = buildPayload({
+      event: "cli_command",
+      anonymousId: "a",
+      version: "1",
+      env: {},
+      properties: { errorCode: "ENOENT: no such file or directory, open acme-launch/lab.yaml" },
+    });
     expect(foreign.properties.error_code).toBeUndefined();
-    const lower = buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {}, properties: { errorCode: "humanish_x" } });
+    const lower = buildPayload({
+      event: "cli_command",
+      anonymousId: "a",
+      version: "1",
+      env: {},
+      properties: { errorCode: "humanish_x" },
+    });
     expect(lower.properties.error_code).toBeUndefined();
   });
 
@@ -74,11 +115,34 @@ describe("what telemetry can possibly contain", () => {
   });
 
   it("has no field that could carry a path, a subject, or a person", () => {
-    const payload = buildPayload({ event: "cli_command", anonymousId: "a", version: "1.0.0", env: {} });
-    const forbidden = ["cwd", "path", "dir", "repo", "url", "subject", "persona", "mission", "email", "user", "key", "token", "run_id", "runId"];
+    const payload = buildPayload({
+      event: "cli_command",
+      anonymousId: "a",
+      version: "1.0.0",
+      env: {},
+    });
+    const forbidden = [
+      "cwd",
+      "path",
+      "dir",
+      "repo",
+      "url",
+      "subject",
+      "persona",
+      "mission",
+      "email",
+      "user",
+      "key",
+      "token",
+      "run_id",
+      "runId",
+    ];
     const keys = Object.keys(payload.properties).map((k) => k.toLowerCase());
     for (const bad of forbidden) {
-      expect(keys.some((k) => k.includes(bad)), `property containing "${bad}" must not exist`).toBe(false);
+      expect(
+        keys.some((k) => k.includes(bad)),
+        `property containing "${bad}" must not exist`,
+      ).toBe(false);
     }
   });
 
@@ -122,17 +186,24 @@ describe("turning it off", () => {
   it("ignores a relative XDG_CONFIG_HOME, so state never becomes cwd-relative", () => {
     // The same rule the key store follows: a relative value would put per-user state inside
     // whichever project happened to be open.
-    expect(telemetryStatePath({ XDG_CONFIG_HOME: "relative/path" }, "/home/dev"))
-      .toBe(path.join("/home/dev", ".config", "humanish", "telemetry.json"));
+    expect(telemetryStatePath({ XDG_CONFIG_HOME: "relative/path" }, "/home/dev")).toBe(
+      path.join("/home/dev", ".config", "humanish", "telemetry.json"),
+    );
   });
 });
 
 describe("it can never hurt the command that triggered it", () => {
   it("swallows a transport failure", async () => {
-    await expect(sendTelemetry(
-      { event: "cli_command", distinct_id: "a", properties: {} },
-      { fetchFn: (async () => { throw new Error("network down"); }) as unknown as typeof fetch }
-    )).resolves.toBeUndefined();
+    await expect(
+      sendTelemetry(
+        { event: "cli_command", distinct_id: "a", properties: {} },
+        {
+          fetchFn: (async () => {
+            throw new Error("network down");
+          }) as unknown as typeof fetch,
+        },
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it("gives up rather than hanging — the request carries an abort signal", async () => {
@@ -145,8 +216,9 @@ describe("it can never hurt the command that triggered it", () => {
         init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
       });
     }) as unknown as typeof fetch;
-    await expect(sendTelemetry({ event: "cli_command", distinct_id: "a", properties: {} }, { fetchFn: slow }))
-      .resolves.toBeUndefined();
+    await expect(
+      sendTelemetry({ event: "cli_command", distinct_id: "a", properties: {} }, { fetchFn: slow }),
+    ).resolves.toBeUndefined();
     expect(sawSignal).toBe(true);
   }, 10_000);
 });
@@ -175,7 +247,7 @@ describe("study-participant marking (#546)", () => {
       anonymousId: "anon-1",
       version: "9.9.9",
       env: {},
-      properties: { command: "run" }
+      properties: { command: "run" },
     });
     expect(payload.properties.studyParticipant).toBe(false);
   });
@@ -186,7 +258,7 @@ describe("study-participant marking (#546)", () => {
       anonymousId: "anon-1",
       version: "9.9.9",
       env: { HUMANISH_STUDY_PARTICIPANT: "1" },
-      properties: { command: "run" }
+      properties: { command: "run" },
     });
     expect(payload.properties.studyParticipant).toBe(true);
   });
@@ -198,7 +270,7 @@ describe("study-participant marking (#546)", () => {
         anonymousId: "anon-1",
         version: "9.9.9",
         env: { HUMANISH_STUDY_PARTICIPANT: value },
-        properties: { command: "run" }
+        properties: { command: "run" },
       });
       expect(payload.properties.studyParticipant).toBe(false);
     }
@@ -210,42 +282,76 @@ describe("study-participant marking (#546)", () => {
 // reads the facts off the result document every command already writes.
 describe("what a study reports about itself", () => {
   it("reads mode, starter lab, outcome, and brain off a single-lane computer-use result", () => {
-    expect(deriveStudyFacts({
-      schema: "humanish.cua-lab-result.v2",
-      ok: true,
-      labId: "try-live",
-      actor: "openai-computer-use",
-      dryRun: false,
-      session: { status: "passed", completionReason: "goal_satisfied", reason: "done", screenshots: 12 }
-    })).toEqual({ mode: "live", lab: "try-live", outcome: "passed", brain: "provider-key" });
+    expect(
+      deriveStudyFacts({
+        schema: "humanish.cua-lab-result.v2",
+        ok: true,
+        labId: "try-live",
+        actor: "openai-computer-use",
+        dryRun: false,
+        session: {
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason: "done",
+          screenshots: 12,
+        },
+      }),
+    ).toEqual({ mode: "live", lab: "try-live", outcome: "passed", brain: "provider-key" });
   });
 
   it("rolls a fan-out up to all/some/none passed, never per-lane detail", () => {
     const base = { labId: "cua-browser", actor: "openai-computer-use", dryRun: false, ok: true };
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe("all_passed");
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 1 } }).outcome).toBe("some_passed");
-    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 0 } }).outcome).toBe("none_passed");
+    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 3 } }).outcome).toBe(
+      "all_passed",
+    );
+    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 1 } }).outcome).toBe(
+      "some_passed",
+    );
+    expect(deriveStudyFacts({ ...base, laneSummary: { total: 3, passed: 0 } }).outcome).toBe(
+      "none_passed",
+    );
   });
 
   it("reports a dry run as brain none, whatever actor would have run it", () => {
-    expect(deriveStudyFacts({ labId: "first-run", actor: "openai-computer-use", dryRun: true, ok: true }))
-      .toEqual({ mode: "dry-run", lab: "first-run", outcome: "ok", brain: "none" });
+    expect(
+      deriveStudyFacts({
+        labId: "first-run",
+        actor: "openai-computer-use",
+        dryRun: true,
+        ok: true,
+      }),
+    ).toEqual({ mode: "dry-run", lab: "first-run", outcome: "ok", brain: "none" });
   });
 
   it("names the failure by our own code, and only ours", () => {
-    expect(deriveStudyFacts({
-      ok: false, labId: "try-live", dryRun: false,
-      error: { code: "HUMANISH_CUA_LAB_KEYS_MISSING", message: "OPENAI_API_KEY is not set" }
-    })).toEqual({ mode: "live", lab: "try-live", outcome: "error", errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING" });
-    const foreign = deriveStudyFacts({ ok: false, dryRun: false, error: { code: "ECONNREFUSED", message: "x" } });
+    expect(
+      deriveStudyFacts({
+        ok: false,
+        labId: "try-live",
+        dryRun: false,
+        error: { code: "HUMANISH_CUA_LAB_KEYS_MISSING", message: "OPENAI_API_KEY is not set" },
+      }),
+    ).toEqual({
+      mode: "live",
+      lab: "try-live",
+      outcome: "error",
+      errorCode: "HUMANISH_CUA_LAB_KEYS_MISSING",
+    });
+    const foreign = deriveStudyFacts({
+      ok: false,
+      dryRun: false,
+      error: { code: "ECONNREFUSED", message: "x" },
+    });
     expect(foreign.errorCode).toBeUndefined();
     expect(foreign.outcome).toBe("error");
   });
 
   it("NEVER names an adopter's lab, and never forwards free-text status", () => {
     const facts = deriveStudyFacts({
-      labId: "acme-checkout-v2", dryRun: false, ok: true,
-      session: { status: "Finished after the user typed their password" }
+      labId: "acme-checkout-v2",
+      dryRun: false,
+      ok: true,
+      session: { status: "Finished after the user typed their password" },
     });
     expect(facts.lab).toBe("custom");
     expect(facts.outcome).toBeUndefined();
@@ -254,44 +360,101 @@ describe("what a study reports about itself", () => {
   });
 
   it("reads the plain run result and the preflight result too", () => {
-    expect(deriveStudyFacts({ schema: "humanish.run-result.v1", ok: true, mode: "dry-run", runId: "r", cwd: "/x", warnings: [] }))
-      .toEqual({ mode: "dry-run", outcome: "ok" });
-    expect(deriveStudyFacts({ schema: "humanish.lab-preflight-result.v1", ok: false, lab: "try-live", labId: "try-live", error: { code: "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED", message: "m" } }))
-      .toEqual({ lab: "try-live", outcome: "error", errorCode: "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED" });
+    expect(
+      deriveStudyFacts({
+        schema: "humanish.run-result.v1",
+        ok: true,
+        mode: "dry-run",
+        runId: "r",
+        cwd: "/x",
+        warnings: [],
+      }),
+    ).toEqual({ mode: "dry-run", outcome: "ok" });
+    expect(
+      deriveStudyFacts({
+        schema: "humanish.lab-preflight-result.v1",
+        ok: false,
+        lab: "try-live",
+        labId: "try-live",
+        error: { code: "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED", message: "m" },
+      }),
+    ).toEqual({
+      lab: "try-live",
+      outcome: "error",
+      errorCode: "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED",
+    });
   });
 
   it("says nothing about a result that carries no study", () => {
-    expect(deriveStudyFacts({ schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] })).toEqual({});
+    expect(
+      deriveStudyFacts({ schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] }),
+    ).toEqual({});
     expect(deriveStudyFacts("not an object")).toEqual({});
     expect(deriveStudyFacts(null)).toEqual({});
   });
 });
 
-
 describe("finite CUA diagnostics", () => {
   it("labels successful N1/N2 previews honestly, failed previews as errors, and leaves live rollup unchanged", () => {
     for (const total of [1, 2]) {
-      const base = { schema: "humanish.cua-lab-result.v2", dryRun: true, ok: true,
-        laneSummary: { total, passed: 0 }, diagnostics: { category: "preview" } };
+      const base = {
+        schema: "humanish.cua-lab-result.v2",
+        dryRun: true,
+        ok: true,
+        laneSummary: { total, passed: 0 },
+        diagnostics: { category: "preview" },
+      };
       expect(deriveStudyFacts(base).outcome).toBe("contract_proof_only");
-      expect(deriveStudyFacts({ ...base, ok: false, error: { code: "HUMANISH_CUA_LAB_FAILED" } }).outcome).toBe("error");
-      if (total > 1) expect(deriveStudyFacts({ ...base, dryRun: false, ok: false }).outcome).toBe("none_passed");
+      expect(
+        deriveStudyFacts({ ...base, ok: false, error: { code: "HUMANISH_CUA_LAB_FAILED" } })
+          .outcome,
+      ).toBe("error");
+      if (total > 1)
+        expect(deriveStudyFacts({ ...base, dryRun: false, ok: false }).outcome).toBe("none_passed");
     }
   });
 
   it("reads only the finite summary, never a first-lane cause or raw failure text", () => {
-    expect(deriveStudyFacts({ schema: "humanish.cua-lab-result.v2", diagnostics: { category: "mixed", stopCause: "mixed" },
-      session: { stopCause: "provider_output_limit" }, reason: "private.example", lanes: [{ id: "secret" }] }))
-      .toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
-    expect(deriveStudyFacts({ schema: "humanish.cua-lab-result.v2", diagnostics: { category: "private.example", stopCause: "secret reason" } })).toEqual({});
-    expect(deriveStudyFacts({ schema: "another-result", diagnostics: { category: "mixed", stopCause: "mixed" } })).toEqual({});
+    expect(
+      deriveStudyFacts({
+        schema: "humanish.cua-lab-result.v2",
+        diagnostics: { category: "mixed", stopCause: "mixed" },
+        session: { stopCause: "provider_output_limit" },
+        reason: "private.example",
+        lanes: [{ id: "secret" }],
+      }),
+    ).toEqual({ diagnosticCategory: "mixed", stopCause: "mixed" });
+    expect(
+      deriveStudyFacts({
+        schema: "humanish.cua-lab-result.v2",
+        diagnostics: { category: "private.example", stopCause: "secret reason" },
+      }),
+    ).toEqual({});
+    expect(
+      deriveStudyFacts({
+        schema: "another-result",
+        diagnostics: { category: "mixed", stopCause: "mixed" },
+      }),
+    ).toEqual({});
   });
 
   it("rejects injected values again at the final payload boundary", () => {
-    const build = (diagnosticCategory: string, stopCause: string) => buildPayload({ event: "cli_command", anonymousId: "a", version: "1", env: {},
-      properties: { diagnosticCategory, stopCause } }).properties;
-    expect(build("session_interrupted", "adapter_limit")).toMatchObject({ diagnostic_category: "session_interrupted", stop_cause: "adapter_limit" });
-    expect(build("mixed", "mixed")).toMatchObject({ diagnostic_category: "mixed", stop_cause: "mixed" });
+    const build = (diagnosticCategory: string, stopCause: string) =>
+      buildPayload({
+        event: "cli_command",
+        anonymousId: "a",
+        version: "1",
+        env: {},
+        properties: { diagnosticCategory, stopCause },
+      }).properties;
+    expect(build("session_interrupted", "adapter_limit")).toMatchObject({
+      diagnostic_category: "session_interrupted",
+      stop_cause: "adapter_limit",
+    });
+    expect(build("mixed", "mixed")).toMatchObject({
+      diagnostic_category: "mixed",
+      stop_cause: "mixed",
+    });
     const unknown = build("private.example", "private.example/secret");
     expect(unknown.diagnostic_category).toBeUndefined();
     expect(unknown.stop_cause).toBeUndefined();

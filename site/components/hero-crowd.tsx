@@ -26,14 +26,23 @@ export default function HeroCrowd() {
 
     // A still frame where motion is not wanted or affordable: reduced motion, touch screens and
     // phone widths. The loop cost 1.8 s of a throttled phone's main thread and never earned it there.
-    const rm = prefersReducedMotion() || window.matchMedia("(hover: none), (max-width: 900px)").matches;
+    const rm =
+      prefersReducedMotion() || window.matchMedia("(hover: none), (max-width: 900px)").matches;
     const hasIO = "IntersectionObserver" in window;
     const CELL = 9;
     let W = 0;
     let H = 0;
     let gw = 0;
     let gh = 0;
-    interface Fig { x: number; y: number; s: number; ph: number; p: number; acc: boolean; acc2: boolean }
+    interface Fig {
+      x: number;
+      y: number;
+      s: number;
+      ph: number;
+      p: number;
+      acc: boolean;
+      acc2: boolean;
+    }
     let figs: Fig[] = [];
     let px = -1e4;
     let py = -1e4;
@@ -75,8 +84,8 @@ export default function HeroCrowd() {
             s: s * (0.92 + ((i * 13 + r * 7) % 5) * 0.04),
             ph: r * 7 + i * 2.7,
             p,
-            acc: ((r * 31 + i * 17) % 6) === 0,
-            acc2: ((r * 13 + i * 11) % 7) === 0 && x > W * 0.55
+            acc: (r * 31 + i * 17) % 6 === 0,
+            acc2: (r * 13 + i * 11) % 7 === 0 && x > W * 0.55,
           });
         }
       }
@@ -148,7 +157,9 @@ export default function HeroCrowd() {
         ctx.lineWidth = th === 3 ? 3.1 : th === 2 ? 2 : 1.1;
         ctx.lineCap = "round";
         ctx.strokeStyle =
-          key[0] === "a" ? TH.accent : `rgba(${TH.ink},${Math.min(1, 0.38 + th * 0.22).toFixed(2)})`;
+          key[0] === "a"
+            ? TH.accent
+            : `rgba(${TH.ink},${Math.min(1, 0.38 + th * 0.22).toFixed(2)})`;
         ctx.stroke();
       }
     }
@@ -185,7 +196,7 @@ export default function HeroCrowd() {
               running = e[0]?.isIntersecting ?? false;
               if (running && !raf) raf = requestAnimationFrame(loop);
             },
-            { rootMargin: "80px" }
+            { rootMargin: "80px" },
           );
           io.observe(cnv);
           cleanups.push(() => io.disconnect());
@@ -201,9 +212,11 @@ export default function HeroCrowd() {
         const timer = window.setTimeout(start, 1200);
         cleanups.push(() => window.clearTimeout(timer));
       }
-      cleanups.push(onThemeRedraw(() => {
-        if (!running) draw(performance.now());
-      }));
+      cleanups.push(
+        onThemeRedraw(() => {
+          if (!running) draw(performance.now());
+        }),
+      );
       const onMove = (e: PointerEvent) => {
         const r = cnv.getBoundingClientRect();
         px = e.clientX - r.left;

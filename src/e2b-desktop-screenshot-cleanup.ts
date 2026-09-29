@@ -54,7 +54,9 @@ export function protectDesktopScreenshotCleanup<T extends E2BDesktopSandbox>(des
         const count = desktopScreenshotCleanupFailures(desktop) + 1;
         failureCounts.set(desktop, count);
         try {
-          process.stderr.write(`humanish desktop: screenshot temporary-file cleanup failed (${count}); image read completed. Sandbox teardown reclaims temporary files.\n`);
+          process.stderr.write(
+            `humanish desktop: screenshot temporary-file cleanup failed (${count}); image read completed. Sandbox teardown reclaims temporary files.\n`,
+          );
         } catch {
           // A closed diagnostic stream must not turn this secondary rejection observer into a
           // new unhandled rejection. The per-instance counter remains available.
@@ -64,7 +66,9 @@ export function protectDesktopScreenshotCleanup<T extends E2BDesktopSandbox>(des
     return pending;
   };
   desktop.screenshot = function (...args) {
-    return screenshotScope.run({ desktop, paths: new Set<string>() }, () => screenshot.apply(this, args));
+    return screenshotScope.run({ desktop, paths: new Set<string>() }, () =>
+      screenshot.apply(this, args),
+    );
   };
   guarded.add(desktop);
   return desktop;

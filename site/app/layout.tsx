@@ -16,13 +16,13 @@ import "./globals.css";
 const newsreaderDisplay = localFont({
   src: [
     { path: "./fonts/0-display-newsreader.woff2", style: "normal" },
-    { path: "./fonts/0-display-newsreader-italic.woff2", style: "italic" }
+    { path: "./fonts/0-display-newsreader-italic.woff2", style: "italic" },
   ],
   weight: "300 400",
   display: "swap",
   preload: true,
   adjustFontFallback: "Times New Roman",
-  variable: "--font-newsreader-display"
+  variable: "--font-newsreader-display",
 });
 
 const geistDisplay = localFont({
@@ -31,7 +31,7 @@ const geistDisplay = localFont({
   display: "swap",
   preload: true,
   adjustFontFallback: "Arial",
-  variable: "--font-geist-display"
+  variable: "--font-geist-display",
 });
 
 // The full face stays preloaded, after the subsets in document order: discovered from CSS
@@ -42,7 +42,7 @@ const newsreader = Newsreader({
   subsets: ["latin"],
   style: ["normal", "italic"],
   display: "swap",
-  variable: "--font-newsreader"
+  variable: "--font-newsreader",
 });
 
 // Only the headline face is preloaded: Chrome counts the largest paint once its web font is in,
@@ -51,14 +51,14 @@ const geist = Geist({
   subsets: ["latin"],
   display: "swap",
   preload: false,
-  variable: "--font-geist"
+  variable: "--font-geist",
 });
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "swap",
   preload: false,
-  variable: "--font-geist-mono"
+  variable: "--font-geist-mono",
 });
 
 const SITE = "https://humanish.dev";
@@ -74,8 +74,8 @@ const DESCRIPTION =
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
-    { media: "(prefers-color-scheme: dark)", color: "#171512" }
-  ]
+    { media: "(prefers-color-scheme: dark)", color: "#171512" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -88,13 +88,13 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: SITE,
     siteName: "humanish",
-    type: "website"
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
-    description: DESCRIPTION
-  }
+    description: DESCRIPTION,
+  },
 };
 
 /**
@@ -123,8 +123,8 @@ const JSON_LD = {
   offers: {
     "@type": "Offer",
     price: "0",
-    priceCurrency: "USD"
-  }
+    priceCurrency: "USD",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -5,5 +5,5 @@ const docs = defineDocs({ dir: "content/docs" });
 
 export const docsSource = loader({
   baseUrl: "/docs",
-  source: docs.toFumadocsSource()
+  source: docs.toFumadocsSource(),
 });

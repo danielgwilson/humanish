@@ -10,9 +10,16 @@ function exactBytes(expected: number): Transform {
   return new Transform({
     transform(chunk: Buffer, _encoding, callback) {
       received += chunk.length;
-      callback(received <= expected ? undefined : new Error("recording exceeded declared length"), received <= expected ? chunk : undefined);
+      callback(
+        received <= expected ? undefined : new Error("recording exceeded declared length"),
+        received <= expected ? chunk : undefined,
+      );
     },
-    flush(callback) { callback(received === expected ? undefined : new Error("recording ended before declared length")); }
+    flush(callback) {
+      callback(
+        received === expected ? undefined : new Error("recording ended before declared length"),
+      );
+    },
   });
 }
 
@@ -22,20 +29,35 @@ function validLength(bytes: number): void {
   }
 }
 
-export async function receiveBrowserControlRecording(source: Duplex, destination: Writable, bytes: number): Promise<void> {
+export async function receiveBrowserControlRecording(
+  source: Duplex,
+  destination: Writable,
+  bytes: number,
+): Promise<void> {
   validLength(bytes);
   try {
-    await pipeline(source, exactBytes(bytes), destination, { signal: AbortSignal.timeout(BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS) });
+    await pipeline(source, exactBytes(bytes), destination, {
+      signal: AbortSignal.timeout(BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS),
+    });
   } catch {
     throw new CuaExecutorError("transport_failed", "outcome_uncertain");
   }
 }
 
-export async function sendBrowserControlRecording(source: Readable, destination: Duplex, bytes: number): Promise<void> {
+export async function sendBrowserControlRecording(
+  source: Readable,
+  destination: Duplex,
+  bytes: number,
+): Promise<void> {
   validLength(bytes);
   try {
-    await pipeline(source, exactBytes(bytes), destination, { end: false, signal: AbortSignal.timeout(BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS) });
-    await new Promise<void>((resolve, reject) => destination.end((error?: Error | null) => error ? reject(error) : resolve()));
+    await pipeline(source, exactBytes(bytes), destination, {
+      end: false,
+      signal: AbortSignal.timeout(BROWSER_CONTROL_RECORDING_TRANSFER_TIMEOUT_MS),
+    });
+    await new Promise<void>((resolve, reject) =>
+      destination.end((error?: Error | null) => (error ? reject(error) : resolve())),
+    );
     destination.destroy();
   } catch {
     destination.destroy();

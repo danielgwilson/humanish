@@ -14,7 +14,8 @@ function walk(dir) {
   for (const name of readdirSync(dir).sort()) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p);
-    else if (/\.(jpe?g|png)$/i.test(name)) assets[p] = createHash("sha256").update(readFileSync(p)).digest("hex");
+    else if (/\.(jpe?g|png)$/i.test(name))
+      assets[p] = createHash("sha256").update(readFileSync(p)).digest("hex");
   }
 }
 walk(root);

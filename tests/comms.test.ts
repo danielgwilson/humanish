@@ -12,13 +12,17 @@ const VERIFICATION_HTML = [
   '<p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify my email</a></p>',
   "<p>Or enter this verification code: <b>481920</b></p>",
   "<p style='color:#999'>If you did not request this, ignore this message. (ref 2026)</p>",
-  "</body></html>"
+  "</body></html>",
 ].join("");
 
 describe("comms extraction (magic link + OTP from a verification email)", () => {
   it("extractLinks pulls the actionable https link (href + bare), de-duped", () => {
-    expect(extractLinks(VERIFICATION_HTML)).toEqual(["https://app.example.test/verify?token=abc123XYZ-9"]);
-    expect(extractLinks("plain text with https://x.test/a and https://x.test/a again")).toEqual(["https://x.test/a"]);
+    expect(extractLinks(VERIFICATION_HTML)).toEqual([
+      "https://app.example.test/verify?token=abc123XYZ-9",
+    ]);
+    expect(extractLinks("plain text with https://x.test/a and https://x.test/a again")).toEqual([
+      "https://x.test/a",
+    ]);
     expect(extractLinks("no links here")).toEqual([]);
     expect(extractLinks("")).toEqual([]);
   });
@@ -61,12 +65,23 @@ describe("FakeInbox (the in-process bus)", () => {
     expect(a.actorId).toBe("user");
     expect(a.digest).toMatch(/^[0-9a-f]{16}$/);
     // Idempotent by value (case-insensitive): re-declaring returns the SAME inbox (never resets its queue).
-    await bus.deliverRaw({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "hi", body: "<a href=\"https://app.example.test/verify?t=1\">v</a>" });
+    await bus.deliverRaw({
+      from: "no-reply@example.test",
+      to: ["user-07@example.test"],
+      subject: "hi",
+      body: '<a href="https://app.example.test/verify?t=1">v</a>',
+    });
     const again = await bus.provisionAddress("user", "USER-07@example.test");
     expect(again.value).toBe("user-07@example.test");
     expect(await bus.poll(again)).toHaveLength(1); // queue preserved across the idempotent re-declare
     // The app's send to a DIFFERENT address is dropped (only the declared literal resolves).
-    expect(await bus.deliverRaw({ from: "no-reply@example.test", to: ["someone-else@example.test"], body: "hi" })).toHaveLength(0);
+    expect(
+      await bus.deliverRaw({
+        from: "no-reply@example.test",
+        to: ["someone-else@example.test"],
+        body: "hi",
+      }),
+    ).toHaveLength(0);
   });
 
   it("routes an INGRESS delivery to the addressed inbox and extracts link + code; poll is since-scoped", async () => {
@@ -79,7 +94,7 @@ describe("FakeInbox (the in-process bus)", () => {
       from: "Example App <no-reply@example.test>",
       to: [user.value],
       subject: "Confirm your email",
-      body: VERIFICATION_HTML
+      body: VERIFICATION_HTML,
     });
     expect(delivered).toHaveLength(1);
     expect(delivered[0]!.to.map((t) => t.actorId)).toEqual(["user-07"]);
@@ -97,8 +112,14 @@ describe("FakeInbox (the in-process bus)", () => {
     const bus = new FakeInbox();
     const p2 = await bus.provision("player-2");
     const p3 = await bus.provision("player-3");
-    expect(await bus.deliverRaw({ from: "app", to: ["nobody@example.test"], body: "hi" })).toEqual([]);
-    const [msg] = await bus.deliverRaw({ from: "host@example.test", to: [p2.value, p3.value], body: "join https://app.test/lobby/ABC123" });
+    expect(await bus.deliverRaw({ from: "app", to: ["nobody@example.test"], body: "hi" })).toEqual(
+      [],
+    );
+    const [msg] = await bus.deliverRaw({
+      from: "host@example.test",
+      to: [p2.value, p3.value],
+      body: "join https://app.test/lobby/ABC123",
+    });
     expect(msg!.to.map((t) => t.actorId).sort()).toEqual(["player-2", "player-3"]);
     expect((await bus.poll(p2))[0]!.links).toEqual(["https://app.test/lobby/ABC123"]);
     expect(await bus.poll(p3)).toHaveLength(1);
@@ -137,8 +158,8 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
         from: "Example App <no-reply@example.test>",
         to: [user.value],
         subject: "Confirm your email",
-        html: VERIFICATION_HTML
-      })
+        html: VERIFICATION_HTML,
+      }),
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: "test-1" });
@@ -168,9 +189,9 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
         personalizations: [{ to: [{ email: user.value, name: "User Eight" }] }],
         content: [
           { type: "text/plain", value: "code 903117" },
-          { type: "text/html", value: VERIFICATION_HTML }
-        ]
-      })
+          { type: "text/html", value: VERIFICATION_HTML },
+        ],
+      }),
     });
     expect(res.status).toBe(202); // SendGrid-faithful response
     expect(res.headers.get("x-message-id")).toBeTruthy();
@@ -188,7 +209,7 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     server = await startEmailCatchServer(bus);
 
     const health = await fetch(`${server.url}/health`);
-    const body = await health.json() as { ok: boolean; profiles: string[] };
+    const body = (await health.json()) as { ok: boolean; profiles: string[] };
     expect(body.ok).toBe(true);
     expect(body.profiles).toContain("generic");
     expect(body.profiles).toContain("sendgrid");
@@ -197,11 +218,16 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify([
-        { from: "app", to: [`User Nine <${user.value}>`], subject: "code", html: "Your code is 771002" }
-      ])
+        {
+          from: "app",
+          to: [`User Nine <${user.value}>`],
+          subject: "code",
+          html: "Your code is 771002",
+        },
+      ]),
     });
     expect(batch.status).toBe(200);
-    expect((await batch.json() as { data: unknown[] }).data).toHaveLength(1);
+    expect(((await batch.json()) as { data: unknown[] }).data).toHaveLength(1);
     expect((await bus.poll(user))[0]!.codes).toEqual(["771002"]);
 
     expect((await fetch(`${server.url}/unknown`)).status).toBe(404);
@@ -213,14 +239,23 @@ describe("end-to-end: a vendor-neutral email-API catch delivers an app's send in
     server = await startEmailCatchServer(bus);
 
     // Empty body → nothing deliverable → 422, not { id: "...000000" }.
-    const empty = await fetch(`${server.url}/emails`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const empty = await fetch(`${server.url}/emails`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
     expect(empty.status).toBe(422);
 
     // A null element inside SendGrid's arrays must not 500 the server (contained, clean response).
     const malformed = await fetch(`${server.url}/v3/mail/send`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ from: { email: "a@example.test" }, subject: "x", personalizations: [null], content: [null] })
+      body: JSON.stringify({
+        from: { email: "a@example.test" },
+        subject: "x",
+        personalizations: [null],
+        content: [null],
+      }),
     });
     expect(malformed.status).toBe(422); // parsed to zero recipients → bad request, not a crash
     // The server is still healthy afterwards.

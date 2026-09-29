@@ -21,10 +21,10 @@ function createAppContractExecutor(appUrl) {
       const response = await fetch(new URL("chat", appUrl), {
         method: "POST",
         body: action.text,
-        signal: AbortSignal.any([AbortSignal.timeout(5000), ...(signal ? [signal] : [])])
+        signal: AbortSignal.any([AbortSignal.timeout(5000), ...(signal ? [signal] : [])]),
       });
       if (!response.ok) throw new Error(`Chat write failed: HTTP ${response.status}`);
-    }
+    },
   };
 }
 
@@ -42,7 +42,7 @@ const provider = {
     byoModel: true,
     preGrantableApprovals: false,
     inProcessTools: false,
-    license: "open"
+    license: "open",
   },
   async nextTurn(request, signal) {
     signal.throwIfAborted();
@@ -52,9 +52,9 @@ const provider = {
       actions: greeted ? [] : [{ kind: "type", text: "hello there" }],
       pendingSafetyChecks: [],
       done: greeted,
-      message: greeted ? "The app accepted the greeting." : "Sending a greeting."
+      message: greeted ? "The app accepted the greeting." : "Sending a greeting.",
     };
-  }
+  },
 };
 
 const app = await startLocalApp();
@@ -69,7 +69,7 @@ try {
     actors: [{ type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." }],
     scenario: { mode: "live" },
     review: { analysis: false }, // Keep this deterministic example free of provider requests.
-    execution: { timeoutMs: 15_000 }
+    execution: { timeoutMs: 15_000 },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   const outcome = await runLab(parsed.config, {
@@ -77,26 +77,37 @@ try {
     dryRun: false,
     cuaHooks: {
       buildExecutor: async ({ appUrl }) => createAppContractExecutor(appUrl),
-      buildProvider: async () => provider
-    }
+      buildProvider: async () => provider,
+    },
   });
   if (outcome.backend !== "cua") throw new Error(`Unexpected backend: ${outcome.backend}`);
   const { result } = outcome;
   const verified = await verifyRun(process.cwd(), result.runId);
-  console.log(JSON.stringify({
-    runId: result.runId,
-    ok: result.ok,
-    completionReason: result.session?.completionReason,
-    provider: provider.id,
-    sandboxCreated: result.sandbox !== undefined,
-    screenshots: result.session?.screenshots,
-    verification: verified,
-    app: app.getReceipt(),
-    // A mechanism statement, not an inference from missing provider usage/rates.
-    costBasis: "No model calls or hosted resources; only this process and loopback HTTP."
-  }, null, 2));
-  if (!result.ok || !verified.ok || result.session?.completionReason !== "goal_satisfied"
-    || result.sandbox !== undefined || !app.getReceipt().greeted) {
+  console.log(
+    JSON.stringify(
+      {
+        runId: result.runId,
+        ok: result.ok,
+        completionReason: result.session?.completionReason,
+        provider: provider.id,
+        sandboxCreated: result.sandbox !== undefined,
+        screenshots: result.session?.screenshots,
+        verification: verified,
+        app: app.getReceipt(),
+        // A mechanism statement, not an inference from missing provider usage/rates.
+        costBasis: "No model calls or hosted resources; only this process and loopback HTTP.",
+      },
+      null,
+      2,
+    ),
+  );
+  if (
+    !result.ok ||
+    !verified.ok ||
+    result.session?.completionReason !== "goal_satisfied" ||
+    result.sandbox !== undefined ||
+    !app.getReceipt().greeted
+  ) {
     throw new Error(result.error?.message ?? "Local-app example did not complete and verify");
   }
 } finally {

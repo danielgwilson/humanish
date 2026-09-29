@@ -24,36 +24,62 @@ export function parseHash(hash: string): HashRoute {
   const entry = ENTRY_ROUTE.exec(hash);
   if (entry) {
     try {
-      const laneId = decodeURIComponent(entry[1]!); const eventId = decodeURIComponent(entry[2]!);
+      const laneId = decodeURIComponent(entry[1]!);
+      const eventId = decodeURIComponent(entry[2]!);
       if (laneId && eventId && eventId.length <= 256) return { laneId, frame: null, eventId };
-    } catch { /* Malformed addresses keep the ordinary grid available. */ }
+    } catch {
+      /* Malformed addresses keep the ordinary grid available. */
+    }
     return { laneId: null, frame: null };
   }
   const match = LANE_ROUTE.exec(hash);
   if (!match || match[1] === undefined) return { laneId: null, frame: null };
   let laneId: string;
-  try { laneId = decodeURIComponent(match[1]); } catch { return { laneId: null, frame: null }; }
+  try {
+    laneId = decodeURIComponent(match[1]);
+  } catch {
+    return { laneId: null, frame: null };
+  }
   if (match[2] === "live" || match[2] === "replay") return { laneId, frame: null, mode: match[2] };
   if (match[3] === undefined) return { laneId, frame: null };
   const oneBased = Number(match[3]);
   const frame = Number.isSafeInteger(oneBased) && oneBased >= 1 ? oneBased - 1 : null;
   let eventId: string | undefined;
   if (match[4] !== undefined) {
-    try { eventId = decodeURIComponent(match[4]); } catch { return { laneId: null, frame: null }; }
+    try {
+      eventId = decodeURIComponent(match[4]);
+    } catch {
+      return { laneId: null, frame: null };
+    }
     if (!eventId || eventId.length > 256 || frame === null) return { laneId: null, frame: null };
   }
   return { laneId, frame, ...(eventId === undefined ? {} : { eventId }) };
 }
 
-export function formatHash(laneId: string | null, frame: number | null, mode?: "live" | "replay" | null, eventId?: string | null): string {
+export function formatHash(
+  laneId: string | null,
+  frame: number | null,
+  mode?: "live" | "replay" | null,
+  eventId?: string | null,
+): string {
   if (laneId === null) return "";
   let encoded: string;
-  try { encoded = encodeURIComponent(laneId); } catch { return ""; }
+  try {
+    encoded = encodeURIComponent(laneId);
+  } catch {
+    return "";
+  }
   const base = `#/lane/${encoded}`;
   if (mode === "live") return `${base}/live`;
   let entry = "";
-  try { if (eventId && eventId.length <= 256) entry = `/e/${encodeURIComponent(eventId)}`; } catch { /* Keep the usable capture address. */ }
-  return frame === null ? `${base}${entry || (mode === "replay" ? "/replay" : "")}` : `${base}/f/${frame + 1}${entry}`;
+  try {
+    if (eventId && eventId.length <= 256) entry = `/e/${encodeURIComponent(eventId)}`;
+  } catch {
+    /* Keep the usable capture address. */
+  }
+  return frame === null
+    ? `${base}${entry || (mode === "replay" ? "/replay" : "")}`
+    : `${base}/f/${frame + 1}${entry}`;
 }
 
 /** Write the hash without growing history (frame scrubs); no-op when unchanged. */

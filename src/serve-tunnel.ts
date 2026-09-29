@@ -43,7 +43,7 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
         "--oauth",
         options.oauthProvider,
         ...(options.oauthAllowEmails ?? []).flatMap((email) => ["--oauth-allow-email", email]),
-        ...(options.oauthAllowDomains ?? []).flatMap((domain) => ["--oauth-allow-domain", domain])
+        ...(options.oauthAllowDomains ?? []).flatMap((domain) => ["--oauth-allow-domain", domain]),
       ]
     : [];
   const args = [
@@ -54,7 +54,7 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
     "json",
     ...(options.domain ? ["--url", options.domain] : []),
     ...oauthArgs,
-    String(options.port)
+    String(options.port),
   ];
 
   const child = spawnImpl("ngrok", args, { stdio: ["ignore", "pipe", "ignore"] });
@@ -81,22 +81,23 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
       settle({
         error: new ServeTunnelError(
           "HUMANISH_SERVE_TUNNEL_START_FAILED",
-          `ngrok did not report a started tunnel within ${timeoutMs}ms.`
-        )
+          `ngrok did not report a started tunnel within ${timeoutMs}ms.`,
+        ),
       });
     }, timeoutMs);
 
     child.once("error", (error: NodeJS.ErrnoException) => {
       settle({
-        error: error.code === "ENOENT"
-          ? new ServeTunnelError(
-            "HUMANISH_SERVE_TUNNEL_NOT_FOUND",
-            "ngrok binary not found on PATH. Install ngrok, or run your own tunnel and pass --public-url <origin>."
-          )
-          : new ServeTunnelError(
-            "HUMANISH_SERVE_TUNNEL_START_FAILED",
-            `ngrok failed to start: ${error.message}`
-          )
+        error:
+          error.code === "ENOENT"
+            ? new ServeTunnelError(
+                "HUMANISH_SERVE_TUNNEL_NOT_FOUND",
+                "ngrok binary not found on PATH. Install ngrok, or run your own tunnel and pass --public-url <origin>.",
+              )
+            : new ServeTunnelError(
+                "HUMANISH_SERVE_TUNNEL_START_FAILED",
+                `ngrok failed to start: ${error.message}`,
+              ),
       });
     });
 
@@ -104,8 +105,8 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
       settle({
         error: new ServeTunnelError(
           "HUMANISH_SERVE_TUNNEL_START_FAILED",
-          `ngrok exited (${code ?? "signal"}) before reporting a started tunnel.`
-        )
+          `ngrok exited (${code ?? "signal"}) before reporting a started tunnel.`,
+        ),
       });
     });
 
@@ -122,10 +123,10 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
           continue;
         }
         if (
-          typeof parsed === "object"
-          && parsed !== null
-          && (parsed as { msg?: unknown }).msg === "started tunnel"
-          && typeof (parsed as { url?: unknown }).url === "string"
+          typeof parsed === "object" &&
+          parsed !== null &&
+          (parsed as { msg?: unknown }).msg === "started tunnel" &&
+          typeof (parsed as { url?: unknown }).url === "string"
         ) {
           settle({ url: (parsed as { url: string }).url });
           return;
@@ -138,7 +139,7 @@ export async function startNgrokTunnel(options: StartNgrokTunnelOptions): Promis
     url,
     close: async () => {
       await killChild(child);
-    }
+    },
   };
 }
 

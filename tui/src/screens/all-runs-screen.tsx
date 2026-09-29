@@ -42,7 +42,7 @@ export function AllRunsScreen({
   columns,
   viewport,
   tick,
-  now
+  now,
 }: AllRunsScreenProps): React.ReactElement {
   if (runs.length === 0) {
     return (
@@ -60,7 +60,10 @@ export function AllRunsScreen({
   const thought =
     participant?.thought === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, { width: Math.max(16, columns - 2), maxLines: 2 });
+      : normalizeThought(participant.thought.text, {
+          width: Math.max(16, columns - 2),
+          maxLines: 2,
+        });
 
   return (
     <Box flexDirection="column">
@@ -101,8 +104,10 @@ export function AllRunsScreen({
             </Box>
             <Text dimColor wrap="truncate-end">
               {fitLabelToWidth(
-                [personaOf(focusedDetail), labels.get(focused?.runId ?? "")].filter(Boolean).join(" · "),
-                Math.max(10, columns - 2)
+                [personaOf(focusedDetail), labels.get(focused?.runId ?? "")]
+                  .filter(Boolean)
+                  .join(" · "),
+                Math.max(10, columns - 2),
               )}
             </Text>
           </Box>
@@ -130,7 +135,7 @@ function RunRow({
   active,
   columns,
   tick,
-  now
+  now,
 }: {
   run: RunIndexEntry;
   who: string;
@@ -179,7 +184,10 @@ function spendLine(runs: readonly RunIndexEntry[], details: Map<string, RunDetai
   let total = 0;
   let priced = 0;
   for (const run of runs) {
-    const value = run.estimatedCostUsd === undefined ? details.get(run.runId)?.participants[0]?.estimatedCostUsd : run.estimatedCostUsd;
+    const value =
+      run.estimatedCostUsd === undefined
+        ? details.get(run.runId)?.participants[0]?.estimatedCostUsd
+        : run.estimatedCostUsd;
     if (typeof value === "number") {
       total += value;
       priced += 1;

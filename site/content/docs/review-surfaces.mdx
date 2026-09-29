@@ -25,11 +25,11 @@ A run started from the TUI is detached: it keeps going if you quit, and it survi
 refuses detected coding-agent sessions, even when the runner allocates a TTY.
 The other commands support Node 20 or newer.
 
-| Situation | JSON `error.code` | Exit code |
-| --- | --- | --- |
-| A recognized coding-agent session | `HUMANISH_TUI_AGENT_SESSION` | `2` |
-| Non-interactive stdin or stdout, with no agent marker | `HUMANISH_TUI_REQUIRES_TTY` | `2` |
-| Interactive human terminal on Node older than 22 | `HUMANISH_TUI_UNSUPPORTED_NODE` | `2` |
+| Situation                                             | JSON `error.code`               | Exit code |
+| ----------------------------------------------------- | ------------------------------- | --------- |
+| A recognized coding-agent session                     | `HUMANISH_TUI_AGENT_SESSION`    | `2`       |
+| Non-interactive stdin or stdout, with no agent marker | `HUMANISH_TUI_REQUIRES_TTY`     | `2`       |
+| Interactive human terminal on Node older than 22      | `HUMANISH_TUI_UNSUPPORTED_NODE` | `2`       |
 
 `--json` returns the refusal envelope; it does not turn the TUI into a JSON browser.
 Agent detection uses runner environment markers; absence of a marker does not

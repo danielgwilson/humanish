@@ -6,4 +6,6 @@ import { afterEach, beforeEach, expect, vi } from "vitest";
 beforeEach(() => {
   if (!expect.getState().testPath?.endsWith(".live.test.ts")) vi.stubEnv("OPENAI_API_KEY", "");
 });
-afterEach(() => { vi.unstubAllEnvs(); });
+afterEach(() => {
+  vi.unstubAllEnvs();
+});

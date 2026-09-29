@@ -17,7 +17,7 @@ export const PALETTE = {
   /** Wants attention but is not a failure: interrupted, missing keys, live spend. */
   warn: "#d9a441",
   /** A failed verdict. */
-  bad: "#e0796b"
+  bad: "#e0796b",
 } as const;
 
 export type PaletteName = keyof typeof PALETTE;

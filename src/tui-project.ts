@@ -23,6 +23,6 @@ export function readProjectState(cwdInput: string): TuiProjectState {
   return {
     schema: TUI_PROJECT_SCHEMA,
     initialized: existsSync(path.join(cwd, "humanish")),
-    hasRuntime: existsSync(path.join(cwd, ".humanish"))
+    hasRuntime: existsSync(path.join(cwd, ".humanish")),
   };
 }

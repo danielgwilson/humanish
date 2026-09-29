@@ -20,15 +20,22 @@ const PNG_HASH = createHash("sha256").update(PNG).digest("hex");
 const PNG_ASSETS = { [PNG_HASH]: { mime: "image/png", base64: PNG.toString("base64") } };
 const RUN = "r-export";
 
-function verified(status: VerifyResult["shareSafety"]["status"], ok = true): () => Promise<VerifyResult> {
-  return async () => ({
-    schema: "humanish.verify-result.v1",
-    ok,
-    cwd: "/x",
-    run: RUN,
-    checks: [],
-    shareSafety: { status, reasons: status === "share_ready" ? [] : [{ code: "RAW_SCREENSHOTS", message: "raw" }] }
-  } as unknown as VerifyResult);
+function verified(
+  status: VerifyResult["shareSafety"]["status"],
+  ok = true,
+): () => Promise<VerifyResult> {
+  return async () =>
+    ({
+      schema: "humanish.verify-result.v1",
+      ok,
+      cwd: "/x",
+      run: RUN,
+      checks: [],
+      shareSafety: {
+        status,
+        reasons: status === "share_ready" ? [] : [{ code: "RAW_SCREENSHOTS", message: "raw" }],
+      },
+    }) as unknown as VerifyResult;
 }
 
 // A run is a directory; sharing it meant a tunnel or a hand-zipped bundle (#471). Export writes
@@ -38,7 +45,14 @@ describe("humanish export", () => {
   let runDir: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-export-"));
-    await writeFixtureRun(cwd, { runId: RUN, labId: "try-live", mode: "live", state: "finished", verdict: "pass", estimatedCostUsd: 0.16 });
+    await writeFixtureRun(cwd, {
+      runId: RUN,
+      labId: "try-live",
+      mode: "live",
+      state: "finished",
+      verdict: "pass",
+      estimatedCostUsd: 0.16,
+    });
     runDir = path.join(cwd, ".humanish", "runs", RUN);
     await mkdir(path.join(runDir, "screenshots", "lane-01"), { recursive: true });
     await writeFile(path.join(runDir, "screenshots", "lane-01", "turn-01.png"), PNG);
@@ -46,13 +60,24 @@ describe("humanish export", () => {
     const data = {
       schema: "humanish.observer-data.v1",
       run: { runId: RUN },
-      streams: [{ id: "s1", frames: [{ href: "screenshots/lane-01/turn-01.png", title: "t1" }, { href: "screenshots/lane-01/missing.png", title: "gone" }] }],
-      links: [{ href: "../run.json", kind: "bundle" }, { href: "https://example.test/x.png", kind: "remote" }]
+      streams: [
+        {
+          id: "s1",
+          frames: [
+            { href: "screenshots/lane-01/turn-01.png", title: "t1" },
+            { href: "screenshots/lane-01/missing.png", title: "gone" },
+          ],
+        },
+      ],
+      links: [
+        { href: "../run.json", kind: "bundle" },
+        { href: "https://example.test/x.png", kind: "remote" },
+      ],
     };
     await writeFile(
       path.join(runDir, "observer", "index.html"),
       `<!doctype html><html><head><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></head><body><div id="root"></div></body></html>`,
-      "utf8"
+      "utf8",
     );
   });
   afterEach(async () => {
@@ -83,12 +108,17 @@ describe("humanish export", () => {
 
   it("renders old recordings with the current packaged UI without changing the source", async () => {
     const index = path.join(runDir, "observer", "index.html");
-    const oldHtml = (await readFile(index, "utf8")).replace("<body>", '<body><script>window.OBSOLETE_RENDERER_SENTINEL=true</script>');
+    const oldHtml = (await readFile(index, "utf8")).replace(
+      "<body>",
+      "<body><script>window.OBSOLETE_RENDERER_SENTINEL=true</script>",
+    );
     await writeFile(index, oldHtml);
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const exported = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
+      exported,
+    );
     expect(slot).not.toBeNull();
     const data = JSON.parse(slot![1]!) as ObserverData;
     expect(exported).toBe(renderObserverHtml(data, { snapshot: true, assets: PNG_ASSETS }));
@@ -100,27 +130,53 @@ describe("humanish export", () => {
 
   it("embeds repeated captures and distinct paths with identical bytes only once", async () => {
     await writeFile(path.join(runDir, "screenshots", "lane-01", "turn-02.png"), PNG);
-    const data = { run: { runId: RUN }, streams: [{ frames: Array.from({ length: 80 }, (_, index) => ({
-      href: `screenshots/lane-01/turn-0${index % 2 + 1}.png`
-    })) }] };
-    await writeFile(path.join(runDir, "observer", "index.html"), `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`);
+    const data = {
+      run: { runId: RUN },
+      streams: [
+        {
+          frames: Array.from({ length: 80 }, (_, index) => ({
+            href: `screenshots/lane-01/turn-0${(index % 2) + 1}.png`,
+          })),
+        },
+      ],
+    };
+    await writeFile(
+      path.join(runDir, "observer", "index.html"),
+      `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`,
+    );
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const html = await readFile(path.join(cwd, result.path), "utf8");
     expect(result.embeddedImages).toBe(1);
     expect(html.split(PNG.toString("base64")).length - 1).toBe(1);
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html)!;
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
+      html,
+    )!;
     const frames = JSON.parse(slot[1]!).streams[0].frames;
     expect(frames).toHaveLength(80);
-    expect(new Set(frames.map((frame: { href: string }) => frame.href))).toEqual(new Set([`humanish-asset:${PNG_HASH}`]));
+    expect(new Set(frames.map((frame: { href: string }) => frame.href))).toEqual(
+      new Set([`humanish-asset:${PNG_HASH}`]),
+    );
   });
 
   it("refreshes an old interruption label from recorded notices without changing source evidence", async () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     const stream = bundle.streams[0]!;
     stream.status = "incomplete";
-    Object.assign(stream.actor!, { status: "incomplete", completionReason: "budget_reached", reason: "Synthetic recorded provider interruption.",
-      items: [{ id: "notice-003", kind: "notice", lifecycle: "completed", status: "warn", title: "provider token limit reached" }] });
+    Object.assign(stream.actor!, {
+      status: "incomplete",
+      completionReason: "budget_reached",
+      reason: "Synthetic recorded provider interruption.",
+      items: [
+        {
+          id: "notice-003",
+          kind: "notice",
+          lifecycle: "completed",
+          status: "warn",
+          title: "provider token limit reached",
+        },
+      ],
+    });
     delete stream.actor!.stopCause;
     bundle.review.participants = tallyParticipantOutcomes(["incomplete"]);
     const oldData = buildObserverData(bundle);
@@ -133,11 +189,15 @@ describe("humanish export", () => {
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const exported = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
+      exported,
+    );
     const refreshed = JSON.parse(slot![1]!) as ObserverData;
     expect(refreshed.streams[0]!.ending?.label).toBe("provider token limit");
     expect(refreshed.streams[0]!.statusLabel).toBe("Interrupted");
-    expect(refreshed.run.participantsLine).toBe("0/1 recorded completions, 1 interrupted (provider token limit)");
+    expect(refreshed.run.participantsLine).toBe(
+      "0/1 recorded completions, 1 interrupted (provider token limit)",
+    );
     expect(refreshed.streams[0]!.actor).toEqual(oldData.streams[0]!.actor);
     expect(refreshed.run.participants).toEqual(oldData.run.participants);
     expect(await readFile(index, "utf8")).toBe(oldHtml);
@@ -147,45 +207,76 @@ describe("humanish export", () => {
     const bundle = structuredClone(liveBundle) as unknown as RunBundle;
     const stopped = bundle.streams[0]!;
     stopped.status = "incomplete";
-    Object.assign(stopped.actor!, { status: "incomplete", completionReason: "budget_reached", stopCause: "adapter_limit" });
+    Object.assign(stopped.actor!, {
+      status: "incomplete",
+      completionReason: "budget_reached",
+      stopCause: "adapter_limit",
+    });
     const legacy = structuredClone(stopped);
     legacy.id = "legacy-error";
     legacy.status = "failed";
-    Object.assign(legacy.actor!, { status: "failed", completionReason: "actor_error", reason: "OpenAI Responses network error" });
+    Object.assign(legacy.actor!, {
+      status: "failed",
+      completionReason: "actor_error",
+      reason: "OpenAI Responses network error",
+    });
     delete legacy.actor!.stopCause;
     bundle.streams = [stopped, legacy];
     bundle.review.participants = tallyParticipantOutcomes(["incomplete", "failed"]);
     const data = buildObserverData(bundle);
     const original = structuredClone(data);
     const index = path.join(runDir, "observer", "index.html");
-    await writeFile(index, `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`);
+    await writeFile(
+      index,
+      `<html><script id="observer-data" type="application/json">${JSON.stringify(data)}</script></html>`,
+    );
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const exported = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
+      exported,
+    );
     const refreshed = JSON.parse(slot![1]!) as ObserverData;
-    expect(refreshed.streams[0]?.ending).toEqual({ cause: "adapter_limit", label: "adapter admission limit" });
+    expect(refreshed.streams[0]?.ending).toEqual({
+      cause: "adapter_limit",
+      label: "adapter admission limit",
+    });
     expect(refreshed.streams[0]?.statusLabel).toBe("Interrupted");
     expect(refreshed.streams[1]?.ending).toBeUndefined();
     expect(refreshed.run.participants).toEqual(original.run.participants);
     expect(refreshed.run.participants?.total).toBe(2);
-    expect(refreshed.streams.map(stream => stream.actor)).toEqual(original.streams.map(stream => stream.actor));
+    expect(refreshed.streams.map((stream) => stream.actor)).toEqual(
+      original.streams.map((stream) => stream.actor),
+    );
   });
 
   it("removes saved runtime grants and liveness from portable HTML", async () => {
     const index = path.join(runDir, "observer", "index.html");
     const html = await readFile(index, "utf8");
-    const replaced = html.replace(/(<script id="observer-data" type="application\/json">)([\s\S]*?)(<\/script>)/, (_slot, start: string, json: string, end: string) => {
-      const data = JSON.parse(json);
-      data.runtime = { state: "running", source: "local-run-status", observedAt: "2026-09-08T00:00:00Z" };
-      data.streams[0].embed = { kind: "iframe", url: "https://desktop.example/view", runtimeDesktop: true };
-      return `${start}${JSON.stringify(data)}${end}`;
-    });
+    const replaced = html.replace(
+      /(<script id="observer-data" type="application\/json">)([\s\S]*?)(<\/script>)/,
+      (_slot, start: string, json: string, end: string) => {
+        const data = JSON.parse(json);
+        data.runtime = {
+          state: "running",
+          source: "local-run-status",
+          observedAt: "2026-09-08T00:00:00Z",
+        };
+        data.streams[0].embed = {
+          kind: "iframe",
+          url: "https://desktop.example/view",
+          runtimeDesktop: true,
+        };
+        return `${start}${JSON.stringify(data)}${end}`;
+      },
+    );
     await writeFile(index, replaced);
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready") });
     if (!result.ok) throw new Error(result.error.message);
     const exported = await readFile(path.join(cwd, result.path), "utf8");
-    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(exported);
+    const slot = /<script id="observer-data" type="application\/json">([\s\S]*?)<\/script>/.exec(
+      exported,
+    );
     expect(slot).not.toBeNull();
     const data = JSON.parse(slot![1]!) as ObserverData;
     expect(data).not.toHaveProperty("runtime");
@@ -205,14 +296,21 @@ describe("humanish export", () => {
   });
 
   it("--local-only exports the same bundle with a banner nothing can miss", async () => {
-    const result = await exportRun(cwd, RUN, { localOnly: true }, { verify: verified("local_only") });
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { localOnly: true },
+      { verify: verified("local_only") },
+    );
     if (!result.ok) throw new Error(result.error.message);
     expect(result.watermarked).toBe(true);
     const html = await readFile(path.join(cwd, result.path), "utf8");
     expect(html).toContain(localOnlyBanner(["RAW_SCREENSHOTS"]));
     expect(html.indexOf("humanish-local-only")).toBeLessThan(html.indexOf('<div id="root">'));
     expect(formatExportHuman(result)).toContain("WATERMARKED LOCAL ONLY");
-    expect(html).toMatch(/"share":\{"status":"local_only","verifiedAt":"[^"]+","reasons":\["RAW_SCREENSHOTS"\]\}/);
+    expect(html).toMatch(
+      /"share":\{"status":"local_only","verifiedAt":"[^"]+","reasons":\["RAW_SCREENSHOTS"\]\}/,
+    );
   });
 
   it("refuses to package a run that fails its own verify, and a run it cannot find", async () => {
@@ -225,7 +323,12 @@ describe("humanish export", () => {
   });
 
   it("stops at the size cap and says what it would have written", async () => {
-    const result = await exportRun(cwd, RUN, { maxBytes: 200 }, { verify: verified("share_ready") });
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { maxBytes: 200 },
+      { verify: verified("share_ready") },
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_EXPORT_TOO_LARGE");
@@ -237,7 +340,11 @@ describe("humanish export", () => {
     let rendered = 0;
     const render = async () => {
       rendered += 1;
-      await writeFile(path.join(runDir, "observer", "index.html"), `<!doctype html><html><head><script id="observer-data" type="application/json">{"run":{"runId":"r-export"},"streams":[{"frames":[{"href":"screenshots/lane-01/turn-01.png"}]}]}</script></head><body></body></html>`, "utf8");
+      await writeFile(
+        path.join(runDir, "observer", "index.html"),
+        `<!doctype html><html><head><script id="observer-data" type="application/json">{"run":{"runId":"r-export"},"streams":[{"frames":[{"href":"screenshots/lane-01/turn-01.png"}]}]}</script></head><body></body></html>`,
+        "utf8",
+      );
       return { ok: true };
     };
     const result = await exportRun(cwd, RUN, {}, { verify: verified("share_ready"), render });
@@ -247,13 +354,23 @@ describe("humanish export", () => {
     expect(result.warnings.some((w) => w.includes("rendered for this export"))).toBe(true);
     // A run that cannot be rendered still fails, named.
     await rm(path.join(runDir, "observer", "index.html"));
-    const failed = await exportRun(cwd, RUN, {}, { verify: verified("share_ready"), render: async () => ({ ok: false }) });
+    const failed = await exportRun(
+      cwd,
+      RUN,
+      {},
+      { verify: verified("share_ready"), render: async () => ({ ok: false }) },
+    );
     expect(failed.ok).toBe(false);
     if (!failed.ok) expect(failed.error.code).toBe("HUMANISH_EXPORT_NO_OBSERVER");
   });
 
   it("honours --out", async () => {
-    const result = await exportRun(cwd, RUN, { out: "share/study.html" }, { verify: verified("share_ready") });
+    const result = await exportRun(
+      cwd,
+      RUN,
+      { out: "share/study.html" },
+      { verify: verified("share_ready") },
+    );
     if (!result.ok) throw new Error(result.error.message);
     expect(result.path).toBe(path.join("share", "study.html"));
     await readFile(path.join(cwd, "share", "study.html"), "utf8");

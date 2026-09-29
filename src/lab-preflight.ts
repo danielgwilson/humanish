@@ -1,5 +1,8 @@
 import path from "node:path";
-import { automaticAnalysisBudget, type AutomaticAnalysisBudget } from "./automatic-analysis-config.js";
+import {
+  automaticAnalysisBudget,
+  type AutomaticAnalysisBudget,
+} from "./automatic-analysis-config.js";
 
 import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "./cua-actor-lab.js";
 import { probeUrl } from "./e2b-detached.js";
@@ -7,12 +10,9 @@ import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
-  type E2BDesktopSandbox
+  type E2BDesktopSandbox,
 } from "./e2b-desktop-launch.js";
-import {
-  isLoopbackUrl,
-  type LabConfig
-} from "./lab-config.js";
+import { isLoopbackUrl, type LabConfig } from "./lab-config.js";
 import { selectLabBackend, type LabBackend } from "./lab-engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./labs.js";
 import { digestText, redactText } from "./redaction.js";
@@ -130,7 +130,9 @@ interface PreflightContext {
   warnings: string[];
 }
 
-export async function runLabPreflight(options: RunLabPreflightOptions): Promise<LabPreflightResult> {
+export async function runLabPreflight(
+  options: RunLabPreflightOptions,
+): Promise<LabPreflightResult> {
   const cwd = path.resolve(options.cwd);
   const reachability = options.reachability ?? "metadata";
   const timeoutMs = options.timeoutMs ?? DEFAULT_PREFLIGHT_TIMEOUT_MS;
@@ -143,16 +145,18 @@ export async function runLabPreflight(options: RunLabPreflightOptions): Promise<
       cwd,
       lab: options.lab,
       reachability,
-      checks: [{
-        name: "lab manifest",
-        ok: false,
-        message: resolved.error.message
-      }],
+      checks: [
+        {
+          name: "lab manifest",
+          ok: false,
+          message: resolved.error.message,
+        },
+      ],
       targets: [],
       sandbox: { created: false },
       spend: { e2bDesktop: false, model: false },
       warnings: resolved.warnings,
-      error: resolved.error
+      error: resolved.error,
     };
   }
 
@@ -171,26 +175,40 @@ export async function runLabPreflight(options: RunLabPreflightOptions): Promise<
     hooks: options.hooks ?? {},
     checks: [
       { name: "lab manifest", ok: true, message: `resolved ${resolved.origin} lab manifest` },
-      { name: "backend", ok: true, message: `selected ${backend}` }
+      { name: "backend", ok: true, message: `selected ${backend}` },
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },
-    warnings: resolved.warnings
+    warnings: resolved.warnings,
   };
 
   switch (reachability) {
     case "metadata":
       return finalize(ctx, {
-        check: { name: "reachability", ok: true, message: "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --lab <lab> for setup checks." }
+        check: {
+          name: "reachability",
+          ok: true,
+          message:
+            "metadata-only; no network, sandbox, or model calls. Credentials, local login, dependencies and target reachability were not checked; use humanish doctor --lab <lab> for setup checks.",
+        },
       });
     case "public-preview":
       return await runPublicPreviewPreflight(ctx);
     case "sandbox-loopback":
       return await runSandboxLoopbackPreflight(ctx);
     case "prepared-host":
-      return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.", [
-        { name: "prepared-host", ok: false, message: "no generic CLI hook exists for adopter-prepared hosts yet" }
-      ]);
+      return fail(
+        ctx,
+        "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE",
+        "prepared-host preflight requires a library adapter hook; the plain CLI can validate metadata only for this mode.",
+        [
+          {
+            name: "prepared-host",
+            ok: false,
+            message: "no generic CLI hook exists for adopter-prepared hosts yet",
+          },
+        ],
+      );
   }
 }
 
@@ -198,33 +216,52 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
   const routeError = publicPreviewRouteError(ctx.config, ctx.backend);
   if (routeError) {
     return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
-      { name: "route", ok: false, message: routeError }
+      { name: "route", ok: false, message: routeError },
     ]);
   }
 
   const laneTargets = ctx.targets.filter((target) => target.kind === "actors[0].lanes[].target");
-  const publicTargets = laneTargets.length > 0
-    ? laneTargets
-    : ctx.targets.filter((target) => target.kind === "subject.appUrl");
+  const publicTargets =
+    laneTargets.length > 0
+      ? laneTargets
+      : ctx.targets.filter((target) => target.kind === "subject.appUrl");
   if (publicTargets.length === 0) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY", "public-preview preflight needs at least one declared app-url target.", [
-      { name: "targets", ok: false, message: "no app-url targets were declared" }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY",
+      "public-preview preflight needs at least one declared app-url target.",
+      [{ name: "targets", ok: false, message: "no app-url targets were declared" }],
+    );
   }
 
   const loopbackTarget = publicTargets.find((target) => target.loopback);
   if (loopbackTarget) {
-    blockTarget(loopbackTarget, "public-preview requires externally reachable non-loopback targets.");
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY", "public-preview reachability cannot prove loopback targets from a hosted desktop; use sandbox-loopback or a prepared public target.", [
-      { name: "target policy", ok: false, message: "loopback target blocked before sandbox launch" }
-    ]);
+    blockTarget(
+      loopbackTarget,
+      "public-preview requires externally reachable non-loopback targets.",
+    );
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_TARGET_POLICY",
+      "public-preview reachability cannot prove loopback targets from a hosted desktop; use sandbox-loopback or a prepared public target.",
+      [
+        {
+          name: "target policy",
+          ok: false,
+          message: "loopback target blocked before sandbox launch",
+        },
+      ],
+    );
   }
 
   const e2bApiKey = ctx.env.E2B_API_KEY?.trim();
   if (!e2bApiKey) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED", "public-preview preflight creates one E2B desktop to probe target reachability; E2B_API_KEY is required.", [
-      { name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED",
+      "public-preview preflight creates one E2B desktop to probe target reachability; E2B_API_KEY is required.",
+      [{ name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }],
+    );
   }
 
   const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (desktop) => {
@@ -233,7 +270,7 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
         timeoutMs: ctx.timeoutMs,
         requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
         ...(ctx.hooks.now === undefined ? {} : { now: ctx.hooks.now }),
-        ...(ctx.hooks.sleep === undefined ? {} : { sleep: ctx.hooks.sleep })
+        ...(ctx.hooks.sleep === undefined ? {} : { sleep: ctx.hooks.sleep }),
       });
       markTargetReachability(target, reachable);
     }
@@ -245,13 +282,26 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
 
   const failed = publicTargets.find((target) => target.reachable === false);
   if (failed) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_TARGET_UNREACHABLE", "one or more declared public-preview targets were not reachable from the hosted desktop.", [
-      { name: "target reachability", ok: false, message: `${publicTargets.filter((target) => target.reachable).length}/${publicTargets.length} targets reachable` }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_TARGET_UNREACHABLE",
+      "one or more declared public-preview targets were not reachable from the hosted desktop.",
+      [
+        {
+          name: "target reachability",
+          ok: false,
+          message: `${publicTargets.filter((target) => target.reachable).length}/${publicTargets.length} targets reachable`,
+        },
+      ],
+    );
   }
 
   return finalize(ctx, {
-    check: { name: "target reachability", ok: true, message: `${publicTargets.length}/${publicTargets.length} targets reachable from hosted desktop` }
+    check: {
+      name: "target reachability",
+      ok: true,
+      message: `${publicTargets.length}/${publicTargets.length} targets reachable from hosted desktop`,
+    },
   });
 }
 
@@ -259,30 +309,45 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
   const routeError = sandboxLoopbackRouteError(ctx.config, ctx.backend);
   if (routeError) {
     return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", routeError, [
-      { name: "route", ok: false, message: routeError }
+      { name: "route", ok: false, message: routeError },
     ]);
   }
 
   const missingEnv = (ctx.config.subject.env ?? []).filter((name) => !ctx.env[name]?.trim());
   if (missingEnv.length > 0) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_ENV_MISSING", `sandbox-loopback preflight needs declared env values: ${missingEnv.join(", ")}`, [
-      { name: "subject env", ok: false, message: `${missingEnv.length} declared env var value(s) missing` }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_ENV_MISSING",
+      `sandbox-loopback preflight needs declared env values: ${missingEnv.join(", ")}`,
+      [
+        {
+          name: "subject env",
+          ok: false,
+          message: `${missingEnv.length} declared env var value(s) missing`,
+        },
+      ],
+    );
   }
 
   const e2bApiKey = ctx.env.E2B_API_KEY?.trim();
   if (!e2bApiKey) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED", "sandbox-loopback preflight creates one E2B desktop to clone, serve, and probe the subject; E2B_API_KEY is required.", [
-      { name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_E2B_REQUIRED",
+      "sandbox-loopback preflight creates one E2B desktop to clone, serve, and probe the subject; E2B_API_KEY is required.",
+      [{ name: "e2b api key", ok: false, message: "missing E2B_API_KEY" }],
+    );
   }
 
   const repo = ctx.config.subject.repos?.[0];
   const serve = ctx.config.subject.serve;
   if (!repo || !serve) {
-    return fail(ctx, "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE", "sandbox-loopback preflight requires one clone repo and subject.serve.", [
-      { name: "clone subject", ok: false, message: "missing repo or serve block" }
-    ]);
+    return fail(
+      ctx,
+      "HUMANISH_LAB_PREFLIGHT_UNSUPPORTED_ROUTE",
+      "sandbox-loopback preflight requires one clone repo and subject.serve.",
+      [{ name: "clone subject", ok: false, message: "missing repo or serve block" }],
+    );
   }
 
   let subjectCommitDigest: string | undefined;
@@ -300,7 +365,7 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
         subjectCommitDigest = digest(commit);
       },
       ...(ctx.hooks.now === undefined ? {} : { now: ctx.hooks.now }),
-      ...(ctx.hooks.sleep === undefined ? {} : { sleep: ctx.hooks.sleep })
+      ...(ctx.hooks.sleep === undefined ? {} : { sleep: ctx.hooks.sleep }),
     });
     const serveTarget = ctx.targets.find((target) => target.kind === "subject.serve.url");
     if (serveTarget) {
@@ -316,42 +381,54 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
     check: {
       name: "subject provisioning",
       ok: true,
-      message: `clone subject served and answered readiness${subjectCommitDigest ? ` (commit digest ${subjectCommitDigest})` : ""}`
-    }
+      message: `clone subject served and answered readiness${subjectCommitDigest ? ` (commit digest ${subjectCommitDigest})` : ""}`,
+    },
   });
 }
 
 async function withPreflightSandbox(
   ctx: PreflightContext,
   args: { e2bApiKey: string },
-  callback: (desktop: E2BDesktopSandbox) => Promise<void>
+  callback: (desktop: E2BDesktopSandbox) => Promise<void>,
 ): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
   let module: E2BDesktopModule | undefined;
   let desktop: E2BDesktopSandbox | undefined;
   let failureMessage: string | undefined;
   try {
     module = await (ctx.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    desktop = await createDesktopSandbox(module, {
-      apiKey: args.e2bApiKey,
-      requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
-      timeoutMs: ctx.config.execution?.desktop?.sandboxTimeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
-      lifecycle: { onTimeout: "kill" },
-      metadata: {
-        ...CUA_ACTOR_LAB_PROVIDER_METADATA,
-        mode: "lab-preflight",
-        labId: ctx.config.id,
-        reachability: ctx.reachability
+    desktop = await createDesktopSandbox(
+      module,
+      {
+        apiKey: args.e2bApiKey,
+        requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+        timeoutMs: ctx.config.execution?.desktop?.sandboxTimeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
+        lifecycle: { onTimeout: "kill" },
+        metadata: {
+          ...CUA_ACTOR_LAB_PROVIDER_METADATA,
+          mode: "lab-preflight",
+          labId: ctx.config.id,
+          reachability: ctx.reachability,
+        },
+        ...(ctx.config.subject.env?.length
+          ? {
+              envs: Object.fromEntries(
+                ctx.config.subject.env.map((name) => [name, ctx.env[name] as string]),
+              ),
+            }
+          : {}),
+        ...(ctx.config.execution?.desktop?.resolution
+          ? { resolution: ctx.config.execution.desktop.resolution }
+          : {}),
+        dpi: 96,
       },
-      ...(ctx.config.subject.env?.length
-        ? { envs: Object.fromEntries(ctx.config.subject.env.map((name) => [name, ctx.env[name] as string])) }
-        : {}),
-      ...(ctx.config.execution?.desktop?.resolution ? { resolution: ctx.config.execution.desktop.resolution } : {}),
-      dpi: 96
-    }, ctx.config.execution?.desktop?.template);
+      ctx.config.execution?.desktop?.template,
+    );
     ctx.sandbox = {
       created: true,
       sandboxIdDigest: digest(desktop.sandboxId),
-      ...(ctx.config.execution?.desktop?.template ? { template: ctx.config.execution.desktop.template } : {})
+      ...(ctx.config.execution?.desktop?.template
+        ? { template: ctx.config.execution.desktop.template }
+        : {}),
     };
 
     await callback(desktop);
@@ -361,15 +438,21 @@ async function withPreflightSandbox(
     if (module && desktop) {
       if (typeof module.Sandbox.kill === "function") {
         try {
-          await module.Sandbox.kill(desktop.sandboxId, { requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS });
+          await module.Sandbox.kill(desktop.sandboxId, {
+            requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+          });
           ctx.sandbox = { ...ctx.sandbox, killed: true };
         } catch (error: unknown) {
           ctx.sandbox = { ...ctx.sandbox, killed: false };
-          ctx.warnings.push(`Sandbox teardown failed; server-side timeout should reclaim it: ${compactError(error)}`);
+          ctx.warnings.push(
+            `Sandbox teardown failed; server-side timeout should reclaim it: ${compactError(error)}`,
+          );
         }
       } else {
         ctx.sandbox = { ...ctx.sandbox, killed: false };
-        ctx.warnings.push("Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side timeout should reclaim the sandbox.");
+        ctx.warnings.push(
+          "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side timeout should reclaim the sandbox.",
+        );
       }
     }
   }
@@ -378,17 +461,20 @@ async function withPreflightSandbox(
     return {
       ok: false,
       result: fail(ctx, "HUMANISH_LAB_PREFLIGHT_PROVISION_FAILED", failureMessage, [
-        { name: "sandbox preflight", ok: false, message: failureMessage }
-      ])
+        { name: "sandbox preflight", ok: false, message: failureMessage },
+      ]),
     };
   }
 
   if (ctx.sandbox.created && ctx.sandbox.killed !== true) {
     return {
       ok: false,
-      result: fail(ctx, "HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED", "preflight sandbox was created but teardown could not be proven.", [
-        { name: "sandbox teardown", ok: false, message: "sandbox kill was not proven" }
-      ])
+      result: fail(
+        ctx,
+        "HUMANISH_LAB_PREFLIGHT_TEARDOWN_FAILED",
+        "preflight sandbox was created but teardown could not be proven.",
+        [{ name: "sandbox teardown", ok: false, message: "sandbox kill was not proven" }],
+      ),
     };
   }
 
@@ -401,7 +487,9 @@ function finalize(ctx: PreflightContext, args?: { check?: LabPreflightCheck }): 
   return {
     schema: LAB_PREFLIGHT_SCHEMA,
     ...(analysis ? { analysis } : {}),
-    ok: checks.every((check) => check.ok) && ctx.targets.every((target) => target.status !== "failed" && target.status !== "blocked"),
+    ok:
+      checks.every((check) => check.ok) &&
+      ctx.targets.every((target) => target.status !== "failed" && target.status !== "blocked"),
     cwd: ctx.cwd,
     lab: ctx.lab,
     labId: ctx.labId,
@@ -414,9 +502,9 @@ function finalize(ctx: PreflightContext, args?: { check?: LabPreflightCheck }): 
     sandbox: ctx.sandbox,
     spend: {
       e2bDesktop: ctx.sandbox.created,
-      model: false
+      model: false,
     },
-    warnings: ctx.warnings
+    warnings: ctx.warnings,
   };
 }
 
@@ -424,13 +512,13 @@ function fail(
   ctx: PreflightContext,
   code: NonNullable<LabPreflightResult["error"]>["code"],
   message: string,
-  checks: LabPreflightCheck[]
+  checks: LabPreflightCheck[],
 ): LabPreflightResult {
   return {
     ...finalize(ctx),
     ok: false,
     checks: [...ctx.checks, ...checks],
-    error: { code, message }
+    error: { code, message },
   };
 }
 
@@ -441,19 +529,31 @@ function collectTargets(config: LabConfig): LabPreflightTarget[] {
   }
   for (const [index, lane] of (config.actors[0]?.lanes ?? []).entries()) {
     if (lane.target) {
-      targets.push(makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", lane.target));
+      targets.push(
+        makeTarget(`actors[0].lanes[${index}].target`, "actors[0].lanes[].target", lane.target),
+      );
     }
   }
   if (config.subject.serve?.url) {
     targets.push(makeTarget("subject.serve.url", "subject.serve.url", config.subject.serve.url));
   }
   for (const [index, surface] of (config.subject.product?.publicSurfaces ?? []).entries()) {
-    targets.push(makeTarget(`subject.product.publicSurfaces[${index}]`, "subject.product.publicSurface", surface));
+    targets.push(
+      makeTarget(
+        `subject.product.publicSurfaces[${index}]`,
+        "subject.product.publicSurface",
+        surface,
+      ),
+    );
   }
   return targets;
 }
 
-function makeTarget(label: LabPreflightTarget["label"], kind: LabPreflightTarget["kind"], url: string): LabPreflightTarget {
+function makeTarget(
+  label: LabPreflightTarget["label"],
+  kind: LabPreflightTarget["kind"],
+  url: string,
+): LabPreflightTarget {
   return {
     label,
     kind,
@@ -462,7 +562,7 @@ function makeTarget(label: LabPreflightTarget["label"], kind: LabPreflightTarget
     loopback: isLoopbackUrl(url),
     checked: false,
     status: "not_checked",
-    message: "target declared; reachability not checked"
+    message: "target declared; reachability not checked",
   };
 }
 
@@ -491,7 +591,9 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
     return config.subject.appUrl;
   }
   if (target.kind === "actors[0].lanes[].target") {
-    const laneTarget = config.actors[0]?.lanes?.find((lane) => lane.target && digest(lane.target) === target.targetDigest)?.target;
+    const laneTarget = config.actors[0]?.lanes?.find(
+      (lane) => lane.target && digest(lane.target) === target.targetDigest,
+    )?.target;
     if (laneTarget) return laneTarget;
   }
   if (target.kind === "subject.serve.url" && config.subject.serve?.url) {
@@ -501,7 +603,11 @@ function targetUrlFor(config: LabConfig, target: LabPreflightTarget): string {
 }
 
 function publicPreviewRouteError(config: LabConfig, backend: LabBackend): string | null {
-  if (backend !== "cua" || config.subject.source !== "app-url" || config.execution?.target !== "e2b-desktop") {
+  if (
+    backend !== "cua" ||
+    config.subject.source !== "app-url" ||
+    config.execution?.target !== "e2b-desktop"
+  ) {
     return "public-preview preflight supports app-url × e2b-desktop computer-use labs.";
   }
   if (config.policies?.allowPublicTargets !== true) {
@@ -511,7 +617,11 @@ function publicPreviewRouteError(config: LabConfig, backend: LabBackend): string
 }
 
 function sandboxLoopbackRouteError(config: LabConfig, backend: LabBackend): string | null {
-  if (backend !== "cua" || config.subject.source !== "clone" || config.execution?.target !== "e2b-desktop") {
+  if (
+    backend !== "cua" ||
+    config.subject.source !== "clone" ||
+    config.execution?.target !== "e2b-desktop"
+  ) {
     return "sandbox-loopback preflight supports clone × e2b-desktop computer-use labs. (local-tree labs are not preflightable yet: see the local-tree goal doc's out-of-scope list; a dry run of the lab is the current no-spend check.)";
   }
   if (!config.subject.serve) {
@@ -524,7 +634,8 @@ function makeEnvScrubber(env: NodeJS.ProcessEnv, names: string[]): (text: string
   const values = names
     .map((name) => env[name])
     .filter((value): value is string => typeof value === "string" && value.length > 0);
-  return (text) => values.reduce((current, value) => current.replaceAll(value, "[REDACTED_SECRET]"), text);
+  return (text) =>
+    values.reduce((current, value) => current.replaceAll(value, "[REDACTED_SECRET]"), text);
 }
 
 function compactError(error: unknown): string {

@@ -19,16 +19,28 @@ export const AUTOPLAY_LOOP_DELAY_MS = 2000;
 
 /** `?sidebar=closed` on its own, for a still embed (reduced motion) that should still fill the frame. */
 export function sidebarClosedByUrl(search: string): boolean {
-  try { return new URLSearchParams(search).get("sidebar") === "closed"; } catch { return false; }
+  try {
+    return new URLSearchParams(search).get("sidebar") === "closed";
+  } catch {
+    return false;
+  }
 }
 
 export function parseAutoplay(search: string): AutoplayIntent | null {
   let params: URLSearchParams;
-  try { params = new URLSearchParams(search); } catch { return null; }
+  try {
+    params = new URLSearchParams(search);
+  } catch {
+    return null;
+  }
   if (!params.has("autoplay")) return null;
   const raw = (params.get("autoplay") ?? "").trim();
   const parsed = /^\d+(\.\d+)?$/.test(raw) ? Number(raw) : AUTOPLAY_DEFAULT_SPEED; // "", "on", "true" all mean the default speed
-  const speed = parsed > 0 ? Math.min(AUTOPLAY_MAX_SPEED, Math.max(1, parsed)) : AUTOPLAY_DEFAULT_SPEED;
-  const flag = (key: string) => { const value = params.get(key); return value !== null && value !== "0" && value !== "false"; };
+  const speed =
+    parsed > 0 ? Math.min(AUTOPLAY_MAX_SPEED, Math.max(1, parsed)) : AUTOPLAY_DEFAULT_SPEED;
+  const flag = (key: string) => {
+    const value = params.get(key);
+    return value !== null && value !== "0" && value !== "false";
+  };
   return { speed, loop: flag("loop"), sidebarClosed: params.get("sidebar") === "closed" };
 }

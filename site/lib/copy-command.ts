@@ -9,7 +9,7 @@ export interface ClipboardWriter {
 export async function copyCommand(
   text: string,
   clipboard: ClipboardWriter | undefined,
-  report: (event: CopyEvent) => void
+  report: (event: CopyEvent) => void,
 ): Promise<CopyOutcome> {
   let outcome: CopyOutcome = "failure";
   try {

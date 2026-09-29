@@ -1,6 +1,14 @@
 import { listenOnLoopback } from "./listen.js";
 import { execSync, spawn } from "node:child_process";
-import { constants as fsConstants, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+  constants as fsConstants,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { lstat, open, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
@@ -15,16 +23,23 @@ import {
   isSafeRunIdSegment,
   resolveLatestRunDirectory,
   type PreparedRunArtifactPaths,
-  validatePreparedRunArtifactPaths
+  validatePreparedRunArtifactPaths,
 } from "./run-paths.js";
+import { writeContainedOutputFile } from "./selected-output-paths.js";
 import {
-  writeContainedOutputFile
-} from "./selected-output-paths.js";
-import { buildArtifactSecurityHeaders, buildServeSecurityHeaders, hostAllowed, parsePublicOrigin } from "./serve-http.js";
+  buildArtifactSecurityHeaders,
+  buildServeSecurityHeaders,
+  hostAllowed,
+  parsePublicOrigin,
+} from "./serve-http.js";
 import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
 import { loadStudyAnalysis } from "./study-analysis-store.js";
 import type { LoadedStudyAnalysis } from "./study-analysis.js";
-import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
+import {
+  isStudyAnalysisRecordPath,
+  projectShareCheckedAnalysis,
+  studyAnalysisSharingProblems,
+} from "./study-analysis-sharing.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 
@@ -104,28 +119,38 @@ interface PinnedFileIdentity {
 const observerRuntimeStreamUrls = new WeakMap<ObserverResult, ObserverRuntimeStreamUrl[]>();
 const observerPreparedRunPaths = new WeakMap<ObserverResult, PreparedRunArtifactPaths>();
 
-export function attachObserverRuntimeStreamUrls(result: ObserverResult, streams: ObserverRuntimeStreamUrl[]): void {
-  observerRuntimeStreamUrls.set(result, streams.filter((stream) => stream.streamId && stream.url));
+export function attachObserverRuntimeStreamUrls(
+  result: ObserverResult,
+  streams: ObserverRuntimeStreamUrl[],
+): void {
+  observerRuntimeStreamUrls.set(
+    result,
+    streams.filter((stream) => stream.streamId && stream.url),
+  );
 }
 
 export async function renderObserver(
   cwdInput: string,
   runInput: string,
-  options: ObserverOptions = {}
+  options: ObserverOptions = {},
 ): Promise<ObserverResult> {
   const cwd = path.resolve(cwdInput);
   let selection: ObserverRunSelection | null;
   try {
     if (options.expectedRun) {
       const prepared = options.expectedRun;
-      if (runInput !== path.basename(prepared.physicalRunRoot)
-        || await realpath(cwd) !== path.dirname(path.dirname(prepared.physicalRunsRoot))) {
+      if (
+        runInput !== path.basename(prepared.physicalRunRoot) ||
+        (await realpath(cwd)) !== path.dirname(path.dirname(prepared.physicalRunsRoot))
+      ) {
         throw new Error("Observer source pin does not match the selected run.");
       }
       await validatePreparedRunArtifactPaths(prepared);
-      selection = { runId: runInput,
+      selection = {
+        runId: runInput,
         runRoot: { ...prepared.runRootIdentity, physicalPath: prepared.physicalRunRoot },
-        runsRoot: { ...prepared.runsRootIdentity, physicalPath: prepared.physicalRunsRoot } };
+        runsRoot: { ...prepared.runsRootIdentity, physicalPath: prepared.physicalRunsRoot },
+      };
     } else {
       selection = await resolveObserverRunSelection(cwd, runInput);
     }
@@ -140,21 +165,28 @@ export async function renderObserver(
   let preparedRunPaths;
   try {
     const selectedPhysicalCwd = path.dirname(path.dirname(selection.runsRoot.physicalPath));
-    preparedRunPaths = options.expectedRun ?? await bindExistingRunArtifactPaths(selectedPhysicalCwd, selection.runId);
+    preparedRunPaths =
+      options.expectedRun ??
+      (await bindExistingRunArtifactPaths(selectedPhysicalCwd, selection.runId));
     if (
-      preparedRunPaths.physicalRunsRoot !== selection.runsRoot.physicalPath
-      || preparedRunPaths.physicalRunRoot !== selection.runRoot.physicalPath
-      || preparedRunPaths.runsRootIdentity.birthtimeNs !== selection.runsRoot.birthtimeNs
-      || preparedRunPaths.runsRootIdentity.dev !== selection.runsRoot.dev
-      || preparedRunPaths.runsRootIdentity.ino !== selection.runsRoot.ino
-      || preparedRunPaths.runRootIdentity.birthtimeNs !== selection.runRoot.birthtimeNs
-      || preparedRunPaths.runRootIdentity.dev !== selection.runRoot.dev
-      || preparedRunPaths.runRootIdentity.ino !== selection.runRoot.ino
+      preparedRunPaths.physicalRunsRoot !== selection.runsRoot.physicalPath ||
+      preparedRunPaths.physicalRunRoot !== selection.runRoot.physicalPath ||
+      preparedRunPaths.runsRootIdentity.birthtimeNs !== selection.runsRoot.birthtimeNs ||
+      preparedRunPaths.runsRootIdentity.dev !== selection.runsRoot.dev ||
+      preparedRunPaths.runsRootIdentity.ino !== selection.runsRoot.ino ||
+      preparedRunPaths.runRootIdentity.birthtimeNs !== selection.runRoot.birthtimeNs ||
+      preparedRunPaths.runRootIdentity.dev !== selection.runRoot.dev ||
+      preparedRunPaths.runRootIdentity.ino !== selection.runRoot.ino
     ) {
       throw new Error("Observer run selection changed physical identity.");
     }
   } catch {
-    return observerRunError(cwd, runInput, "HUMANISH_INVALID_RUN_BUNDLE", "Observer run storage is unavailable or unsafe.");
+    return observerRunError(
+      cwd,
+      runInput,
+      "HUMANISH_INVALID_RUN_BUNDLE",
+      "Observer run storage is unavailable or unsafe.",
+    );
   }
 
   await validatePreparedRunArtifactPaths(preparedRunPaths);
@@ -166,8 +198,10 @@ export async function renderObserver(
     return observerRunError(
       cwd,
       runInput,
-      verified.error?.code === "HUMANISH_RUN_NOT_FOUND" ? "HUMANISH_RUN_NOT_FOUND" : "HUMANISH_INVALID_RUN_BUNDLE",
-      verified.error?.message ?? "Run bundle failed verification."
+      verified.error?.code === "HUMANISH_RUN_NOT_FOUND"
+        ? "HUMANISH_RUN_NOT_FOUND"
+        : "HUMANISH_INVALID_RUN_BUNDLE",
+      verified.error?.message ?? "Run bundle failed verification.",
     );
   }
 
@@ -178,8 +212,8 @@ export async function renderObserver(
   }
 
   if (
-    loaded.bundle.runId !== selection.runId
-    || await realpath(loaded.runDir) !== preparedRunPaths.physicalRunRoot
+    loaded.bundle.runId !== selection.runId ||
+    (await realpath(loaded.runDir)) !== preparedRunPaths.physicalRunRoot
   ) {
     throw new Error("Observer output directory does not match the selected run.");
   }
@@ -190,31 +224,39 @@ export async function renderObserver(
   observerData.publicSafety.share = {
     status: verified.shareSafety.status,
     verifiedAt: new Date().toISOString(),
-    reasons: verified.shareSafety.reasons.map((reason) => reason.code)
+    reasons: verified.shareSafety.reasons.map((reason) => reason.code),
   };
 
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "observer-data.json"),
     `${JSON.stringify(observerData, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "study-analysis.json"),
     `${JSON.stringify(analysis, null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
   await writeContainedOutputFile(
     preparedRunPaths,
     path.join("observer", "index.html"),
     renderObserverHtml(observerData, { analysis }),
-    "utf8"
+    "utf8",
   );
   await validatePreparedRunArtifactPaths(preparedRunPaths);
 
-  const relativeObserverPath = path.join(preparedRunPaths.relativeRunRoot, "observer", "index.html");
-  const relativeObserverDataPath = path.join(preparedRunPaths.relativeRunRoot, "observer", "observer-data.json");
+  const relativeObserverPath = path.join(
+    preparedRunPaths.relativeRunRoot,
+    "observer",
+    "index.html",
+  );
+  const relativeObserverDataPath = path.join(
+    preparedRunPaths.relativeRunRoot,
+    "observer",
+    "observer-data.json",
+  );
   const relativeEventsPath = path.join(preparedRunPaths.relativeRunRoot, "events.ndjson");
   const observerUrl = pathToFileURL(observerPath).href;
   const openResult = options.open === true ? openTarget(observerPath) : { opened: false };
@@ -236,8 +278,8 @@ export async function renderObserver(
         ? "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted."
         : "Observer renders local contract evidence only; dry-run lanes do not claim product behavior proof.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
-      ...(openResult.warning ? [openResult.warning] : [])
-    ]
+      ...(openResult.warning ? [openResult.warning] : []),
+    ],
   };
   observerPreparedRunPaths.set(result, preparedRunPaths);
   return result;
@@ -247,7 +289,7 @@ function observerRunError(
   cwd: string,
   run: string,
   code: NonNullable<ObserverResult["error"]>["code"],
-  message: string
+  message: string,
 ): ObserverResult {
   return {
     schema: OBSERVER_SCHEMA,
@@ -255,7 +297,7 @@ function observerRunError(
     cwd,
     run,
     warnings: [],
-    error: { code, message }
+    error: { code, message },
   };
 }
 
@@ -265,7 +307,10 @@ interface ObserverRunSelection {
   readonly runsRoot: PinnedDirectory;
 }
 
-async function resolveObserverRunSelection(cwd: string, runInput: string): Promise<ObserverRunSelection | null> {
+async function resolveObserverRunSelection(
+  cwd: string,
+  runInput: string,
+): Promise<ObserverRunSelection | null> {
   const runsRoot = await pinDirectory(path.join(cwd, ".humanish", "runs"));
   if (runInput !== "latest") {
     const runRoot = isSafeRunIdSegment(runInput)
@@ -274,10 +319,17 @@ async function resolveObserverRunSelection(cwd: string, runInput: string): Promi
     return runRoot ? { runId: runInput, runRoot, runsRoot } : null;
   }
 
-  const latestBytes = await readContainedFile(runsRoot, path.join(runsRoot.physicalPath, "latest.json"));
+  const latestBytes = await readContainedFile(
+    runsRoot,
+    path.join(runsRoot.physicalPath, "latest.json"),
+  );
   if (!latestBytes) return null;
   const pointer = JSON.parse(latestBytes.toString("utf8")) as { path?: unknown; runId?: unknown };
-  if (typeof pointer.runId !== "string" || typeof pointer.path !== "string" || !isSafeRunIdSegment(pointer.runId)) {
+  if (
+    typeof pointer.runId !== "string" ||
+    typeof pointer.path !== "string" ||
+    !isSafeRunIdSegment(pointer.runId)
+  ) {
     return null;
   }
   const declared = resolveLatestRunDirectory(cwd, { path: pointer.path, runId: pointer.runId });
@@ -290,7 +342,7 @@ async function resolveObserverRunSelection(cwd: string, runInput: string): Promi
 
 export async function serveObserver(
   result: ObserverResult,
-  options: ObserverServeOptions = {}
+  options: ObserverServeOptions = {},
 ): Promise<ObserverServer> {
   if (!result.ok || !result.observerPath) {
     throw new Error("Cannot serve an observer result that did not render successfully.");
@@ -303,7 +355,11 @@ export async function serveObserver(
     : await bindExistingRunArtifactPaths(cwd, result.run);
   const runRoot = await pinDirectory(preparedRunPaths.physicalRunRoot);
   const proofRoot = await pinDirectory(preparedRunPaths.physicalRunsRoot);
-  const expectedRelativeObserverPath = path.join(preparedRunPaths.relativeRunRoot, "observer", "index.html");
+  const expectedRelativeObserverPath = path.join(
+    preparedRunPaths.relativeRunRoot,
+    "observer",
+    "index.html",
+  );
   if (result.observerPath !== expectedRelativeObserverPath) {
     throw new Error("Observer path does not match the selected run.");
   }
@@ -356,13 +412,18 @@ export async function serveObserver(
             JSON.stringify(
               { latestRunId: attachedRuns.length > 0 ? result.run : null, runs: attachedRuns },
               null,
-              2
+              2,
             ),
-            "application/json; charset=utf-8"
+            "application/json; charset=utf-8",
           );
           return;
         }
-        writeResponse(response, 200, JSON.stringify(history, null, 2), "application/json; charset=utf-8");
+        writeResponse(
+          response,
+          200,
+          JSON.stringify(history, null, 2),
+          "application/json; charset=utf-8",
+        );
         return;
       }
 
@@ -382,11 +443,23 @@ export async function serveObserver(
           writeResponse(response, 404, "Run not found", "text/plain; charset=utf-8");
           return;
         }
-        await serveRunPath(targetRoot, runRoute.relativePath || "observer/index.html", response, runRoute.runId === result.run ? runtimeStreamUrls() : [], request);
+        await serveRunPath(
+          targetRoot,
+          runRoute.relativePath || "observer/index.html",
+          response,
+          runRoute.runId === result.run ? runtimeStreamUrls() : [],
+          request,
+        );
         return;
       }
 
-      await serveRunPath(runRoot, decodeURIComponent(url.pathname.slice(1)), response, runtimeStreamUrls(), request);
+      await serveRunPath(
+        runRoot,
+        decodeURIComponent(url.pathname.slice(1)),
+        response,
+        runtimeStreamUrls(),
+        request,
+      );
     } catch {
       writeResponse(response, 500, "Observer request failed", "text/plain; charset=utf-8");
     }
@@ -419,7 +492,7 @@ export async function serveObserver(
         hostAllowlist.add(parsed.host);
       }
     },
-    close: () => closeServer(server)
+    close: () => closeServer(server),
   };
 }
 
@@ -500,11 +573,11 @@ function loadObserverArtifact(): string {
             execSync("pnpm --filter humanish-observer build", {
               cwd: repoRoot,
               stdio: ["ignore", "pipe", "inherit"],
-              env: { ...process.env, NODE_ENV: "production" }
+              env: { ...process.env, NODE_ENV: "production" },
             });
           } catch {
             throw new Error(
-              "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output."
+              "observer workspace build failed — run `pnpm --filter humanish-observer build` for the full output.",
             );
           }
         }
@@ -520,7 +593,7 @@ function loadObserverArtifact(): string {
   }
 
   throw new Error(
-    "the Observer needs its prebuilt artifact (dist/observer-app.html in the package, observer/dist/index.html in a repo checkout); run `pnpm --filter humanish-observer build`, or reinstall the package."
+    "the Observer needs its prebuilt artifact (dist/observer-app.html in the package, observer/dist/index.html in a repo checkout); run `pnpm --filter humanish-observer build`, or reinstall the package.",
   );
 }
 
@@ -577,42 +650,103 @@ function newestSourceMtime(dir: string): number {
 export type ObserverExportAssets = Record<string, { mime: string; base64: string }>;
 
 function renderExportAssets(assets: ObserverExportAssets): string {
-  return Object.entries(assets).map(([hash, image]) => {
-    if (!/^[a-f0-9]{64}$/.test(hash) || !/^image\/(png|jpeg|gif|webp)$/.test(image.mime)
-      || !/^[A-Za-z0-9+/]+={0,2}$/.test(image.base64)) throw new Error("Invalid portable raster");
-    return `<script id="humanish-image-${hash}" type="application/octet-stream" data-mime="${image.mime}">${image.base64}</script>`;
-  }).join("");
+  return Object.entries(assets)
+    .map(([hash, image]) => {
+      if (
+        !/^[a-f0-9]{64}$/.test(hash) ||
+        !/^image\/(png|jpeg|gif|webp)$/.test(image.mime) ||
+        !/^[A-Za-z0-9+/]+={0,2}$/.test(image.base64)
+      )
+        throw new Error("Invalid portable raster");
+      return `<script id="humanish-image-${hash}" type="application/octet-stream" data-mime="${image.mime}">${image.base64}</script>`;
+    })
+    .join("");
 }
 
-function renderObserverAppHtml(data: ObserverData, snapshot: boolean, analysis: LoadedStudyAnalysis, assets: ObserverExportAssets): string {
+function renderObserverAppHtml(
+  data: ObserverData,
+  snapshot: boolean,
+  analysis: LoadedStudyAnalysis,
+  assets: ObserverExportAssets,
+): string {
   const artifact = loadObserverArtifact();
   // A renderer-owned boot marker, outside the untrusted run-data contract. Only
   // portable HTML exports opt out of a live feed; ordinary served pages still poll.
-  return (snapshot ? artifact.replace("</head>", '<meta name="humanish-observer-mode" content="snapshot"></head>') : artifact)
-    .replace(OBSERVER_DATA_SLOT, () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`)
-    .replace(/<script id="study-analysis" type="application\/json">[\s\S]*?<\/script>/,
-      () => `<script id="study-analysis" type="application/json">${escapeJsonScript(analysis)}</script>`)
+  return (
+    snapshot
+      ? artifact.replace(
+          "</head>",
+          '<meta name="humanish-observer-mode" content="snapshot"></head>',
+        )
+      : artifact
+  )
+    .replace(
+      OBSERVER_DATA_SLOT,
+      () => `<script id="observer-data" type="application/json">${escapeJsonScript(data)}</script>`,
+    )
+    .replace(
+      /<script id="study-analysis" type="application\/json">[\s\S]*?<\/script>/,
+      () =>
+        `<script id="study-analysis" type="application/json">${escapeJsonScript(analysis)}</script>`,
+    )
     .replace("</body>", () => `${renderExportAssets(assets)}</body>`)
-    .replace(/<title>[^<]*<\/title>/, () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`);
+    .replace(
+      /<title>[^<]*<\/title>/,
+      () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`,
+    );
 }
 
 /** Render current packaged UI around a validated/projected Observer snapshot. */
-export function renderObserverHtml(data: ObserverData, options: { snapshot?: boolean; analysis?: LoadedStudyAnalysis; assets?: ObserverExportAssets } = {}): string {
-  let analysis = options.analysis ?? { state: "none", analysis: null, corrections: [], warnings: [] };
+export function renderObserverHtml(
+  data: ObserverData,
+  options: {
+    snapshot?: boolean;
+    analysis?: LoadedStudyAnalysis;
+    assets?: ObserverExportAssets;
+  } = {},
+): string {
+  let analysis = options.analysis ?? {
+    state: "none",
+    analysis: null,
+    corrections: [],
+    warnings: [],
+  };
   // A portable snapshot cannot claim that a writer on another machine is still active.
-  if (options.snapshot === true && analysis.automatic && ["queued", "running"].includes(analysis.automatic.state)) {
-    analysis = { ...analysis, automatic: { ...analysis.automatic, state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" } };
+  if (
+    options.snapshot === true &&
+    analysis.automatic &&
+    ["queued", "running"].includes(analysis.automatic.state)
+  ) {
+    analysis = {
+      ...analysis,
+      automatic: {
+        ...analysis.automatic,
+        state: "unknown",
+        reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN",
+      },
+    };
   }
   const sharing = studyAnalysisSharingProblems(analysis);
   if (data.publicSafety && (sharing.sensitive || sharing.unverified)) {
     const share = data.publicSafety.share;
-    data = { ...data, publicSafety: { ...data.publicSafety, share: {
-      status: sharing.sensitive || share?.status === "blocked" ? "blocked" : "local_only",
-      verifiedAt: share?.verifiedAt ?? new Date().toISOString(),
-      reasons: [...new Set([...(share?.reasons ?? []), "ANALYSIS_UNVERIFIED"])]
-    } } };
+    data = {
+      ...data,
+      publicSafety: {
+        ...data.publicSafety,
+        share: {
+          status: sharing.sensitive || share?.status === "blocked" ? "blocked" : "local_only",
+          verifiedAt: share?.verifiedAt ?? new Date().toISOString(),
+          reasons: [...new Set([...(share?.reasons ?? []), "ANALYSIS_UNVERIFIED"])],
+        },
+      },
+    };
   }
-  return renderObserverAppHtml(withObserverEndings(data), options.snapshot === true, projectShareCheckedAnalysis(analysis), options.assets ?? {});
+  return renderObserverAppHtml(
+    withObserverEndings(data),
+    options.snapshot === true,
+    projectShareCheckedAnalysis(analysis),
+    options.assets ?? {},
+  );
 }
 
 /** Analysis cannot grant filesystem authority or make an otherwise readable recording disappear. */
@@ -621,14 +755,22 @@ async function readObserverAnalysis(runRoot: PinnedDirectory): Promise<LoadedStu
     const runId = path.basename(runRoot.physicalPath);
     const cwd = path.dirname(path.dirname(path.dirname(runRoot.physicalPath)));
     const prepared = await bindExistingRunArtifactPaths(cwd, runId);
-    if (prepared.physicalRunRoot !== runRoot.physicalPath
-      || prepared.runRootIdentity.birthtimeNs !== runRoot.birthtimeNs
-      || prepared.runRootIdentity.dev !== runRoot.dev || prepared.runRootIdentity.ino !== runRoot.ino) {
+    if (
+      prepared.physicalRunRoot !== runRoot.physicalPath ||
+      prepared.runRootIdentity.birthtimeNs !== runRoot.birthtimeNs ||
+      prepared.runRootIdentity.dev !== runRoot.dev ||
+      prepared.runRootIdentity.ino !== runRoot.ino
+    ) {
       throw new Error("ANALYSIS_STORAGE_CHANGED");
     }
     return projectShareCheckedAnalysis(await loadStudyAnalysis(prepared));
   } catch {
-    return { state: "invalid", analysis: null, corrections: [], warnings: ["Analysis could not be validated against this recording."] };
+    return {
+      state: "invalid",
+      analysis: null,
+      corrections: [],
+      warnings: ["Analysis could not be validated against this recording."],
+    };
   }
 }
 
@@ -638,7 +780,7 @@ export async function serveRunPath(
   relativePath: string,
   response: ServerResponse,
   runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
-  request?: Pick<IncomingMessage, "method" | "headers">
+  request?: Pick<IncomingMessage, "method" | "headers">,
 ): Promise<void> {
   const root = runRoot.physicalPath;
   const filePath = path.resolve(root, relativePath === "" ? "observer/index.html" : relativePath);
@@ -655,9 +797,11 @@ export async function serveRunPath(
   // file serving bypass its current-content checks or a warmed source-only admission cache.
   const derivedRoot = cleanedRelativePath.split("/")[0];
   const derivedLeaf = path.posix.basename(cleanedRelativePath);
-  if (derivedRoot === ".analysis-lock"
-    || derivedLeaf.startsWith(".humanish-write-")
-    || isStudyAnalysisRecordPath(cleanedRelativePath)) {
+  if (
+    derivedRoot === ".analysis-lock" ||
+    derivedLeaf.startsWith(".humanish-write-") ||
+    isStudyAnalysisRecordPath(cleanedRelativePath)
+  ) {
     writeResponse(response, 404, "Not found", "text/plain; charset=utf-8");
     return;
   }
@@ -668,7 +812,12 @@ export async function serveRunPath(
       return;
     }
     const analysis = await readObserverAnalysis(runRoot);
-    writeResponse(response, 200, renderObserverHtml(observerData, { analysis }), "text/html; charset=utf-8");
+    writeResponse(
+      response,
+      200,
+      renderObserverHtml(observerData, { analysis }),
+      "text/html; charset=utf-8",
+    );
     return;
   }
 
@@ -678,12 +827,22 @@ export async function serveRunPath(
       writeResponse(response, 404, "Observer data not found", "text/plain; charset=utf-8");
       return;
     }
-    writeResponse(response, 200, JSON.stringify(observerData, null, 2), "application/json; charset=utf-8");
+    writeResponse(
+      response,
+      200,
+      JSON.stringify(observerData, null, 2),
+      "application/json; charset=utf-8",
+    );
     return;
   }
 
   if (cleanedRelativePath === "observer/study-analysis.json") {
-    writeResponse(response, 200, JSON.stringify(await readObserverAnalysis(runRoot)), "application/json; charset=utf-8");
+    writeResponse(
+      response,
+      200,
+      JSON.stringify(await readObserverAnalysis(runRoot)),
+      "application/json; charset=utf-8",
+    );
     return;
   }
 
@@ -700,7 +859,7 @@ export async function serveRunPath(
     }
     response.writeHead(200, {
       ...buildArtifactSecurityHeaders(),
-      "content-type": contentTypeForPath(filePath)
+      "content-type": contentTypeForPath(filePath),
     });
     response.end(body);
   } catch {
@@ -710,7 +869,7 @@ export async function serveRunPath(
 
 async function readObserverData(
   runRoot: PinnedDirectory,
-  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = []
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[] = [],
 ): Promise<ObserverData | null> {
   // Best-effort load from either source. Both reads swallow all errors on
   // purpose: this runs on every browser poll of a live run, where run.json may
@@ -718,21 +877,32 @@ async function readObserverData(
   // by observer-data.json. A transient failure just falls through to the next
   // source, or to null -> a 404 the poller retries; it must not surface a 500.
   try {
-    const bundleBytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, "run.json"));
+    const bundleBytes = await readContainedFile(
+      runRoot,
+      path.join(runRoot.physicalPath, "run.json"),
+    );
     if (!bundleBytes) throw new Error("run.json unavailable");
-    const bundle = JSON.parse(bundleBytes.toString("utf8")) as Parameters<typeof buildObserverData>[0];
-    return withRuntimeStreamUrls(await withLocalRunStatus(runRoot, buildObserverData(bundle)), runtimeStreamUrls);
+    const bundle = JSON.parse(bundleBytes.toString("utf8")) as Parameters<
+      typeof buildObserverData
+    >[0];
+    return withRuntimeStreamUrls(
+      await withLocalRunStatus(runRoot, buildObserverData(bundle)),
+      runtimeStreamUrls,
+    );
   } catch {}
 
   try {
     const observerBytes = await readContainedFile(
       runRoot,
-      path.join(runRoot.physicalPath, "observer", "observer-data.json")
+      path.join(runRoot.physicalPath, "observer", "observer-data.json"),
     );
     if (!observerBytes) throw new Error("observer-data.json unavailable");
     return withRuntimeStreamUrls(
-      await withLocalRunStatus(runRoot, withObserverEndings(JSON.parse(observerBytes.toString("utf8")) as ObserverData)),
-      runtimeStreamUrls
+      await withLocalRunStatus(
+        runRoot,
+        withObserverEndings(JSON.parse(observerBytes.toString("utf8")) as ObserverData),
+      ),
+      runtimeStreamUrls,
     );
   } catch {}
 
@@ -744,20 +914,31 @@ async function readObserverData(
  * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
  * process died (the evidence may have been copied from another machine). No PID is served/probed.
  */
-async function withLocalRunStatus(runRoot: PinnedDirectory, input: ObserverData): Promise<ObserverData> {
+async function withLocalRunStatus(
+  runRoot: PinnedDirectory,
+  input: ObserverData,
+): Promise<ObserverData> {
   // A served observation must never be inherited from a persisted projection or export.
   const { runtime: _persistedRuntime, ...data } = input;
   try {
-    const bytes = await readContainedFile(runRoot, path.join(runRoot.physicalPath, RUN_STATUS_FILE));
+    const bytes = await readContainedFile(
+      runRoot,
+      path.join(runRoot.physicalPath, RUN_STATUS_FILE),
+    );
     if (!bytes) return data;
     const record: unknown = JSON.parse(bytes.toString("utf8"));
-    if (!isRunStatusRecord(record) || record.runId !== data.run.runId || record.mode !== data.run.mode
-      || record.runId !== path.basename(runRoot.physicalPath)) return data;
+    if (
+      !isRunStatusRecord(record) ||
+      record.runId !== data.run.runId ||
+      record.mode !== data.run.mode ||
+      record.runId !== path.basename(runRoot.physicalPath)
+    )
+      return data;
     const now = Date.now();
     const started = Date.parse(record.startedAt);
     const updated = Date.parse(record.updatedAt);
-    const timestampsValid = Number.isFinite(started) && Number.isFinite(updated)
-      && started <= updated && updated <= now;
+    const timestampsValid =
+      Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
     let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
     if (timestampsValid) {
       if (record.state === "finished") {
@@ -766,21 +947,28 @@ async function withLocalRunStatus(runRoot: PinnedDirectory, input: ObserverData)
         state = "running";
       }
     }
-    return { ...data, runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" } };
+    return {
+      ...data,
+      runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" },
+    };
   } catch {
     return data;
   }
 }
 
 /** internal: exported for the #357 lifecycle tests (consumed by observer-serve). */
-export function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: ObserverRuntimeStreamUrl[]): ObserverData {
+export function withRuntimeStreamUrls(
+  data: ObserverData,
+  runtimeStreamUrls: ObserverRuntimeStreamUrl[],
+): ObserverData {
   const byStream = new Map(runtimeStreamUrls.map((stream) => [stream.streamId, stream]));
   return {
     ...data,
     streams: data.streams.map((input) => {
       // JSON projections are untrusted, including fallback observer-data.json. A marker saved in
       // a bundle is never authority; only this process's attached runtime map grants it again.
-      const stream = input.embed === undefined ? input : { ...input, embed: recordedStreamEmbed(input.embed) };
+      const stream =
+        input.embed === undefined ? input : { ...input, embed: recordedStreamEmbed(input.embed) };
       const runtime = byStream.get(stream.id);
       if (!runtime) return stream;
       if (runtime.ended) return { ...stream, liveEnded: true };
@@ -793,12 +981,12 @@ export function withRuntimeStreamUrls(data: ObserverData, runtimeStreamUrls: Obs
           ...(stream.embed ?? { title: stream.label }),
           kind: "iframe",
           url,
-          runtimeDesktop: true
+          runtimeDesktop: true,
         },
         transport: "sse",
-        url
+        url,
       };
-    })
+    }),
   };
 }
 
@@ -806,14 +994,29 @@ function runtimeDesktopUrl(value: string): string | null {
   if (!value || value.length > 16_384 || /[\u0000-\u0020\u007f\\]/.test(value)) return null;
   try {
     const url = new URL(value);
-    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password ? url.href : null;
-  } catch { return null; }
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /** internal: consumed by observer-serve */
 export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
   latestRunId: string | null;
-  runs: Array<{ runId: string; createdAt: string | null; mode: string | null; href: string; status: string; runtimeState?: NonNullable<ObserverData["runtime"]>["state"]; streamCount: number; estimatedCostUsd: number | null; costRatesAsOf: string | null; costPlaceholder: boolean }>;
+  runs: Array<{
+    runId: string;
+    createdAt: string | null;
+    mode: string | null;
+    href: string;
+    status: string;
+    runtimeState?: NonNullable<ObserverData["runtime"]>["state"];
+    streamCount: number;
+    estimatedCostUsd: number | null;
+    costRatesAsOf: string | null;
+    costPlaceholder: boolean;
+  }>;
 }> {
   await assertPinnedDirectory(proofRoot);
   const physicalCwd = path.dirname(path.dirname(proofRoot.physicalPath));
@@ -833,15 +1036,15 @@ export async function buildHistoryIndex(proofRoot: PinnedDirectory): Promise<{
         // Labeled run-total cost estimate (advisory; null when the run carries no cost summary).
         estimatedCostUsd: data?.cost?.estimatedTotalUsd ?? null,
         costRatesAsOf: data?.cost?.ratesAsOf ?? null,
-        costPlaceholder: data?.cost?.placeholder ?? false
+        costPlaceholder: data?.cost?.placeholder ?? false,
       };
-    })
+    }),
   );
 
   await assertPinnedDirectory(proofRoot);
   return {
     latestRunId: listed.latest && isSafeRunIdSegment(listed.latest) ? listed.latest : null,
-    runs
+    runs,
   };
 }
 
@@ -854,14 +1057,17 @@ export function matchRunRoute(pathname: string): { runId: string; relativePath: 
     if (!isSafeRunIdSegment(runId)) return null;
     return {
       runId,
-      relativePath: decodeURIComponent(match[2] || "observer/index.html")
+      relativePath: decodeURIComponent(match[2] || "observer/index.html"),
     };
   } catch {
     return null;
   }
 }
 
-async function readContainedFile(root: PinnedDirectory, filePathInput: string): Promise<Buffer | null> {
+async function readContainedFile(
+  root: PinnedDirectory,
+  filePathInput: string,
+): Promise<Buffer | null> {
   const opened = await openContainedFile(root, filePathInput);
   if (!opened) return null;
   try {
@@ -875,7 +1081,10 @@ async function readContainedFile(root: PinnedDirectory, filePathInput: string): 
   }
 }
 
-async function openContainedFile(root: PinnedDirectory, filePathInput: string): Promise<{ handle: FileHandle; size: number } | null> {
+async function openContainedFile(
+  root: PinnedDirectory,
+  filePathInput: string,
+): Promise<{ handle: FileHandle; size: number } | null> {
   const filePath = path.resolve(filePathInput);
   if (!isPathInside(root.physicalPath, filePath)) return null;
   let handle: FileHandle | null = null;
@@ -885,12 +1094,21 @@ async function openContainedFile(root: PinnedDirectory, filePathInput: string): 
     if (!expectedStats) return null;
     handle = await open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
     const openedStats = await handle.stat({ bigint: true });
-    if (!openedStats.isFile() || openedStats.nlink !== 1n || openedStats.dev !== expectedStats.dev || openedStats.ino !== expectedStats.ino) {
+    if (
+      !openedStats.isFile() ||
+      openedStats.nlink !== 1n ||
+      openedStats.dev !== expectedStats.dev ||
+      openedStats.ino !== expectedStats.ino
+    ) {
       await handle.close();
       return null;
     }
     const recheckedStats = await inspectContainedRegularFile(root, filePath);
-    if (!recheckedStats || recheckedStats.dev !== expectedStats.dev || recheckedStats.ino !== expectedStats.ino) {
+    if (
+      !recheckedStats ||
+      recheckedStats.dev !== expectedStats.dev ||
+      recheckedStats.ino !== expectedStats.ino
+    ) {
       await handle.close();
       return null;
     }
@@ -902,7 +1120,10 @@ async function openContainedFile(root: PinnedDirectory, filePathInput: string): 
   }
 }
 
-function byteRange(value: string | string[] | undefined, size: number): { start: number; end: number } | "invalid" | null {
+function byteRange(
+  value: string | string[] | undefined,
+  size: number,
+): { start: number; end: number } | "invalid" | null {
   if (value === undefined) return null;
   if (Array.isArray(value) || value.includes(",")) return "invalid";
   const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
@@ -914,7 +1135,14 @@ function byteRange(value: string | string[] | undefined, size: number): { start:
   }
   const start = Number(match[1]);
   const requestedEnd = match[2] ? Number(match[2]) : size - 1;
-  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(requestedEnd) || start < 0 || requestedEnd < start || start >= size) return "invalid";
+  if (
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(requestedEnd) ||
+    start < 0 ||
+    requestedEnd < start ||
+    start >= size
+  )
+    return "invalid";
   return { start, end: Math.min(requestedEnd, size - 1) };
 }
 
@@ -922,7 +1150,7 @@ async function serveContainedMedia(
   root: PinnedDirectory,
   filePath: string,
   response: ServerResponse,
-  request?: Pick<IncomingMessage, "method" | "headers">
+  request?: Pick<IncomingMessage, "method" | "headers">,
 ): Promise<void> {
   const opened = await openContainedFile(root, filePath);
   if (!opened) {
@@ -932,7 +1160,12 @@ async function serveContainedMedia(
   const range = byteRange(request?.headers.range, opened.size);
   if (range === "invalid") {
     await opened.handle.close();
-    response.writeHead(416, { ...buildArtifactSecurityHeaders(), "accept-ranges": "bytes", "content-range": `bytes */${opened.size}`, "content-length": "0" });
+    response.writeHead(416, {
+      ...buildArtifactSecurityHeaders(),
+      "accept-ranges": "bytes",
+      "content-range": `bytes */${opened.size}`,
+      "content-length": "0",
+    });
     response.end();
     return;
   }
@@ -944,7 +1177,7 @@ async function serveContainedMedia(
     "accept-ranges": "bytes",
     "content-type": "video/mp4",
     "content-length": String(opened.size === 0 ? 0 : end - start + 1),
-    ...(range ? { "content-range": `bytes ${start}-${end}/${opened.size}` } : {})
+    ...(range ? { "content-range": `bytes ${start}-${end}/${opened.size}` } : {}),
   });
   if (request?.method === "HEAD" || opened.size === 0) {
     await opened.handle.close();
@@ -972,10 +1205,15 @@ async function serveContainedMedia(
 
 async function inspectContainedRegularFile(
   root: PinnedDirectory,
-  filePath: string
+  filePath: string,
 ): Promise<PinnedFileIdentity | null> {
   const relative = path.relative(root.physicalPath, filePath);
-  if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+  if (
+    !relative ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
     return null;
   }
 
@@ -994,7 +1232,7 @@ async function inspectContainedRegularFile(
     }
   }
 
-  if (await realpath(filePath) !== filePath) return null;
+  if ((await realpath(filePath)) !== filePath) return null;
   return fileIdentity;
 }
 
@@ -1005,17 +1243,28 @@ export async function pinDirectory(directoryInput: string): Promise<PinnedDirect
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
     throw new Error("Observer roots must be physical directories.");
   }
-  return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino, physicalPath });
+  return Object.freeze({
+    birthtimeNs: stats.birthtimeNs,
+    dev: stats.dev,
+    ino: stats.ino,
+    physicalPath,
+  });
 }
 
 /** internal: consumed by observer-serve */
-export async function pinDirectChildDirectory(root: PinnedDirectory, name: string): Promise<PinnedDirectory | null> {
+export async function pinDirectChildDirectory(
+  root: PinnedDirectory,
+  name: string,
+): Promise<PinnedDirectory | null> {
   if (!isSafeRunIdSegment(name)) return null;
   try {
     await assertPinnedDirectory(root);
     const candidate = path.join(root.physicalPath, name);
     const pinned = await pinDirectory(candidate);
-    if (pinned.physicalPath !== candidate || path.dirname(pinned.physicalPath) !== root.physicalPath) {
+    if (
+      pinned.physicalPath !== candidate ||
+      path.dirname(pinned.physicalPath) !== root.physicalPath
+    ) {
       return null;
     }
     await assertPinnedDirectory(root);
@@ -1028,12 +1277,12 @@ export async function pinDirectChildDirectory(root: PinnedDirectory, name: strin
 async function assertPinnedDirectory(root: PinnedDirectory): Promise<void> {
   const stats = await lstat(root.physicalPath, { bigint: true });
   if (
-    stats.isSymbolicLink()
-    || !stats.isDirectory()
-    || stats.birthtimeNs !== root.birthtimeNs
-    || stats.dev !== root.dev
-    || stats.ino !== root.ino
-    || await realpath(root.physicalPath) !== root.physicalPath
+    stats.isSymbolicLink() ||
+    !stats.isDirectory() ||
+    stats.birthtimeNs !== root.birthtimeNs ||
+    stats.dev !== root.dev ||
+    stats.ino !== root.ino ||
+    (await realpath(root.physicalPath)) !== root.physicalPath
   ) {
     throw new Error("Observer root identity changed.");
   }
@@ -1043,11 +1292,11 @@ function writeResponse(
   response: ServerResponse,
   status: number,
   body: string,
-  contentType: string
+  contentType: string,
 ): void {
   response.writeHead(status, {
     "cache-control": "no-store",
-    "content-type": contentType
+    "content-type": contentType,
   });
   response.end(body);
 }
@@ -1074,14 +1323,19 @@ function contentTypeForPath(filePath: string): string {
   }
 }
 
-export function openTarget(target: string): { opened: boolean; command?: string; warning?: string } {
-  const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+export function openTarget(target: string): {
+  opened: boolean;
+  command?: string;
+  warning?: string;
+} {
+  const command =
+    process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
   const args = process.platform === "win32" ? ["/c", "start", "", target] : [target];
 
   try {
     const child = spawn(command, args, {
       detached: true,
-      stdio: "ignore"
+      stdio: "ignore",
     });
     // Missing desktop openers fail asynchronously (ENOENT), especially over SSH or in a
     // minimal container. The served URL remains usable; an opener must never crash its server.
@@ -1092,11 +1346,10 @@ export function openTarget(target: string): { opened: boolean; command?: string;
     return {
       opened: false,
       command: [command, ...args].join(" "),
-      warning: `Could not open observer automatically: ${error instanceof Error ? error.message : String(error)}`
+      warning: `Could not open observer automatically: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
-
 
 function closeServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -1119,7 +1372,7 @@ function escapeHtml(value: string): string {
         return "&lt;";
       case ">":
         return "&gt;";
-      case "\"":
+      case '"':
         return "&quot;";
       default:
         return "&#39;";

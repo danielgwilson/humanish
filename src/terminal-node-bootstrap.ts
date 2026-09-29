@@ -9,10 +9,10 @@ export const TERMINAL_NODE_VERSION = "22.23.2";
 // built-in default; npm's environment, CLI, user and global config still take precedence.
 export const TERMINAL_NODE_NPM_PREFIX_SCRIPT = [
   'const fs = require("node:fs");',
-  'const file = process.argv[1];',
+  "const file = process.argv[1];",
   'let existing = "";',
   'try { existing = fs.readFileSync(file, "utf8"); } catch (error) { if (error.code !== "ENOENT") throw error; }',
-  'if (!/^[\\t ]*prefix[\\t ]*=/m.test(existing)) fs.appendFileSync(file, "\\nprefix=/usr/local\\n");'
+  'if (!/^[\\t ]*prefix[\\t ]*=/m.test(existing)) fs.appendFileSync(file, "\\nprefix=/usr/local\\n");',
 ].join(" ");
 
 /** Unkeyed runtime prerequisite for stock Linux desktops. No apt repository refresh (#674). */
@@ -55,5 +55,5 @@ export const TERMINAL_NODE_BOOTSTRAP_COMMAND = [
   // Product installation already uses sudo; detect a template whose sudo PATH cannot see Node
   // rather than changing global PATH or permissions to make it look supported.
   `sudo -n node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' && sudo -n npm --version >/dev/null`,
-  "fi"
+  "fi",
 ].join("\n");

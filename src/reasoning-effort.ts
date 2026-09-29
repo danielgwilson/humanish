@@ -16,7 +16,15 @@
 // downgrade is the worse failure — it would record an effort the run did not actually use.
 
 /** The documented vocabulary, ordered from least to most reasoning. */
-export const REASONING_EFFORTS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export const REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
 
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
 

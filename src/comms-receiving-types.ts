@@ -1,14 +1,21 @@
 /** Internal receiving-only contract. Provider identifiers and content are host/runtime-only. */
 import type { CommsInlineImage } from "./comms-types.js";
 
-export interface ReceivingContext { signal?: AbortSignal; timeoutMs?: number }
+export interface ReceivingContext {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
 export interface ReceivingIdentity {
   provider: "agentmail";
   accountId: string;
   scopeType: "organization" | "pod" | "inbox";
   scopeId: string;
 }
-export interface ReceivingLease { resourceId: string; address: string; clientId: string }
+export interface ReceivingLease {
+  resourceId: string;
+  address: string;
+  clientId: string;
+}
 export interface ReceivedEmail {
   channel: "email";
   providerMessageId: string;
@@ -31,12 +38,21 @@ export interface ReceivingAdapter {
   authenticate(context?: ReceivingContext): Promise<ReceivingIdentity>;
   acquire(clientId: string, context?: ReceivingContext): Promise<ReceivingLease>;
   read(lease: ReceivingLease, context?: ReceivingContext): Promise<ReceivingBatch>;
-  release(lease: ReceivingLease, context?: ReceivingContext): Promise<{ status: "absent" | "deleting" }>;
+  release(
+    lease: ReceivingLease,
+    context?: ReceivingContext,
+  ): Promise<{ status: "absent" | "deleting" }>;
 }
 
 /** Content provided to a single participant's desktop; no provider identifiers. */
-export interface ParticipantEmail extends Omit<ReceivedEmail, "providerMessageId"> { id: string }
-export interface ReceivingSurfaceFile { path: string; body: string; contentType: "text/html; charset=utf-8" | "application/json; charset=utf-8" }
+export interface ParticipantEmail extends Omit<ReceivedEmail, "providerMessageId"> {
+  id: string;
+}
+export interface ReceivingSurfaceFile {
+  path: string;
+  body: string;
+  contentType: "text/html; charset=utf-8" | "application/json; charset=utf-8";
+}
 export interface RenderedReceivingInbox {
   files: ReceivingSurfaceFile[];
   blockedAssetCount: number;

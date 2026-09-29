@@ -16,11 +16,11 @@ function parse(execution: Record<string, unknown>) {
     title: "Egress test",
     subject: {
       source: "terminal-product",
-      product: { name: "humanish", publicSurfaces: ["https://github.com/danielgwilson/humanish"] }
+      product: { name: "humanish", publicSurfaces: ["https://github.com/danielgwilson/humanish"] },
     },
     actors: [{ type: "codex-exec", mission: "Do the thing." }],
     execution: { target: "e2b-terminal", runtimeAuth: "openai-env", ...execution },
-    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 } }
+    scenario: { mode: "dry-run", caps: { maxUsd: 0, maxJobs: 0, maxMinutes: 5 } },
   });
 }
 

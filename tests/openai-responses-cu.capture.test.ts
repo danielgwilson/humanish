@@ -1,4 +1,13 @@
-import { access, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -11,7 +20,7 @@ import {
   createOpenAiResponsesProvider,
   redactWireJson,
   wireCaptureFileName,
-  type FetchLike
+  type FetchLike,
 } from "../src/openai-responses-cu.js";
 
 // Deterministic coverage for the opt-in response wire-capture seam — the fixture-
@@ -57,19 +66,26 @@ function scriptedFetch(responses: unknown[]): FetchLike {
   return async () => {
     const value = responses[Math.min(i, responses.length - 1)];
     i += 1;
-    return { ok: true, status: 200, text: async () => JSON.stringify(value), json: async () => value };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
   };
 }
 
 const RESPONSE_ONE = {
   id: "resp_1",
-  output: [{ type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 11, y: 22 }] }],
-  usage: { input_tokens: 10, output_tokens: 4 }
+  output: [
+    { type: "computer_call", call_id: "call_1", actions: [{ type: "click", x: 11, y: 22 }] },
+  ],
+  usage: { input_tokens: 10, output_tokens: 4 },
 };
 
 const RESPONSE_TWO = {
   id: "resp_2",
-  output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }]
+  output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }],
 };
 
 describe("wire capture (opt-in, response-side, redacted)", () => {
@@ -87,7 +103,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const provider = createOpenAiResponsesProvider({
       apiKey: "test-key",
       fetchFn: scriptedFetch([RESPONSE_ONE, RESPONSE_TWO]),
-      env: {}
+      env: {},
     });
     await provider.nextTurn(request(), neverAbort);
     await provider.nextTurn(request(), neverAbort);
@@ -98,7 +114,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const provider = createOpenAiResponsesProvider({
       apiKey: "test-key",
       fetchFn: scriptedFetch([RESPONSE_ONE, RESPONSE_TWO]),
-      env: { [WIRE_CAPTURE_ENV]: "   " }
+      env: { [WIRE_CAPTURE_ENV]: "   " },
     });
     await provider.nextTurn(request(), neverAbort);
     expect(await readdir(cwd)).toEqual([]);
@@ -110,7 +126,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const provider = createOpenAiResponsesProvider({
       apiKey: "test-key",
       fetchFn: scriptedFetch([RESPONSE_ONE, RESPONSE_TWO]),
-      env: { [WIRE_CAPTURE_ENV]: captureDir }
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
 
     // Behavior with capture ON is identical to capture OFF: same parsed turns.
@@ -127,7 +143,9 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     // printed, trailing newline. Byte-stable output is what makes diffs reviewable.
     const first = await readFile(path.join(captureDir, "wire-001.json"), "utf8");
     expect(first).toBe(`${JSON.stringify(RESPONSE_ONE, null, 2)}\n`);
-    const second = JSON.parse(await readFile(path.join(captureDir, "wire-002.json"), "utf8")) as { id: string };
+    const second = JSON.parse(await readFile(path.join(captureDir, "wire-002.json"), "utf8")) as {
+      id: string;
+    };
     expect(second.id).toBe("resp_2");
   });
 
@@ -138,15 +156,20 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
       output: [
         {
           type: "message",
-          content: [{ type: "output_text", text: `Your key is ${FAKE_SECRET} stored at /home/someuser/app/.env` }]
-        }
+          content: [
+            {
+              type: "output_text",
+              text: `Your key is ${FAKE_SECRET} stored at /home/someuser/app/.env`,
+            },
+          ],
+        },
       ],
-      usage: { input_tokens: 7, output_tokens: 3 }
+      usage: { input_tokens: 7, output_tokens: 3 },
     };
     const provider = createOpenAiResponsesProvider({
       apiKey: "test-key",
       fetchFn: scriptedFetch([leaky]),
-      env: { [WIRE_CAPTURE_ENV]: captureDir }
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
     await provider.nextTurn(request(), neverAbort);
 
@@ -165,7 +188,12 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const fetchFn: FetchLike = async () => {
       call += 1;
       if (call === 1) {
-        return { ok: false, status: 429, text: async () => "rate limited (may echo input)", json: async () => ({}) };
+        return {
+          ok: false,
+          status: 429,
+          text: async () => "rate limited (may echo input)",
+          json: async () => ({}),
+        };
       }
       return { ok: true, status: 200, text: async () => "", json: async () => RESPONSE_TWO };
     };
@@ -173,7 +201,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
       apiKey: "test-key",
       fetchFn,
       delayFn: noDelay,
-      env: { [WIRE_CAPTURE_ENV]: captureDir }
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
     await provider.nextTurn(request(), neverAbort);
 
@@ -196,7 +224,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
         fetchCalls += 1;
         return { ok: true, status: 200, text: async () => "", json: async () => RESPONSE_ONE };
       },
-      env: { [WIRE_CAPTURE_ENV]: captureDir }
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
 
     await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(/regular files/i);
@@ -219,10 +247,12 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
         await symlink(second, alias, "dir");
         return { ok: true, status: 200, text: async () => "", json: async () => RESPONSE_ONE };
       },
-      env: { [WIRE_CAPTURE_ENV]: alias }
+      env: { [WIRE_CAPTURE_ENV]: alias },
     });
 
-    await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(/changed physical destination/i);
+    await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(
+      /changed physical destination/i,
+    );
     expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
     await expect(access(path.join(second, "wire-001.json"))).rejects.toThrow();
   });
@@ -232,7 +262,7 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     const provider = createOpenAiResponsesProvider({
       apiKey: "test-key",
       fetchFn: scriptedFetch([RESPONSE_ONE, RESPONSE_TWO]),
-      env: { [WIRE_CAPTURE_ENV]: captureDir }
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
     });
     // Two turns so the second REQUEST carries the base64 screenshot call output.
     await provider.nextTurn(request(), neverAbort);
@@ -253,7 +283,7 @@ describe("redactWireJson", () => {
     const input = {
       note: `leaked ${FAKE_SECRET}`,
       [FAKE_SECRET]: "value under a secret-shaped key",
-      nested: { list: ["plain", `also ${FAKE_SECRET}`] }
+      nested: { list: ["plain", `also ${FAKE_SECRET}`] },
     };
     const out = redactWireJson(input) as Record<string, unknown>;
     expect(out.note).toBe("leaked [REDACTED_SECRET]");

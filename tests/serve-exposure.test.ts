@@ -4,7 +4,7 @@ import {
   startExposedObserver,
   validateExposure,
   type ExposableServer,
-  type ExposureRequest
+  type ExposureRequest,
 } from "../src/serve-exposure.js";
 import type { ServeTunnel, StartNgrokTunnelOptions } from "../src/serve-tunnel.js";
 
@@ -14,7 +14,7 @@ function request(overrides: Partial<ExposureRequest> = {}): ExposureRequest {
     allowEmails: [],
     allowDomains: [],
     safe: false,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -27,7 +27,10 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 
   it("--expose --tunnel ngrok --oauth google → exposed, edge-authed, warns about no allow rule", () => {
-    const result = validateExposure("serve", request({ expose: true, tunnel: "ngrok", oauth: "google" }));
+    const result = validateExposure(
+      "serve",
+      request({ expose: true, tunnel: "ngrok", oauth: "google" }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.mode).toBe("exposed");
@@ -37,9 +40,15 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 
   it("--expose --tunnel ngrok --oauth google --allow-email → no allow-rule warning", () => {
-    const result = validateExposure("serve", request({
-      expose: true, tunnel: "ngrok", oauth: "google", allowEmails: ["you@example.com"]
-    }));
+    const result = validateExposure(
+      "serve",
+      request({
+        expose: true,
+        tunnel: "ngrok",
+        oauth: "google",
+        allowEmails: ["you@example.com"],
+      }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.oauth?.allowEmails).toEqual(["you@example.com"]);
@@ -47,7 +56,10 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 
   it("--expose --tunnel ngrok --safe (no oauth) → share-safe-open", () => {
-    const result = validateExposure("serve", request({ expose: true, tunnel: "ngrok", safe: true }));
+    const result = validateExposure(
+      "serve",
+      request({ expose: true, tunnel: "ngrok", safe: true }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.mode).toBe("share-safe-open");
@@ -76,7 +88,10 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 
   it("--expose --public-url → exposed (operator-secured edge)", () => {
-    const result = validateExposure("serve", request({ expose: true, publicUrl: "https://observer.example.com" }));
+    const result = validateExposure(
+      "serve",
+      request({ expose: true, publicUrl: "https://observer.example.com" }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.mode).toBe("exposed");
@@ -92,16 +107,25 @@ describe("validateExposure: serve surface (edge auth OR --safe)", () => {
   });
 
   it("--allow-email (no oauth) → ALLOW_REQUIRES_OAUTH", () => {
-    const result = validateExposure("serve", request({ expose: true, safe: true, allowEmails: ["a@example.com"] }));
+    const result = validateExposure(
+      "serve",
+      request({ expose: true, safe: true, allowEmails: ["a@example.com"] }),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH");
   });
 
   it("--tunnel + --public-url → OPTION_CONFLICT", () => {
-    const result = validateExposure("serve", request({
-      expose: true, tunnel: "ngrok", oauth: "google", publicUrl: "https://observer.example.com"
-    }));
+    const result = validateExposure(
+      "serve",
+      request({
+        expose: true,
+        tunnel: "ngrok",
+        oauth: "google",
+        publicUrl: "https://observer.example.com",
+      }),
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_SERVE_OPTION_CONFLICT");
@@ -126,9 +150,16 @@ describe("validateExposure: watch surface (edge auth REQUIRED)", () => {
   const live = { dryRun: false, detach: false, json: false };
 
   it("--expose --tunnel ngrok --oauth google --allow-email → ok, exposed", () => {
-    const result = validateExposure("watch", request({
-      expose: true, tunnel: "ngrok", oauth: "google", allowEmails: ["you@example.com"]
-    }), live);
+    const result = validateExposure(
+      "watch",
+      request({
+        expose: true,
+        tunnel: "ngrok",
+        oauth: "google",
+        allowEmails: ["you@example.com"],
+      }),
+      live,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.mode).toBe("exposed");
@@ -151,16 +182,28 @@ describe("validateExposure: watch surface (edge auth REQUIRED)", () => {
   });
 
   it("--expose --safe --tunnel ngrok --oauth google → SAFE_NOT_APPLICABLE (rejected even with edge auth present)", () => {
-    const result = validateExposure("watch", request({
-      expose: true, safe: true, tunnel: "ngrok", oauth: "google", allowEmails: ["you@example.com"]
-    }), live);
+    const result = validateExposure(
+      "watch",
+      request({
+        expose: true,
+        safe: true,
+        tunnel: "ngrok",
+        oauth: "google",
+        allowEmails: ["you@example.com"],
+      }),
+      live,
+    );
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
   });
 
   it("--expose --public-url → ok (operator-secured edge)", () => {
-    const result = validateExposure("watch", request({ expose: true, publicUrl: "https://observer.example.com" }), live);
+    const result = validateExposure(
+      "watch",
+      request({ expose: true, publicUrl: "https://observer.example.com" }),
+      live,
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.mode).toBe("exposed");
@@ -170,7 +213,7 @@ describe("validateExposure: watch surface (edge auth REQUIRED)", () => {
   it.each([
     ["dry-run", { dryRun: true, detach: false, json: false }],
     ["detach", { dryRun: false, detach: true, json: false }],
-    ["json", { dryRun: false, detach: false, json: true }]
+    ["json", { dryRun: false, detach: false, json: true }],
   ])("--expose with %s → EXPOSE_REQUIRES_LIVE_FOLLOW (checked before edge auth)", (_label, ctx) => {
     const result = validateExposure("watch", request({ expose: true, tunnel: "ngrok" }), ctx);
     expect(result.ok).toBe(false);
@@ -195,16 +238,24 @@ describe("startExposedObserver", () => {
       added,
       addPublicOrigin(origin: string) {
         added.push(origin);
-      }
+      },
     };
   }
 
   it("spawns the tunnel with mapped oauth args and extends the Host allowlist", async () => {
     const calls: StartNgrokTunnelOptions[] = [];
     const server = fakeServer();
-    const validated = validateExposure("watch", request({
-      expose: true, tunnel: "ngrok", oauth: "google", allowEmails: ["you@example.com"], allowDomains: ["example.com"]
-    }), { dryRun: false, detach: false, json: false });
+    const validated = validateExposure(
+      "watch",
+      request({
+        expose: true,
+        tunnel: "ngrok",
+        oauth: "google",
+        allowEmails: ["you@example.com"],
+        allowDomains: ["example.com"],
+      }),
+      { dryRun: false, detach: false, json: false },
+    );
     expect(validated.ok).toBe(true);
     if (!validated.ok) return;
 
@@ -212,7 +263,7 @@ describe("startExposedObserver", () => {
       startTunnel: async (options): Promise<ServeTunnel> => {
         calls.push(options);
         return { url: "https://observer.example.com/", close: async () => {} };
-      }
+      },
     });
 
     expect(calls).toHaveLength(1);
@@ -226,9 +277,15 @@ describe("startExposedObserver", () => {
 
   it("declares an operator --public-url without spawning a tunnel", async () => {
     const server = fakeServer();
-    const validated = validateExposure("watch", request({ expose: true, publicUrl: "https://observer.example.com" }), {
-      dryRun: false, detach: false, json: false
-    });
+    const validated = validateExposure(
+      "watch",
+      request({ expose: true, publicUrl: "https://observer.example.com" }),
+      {
+        dryRun: false,
+        detach: false,
+        json: false,
+      },
+    );
     expect(validated.ok).toBe(true);
     if (!validated.ok) return;
 
@@ -237,7 +294,7 @@ describe("startExposedObserver", () => {
       startTunnel: async () => {
         spawned = true;
         return { url: "unused", close: async () => {} };
-      }
+      },
     });
 
     expect(spawned).toBe(false);

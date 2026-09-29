@@ -6,20 +6,37 @@
    (@humanish/humanish-tokens); fonts fall back to system stacks unless
    --font-newsreader / --font-geist / --font-geist-mono are provided. */
 
-.vterm { width: 100%; max-width: 560px; font-family: var(--mono); font-size: 12.5px; line-height: 1.95
+.vterm {
+  width: 100%;
+  max-width: 560px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.95;
 }
 
-.vln { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--dz-body)
+.vln {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--dz-body);
 }
 
-.vp { color: var(--dz-ink)
+.vp {
+  color: var(--dz-ink);
 }
 
-.vok { color: var(--accent-dz); font-weight: 500
+.vok {
+  color: var(--accent-dz);
+  font-weight: 500;
 }
 
-.vdim { color: var(--dz-label)
+.vdim {
+  color: var(--dz-label);
 }
 
-.vsum { color: var(--dz-ink); border-top: 1px solid var(--dz-line); margin-top: 10px; padding-top: 10px
+.vsum {
+  color: var(--dz-ink);
+  border-top: 1px solid var(--dz-line);
+  margin-top: 10px;
+  padding-top: 10px;
 }

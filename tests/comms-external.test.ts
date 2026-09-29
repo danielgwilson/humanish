@@ -12,7 +12,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // These tests run the REAL python catch script as a subprocess — the same bytes deployed in-sandbox
 // — so the HTTP contract (POST capture, GET /deliveries, the token guard, /health's service marker)
 // is proven against the actual implementation rather than a stub of it.
-import { SANDBOX_CATCH_SCRIPT, collectExternalCommsThread, drainExternalCommsCatch, externalCatchHealthy, externalInboxUrl } from "../src/comms-sandbox-catch.js";
+import {
+  SANDBOX_CATCH_SCRIPT,
+  collectExternalCommsThread,
+  drainExternalCommsCatch,
+  externalCatchHealthy,
+  externalInboxUrl,
+} from "../src/comms-sandbox-catch.js";
 import { FakeInbox } from "../src/comms-fake-inbox.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
 import { freePort } from "./helpers/free-port.js";
@@ -40,7 +46,9 @@ beforeAll(async () => {
   await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
   port = await freePort();
   baseUrl = `http://127.0.0.1:${port}`;
-  child = spawn("python3", [scriptPath, String(port), deliveries, surface, "0", TOKEN], { stdio: "ignore" });
+  child = spawn("python3", [scriptPath, String(port), deliveries, surface, "0", TOKEN], {
+    stdio: "ignore",
+  });
   const ready = await waitForCatch(baseUrl);
   if (!ready) throw new Error("catch did not become healthy");
 }, 30_000);
@@ -55,7 +63,9 @@ describe("adopter-hosted comms ingress (#328)", () => {
     expect(await externalCatchHealthy({ catchBaseUrl: baseUrl })).toBe(true);
     // A server that answers 200 with something else must NOT pass — an adopter proxy or captive
     // portal would otherwise let a comms lab run and collect nothing.
-    expect(await externalCatchHealthy({ catchBaseUrl: "https://example.test" }, { timeoutMs: 1500 })).toBe(false);
+    expect(
+      await externalCatchHealthy({ catchBaseUrl: "https://example.test" }, { timeoutMs: 1500 }),
+    ).toBe(false);
   });
 
   it("captures a send over HTTP and drains it back, with the token guard enforced", async () => {
@@ -66,8 +76,8 @@ describe("adopter-hosted comms ingress (#328)", () => {
         from: "no-reply@example.test",
         to: ["user@example.test"],
         subject: "Confirm your email",
-        html: '<p>Verify</p><a href="https://app.example.test/verify?token=abc123">Verify</a>'
-      })
+        html: '<p>Verify</p><a href="https://app.example.test/verify?token=abc123">Verify</a>',
+      }),
     });
     expect(posted.ok).toBe(true);
 
@@ -86,7 +96,7 @@ describe("adopter-hosted comms ingress (#328)", () => {
     const collected = await collectExternalCommsThread({
       external: { catchBaseUrl: baseUrl, authToken: TOKEN },
       channel,
-      inboxes: [inbox]
+      inboxes: [inbox],
     });
     expect(collected.captured).toBeGreaterThanOrEqual(1);
     expect(collected.matched).toBeGreaterThanOrEqual(1);
@@ -99,9 +109,18 @@ describe("adopter-hosted comms ingress (#328)", () => {
   });
 
   it("derives the persona inbox URL, defaulting to the catch host when no separate inbox is declared", () => {
-    expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test" })).toBe("https://catch.example.test/inbox");
-    expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test/" })).toBe("https://catch.example.test/inbox");
-    expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test", inboxBaseUrl: "https://mail.example.test" })).toBe("https://mail.example.test/inbox");
+    expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test" })).toBe(
+      "https://catch.example.test/inbox",
+    );
+    expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test/" })).toBe(
+      "https://catch.example.test/inbox",
+    );
+    expect(
+      externalInboxUrl({
+        catchBaseUrl: "https://catch.example.test",
+        inboxBaseUrl: "https://mail.example.test",
+      }),
+    ).toBe("https://mail.example.test/inbox");
   });
 });
 
@@ -114,22 +133,28 @@ describe("comms.email.external config (#328)", () => {
     execution: { target: "e2b-desktop" },
     policies: { allowPublicTargets: true },
     scenario: { mode: "live" },
-    comms
+    comms,
   });
 
   it("makes comms LIVE on an app-url subject instead of warning it inert", () => {
-    const result = parseLabConfig(appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }));
+    const result = parseLabConfig(
+      appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
+    );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // The previously-inert warning must be gone: this is the whole point of the feature.
     expect(result.warnings.join("\n")).not.toContain("comms.email (the in-sandbox email/SMS catch");
     expect(result.config.comms?.email?.external?.catchBaseUrl).toBe("https://catch.example.test");
     // Recipients still auto-fill per lane, so the persona is told an address without extra config.
-    expect(result.config.comms?.email?.recipients).toEqual([{ lane: "lane-01", address: "lane-01@example.test" }]);
+    expect(result.config.comms?.email?.recipients).toEqual([
+      { lane: "lane-01", address: "lane-01@example.test" },
+    ]);
   });
 
   it("drops the injectEnv requirement for an external catch (there is no subject env to inject)", () => {
-    const withoutInject = parseLabConfig(appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }));
+    const withoutInject = parseLabConfig(
+      appUrlLab({ email: { external: { catchBaseUrl: "https://catch.example.test" } } }),
+    );
     expect(withoutInject.ok).toBe(true);
     // ...but still refuses when NOTHING declares where mail should go, and the message names every
     // transport that would satisfy it rather than only the HTTP one.
@@ -143,9 +168,15 @@ describe("comms.email.external config (#328)", () => {
   });
 
   it("rejects a non-absolute URL and a malformed token env NAME", () => {
-    const badUrl = parseLabConfig(appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }));
+    const badUrl = parseLabConfig(
+      appUrlLab({ email: { external: { catchBaseUrl: "/relative" } } }),
+    );
     expect(badUrl.ok).toBe(false);
-    const badEnv = parseLabConfig(appUrlLab({ email: { external: { catchBaseUrl: "https://c.example.test", authTokenEnv: "not a var" } } }));
+    const badEnv = parseLabConfig(
+      appUrlLab({
+        email: { external: { catchBaseUrl: "https://c.example.test", authTokenEnv: "not a var" } },
+      }),
+    );
     expect(badEnv.ok).toBe(false);
     if (!badEnv.ok) expect(badEnv.error.message).toContain("authTokenEnv");
   });
@@ -154,11 +185,20 @@ describe("comms.email.external config (#328)", () => {
     const provisioned = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "conflict",
-      subject: { source: "clone", repos: ["e/a"], serve: { start: "npm start", url: "http://127.0.0.1:3000/" } },
+      subject: {
+        source: "clone",
+        repos: ["e/a"],
+        serve: { start: "npm start", url: "http://127.0.0.1:3000/" },
+      },
       actors: [{ type: "openai-computer-use", count: 1, mission: "Sign up." }],
       execution: { target: "e2b-desktop" },
       scenario: { mode: "live" },
-      comms: { email: { injectEnv: "RESEND_API_URL", external: { catchBaseUrl: "https://catch.example.test" } } }
+      comms: {
+        email: {
+          injectEnv: "RESEND_API_URL",
+          external: { catchBaseUrl: "https://catch.example.test" },
+        },
+      },
     });
     expect(provisioned.ok).toBe(true);
     if (!provisioned.ok) return;
@@ -169,23 +209,56 @@ describe("comms.email.external config (#328)", () => {
 });
 
 describe("external inbox capability admission", () => {
-  const current = { ok: true, service: "humanish-comms-catch", capabilities: ["recipient-inbox-v1"] };
+  const current = {
+    ok: true,
+    service: "humanish-comms-catch",
+    capabilities: ["recipient-inbox-v1"],
+  };
   it.each([
     { ok: true, service: "humanish-comms-catch" },
     { ...current, capabilities: "recipient-inbox-v1" },
     { ...current, service: "something-humanish-comms-catch" },
     { ...current, ok: false },
     null,
-    "humanish-comms-catch recipient-inbox-v1"
+    "humanish-comms-catch recipient-inbox-v1",
   ])("refuses old or malformed health without accepting a substring", async (body) => {
-    expect(await externalCatchHealthy({ catchBaseUrl: "https://catch.example.test" }, { fetchFn: async () => Response.json(body) })).toBe(false);
+    expect(
+      await externalCatchHealthy(
+        { catchBaseUrl: "https://catch.example.test" },
+        { fetchFn: async () => Response.json(body) },
+      ),
+    ).toBe(false);
   });
   it("requires both the capture and separately declared inbox listener to support scopes", async () => {
     const targets: string[] = [];
-    const external = { catchBaseUrl: "https://catch.example.test", inboxBaseUrl: "https://inbox.example.test" };
-    expect(await externalCatchHealthy(external, { fetchFn: async (input) => { targets.push(String(input)); return Response.json(current); } })).toBe(true);
-    expect(targets.sort()).toEqual(["https://catch.example.test/health", "https://inbox.example.test/health"]);
-    expect(await externalCatchHealthy(external, { fetchFn: async (input) => Response.json(String(input).includes("inbox.example") ? { ok: true, service: "humanish-comms-catch" } : current) })).toBe(false);
-    expect(await externalCatchHealthy(external, { fetchFn: async () => new Response("not JSON") })).toBe(false);
+    const external = {
+      catchBaseUrl: "https://catch.example.test",
+      inboxBaseUrl: "https://inbox.example.test",
+    };
+    expect(
+      await externalCatchHealthy(external, {
+        fetchFn: async (input) => {
+          targets.push(String(input));
+          return Response.json(current);
+        },
+      }),
+    ).toBe(true);
+    expect(targets.sort()).toEqual([
+      "https://catch.example.test/health",
+      "https://inbox.example.test/health",
+    ]);
+    expect(
+      await externalCatchHealthy(external, {
+        fetchFn: async (input) =>
+          Response.json(
+            String(input).includes("inbox.example")
+              ? { ok: true, service: "humanish-comms-catch" }
+              : current,
+          ),
+      }),
+    ).toBe(false);
+    expect(
+      await externalCatchHealthy(external, { fetchFn: async () => new Response("not JSON") }),
+    ).toBe(false);
   });
 });

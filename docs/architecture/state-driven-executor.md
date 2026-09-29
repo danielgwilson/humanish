@@ -27,14 +27,14 @@ This is the "plural harnesses / transport-agnostic" intent of
 
 ```ts
 interface CuaExecutor {
-  observe(): Promise<CuaObservation>;   // capture current state
+  observe(): Promise<CuaObservation>; // capture current state
   execute(action: CuaAction, signal?: AbortSignal): Promise<void>; // perform one action
 }
 
 interface CuaObservation {
-  screenshot?: Buffer;                  // OPTIONAL — a state executor omits it
-  stateSignature: string;              // REQUIRED — the fallback progress key
-  appState?: Record<string, unknown>;  // structured state; preferred for progress
+  screenshot?: Buffer; // OPTIONAL — a state executor omits it
+  stateSignature: string; // REQUIRED — the fallback progress key
+  appState?: Record<string, unknown>; // structured state; preferred for progress
 }
 ```
 
@@ -98,7 +98,7 @@ action**, not a fatal error:
 - **No infinite loop.** A skipped action changes nothing on screen, so it is not
   progress. A run that keeps failing every action makes no progress and still
   terminates honestly through the existing idle / no-progress backstop
-  (`gave_up`) — the resilience only converts a *single flaky command* from fatal
+  (`gave_up`) — the resilience only converts a _single flaky command_ from fatal
   to survivable; it never masks a genuinely stuck run.
 
 Public-safety: the notice text carries only the substrate's own stderr (tailed +
@@ -136,7 +136,7 @@ today, and records it here.
 into any `ActorTraceItem`, reason, id, or count, and is **never** persisted to the
 trace. Only the derived progress key is computed in-memory and discarded.
 
-Why: the published-evidence scan catches only secret-*shaped* patterns. A
+Why: the published-evidence scan catches only secret-_shaped_ patterns. A
 structured app blob (ids, free-form state, possibly user chat or shapeless
 tokens) is exactly the "value has no shape" gap that pattern redaction cannot
 close. So this slice does not treat `appState` as an evidence surface at all.
@@ -227,7 +227,7 @@ Read every optional field defensively, and spread-omit optional fields
 - **PR2 — a config-only deterministic `state-contract` lane.** A registered,
   model-free lane driving a built-in `window.app.*` bridge over the existing
   `ScriptedPageLike.evaluate` primitive + a YAML step program, `scenario.mode:
-  live` gating actuation. It would be deterministic step replay, NOT
+live` gating actuation. It would be deterministic step replay, NOT
   `runComputerUseLoop`, and must not overclaim friction-loop reuse.
 - **PR3 — a `subject.contract.ref` JS-module loader.** A config-referenced module
   loaded and run in-process with full harness privileges is a genuinely NEW trust

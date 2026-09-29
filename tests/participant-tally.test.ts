@@ -19,7 +19,7 @@ describe("tallyParticipantOutcomes", () => {
       "abandoned",
       "incomplete",
       "blocked",
-      "failed"
+      "failed",
     ]);
     expect(tally).toEqual({
       total: 6,
@@ -29,7 +29,7 @@ describe("tallyParticipantOutcomes", () => {
       blocked: 1,
       // The only member that says the instrument, rather than the product, is what went wrong.
       harnessFailed: 1,
-      reportedFriction: 0
+      reportedFriction: 0,
     });
   });
 
@@ -42,7 +42,8 @@ describe("tallyParticipantOutcomes", () => {
   it("never lets the parts exceed the whole", () => {
     const statuses = ["passed", "abandoned", "incomplete", "blocked", "failed"] as ActorStatus[];
     const tally = tallyParticipantOutcomes(statuses);
-    const parts = tally.reachedGoal + tally.abandoned + tally.ranOut + tally.blocked + tally.harnessFailed;
+    const parts =
+      tally.reachedGoal + tally.abandoned + tally.ranOut + tally.blocked + tally.harnessFailed;
     expect(parts).toBeLessThanOrEqual(tally.total);
     expect(tally.total).toBe(statuses.length);
   });
@@ -55,7 +56,7 @@ describe("tallyParticipantOutcomes", () => {
       ranOut: 0,
       blocked: 0,
       harnessFailed: 0,
-      reportedFriction: 0
+      reportedFriction: 0,
     });
   });
 
@@ -75,21 +76,25 @@ describe("formatParticipantOutcomes", () => {
   it("preserves old outcome counts and falls back when recorded cause details cannot explain the whole tally", () => {
     const recorded = tallyParticipantOutcomes(["abandoned", "incomplete", "timed_out"]);
     const before = structuredClone(recorded);
-    expect(formatParticipantOutcomes(recorded, [
-      { status: "abandoned", label: "provider token limit" },
-      { status: "incomplete", label: "adapter admission limit" }
-    ])).toBe("0/3 recorded completions, 1 interrupted (provider token limit), 2 interrupted (stop details unavailable)");
+    expect(
+      formatParticipantOutcomes(recorded, [
+        { status: "abandoned", label: "provider token limit" },
+        { status: "incomplete", label: "adapter admission limit" },
+      ]),
+    ).toBe(
+      "0/3 recorded completions, 1 interrupted (provider token limit), 2 interrupted (stop details unavailable)",
+    );
     expect(recorded).toEqual(before);
   });
   it("always leads with the denominator", () => {
-    expect(formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed", "abandoned"]))).toContain(
-      "2/3 reached the goal"
-    );
+    expect(
+      formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed", "abandoned"])),
+    ).toContain("2/3 reached the goal");
   });
 
   it("names what happened to everyone who did not finish", () => {
     const line = formatParticipantOutcomes(
-      tallyParticipantOutcomes(["passed", "abandoned", "incomplete", "blocked", "failed"])
+      tallyParticipantOutcomes(["passed", "abandoned", "incomplete", "blocked", "failed"]),
     );
     expect(line).toContain("1/5 reached the goal");
     expect(line).toContain("1 gave up");
@@ -99,7 +104,9 @@ describe("formatParticipantOutcomes", () => {
   });
 
   it("surfaces friction next to a clean-looking outcome", () => {
-    const line = formatParticipantOutcomes(tallyParticipantOutcomes(["passed", "passed"], [false, true]));
+    const line = formatParticipantOutcomes(
+      tallyParticipantOutcomes(["passed", "passed"], [false, true]),
+    );
     expect(line).toBe("2/2 reached the goal, 1 reported friction");
   });
 

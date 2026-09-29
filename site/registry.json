@@ -23,9 +23,7 @@
       "title": "Terminal cast",
       "description": "A static terminal transcript rendered as text — command, check lines, and a ruled summary. Copy-pastable, no pixels. The component humanish.dev uses for its verify output.",
       "docs": "Import styles once in your global CSS: @import \"../styles/humanish/terminal-cast.css\";. Renders light-on-dark: place inside a dark surface (e.g. the pinned-replay dark panel, or your own). Example: <TerminalCast lines={[{ kind: \"cmd\", text: \"$ humanish verify\" }, { kind: \"ok\", text: \"redaction passed\" }, { kind: \"sum\", text: \"16/16 passed\" }]} />",
-      "registryDependencies": [
-        "https://humanish.dev/r/humanish-tokens.json"
-      ],
+      "registryDependencies": ["https://humanish.dev/r/humanish-tokens.json"],
       "files": [
         {
           "path": "components/terminal-cast.tsx",
@@ -44,9 +42,7 @@
       "title": "Persona lane",
       "description": "One lane of a run: the keyframe a persona saw, its verbatim final report, and an honest status chip — failed lanes render muted, never hidden. Ships the resolve-cover canvas veil that dissolves into the screenshot (finished state under reduced motion).",
       "docs": "Import styles once in your global CSS: @import \"../styles/humanish/persona-lane.css\";. Example: <PersonaLane idx=\"01\" name=\"sticky-notes\" img=\"/lane.jpg\" alt=\"…\" reportLabel=\"Final report — verbatim\" report=\"Done.\" passed />",
-      "registryDependencies": [
-        "https://humanish.dev/r/humanish-tokens.json"
-      ],
+      "registryDependencies": ["https://humanish.dev/r/humanish-tokens.json"],
       "files": [
         {
           "path": "components/persona-lane.tsx",

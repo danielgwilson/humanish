@@ -57,11 +57,15 @@ export const NATURALISTIC_AFFORDANCE_CLASSES: readonly AffordanceClass[] = [
   "keyboard",
   "speech",
   "url-navigation",
-  "observation"
+  "observation",
 ];
 
 /** Classes that reach past the rendered product surface. Recorded, never blocked. */
-export const SHORTCUT_AFFORDANCE_CLASSES: readonly AffordanceClass[] = ["script-execution", "devtools", "browser-internal"];
+export const SHORTCUT_AFFORDANCE_CLASSES: readonly AffordanceClass[] = [
+  "script-execution",
+  "devtools",
+  "browser-internal",
+];
 
 export interface AffordanceObservation {
   affordance: AffordanceClass;
@@ -103,7 +107,7 @@ const DEVTOOLS_CHORDS = new Set([
   "cmd+alt+c",
   "meta+alt+i",
   "meta+alt+j",
-  "meta+alt+c"
+  "meta+alt+c",
 ]);
 
 /**
@@ -165,16 +169,23 @@ export function classifyCuaAction(action: CuaAction): AffordanceObservation {
  */
 function normalizeChord(keys: readonly string[]): string {
   const alias: Record<string, string> = {
-    control: "ctrl", ctl: "ctrl",
-    meta: "cmd", command: "cmd", super: "cmd", os: "cmd",
-    option: "alt", opt: "alt"
+    control: "ctrl",
+    ctl: "ctrl",
+    meta: "cmd",
+    command: "cmd",
+    super: "cmd",
+    os: "cmd",
+    option: "alt",
+    opt: "alt",
   };
   const parts = keys.map((key) => {
     const lowered = key.trim().toLowerCase();
     return alias[lowered] ?? lowered;
   });
   const order = ["ctrl", "cmd", "alt", "shift"];
-  const modifiers = parts.filter((part) => order.includes(part)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const modifiers = parts
+    .filter((part) => order.includes(part))
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b));
   const rest = parts.filter((part) => !order.includes(part));
   return [...modifiers, ...rest].join("+");
 }
@@ -187,11 +198,16 @@ function schemeOf(text: string): string {
 }
 
 /** Fold a sequence of observations into the per-run aggregate. */
-export function summarizeAffordanceUse(observations: readonly AffordanceObservation[]): AffordanceUse {
+export function summarizeAffordanceUse(
+  observations: readonly AffordanceObservation[],
+): AffordanceUse {
   const counts: Partial<Record<AffordanceClass, number>> = {};
   for (const observation of observations) {
     counts[observation.affordance] = (counts[observation.affordance] ?? 0) + 1;
   }
-  const shortcutTotal = SHORTCUT_AFFORDANCE_CLASSES.reduce((sum, klass) => sum + (counts[klass] ?? 0), 0);
+  const shortcutTotal = SHORTCUT_AFFORDANCE_CLASSES.reduce(
+    (sum, klass) => sum + (counts[klass] ?? 0),
+    0,
+  );
   return { schema: AFFORDANCE_CLASS_SCHEMA, counts, total: observations.length, shortcutTotal };
 }

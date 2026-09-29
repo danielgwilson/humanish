@@ -3,10 +3,10 @@ export default {
   app: {
     name: "humanish",
     baseUrl: "file://README.md",
-    startCommand: "pnpm humanish -- --help"
+    startCommand: "pnpm humanish -- --help",
   },
   personasDir: "humanish/personas",
   scenariosDir: "humanish/scenarios",
   policiesDir: "humanish/policies",
-  artifactsDir: ".humanish/runs"
+  artifactsDir: ".humanish/runs",
 };

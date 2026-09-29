@@ -69,12 +69,16 @@ function optStr(value: unknown): string | undefined {
 /** "Name <email@host>" → "email@host"; a bare address passes through. */
 function bareEmail(value: string): string {
   const angle = value.match(/<([^>]+)>/);
-  return (angle ? angle[1] ?? value : value).trim();
+  return (angle ? (angle[1] ?? value) : value).trim();
 }
 /** A recipient field → address strings: an array, a single, or a comma-separated string (Postmark). */
 function toAddresses(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((entry) => bareEmail(String(entry)));
-  if (typeof value === "string") return value.split(",").map((part) => bareEmail(part)).filter((part) => part.length > 0);
+  if (typeof value === "string")
+    return value
+      .split(",")
+      .map((part) => bareEmail(part))
+      .filter((part) => part.length > 0);
   return [];
 }
 
@@ -97,10 +101,16 @@ export const genericEmailProfile: EmailSendProfile = {
       const bodyValue = str(rec.html ?? rec.HtmlBody ?? rec.text ?? rec.TextBody);
       if (to.length === 0 && from === "" && bodyValue === "") continue;
       const inlineImages = capturedInlineImages(rec.inlineImages);
-      out.push({ from, to, ...(subject === undefined ? {} : { subject }), body: bodyValue, ...(inlineImages.length ? { inlineImages } : {}) });
+      out.push({
+        from,
+        to,
+        ...(subject === undefined ? {} : { subject }),
+        body: bodyValue,
+        ...(inlineImages.length ? { inlineImages } : {}),
+      });
     }
     return out;
-  }
+  },
 };
 
 /** SendGrid's nested shape: `from.email`, `personalizations[].to[].email`, `content[].value`. Proves
@@ -112,15 +122,21 @@ export const sendgridEmailProfile: EmailSendProfile = {
     if (typeof body !== "object" || body === null) return [];
     const rec = body as Record<string, unknown>;
     const fromObj = rec.from;
-    const from = typeof fromObj === "object" && fromObj !== null ? str((fromObj as Record<string, unknown>).email) : str(fromObj);
+    const from =
+      typeof fromObj === "object" && fromObj !== null
+        ? str((fromObj as Record<string, unknown>).email)
+        : str(fromObj);
     const subject = optStr(rec.subject);
     const content = Array.isArray(rec.content) ? (rec.content as unknown[]) : [];
-    const isPart = (part: unknown): part is Record<string, unknown> => typeof part === "object" && part !== null;
+    const isPart = (part: unknown): part is Record<string, unknown> =>
+      typeof part === "object" && part !== null;
     const chosen =
       content.find((part) => isPart(part) && part.type === "text/html") ??
       content.find((part) => isPart(part) && part.type === "text/plain");
     const bodyValue = isPart(chosen) ? str(chosen.value) : "";
-    const personalizations = Array.isArray(rec.personalizations) ? (rec.personalizations as unknown[]) : [];
+    const personalizations = Array.isArray(rec.personalizations)
+      ? (rec.personalizations as unknown[])
+      : [];
     const to: string[] = [];
     for (const personalization of personalizations) {
       if (!isPart(personalization)) continue;
@@ -139,10 +155,13 @@ export const sendgridEmailProfile: EmailSendProfile = {
     res.statusCode = 202;
     if (ids[0] !== undefined) res.setHeader("x-message-id", ids[0]);
     res.end();
-  }
+  },
 };
 
-export const DEFAULT_EMAIL_PROFILES: EmailSendProfile[] = [genericEmailProfile, sendgridEmailProfile];
+export const DEFAULT_EMAIL_PROFILES: EmailSendProfile[] = [
+  genericEmailProfile,
+  sendgridEmailProfile,
+];
 
 // ---------------------------------------------------------------- server
 
@@ -175,13 +194,14 @@ const MAX_BODY_BYTES = 5 * 1024 * 1024;
  */
 export async function startEmailCatchServer(
   channel: CommsChannel,
-  options: EmailCatchOptions = {}
+  options: EmailCatchOptions = {},
 ): Promise<EmailCatchServer> {
   const host = options.host ?? "127.0.0.1";
   const profiles = options.profiles ?? DEFAULT_EMAIL_PROFILES;
   const received: NormalizedSend[] = [];
   let idCounter = 0;
-  const idFor = options.idFor ?? ((n: number): string => `humanish-catch-${n.toString().padStart(6, "0")}`);
+  const idFor =
+    options.idFor ?? ((n: number): string => `humanish-catch-${n.toString().padStart(6, "0")}`);
 
   const respondJson = (res: ServerResponse, status: number, value: unknown): void => {
     res.statusCode = status;
@@ -192,10 +212,18 @@ export async function startEmailCatchServer(
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = (req.url ?? "/").split("?")[0] ?? "/";
     if (req.method === "GET" && (path === "/" || path === "/health")) {
-      respondJson(res, 200, { ok: true, service: "humanish-email-catch", channel: channel.channel, profiles: profiles.map((p) => p.name) });
+      respondJson(res, 200, {
+        ok: true,
+        service: "humanish-email-catch",
+        channel: channel.channel,
+        profiles: profiles.map((p) => p.name),
+      });
       return;
     }
-    const profile = req.method === "POST" ? profiles.find((candidate) => candidate.sendPaths.includes(path)) : undefined;
+    const profile =
+      req.method === "POST"
+        ? profiles.find((candidate) => candidate.sendPaths.includes(path))
+        : undefined;
     if (profile === undefined) {
       respondJson(res, 404, { error: "not found" });
       return;
@@ -204,7 +232,10 @@ export async function startEmailCatchServer(
     try {
       raw = await readBody(req, MAX_BODY_BYTES);
     } catch (error) {
-      if (!res.headersSent) respondJson(res, error instanceof BodyTooLargeError ? 413 : 400, { error: "request body could not be read" });
+      if (!res.headersSent)
+        respondJson(res, error instanceof BodyTooLargeError ? 413 : 400, {
+          error: "request body could not be read",
+        });
       req.destroy();
       return;
     }
@@ -230,7 +261,7 @@ export async function startEmailCatchServer(
         to: send.to,
         ...(send.subject === undefined ? {} : { subject: send.subject }),
         body: send.body,
-        ...(send.inlineImages ? { inlineImages: send.inlineImages } : {})
+        ...(send.inlineImages ? { inlineImages: send.inlineImages } : {}),
       };
       await channel.deliverRaw(inbound);
       idCounter += 1;
@@ -254,6 +285,6 @@ export async function startEmailCatchServer(
     url: `http://${host}:${port}`,
     port,
     received,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve()))
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
 }

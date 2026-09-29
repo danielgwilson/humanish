@@ -8,7 +8,7 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   type PreparedOutputDirectory,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
 export const CODEX_APP_SERVER_TRACE_SCHEMA = "humanish.codex-app-server-trace.v1";
@@ -164,11 +164,12 @@ export interface CodexTraceNotice {
   message: string;
 }
 
-const authLikeKey = /(api[_-]?key|access[_-]?token|auth[_-]?url|authorization|bearer|credential|password|secret|token)$/i;
+const authLikeKey =
+  /(api[_-]?key|access[_-]?token|auth[_-]?url|authorization|bearer|credential|password|secret|token)$/i;
 const pathLikeKey = /^(cwd|path|writableRoots|workspaceRoot)$/i;
 
 export async function runCodexAppServerSession(
-  options: CodexAppServerRunOptions
+  options: CodexAppServerRunOptions,
 ): Promise<CodexAppServerRunResult> {
   const preparedRunRoot = await prepareSelectedOutputDirectory(process.cwd(), options.runRoot);
   return runCodexAppServerSessionInPreparedRoot(options, preparedRunRoot);
@@ -177,7 +178,7 @@ export async function runCodexAppServerSession(
 /** Internal UI seam: the selected root was already prepared and must not be re-authorized. */
 export async function runCodexAppServerSessionInPreparedRoot(
   options: CodexAppServerRunOptions,
-  runRoot: PreparedOutputDirectory
+  runRoot: PreparedOutputDirectory,
 ): Promise<CodexAppServerRunResult> {
   const startedAt = new Date();
   const startedMs = Date.now();
@@ -189,7 +190,7 @@ export async function runCodexAppServerSessionInPreparedRoot(
   await Promise.all([
     prepareContainedOutputFile(runRoot, eventsPath),
     prepareContainedOutputFile(runRoot, tracePath),
-    prepareContainedOutputFile(runRoot, transcriptPath)
+    prepareContainedOutputFile(runRoot, transcriptPath),
   ]);
   const commandParts = resolveAppServerCommand(options.actorCommand);
   const childEnv = resolveCodexAppServerEnv(process.env);
@@ -197,14 +198,14 @@ export async function runCodexAppServerSessionInPreparedRoot(
   const child = spawn(commandParts.command, commandParts.args, {
     cwd: options.cwd,
     env: childEnv,
-    stdio: ["pipe", "pipe", "pipe"]
+    stdio: ["pipe", "pipe", "pipe"],
   });
   const recorder = new CodexTraceRecorder({
     commandName: commandParts.name,
     cwd: options.cwd,
     experimentalApi: options.experimentalApi === true,
     promptDigest: digestText(options.prompt),
-    startedAt: startedAt.toISOString()
+    startedAt: startedAt.toISOString(),
   });
   const envelopes: string[] = [];
   let transcript = "";
@@ -219,19 +220,24 @@ export async function runCodexAppServerSessionInPreparedRoot(
   let signal: NodeJS.Signals | undefined;
   let completionStatus: string | undefined;
   let completionReason = "Codex app-server turn did not complete.";
-  const pending = new Map<JsonRpcId, {
-    reject: (error: Error) => void;
-    resolve: (value: JsonObject) => void;
-  }>();
+  const pending = new Map<
+    JsonRpcId,
+    {
+      reject: (error: Error) => void;
+      resolve: (value: JsonObject) => void;
+    }
+  >();
 
   const appendEnvelope = (direction: "client" | "server", message: unknown): void => {
     const redacted = redactCodexEnvelope(message, options.cwd);
     recorder.observeEnvelope(direction, redacted);
-    envelopes.push(JSON.stringify({
-      at: new Date().toISOString(),
-      direction,
-      message: redacted
-    }));
+    envelopes.push(
+      JSON.stringify({
+        at: new Date().toISOString(),
+        direction,
+        message: redacted,
+      }),
+    );
   };
 
   const send = (message: JsonObject): void => {
@@ -250,9 +256,7 @@ export async function runCodexAppServerSessionInPreparedRoot(
   const request = (method: string, params: JsonObject | undefined): Promise<JsonObject> => {
     const id = nextId;
     nextId += 1;
-    const message: JsonObject = params === undefined
-      ? { method, id }
-      : { method, id, params };
+    const message: JsonObject = params === undefined ? { method, id } : { method, id, params };
     const promise = new Promise<JsonObject>((resolve, reject) => {
       pending.set(id, { resolve, reject });
     });
@@ -331,9 +335,11 @@ export async function runCodexAppServerSessionInPreparedRoot(
     if (parsed.method === "thread/started") {
       threadId = readNestedString(parsed, ["params", "thread", "id"]) ?? threadId;
       recorder.threadId = threadId;
-      recorder.sessionId = readNestedString(parsed, ["params", "thread", "sessionId"]) ?? recorder.sessionId;
+      recorder.sessionId =
+        readNestedString(parsed, ["params", "thread", "sessionId"]) ?? recorder.sessionId;
       recorder.model = readNestedString(parsed, ["params", "thread", "model"]) ?? recorder.model;
-      recorder.codexCliVersion = readNestedString(parsed, ["params", "thread", "cliVersion"]) ?? recorder.codexCliVersion;
+      recorder.codexCliVersion =
+        readNestedString(parsed, ["params", "thread", "cliVersion"]) ?? recorder.codexCliVersion;
     }
 
     if (parsed.method === "turn/started") {
@@ -343,13 +349,18 @@ export async function runCodexAppServerSessionInPreparedRoot(
 
     if (parsed.method === "turn/completed") {
       completionStatus = readNestedString(parsed, ["params", "turn", "status"]);
-      completionReason = completionStatus ? `turn completed with status ${completionStatus}` : "turn completed";
+      completionReason = completionStatus
+        ? `turn completed with status ${completionStatus}`
+        : "turn completed";
       completed = true;
       child.kill("SIGTERM");
     }
   });
 
-  const finish = async (status: CodexAppServerStatus, reason: string): Promise<CodexAppServerRunResult> => {
+  const finish = async (
+    status: CodexAppServerStatus,
+    reason: string,
+  ): Promise<CodexAppServerRunResult> => {
     clearTimeout(timeout);
     for (const pendingRequest of pending.values()) {
       pendingRequest.reject(new Error(reason));
@@ -361,16 +372,28 @@ export async function runCodexAppServerSessionInPreparedRoot(
       completedAt,
       durationMs,
       reason,
-      status
+      status,
     });
     const transcriptText = recorder.renderTranscript();
-    await writeContainedOutputFile(runRoot, eventsPath, `${envelopes.join("\n")}${envelopes.length > 0 ? "\n" : ""}`, "utf8");
-    await writeContainedOutputFile(runRoot, tracePath, `${JSON.stringify(trace, null, 2)}\n`, "utf8");
+    await writeContainedOutputFile(
+      runRoot,
+      eventsPath,
+      `${envelopes.join("\n")}${envelopes.length > 0 ? "\n" : ""}`,
+      "utf8",
+    );
+    await writeContainedOutputFile(
+      runRoot,
+      tracePath,
+      `${JSON.stringify(trace, null, 2)}\n`,
+      "utf8",
+    );
     await writeContainedOutputFile(
       runRoot,
       transcriptPath,
-      transcriptText.length > 0 ? transcriptText : "No Codex app-server transcript output captured.\n",
-      "utf8"
+      transcriptText.length > 0
+        ? transcriptText
+        : "No Codex app-server transcript output captured.\n",
+      "utf8",
     );
     return {
       status,
@@ -382,79 +405,95 @@ export async function runCodexAppServerSessionInPreparedRoot(
       ...(trace.turnId === undefined ? {} : { turnId: trace.turnId }),
       ...(trace.sessionId === undefined ? {} : { sessionId: trace.sessionId }),
       ...(trace.model === undefined ? {} : { model: trace.model }),
-      ...(trace.server.codexCliVersion === undefined ? {} : { codexCliVersion: trace.server.codexCliVersion }),
+      ...(trace.server.codexCliVersion === undefined
+        ? {}
+        : { codexCliVersion: trace.server.codexCliVersion }),
       experimentalApi: trace.client.experimentalApi,
       counts: trace.counts,
       tail: tailText(transcriptText, 6_000),
       trace,
       transcriptPath,
       tracePath,
-      eventsPath
+      eventsPath,
     };
   };
 
-  const waitForResponse = async (promise: Promise<JsonObject>, method: string): Promise<JsonObject> => Promise.race([
-    promise,
-    closed.then(() => {
-      const commandName = `${commandParts.command} ${commandParts.args.join(" ")}`.trim();
-      const detail = processError?.message
-        ?? stdinError?.message
-        ?? (exitCode === undefined ? "without an exit code" : `with code ${exitCode}`);
-      throw new Error(`Codex app-server command '${commandName}' exited during ${method} ${detail}.`);
-    })
-  ]);
+  const waitForResponse = async (
+    promise: Promise<JsonObject>,
+    method: string,
+  ): Promise<JsonObject> =>
+    Promise.race([
+      promise,
+      closed.then(() => {
+        const commandName = `${commandParts.command} ${commandParts.args.join(" ")}`.trim();
+        const detail =
+          processError?.message ??
+          stdinError?.message ??
+          (exitCode === undefined ? "without an exit code" : `with code ${exitCode}`);
+        throw new Error(
+          `Codex app-server command '${commandName}' exited during ${method} ${detail}.`,
+        );
+      }),
+    ]);
 
   try {
     const initialize = request("initialize", {
       clientInfo: {
         name: "humanish_cli",
         title: "Humanish CLI",
-        version: "0.1.0"
+        version: "0.1.0",
       },
       capabilities: {
-        experimentalApi: options.experimentalApi === true
-      }
+        experimentalApi: options.experimentalApi === true,
+      },
     });
     send({ method: "initialized", params: {} });
     await waitForResponse(initialize, "initialize");
     if (apiKey) {
-      await waitForResponse(request("account/login/start", {
-        type: "apiKey",
-        apiKey
-      }), "account/login/start");
+      await waitForResponse(
+        request("account/login/start", {
+          type: "apiKey",
+          apiKey,
+        }),
+        "account/login/start",
+      );
     }
-    const threadResponse = await waitForResponse(request("thread/start", {
-      cwd: options.cwd,
-      approvalPolicy: normalizeApprovalPolicy(options.approvalPolicy),
-      sandbox: normalizeSandbox(options.sandbox),
-      serviceName: options.serviceName ?? "humanish",
-      ...(options.model === undefined ? {} : { model: options.model })
-    }), "thread/start");
+    const threadResponse = await waitForResponse(
+      request("thread/start", {
+        cwd: options.cwd,
+        approvalPolicy: normalizeApprovalPolicy(options.approvalPolicy),
+        sandbox: normalizeSandbox(options.sandbox),
+        serviceName: options.serviceName ?? "humanish",
+        ...(options.model === undefined ? {} : { model: options.model }),
+      }),
+      "thread/start",
+    );
     threadId = readNestedString(threadResponse, ["thread", "id"]) ?? threadId;
     recorder.threadId = threadId;
-    recorder.sessionId = readNestedString(threadResponse, ["thread", "sessionId"]) ?? recorder.sessionId;
-    recorder.model = readNestedString(threadResponse, ["thread", "model"]) ?? options.model ?? recorder.model;
-    recorder.codexCliVersion = readNestedString(threadResponse, ["thread", "cliVersion"]) ?? recorder.codexCliVersion;
+    recorder.sessionId =
+      readNestedString(threadResponse, ["thread", "sessionId"]) ?? recorder.sessionId;
+    recorder.model =
+      readNestedString(threadResponse, ["thread", "model"]) ?? options.model ?? recorder.model;
+    recorder.codexCliVersion =
+      readNestedString(threadResponse, ["thread", "cliVersion"]) ?? recorder.codexCliVersion;
     if (!threadId) {
       throw new Error("thread/start did not return a thread id");
     }
-    const turnResponse = await waitForResponse(request("turn/start", {
-      threadId,
-      cwd: options.cwd,
-      approvalPolicy: normalizeApprovalPolicy(options.approvalPolicy),
-      sandboxPolicy: normalizeTurnSandbox(options.sandbox, options.cwd),
-      input: [
-        { type: "text", text: options.prompt, text_elements: [] }
-      ]
-    }), "turn/start");
+    const turnResponse = await waitForResponse(
+      request("turn/start", {
+        threadId,
+        cwd: options.cwd,
+        approvalPolicy: normalizeApprovalPolicy(options.approvalPolicy),
+        sandboxPolicy: normalizeTurnSandbox(options.sandbox, options.cwd),
+        input: [{ type: "text", text: options.prompt, text_elements: [] }],
+      }),
+      "turn/start",
+    );
     turnId = readNestedString(turnResponse, ["turn", "id"]) ?? turnId;
     recorder.turnId = turnId;
 
     while (!completed && !timedOut) {
-      await Promise.race([
-        closed,
-        new Promise((resolve) => setTimeout(resolve, 100))
-      ]);
+      await Promise.race([closed, new Promise((resolve) => setTimeout(resolve, 100))]);
       if (exitCode !== undefined || signal !== undefined) {
         break;
       }
@@ -467,16 +506,20 @@ export async function runCodexAppServerSessionInPreparedRoot(
 
     if (completed) {
       await closed;
-      const status = completionStatus === "completed"
-        ? "passed"
-        : completionStatus === "failed"
-          ? "failed"
-          : "blocked";
+      const status =
+        completionStatus === "completed"
+          ? "passed"
+          : completionStatus === "failed"
+            ? "failed"
+            : "blocked";
       return finish(status, completionReason);
     }
 
     await closed;
-    return finish(exitCode === 0 ? "passed" : "blocked", `Codex app-server process exited before turn completion${exitCode === undefined ? "" : ` with code ${exitCode}`}.`);
+    return finish(
+      exitCode === 0 ? "passed" : "blocked",
+      `Codex app-server process exited before turn completion${exitCode === undefined ? "" : ` with code ${exitCode}`}.`,
+    );
   } catch (error) {
     child.kill("SIGTERM");
     await closed;
@@ -484,15 +527,20 @@ export async function runCodexAppServerSessionInPreparedRoot(
   }
 }
 
-function resolveAppServerCommand(overrideCommand: string[] | undefined): { args: string[]; command: string; name: string } {
-  const commandParts = overrideCommand && overrideCommand.length > 0
-    ? overrideCommand
-    : ["codex", "app-server", "--listen", "stdio://"];
+function resolveAppServerCommand(overrideCommand: string[] | undefined): {
+  args: string[];
+  command: string;
+  name: string;
+} {
+  const commandParts =
+    overrideCommand && overrideCommand.length > 0
+      ? overrideCommand
+      : ["codex", "app-server", "--listen", "stdio://"];
   const [command, ...args] = commandParts;
   return {
     command: command ?? "codex",
     args,
-    name: path.basename(command ?? "codex")
+    name: path.basename(command ?? "codex"),
   };
 }
 
@@ -504,15 +552,19 @@ function resolveCodexAppServerEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     TERM: env.TERM ?? "xterm-256color",
     ...(privateApiKey && !env.CODEX_API_KEY ? { CODEX_API_KEY: privateApiKey } : {}),
     ...(privateApiKey && !env.OPENAI_API_KEY ? { OPENAI_API_KEY: privateApiKey } : {}),
-    ...(privateAccessToken && !env.CODEX_ACCESS_TOKEN ? { CODEX_ACCESS_TOKEN: privateAccessToken } : {})
+    ...(privateAccessToken && !env.CODEX_ACCESS_TOKEN
+      ? { CODEX_ACCESS_TOKEN: privateAccessToken }
+      : {}),
   };
 }
 
 function appServerApiKeyForLogin(env: NodeJS.ProcessEnv): string | undefined {
-  return env.HUMANISH_PRIVATE_CODEX_API_KEY?.trim()
-    || env.CODEX_API_KEY?.trim()
-    || env.OPENAI_API_KEY?.trim()
-    || undefined;
+  return (
+    env.HUMANISH_PRIVATE_CODEX_API_KEY?.trim() ||
+    env.CODEX_API_KEY?.trim() ||
+    env.OPENAI_API_KEY?.trim() ||
+    undefined
+  );
 }
 
 function defaultServerRequestResponse(message: JsonObject): JsonObject {
@@ -554,7 +606,7 @@ function normalizeTurnSandbox(value: CodexAppServerRunOptions["sandbox"], cwd: s
       writableRoots: [cwd],
       networkAccess: false,
       excludeTmpdirEnvVar: false,
-      excludeSlashTmp: false
+      excludeSlashTmp: false,
     };
   }
   if (mode === "danger-full-access") {
@@ -569,7 +621,10 @@ class CodexTraceRecorder {
   private readonly messageDeltas = new Map<string, string>();
   private readonly reasoningDeltas = new Map<string, string>();
   private readonly rootCwd: string;
-  private readonly trace: Omit<CodexAppServerTrace, "completedAt" | "durationMs" | "reason" | "status">;
+  private readonly trace: Omit<
+    CodexAppServerTrace,
+    "completedAt" | "durationMs" | "reason" | "status"
+  >;
 
   public codexCliVersion: string | undefined;
   public model: string | undefined;
@@ -591,16 +646,17 @@ class CodexTraceRecorder {
       protocolVersion: "v2",
       redaction: {
         status: "passed",
-        notes: "Trace envelopes and text were redacted before persistence. App-server schemas are version-specific and are not embedded in this run artifact."
+        notes:
+          "Trace envelopes and text were redacted before persistence. App-server schemas are version-specific and are not embedded in this run artifact.",
       },
       client: {
         name: "humanish_cli",
         title: "Humanish CLI",
-        experimentalApi: args.experimentalApi
+        experimentalApi: args.experimentalApi,
       },
       server: {
         commandName: args.commandName,
-        transport: "stdio"
+        transport: "stdio",
       },
       cwd: publicPathForTrace(args.cwd, args.cwd),
       promptDigest: args.promptDigest,
@@ -618,7 +674,7 @@ class CodexTraceRecorder {
         requests: 0,
         responses: 0,
         tools: 0,
-        warnings: 0
+        warnings: 0,
       },
       methods: {},
       items: [],
@@ -630,7 +686,7 @@ class CodexTraceRecorder {
       tools: [],
       approvals: [],
       warnings: [],
-      errors: []
+      errors: [],
     };
   }
 
@@ -641,17 +697,29 @@ class CodexTraceRecorder {
     } else if (isRecord(message) && "id" in message && !("method" in message)) {
       this.trace.counts.responses += 1;
     }
-    const method = isRecord(message) && typeof message.method === "string" ? message.method : direction === "server" ? "response" : "request";
+    const method =
+      isRecord(message) && typeof message.method === "string"
+        ? message.method
+        : direction === "server"
+          ? "response"
+          : "request";
     this.trace.methods[method] = (this.trace.methods[method] ?? 0) + 1;
   }
 
   public observeServerMessage(message: JsonObject): void {
     const method = typeof message.method === "string" ? message.method : "";
     if (method === "error") {
-      this.addError(method, readNestedString(message, ["params", "message"]) ?? "App-server emitted an error notification.");
+      this.addError(
+        method,
+        readNestedString(message, ["params", "message"]) ??
+          "App-server emitted an error notification.",
+      );
     }
     if (method === "warning" || method === "guardianWarning" || method === "configWarning") {
-      this.addWarning(method, readNestedString(message, ["params", "message"]) ?? `App-server emitted ${method}.`);
+      this.addWarning(
+        method,
+        readNestedString(message, ["params", "message"]) ?? `App-server emitted ${method}.`,
+      );
     }
     if (method === "thread/tokenUsage/updated") {
       if (isRecord(message.params)) {
@@ -669,7 +737,11 @@ class CodexTraceRecorder {
       this.appendText(this.reasoningDeltas, message);
       this.trace.counts.reasoning += 1;
     }
-    if (method === "item/commandExecution/outputDelta" || method === "command/exec/outputDelta" || method === "process/outputDelta") {
+    if (
+      method === "item/commandExecution/outputDelta" ||
+      method === "command/exec/outputDelta" ||
+      method === "process/outputDelta"
+    ) {
       this.appendText(this.commandOutputs, message);
       this.trace.counts.commandOutputs += 1;
     }
@@ -688,8 +760,14 @@ class CodexTraceRecorder {
       id: message.id as JsonRpcId,
       method: typeof message.method === "string" ? message.method : "unknown",
       ...(itemId === undefined ? {} : { itemId }),
-      decision: typeof response.decision === "string" && response.decision === "denied" ? "denied" : typeof response.decision === "string" ? "decline" : "empty",
-      reason: "Humanish records app-server approval requests and declines by default unless a future explicit policy says otherwise."
+      decision:
+        typeof response.decision === "string" && response.decision === "denied"
+          ? "denied"
+          : typeof response.decision === "string"
+            ? "decline"
+            : "empty",
+      reason:
+        "Humanish records app-server approval requests and declines by default unless a future explicit policy says otherwise.",
     });
   }
 
@@ -717,18 +795,24 @@ class CodexTraceRecorder {
       .map(([itemId, text]) => ({ itemId, text: redactText(text) }));
     const commands = this.trace.commands.map((command) => ({
       ...command,
-      outputTail: tailText(redactText(this.commandOutputs.get(command.itemId) ?? command.outputTail ?? ""), 2_000)
+      outputTail: tailText(
+        redactText(this.commandOutputs.get(command.itemId) ?? command.outputTail ?? ""),
+        2_000,
+      ),
     }));
     const fileChanges = this.trace.fileChanges.map((fileChange) => ({
       ...fileChange,
-      outputTail: tailText(redactText(this.fileOutputs.get(fileChange.itemId) ?? fileChange.outputTail ?? ""), 2_000)
+      outputTail: tailText(
+        redactText(this.fileOutputs.get(fileChange.itemId) ?? fileChange.outputTail ?? ""),
+        2_000,
+      ),
     }));
 
     return {
       ...this.trace,
       server: {
         ...this.trace.server,
-        ...(this.codexCliVersion === undefined ? {} : { codexCliVersion: this.codexCliVersion })
+        ...(this.codexCliVersion === undefined ? {} : { codexCliVersion: this.codexCliVersion }),
       },
       ...(this.threadId === undefined ? {} : { threadId: this.threadId }),
       ...(this.turnId === undefined ? {} : { turnId: this.turnId }),
@@ -741,7 +825,7 @@ class CodexTraceRecorder {
       messages,
       reasoning,
       commands,
-      fileChanges
+      fileChanges,
     };
   }
 
@@ -750,13 +834,26 @@ class CodexTraceRecorder {
       completedAt: new Date().toISOString(),
       durationMs: 0,
       reason: "transcript render",
-      status: "blocked"
+      status: "blocked",
     });
     const sections: Array<[string, string]> = [
       ["Agent messages", trace.messages.map((message) => message.text).join("\n\n")],
       ["Reasoning summaries", trace.reasoning.map((entry) => entry.text).join("\n\n")],
-      ["Commands", trace.commands.map((command) => `${command.command ?? "command"}\n${command.outputTail ?? ""}`).join("\n\n")],
-      ["File changes", trace.fileChanges.map((fileChange) => `${fileChange.status ?? "fileChange"} ${fileChange.changeCount ?? 0} change(s)`).join("\n")]
+      [
+        "Commands",
+        trace.commands
+          .map((command) => `${command.command ?? "command"}\n${command.outputTail ?? ""}`)
+          .join("\n\n"),
+      ],
+      [
+        "File changes",
+        trace.fileChanges
+          .map(
+            (fileChange) =>
+              `${fileChange.status ?? "fileChange"} ${fileChange.changeCount ?? 0} change(s)`,
+          )
+          .join("\n"),
+      ],
     ];
     return sections
       .filter(([, text]) => text.trim() !== "")
@@ -780,7 +877,7 @@ class CodexTraceRecorder {
       type,
       lifecycle,
       title: itemTitle(item, type),
-      ...(status === undefined ? {} : { status })
+      ...(status === undefined ? {} : { status }),
     });
     if (lifecycle === "started") {
       this.trace.counts.itemStarts += 1;
@@ -803,11 +900,15 @@ class CodexTraceRecorder {
     const commandCwd = readString(item, "cwd");
     const command = {
       itemId,
-      ...(readString(item, "command") === undefined ? {} : { command: redactText(readString(item, "command") ?? "") }),
+      ...(readString(item, "command") === undefined
+        ? {}
+        : { command: redactText(readString(item, "command") ?? "") }),
       ...(commandCwd === undefined ? {} : { cwd: publicPathForTrace(commandCwd, this.rootCwd) }),
       ...(status === undefined ? {} : { status }),
       ...(typeof item.exitCode === "number" ? { exitCode: item.exitCode } : {}),
-      ...(readString(item, "aggregatedOutput") === undefined ? {} : { outputTail: tailText(redactText(readString(item, "aggregatedOutput") ?? ""), 2_000) })
+      ...(readString(item, "aggregatedOutput") === undefined
+        ? {}
+        : { outputTail: tailText(redactText(readString(item, "aggregatedOutput") ?? ""), 2_000) }),
     } satisfies CodexTraceCommand;
     if (existingIndex === -1) {
       this.trace.commands.push(command);
@@ -818,20 +919,30 @@ class CodexTraceRecorder {
 
   private recordFileChange(item: JsonObject, itemId: string, status: string | undefined): void {
     this.trace.counts.fileChanges += 1;
-    const existingIndex = this.trace.fileChanges.findIndex((fileChange) => fileChange.itemId === itemId);
+    const existingIndex = this.trace.fileChanges.findIndex(
+      (fileChange) => fileChange.itemId === itemId,
+    );
     const fileChange = {
       itemId,
       ...(status === undefined ? {} : { status }),
-      ...(Array.isArray(item.changes) ? { changeCount: item.changes.length } : {})
+      ...(Array.isArray(item.changes) ? { changeCount: item.changes.length } : {}),
     } satisfies CodexTraceFileChange;
     if (existingIndex === -1) {
       this.trace.fileChanges.push(fileChange);
     } else {
-      this.trace.fileChanges[existingIndex] = { ...this.trace.fileChanges[existingIndex], ...fileChange };
+      this.trace.fileChanges[existingIndex] = {
+        ...this.trace.fileChanges[existingIndex],
+        ...fileChange,
+      };
     }
   }
 
-  private recordToolCall(item: JsonObject, itemId: string, type: string, status: string | undefined): void {
+  private recordToolCall(
+    item: JsonObject,
+    itemId: string,
+    type: string,
+    status: string | undefined,
+  ): void {
     this.trace.counts.tools += 1;
     const server = readString(item, "server");
     const tool = readString(item, "tool");
@@ -840,7 +951,7 @@ class CodexTraceRecorder {
       kind: type === "mcpToolCall" ? "mcp" : type === "dynamicToolCall" ? "dynamic" : "unknown",
       ...(server === undefined ? {} : { server }),
       ...(tool === undefined ? {} : { tool }),
-      ...(status === undefined ? {} : { status })
+      ...(status === undefined ? {} : { status }),
     });
   }
 
@@ -850,7 +961,7 @@ class CodexTraceRecorder {
     const plan = Array.isArray(params.plan) ? params.plan : [];
     this.trace.plans.push({
       ...(explanation === undefined ? {} : { explanation: redactText(explanation) }),
-      steps: plan.map((step) => summarizePlanStep(step))
+      steps: plan.map((step) => summarizePlanStep(step)),
     });
   }
 }
@@ -889,7 +1000,10 @@ function itemTitle(item: JsonObject, type: string): string {
     return tailText(redactText(readString(item, "text") ?? "agent message"), 120);
   }
   if (type === "mcpToolCall") {
-    return redactText([readString(item, "server"), readString(item, "tool")].filter(Boolean).join("/") || "mcp tool call");
+    return redactText(
+      [readString(item, "server"), readString(item, "tool")].filter(Boolean).join("/") ||
+        "mcp tool call",
+    );
   }
   if (type === "dynamicToolCall") {
     return redactText(readString(item, "tool") ?? "dynamic tool call");
@@ -901,14 +1015,19 @@ function summarizePlanStep(step: unknown): string {
   if (!isRecord(step)) {
     return redactText(String(step));
   }
-  const text = readString(step, "step") ?? readString(step, "text") ?? readString(step, "description") ?? JSON.stringify(redactJsonValue(step));
+  const text =
+    readString(step, "step") ??
+    readString(step, "text") ??
+    readString(step, "description") ??
+    JSON.stringify(redactJsonValue(step));
   const status = readString(step, "status");
   return status ? `${status}: ${redactText(text)}` : redactText(text);
 }
 
 function formatJsonRpcError(error: JsonObject): string {
   const code = typeof error.code === "number" ? `${error.code}: ` : "";
-  const message = typeof error.message === "string" ? error.message : JSON.stringify(redactJsonValue(error));
+  const message =
+    typeof error.message === "string" ? error.message : JSON.stringify(redactJsonValue(error));
   return redactText(`${code}${message}`);
 }
 
@@ -930,8 +1049,8 @@ function redactCodexEnvelope(value: unknown, rootCwd: string): unknown {
     ...redacted,
     params: {
       ...redactedParams,
-      input: redactedInput.map((entry, index) => redactTurnInputEntry(rawInput[index], entry))
-    }
+      input: redactedInput.map((entry, index) => redactTurnInputEntry(rawInput[index], entry)),
+    },
   };
 }
 
@@ -940,7 +1059,8 @@ function redactTurnInputEntry(rawEntry: unknown, redactedEntry: unknown): unknow
     return redactedEntry;
   }
 
-  const rawText = isRecord(rawEntry) && typeof rawEntry.text === "string" ? rawEntry.text : undefined;
+  const rawText =
+    isRecord(rawEntry) && typeof rawEntry.text === "string" ? rawEntry.text : undefined;
   if (rawText === undefined) {
     return redactedEntry;
   }
@@ -950,7 +1070,7 @@ function redactTurnInputEntry(rawEntry: unknown, redactedEntry: unknown): unknow
     text: "[REDACTED_PROMPT_TEXT]",
     textDigest: digestText(rawText),
     textLength: rawText.length,
-    ...(Array.isArray(redactedEntry.text_elements) ? { text_elements: [] } : {})
+    ...(Array.isArray(redactedEntry.text_elements) ? { text_elements: [] } : {}),
   };
 }
 
@@ -969,7 +1089,7 @@ function redactJsonValue(value: unknown, keyHint = "", rootCwd?: string): unknow
   }
   if (isRecord(value)) {
     return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, redactJsonValue(entry, key, rootCwd)])
+      Object.entries(value).map(([key, entry]) => [key, redactJsonValue(entry, key, rootCwd)]),
     );
   }
   return value;

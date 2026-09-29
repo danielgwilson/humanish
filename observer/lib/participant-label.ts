@@ -15,8 +15,10 @@ export function participantLabels(streams: ObserverStream[]): Map<string, string
   });
   counts.clear();
   for (const label of qualified) counts.set(label, (counts.get(label) ?? 0) + 1);
-  return new Map(streams.map((stream, index) => {
-    const label = qualified[index]!;
-    return [stream.id, counts.get(label)! > 1 ? `${label} · ${stream.id}` : label];
-  }));
+  return new Map(
+    streams.map((stream, index) => {
+      const label = qualified[index]!;
+      return [stream.id, counts.get(label)! > 1 ? `${label} · ${stream.id}` : label];
+    }),
+  );
 }

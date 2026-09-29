@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, PI_AGENT_CORE_CAPABILITIES, type ActorPersonaRef } from "../src/actor-contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  PI_AGENT_CORE_CAPABILITIES,
+  type ActorPersonaRef,
+} from "../src/actor-contract.js";
 import {
   piSessionToActorTrace,
   piStatusToCompletionReason,
-  piStopReasonToStatus
+  piStopReasonToStatus,
 } from "../src/pi-agent-core.js";
 import { actorRegistry, getActor } from "../src/actor-registry.js";
 import { buildPiSession } from "./actor-fixtures.js";
 
-const persona: ActorPersonaRef = { id: "synthetic-new-user", traitsApplied: ["patience:low", "skill:high"], promptDigest: "deadbeef1234" };
+const persona: ActorPersonaRef = {
+  id: "synthetic-new-user",
+  traitsApplied: ["patience:low", "skill:high"],
+  promptDigest: "deadbeef1234",
+};
 
 describe("piSessionToActorTrace", () => {
   const trace = piSessionToActorTrace(buildPiSession(), persona);
@@ -47,11 +55,18 @@ describe("piSessionToActorTrace", () => {
     expect(lifecyclesOf("tool_call")).toEqual(new Set(["started", "completed"]));
     expect(lifecyclesOf("reasoning")).toEqual(new Set(["completed"]));
     expect(lifecyclesOf("plan")).toEqual(new Set(["completed"]));
-    const tool = trace.items.find((item) => item.kind === "tool_call" && item.tool?.name === "read_file");
+    const tool = trace.items.find(
+      (item) => item.kind === "tool_call" && item.tool?.name === "read_file",
+    );
     expect(tool?.tool).toEqual({ name: "read_file" });
-    const erroredTool = trace.items.find((item) => item.kind === "tool_call" && item.lifecycle === "completed" && item.tool?.name === "bash");
+    const erroredTool = trace.items.find(
+      (item) =>
+        item.kind === "tool_call" && item.lifecycle === "completed" && item.tool?.name === "bash",
+    );
     expect(erroredTool?.status).toBe("error");
-    const message = trace.items.find((item) => item.kind === "message" && item.lifecycle === "completed");
+    const message = trace.items.find(
+      (item) => item.kind === "message" && item.lifecycle === "completed",
+    );
     expect(message?.text).toContain("project structure");
   });
 
@@ -75,7 +90,7 @@ describe("piSessionToActorTrace", () => {
     truncated.events = [
       { type: "agent_start" },
       { type: "message_start", role: "assistant" },
-      { type: "message_update", textDelta: "partial answer before crash" }
+      { type: "message_update", textDelta: "partial answer before crash" },
     ];
     const items = piSessionToActorTrace(truncated, persona).items;
     const message = items.find((item) => item.kind === "message" && item.lifecycle === "completed");
@@ -87,7 +102,7 @@ describe("piSessionToActorTrace", () => {
     const session = buildPiSession();
     session.events = [
       { type: "queue_update", summary: `next: inspect ${leakyPath}` },
-      { type: "notice", method: "extension_error", message: `failed near ${leakyPath}` }
+      { type: "notice", method: "extension_error", message: `failed near ${leakyPath}` },
     ];
     const trace2 = piSessionToActorTrace(session, persona);
     expect(JSON.stringify(trace2.items)).not.toContain(leakyPath);

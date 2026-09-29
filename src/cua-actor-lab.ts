@@ -28,7 +28,7 @@ export {
   type DesktopBrowserLaunchIdentity,
   type DesktopBrowserLaunchResult,
   type DesktopMediaEvidence,
-  type SubjectPhaseEvent
+  type SubjectPhaseEvent,
 } from "./e2b-cua-provisioning.js";
 import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";
 import type { CommsReceivingRun } from "./comms-receiving.js";
@@ -40,7 +40,7 @@ import {
   commandDigestOf,
   declaredScreenForRender,
   type DesktopBrowserEvidence,
-  type SubjectPhaseEvent
+  type SubjectPhaseEvent,
 } from "./e2b-cua-provisioning.js";
 import { receivingEmailValidationReason } from "./lab-config.js";
 import { withTransientCommsSecrets } from "./run-narration-secrets.js";
@@ -74,7 +74,7 @@ import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
-  type AutomaticAnalysisResult
+  type AutomaticAnalysisResult,
 } from "./automatic-analysis-completion.js";
 import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
 import { describeMissingKeys } from "./key-resolution.js";
@@ -82,20 +82,36 @@ import { desktopMediaValidationReason, taskProtocolValidationReason } from "./la
 
 import { pathToFileURL } from "node:url";
 import { toErrorMessage } from "./command-failure.js";
-import { cuaLaneDiagnostics, summarizeCuaDiagnostics, type CuaDiagnostics } from "./cua-diagnostics.js";
+import {
+  cuaLaneDiagnostics,
+  summarizeCuaDiagnostics,
+  type CuaDiagnostics,
+} from "./cua-diagnostics.js";
 import { feedbackProofCommands } from "./feedback-proof.js";
 
-import type { ActorCompletionReason, ActorPersonaRef, ActorStatus, ActorStopCause, ActorTokenUsage, ActorTrace, ActorTraceItem } from "./actor-contract.js";
+import type {
+  ActorCompletionReason,
+  ActorPersonaRef,
+  ActorStatus,
+  ActorStopCause,
+  ActorTokenUsage,
+  ActorTrace,
+  ActorTraceItem,
+} from "./actor-contract.js";
 import { actorRegistry, isCuaActorDescriptor, type CuaActorDescriptor } from "./actor-registry.js";
 import { actorEnding } from "./actor-stop-cause.js";
 import {
   adapterScoreFailureMessage,
   applyBrowserAdapterHooks,
-  type BrowserLabAdapterHooks
+  type BrowserLabAdapterHooks,
 } from "./adapter-extension.js";
 import { FakeInbox } from "./comms-fake-inbox.js";
 import { recipientInboxUrl } from "./comms-inbox.js";
-import { collectExternalCommsThread, externalCatchHealthy, externalInboxUrl } from "./comms-sandbox-catch.js";
+import {
+  collectExternalCommsThread,
+  externalCatchHealthy,
+  externalInboxUrl,
+} from "./comms-sandbox-catch.js";
 import type { CommsAddress } from "./comms-types.js";
 import type { CuaActorSessionOptions } from "./computer-use-actor.js";
 import type { CuaExecutor, CuaLoopResult, CuaProvider } from "./computer-use.js";
@@ -104,16 +120,11 @@ import {
   DEFAULT_DEVICE_PRESET,
   isDevicePresetName,
   resolveDevicePreset,
-  type DevicePreset
+  type DevicePreset,
 } from "./device-presets.js";
-import {
-  type E2BDesktopModule,
-  type E2BDesktopSandbox
-} from "./e2b-desktop-launch.js";
+import { type E2BDesktopModule, type E2BDesktopSandbox } from "./e2b-desktop-launch.js";
 import { type DesktopResourceObservation } from "./e2b-desktop-resources.js";
-import {
-  type DetachedTimers
-} from "./e2b-detached.js";
+import { type DetachedTimers } from "./e2b-detached.js";
 import { assertScreenshotEvidence } from "./image-evidence.js";
 import {
   MAX_CUA_LANES,
@@ -126,33 +137,53 @@ import {
   type LabCommsEmail,
   type LabConfig,
   type LabSubjectServe,
-  type LabSubjectState
+  type LabSubjectState,
 } from "./lab-config.js";
 import { startClaudeSession } from "./local-agent-claude-session.js";
-import { checkHostedCodexCompatibility, createLocalAgentProvider, detectLocalAgents, type LocalAgentId } from "./local-agent-cli.js";
+import {
+  checkHostedCodexCompatibility,
+  createLocalAgentProvider,
+  detectLocalAgents,
+  type LocalAgentId,
+} from "./local-agent-cli.js";
 import { buildObserverData } from "./observer-data.js";
 import {
   attachObserverRuntimeStreamUrls,
   renderObserver,
   type ObserverResult,
-  type ObserverRuntimeStreamUrl
+  type ObserverRuntimeStreamUrl,
 } from "./observer.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "./openai-responses-cu.js";
 import { participantAssignment } from "./participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "./persona-resolve.js";
-import { personaBrief, scrubPersonaBrief, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
-import { MODEL_RATES, estimateActorCostForExecution, estimateAllocatedDesktopCost, estimateDesktopCost, round6 } from "./pricing.js";
+import {
+  personaBrief,
+  scrubPersonaBrief,
+  personaToDirectives,
+  renderPersonaPromptSection,
+  type ResolvedPersona,
+} from "./persona.js";
+import {
+  MODEL_RATES,
+  estimateActorCostForExecution,
+  estimateAllocatedDesktopCost,
+  estimateDesktopCost,
+  round6,
+} from "./pricing.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
-import {
-  createRestrictedCodexParticipant,
-} from "./restricted-codex-participant.js";
+import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
 import {
   prepareRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-  type PreparedRunArtifactPaths
+  type PreparedRunArtifactPaths,
 } from "./run-paths.js";
-import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import {
+  beginRunStatus,
+  withRunStatusScope,
+  type RunLabProvenance,
+  type RunStatusHandle,
+} from "./run-status.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -178,7 +209,7 @@ import {
   type RunSimulationStatus,
   type RunStream,
   type RunSubjectProvenance,
-  type RunSubjectStateStepRecord
+  type RunSubjectStateStepRecord,
 } from "./run.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -187,7 +218,7 @@ import {
   prepareSelectedOutputDirectory,
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
-  type PreparedOutputDirectory
+  type PreparedOutputDirectory,
 } from "./selected-output-paths.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "./source-archive.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
@@ -217,12 +248,19 @@ const CUA_MAX_CONCURRENCY_ENV = "HUMANISH_CUA_MAX_CONCURRENCY";
 const DEFAULT_APP_URL_SESSION_TIMEOUT_MS = 30 * 60_000;
 const MIN_DERIVED_SESSION_TIMEOUT_MS = 5 * 60_000;
 function defaultSessionTimeoutMs(config: LabConfig): number {
-  const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+  const provisionedRoute =
+    config.subject.source === "clone" || config.subject.source === "local-tree";
   if (!provisionedRoute) return DEFAULT_APP_URL_SESSION_TIMEOUT_MS;
   const stateBudgetMs = (config.subject.state?.seed ?? []).reduce(
-    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0);
-  const room = MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
-  return Math.max(MIN_DERIVED_SESSION_TIMEOUT_MS, Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room));
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+    0,
+  );
+  const room =
+    MAX_SANDBOX_MS - SUBJECT_PROVISION_BUDGET_MS - stateBudgetMs - SANDBOX_TIMEOUT_BUFFER_MS;
+  return Math.max(
+    MIN_DERIVED_SESSION_TIMEOUT_MS,
+    Math.min(DEFAULT_APP_URL_SESSION_TIMEOUT_MS, room),
+  );
 }
 
 // Device/screen size comes from the named-preset registry (device-presets.ts), selectable per run
@@ -253,7 +291,10 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * back-compatibly with per-lane context so a library caller can provision the right app-url
    * subject per lane (a one-arg `(desktop) => …` still satisfies the type). Called once per lane.
    */
-  prepareDesktop?: (desktop: E2BDesktopSandbox, lane: { laneId: string; laneIndex: number; laneCount: number }) => Promise<void>;
+  prepareDesktop?: (
+    desktop: E2BDesktopSandbox,
+    lane: { laneId: string; laneIndex: number; laneCount: number },
+  ) => Promise<void>;
   /**
    * Pre-flight hook: receives the resolved lane plan BEFORE any sandbox or provider call (dry-run
    * AND live). The engine also prints the plan to stderr; this seam lets tests assert it without
@@ -282,7 +323,11 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
   /** Fired when a lane's sandbox is gone (finished or torn down): the live stream URL is now a
    *  dead noVNC page, so the watch overlay must stop serving it and let the tile fall back to
    *  recorded evidence (#357). Fired only for lanes whose onRuntimeStreamReady fired. */
-  onRuntimeStreamEnded?: (stream: { laneId: string; simId: string; streamId: string }) => Promise<void> | void;
+  onRuntimeStreamEnded?: (stream: {
+    laneId: string;
+    simId: string;
+    streamId: string;
+  }) => Promise<void> | void;
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /**
@@ -294,16 +339,29 @@ export interface CuaActorLabHooks extends BrowserLabAdapterHooks {
    * call is desktop-agnostic and runs unchanged. Receives the resolved config, the
    * registry-resolved descriptor, and the entry appUrl.
    */
-  buildExecutor?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; appUrl: string }) => Promise<CuaExecutor>;
+  buildExecutor?: (ctx: {
+    config: LabConfig;
+    actor: CuaActorDescriptor;
+    appUrl: string;
+  }) => Promise<CuaExecutor>;
   /**
    * Supply a custom provider (a "brain" reasoning over app STATE). REQUIRED alongside
    * `buildExecutor` — the default OpenAI provider is vision-based (requiresFrame) and would fail
    * closed against a state-only executor that returns no screenshot. (`buildProvider` ALONE is
    * allowed — that is just a model swap on the normal E2B route.)
    */
-  buildProvider?: (ctx: { config: LabConfig; actor: CuaActorDescriptor; lane?: CuaLaneSpec; executor: CuaExecutor }) => Promise<CuaProvider>;
+  buildProvider?: (ctx: {
+    config: LabConfig;
+    actor: CuaActorDescriptor;
+    lane?: CuaLaneSpec;
+    executor: CuaExecutor;
+  }) => Promise<CuaProvider>;
   /** Substitute desktop ownership while retaining the shared participant and evidence loop. */
-  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[], artifactRoot: PreparedOutputDirectory) => CuaDesktopLane;
+  createDesktopLane?: (
+    spec: CuaLaneSpec,
+    warnings: string[],
+    artifactRoot: PreparedOutputDirectory,
+  ) => CuaDesktopLane;
   env?: Record<string, string | undefined>;
   renderObserverFn?: typeof renderObserver;
   /** Injected clock (ms) for the host-side E2B desktop create->teardown span measurement that
@@ -506,7 +564,13 @@ export interface CuaSubjectProjection {
  *  (clone or local-tree; an app-url subject stays undeclared, which buildCuaBundle's own
  *  default branch already handles without this type). */
 export type CuaSubjectProvenanceArg =
-  | { source: "clone"; repo: string; commit?: string; envNames: string[]; state: RunSubjectProvenance["state"] }
+  | {
+      source: "clone";
+      repo: string;
+      commit?: string;
+      envNames: string[];
+      state: RunSubjectProvenance["state"];
+    }
   | {
       source: "local-tree";
       archiveSha256?: string;
@@ -625,9 +689,9 @@ export interface CuaLaneSpec {
  * not a behavioural instruction: it says how to label the ending, never how to act.
  */
 export const CLOSING_LINE_DIRECTIVE =
-  "When you stop, make the FIRST line of your last message exactly one of these three, on its own line: "
-  + "REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. "
-  + "Then, from the next line, say what you did, what confused you, and where you hesitated.";
+  "When you stop, make the FIRST line of your last message exactly one of these three, on its own line: " +
+  "REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. " +
+  "Then, from the next line, say what you did, what confused you, and where you hesitated.";
 
 /** Compose one lane's actor prompt: persona line + device line + mission + per-lane steer.
  *  At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
@@ -667,11 +731,16 @@ export function composeLaneInstructions(args: {
   // uses, so one persona file means one behavior across every route.
   const personaLine = args.resolvedPersona
     ? renderPersonaPromptSection(args.resolvedPersona)
-    : args.persona ? `Persona: ${args.persona}.` : undefined;
-  const traitsApplied = args.resolvedPersona ? personaToDirectives(args.resolvedPersona).traitsApplied : [];
-  const surfaceLine = args.surface === "desktop-cli"
-    ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
-    : undefined;
+    : args.persona
+      ? `Persona: ${args.persona}.`
+      : undefined;
+  const traitsApplied = args.resolvedPersona
+    ? personaToDirectives(args.resolvedPersona).traitsApplied
+    : [];
+  const surfaceLine =
+    args.surface === "desktop-cli"
+      ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
+      : undefined;
   const parts = [
     personaLine,
     deviceLine,
@@ -679,7 +748,7 @@ export function composeLaneInstructions(args: {
     args.mission,
     taskLines,
     args.instruction ? `Lane focus: ${args.instruction}` : undefined,
-    CLOSING_LINE_DIRECTIVE
+    CLOSING_LINE_DIRECTIVE,
   ].filter((part): part is string => Boolean(part));
   const instructions = parts.join("\n\n");
   return {
@@ -688,8 +757,8 @@ export function composeLaneInstructions(args: {
       id: args.persona ?? "cua-operator",
       traitsApplied,
       ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
-      promptDigest: digestText(instructions, 16)
-    }
+      promptDigest: digestText(instructions, 16),
+    },
   };
 }
 
@@ -697,19 +766,25 @@ export function composeLaneInstructions(args: {
  *  runtime loopback/getHost address (not secret), so — mirroring the lobby-code runtime injection — this
  *  augments only the instructions the model receives; the authored prompt + its digest are unchanged.
  *  Returns a new spec (never mutates). Shared by the CUA + concurrent shared-world routes. */
-export function withInboxMission(spec: CuaLaneSpec, inboxUrl: string, address?: string, receiving = false): CuaLaneSpec {
+export function withInboxMission(
+  spec: CuaLaneSpec,
+  inboxUrl: string,
+  address?: string,
+  receiving = false,
+): CuaLaneSpec {
   // No assigned identity means no participant inbox; never fall back to the shared operator view.
   if (!address?.trim()) return spec;
   // Captured mail is routed to the assigned identity. Supply that identity and inbox
   // access without requiring the participant to wait or complete the email flow.
   const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
-  if (receiving) return {
-    ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may block remote images or undeclared destinations; those are harness limitations.`
-  };
+  if (receiving)
+    return {
+      ...spec,
+      instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may block remote images or undeclared destinations; those are harness limitations.`,
+    };
   return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It contains captured email addressed to your test identity. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It contains captured email addressed to your test identity. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`,
   };
 }
 
@@ -739,20 +814,36 @@ export function floorRenderResolution(resolution: readonly [number, number]): [n
  * `resolution` is floored to MIN_DESKTOP_RENDER_WIDTH so the browser window fits its X screen (no clip);
  * `preset` keeps the declared device identity (a mobile preset stays 414/isMobile for the prompt).
  */
-export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefined): {
+export function resolveLaneDevice(
+  config: LabConfig,
+  lane: LabActorLane | undefined,
+): {
   name: string;
   preset: DevicePreset;
   resolution: [number, number];
 } {
   const rawResolution = config.execution?.desktop?.resolution;
   if (lane?.device === undefined && rawResolution) {
-    const preset: DevicePreset = { width: rawResolution[0], height: rawResolution[1], isMobile: false, deviceScaleFactor: 1 };
-    return { name: "custom", preset, resolution: floorRenderResolution([rawResolution[0], rawResolution[1]]) };
+    const preset: DevicePreset = {
+      width: rawResolution[0],
+      height: rawResolution[1],
+      isMobile: false,
+      deviceScaleFactor: 1,
+    };
+    return {
+      name: "custom",
+      preset,
+      resolution: floorRenderResolution([rawResolution[0], rawResolution[1]]),
+    };
   }
   const candidate = lane?.device ?? config.execution?.desktop?.device;
   const presetName = isDevicePresetName(candidate) ? candidate : DEFAULT_DEVICE_PRESET;
   const preset = resolveDevicePreset(presetName);
-  return { name: presetName, preset, resolution: floorRenderResolution([preset.width, preset.height]) };
+  return {
+    name: presetName,
+    preset,
+    resolution: floorRenderResolution([preset.width, preset.height]),
+  };
 }
 
 /** Per-lane sandbox deadline (each lane owns its own desktop). Mirrors the single-lane formula
@@ -764,12 +855,20 @@ export function resolveLaneDevice(config: LabConfig, lane: LabActorLane | undefi
 function resolvePerLaneSandboxMs(config: LabConfig): number {
   if (isLocalBrowserLab(config)) return LOCAL_BROWSER_LIFETIME_MS;
   const timeoutMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
-  const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+  const provisionedRoute =
+    config.subject.source === "clone" || config.subject.source === "local-tree";
   const stateBudgetMs = provisionedRoute
-    ? (config.subject.state?.seed ?? []).reduce((sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS), 0)
+    ? (config.subject.state?.seed ?? []).reduce(
+        (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+        0,
+      )
     : 0;
-  return config.execution?.desktop?.sandboxTimeoutMs
-    ?? timeoutMs + (provisionedRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) + SANDBOX_TIMEOUT_BUFFER_MS;
+  return (
+    config.execution?.desktop?.sandboxTimeoutMs ??
+    timeoutMs +
+      (provisionedRoute ? SUBJECT_PROVISION_BUDGET_MS + stateBudgetMs : 0) +
+      SANDBOX_TIMEOUT_BUFFER_MS
+  );
 }
 
 /**
@@ -781,9 +880,16 @@ function resolvePerLaneSandboxMs(config: LabConfig): number {
  * envLoweredFrom so the plan never silently disagrees with the manifest. Pure given
  * (config, laneCount, env).
  */
-function resolveCuaConcurrency(config: LabConfig, laneCount: number, env: Record<string, string | undefined>): { bound: number; envLoweredFrom?: number } {
+function resolveCuaConcurrency(
+  config: LabConfig,
+  laneCount: number,
+  env: Record<string, string | undefined>,
+): { bound: number; envLoweredFrom?: number } {
   const declared = config.execution?.concurrency;
-  const base = Math.max(1, declared !== undefined ? Math.min(Math.max(1, declared), laneCount) : laneCount);
+  const base = Math.max(
+    1,
+    declared !== undefined ? Math.min(Math.max(1, declared), laneCount) : laneCount,
+  );
   const envLower = readPositiveInt(env[CUA_MAX_CONCURRENCY_ENV], 0);
   if (envLower > 0 && envLower < base) {
     return { bound: Math.max(1, Math.min(base, envLower, laneCount)), envLoweredFrom: base };
@@ -800,7 +906,12 @@ interface LaneSpecsAndPlan {
  *  --count for homogeneous fan-out (ignored when a `lanes` roster is declared). */
 function laneSpecsAndPlan(
   config: LabConfig,
-  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean; personas?: Map<string, ResolvedPersona> } = {}
+  opts: {
+    countOverride?: number;
+    env?: Record<string, string | undefined>;
+    dryRun?: boolean;
+    personas?: Map<string, ResolvedPersona>;
+  } = {},
 ): LaneSpecsAndPlan {
   const env = opts.env ?? {};
   const actor = config.actors[0];
@@ -828,9 +939,11 @@ function laneSpecsAndPlan(
       ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
-      ...(((roster ? lane?.instruction : actor?.laneFocus?.instruction)) === undefined ? {} : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
+      ...((roster ? lane?.instruction : actor?.laneFocus?.instruction) === undefined
+        ? {}
+        : { instruction: (roster ? lane?.instruction : actor?.laneFocus?.instruction) as string }),
       device: { name: device.name, preset: device.preset },
-      ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {})
+      ...(config.subject.source === "desktop-cli" ? { surface: "desktop-cli" as const } : {}),
     });
     lanes.push({
       laneId,
@@ -845,22 +958,29 @@ function laneSpecsAndPlan(
       assignment: {
         mission,
         ...((roster ? lane?.instruction : actor?.laneFocus?.instruction) === undefined
-          ? {} : { focus: (roster ? lane?.instruction : actor?.laneFocus?.instruction)! }),
-        ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) })
+          ? {}
+          : { focus: (roster ? lane?.instruction : actor?.laneFocus?.instruction)! }),
+        ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) }),
       },
       ...(lane?.target === undefined ? {} : { targetUrl: lane.target }),
-      ...((lane?.stopWhen ?? actor?.stopWhen) === undefined ? {} : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
-      ...((lane?.dwell ?? actor?.dwell) === undefined ? {} : { dwell: (lane?.dwell ?? actor?.dwell) as DwellWindow }),
+      ...((lane?.stopWhen ?? actor?.stopWhen) === undefined
+        ? {}
+        : { stopWhen: (lane?.stopWhen ?? actor?.stopWhen) as StopWhen }),
+      ...((lane?.dwell ?? actor?.dwell) === undefined
+        ? {}
+        : { dwell: (lane?.dwell ?? actor?.dwell) as DwellWindow }),
       ...((lane?.reasoningEffort ?? actor?.reasoningEffort) === undefined
         ? {}
-        : { reasoningEffort: (lane?.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort }),
+        : {
+            reasoningEffort: (lane?.reasoningEffort ?? actor?.reasoningEffort) as ReasoningEffort,
+          }),
       ...(actor?.maxOutputTokens === undefined ? {} : { maxOutputTokens: actor.maxOutputTokens }),
       ...(tasks === undefined ? {} : { tasks }),
       deviceName: device.name,
       devicePreset: device.preset,
       resolution: device.resolution,
       screenshotDir: laneCount === 1 ? "" : laneId,
-      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${streamId}.json`
+      traceArtifactPath: laneCount === 1 ? "actor.json" : `actors/${streamId}.json`,
     });
   }
 
@@ -872,7 +992,9 @@ function laneSpecsAndPlan(
     strategy: CUA_FANOUT_STRATEGY,
     laneCount,
     concurrency,
-    ...(resolved.envLoweredFrom === undefined ? {} : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
+    ...(resolved.envLoweredFrom === undefined
+      ? {}
+      : { envLoweredConcurrencyFrom: resolved.envLoweredFrom }),
     waves: Math.ceil(laneCount / concurrency),
     perLaneSessionBudgetMs,
     worstCaseSandboxMinutes: Math.round((laneCount * perLaneSandboxMs) / 60_000),
@@ -889,8 +1011,8 @@ function laneSpecsAndPlan(
       instructionDigest: spec.persona.promptDigest,
       ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
       ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens }),
-      ...(spec.targetUrl === undefined ? {} : { targetDigest: digestUrl(spec.targetUrl) })
-    }))
+      ...(spec.targetUrl === undefined ? {} : { targetDigest: digestUrl(spec.targetUrl) }),
+    })),
   };
   return { lanes, plan };
 }
@@ -912,7 +1034,10 @@ async function resolveCuaRerunSelection(args: {
   }
   const bundle = source.bundle;
   if (bundle.mode !== "live") {
-    return { ok: false, message: `source run ${bundle.runId} is ${bundle.mode}; rerun selection only applies to live CUA fan-out evidence.` };
+    return {
+      ok: false,
+      message: `source run ${bundle.runId} is ${bundle.mode}; rerun selection only applies to live CUA fan-out evidence.`,
+    };
   }
   const fanoutEvent = bundle.events.some((event) => event.type === "cua-lab.fanout.plan");
   if (!fanoutEvent || bundle.streams.length < 2) {
@@ -921,29 +1046,41 @@ async function resolveCuaRerunSelection(args: {
 
   const prior = bundle.streams
     .map(snapshotPriorCuaLane)
-    .filter((lane): lane is ReturnType<typeof snapshotPriorCuaLane> & { laneId: string } => lane !== null);
+    .filter(
+      (lane): lane is ReturnType<typeof snapshotPriorCuaLane> & { laneId: string } => lane !== null,
+    );
   const priorById = new Map(prior.map((lane) => [lane.laneId, lane]));
   if (priorById.size < 2) {
     return { ok: false, message: `source run ${bundle.runId} does not expose multiple lane ids.` };
   }
 
   const explicitLaneIds = uniqueLaneIds(args.laneIds ?? []);
-  const selectedLaneIds = explicitLaneIds.length > 0
-    ? explicitLaneIds
-    : prior.filter((lane) => lane.rerunnable).map((lane) => lane.laneId);
+  const selectedLaneIds =
+    explicitLaneIds.length > 0
+      ? explicitLaneIds
+      : prior.filter((lane) => lane.rerunnable).map((lane) => lane.laneId);
   if (selectedLaneIds.length === 0) {
-    return { ok: false, message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.` };
+    return {
+      ok: false,
+      message: `source run ${bundle.runId} has no failed, blocked, timed-out, or hollow lanes to rerun.`,
+    };
   }
 
   const missingPrior = selectedLaneIds.filter((laneId) => !priorById.has(laneId));
   if (missingPrior.length > 0) {
-    return { ok: false, message: `selected lane id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}` };
+    return {
+      ok: false,
+      message: `selected lane id(s) were not present in source run ${bundle.runId}: ${missingPrior.join(", ")}`,
+    };
   }
 
   const specsById = new Map(args.laneSpecs.map((spec) => [spec.laneId, spec]));
   const missingCurrent = selectedLaneIds.filter((laneId) => !specsById.has(laneId));
   if (missingCurrent.length > 0) {
-    return { ok: false, message: `selected lane id(s) are not present in the current lab config ${args.config.id}: ${missingCurrent.join(", ")}` };
+    return {
+      ok: false,
+      message: `selected lane id(s) are not present in the current lab config ${args.config.id}: ${missingCurrent.join(", ")}`,
+    };
   }
 
   const selectedSpecs = selectedLaneIds.map((laneId) => specsById.get(laneId)!);
@@ -955,8 +1092,10 @@ async function resolveCuaRerunSelection(args: {
     laneCount: selectedSpecs.length,
     concurrency,
     waves: Math.ceil(selectedSpecs.length / concurrency),
-    worstCaseSandboxMinutes: Math.round((selectedSpecs.length * resolvePerLaneSandboxMs(args.config)) / 60_000),
-    lanes: selectedPlanEntries
+    worstCaseSandboxMinutes: Math.round(
+      (selectedSpecs.length * resolvePerLaneSandboxMs(args.config)) / 60_000,
+    ),
+    lanes: selectedPlanEntries,
   };
 
   const previous = selectedLaneIds.map((laneId) => priorById.get(laneId)!.previous);
@@ -967,8 +1106,8 @@ async function resolveCuaRerunSelection(args: {
     rerun: {
       sourceRunId: bundle.runId,
       selectedLaneIds,
-      previous
-    }
+      previous,
+    },
   };
 }
 
@@ -984,7 +1123,9 @@ function uniqueLaneIds(values: string[]): string[] {
   return result;
 }
 
-function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: RunRerunLineage["previous"][number]; rerunnable: boolean } | null {
+function snapshotPriorCuaLane(
+  stream: RunStream,
+): { laneId: string; previous: RunRerunLineage["previous"][number]; rerunnable: boolean } | null {
   if (stream.kind !== "browser" || typeof stream.laneId !== "string" || !stream.laneId.trim()) {
     return null;
   }
@@ -994,12 +1135,13 @@ function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: Ru
   const actions = stream.actor?.counts.actions ?? 0;
   const messages = stream.actor?.counts.messages ?? 0;
   const hollow = completionReason === "goal_satisfied" && actions === 0 && messages === 0;
-  const rerunnable = stream.status !== "passed"
-    || actorStatus === "failed"
-    || actorStatus === "blocked"
-    || actorStatus === "timed_out"
-    || completionReason === "harness_error"
-    || hollow;
+  const rerunnable =
+    stream.status !== "passed" ||
+    actorStatus === "failed" ||
+    actorStatus === "blocked" ||
+    actorStatus === "timed_out" ||
+    completionReason === "harness_error" ||
+    hollow;
   return {
     laneId: stream.laneId,
     previous: {
@@ -1008,9 +1150,9 @@ function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: Ru
       status: stream.status,
       ...(reason === undefined ? {} : { reason }),
       ...(actorStatus === undefined ? {} : { actorStatus }),
-      ...(completionReason === undefined ? {} : { completionReason })
+      ...(completionReason === undefined ? {} : { completionReason }),
     },
-    rerunnable
+    rerunnable,
   };
 }
 
@@ -1022,7 +1164,12 @@ function snapshotPriorCuaLane(stream: RunStream): { laneId: string; previous: Ru
  */
 export function resolveCuaLanePlan(
   config: LabConfig,
-  opts: { countOverride?: number; env?: Record<string, string | undefined>; dryRun?: boolean; personas?: Map<string, ResolvedPersona> } = {}
+  opts: {
+    countOverride?: number;
+    env?: Record<string, string | undefined>;
+    dryRun?: boolean;
+    personas?: Map<string, ResolvedPersona>;
+  } = {},
 ): CuaLanePlan {
   return laneSpecsAndPlan(config, opts).plan;
 }
@@ -1032,10 +1179,10 @@ export function resolveCuaLanePlan(
 function emitPreflightPlan(plan: CuaLanePlan, labId: string): void {
   const lines: string[] = [];
   lines.push(
-    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}${plan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${plan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plan.waves} wave(s).`
+    `humanish cua fan-out plan (${labId}): ${plan.laneCount} lane(s), strategy ${plan.strategy}, concurrency ${plan.concurrency}${plan.envLoweredConcurrencyFrom === undefined ? "" : ` (lowered from ${plan.envLoweredConcurrencyFrom} by ${CUA_MAX_CONCURRENCY_ENV})`}, ${plan.waves} wave(s).`,
   );
   lines.push(
-    `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`
+    `  per-lane session budget ${Math.round(plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${plan.worstCaseSandboxMinutes} sandbox-minutes total${plan.dryRun ? " (dry-run: $0)" : ""}.`,
   );
   for (const lane of plan.lanes) {
     lines.push(`  - ${formatLanePlanEntry(lane)}`);
@@ -1048,7 +1195,7 @@ function formatLanePlanEntry(lane: CuaLanePlanEntry): string {
     lane.actorType ? `type=${lane.actorType}` : undefined,
     lane.surface ? `surface=${lane.surface}` : undefined,
     lane.caseGroup ? `case=${lane.caseGroup}` : undefined,
-    lane.reasoningEffort ? `effort=${lane.reasoningEffort}` : undefined
+    lane.reasoningEffort ? `effort=${lane.reasoningEffort}` : undefined,
   ].filter((part): part is string => part !== undefined);
   return `${lane.id}: persona=${lane.persona}${taxonomy.length > 0 ? ` ${taxonomy.join(" ")}` : ""} device=${lane.device} ${lane.resolution[0]}x${lane.resolution[1]} prompt#${lane.instructionDigest}${lane.targetDigest ? ` target#${lane.targetDigest}` : ""}`;
 }
@@ -1085,13 +1232,17 @@ export function makeCuaRunBudget(maxTotalUsd: number): CuaRunBudget {
       let total = 0;
       for (const value of laneEstimates.values()) total += value;
       return total;
-    }
+    },
   };
 }
 
 export interface CuaLaneDeps {
   /** Internal ready-desktop seam. The factory must not allocate; prepare owns that work. */
-  createDesktopLane?: (spec: CuaLaneSpec, warnings: string[], artifactRoot: PreparedOutputDirectory) => CuaDesktopLane;
+  createDesktopLane?: (
+    spec: CuaLaneSpec,
+    warnings: string[],
+    artifactRoot: PreparedOutputDirectory,
+  ) => CuaDesktopLane;
   config: LabConfig;
   descriptor: CuaActorDescriptor;
   appUrl: string;
@@ -1160,7 +1311,12 @@ export interface CuaLaneDeps {
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot from a lane's loop (#441), keyed by lane. The live path wires the
    * incremental in-progress flush here so the attached Observer's timeline grows mid-run. */
-  onTrace?: (laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage, metadata?: CuaLiveMetadata) => void;
+  onTrace?: (
+    laneId: string,
+    items: readonly ActorTraceItem[],
+    usage?: ActorTokenUsage,
+    metadata?: CuaLiveMetadata,
+  ) => void;
 }
 
 /** One lane's end-to-end run outcome (internal; projected into CuaLaneResult + the bundle). */
@@ -1210,13 +1366,15 @@ export interface LaneRunOutcome {
 export function makeLaneWriteScreenshot(
   artifactRoot: PreparedOutputDirectory,
   spec: { screenshotDir: string },
-  screenshots: string[]
+  screenshots: string[],
 ): (name: string, bytes: Buffer) => Promise<string> {
   if (spec.screenshotDir) {
     assertSafeOutputPathSegment(spec.screenshotDir, "Screenshot lane id");
   }
   const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
-  const relPrefix = spec.screenshotDir ? path.posix.join("screenshots", spec.screenshotDir) : "screenshots";
+  const relPrefix = spec.screenshotDir
+    ? path.posix.join("screenshots", spec.screenshotDir)
+    : "screenshots";
   return async (name: string, bytes: Buffer): Promise<string> => {
     assertSafeOutputPathSegment(name, "Screenshot name");
     const rel = path.posix.join(relPrefix, name);
@@ -1241,7 +1399,7 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
     noEngagement: false,
     selfReportedBlocker: false,
     reportedFriction: false,
-    harnessError: false
+    harnessError: false,
   };
 }
 
@@ -1258,10 +1416,14 @@ const PERCEPTION_AFTER_MODAL =
   /\b(can'?t|cannot|could ?not|couldn'?t|unable to|wasn'?t able to)\s+(even\s+|quite\s+|really\s+|fully\s+)?(read|see|tell|view|make out|verify|confirm|be sure|be certain|judge|know)\b/g;
 
 function hasBlockerLanguage(text: string): boolean {
-  return /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text)
-    || /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text)
-    || /\berror[:.]/.test(text)
-    || /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(text);
+  return (
+    /\b(can'?t|cannot|could not|unable|blocked|blocker|failed|invalid|not set)\b/.test(text) ||
+    /\b(shows|showing|hit|encountered|returned|got)\b.{0,80}\berror\b/.test(text) ||
+    /\berror[:.]/.test(text) ||
+    /what would you like me to do|please tell me|need (the )?(task|credentials|instructions)/.test(
+      text,
+    )
+  );
 }
 
 /** The friction scan (inclusive): does the narrative report ANY blocker-shaped language,
@@ -1284,13 +1446,13 @@ const NEGATED_REPORT_ITEM = String.raw`(?:confus(?:ed|ing|ion)|unclear(?:\s+erro
 const NEGATED_REPORT_QUALIFIERS = String.raw`(?:(?:really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an)\s+)*`;
 const NEGATED_REPORT_MODIFIERS = String.raw`(?:(?:was|were|felt|seemed|really|particularly|especially|major|minor|real|actual|remaining|functional|obvious|noticeable|significant|any|a|an|encounter(?:ed)?|experience(?:d)?|notice(?:d)?|observe(?:d)?|feel|find|found|have|had)\s+)*`;
 const NEGATED_REPORT_LANGUAGE = new RegExp(
-  String.raw`\b(?:nothing|no|not|never|without|none|(?:did|do|does|was|were|has|have|had)n['’]t)\s+${NEGATED_REPORT_MODIFIERS}${NEGATED_REPORT_ITEM}\b`
+  String.raw`\b(?:nothing|no|not|never|without|none|(?:did|do|does|was|were|has|have|had)n['’]t)\s+${NEGATED_REPORT_MODIFIERS}${NEGATED_REPORT_ITEM}\b` +
     // Negation scopes over a coordinated report list, not the rest of the sentence. In
     // particular, leave "but the label was confusing" and "and Save did nothing" intact.
-    + String.raw`(?:\s*,?\s+(?:or|nor|and)\s+${NEGATED_REPORT_QUALIFIERS}${NEGATED_REPORT_ITEM}\b)*`
+    String.raw`(?:\s*,?\s+(?:or|nor|and)\s+${NEGATED_REPORT_QUALIFIERS}${NEGATED_REPORT_ITEM}\b)*` +
     // Keep the predicate inside its negation: "No errors blocked me" reports no blocker.
-    + String.raw`(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it)\b)?`,
-  "g"
+    String.raw`(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it)\b)?`,
+  "g",
 );
 
 function stripNegatedReportLanguage(text: string): string {
@@ -1302,17 +1464,23 @@ function completionReasonContradictsGoal(reason: string): boolean {
   // Preserve the full negated list before the older blocker-specific rules remove its first
   // noun ("no issues or hesitation"). Matching reports first also avoids their broad encounter
   // clause rule swallowing a genuine subsequent observation.
-  const text = stripQuotedSpans(stripNegatedNonBlockerPhrases(stripNegatedReportLanguage(stripCodeExamples(reason).toLowerCase())));
+  const text = stripQuotedSpans(
+    stripNegatedNonBlockerPhrases(
+      stripNegatedReportLanguage(stripCodeExamples(reason).toLowerCase()),
+    ),
+  );
   return hasBlockerLanguage(text) || REPORTED_DEFECT_LANGUAGE.test(text);
 }
 
 /** Code/documentation excerpts are quoted material, not participant observations. */
 function stripCodeExamples(text: string): string {
-  return text
-    // Include an unterminated fence: copied text is not promoted just because its closing fence
-    // was omitted. Match the same marker so backticks inside a tilde fence cannot end it early.
-    .replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm, " ")
-    .replace(/(`+)[^`\n]*\1/g, " ");
+  return (
+    text
+      // Include an unterminated fence: copied text is not promoted just because its closing fence
+      // was omitted. Match the same marker so backticks inside a tilde fence cannot end it early.
+      .replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm, " ")
+      .replace(/(`+)[^`\n]*\1/g, " ")
+  );
 }
 
 /** Interim messages also contain plans and hypotheses. Admit observed-report clauses only;
@@ -1320,20 +1488,37 @@ function stripCodeExamples(text: string): string {
  * not an assertion that every mention of a defect is evidence that one happened. */
 function interimMessageReportsFriction(message: string): boolean {
   const prose = stripQuotedSpans(stripCodeExamples(message).toLowerCase());
-  const clauses = prose.split(/(?<=[.!?])\s+|[;\n]+|,\s*(?:but|so|however|yet)\s+|\s+so\s+(?=i\b|we\b)/);
+  const clauses = prose.split(
+    /(?<=[.!?])\s+|[;\n]+|,\s*(?:but|so|however|yet)\s+|\s+so\s+(?=i\b|we\b)/,
+  );
   return clauses.some((clause) => {
     // A condition, question, intention, or conjecture does not assert an observed result.
     // Clause splitting above keeps "Save did nothing, so I will try Enter" observable.
-    if (/\?|\b(?:if|unless|whether|maybe|perhaps|suppose|hypothetically|might|may|would|should)\b|\bcould\b(?!\s+not\b)/.test(clause)
-      || /\b(?:i|we)(?:['’]ll|\s+(?:will|plan|intend|want|hope|suspect|wonder))\b|\bgoing to\b|\blet['’]s\b/.test(clause)
-      || /\b(?:task|goal|mission|objective|plan)\s+(?:(?:is|was)\s+)?to\b|^\s*(?:check|test|look|checking|testing)\b/.test(clause)) return false;
+    if (
+      /\?|\b(?:if|unless|whether|maybe|perhaps|suppose|hypothetically|might|may|would|should)\b|\bcould\b(?!\s+not\b)/.test(
+        clause,
+      ) ||
+      /\b(?:i|we)(?:['’]ll|\s+(?:will|plan|intend|want|hope|suspect|wonder))\b|\bgoing to\b|\blet['’]s\b/.test(
+        clause,
+      ) ||
+      /\b(?:task|goal|mission|objective|plan)\s+(?:(?:is|was)\s+)?to\b|^\s*(?:check|test|look|checking|testing)\b/.test(
+        clause,
+      )
+    )
+      return false;
 
     // A topic is not a defect ("the accessibility guide is open", "shows error-handling docs").
     // Actual friction in those surfaces still qualifies: "the error guide was confusing".
     const observation = clause
       .replace(/\baccessibilit(?:y|ies)\b/g, " ")
-      .replace(/\berror[- ]handling\b|\berror\s+(?:documentation|docs?|guides?|reference|examples?)\b/g, " ");
-    const assertsObservation = /\b(?:is|are|was|were|has|had|did|does|shows?|showed|seems?|seemed|looks?|looked|found|noticed|saw|hit|encountered|felt|got|failed|returned|cannot|can['’]?t|unable|could not)\b|\b(?:overlap(?:ped|ping|s)?|truncat(?:ed|es)|cut off|nothing happened|no (?:visible )?focus)\b/.test(observation);
+      .replace(
+        /\berror[- ]handling\b|\berror\s+(?:documentation|docs?|guides?|reference|examples?)\b/g,
+        " ",
+      );
+    const assertsObservation =
+      /\b(?:is|are|was|were|has|had|did|does|shows?|showed|seems?|seemed|looks?|looked|found|noticed|saw|hit|encountered|felt|got|failed|returned|cannot|can['’]?t|unable|could not)\b|\b(?:overlap(?:ped|ping|s)?|truncat(?:ed|es)|cut off|nothing happened|no (?:visible )?focus)\b/.test(
+        observation,
+      );
     return assertsObservation && completionReasonContradictsGoal(observation);
   });
 }
@@ -1346,8 +1531,9 @@ function completionReasonBlocksVerdict(reason: string): boolean {
   // is friction worth a tally count and a feedback candidate (the friction scan above keeps it),
   // and it is not a reason to refuse the pass.
   return hasBlockerLanguage(
-    stripResolvedArcSegments(stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())))
-      .replace(PERCEPTION_AFTER_MODAL, "")
+    stripResolvedArcSegments(
+      stripQuotedSpans(stripNegatedNonBlockerPhrases(reason.toLowerCase())),
+    ).replace(PERCEPTION_AFTER_MODAL, ""),
   );
 }
 
@@ -1382,26 +1568,36 @@ const DEFECT_SHAPED_NEGATION =
   /\bno\s+(?:visible\s+)?focus\b|\bno\s+(?:keyboard|screen.?reader)[- ]?(?:access|path|route|way|alternative|equivalent)|\bnot\s+(?:keyboard|screen.?reader)[- ]?accessible\b|\bno\s+(?:effect|feedback|response)\b|\b(?:did|does)\s+nothing\b|\bnothing\s+happened\b/;
 
 function stripNegatedNonBlockerPhrases(text: string): string {
-  return text
-    // FIRST, before the narrower rules eat the "no blockers" and leave "encountered ... error"
-    // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
-    // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
-    // ... unless the clause names a DEFECT: "the delete control had no visible focus" is a
-    // finding, and the verb it happens to use must not decide whether it counts (#622).
-    .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, (clause) =>
-      DEFECT_SHAPED_NEGATION.test(clause) ? clause : " ")
-    .replace(/\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g, "")
-    .replace(/\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g, "")
-    .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
-    // "No functional failures blocked me" downgraded a clean passing run to a lab failure on
-    // 2026-09-01. The adjective list above is closed (real|remaining|actual), so an ordinary
-    // qualifier like "functional" slipped through and the trailing verb "blocked" tripped the
-    // scan. Allow up to two intervening words, and cover the verb form directly.
-    .replace(
-      /\bno\s+(?:\w+\s+){0,2}(?:blocker|blockers|blocking issues?|errors?|failures?|problems?|issues?)\b(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it))?/g,
-      " "
-    )
-    .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ");
+  return (
+    text
+      // FIRST, before the narrower rules eat the "no blockers" and leave "encountered ... error"
+      // behind: "I encountered no blockers or unclear error output." refused a clean passing run on
+      // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
+      // ... unless the clause names a DEFECT: "the delete control had no visible focus" is a
+      // finding, and the verb it happens to use must not decide whether it counts (#622).
+      .replace(
+        /\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g,
+        (clause) => (DEFECT_SHAPED_NEGATION.test(clause) ? clause : " "),
+      )
+      .replace(
+        /\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g,
+        "",
+      )
+      .replace(
+        /\bwithout\s+(?:a\s+|any\s+)?(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\b/g,
+        "",
+      )
+      .replace(/\bnot\s+(?:blocked|a blocker|an error|failed)\b/g, "")
+      // "No functional failures blocked me" downgraded a clean passing run to a lab failure on
+      // 2026-09-01. The adjective list above is closed (real|remaining|actual), so an ordinary
+      // qualifier like "functional" slipped through and the trailing verb "blocked" tripped the
+      // scan. Allow up to two intervening words, and cover the verb form directly.
+      .replace(
+        /\bno\s+(?:\w+\s+){0,2}(?:blocker|blockers|blocking issues?|errors?|failures?|problems?|issues?)\b(?:\s+(?:blocked|stopped|prevented)\s+(?:me|us|it))?/g,
+        " ",
+      )
+      .replace(/\bnothing\s+(?:\w+\s+){0,2}(?:blocked|stopped|prevented)\s+(?:me|us|it)\b/g, " ")
+  );
 }
 
 /**
@@ -1418,12 +1614,14 @@ function stripQuotedSpans(text: string): string {
 }
 
 function traceHasStopWhenMatch(session: CuaLoopResult): boolean {
-  return session.trace.items.some((item) =>
-    item.kind === "notice"
-      && item.status === "matched"
+  return session.trace.items.some(
+    (item) =>
+      item.kind === "notice" &&
+      item.status === "matched" &&
       // A dwell window that ended the session (then: stop) is the same class of harness-owned,
       // structured completion as a matched stopWhen (#510).
-      && (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"));
+      (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"),
+  );
 }
 
 /**
@@ -1439,11 +1637,13 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
   // for blocker-shaped phrases, and a declared "blocked" is a blocker whatever the paragraph says.
   const declared = session?.trace.declaredOutcome;
   if (session !== undefined && declared !== undefined) {
-    return declared === "blocked" && session.completionReason === "goal_satisfied" ? session.reason : undefined;
+    return declared === "blocked" && session.completionReason === "goal_satisfied"
+      ? session.reason
+      : undefined;
   }
-  return session?.completionReason === "goal_satisfied"
-    && completionReasonBlocksVerdict(session.reason)
-    && !traceHasStopWhenMatch(session)
+  return session?.completionReason === "goal_satisfied" &&
+    completionReasonBlocksVerdict(session.reason) &&
+    !traceHasStopWhenMatch(session)
     ? session.reason
     : undefined;
 }
@@ -1455,7 +1655,9 @@ export function resolveSelfReportedBlocker(session: CuaLoopResult | undefined): 
  * Resolved arcs still count (#453); quoted copy and negated reports still do not. This read
  * never changes the verdict. Exported for testing.
  */
-export function resolveSelfReportedFriction(session: CuaLoopResult | undefined): string | undefined {
+export function resolveSelfReportedFriction(
+  session: CuaLoopResult | undefined,
+): string | undefined {
   if (session?.completionReason !== "goal_satisfied") return undefined;
   // Friction stays a read of the narrative even when the outcome was declared: a participant who
   // reached the goal and described what was hard on the way has reported friction.
@@ -1469,12 +1671,25 @@ export function resolveSelfReportedFriction(session: CuaLoopResult | undefined):
   const closingReport = traceHasStopWhenMatch(session) ? undefined : session.reason.trim();
   // One candidate per participant, with exact repeats removed (the closing report often repeats
   // a prior turn). Earlier turns require observed-report clauses, not arbitrary defect mentions.
-  const typedReports = session.trace.debrief?.status === "completed"
-    ? session.trace.debrief.report?.frictionReports ?? [] : [];
-  const reports = [...new Set([...typedReports, ...messages.filter((message) => message === closingReport
-    ? completionReasonContradictsGoal(message)
-    : interimMessageReportsFriction(message))])];
-  if (closingReport && completionReasonContradictsGoal(closingReport) && !reports.includes(closingReport)) {
+  const typedReports =
+    session.trace.debrief?.status === "completed"
+      ? (session.trace.debrief.report?.frictionReports ?? [])
+      : [];
+  const reports = [
+    ...new Set([
+      ...typedReports,
+      ...messages.filter((message) =>
+        message === closingReport
+          ? completionReasonContradictsGoal(message)
+          : interimMessageReportsFriction(message),
+      ),
+    ]),
+  ];
+  if (
+    closingReport &&
+    completionReasonContradictsGoal(closingReport) &&
+    !reports.includes(closingReport)
+  ) {
     reports.push(closingReport);
   }
   if (reports.length > 0) return reports.join("\n\n");
@@ -1501,12 +1716,19 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       deps.signalProvisioned(ok);
     }
   };
-  const desktopLane = deps.createDesktopLane?.(spec, warnings, deps.artifactRoot) ?? createE2BCuaDesktopLane(spec, deps, warnings);
+  const desktopLane =
+    deps.createDesktopLane?.(spec, warnings, deps.artifactRoot) ??
+    createE2BCuaDesktopLane(spec, deps, warnings);
   try {
     await desktopLane.prepare();
     const ready = await desktopLane.openSession();
     if (deps.hooks.buildProvider) {
-      localAgentProvider = await deps.hooks.buildProvider({ config, actor: deps.descriptor, lane: spec, executor: ready.executor });
+      localAgentProvider = await deps.hooks.buildProvider({
+        config,
+        actor: deps.descriptor,
+        lane: spec,
+        executor: ready.executor,
+      });
     } else if (deps.localAgent === "codex") {
       // Hosted local-agent studies use the same native participant engine as local desktops.
       // Operator auth deliberately retains the operator's Codex home, config and supported auth
@@ -1516,7 +1738,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
         ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
         ...(ready.executor.speechEnabled === true ? { speechEnabled: true } : {}),
-        session: { env }
+        session: { env },
       });
       localAgentProvider = codexParticipant.provider;
     } else if (deps.localAgent === "claude") {
@@ -1526,19 +1748,20 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       // reachable as a MEASUREMENT switch: MemTrapBench (2026-08) reports memory frameworks
       // degrading agent performance by 10-40% on some tasks, so "remembers" has to be measured
       // against "does not" on the same lab, not assumed. The trace records which one ran.
-      const oneShot = env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== undefined
-        && env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== ""
-        && env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "0";
+      const oneShot =
+        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== undefined &&
+        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "" &&
+        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "0";
       if (oneShot) {
         localAgentProvider = createLocalAgentProvider({
           agent: "claude",
           ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
         });
       } else {
         claudeSession = await startClaudeSession({
           ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model })
+          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
         });
         localAgentProvider = claudeSession.provider;
       }
@@ -1556,7 +1779,8 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     const maxUsd = config.execution?.caps?.maxUsd;
     const sessionOptions: CuaActorSessionOptions = {
       instructions: ready.inbox
-        ? withInboxMission(spec, ready.inbox.url, ready.inbox.address, ready.inbox.receiving).instructions
+        ? withInboxMission(spec, ready.inbox.url, ready.inbox.address, ready.inbox.receiving)
+            .instructions
         : spec.instructions,
       persona: spec.persona,
       timeoutMs: deps.timeoutMs,
@@ -1569,15 +1793,19 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
         ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
         // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
         ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-        ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens })
+        ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens }),
       },
       ...(maxUsd === undefined
         ? {}
         : {
-          maxUsd,
-          estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
-            estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd
-        }),
+            maxUsd,
+            estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
+              estimateActorCostForExecution(
+                usage,
+                localAgentProvider?.version ?? capModelId,
+                localAgentProvider?.executionProfile,
+              ).estimatedCostUsd,
+          }),
       executor: ready.executor,
       redactScreenshots: deps.redactScreenshots,
       scrubText: deps.scrubKnownValues,
@@ -1592,33 +1820,40 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       ...(deps.runBudget === undefined
         ? {}
         : {
-          overRunBudget: (usage: ActorTokenUsage): string | null => {
-            const estimate = estimateActorCostForExecution(usage, localAgentProvider?.version ?? capModelId, localAgentProvider?.executionProfile).estimatedCostUsd;
-            const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
-            return totalUsd > deps.runBudget!.maxTotalUsd
-              ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
-              : null;
-          }
-        }),
+            overRunBudget: (usage: ActorTokenUsage): string | null => {
+              const estimate = estimateActorCostForExecution(
+                usage,
+                localAgentProvider?.version ?? capModelId,
+                localAgentProvider?.executionProfile,
+              ).estimatedCostUsd;
+              const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
+              return totalUsd > deps.runBudget!.maxTotalUsd
+                ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
+                : null;
+            },
+          }),
       ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
       ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
       ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot }),
       ...(deps.onTrace === undefined
         ? {}
         : {
-          // Forwards the RUNNING usage as well: the lane is where both are known, and usage
-          // without it never reaches the flush — which is how the live cost stayed unknown.
-          onTrace: (items: readonly ActorTraceItem[], usage: ActorTokenUsage, metadata?: CuaLiveMetadata): void =>
-            deps.onTrace?.(spec.laneId, items, usage, metadata)
-        })
+            // Forwards the RUNNING usage as well: the lane is where both are known, and usage
+            // without it never reaches the flush — which is how the live cost stayed unknown.
+            onTrace: (
+              items: readonly ActorTraceItem[],
+              usage: ActorTokenUsage,
+              metadata?: CuaLiveMetadata,
+            ): void => deps.onTrace?.(spec.laneId, items, usage, metadata),
+          }),
     };
     session = await deps.runSession(sessionOptions);
-
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
-    try { if (codexParticipant === undefined) await localAgentProvider?.close?.(); }
-    catch {
+    try {
+      if (codexParticipant === undefined) await localAgentProvider?.close?.();
+    } catch {
       warnings.push("Model provider cleanup is unconfirmed.");
       sessionError ??= "Model provider cleanup is unconfirmed.";
     }
@@ -1632,8 +1867,11 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       warnings.push("Model provider cleanup is unconfirmed.");
       sessionError ??= "Model provider cleanup is unconfirmed.";
     }
-    try { await claudeSession?.close(); }
-    catch { warnings.push('Claude session cleanup failed; desktop cleanup will still run.'); }
+    try {
+      await claudeSession?.close();
+    } catch {
+      warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
+    }
     try {
       if (!provisioned) signal(false);
     } finally {
@@ -1645,27 +1883,43 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
     // never depends on the operator rate table. estimateActorCost declares absent (null) for an
     // unknown rate / missing usage rather than guessing.
-    session.trace.estimatedCost = estimateActorCostForExecution(session.trace.tokenUsage, session.trace.ids.model, session.trace.executionProfile);
-    await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
+    session.trace.estimatedCost = estimateActorCostForExecution(
+      session.trace.tokenUsage,
+      session.trace.ids.model,
+      session.trace.executionProfile,
+    );
+    await writeContainedOutputFile(
+      deps.artifactRoot,
+      spec.traceArtifactPath,
+      `${JSON.stringify(session.trace, null, 2)}\n`,
+      "utf8",
+    );
     if (session.trace.redaction.screenshots === "raw") {
-      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+      warnings.push(
+        "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      );
     }
   }
 
-  const noEngagement = session !== undefined
-    && session.completionReason === "goal_satisfied"
-    && (session.trace.counts.actions ?? 0) === 0
-    && (session.trace.counts.messages ?? 0) === 0
-    && !traceHasStopWhenMatch(session);
+  const noEngagement =
+    session !== undefined &&
+    session.completionReason === "goal_satisfied" &&
+    (session.trace.counts.actions ?? 0) === 0 &&
+    (session.trace.counts.messages ?? 0) === 0 &&
+    !traceHasStopWhenMatch(session);
   if (noEngagement) {
-    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
+    warnings.push(
+      "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
+    );
   }
 
   const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
   const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
   if (selfReportedBlocker) {
-    warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`);
+    warnings.push(
+      `Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`,
+    );
   }
 
   const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
@@ -1681,7 +1935,6 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     selfReportedBlocker,
     reportedFriction,
     harnessError,
-
   };
 }
 
@@ -1694,8 +1947,17 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
   let sessionError: string | undefined;
   let provider: CuaProvider | undefined;
   try {
-    const executor = await deps.hooks.buildExecutor!({ config: deps.config, actor: deps.descriptor, appUrl: deps.appUrl });
-    provider = await deps.hooks.buildProvider!({ config: deps.config, actor: deps.descriptor, lane: spec, executor });
+    const executor = await deps.hooks.buildExecutor!({
+      config: deps.config,
+      actor: deps.descriptor,
+      appUrl: deps.appUrl,
+    });
+    provider = await deps.hooks.buildProvider!({
+      config: deps.config,
+      actor: deps.descriptor,
+      lane: spec,
+      executor,
+    });
     const sessionOptions: CuaActorSessionOptions = {
       instructions: spec.instructions,
       persona: spec.persona,
@@ -1705,39 +1967,59 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
       redactScreenshots: deps.redactScreenshots,
       scrubText: deps.scrubKnownValues,
       writeScreenshot,
-      ...(deps.onTrace === undefined ? {} : { onTrace: (items, usage, metadata) => deps.onTrace?.(spec.laneId, items, usage, metadata) }),
+      ...(deps.onTrace === undefined
+        ? {}
+        : {
+            onTrace: (items, usage, metadata) =>
+              deps.onTrace?.(spec.laneId, items, usage, metadata),
+          }),
       ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
       ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
-      ...(spec.tasks === undefined ? {} : { tasks: spec.tasks })
+      ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
     };
     session = await deps.runSession(sessionOptions);
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
-    try { await provider?.close?.(); }
-    catch { sessionError ??= "Model provider cleanup is unconfirmed."; }
-  }
-
-  if (session) {
-    await writeContainedOutputFile(deps.artifactRoot, spec.traceArtifactPath, `${JSON.stringify(session.trace, null, 2)}\n`, "utf8");
-    if (session.trace.redaction.screenshots === "raw") {
-      warnings.push("Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.");
+    try {
+      await provider?.close?.();
+    } catch {
+      sessionError ??= "Model provider cleanup is unconfirmed.";
     }
   }
 
-  const noEngagement = session !== undefined
-    && session.completionReason === "goal_satisfied"
-    && (session.trace.counts.actions ?? 0) === 0
-    && (session.trace.counts.messages ?? 0) === 0
-    && !traceHasStopWhenMatch(session);
+  if (session) {
+    await writeContainedOutputFile(
+      deps.artifactRoot,
+      spec.traceArtifactPath,
+      `${JSON.stringify(session.trace, null, 2)}\n`,
+      "utf8",
+    );
+    if (session.trace.redaction.screenshots === "raw") {
+      warnings.push(
+        "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      );
+    }
+  }
+
+  const noEngagement =
+    session !== undefined &&
+    session.completionReason === "goal_satisfied" &&
+    (session.trace.counts.actions ?? 0) === 0 &&
+    (session.trace.counts.messages ?? 0) === 0 &&
+    !traceHasStopWhenMatch(session);
   if (noEngagement) {
-    warnings.push("Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.");
+    warnings.push(
+      "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
+    );
   }
   const blockerReason = resolveSelfReportedBlocker(session);
   const selfReportedBlocker = blockerReason !== undefined;
   const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
   if (selfReportedBlocker) {
-    warnings.push(`Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`);
+    warnings.push(
+      `Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${blockerReason}`,
+    );
   }
 
   return {
@@ -1754,7 +2036,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     selfReportedBlocker,
     reportedFriction,
     harnessError: sessionError !== undefined || session?.completionReason === "harness_error",
-    entryKind: "local-app"
+    entryKind: "local-app",
   };
 }
 
@@ -1771,7 +2053,7 @@ export async function runCuaLanes(
   laneSpecs: CuaLaneSpec[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   concurrency: number,
-  runLane: typeof runCuaLane = runCuaLane
+  runLane: typeof runCuaLane = runCuaLane,
 ): Promise<{ outcomes: LaneRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
   let resolveGate: (() => void) | undefined;
@@ -1784,69 +2066,81 @@ export async function runCuaLanes(
   // later lane ever awaits it (concurrency could let lane 0 finish alone).
   gate.catch(() => undefined);
 
-  const outcomes = await mapWithConcurrency(laneSpecs, concurrency, async (spec, index): Promise<LaneRunOutcome> => {
-    if (index > 0) {
-      try {
-        await gate;
-      } catch {
-        return blockedLaneOutcome(spec, `skipped: lane ${laneSpecs[0]?.laneId ?? "lane-01"} failed to provision its world (pipeline gate)`);
+  const outcomes = await mapWithConcurrency(
+    laneSpecs,
+    concurrency,
+    async (spec, index): Promise<LaneRunOutcome> => {
+      if (index > 0) {
+        try {
+          await gate;
+        } catch {
+          return blockedLaneOutcome(
+            spec,
+            `skipped: lane ${laneSpecs[0]?.laneId ?? "lane-01"} failed to provision its world (pipeline gate)`,
+          );
+        }
       }
-    }
-    if (failFast.tripped) {
-      return blockedLaneOutcome(spec, `skipped: ${failFast.reason}`);
-    }
-    // The lane runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
-    // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
-    // already torn down) rejected the whole map while sibling workers kept launching sandboxes
-    // nobody would ever record — the run spent money and then reported nothing.
-    let outcome: LaneRunOutcome;
-    try {
-      outcome = await runLane(spec, {
-        ...deps,
-        ...(index === 0
-          ? {
-              signalProvisioned: (ok: boolean) => {
-                if (ok) {
-                  resolveGate?.();
-                } else {
-                  rejectGate?.();
-                }
+      if (failFast.tripped) {
+        return blockedLaneOutcome(spec, `skipped: ${failFast.reason}`);
+      }
+      // The lane runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
+      // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
+      // already torn down) rejected the whole map while sibling workers kept launching sandboxes
+      // nobody would ever record — the run spent money and then reported nothing.
+      let outcome: LaneRunOutcome;
+      try {
+        outcome = await runLane(spec, {
+          ...deps,
+          ...(index === 0
+            ? {
+                signalProvisioned: (ok: boolean) => {
+                  if (ok) {
+                    resolveGate?.();
+                  } else {
+                    rejectGate?.();
+                  }
+                },
               }
-            }
-          : {})
-      });
-    } catch (error) {
-      // Lane 0 may have thrown before signaling the provisioning gate — release the followers as
-      // blocked rather than leaving them awaiting a gate that will never settle.
-      if (index === 0) rejectGate?.();
-      const detail = redactText(toErrorMessage(error));
-      outcome = {
-        spec,
-        killed: false,
-        streamUrlPresent: false,
-        screenshots: [],
-        stateStepRecords: [],
-        phaseRecords: [],
-        warnings: [],
-        noEngagement: false,
-        selfReportedBlocker: false,
-        reportedFriction: false,
-        harnessError: true,
-        sessionError: `lane runner threw outside the session guard: ${detail}`
-      };
-    }
-    if (outcome.harnessError && !failFast.tripped) {
-      failFast.tripped = true;
-      failFast.reason = `a prior lane (${outcome.spec.laneId}) ended in a harness error (fail-fast)`;
-    }
-    return outcome;
-  });
+            : {}),
+        });
+      } catch (error) {
+        // Lane 0 may have thrown before signaling the provisioning gate — release the followers as
+        // blocked rather than leaving them awaiting a gate that will never settle.
+        if (index === 0) rejectGate?.();
+        const detail = redactText(toErrorMessage(error));
+        outcome = {
+          spec,
+          killed: false,
+          streamUrlPresent: false,
+          screenshots: [],
+          stateStepRecords: [],
+          phaseRecords: [],
+          warnings: [],
+          noEngagement: false,
+          selfReportedBlocker: false,
+          reportedFriction: false,
+          harnessError: true,
+          sessionError: `lane runner threw outside the session guard: ${detail}`,
+        };
+      }
+      if (outcome.harnessError && !failFast.tripped) {
+        failFast.tripped = true;
+        failFast.reason = `a prior lane (${outcome.spec.laneId}) ended in a harness error (fail-fast)`;
+      }
+      return outcome;
+    },
+  );
 
   return { outcomes, ...(failFast.tripped ? { failFastReason: failFast.reason } : {}) };
 }
 
 /** Project one lane outcome (or a dry-run contract spec) into the public CuaLaneResult. */
-function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, subject: CuaSubjectProjection, dryRun: boolean): CuaLaneResult {
+function toLaneResult(
+  spec: CuaLaneSpec,
+  outcome: LaneRunOutcome | undefined,
+  subject: CuaSubjectProjection,
+  dryRun: boolean,
+): CuaLaneResult {
   const base = {
     id: spec.laneId,
     ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
@@ -1856,10 +2150,15 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
     persona: spec.persona.id,
     device: spec.deviceName,
     resolution: spec.resolution,
-    subject
+    subject,
   };
   if (!outcome || dryRun) {
-    return { ...base, status: "contract_proof_only", ok: dryRun, diagnostics: cuaLaneDiagnostics({ dryRun }) };
+    return {
+      ...base,
+      status: "contract_proof_only",
+      ok: dryRun,
+      diagnostics: cuaLaneDiagnostics({ dryRun }),
+    };
   }
   if (outcome.skippedReason !== undefined) {
     return {
@@ -1868,7 +2167,7 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
       ok: false,
       diagnostics: cuaLaneDiagnostics({ dryRun, skipped: true }),
       skippedReason: outcome.skippedReason,
-      error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason }
+      error: { code: "HUMANISH_CUA_LAB_FAILED", message: outcome.skippedReason },
     };
   }
   const session = outcome.session;
@@ -1879,53 +2178,75 @@ function toLaneResult(spec: CuaLaneSpec, outcome: LaneRunOutcome | undefined, su
     status,
     ok: laneOk,
     diagnostics: cuaLaneDiagnostics({
-      dryRun, executionError: outcome.sessionError !== undefined, noEngagement: outcome.noEngagement,
-      ...(session ? { session: { status: session.status, completionReason: session.completionReason, ...
-        (session.trace.stopCause === undefined ? {} : { stopCause: session.trace.stopCause }) } } : {})
+      dryRun,
+      executionError: outcome.sessionError !== undefined,
+      noEngagement: outcome.noEngagement,
+      ...(session
+        ? {
+            session: {
+              status: session.status,
+              completionReason: session.completionReason,
+              ...(session.trace.stopCause === undefined
+                ? {}
+                : { stopCause: session.trace.stopCause }),
+            },
+          }
+        : {}),
     }),
     ...(session
       ? {
           session: {
             status: session.status,
             completionReason: session.completionReason,
-            ...(session.trace.stopCause === undefined ? {} : { stopCause: session.trace.stopCause }),
+            ...(session.trace.stopCause === undefined
+              ? {}
+              : { stopCause: session.trace.stopCause }),
             reason: session.reason,
-            screenshots: outcome.screenshots.length
-          }
+            screenshots: outcome.screenshots.length,
+          },
         }
       : {}),
     ...(outcome.sandboxId === undefined
       ? {}
-      : { sandbox: { sandboxId: outcome.sandboxId, killed: outcome.killed, streamUrlPresent: outcome.streamUrlPresent } }),
+      : {
+          sandbox: {
+            sandboxId: outcome.sandboxId,
+            killed: outcome.killed,
+            streamUrlPresent: outcome.streamUrlPresent,
+          },
+        }),
     ...(laneOk
       ? {}
       : {
           error: {
             code: outcome.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
-            message: outcome.sessionError
-              ?? (outcome.noEngagement
+            message:
+              outcome.sessionError ??
+              (outcome.noEngagement
                 ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
                 : outcome.selfReportedBlocker
                   ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
-                : session?.completionReason === "harness_error"
-                  ? `Computer-use session ended with a harness error: ${session.reason}`
-                  : session?.status !== "passed"
-                  ? `Computer-use session ended with ${session?.status ?? "unknown"}: ${session?.reason ?? "no terminal reason"}`
-                  : "Computer-use lab did not produce a terminal session.")
-          }
-        })
+                  : session?.completionReason === "harness_error"
+                    ? `Computer-use session ended with a harness error: ${session.reason}`
+                    : session?.status !== "passed"
+                      ? `Computer-use session ended with ${session?.status ?? "unknown"}: ${session?.reason ?? "no terminal reason"}`
+                      : "Computer-use lab did not produce a terminal session."),
+          },
+        }),
   };
 }
 
 function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): boolean {
   if (dryRun) return true;
   if (!outcome || outcome.skippedReason !== undefined) return false;
-  return outcome.session !== undefined
-    && outcome.session.status === "passed"
-    && outcome.session.completionReason !== "harness_error"
-    && outcome.sessionError === undefined
-    && !outcome.noEngagement
-    && !outcome.selfReportedBlocker;
+  return (
+    outcome.session !== undefined &&
+    outcome.session.status === "passed" &&
+    outcome.session.completionReason !== "harness_error" &&
+    outcome.sessionError === undefined &&
+    !outcome.noEngagement &&
+    !outcome.selfReportedBlocker
+  );
 }
 
 function fanoutReviewVerdict(args: {
@@ -1963,7 +2284,7 @@ function laneSubjectProjection(args: {
       repo: args.publicRepo,
       ...(args.subjectCommit === undefined ? {} : { commit: args.subjectCommit }),
       envNames: args.subjectEnvNames,
-      state: args.subjectState
+      state: args.subjectState,
     };
   }
   if (args.localTreeRoute) {
@@ -1971,9 +2292,11 @@ function laneSubjectProjection(args: {
     return {
       source: "local-tree",
       ...(archive === undefined ? {} : { archiveSha256: archive.archiveSha256 }),
-      ...(archive?.git === undefined ? {} : { commit: archive.git.commit, dirty: archive.git.dirty }),
+      ...(archive?.git === undefined
+        ? {}
+        : { commit: archive.git.commit, dirty: archive.git.dirty }),
       envNames: args.subjectEnvNames,
-      state: args.subjectState
+      state: args.subjectState,
     };
   }
   return { source: "app-url", state: args.subjectState };
@@ -1985,7 +2308,7 @@ function laneSubjectProjection(args: {
 function subjectProvenanceArg(
   subject: CuaSubjectProjection,
   publicRepo: string | undefined,
-  subjectEnvNames: string[]
+  subjectEnvNames: string[],
 ): CuaSubjectProvenanceArg | undefined {
   if (subject.source === "clone" && publicRepo) {
     return {
@@ -1993,7 +2316,7 @@ function subjectProvenanceArg(
       repo: publicRepo,
       ...(subject.commit === undefined ? {} : { commit: subject.commit }),
       envNames: subjectEnvNames,
-      state: subject.state
+      state: subject.state,
     };
   }
   if (subject.source === "local-tree") {
@@ -2003,7 +2326,7 @@ function subjectProvenanceArg(
       ...(subject.commit === undefined ? {} : { commit: subject.commit }),
       ...(subject.dirty === undefined ? {} : { dirty: subject.dirty }),
       envNames: subjectEnvNames,
-      state: subject.state
+      state: subject.state,
     };
   }
   return undefined;
@@ -2020,19 +2343,41 @@ export async function runCuaActorLab(options: RunCuaActorLabOptions): Promise<Cu
   return withTransientCommsSecrets(() => runCuaActorLabWithSecrets(options));
 }
 
-async function runCuaActorLabWithSecrets(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
+async function runCuaActorLabWithSecrets(
+  options: RunCuaActorLabOptions,
+): Promise<CuaActorLabResult> {
   const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const tasksReason = analysisReason.ok ? taskProtocolValidationReason(options.config, true) : analysisReason.message;
-  if (tasksReason) return {
-    schema: CUA_ACTOR_LAB_SCHEMA, ok: false, cwd: path.resolve(options.cwd), labId: options.config.id,
-    actor: options.config.actors[0]?.type ?? "", dryRun: options.dryRun,
-    runId: options.runId ?? "not-created", appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "", lanes: [], warnings: [],
-    error: { code: analysisReason.ok ? "HUMANISH_LAB_TASKS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID", message: tasksReason }
-  };
+  const tasksReason = analysisReason.ok
+    ? taskProtocolValidationReason(options.config, true)
+    : analysisReason.message;
+  if (tasksReason)
+    return {
+      schema: CUA_ACTOR_LAB_SCHEMA,
+      ok: false,
+      cwd: path.resolve(options.cwd),
+      labId: options.config.id,
+      actor: options.config.actors[0]?.type ?? "",
+      dryRun: options.dryRun,
+      runId: options.runId ?? "not-created",
+      appUrl: options.config.subject.appUrl ?? options.config.subject.serve?.url ?? "",
+      lanes: [],
+      warnings: [],
+      error: {
+        code: analysisReason.ok
+          ? "HUMANISH_LAB_TASKS_UNSUPPORTED"
+          : "HUMANISH_LAB_ANALYSIS_INVALID",
+        message: tasksReason,
+      },
+    };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
-  return completeAutomaticAnalysis(result, analysis.ok ? analysis.config : undefined, options.automaticAnalysis,
-    options.config.review?.analysis === undefined ? "default" : "explicit", analysis.ok && analysis.preferLargerOutput === true);
+  return completeAutomaticAnalysis(
+    result,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    options.config.review?.analysis === undefined ? "default" : "explicit",
+    analysis.ok && analysis.preferLargerOutput === true,
+  );
 }
 
 async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<CuaActorLabResult> {
@@ -2065,7 +2410,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       if (liveObserver) {
         attachObserverRuntimeStreamUrls(liveObserver, runtimeStreamUrls);
       }
-    }
+    },
   };
   const env = hooks.env ?? process.env;
   const render = hooks.renderObserverFn ?? renderObserver;
@@ -2081,12 +2426,16 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const provisionedRoute = cloneRoute || localTreeRoute;
   const serve = config.subject.serve;
   const appUrl = (provisionedRoute ? serve?.url : config.subject.appUrl) ?? "";
-  const subjectRepo = cloneRoute ? config.subject.repos?.[0] ?? "" : undefined;
-  const subjectEnvNames = provisionedRoute ? config.subject.env ?? [] : [];
+  const subjectRepo = cloneRoute ? (config.subject.repos?.[0] ?? "") : undefined;
+  const subjectEnvNames = provisionedRoute ? (config.subject.env ?? []) : [];
   const actor = config.actors[0];
   const actorType = actor?.type ?? "";
 
-  const fail = (code: CuaActorLabErrorCode, message: string, actorLabel?: string): CuaActorLabResult => ({
+  const fail = (
+    code: CuaActorLabErrorCode,
+    message: string,
+    actorLabel?: string,
+  ): CuaActorLabResult => ({
     schema: CUA_ACTOR_LAB_SCHEMA,
     ok: false,
     cwd,
@@ -2097,32 +2446,57 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     runId: options.runId ?? "not-created",
     lanes: [],
     warnings: [],
-    error: { code, message }
+    error: { code, message },
   });
 
   // Resolve the actor through the registry — the parse layer validated this, but the engine fails
   // closed rather than trusting a config that arrived through another door.
   const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
   if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED", `actors[0].type "${actorType}" is not a registered computer-use actor.`);
+    return fail(
+      "HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED",
+      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
+    );
   }
   const runSession = hooks.runSession ?? descriptor.runSession;
   const mediaReason = desktopMediaValidationReason(config);
   if (mediaReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", mediaReason, descriptor.id);
   const outputLimitReason = outputTokenLimitValidationReason(config);
-  if (outputLimitReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", outputLimitReason, descriptor.id);
-  if (actor?.maxOutputTokens !== undefined && (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)) {
-    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.", descriptor.id);
+  if (outputLimitReason)
+    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", outputLimitReason, descriptor.id);
+  if (
+    actor?.maxOutputTokens !== undefined &&
+    (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)
+  ) {
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
+      descriptor.id,
+    );
   }
   const receivingReason = receivingEmailValidationReason(config);
-  if (receivingReason) return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", receivingReason, descriptor.id);
+  if (receivingReason)
+    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", receivingReason, descriptor.id);
   const inProcessRoute = hooks.buildExecutor !== undefined;
-  if (inProcessRoute && config.comms?.email?.kind === "real") return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "Real email receiving requires hosted participant desktops.", descriptor.id);
+  if (inProcessRoute && config.comms?.email?.kind === "real")
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "Real email receiving requires hosted participant desktops.",
+      descriptor.id,
+    );
   if (inProcessRoute && config.execution?.desktop?.media !== undefined) {
-    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.", descriptor.id);
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "execution.desktop.media is not provisioned by a caller-supplied executor. Remove the declaration or use a hosted computer-use browser lane.",
+      descriptor.id,
+    );
   }
   if (inProcessRoute && config.execution?.desktop?.recording !== undefined) {
-    return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "execution.desktop.recording is not provisioned by a caller-supplied executor.", descriptor.id);
+    return fail(
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "execution.desktop.recording is not provisioned by a caller-supplied executor.",
+      descriptor.id,
+    );
   }
   const localAppSubject = config.subject.source === "local-app";
   // Adopter-hosted comms plane on the app-url route (#380): humanish provisions no subject here,
@@ -2130,19 +2504,21 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // of the funnel: tells each persona its address and inbox URL, drains the catch over HTTP after
   // the lanes, and writes the same digest-only evidence. Declaring `external` previously did
   // nothing on this route (and, per #387, on every other) while its docs said otherwise.
-  const externalCommsConfig = !cloneRoute && !localTreeRoute && !inProcessRoute
-    ? config.comms?.email?.external
-    : undefined;
+  const externalCommsConfig =
+    !cloneRoute && !localTreeRoute && !inProcessRoute ? config.comms?.email?.external : undefined;
   const externalCommsEmail = externalCommsConfig ? config.comms?.email : undefined;
 
   // Engine re-enforcement of the clone-route structure (library API surface).
-  if (cloneRoute && (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))) {
+  if (
+    cloneRoute &&
+    (!serve || !subjectRepo || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(subjectRepo))
+  ) {
     return fail(
       "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       !serve
         ? "clone subjects on the computer-use route require `subject.serve` (start + url) — the lab serves the app in-sandbox."
         : `subject.repos[0] must be an owner/repo slug (got "${subjectRepo ?? ""}").`,
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2155,7 +2531,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       !serve
         ? "local-tree subjects on the computer-use route require `subject.serve` (start + url): the lab packs and serves the working tree in-sandbox."
         : "local-tree subjects require `execution.target: e2b-desktop`: the packed working tree is provisioned and served inside a hosted desktop sandbox.",
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2173,20 +2549,28 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // target at all — the subject is a program on the machine, not an address — so the boundary is
   // vacuous there rather than violated by an empty string.
   const allowPublicTargets = config.policies?.allowPublicTargets === true;
-  const declaredTargets = [appUrl, ...(actor?.lanes ?? []).map((lane) => lane.target).filter((target): target is string => target !== undefined)];
-  const entryTargetSafe = desktopCliRoute || declaredTargets.every((target) =>
-    provisionedRoute || localAppSubject
-      ? isLoopbackUrl(target)
-      : allowPublicTargets
-        ? isHttpUrl(target)
-        : isLoopbackUrl(target));
+  const declaredTargets = [
+    appUrl,
+    ...(actor?.lanes ?? [])
+      .map((lane) => lane.target)
+      .filter((target): target is string => target !== undefined),
+  ];
+  const entryTargetSafe =
+    desktopCliRoute ||
+    declaredTargets.every((target) =>
+      provisionedRoute || localAppSubject
+        ? isLoopbackUrl(target)
+        : allowPublicTargets
+          ? isHttpUrl(target)
+          : isLoopbackUrl(target),
+    );
   if (!entryTargetSafe) {
     return fail(
       "HUMANISH_CUA_LAB_SUBJECT_UNSAFE",
       provisionedRoute || localAppSubject || !allowPublicTargets
         ? "subject.appUrl and any actors[0].lanes[].target entries must be loopback (127.0.0.1 or localhost) unless policies.allowPublicTargets is set for an app-url subject."
         : "subject.appUrl and actors[0].lanes[].target entries must be valid http(s) URLs.",
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2196,7 +2580,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     return fail(
       "HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER",
       "cuaHooks.buildExecutor requires cuaHooks.buildProvider — a state-driven executor returns no screenshot, so it must be paired with a NON-vision provider (the default OpenAI computer-use provider is vision-based and would fail closed).",
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2205,12 +2589,20 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     return fail(
       "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)",
-      descriptor.id
+      descriptor.id,
     );
   }
 
-  if (config.subject.source === "app-url" && config.execution?.target === "local" && !hooks.createDesktopLane) {
-    return fail("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR", "Local browser studies require a configured local desktop runtime.", descriptor.id);
+  if (
+    config.subject.source === "app-url" &&
+    config.execution?.target === "local" &&
+    !hooks.createDesktopLane
+  ) {
+    return fail(
+      "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
+      "Local browser studies require a configured local desktop runtime.",
+      descriptor.id,
+    );
   }
 
   // Re-enforce the fan-out cross-validation (library API surface): lanes XOR count/laneFocus,
@@ -2225,13 +2617,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // arithmetic — the provider's own error names a limit but not which knob produced it.
   const derivedSandboxMs = resolvePerLaneSandboxMs(config);
   if (derivedSandboxMs > MAX_SANDBOX_MS) {
-    const provisionedRoute = config.subject.source === "clone" || config.subject.source === "local-tree";
+    const provisionedRoute =
+      config.subject.source === "clone" || config.subject.source === "local-tree";
     const sessionMs = config.execution?.timeoutMs ?? defaultSessionTimeoutMs(config);
     const headroomMs = derivedSandboxMs - sessionMs;
     return fail(
       "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       `execution.timeoutMs ${Math.round(sessionMs / 60_000)}m derives a ${Math.round(derivedSandboxMs / 60_000)}m sandbox deadline, and a sandbox may not live longer than ${MAX_SANDBOX_MS / 60_000}m. The deadline is the session budget plus ${Math.round(headroomMs / 60_000)}m of provisioning and teardown headroom${provisionedRoute ? " (this route clones, installs, builds and serves the subject before the actor starts)" : ""}. Lower execution.timeoutMs to at most ${Math.round((MAX_SANDBOX_MS - headroomMs) / 60_000)}m, or set execution.desktop.sandboxTimeoutMs explicitly.`,
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2247,7 +2640,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     ...(options.countOverride === undefined ? {} : { countOverride: options.countOverride }),
     env,
     dryRun,
-    personas: personaResolution.personas
+    personas: personaResolution.personas,
   });
   let laneCount = laneSpecs.length;
 
@@ -2255,14 +2648,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     return fail(
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
       `Computer-use fan-out is capped at ${MAX_CUA_LANES} lanes (resolved ${laneCount}); N concurrent paid desktops is real spend.`,
-      descriptor.id
+      descriptor.id,
     );
   }
   if (inProcessRoute && laneCount > 1) {
     return fail(
       "HUMANISH_CUA_LAB_FANOUT_INVALID",
       "Multi-lane fan-out is not supported on the in-process route (cuaHooks.buildExecutor) — fan-out provisions one independent E2B desktop per lane, which the in-process route deliberately skips. Run a single in-process lane, or fan out on the E2B route.",
-      descriptor.id
+      descriptor.id,
     );
   }
 
@@ -2274,7 +2667,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       sourceRunId: options.rerun.sourceRunId,
       ...(options.rerun.laneIds === undefined ? {} : { laneIds: options.rerun.laneIds }),
       laneSpecs,
-      plan
+      plan,
     });
     if (!selected.ok) {
       return fail("HUMANISH_CUA_LAB_RERUN_INVALID", selected.message, descriptor.id);
@@ -2302,10 +2695,13 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const knownSecretValues = [
     openaiApiKey,
     e2bApiKey,
-    ...subjectEnvNames.map((name) => env[name] ?? "")
+    ...subjectEnvNames.map((name) => env[name] ?? ""),
   ].filter((value) => value.length >= 4);
   const scrubKnownValues = (text: string): string =>
-    knownSecretValues.reduce((current, value) => current.split(value).join("[REDACTED_SECRET]"), text);
+    knownSecretValues.reduce(
+      (current, value) => current.split(value).join("[REDACTED_SECRET]"),
+      text,
+    );
   // Sanitize the declarative snapshot before initial, partial, or final bundle construction.
   for (const spec of laneSpecs) {
     if (spec.assignment) spec.assignment = participantAssignment(spec.assignment, scrubKnownValues);
@@ -2314,7 +2710,8 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   }
 
   const redactRepoLabel = config.policies?.redactRepos ?? subjectEnvNames.includes("GITHUB_TOKEN");
-  const publicRepo = cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
+  const publicRepo =
+    cloneRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
 
   // The operator's own signed-in coding agent is the brain, so there is no provider key to ask
@@ -2329,7 +2726,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   if (!dryRun && !inProcessRoute) {
     const missingKeys = [
       ...(openaiApiKey || localAgentRoute || hooks.buildProvider ? [] : ["OPENAI_API_KEY"]),
-      ...(e2bApiKey || hooks.createDesktopLane ? [] : ["E2B_API_KEY"])
+      ...(e2bApiKey || hooks.createDesktopLane ? [] : ["E2B_API_KEY"]),
     ];
     if (missingKeys.length > 0) {
       // The moment someone new actually hits the wall. If a signed-in coding agent is sitting
@@ -2337,17 +2734,19 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       // where most people trying humanish stop.
       const suggestion = missingKeys.includes("OPENAI_API_KEY")
         ? await (async () => {
-            const ready = (await detectLocalAgents({ env })).filter((agent) => agent.authStatus === "authenticated");
+            const ready = (await detectLocalAgents({ env })).filter(
+              (agent) => agent.authStatus === "authenticated",
+            );
             return ready.length === 0
               ? ""
-              : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine`
-                + ` — set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
+              : ` ${ready.map((agent) => agent.label).join(" and ")} reports authenticated on this machine` +
+                  ` — set actors[0].type: local-agent to use ${ready.length === 1 ? "it" : "one"} instead of a key.`;
           })()
         : "";
       return fail(
         "HUMANISH_CUA_LAB_KEYS_MISSING",
         `Live computer-use labs need ${missingKeys.join(" and ")} in the environment (values are never persisted). ${describeMissingKeys(missingKeys, env)}${suggestion}`,
-        descriptor.id
+        descriptor.id,
       );
     }
     if (localAgentRoute && !hooks.buildProvider) {
@@ -2358,9 +2757,9 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       if (chosen === undefined) {
         return fail(
           "HUMANISH_CUA_LAB_KEYS_MISSING",
-          `actors[0].type: local-agent needs the ${preferredLocalAgent} CLI on PATH and signed in. `
-            + `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
-          descriptor.id
+          `actors[0].type: local-agent needs the ${preferredLocalAgent} CLI on PATH and signed in. ` +
+            `Install it, or set OPENAI_API_KEY and use actors[0].type: openai-computer-use instead.`,
+          descriptor.id,
         );
       }
       if (chosen.authStatus !== "authenticated") {
@@ -2369,7 +2768,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
           chosen.authStatus === "unauthenticated"
             ? `${chosen.label} reports not signed in — run \`${chosen.id === "codex" ? "codex login" : "claude auth login"}\`, then retry.`
             : `${chosen.label} authentication status could not be checked. Run \`${chosen.id === "codex" ? "codex login status" : "claude auth status"}\` and update the CLI if needed. No desktop was launched.`,
-          descriptor.id
+          descriptor.id,
         );
       }
       if (chosen.id === "codex") {
@@ -2380,15 +2779,18 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
             compatibility === "unsupported_platform"
               ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
               : `Hosted Codex participants require Codex CLI 0.154.0. Run \`codex --version\` and install the supported version before retrying; no desktop was launched.`,
-            descriptor.id
+            descriptor.id,
           );
         }
-        if (chosen.billing === "account-unknown" &&
-          (config.execution?.caps?.maxUsd !== undefined || config.execution?.caps?.maxTotalUsd !== undefined)) {
+        if (
+          chosen.billing === "account-unknown" &&
+          (config.execution?.caps?.maxUsd !== undefined ||
+            config.execution?.caps?.maxTotalUsd !== undefined)
+        ) {
           return fail(
             "HUMANISH_CUA_LAB_UNPRICED_CAP",
             "A ChatGPT-account Codex participant has no API-dollar price, so execution.caps.maxUsd/maxTotalUsd cannot be enforced. Remove the dollar cap and use finite execution timeout/step limits, or use an API-backed participant; no desktop was launched.",
-            descriptor.id
+            descriptor.id,
           );
         }
       }
@@ -2398,7 +2800,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       return fail(
         "HUMANISH_CUA_LAB_SUBJECT_ENV_MISSING",
         `subject.env declares ${missingSubjectEnv.join(", ")} but the environment does not provide ${missingSubjectEnv.length === 1 ? "it" : "them"} (pass via --env-file; values are never persisted).`,
-        descriptor.id
+        descriptor.id,
       );
     }
     // FAIL-CLOSED CAP TENSION (discipline #3): a maxUsd cap needs a MEASURABLE per-turn estimate.
@@ -2407,13 +2809,16 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     // runaway-retry protection. Refuse at PREFLIGHT (before any sandbox/spend) rather than run
     // uncapped: an unenforceable cap is more dangerous than none. The operator adds a rate to
     // src/pricing.ts (the honest place) or removes the cap.
-    if (config.execution?.caps?.maxUsd !== undefined || config.execution?.caps?.maxTotalUsd !== undefined) {
+    if (
+      config.execution?.caps?.maxUsd !== undefined ||
+      config.execution?.caps?.maxTotalUsd !== undefined
+    ) {
       const capModelId = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
       if (!MODEL_RATES[capModelId]) {
         return fail(
           "HUMANISH_CUA_LAB_UNPRICED_CAP",
           `execution.caps declares a spend cap (maxUsd/maxTotalUsd) but src/pricing.ts has no rate for model "${config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL}"; add a rate or remove the cap — an unenforceable cap is refused rather than run uncapped.`,
-          descriptor.id
+          descriptor.id,
         );
       }
     }
@@ -2425,7 +2830,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       return fail(
         "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
         "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
-        descriptor.id
+        descriptor.id,
       );
     }
   }
@@ -2441,7 +2846,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.absoluteRunRoot;
   const physicalArtifactRoot = runPaths.physicalRunRoot;
@@ -2455,7 +2860,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     capturedAt: createdAt,
     cwd,
     humanishSource: "present",
-    packageName: "humanish"
+    packageName: "humanish",
   });
 
   // Pack the working tree ONCE per run, on the host, BEFORE any sandbox or provider call: every
@@ -2470,22 +2875,26 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     try {
       const packed = await packLocalTree({
         root: cwd,
-        ...(config.subject.localTree?.exclude === undefined ? {} : { extraExclude: config.subject.localTree.exclude }),
-        ...(config.subject.localTree?.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes })
+        ...(config.subject.localTree?.exclude === undefined
+          ? {}
+          : { extraExclude: config.subject.localTree.exclude }),
+        ...(config.subject.localTree?.maxArchiveBytes === undefined
+          ? {}
+          : { maxArchiveBytes: config.subject.localTree.maxArchiveBytes }),
       });
       localTreeArchive = packed.archive;
       localTreeArchiveBuffer = packed.buffer;
       // One operator-facing line (stderr, same channel as emitPreflightPlan): what left the
       // host, by counts and digest only, never paths or file names.
       process.stderr.write(
-        `humanish local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}`
-        + `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`
+        `humanish local-tree: packed ${packed.archive.fileCount} entries, ${packed.archive.totalBytes} bytes, archiveSha256 ${packed.archive.archiveSha256}` +
+          `${packed.archive.git ? ` (commit ${packed.archive.git.commit.slice(0, 12)}, ${packed.archive.git.dirty ? "dirty" : "clean"} working tree)` : " (not a git work tree)"}\n`,
       );
     } catch (error) {
       return fail(
         "HUMANISH_CUA_LAB_SUBJECT_INVALID",
         `local-tree packing failed: ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-        descriptor.id
+        descriptor.id,
       );
     }
   }
@@ -2493,7 +2902,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // Live-trace flush seam (#441): assigned by the attached-Observer block below when a live
   // run has an in-progress bundle to grow; lanes call it through deps.onTrace. Declared here
   // (before deps) so deps can reference it as a stable indirection.
-  let flushLiveTrace: ((laneId: string, items: readonly ActorTraceItem[], usage?: ActorTokenUsage, metadata?: CuaLiveMetadata) => void) | undefined;
+  let flushLiveTrace:
+    | ((
+        laneId: string,
+        items: readonly ActorTraceItem[],
+        usage?: ActorTokenUsage,
+        metadata?: CuaLiveMetadata,
+      ) => void)
+    | undefined;
   let stopLiveFlush: (() => Promise<void>) | undefined;
 
   const deps: Omit<CuaLaneDeps, "signalProvisioned"> = {
@@ -2530,9 +2946,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       : { runBudget: makeCuaRunBudget(config.execution.caps.maxTotalUsd) }),
     ...(externalCommsConfig === undefined || externalCommsEmail === undefined
       ? {}
-      : { externalComms: { email: externalCommsEmail, inboxUrl: externalInboxUrl(externalCommsConfig) } }),
+      : {
+          externalComms: {
+            email: externalCommsEmail,
+            inboxUrl: externalInboxUrl(externalCommsConfig),
+          },
+        }),
     now: hooks.now ?? Date.now,
-    hooks: liveHooks
+    hooks: liveHooks,
   };
 
   const inProgressLaneSubjects = laneSpecs.map(() =>
@@ -2545,12 +2966,16 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       subjectState: resolveSubjectState({
         declared: provisionedRoute ? config.subject.state : undefined,
         dryRun: false,
-        executed: []
-      })
-    })
+        executed: [],
+      }),
+    }),
   );
   const inProgressAggregateSubject = inProgressLaneSubjects[0]!;
-  const inProgressProvenance = subjectProvenanceArg(inProgressAggregateSubject, publicRepo, subjectEnvNames);
+  const inProgressProvenance = subjectProvenanceArg(
+    inProgressAggregateSubject,
+    publicRepo,
+    subjectEnvNames,
+  );
 
   // A live run writes what it is doing AS IT DOES IT, whether or not anyone is currently watching.
   // This used to be gated on `options.onObserverReady` — the interactive Observer callback — so a
@@ -2559,47 +2984,50 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // now" got silence for the whole run. Who reads the evidence is not the run's business; the
   // callback below stays conditional, the writing does not.
   if (!dryRun) {
-    const inProgressBundle = laneCount === 1 && rerunLineage === undefined
-      ? buildSingleLaneBundle({
-          ...(options.lab === undefined ? {} : { lab: options.lab }),
-          spec: laneSpecs[0]!,
-          outcome: undefined,
-          descriptor,
-          appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
-          createdAt,
-          dryRun: false,
-          config,
-          runId,
-          source,
-          redactScreenshots,
-          inProgress: true,
-          ...(inProgressProvenance === undefined ? {} : { subjectProvenance: inProgressProvenance }),
-          inProcessRoute,
-          localAppSubject
-        })
-      : buildCuaFanoutBundle({
-          ...(options.lab === undefined ? {} : { lab: options.lab }),
-          specs: laneSpecs,
-          laneSubjects: inProgressLaneSubjects,
-          aggregateSubject: inProgressAggregateSubject,
-          descriptor,
-          appUrl,
-          createdAt,
-          dryRun: false,
-          config,
-          runId,
-          source,
-          plan,
-          ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
-          cloneRoute,
-          localTreeRoute,
-          ...(publicRepo === undefined ? {} : { publicRepo }),
-          subjectEnvNames,
-          inProgress: true
-        });
+    const inProgressBundle =
+      laneCount === 1 && rerunLineage === undefined
+        ? buildSingleLaneBundle({
+            ...(options.lab === undefined ? {} : { lab: options.lab }),
+            spec: laneSpecs[0]!,
+            outcome: undefined,
+            descriptor,
+            appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
+            createdAt,
+            dryRun: false,
+            config,
+            runId,
+            source,
+            redactScreenshots,
+            inProgress: true,
+            ...(inProgressProvenance === undefined
+              ? {}
+              : { subjectProvenance: inProgressProvenance }),
+            inProcessRoute,
+            localAppSubject,
+          })
+        : buildCuaFanoutBundle({
+            ...(options.lab === undefined ? {} : { lab: options.lab }),
+            specs: laneSpecs,
+            laneSubjects: inProgressLaneSubjects,
+            aggregateSubject: inProgressAggregateSubject,
+            descriptor,
+            appUrl,
+            createdAt,
+            dryRun: false,
+            config,
+            runId,
+            source,
+            plan,
+            ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
+            cloneRoute,
+            localTreeRoute,
+            ...(publicRepo === undefined ? {} : { publicRepo }),
+            subjectEnvNames,
+            inProgress: true,
+          });
     await writeCuaRunArtifacts(inProgressBundle, createdAt, runPaths);
     liveObserver = observerResultForCuaArtifacts(cwd, runId, artifactRoot, [
-      "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted."
+      "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
     ]);
     if (options.onObserverReady) await options.onObserverReady(liveObserver);
 
@@ -2614,7 +3042,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     const personaByStream = new Map(
       laneSpecs
         .map((spec) => [spec.streamId, spec.persona?.id] as const)
-        .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string")
+        .filter((entry): entry is readonly [string, string] => typeof entry[1] === "string"),
     );
     const liveItemsByStream = new Map<string, ActorTraceItem[]>();
     // Running token usage per lane, so a run in flight can price itself instead of reporting the
@@ -2658,13 +3086,13 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
                           tokenUsage: liveUsageByStream.get(stream.id)!,
 
                           // The model too: usage without the rate it prices at is not a cost.
-                          ids: { model: modelForLiveCost }
+                          ids: { model: modelForLiveCost },
                         }),
                     ...liveMetadataByStream.get(stream.id),
-                    items: [...liveItems]
-                  }
+                    items: [...liveItems],
+                  },
                 };
-          })
+          }),
         };
         try {
           await writeCuaRunArtifacts(patched, createdAt, runPaths);
@@ -2715,33 +3143,52 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   let receiving: CommsReceivingRun | undefined;
   if (!dryRun && config.comms?.email?.kind === "real") {
     try {
-      receiving = await prepareReceivingRun({ cwd, runId, config, env, participants: laneSpecs.map(spec => spec.laneId), runPaths,
-        registerSecrets: values => { for (const value of values) if (value.length >= 4 && !knownSecretValues.includes(value)) knownSecretValues.push(value); }
+      receiving = await prepareReceivingRun({
+        cwd,
+        runId,
+        config,
+        env,
+        participants: laneSpecs.map((spec) => spec.laneId),
+        runPaths,
+        registerSecrets: (values) => {
+          for (const value of values)
+            if (value.length >= 4 && !knownSecretValues.includes(value))
+              knownSecretValues.push(value);
+        },
       });
       if (receiving) deps.receiving = receiving;
     } catch {
       await stopLiveFlush?.();
-      return fail("HUMANISH_CUA_LAB_SUBJECT_INVALID", "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.", descriptor.id);
+      return fail(
+        "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+        "Real email setup failed before desktop allocation. Run humanish comms check --online and humanish comms recover to inspect authentication and pending cleanup.",
+        descriptor.id,
+      );
     }
   }
   // Run lanes (dry-run runs none). In-process is always one lane.
   let outcomes: LaneRunOutcome[] | undefined;
   let failFastReason: string | undefined;
   try {
-  if (!dryRun) {
-    if (inProcessRoute) {
-      outcomes = [await runInProcessLane(laneSpecs[0]!, deps)];
-    } else if (laneCount === 1) {
-      outcomes = [await runCuaLane(laneSpecs[0]!, deps)];
-    } else {
-      const ran = await runCuaLanes(laneSpecs, deps, plan.concurrency);
-      outcomes = ran.outcomes;
-      failFastReason = ran.failFastReason;
+    if (!dryRun) {
+      if (inProcessRoute) {
+        outcomes = [await runInProcessLane(laneSpecs[0]!, deps)];
+      } else if (laneCount === 1) {
+        outcomes = [await runCuaLane(laneSpecs[0]!, deps)];
+      } else {
+        const ran = await runCuaLanes(laneSpecs, deps, plan.concurrency);
+        outcomes = ran.outcomes;
+        failFastReason = ran.failFastReason;
+      }
     }
-  }
   } finally {
-    try { await receiving?.finish(); }
-    catch { receivingWarnings.push("Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved."); }
+    try {
+      await receiving?.finish();
+    } catch {
+      receivingWarnings.push(
+        "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
+      );
+    }
   }
   // Close the live flush BEFORE any final artifact work: no new flush may start, and an
   // in-flight one is awaited, so the final bundle write can never race a stale in-progress
@@ -2762,28 +3209,46 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
           commsInboxes.push(await commsChannel.provisionAddress(recipient.lane, recipient.address));
         }
       }
-      const authToken = externalCommsConfig.authTokenEnv === undefined ? undefined : env[externalCommsConfig.authTokenEnv];
+      const authToken =
+        externalCommsConfig.authTokenEnv === undefined
+          ? undefined
+          : env[externalCommsConfig.authTokenEnv];
       const collected = await collectExternalCommsThread({
         external: { ...externalCommsConfig, ...(authToken === undefined ? {} : { authToken }) },
         channel: commsChannel,
-        inboxes: commsInboxes
+        inboxes: commsInboxes,
       });
       if (collected.artifact) {
         const commsPath = "comms/thread.json";
-        await writeContainedOutputFile(runPaths, commsPath, `${JSON.stringify(collected.artifact, null, 2)}\n`, "utf8");
+        await writeContainedOutputFile(
+          runPaths,
+          commsPath,
+          `${JSON.stringify(collected.artifact, null, 2)}\n`,
+          "utf8",
+        );
         for (const [index, outcome] of outcomes.entries()) {
           const laneId = laneSpecs[index]?.laneId;
-          if (laneId !== undefined && outcome.commsArtifactPath === undefined && laneHasInboxRecipient(externalCommsEmail, laneId)) {
+          if (
+            laneId !== undefined &&
+            outcome.commsArtifactPath === undefined &&
+            laneHasInboxRecipient(externalCommsEmail, laneId)
+          ) {
             outcome.commsArtifactPath = commsPath;
           }
         }
       } else if (collected.captured > 0) {
-        externalCommsWarnings.push(`Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`);
+        externalCommsWarnings.push(
+          `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
+        );
       } else {
-        externalCommsWarnings.push(`Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalCommsConfig.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`);
+        externalCommsWarnings.push(
+          `Comms catch captured ZERO email sends — your app never delivered mail through the catch at ${externalCommsConfig.catchBaseUrl}. Verify the app's email-API base URL points at it and that the flow reached an email step.`,
+        );
       }
     } catch (error) {
-      externalCommsWarnings.push(`Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(scrubKnownValues(toErrorMessage(error)))}`);
+      externalCommsWarnings.push(
+        `Comms evidence collection failed against the adopter-hosted catch (run continues): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
+      );
     }
   }
 
@@ -2793,7 +3258,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     const subjectState = resolveSubjectState({
       declared: provisionedRoute ? config.subject.state : undefined,
       dryRun,
-      executed: outcome?.stateStepRecords ?? []
+      executed: outcome?.stateStepRecords ?? [],
     });
     return laneSubjectProjection({
       cloneRoute,
@@ -2802,7 +3267,7 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       subjectEnvNames,
       ...(outcome?.subjectCommit === undefined ? {} : { subjectCommit: outcome.subjectCommit }),
       ...(localTreeArchive === undefined ? {} : { localTreeArchive }),
-      subjectState
+      subjectState,
     });
   });
 
@@ -2817,9 +3282,13 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   // summary reports the (larger) aggregate. Warn at run level so the operator sees the true
   // ceiling — unless the study declared the shared budget (#299), which caps the run as a whole.
   const perLaneCapUsd = config.execution?.caps?.maxUsd;
-  if (perLaneCapUsd !== undefined && laneCount > 1 && config.execution?.caps?.maxTotalUsd === undefined) {
+  if (
+    perLaneCapUsd !== undefined &&
+    laneCount > 1 &&
+    config.execution?.caps?.maxTotalUsd === undefined
+  ) {
     aggregateWarnings.push(
-      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`
+      `execution.caps.maxUsd ($${perLaneCapUsd}) is a PER-LANE cap; ${laneCount} lanes may spend up to ${laneCount} × $${perLaneCapUsd} (~$${round6(perLaneCapUsd * laneCount)} total) before any lane aborts. Set execution.caps.maxTotalUsd for a shared study budget.`,
     );
   }
   const aggregateSubject = ((): CuaSubjectProjection => {
@@ -2827,10 +3296,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (first.source !== "clone") {
       return first;
     }
-    const commits = (outcomes ?? []).map((outcome) => outcome.subjectCommit).filter((commit): commit is string => commit !== undefined);
+    const commits = (outcomes ?? [])
+      .map((outcome) => outcome.subjectCommit)
+      .filter((commit): commit is string => commit !== undefined);
     const unanimous = !dryRun && commits.length === laneCount && new Set(commits).size === 1;
     if (!dryRun && laneCount > 1 && new Set(commits).size > 1) {
-      aggregateWarnings.push("Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.");
+      aggregateWarnings.push(
+        "Fan-out lanes resolved DIVERGENT subject commits — the top-level subject.commit is omitted; see per-lane provenance in result.lanes for each lane's pinned commit.",
+      );
     }
     // Build without commit, then add it only when unanimous (avoids an explicit commit:undefined
     // under exactOptionalPropertyTypes).
@@ -2839,49 +3312,50 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       ...(first.repo === undefined ? {} : { repo: first.repo }),
       ...(first.envNames === undefined ? {} : { envNames: first.envNames }),
       state: first.state,
-      ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {})
+      ...(unanimous && commits[0] !== undefined ? { commit: commits[0] } : {}),
     };
   })();
   const finalProvenance = subjectProvenanceArg(aggregateSubject, publicRepo, subjectEnvNames);
 
-  const bundle = laneCount === 1 && rerunLineage === undefined
-    ? buildSingleLaneBundle({
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        spec: laneSpecs[0]!,
-        outcome: outcomes?.[0],
-        descriptor,
-        appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
-        createdAt,
-        dryRun,
-        config,
-        runId,
-        source,
-        redactScreenshots,
-        ...(finalProvenance === undefined ? {} : { subjectProvenance: finalProvenance }),
-        inProcessRoute,
-        localAppSubject
-      })
-    : buildCuaFanoutBundle({
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        specs: laneSpecs,
-        ...(outcomes === undefined ? {} : { outcomes }),
-        laneSubjects,
-        aggregateSubject,
-        descriptor,
-        appUrl,
-        createdAt,
-        dryRun,
-        config,
-        runId,
-        source,
-        plan,
-        ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
-        ...(failFastReason === undefined ? {} : { failFastReason }),
-        cloneRoute,
-        localTreeRoute,
-        ...(publicRepo === undefined ? {} : { publicRepo }),
-        subjectEnvNames
-      });
+  const bundle =
+    laneCount === 1 && rerunLineage === undefined
+      ? buildSingleLaneBundle({
+          ...(options.lab === undefined ? {} : { lab: options.lab }),
+          spec: laneSpecs[0]!,
+          outcome: outcomes?.[0],
+          descriptor,
+          appUrl: laneSpecs[0]!.targetUrl ?? appUrl,
+          createdAt,
+          dryRun,
+          config,
+          runId,
+          source,
+          redactScreenshots,
+          ...(finalProvenance === undefined ? {} : { subjectProvenance: finalProvenance }),
+          inProcessRoute,
+          localAppSubject,
+        })
+      : buildCuaFanoutBundle({
+          ...(options.lab === undefined ? {} : { lab: options.lab }),
+          specs: laneSpecs,
+          ...(outcomes === undefined ? {} : { outcomes }),
+          laneSubjects,
+          aggregateSubject,
+          descriptor,
+          appUrl,
+          createdAt,
+          dryRun,
+          config,
+          runId,
+          source,
+          plan,
+          ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
+          ...(failFastReason === undefined ? {} : { failFastReason }),
+          cloneRoute,
+          localTreeRoute,
+          ...(publicRepo === undefined ? {} : { publicRepo }),
+          subjectEnvNames,
+        });
 
   const adapterWarnings: string[] = [];
   const scorerResult = await applyBrowserAdapterHooks({
@@ -2895,12 +3369,14 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
       actor: descriptor.id,
       backend: "cua",
       dryRun,
-      laneCount
+      laneCount,
     },
     sanitize: (text) => redactText(scrubKnownValues(text)),
     warnings: adapterWarnings,
     hookLabel: "cuaHooks",
-    ...(options.scorerProvenance === undefined ? {} : { scorerProvenance: options.scorerProvenance })
+    ...(options.scorerProvenance === undefined
+      ? {}
+      : { scorerProvenance: options.scorerProvenance }),
   });
 
   if (receiving) bundle.commsReceiving = receiving.snapshot();
@@ -2918,10 +3394,12 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
             reachedGoal: bundle.review.participants.reachedGoal,
             ...(bundle.review.participants.reportedFriction === undefined
               ? {}
-              : { reportedFriction: bundle.review.participants.reportedFriction })
-          }
+              : { reportedFriction: bundle.review.participants.reportedFriction }),
+          },
         }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
   });
 
   const observer = await render(cwd, runId, { open: options.open === true });
@@ -2933,12 +3411,24 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
   const laneOk = (outcome: LaneRunOutcome | undefined): boolean => laneOutcomeOk(outcome, dryRun);
   const allLanesOk = laneSpecs.every((_, index) => laneOk(outcomes?.[index]));
   const adapterFailure = adapterScoreFailureMessage(bundle);
-  const ok = observer.ok && allLanesOk && adapterFailure === undefined && scorerResult.declaredVerdictFailure === undefined;
+  const ok =
+    observer.ok &&
+    allLanesOk &&
+    adapterFailure === undefined &&
+    scorerResult.declaredVerdictFailure === undefined;
 
   const laneWarnings = (outcomes ?? []).flatMap((outcome) => outcome.warnings);
-  const warnings = [...receivingWarnings, ...laneWarnings, ...aggregateWarnings, ...adapterWarnings, ...observer.warnings];
+  const warnings = [
+    ...receivingWarnings,
+    ...laneWarnings,
+    ...aggregateWarnings,
+    ...adapterWarnings,
+    ...observer.warnings,
+  ];
 
-  const laneResults = laneSpecs.map((spec, index) => toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun));
+  const laneResults = laneSpecs.map((spec, index) =>
+    toLaneResult(spec, outcomes?.[index], laneSubjects[index]!, dryRun),
+  );
   const laneSummary = buildLaneSummary(outcomes, laneCount, plan, dryRun);
   const firstOutcome = outcomes?.[0];
 
@@ -2947,77 +3437,100 @@ async function runCuaActorLabInScope(options: RunCuaActorLabOptions): Promise<Cu
     if (adapterFailure !== undefined) {
       return {
         code: "HUMANISH_CUA_LAB_FAILED",
-        message: adapterFailure
+        message: adapterFailure,
       };
     }
     if (laneCount === 1) {
       const outcome = firstOutcome;
       return {
         code: outcome?.failureCode ?? "HUMANISH_CUA_LAB_FAILED",
-        message: outcome?.sessionError
-          ?? (outcome?.noEngagement
+        message:
+          outcome?.sessionError ??
+          (outcome?.noEngagement
             ? "Actor took no actions and produced no message (likely a blank/still-loading screen); not a credible goal_satisfied."
-            // The lane result (toLaneResult) named this refusal; the N=1 envelope fell through to
-            // "did not produce a terminal session", which is false — it produced one and refused it.
-            : outcome?.selfReportedBlocker
-            ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
-            : observer.ok
-              ? outcome?.session?.completionReason === "harness_error"
-                ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
-                : outcome?.session?.status !== "passed"
-                ? `Computer-use session ended with ${outcome?.session?.status ?? "unknown"}: ${outcome?.session?.reason ?? "no terminal reason"}`
-                : "Computer-use lab did not produce a terminal session."
-              : observer.error?.message ?? "Observer failed for the computer-use lab run.")
+            : // The lane result (toLaneResult) named this refusal; the N=1 envelope fell through to
+              // "did not produce a terminal session", which is false — it produced one and refused it.
+              outcome?.selfReportedBlocker
+              ? "Actor reported goal_satisfied while its final message described a blocker or asked for missing instructions; not a credible pass."
+              : observer.ok
+                ? outcome?.session?.completionReason === "harness_error"
+                  ? `Computer-use session ended with a harness error: ${outcome.session.reason}`
+                  : outcome?.session?.status !== "passed"
+                    ? `Computer-use session ended with ${outcome?.session?.status ?? "unknown"}: ${outcome?.session?.reason ?? "no terminal reason"}`
+                    : "Computer-use lab did not produce a terminal session."
+                : (observer.error?.message ?? "Observer failed for the computer-use lab run.")),
       };
     }
     const failingLane = (outcomes ?? []).find((outcome) => !laneOk(outcome));
-    const geometryLane = (outcomes ?? []).find((outcome) => outcome.failureCode === "HUMANISH_CUA_LAB_DEVICE_GEOMETRY");
+    const geometryLane = (outcomes ?? []).find(
+      (outcome) => outcome.failureCode === "HUMANISH_CUA_LAB_DEVICE_GEOMETRY",
+    );
     const code: CuaActorLabErrorCode = geometryLane?.failureCode ?? "HUMANISH_CUA_LAB_FAILED";
     return {
       code,
       message: observer.ok
         ? `Fan-out run failed: ${laneSummary.passed}/${laneCount} lane(s) passed (${laneSummary.skipped} skipped, ${laneSummary.harnessErrors} harness error(s), ${laneSummary.hollow} hollow)${failingLane?.sessionError ? `; first failure: ${failingLane.sessionError}` : ""}.`
-        : observer.error?.message ?? "Observer failed for the computer-use fan-out run."
+        : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
 
-  return markFinalizedStudyResult({
-    schema: CUA_ACTOR_LAB_SCHEMA,
-    ok,
-    cwd,
-    labId: config.id,
-    actor: descriptor.id,
-    appUrl,
-    dryRun,
-    runId,
-    ...(firstOutcome?.session
-      ? {
-          session: {
-            status: firstOutcome.session.status,
-            completionReason: firstOutcome.session.completionReason,
-            ...(firstOutcome.session.trace.stopCause === undefined ? {} : { stopCause: firstOutcome.session.trace.stopCause }),
-            reason: firstOutcome.session.reason,
-            screenshots: firstOutcome.screenshots.length
+  return markFinalizedStudyResult(
+    {
+      schema: CUA_ACTOR_LAB_SCHEMA,
+      ok,
+      cwd,
+      labId: config.id,
+      actor: descriptor.id,
+      appUrl,
+      dryRun,
+      runId,
+      ...(firstOutcome?.session
+        ? {
+            session: {
+              status: firstOutcome.session.status,
+              completionReason: firstOutcome.session.completionReason,
+              ...(firstOutcome.session.trace.stopCause === undefined
+                ? {}
+                : { stopCause: firstOutcome.session.trace.stopCause }),
+              reason: firstOutcome.session.reason,
+              screenshots: firstOutcome.screenshots.length,
+            },
           }
-        }
-      : {}),
-    ...(firstOutcome?.sandboxId
-      ? { sandbox: { sandboxId: firstOutcome.sandboxId, killed: firstOutcome.killed, streamUrlPresent: firstOutcome.streamUrlPresent } }
-      : {}),
-    subject: aggregateSubject,
-    plan,
-    lanes: laneResults,
-    diagnostics: summarizeCuaDiagnostics({ dryRun, evidenceInvalid: !observer.ok, lanes: laneResults }),
-    laneSummary,
-    ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
-    observer,
-    warnings,
-    ...(errorResult === undefined ? {} : { error: errorResult })
-  }, runPaths);
+        : {}),
+      ...(firstOutcome?.sandboxId
+        ? {
+            sandbox: {
+              sandboxId: firstOutcome.sandboxId,
+              killed: firstOutcome.killed,
+              streamUrlPresent: firstOutcome.streamUrlPresent,
+            },
+          }
+        : {}),
+      subject: aggregateSubject,
+      plan,
+      lanes: laneResults,
+      diagnostics: summarizeCuaDiagnostics({
+        dryRun,
+        evidenceInvalid: !observer.ok,
+        lanes: laneResults,
+      }),
+      laneSummary,
+      ...(rerunLineage === undefined ? {} : { rerun: rerunLineage }),
+      observer,
+      warnings,
+      ...(errorResult === undefined ? {} : { error: errorResult }),
+    },
+    runPaths,
+  );
 }
 
 /** Aggregate lane counts for the result projection. */
-function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: number, plan: CuaLanePlan, dryRun: boolean): CuaLaneSummary {
+function buildLaneSummary(
+  outcomes: LaneRunOutcome[] | undefined,
+  laneCount: number,
+  plan: CuaLanePlan,
+  dryRun: boolean,
+): CuaLaneSummary {
   if (dryRun || !outcomes) {
     return {
       strategy: CUA_FANOUT_STRATEGY,
@@ -3027,7 +3540,7 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
       harnessErrors: 0,
       hollow: 0,
       concurrency: plan.concurrency,
-      waves: plan.waves
+      waves: plan.waves,
     };
   }
   let passed = 0;
@@ -3051,39 +3564,63 @@ function buildLaneSummary(outcomes: LaneRunOutcome[] | undefined, laneCount: num
     harnessErrors,
     hollow,
     concurrency: plan.concurrency,
-    waves: plan.waves
+    waves: plan.waves,
   };
 }
 
 async function writeCuaRunArtifacts(
   bundle: RunBundle,
   updatedAt: string,
-  preparedRunPaths: PreparedRunArtifactPaths
+  preparedRunPaths: PreparedRunArtifactPaths,
 ): Promise<void> {
   const runPaths = await validatePreparedRunArtifactPaths(preparedRunPaths);
   const publicBundle: RunBundle = {
     ...bundle,
-    cwd: PUBLIC_TARGET_CWD
+    cwd: PUBLIC_TARGET_CWD,
   };
-  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "review.md", renderCuaReviewMarkdown(publicBundle), "utf8");
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "run.json",
+    `${JSON.stringify(publicBundle, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "review.json",
+    `${JSON.stringify(publicBundle.review, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "review.md",
+    renderCuaReviewMarkdown(publicBundle),
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
   await writeContainedOutputFile(
     runPaths,
     "observer/observer-data.json",
     `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
-    "utf8"
+    "utf8",
   );
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId: publicBundle.runId,
-      path: runPaths.relativeRunRoot,
-      updatedAt
-    }, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId: publicBundle.runId,
+        path: runPaths.relativeRunRoot,
+        updatedAt,
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 }
 
@@ -3091,7 +3628,7 @@ function observerResultForCuaArtifacts(
   cwd: string,
   runId: string,
   artifactRoot: string,
-  warnings: string[] = []
+  warnings: string[] = [],
 ): ObserverResult & { ok: true } {
   const observerPath = path.join(artifactRoot, "observer", "index.html");
   const observerDataPath = path.join(artifactRoot, "observer", "observer-data.json");
@@ -3107,7 +3644,7 @@ function observerResultForCuaArtifacts(
     observerUrl: pathToFileURL(observerPath).href,
     bundlePath: path.join(artifactRoot, "run.json"),
     opened: false,
-    warnings
+    warnings,
   };
 }
 
@@ -3149,7 +3686,11 @@ function buildSingleLaneBundle(args: {
     persona: spec.persona,
     resolution: spec.resolution,
     desktopRoute: !args.inProcessRoute,
-    feedbackSubstrate: args.inProcessRoute ? "local-filesystem" : args.config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
+    feedbackSubstrate: args.inProcessRoute
+      ? "local-filesystem"
+      : args.config.execution?.target === "local"
+        ? "local-desktop"
+        : "e2b-desktop",
     ...(outcome?.desktopGeometry === undefined ? {} : { desktopGeometry: outcome.desktopGeometry }),
     ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
     isMobile: spec.devicePreset.isMobile,
@@ -3164,8 +3705,8 @@ function buildSingleLaneBundle(args: {
           credibility: {
             noEngagement: outcome.noEngagement === true,
             selfReportedBlocker: outcome.selfReportedBlocker === true,
-            reportedFriction: outcome.reportedFriction === true
-          }
+            reportedFriction: outcome.reportedFriction === true,
+          },
         }),
     source: args.source,
     ...(args.inProgress === undefined ? {} : { inProgress: args.inProgress }),
@@ -3177,21 +3718,27 @@ function buildSingleLaneBundle(args: {
       createdAt: args.createdAt,
       simId: spec.simId,
       streamId: spec.streamId,
-      laneId: spec.laneId
+      laneId: spec.laneId,
     }),
     ...(args.localAppSubject || args.inProcessRoute ? { entryKind: "local-app" as const } : {}),
     ...(outcome?.session ? { traceArtifactPath: spec.traceArtifactPath } : {}),
-    ...(outcome?.commsArtifactPath === undefined ? {} : { commsArtifactPath: outcome.commsArtifactPath }),
+    ...(outcome?.commsArtifactPath === undefined
+      ? {}
+      : { commsArtifactPath: outcome.commsArtifactPath }),
     ...(desktopSpanToMinutes(outcome?.desktopDurationMs) === undefined
       ? {}
       : { desktopMinutes: desktopSpanToMinutes(outcome?.desktopDurationMs)! }),
-    ...(outcome?.sandboxId === undefined ? {} : { desktopUsage: {
-      laneId: spec.laneId,
-      minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
-      observation: outcome.desktopResources,
-      lifetimeComplete: outcome.killed
-    } }),
-    phaseEvents: outcome?.phaseRecords ?? []
+    ...(outcome?.sandboxId === undefined
+      ? {}
+      : {
+          desktopUsage: {
+            laneId: spec.laneId,
+            minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+            observation: outcome.desktopResources,
+            lifetimeComplete: outcome.killed,
+          },
+        }),
+    phaseEvents: outcome?.phaseRecords ?? [],
   });
 }
 
@@ -3208,14 +3755,19 @@ export async function defaultPackLocalTree(args: {
 }): Promise<{ archive: LocalTreeArchive; buffer: ArrayBuffer }> {
   const archive = createLocalTreeArchive(args.root, {
     ...(args.extraExclude === undefined ? {} : { extraExclude: args.extraExclude }),
-    ...(args.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: args.maxArchiveBytes })
+    ...(args.maxArchiveBytes === undefined ? {} : { maxArchiveBytes: args.maxArchiveBytes }),
   });
   const bytes = await readFile(archive.archivePath);
-  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  const buffer = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
   // The archive was written to a fresh mkdtemp dir (no outputPath passed above); once the
   // bytes are buffered the on-disk copy is pure residue, and a packed working tree left in
   // the host tmpdir is itself a small leak surface. Best-effort removal.
-  await rm(path.dirname(archive.archivePath), { recursive: true, force: true }).catch(() => undefined);
+  await rm(path.dirname(archive.archivePath), { recursive: true, force: true }).catch(
+    () => undefined,
+  );
   return { archive, buffer };
 }
 
@@ -3243,24 +3795,26 @@ export function resolveSubjectState(args: {
     ? declaredSeed.map((step) => ({
         name: step.name,
         when: step.when ?? "before-start",
-        commandDigest: commandDigestOf(step.command)
+        commandDigest: commandDigestOf(step.command),
       }))
     : args.executed;
-  const allRanOk = !args.dryRun
-    && declaredSeed.length > 0
-    && seed.length === declaredSeed.length
-    && seed.every((record) => record.ok === true);
-  const provenance: RunSubjectProvenance["state"]["provenance"] = external.length > 0
-    ? "unpinned"
-    : declaredSeed.length === 0
-      ? "undeclared"
-      : allRanOk
-        ? "seeded"
-        : "declared-not-run";
+  const allRanOk =
+    !args.dryRun &&
+    declaredSeed.length > 0 &&
+    seed.length === declaredSeed.length &&
+    seed.every((record) => record.ok === true);
+  const provenance: RunSubjectProvenance["state"]["provenance"] =
+    external.length > 0
+      ? "unpinned"
+      : declaredSeed.length === 0
+        ? "undeclared"
+        : allRanOk
+          ? "seeded"
+          : "declared-not-run";
   return {
     provenance,
     ...(seed.length > 0 ? { seed } : {}),
-    ...(external.length > 0 ? { externalEnvNames: external } : {})
+    ...(external.length > 0 ? { externalEnvNames: external } : {}),
   };
 }
 
@@ -3323,10 +3877,12 @@ export function buildCuaCostSummary(args: {
       breakdown.push({
         kind: "model-tokens",
         ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
-        ...(lane.trace.providerVersion === undefined ? {} : { modelId: lane.trace.providerVersion }),
+        ...(lane.trace.providerVersion === undefined
+          ? {}
+          : { modelId: lane.trace.providerVersion }),
         estimatedCostUsd: null,
         reason: "interaction_usage_unreported",
-        ratesAsOf: null
+        ratesAsOf: null,
       });
     }
     // An attempted closing request has its own accounting boundary.
@@ -3334,14 +3890,18 @@ export function buildCuaCostSummary(args: {
       breakdown.push({
         kind: "model-tokens",
         ...(lane.laneId === undefined ? {} : { laneId: lane.laneId }),
-        ...(lane.trace.providerVersion === undefined ? {} : { modelId: lane.trace.providerVersion }),
+        ...(lane.trace.providerVersion === undefined
+          ? {}
+          : { modelId: lane.trace.providerVersion }),
         estimatedCostUsd: null,
         reason: "closing_usage_unreported",
-        ratesAsOf: null
+        ratesAsOf: null,
       });
     }
-    const est = lane.trace.executionProfile?.billing === "account-unknown"
-      ? estimateActorCostForExecution(usage, lane.trace.ids.model, lane.trace.executionProfile) : lane.trace.estimatedCost;
+    const est =
+      lane.trace.executionProfile?.billing === "account-unknown"
+        ? estimateActorCostForExecution(usage, lane.trace.ids.model, lane.trace.executionProfile)
+        : lane.trace.estimatedCost;
     if (!est) {
       continue;
     }
@@ -3353,7 +3913,7 @@ export function buildCuaCostSummary(args: {
       ...(est.reason === undefined ? {} : { reason: est.reason }),
       ratesAsOf: est.ratesAsOf,
       ...(est.source === undefined ? {} : { source: est.source }),
-      ...(est.placeholder ? { placeholder: true } : {})
+      ...(est.placeholder ? { placeholder: true } : {}),
     });
   }
 
@@ -3372,13 +3932,20 @@ export function buildCuaCostSummary(args: {
         minutes: estimate.minutes,
         durationBasis: "host-acquired-to-cleanup",
         ...(resources === undefined ? {} : { resources, resourceSource: "e2b.getInfo" }),
-        ...(observation && "reason" in observation ? { resourceUnavailableReason: observation.reason } : {}),
-        ...(estimate.usdPerSecond === undefined ? {} : { usdPerSecond: estimate.usdPerSecond })
-      }
+        ...(observation && "reason" in observation
+          ? { resourceUnavailableReason: observation.reason }
+          : {}),
+        ...(estimate.usdPerSecond === undefined ? {} : { usdPerSecond: estimate.usdPerSecond }),
+      },
     });
     if (!usage.lifetimeComplete) {
-      breakdown.push({ kind: "desktop-minutes", ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
-        estimatedCostUsd: null, reason: "desktop_lifetime_incomplete", ratesAsOf: null });
+      breakdown.push({
+        kind: "desktop-minutes",
+        ...(usage.laneId === undefined ? {} : { laneId: usage.laneId }),
+        estimatedCostUsd: null,
+        reason: "desktop_lifetime_incomplete",
+        ratesAsOf: null,
+      });
     }
   }
 
@@ -3390,7 +3957,7 @@ export function buildCuaCostSummary(args: {
       ...(desktop.reason === undefined ? {} : { reason: desktop.reason }),
       ratesAsOf: desktop.ratesAsOf,
       ...(desktop.source === undefined ? {} : { source: desktop.source }),
-      ...(desktop.placeholder ? { placeholder: true } : {})
+      ...(desktop.placeholder ? { placeholder: true } : {}),
     });
   }
 
@@ -3419,14 +3986,19 @@ export function buildCuaCostSummary(args: {
     }
   }
   const estimatedTotalUsd = anyKnown ? round6(knownSum) : null;
-  const estimateNote = estimatedTotalUsd === null
-    ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.lanes.some(lane => lane.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/pricing.ts to estimate this model."}`
-    : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
-  const note = estimateNote + ((args.desktops?.length ?? 0) > 0
-    ? args.desktops!.some(usage => usage.observation !== undefined && "resources" in usage.observation)
-      ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
-      : " Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
-    : "");
+  const estimateNote =
+    estimatedTotalUsd === null
+      ? `No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. ${args.lanes.some((lane) => lane.trace.executionProfile?.billing === "account-unknown") ? "Account billing remains unknown; API prices do not measure account spend." : "Add a rate to src/pricing.ts to estimate this model."}`
+      : `Estimated ${estimatedTotalUsd} USD total${anyNull ? " (LOWER BOUND — some lines unmeasured/unpriced)" : ""}${placeholder ? "; includes PLACEHOLDER rate(s) — confirm before trusting the magnitude" : ""}. Every figure is an ESTIMATE (rates as of ${minRatesAsOf} — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge.`;
+  const note =
+    estimateNote +
+    ((args.desktops?.length ?? 0) > 0
+      ? args.desktops!.some(
+          (usage) => usage.observation !== undefined && "resources" in usage.observation,
+        )
+        ? " Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+        : " Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+      : "");
 
   return {
     schema: "humanish.run-cost-summary.v1",
@@ -3436,18 +4008,36 @@ export function buildCuaCostSummary(args: {
     fullyEstimated: !anyNull,
     placeholder,
     breakdown,
-    tokenUsage: args.lanes.some(lane => lane.trace.executionProfile?.billing === "account-unknown") ? {
-      ...(args.lanes.some(lane => lane.trace.tokenUsage?.input !== undefined) ? { input: sumInput } : {}),
-      ...(args.lanes.some(lane => lane.trace.tokenUsage?.output !== undefined) ? { output: sumOutput } : {}),
-      ...(args.lanes.every(lane => lane.trace.tokenUsage?.input !== undefined && lane.trace.tokenUsage?.output !== undefined &&
-        lane.trace.interactionUsageIncomplete !== true && lane.trace.debrief?.usageReported !== false &&
-        (lane.trace.executionProfile === undefined || lane.trace.providerRequests?.every(r => r.usageComplete) === true))
-        ? { total: sumInput + sumOutput } : {})
-    } : { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
-    desktopMinutes: args.desktops === undefined ? args.desktopMinutes ?? null
-      : args.desktops.some(usage => usage.minutes !== undefined)
-        ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0)) : null,
-    note
+    tokenUsage: args.lanes.some(
+      (lane) => lane.trace.executionProfile?.billing === "account-unknown",
+    )
+      ? {
+          ...(args.lanes.some((lane) => lane.trace.tokenUsage?.input !== undefined)
+            ? { input: sumInput }
+            : {}),
+          ...(args.lanes.some((lane) => lane.trace.tokenUsage?.output !== undefined)
+            ? { output: sumOutput }
+            : {}),
+          ...(args.lanes.every(
+            (lane) =>
+              lane.trace.tokenUsage?.input !== undefined &&
+              lane.trace.tokenUsage?.output !== undefined &&
+              lane.trace.interactionUsageIncomplete !== true &&
+              lane.trace.debrief?.usageReported !== false &&
+              (lane.trace.executionProfile === undefined ||
+                lane.trace.providerRequests?.every((r) => r.usageComplete) === true),
+          )
+            ? { total: sumInput + sumOutput }
+            : {}),
+        }
+      : { input: sumInput, output: sumOutput, total: sumInput + sumOutput },
+    desktopMinutes:
+      args.desktops === undefined
+        ? (args.desktopMinutes ?? null)
+        : args.desktops.some((usage) => usage.minutes !== undefined)
+          ? round6(args.desktops.reduce((sum, usage) => sum + (usage.minutes ?? 0), 0))
+          : null,
+    note,
   };
 }
 
@@ -3492,9 +4082,10 @@ export function participantFeedbackCandidates(args: {
     const friction = resolveSelfReportedFriction(session);
     const abandoned = session.status === "abandoned";
     if (friction === undefined && !abandoned) continue;
-    const summary = friction !== undefined
-      ? `Participant ${lane.personaId} (${lane.laneId}) reported friction on the way through the study goal`
-      : `Participant ${lane.personaId} (${lane.laneId}) stopped before completing the study goal`;
+    const summary =
+      friction !== undefined
+        ? `Participant ${lane.personaId} (${lane.laneId}) reported friction on the way through the study goal`
+        : `Participant ${lane.personaId} (${lane.laneId}) stopped before completing the study goal`;
     const lastScreenshot = lane.screenshots[lane.screenshots.length - 1];
     candidates.push({
       schema: "humanish.feedback-candidate.v1",
@@ -3514,32 +4105,45 @@ export function participantFeedbackCandidates(args: {
       expected: args.goal,
       actual: redactText(friction ?? session.reason),
       evidence: [
-        ...(lane.traceArtifactPath === undefined ? [] : [{
-          path: lane.traceArtifactPath,
-          kind: "trace" as const,
-          note: "Full actor trace: turns, actions, and the participant's own report."
-        }]),
-        ...(lastScreenshot === undefined ? [] : [{
-          path: lastScreenshot,
-          kind: "screenshot" as const,
-          note: "Final screenshot at the moment the session ended."
-        }]),
-        ...(lane.commsArtifactPath === undefined ? [] : [{
-          path: lane.commsArtifactPath,
-          kind: "log" as const,
-          note: "Digest-only comms thread captured in-sandbox."
-        }])
+        ...(lane.traceArtifactPath === undefined
+          ? []
+          : [
+              {
+                path: lane.traceArtifactPath,
+                kind: "trace" as const,
+                note: "Full actor trace: turns, actions, and the participant's own report.",
+              },
+            ]),
+        ...(lastScreenshot === undefined
+          ? []
+          : [
+              {
+                path: lastScreenshot,
+                kind: "screenshot" as const,
+                note: "Final screenshot at the moment the session ended.",
+              },
+            ]),
+        ...(lane.commsArtifactPath === undefined
+          ? []
+          : [
+              {
+                path: lane.commsArtifactPath,
+                kind: "log" as const,
+                note: "Digest-only comms thread captured in-sandbox.",
+              },
+            ]),
       ],
       redaction: {
         status: "passed",
-        notes: "Quoted participant text passed the loop's known-value scrub and pattern redaction before persisting, and redactText again here."
+        notes:
+          "Quoted participant text passed the loop's known-value scrub and pattern redaction before persisting, and redactText again here.",
       },
       idempotency_key: `humanish:${args.runId}:${lane.laneId}:participant-report`,
       proposed_next_state: "study-quality-review",
       acceptance_proof: [
         feedbackProofCommands(args.runId).verify,
-        feedbackProofCommands(args.runId).watch
-      ]
+        feedbackProofCommands(args.runId).watch,
+      ],
     });
   }
   return candidates;
@@ -3622,28 +4226,38 @@ export function buildCuaBundle(args: {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   // Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran).
   const cost = buildCuaCostSummary({
-    lanes: args.session ? [{ ...(args.laneId === undefined ? {} : { laneId: args.laneId }), trace: args.session.trace }] : [],
+    lanes: args.session
+      ? [
+          {
+            ...(args.laneId === undefined ? {} : { laneId: args.laneId }),
+            trace: args.session.trace,
+          },
+        ]
+      : [],
     desktopMinutes: args.desktopMinutes,
-    ...(args.desktopUsage === undefined ? {} : { desktops: [args.desktopUsage] })
+    ...(args.desktopUsage === undefined ? {} : { desktops: [args.desktopUsage] }),
   });
-  const status: RunSimulationStatus = args.inProgress === true
-    ? "running"
-    : args.session
-    ? args.session.status
-    : args.sessionError
-      ? "failed"
-      : "contract_proof_only";
-  const reason = args.inProgress === true
-    ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
-    : args.session?.reason
-    ?? args.sessionError
-    ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
+  const status: RunSimulationStatus =
+    args.inProgress === true
+      ? "running"
+      : args.session
+        ? args.session.status
+        : args.sessionError
+          ? "failed"
+          : "contract_proof_only";
+  const reason =
+    args.inProgress === true
+      ? "Live computer-use session is running; stream auth URL is available only through the attached Observer server."
+      : (args.session?.reason ??
+        args.sessionError ??
+        "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
   const lastScreenshot = args.screenshots[args.screenshots.length - 1];
-  const desktopGeometry = args.desktopRoute === false
-    ? undefined
-    : args.desktopGeometry ?? {
-        screen: { requested: { width: args.resolution[0], height: args.resolution[1] } }
-      };
+  const desktopGeometry =
+    args.desktopRoute === false
+      ? undefined
+      : (args.desktopGeometry ?? {
+          screen: { requested: { width: args.resolution[0], height: args.resolution[1] } },
+        });
 
   // Honest labels (invariant 6: claims match mechanism): every screenshot label names the
   // run's ACTUAL mode. The session trace is the evidence-of-record; the capture policy covers
@@ -3652,7 +4266,7 @@ export function buildCuaBundle(args: {
   const screenshotMode: "raw" | "blurred" =
     traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
       ? traceScreenshotMode
-      : args.captureRedaction ?? "raw";
+      : (args.captureRedaction ?? "raw");
 
   const simulation: RunSimulation = {
     id: "sim-001",
@@ -3668,19 +4282,21 @@ export function buildCuaBundle(args: {
       ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
       : args.inProgress === true
         ? `Computer-use actor (${args.actorId}) is driving the subject app in a hosted desktop browser.`
-      : args.sessionError
-        ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
-        : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
+        : args.sessionError
+          ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
+          : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
     streamIds: ["stream-001"],
     startedAt: args.createdAt,
-    updatedAt: args.createdAt
+    updatedAt: args.createdAt,
   };
 
   const stream: RunStream = {
     id: "stream-001",
     simId: "sim-001",
     laneId: args.laneId ?? "lane-01",
-    ...(args.assignment === undefined ? {} : { assignment: participantAssignment(args.assignment) }),
+    ...(args.assignment === undefined
+      ? {}
+      : { assignment: participantAssignment(args.assignment) }),
     ...(args.actorType === undefined ? {} : { actorType: args.actorType }),
     ...(args.surface === undefined ? {} : { surface: args.surface }),
     ...(args.caseGroup === undefined ? {} : { caseGroup: args.caseGroup }),
@@ -3699,8 +4315,8 @@ export function buildCuaBundle(args: {
             width: desktopGeometry.viewport.width,
             height: desktopGeometry.viewport.height,
             deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-            ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile })
-          }
+            ...(args.isMobile === undefined ? {} : { isMobile: args.isMobile }),
+          },
         }),
     ...(desktopGeometry === undefined ? {} : { desktopGeometry }),
     ...(args.recording === undefined ? {} : { recording: args.recording }),
@@ -3709,7 +4325,7 @@ export function buildCuaBundle(args: {
       intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
       state: reason,
       ...(args.session ? { actorStatus: args.session.status } : {}),
-      ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {})
+      ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
     },
     // The seam this lab exists to fill: the provider-neutral actor evidence projection.
     ...(args.session ? { actor: args.session.trace } : {}),
@@ -3723,13 +4339,15 @@ export function buildCuaBundle(args: {
       ...(args.commsArtifactPath
         ? [{ label: "comms thread", path: args.commsArtifactPath, kind: "log" as const }]
         : []),
-      ...(args.recording ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }] : []),
+      ...(args.recording
+        ? [{ label: "desktop recording", path: args.recording.path, kind: "recording" as const }]
+        : []),
       ...args.screenshots.map((screenshot, index) => ({
         label: `screenshot ${String(index + 1).padStart(2, "0")} (${screenshotMode})`,
         path: screenshot,
-        kind: "screenshot" as const
-      }))
-    ]
+        kind: "screenshot" as const,
+      })),
+    ],
   };
 
   const events: RunEvent[] = [
@@ -3738,7 +4356,7 @@ export function buildCuaBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "cua-lab.run.created",
-      message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`
+      message: `Created computer-use lab run for ${args.labId} (actor ${args.actorId}).`,
     },
     args.subjectProvenance
       ? {
@@ -3749,7 +4367,7 @@ export function buildCuaBundle(args: {
           // HONEST WORDING: claim "cloned/packed and served" only when it actually happened.
           message: `${subjectProvenanceMessage(args.subjectProvenance, publicAppUrl, args.dryRun, args.session !== undefined)} (subject env names: ${args.subjectProvenance.envNames.length > 0 ? args.subjectProvenance.envNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(args.subjectProvenance.state, args.dryRun)}.`,
           simId: "sim-001",
-          streamId: "stream-001"
+          streamId: "stream-001",
         }
       : {
           id: "event-001-subject",
@@ -3760,11 +4378,12 @@ export function buildCuaBundle(args: {
           // local-app / in-process subject is an already-running LOCAL dev server the caller
           // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
           // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox.
-          message: args.entryKind === "local-app"
-            ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
-            : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
+          message:
+            args.entryKind === "local-app"
+              ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
+              : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
           simId: "sim-001",
-          streamId: "stream-001"
+          streamId: "stream-001",
         },
     args.session
       ? {
@@ -3774,7 +4393,7 @@ export function buildCuaBundle(args: {
           type: `cua-lab.session.${args.session.completionReason}`,
           message: `${args.session.status}: ${args.session.reason}`,
           simId: "sim-001",
-          streamId: "stream-001"
+          streamId: "stream-001",
         }
       : args.inProgress === true
         ? {
@@ -3782,29 +4401,31 @@ export function buildCuaBundle(args: {
             at: args.createdAt,
             level: "info" as const,
             type: "cua-lab.session.running",
-            message: "Live computer-use session is running; terminal evidence has not been written yet.",
+            message:
+              "Live computer-use session is running; terminal evidence has not been written yet.",
             simId: "sim-001",
-            streamId: "stream-001"
+            streamId: "stream-001",
           }
-      : args.sessionError
-        ? {
-            id: "event-002-session",
-            at: args.createdAt,
-            level: "error" as const,
-            type: "cua-lab.session.error",
-            message: args.sessionError,
-            simId: "sim-001",
-            streamId: "stream-001"
-          }
-        : {
-            id: "event-002-contract",
-            at: args.createdAt,
-            level: "info" as const,
-            type: "cua-lab.contract.ready",
-            message: "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
-            simId: "sim-001",
-            streamId: "stream-001"
-          }
+        : args.sessionError
+          ? {
+              id: "event-002-session",
+              at: args.createdAt,
+              level: "error" as const,
+              type: "cua-lab.session.error",
+              message: args.sessionError,
+              simId: "sim-001",
+              streamId: "stream-001",
+            }
+          : {
+              id: "event-002-contract",
+              at: args.createdAt,
+              level: "info" as const,
+              type: "cua-lab.contract.ready",
+              message:
+                "Dry-run contract bundle ready; switch scenario.mode to live for a real desktop session.",
+              simId: "sim-001",
+              streamId: "stream-001",
+            },
   ];
 
   // Persisted phase trail (real boot timing, not just a coarse provenance sentence): one
@@ -3818,9 +4439,10 @@ export function buildCuaBundle(args: {
       at: phase.at,
       level: phase.ok === false ? "warn" : "info",
       type: phase.type,
-      message: phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
+      message:
+        phase.durationMs === undefined ? phase.message : `${phase.message} (${phase.durationMs}ms)`,
       simId: "sim-001",
-      streamId: "stream-001"
+      streamId: "stream-001",
     });
   }
   for (const warning of desktopGeometry?.warnings ?? []) {
@@ -3831,55 +4453,70 @@ export function buildCuaBundle(args: {
       type: "cua-lab.geometry.warning",
       message: warning,
       simId: "sim-001",
-      streamId: "stream-001"
+      streamId: "stream-001",
     });
   }
 
   // A funnel with a denominator of one is still the funnel — and its absence stays honest: no
   // declared protocol (or a dry run) means no `tasks` field, never an empty one.
-  const singleStudyTasks = args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
-    ? aggregateTaskFunnels([args.session.trace.taskFunnel])
-    : undefined;
+  const singleStudyTasks =
+    args.inProgress !== true && args.session?.trace.taskFunnel !== undefined
+      ? aggregateTaskFunnels([args.session.trace.taskFunnel])
+      : undefined;
   // What happened to the participant, as the LANE judged it — the same rule the fan-out roll-up
   // applies (participantStatusForOutcome). Before #476 this read the actor's own status, so a
   // run the lane refused as "not a credible pass" was written up as verdict pass, 1/1 reached
   // the goal, and every projection of the bundle (Observer tally, `runs`, the status index)
   // repeated it. Found on a real drawDB run whose participant wrote "Blocked after partial
   // completion".
-  const participantStatus: ActorStatus | undefined = args.session === undefined
-    ? undefined
-    : participantStatusForCredibility(args.session.status, args.credibility);
-  const credibilityNote = args.session === undefined || participantStatus === args.session.status
-    ? undefined
-    : args.credibility?.noEngagement === true
-      ? "Not counted as a pass: the participant took no actions and said nothing."
-      : "Not counted as a pass: the participant's final message described a blocker.";
-  const review: ReviewSummary = withCuaReviewProvenance({
-    schema: REVIEW_SCHEMA,
-    verdict: args.inProgress === true
-      ? "contract_proof_only"
-      : participantStatus !== undefined
-        ? verdictForStatus(participantStatus)
-        : args.sessionError
-          ? "fail"
-          : "contract_proof_only",
-    // One lane is still a study with a denominator of one, and saying so keeps a single-lane
-    // result from being read as though it generalized.
-    ...(participantStatus !== undefined && args.inProgress !== true
-      ? { participants: tallyParticipantOutcomes([participantStatus], [args.credibility?.reportedFriction === true]) }
-      : {}),
-    ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
-    summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
-    gaps: args.session || args.sessionError
-      ? []
-      : args.inProgress === true
-        ? ["Live desktop session is still running."]
-        : ["Live desktop session not yet run (dry-run contract only)."]
-  }, [stream]);
+  const participantStatus: ActorStatus | undefined =
+    args.session === undefined
+      ? undefined
+      : participantStatusForCredibility(args.session.status, args.credibility);
+  const credibilityNote =
+    args.session === undefined || participantStatus === args.session.status
+      ? undefined
+      : args.credibility?.noEngagement === true
+        ? "Not counted as a pass: the participant took no actions and said nothing."
+        : "Not counted as a pass: the participant's final message described a blocker.";
+  const review: ReviewSummary = withCuaReviewProvenance(
+    {
+      schema: REVIEW_SCHEMA,
+      verdict:
+        args.inProgress === true
+          ? "contract_proof_only"
+          : participantStatus !== undefined
+            ? verdictForStatus(participantStatus)
+            : args.sessionError
+              ? "fail"
+              : "contract_proof_only",
+      // One lane is still a study with a denominator of one, and saying so keeps a single-lane
+      // result from being read as though it generalized.
+      ...(participantStatus !== undefined && args.inProgress !== true
+        ? {
+            participants: tallyParticipantOutcomes(
+              [participantStatus],
+              [args.credibility?.reportedFriction === true],
+            ),
+          }
+        : {}),
+      ...(singleStudyTasks === undefined ? {} : { tasks: singleStudyTasks }),
+      summary: credibilityNote === undefined ? reason : `${credibilityNote} ${reason}`,
+      gaps:
+        args.session || args.sessionError
+          ? []
+          : args.inProgress === true
+            ? ["Live desktop session is still running."]
+            : ["Live desktop session not yet run (dry-run contract only)."],
+    },
+    [stream],
+  );
 
   return {
     schema: RUN_BUNDLE_SCHEMA,
-    ...(args.realEmail && !args.dryRun ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } } : {}),
+    ...(args.realEmail && !args.dryRun
+      ? { publication: { restrictions: ["real-communications"] as ["real-communications"] } }
+      : {}),
     runId: args.runId,
     mode: args.dryRun ? "dry-run" : "live",
     simCount: 1,
@@ -3892,73 +4529,85 @@ export function buildCuaBundle(args: {
       id: args.persona.id,
       name: `Computer-use operator (${args.persona.id})`,
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
     scenario: {
       id: `cua-${args.labId}`,
       title: args.labTitle ?? `Computer-use lab: ${args.labId}`,
       goal: redactText(args.mission),
       source: `lab:${args.labId}`,
-      sourceDigest: args.persona.promptDigest
+      sourceDigest: args.persona.promptDigest,
     },
     lifecycle: [
       {
         at: args.createdAt,
         event: "cua-lab.run.created",
-        message: `Created computer-use lab run with one desktop browser lane (actor ${args.actorId}).`
-      }
+        message: `Created computer-use lab run with one desktop browser lane (actor ${args.actorId}).`,
+      },
     ],
     simulations: [simulation],
     streams: [stream],
     events,
     redaction: {
       status: "passed",
-      notes: traceScreenshotMode === "raw"
-        ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
-        : traceScreenshotMode === "blurred"
-          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
-          : args.screenshots.length > 0
-            ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
-            : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+      notes:
+        traceScreenshotMode === "raw"
+          ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+          : traceScreenshotMode === "blurred"
+            ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
+            : args.screenshots.length > 0
+              ? `Session ended before a trace was recorded; ${args.screenshots.length} already-written frame(s) follow the capture policy (${screenshotMode}). Typed text is recorded as length only and reasoning/messages pass through text redaction.`
+              : "No screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
     // What the participant reported, when it reported anything (#392). Dry-run and in-progress
     // bundles carry none — there is no participant yet to quote.
-    feedbackCandidates: args.dryRun || args.inProgress === true
-      ? []
-      : participantFeedbackCandidates({
-          runId: args.runId,
-          scenarioId: `cua-${args.labId}`,
-          adapterId: args.labId,
-          goal: redactText(args.mission),
-          substrate: args.feedbackSubstrate ?? (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop"),
-          lanes: [{
-            laneId: args.laneId ?? "lane-01",
-            streamId: "stream-001",
-            personaId: args.persona.id,
-            ...(args.session === undefined ? {} : { session: args.session }),
-            ...(args.traceArtifactPath === undefined ? {} : { traceArtifactPath: args.traceArtifactPath }),
-            screenshots: args.screenshots,
-            ...(args.commsArtifactPath === undefined ? {} : { commsArtifactPath: args.commsArtifactPath })
-          }]
-        }),
+    feedbackCandidates:
+      args.dryRun || args.inProgress === true
+        ? []
+        : participantFeedbackCandidates({
+            runId: args.runId,
+            scenarioId: `cua-${args.labId}`,
+            adapterId: args.labId,
+            goal: redactText(args.mission),
+            substrate:
+              args.feedbackSubstrate ??
+              (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop"),
+            lanes: [
+              {
+                laneId: args.laneId ?? "lane-01",
+                streamId: "stream-001",
+                personaId: args.persona.id,
+                ...(args.session === undefined ? {} : { session: args.session }),
+                ...(args.traceArtifactPath === undefined
+                  ? {}
+                  : { traceArtifactPath: args.traceArtifactPath }),
+                screenshots: args.screenshots,
+                ...(args.commsArtifactPath === undefined
+                  ? {}
+                  : { commsArtifactPath: args.commsArtifactPath }),
+              },
+            ],
+          }),
     // Custom desktop image provenance (omitted on the stock-template default → byte-stable).
     ...(args.desktopTemplate === undefined ? {} : { desktopTemplate: args.desktopTemplate }),
     ...(args.desktopBrowser === undefined ? {} : { desktopBrowser: args.desktopBrowser }),
-    ...(args.providerResources === undefined || args.providerResources.length === 0 ? {} : { providerResources: args.providerResources }),
+    ...(args.providerResources === undefined || args.providerResources.length === 0
+      ? {}
+      : { providerResources: args.providerResources }),
     // Structured subject provenance (invariant 5): code pin + state story. Uniform and
     // honest on app-url bundles too — the caller minted the URL, its state is the caller's.
     // CuaSubjectProvenanceArg's two variants (clone, local-tree) are already RunSubjectProvenance-
     // shaped, so no reconstruction is needed beyond the app-url fallback.
     subject: args.subjectProvenance ?? { source: "app-url", state: { provenance: "undeclared" } },
-    ...(cost === undefined ? {} : { cost })
+    ...(cost === undefined ? {} : { cost }),
   };
 }
 
@@ -3968,7 +4617,7 @@ function subjectProvenanceMessage(
   provenance: CuaSubjectProvenanceArg,
   publicAppUrl: string,
   dryRun: boolean,
-  hasSession: boolean
+  hasSession: boolean,
 ): string {
   if (provenance.source === "clone") {
     if (dryRun) {
@@ -3985,7 +4634,12 @@ function subjectProvenanceMessage(
     return `Subject declared: local working tree, to be packed and served at ${publicAppUrl} in-sandbox (dry-run contract; nothing packed)`;
   }
   if (provenance.archiveSha256) {
-    const dirtyLabel = provenance.dirty === true ? ", dirty working tree" : provenance.dirty === false ? ", clean working tree" : "";
+    const dirtyLabel =
+      provenance.dirty === true
+        ? ", dirty working tree"
+        : provenance.dirty === false
+          ? ", clean working tree"
+          : "";
     return hasSession
       ? `Subject packed (archiveSha256 ${provenance.archiveSha256}${dirtyLabel}) and served at ${publicAppUrl} in-sandbox`
       : `Subject packed (archiveSha256 ${provenance.archiveSha256}${dirtyLabel}); serving at ${publicAppUrl} did not complete (see session error)`;
@@ -4033,18 +4687,19 @@ export function buildCuaFanoutBundle(args: {
     at: args.createdAt,
     level: "info",
     type: "cua-lab.run.created",
-    message: `Created computer-use fan-out run for ${config.id} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`
+    message: `Created computer-use fan-out run for ${config.id} (actor ${args.descriptor.id}, ${specs.length} lanes, per-lane worlds).`,
   });
   events.push({
     id: "event-001-fanout-plan",
     at: args.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
-    message: `Fan-out plan: ${args.plan.laneCount} lane(s) (${args.plan.strategy}), concurrency ${args.plan.concurrency}, ${args.plan.waves} wave(s); per-lane session budget ${Math.round(args.plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.plan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.plan.lanes.map(formatLanePlanEntry).join(", ")}.`
+    message: `Fan-out plan: ${args.plan.laneCount} lane(s) (${args.plan.strategy}), concurrency ${args.plan.concurrency}, ${args.plan.waves} wave(s); per-lane session budget ${Math.round(args.plan.perLaneSessionBudgetMs / 1000)}s; worst-case ~${args.plan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}. Lanes: ${args.plan.lanes.map(formatLanePlanEntry).join(", ")}.`,
   });
 
   let eventSeq = 2;
-  const nextEventId = (suffix: string): string => `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
+  const nextEventId = (suffix: string): string =>
+    `event-${String(eventSeq++).padStart(3, "0")}-${suffix}`;
 
   if (args.rerun) {
     events.push({
@@ -4052,7 +4707,7 @@ export function buildCuaFanoutBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
-      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((lane) => `${lane.laneId} was ${lane.status}${lane.completionReason ? `/${lane.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`
+      message: `Rerun selected ${args.rerun.selectedLaneIds.length} lane(s) from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((lane) => `${lane.laneId} was ${lane.status}${lane.completionReason ? `/${lane.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
     });
   }
 
@@ -4062,36 +4717,44 @@ export function buildCuaFanoutBundle(args: {
     const publicLaneAppUrl = publicSafeAppUrlLabel(laneAppUrl);
     const subject = args.laneSubjects[index]!;
     const session = outcome?.session;
-    const fallbackDeclared = declaredScreenForRender(spec.devicePreset, spec.deviceName, spec.resolution);
+    const fallbackDeclared = declaredScreenForRender(
+      spec.devicePreset,
+      spec.deviceName,
+      spec.resolution,
+    );
     const desktopGeometry: RunDesktopGeometry = outcome?.desktopGeometry ?? {
       screen: {
         requested: { width: spec.resolution[0], height: spec.resolution[1] },
-        ...(fallbackDeclared ? { declared: fallbackDeclared } : {})
-      }
+        ...(fallbackDeclared ? { declared: fallbackDeclared } : {}),
+      },
     };
     const screenshots = outcome?.screenshots ?? [];
     const lastScreenshot = screenshots[screenshots.length - 1];
-    const status: RunSimulationStatus = args.inProgress === true && outcome === undefined
-      ? "running"
-      : outcome?.skippedReason !== undefined
-      ? "blocked"
-      : session
-        ? session.status
-        : outcome?.sessionError
-          ? "failed"
-          : "contract_proof_only";
-    const reason = args.inProgress === true && outcome === undefined
-      ? "Live computer-use lane is running; stream auth URL is available only through the attached Observer server."
-      : outcome?.skippedReason
-      ?? session?.reason
-      ?? outcome?.sessionError
-      ?? "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.";
+    const status: RunSimulationStatus =
+      args.inProgress === true && outcome === undefined
+        ? "running"
+        : outcome?.skippedReason !== undefined
+          ? "blocked"
+          : session
+            ? session.status
+            : outcome?.sessionError
+              ? "failed"
+              : "contract_proof_only";
+    const reason =
+      args.inProgress === true && outcome === undefined
+        ? "Live computer-use lane is running; stream auth URL is available only through the attached Observer server."
+        : (outcome?.skippedReason ??
+          session?.reason ??
+          outcome?.sessionError ??
+          "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.");
 
     const traceScreenshotMode = session?.trace.redaction.screenshots;
     const screenshotMode: "raw" | "blurred" =
       traceScreenshotMode === "raw" || traceScreenshotMode === "blurred"
         ? traceScreenshotMode
-        : config.policies?.redactScreenshots === true ? "blurred" : "raw";
+        : config.policies?.redactScreenshots === true
+          ? "blurred"
+          : "raw";
 
     simulations.push({
       id: spec.simId,
@@ -4107,21 +4770,23 @@ export function buildCuaFanoutBundle(args: {
         ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) drove the subject app; ${session.completionReason}.`
         : args.inProgress === true && outcome === undefined
           ? `Lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}): computer-use actor (${args.descriptor.id}) is driving the subject app.`
-        : outcome?.skippedReason !== undefined
-          ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
-          : outcome?.sessionError
-            ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
-            : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
+          : outcome?.skippedReason !== undefined
+            ? `Lane ${spec.laneId} ${outcome.skippedReason}.`
+            : outcome?.sessionError
+              ? `Lane ${spec.laneId} failed before a terminal session verdict: ${outcome.sessionError}`
+              : `Contract lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) for ${args.descriptor.id} against ${publicLaneAppUrl}.`,
       streamIds: [spec.streamId],
       startedAt: args.createdAt,
-      updatedAt: args.createdAt
+      updatedAt: args.createdAt,
     });
 
     streams.push({
       id: spec.streamId,
       simId: spec.simId,
       laneId: spec.laneId,
-      ...(spec.assignment === undefined ? {} : { assignment: participantAssignment(spec.assignment) }),
+      ...(spec.assignment === undefined
+        ? {}
+        : { assignment: participantAssignment(spec.assignment) }),
       ...(spec.actorType === undefined ? {} : { actorType: spec.actorType }),
       ...(spec.surface === undefined ? {} : { surface: spec.surface }),
       ...(spec.caseGroup === undefined ? {} : { caseGroup: spec.caseGroup }),
@@ -4131,7 +4796,11 @@ export function buildCuaFanoutBundle(args: {
       transport: "snapshot",
       updatedAt: args.createdAt,
       embed: lastScreenshot
-        ? { kind: "screenshot", url: lastScreenshot, title: `CUA desktop ${spec.laneId} (${screenshotMode})` }
+        ? {
+            kind: "screenshot",
+            url: lastScreenshot,
+            title: `CUA desktop ${spec.laneId} (${screenshotMode})`,
+          }
         : { kind: "placeholder", title: `CUA desktop ${spec.laneId}` },
       ...(desktopGeometry.viewport === undefined
         ? {}
@@ -4140,8 +4809,8 @@ export function buildCuaFanoutBundle(args: {
               width: desktopGeometry.viewport.width,
               height: desktopGeometry.viewport.height,
               deviceScaleFactor: desktopGeometry.viewport.deviceScaleFactor,
-              isMobile: spec.devicePreset.isMobile
-            }
+              isMobile: spec.devicePreset.isMobile,
+            },
           }),
       desktopGeometry,
       ...(outcome?.recording === undefined ? {} : { recording: outcome.recording }),
@@ -4150,7 +4819,7 @@ export function buildCuaFanoutBundle(args: {
         intent: `Watch lane ${spec.laneId} (${spec.persona.id}/${spec.deviceName}) drive the subject app in its own hosted desktop.`,
         state: reason,
         ...(session ? { actorStatus: session.status } : {}),
-        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {})
+        ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
       },
       ...(session ? { actor: session.trace } : {}),
       artifacts: [
@@ -4158,18 +4827,38 @@ export function buildCuaFanoutBundle(args: {
         { label: "review", path: "review.md", kind: "review" as const },
         { label: "events", path: "events.ndjson", kind: "events" as const },
         ...(session
-          ? [{ label: `lane ${spec.laneId} actor trace`, path: spec.traceArtifactPath, kind: "trace" as const }]
+          ? [
+              {
+                label: `lane ${spec.laneId} actor trace`,
+                path: spec.traceArtifactPath,
+                kind: "trace" as const,
+              },
+            ]
           : []),
         ...(outcome?.commsArtifactPath
-          ? [{ label: `lane ${spec.laneId} comms thread`, path: outcome.commsArtifactPath, kind: "log" as const }]
+          ? [
+              {
+                label: `lane ${spec.laneId} comms thread`,
+                path: outcome.commsArtifactPath,
+                kind: "log" as const,
+              },
+            ]
           : []),
-        ...(outcome?.recording ? [{ label: "desktop recording", path: outcome.recording.path, kind: "recording" as const }] : []),
+        ...(outcome?.recording
+          ? [
+              {
+                label: "desktop recording",
+                path: outcome.recording.path,
+                kind: "recording" as const,
+              },
+            ]
+          : []),
         ...screenshots.map((screenshot, screenshotIndex) => ({
           label: `lane ${spec.laneId} screenshot ${String(screenshotIndex + 1).padStart(2, "0")} (${screenshotMode})`,
           path: screenshot,
-          kind: "screenshot" as const
-        }))
-      ]
+          kind: "screenshot" as const,
+        })),
+      ],
     });
 
     // Per-lane subject provenance (invariant 5).
@@ -4179,16 +4868,17 @@ export function buildCuaFanoutBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "cua-lab.subject.provenance",
-        message: `Lane ${spec.laneId}: ${args.dryRun
-          ? `subject declared — clone of ${args.publicRepo}, served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
-          : subject.commit
-            ? session
-              ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicLaneAppUrl} in-sandbox`
-              : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
-            : `subject clone attempted from ${args.publicRepo}; commit unresolved`
+        message: `Lane ${spec.laneId}: ${
+          args.dryRun
+            ? `subject declared — clone of ${args.publicRepo}, served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing cloned)`
+            : subject.commit
+              ? session
+                ? `subject cloned from ${args.publicRepo}@${subject.commit} and served at ${publicLaneAppUrl} in-sandbox`
+                : `subject cloned from ${args.publicRepo}@${subject.commit}; serving did not complete (see session error)`
+              : `subject clone attempted from ${args.publicRepo}; commit unresolved`
         } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (subject.source === "local-tree") {
       events.push({
@@ -4196,16 +4886,17 @@ export function buildCuaFanoutBundle(args: {
         at: args.createdAt,
         level: "info",
         type: "cua-lab.subject.provenance",
-        message: `Lane ${spec.laneId}: ${args.dryRun
-          ? `subject declared: local working tree, to be packed and served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing packed)`
-          : subject.archiveSha256
-            ? session
-              ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicLaneAppUrl} in-sandbox`
-              : `subject packed (archiveSha256 ${subject.archiveSha256}); serving did not complete (see session error)`
-            : "subject local-tree packing attempted; archive digest unresolved"
+        message: `Lane ${spec.laneId}: ${
+          args.dryRun
+            ? `subject declared: local working tree, to be packed and served at ${publicLaneAppUrl} in-sandbox (dry-run contract; nothing packed)`
+            : subject.archiveSha256
+              ? session
+                ? `subject packed (archiveSha256 ${subject.archiveSha256}${subject.dirty === true ? ", dirty working tree" : subject.dirty === false ? ", clean working tree" : ""}) and served at ${publicLaneAppUrl} in-sandbox`
+                : `subject packed (archiveSha256 ${subject.archiveSha256}); serving did not complete (see session error)`
+              : "subject local-tree packing attempted; archive digest unresolved"
         } (subject env names: ${args.subjectEnvNames.length > 0 ? args.subjectEnvNames.join(", ") : "none"}; values never persisted); state: ${describeSubjectState(subject.state, args.dryRun)}.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else {
       events.push({
@@ -4215,7 +4906,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.subject.declared",
         message: `Lane ${spec.laneId}: subject app declared at ${publicLaneAppUrl} (loopback inside the lane's own desktop sandbox).`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
 
@@ -4228,7 +4919,7 @@ export function buildCuaFanoutBundle(args: {
         type: `cua-lab.session.${session.completionReason}`,
         message: `Lane ${spec.laneId}: ${session.status} — ${session.reason}`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (args.inProgress === true && outcome === undefined) {
       events.push({
@@ -4238,7 +4929,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.session.running",
         message: `Lane ${spec.laneId}: live computer-use session is running; terminal evidence has not been written yet.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (outcome?.skippedReason !== undefined) {
       events.push({
@@ -4248,7 +4939,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.session.blocked",
         message: `Lane ${spec.laneId} ${outcome.skippedReason}.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else if (outcome?.sessionError) {
       events.push({
@@ -4258,7 +4949,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.session.error",
         message: `Lane ${spec.laneId}: ${outcome.sessionError}`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     } else {
       events.push({
@@ -4268,7 +4959,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.contract.ready",
         message: `Lane ${spec.laneId}: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
 
@@ -4280,7 +4971,7 @@ export function buildCuaFanoutBundle(args: {
         type: "cua-lab.geometry.warning",
         message: warning,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
 
@@ -4292,11 +4983,12 @@ export function buildCuaFanoutBundle(args: {
         at: phase.at,
         level: phase.ok === false ? "warn" : "info",
         type: phase.type,
-        message: phase.durationMs === undefined
-          ? `Lane ${spec.laneId}: ${phase.message}`
-          : `Lane ${spec.laneId}: ${phase.message} (${phase.durationMs}ms)`,
+        message:
+          phase.durationMs === undefined
+            ? `Lane ${spec.laneId}: ${phase.message}`
+            : `Lane ${spec.laneId}: ${phase.message} (${phase.durationMs}ms)`,
         simId: spec.simId,
-        streamId: spec.streamId
+        streamId: spec.streamId,
       });
     }
   });
@@ -4307,116 +4999,149 @@ export function buildCuaFanoutBundle(args: {
       at: args.createdAt,
       level: "warn",
       type: "cua-lab.fanout.fail-fast",
-      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight lanes finished; queued lanes were skipped (blocked) — completed evidence is retained.`
+      message: `Fan-out fail-fast: ${args.failFastReason}. In-flight lanes finished; queued lanes were skipped (blocked) — completed evidence is retained.`,
     });
   }
 
   // Worst-of review verdict across lanes; live fan-out must prove every lane.
-  const verdict = args.inProgress === true
-    ? "contract_proof_only"
-    : fanoutReviewVerdict({
-        dryRun: args.dryRun,
-        expectedLaneCount: specs.length,
-        outcomes
-      });
+  const verdict =
+    args.inProgress === true
+      ? "contract_proof_only"
+      : fanoutReviewVerdict({
+          dryRun: args.dryRun,
+          expectedLaneCount: specs.length,
+          outcomes,
+        });
 
-  const passedLanes = (outcomes ?? []).filter((outcome) =>
-    outcome.skippedReason === undefined
-    && outcome.session !== undefined
-    && outcome.session.status === "passed"
-    && outcome.session.completionReason !== "harness_error"
-    && outcome.sessionError === undefined
-    && !outcome.noEngagement
-    && !outcome.selfReportedBlocker).length;
+  const passedLanes = (outcomes ?? []).filter(
+    (outcome) =>
+      outcome.skippedReason === undefined &&
+      outcome.session !== undefined &&
+      outcome.session.status === "passed" &&
+      outcome.session.completionReason !== "harness_error" &&
+      outcome.sessionError === undefined &&
+      !outcome.noEngagement &&
+      !outcome.selfReportedBlocker,
+  ).length;
   // What happened to the PARTICIPANTS, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
   const terminalOutcomes = (outcomes ?? []).filter(
     (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
-      outcome?.session?.status !== undefined
+      outcome?.session?.status !== undefined,
   );
-  const participants = terminalOutcomes.length > 0
-    ? tallyParticipantOutcomes(
-        // A NO-ENGAGEMENT lane is not a participant who reached the goal. It said "done" having
-        // taken zero actions and said nothing, and `passedLanes` below already refuses to count
-        // it — but `reachedGoal` was reading the trace status directly, so one run could be both
-        // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
-        // first was the dishonest one. Found by a provider bug that ended a study on turn one.
-        terminalOutcomes.map((outcome) => participantStatusForCredibility(outcome.session.status, {
-          noEngagement: outcome.noEngagement === true,
-          selfReportedBlocker: outcome.selfReportedBlocker === true
-        })),
-        // A participant who reached the goal AND told you the road there was broken is the most
-        // useful result a study produces; reporting only the outcome would bury it.
-        terminalOutcomes.map((outcome) => outcome.reportedFriction === true)
-      )
-    : undefined;
+  const participants =
+    terminalOutcomes.length > 0
+      ? tallyParticipantOutcomes(
+          // A NO-ENGAGEMENT lane is not a participant who reached the goal. It said "done" having
+          // taken zero actions and said nothing, and `passedLanes` below already refuses to count
+          // it — but `reachedGoal` was reading the trace status directly, so one run could be both
+          // "not a passed lane" AND "1/1 reached the goal". The headline number a researcher reads
+          // first was the dishonest one. Found by a provider bug that ended a study on turn one.
+          terminalOutcomes.map((outcome) =>
+            participantStatusForCredibility(outcome.session.status, {
+              noEngagement: outcome.noEngagement === true,
+              selfReportedBlocker: outcome.selfReportedBlocker === true,
+            }),
+          ),
+          // A participant who reached the goal AND told you the road there was broken is the most
+          // useful result a study produces; reporting only the outcome would bury it.
+          terminalOutcomes.map((outcome) => outcome.reportedFriction === true),
+        )
+      : undefined;
   // The study funnel: per-task completion rates across every session that measured one. This is
   // "where did people get stuck" as data, next to WHO got stuck (participants) above.
   const participantFunnels = (outcomes ?? [])
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
-  const studyTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
+  const studyTasks =
+    args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
   const participantEndings = terminalOutcomes.map((outcome) => {
     const ending = actorEnding(outcome.session.trace);
-    return { status: outcome.session.status, ...(ending === undefined ? {} : { label: ending.label }) };
+    return {
+      status: outcome.session.status,
+      ...(ending === undefined ? {} : { label: ending.label }),
+    };
   });
-  const review: ReviewSummary = withCuaReviewProvenance({
-    schema: REVIEW_SCHEMA,
-    verdict,
-    ...(participants === undefined ? {} : { participants }),
-    ...(studyTasks === undefined ? {} : { tasks: studyTasks }),
-    summary: args.inProgress === true
-      ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
-      : args.dryRun
-      ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
-      : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
-    gaps: args.inProgress === true
-      ? ["Live fan-out session is still running."]
-      : args.dryRun
-      ? ["Live fan-out session not yet run (dry-run contract only)."]
-      : specs
-          .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
-          .filter(({ outcome }) =>
-            outcome === undefined
-            || outcome.skippedReason !== undefined
-            || outcome.sessionError !== undefined
-            || outcome.noEngagement
-            || outcome.selfReportedBlocker
-            || outcome.session === undefined
-            || outcome.session.status !== "passed")
-          .map(({ spec, outcome }) => `${spec.laneId}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`)
-  }, streams);
+  const review: ReviewSummary = withCuaReviewProvenance(
+    {
+      schema: REVIEW_SCHEMA,
+      verdict,
+      ...(participants === undefined ? {} : { participants }),
+      ...(studyTasks === undefined ? {} : { tasks: studyTasks }),
+      summary:
+        args.inProgress === true
+          ? `Live computer-use fan-out is running (${specs.length} per-lane worlds); terminal lane evidence has not been written yet.`
+          : args.dryRun
+            ? `${args.rerun ? `Rerun contract from ${args.rerun.sourceRunId}: ` : ""}Dry-run fan-out contract: ${specs.length} per-lane-world lanes composed for ${args.descriptor.id} against ${args.appUrl}; no desktops launched, $0 spend.`
+            : `${args.rerun ? `Rerun from ${args.rerun.sourceRunId}: ` : ""}Computer-use fan-out (${specs.length} per-lane worlds): ${passedLanes}/${specs.length} lane(s) reached a terminal, engaged verdict${participants ? ` — ${formatParticipantOutcomes(participants, participantEndings)}` : ""}${studyTasks ? `; tasks: ${formatStudyTaskFunnel(studyTasks)}` : ""}.`,
+      gaps:
+        args.inProgress === true
+          ? ["Live fan-out session is still running."]
+          : args.dryRun
+            ? ["Live fan-out session not yet run (dry-run contract only)."]
+            : specs
+                .map((spec, index) => ({ spec, outcome: outcomes?.[index] }))
+                .filter(
+                  ({ outcome }) =>
+                    outcome === undefined ||
+                    outcome.skippedReason !== undefined ||
+                    outcome.sessionError !== undefined ||
+                    outcome.noEngagement ||
+                    outcome.selfReportedBlocker ||
+                    outcome.session === undefined ||
+                    outcome.session.status !== "passed",
+                )
+                .map(
+                  ({ spec, outcome }) =>
+                    `${spec.laneId}: ${outcome?.skippedReason ?? outcome?.sessionError ?? outcome?.session?.reason ?? "did not pass"}`,
+                ),
+    },
+    streams,
+  );
 
-  const anyRaw = (outcomes ?? []).some((outcome) => outcome.session?.trace.redaction.screenshots === "raw");
-  const ranLive = (outcomes ?? []).some((outcome) => outcome.session !== undefined || outcome.sessionError !== undefined);
+  const anyRaw = (outcomes ?? []).some(
+    (outcome) => outcome.session?.trace.redaction.screenshots === "raw",
+  );
+  const ranLive = (outcomes ?? []).some(
+    (outcome) => outcome.session !== undefined || outcome.sessionError !== undefined,
+  );
   const configuredBrowser = config.execution?.desktop?.browser;
   const desktopTemplate = e2bDesktopTemplate(config);
   const resolvedBrowsers = (outcomes ?? [])
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
-  const unanimousResolvedBrowser = resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
-    ? resolvedBrowsers[0]
-    : undefined;
+  const unanimousResolvedBrowser =
+    resolvedBrowsers.length > 0 && new Set(resolvedBrowsers).size === 1
+      ? resolvedBrowsers[0]
+      : undefined;
   const providerResources = (outcomes ?? []).flatMap((outcome) =>
     providerResourcesForOutcome({
       outcome,
       createdAt: args.createdAt,
       simId: outcome.spec.simId,
       streamId: outcome.spec.streamId,
-      laneId: outcome.spec.laneId
-    }));
+      laneId: outcome.spec.laneId,
+    }),
+  );
 
   // Run-level cost ESTIMATE: one model-token line per lane that ran a session (from its persisted
   // trace.estimatedCost) + a desktop line per owned allocation, priced at its observed resources.
   // Per-lane worlds have no shared provisioning to double-count. Omitted on a pure dry-run.
   const costLanes = specs
     .map((spec, index) => ({ laneId: spec.laneId, outcome: outcomes?.[index] }))
-    .filter((entry): entry is { laneId: string; outcome: LaneRunOutcome } => entry.outcome?.session !== undefined)
+    .filter(
+      (entry): entry is { laneId: string; outcome: LaneRunOutcome } =>
+        entry.outcome?.session !== undefined,
+    )
     .map((entry) => ({ laneId: entry.laneId, trace: entry.outcome.session!.trace }));
-  const desktops = (outcomes ?? []).filter(outcome => outcome.sandboxId !== undefined).map(outcome => ({
-    laneId: outcome.spec.laneId, minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
-    observation: outcome.desktopResources, lifetimeComplete: outcome.killed
-  }));
+  const desktops = (outcomes ?? [])
+    .filter((outcome) => outcome.sandboxId !== undefined)
+    .map((outcome) => ({
+      laneId: outcome.spec.laneId,
+      minutes: desktopSpanToMinutes(outcome.desktopDurationMs),
+      observation: outcome.desktopResources,
+      lifetimeComplete: outcome.killed,
+    }));
   const cost = buildCuaCostSummary({ lanes: costLanes, desktops });
 
   return {
@@ -4434,7 +5159,7 @@ export function buildCuaFanoutBundle(args: {
       id: specs[0]!.persona.id,
       name: `Computer-use fan-out (${specs.length} lanes)`,
       source: `lab:${config.id}`,
-      sourceDigest: specs[0]!.persona.promptDigest
+      sourceDigest: specs[0]!.persona.promptDigest,
     },
     scenario: {
       id: `cua-${config.id}`,
@@ -4449,14 +5174,14 @@ export function buildCuaFanoutBundle(args: {
       // The instructions the model actually receives are untouched; only the persisted copy changes.
       goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
       source: `lab:${config.id}`,
-      sourceDigest: specs[0]!.persona.promptDigest
+      sourceDigest: specs[0]!.persona.promptDigest,
     },
     lifecycle: [
       {
         at: args.createdAt,
         event: "cua-lab.run.created",
-        message: `Created computer-use fan-out run with ${specs.length} per-lane desktop browser lanes (actor ${args.descriptor.id}).`
-      }
+        message: `Created computer-use fan-out run with ${specs.length} per-lane desktop browser lanes (actor ${args.descriptor.id}).`,
+      },
     ],
     simulations,
     streams,
@@ -4468,47 +5193,59 @@ export function buildCuaFanoutBundle(args: {
         ? anyRaw
           ? "Typed text recorded as length only and reasoning/messages pass through text redaction. Some lanes captured FULL-FIDELITY (raw) screenshots, retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
           : "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle."
-        : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+        : "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
     // What the participants reported, when any reported anything (#392). Dry-run and in-progress
     // bundles carry none — there is no participant yet to quote.
-    feedbackCandidates: args.dryRun || args.inProgress === true
-      ? []
-      : participantFeedbackCandidates({
-          runId: args.runId,
-          scenarioId: `cua-${config.id}`,
-          adapterId: config.id,
-          goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
-          substrate: config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
-          lanes: specs.map((spec, index) => {
-            const outcome = outcomes?.[index];
-            return {
-              laneId: spec.laneId,
-              streamId: spec.streamId,
-              personaId: spec.persona.id,
-              ...(outcome?.session === undefined ? {} : { session: outcome.session }),
-              ...(outcome?.session === undefined ? {} : { traceArtifactPath: spec.traceArtifactPath }),
-              screenshots: outcome?.screenshots ?? [],
-              ...(outcome?.commsArtifactPath === undefined ? {} : { commsArtifactPath: outcome.commsArtifactPath })
-            };
-          })
-        }),
+    feedbackCandidates:
+      args.dryRun || args.inProgress === true
+        ? []
+        : participantFeedbackCandidates({
+            runId: args.runId,
+            scenarioId: `cua-${config.id}`,
+            adapterId: config.id,
+            goal: redactText(specs[0]!.evidenceInstructions ?? specs[0]!.instructions),
+            substrate: config.execution?.target === "local" ? "local-desktop" : "e2b-desktop",
+            lanes: specs.map((spec, index) => {
+              const outcome = outcomes?.[index];
+              return {
+                laneId: spec.laneId,
+                streamId: spec.streamId,
+                personaId: spec.persona.id,
+                ...(outcome?.session === undefined ? {} : { session: outcome.session }),
+                ...(outcome?.session === undefined
+                  ? {}
+                  : { traceArtifactPath: spec.traceArtifactPath }),
+                screenshots: outcome?.screenshots ?? [],
+                ...(outcome?.commsArtifactPath === undefined
+                  ? {}
+                  : { commsArtifactPath: outcome.commsArtifactPath }),
+              };
+            }),
+          }),
     // Selected hosted image, including the optional speech default; omitted on the stock desktop.
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(configuredBrowser === undefined
       ? {}
-      : { desktopBrowser: { requested: configuredBrowser, ...(unanimousResolvedBrowser === undefined ? {} : { resolved: unanimousResolvedBrowser }) } }),
+      : {
+          desktopBrowser: {
+            requested: configuredBrowser,
+            ...(unanimousResolvedBrowser === undefined
+              ? {}
+              : { resolved: unanimousResolvedBrowser }),
+          },
+        }),
     ...(providerResources.length === 0 ? {} : { providerResources }),
     subject: args.aggregateSubject,
-    ...(cost === undefined ? {} : { cost })
+    ...(cost === undefined ? {} : { cost }),
   };
 }
 
@@ -4523,24 +5260,26 @@ function providerResourcesForOutcome(args: {
     return [];
   }
 
-  return [{
-    schema: "humanish.provider-resource.v1",
-    provider: "e2b-desktop",
-    kind: "sandbox",
-    id: args.outcome.sandboxId,
-    owner: "humanish",
-    status: args.outcome.killed ? "killed" : "running",
-    simId: args.simId,
-    streamId: args.streamId,
-    laneId: args.laneId,
-    createdAt: args.createdAt,
-    cleanup: {
-      killed: args.outcome.killed,
-      reason: args.outcome.killed
-        ? "killed during normal lane teardown"
-        : "not killed during normal lane teardown; cleanup may reclaim by exact recorded id"
-    }
-  }];
+  return [
+    {
+      schema: "humanish.provider-resource.v1",
+      provider: "e2b-desktop",
+      kind: "sandbox",
+      id: args.outcome.sandboxId,
+      owner: "humanish",
+      status: args.outcome.killed ? "killed" : "running",
+      simId: args.simId,
+      streamId: args.streamId,
+      laneId: args.laneId,
+      createdAt: args.createdAt,
+      cleanup: {
+        killed: args.outcome.killed,
+        reason: args.outcome.killed
+          ? "killed during normal lane teardown"
+          : "not killed during normal lane teardown; cleanup may reclaim by exact recorded id",
+      },
+    },
+  ];
 }
 
 /**
@@ -4552,7 +5291,7 @@ function providerResourcesForOutcome(args: {
  */
 export function participantStatusForCredibility(
   status: ActorStatus,
-  credibility: { noEngagement: boolean; selfReportedBlocker: boolean } | undefined
+  credibility: { noEngagement: boolean; selfReportedBlocker: boolean } | undefined,
 ): ActorStatus {
   if (status !== "passed" || credibility === undefined) return status;
   if (credibility.noEngagement) return "incomplete";
@@ -4598,11 +5337,13 @@ function renderCuaReviewMarkdown(bundle: RunBundle): string {
             trace.redaction.screenshots === "raw" || trace.redaction.screenshots === "blurred"
               ? `${trace.redaction.screenshots} screenshot(s)`
               : "screenshot(s)"
-          }`
+          }`,
         ]
       : []),
-    ...(bundle.review.gaps.length > 0 ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)] : []),
-    ""
+    ...(bundle.review.gaps.length > 0
+      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
+      : []),
+    "",
   ].join("\n");
 }
 

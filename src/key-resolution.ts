@@ -18,7 +18,18 @@
 // `HUMANISH_STRICT_KEYS=1` disables every rung below process env (the pre-#436 behavior).
 
 import { spawn } from "node:child_process";
-import { chmodSync, closeSync, constants as fsConstants, existsSync, ftruncateSync, lstatSync, mkdirSync, openSync, readFileSync, writeSync } from "node:fs";
+import {
+  chmodSync,
+  closeSync,
+  constants as fsConstants,
+  existsSync,
+  ftruncateSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  writeSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -37,7 +48,7 @@ export const KNOWN_PROVIDER_KEYS = [
   "GH_TOKEN",
   "GITHUB_TOKEN",
   "CODEX_API_KEY",
-  "AGENTMAIL_API_KEY"
+  "AGENTMAIL_API_KEY",
 ] as const;
 const PROVIDER_KEY_SET = new Set<string>(KNOWN_PROVIDER_KEYS);
 
@@ -47,7 +58,7 @@ export const KEY_VENDOR_ALIASES: Record<string, string> = {
   e2b: "E2B_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   github: "GH_TOKEN",
-  agentmail: "AGENTMAIL_API_KEY"
+  agentmail: "AGENTMAIL_API_KEY",
 };
 
 export interface ResolvedKeyFill {
@@ -70,7 +81,10 @@ export function userKeyStorePath(env: NodeJS.ProcessEnv, deps: KeyResolutionDeps
   const declared = env.XDG_CONFIG_HOME?.trim();
   // The XDG spec: a relative XDG_CONFIG_HOME MUST be ignored. Honoring one would make the
   // key store cwd-relative — `humanish keys set` would write a secret into the current repo.
-  const configHome = declared !== undefined && declared !== "" && path.isAbsolute(declared) ? declared : path.join(home, ".config");
+  const configHome =
+    declared !== undefined && declared !== "" && path.isAbsolute(declared)
+      ? declared
+      : path.join(home, ".config");
   return path.join(configHome, "humanish", "keys.env");
 }
 
@@ -79,7 +93,11 @@ function e2bConfigPath(deps: KeyResolutionDeps): string {
 }
 
 /** Default exec: bounded, quiet, stdin closed; null on ANY failure. Never throws. */
-function defaultExecText(command: string, args: string[], timeoutMs: number): Promise<string | null> {
+function defaultExecText(
+  command: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<string | null> {
   return new Promise((resolve) => {
     let child;
     try {
@@ -224,7 +242,10 @@ export async function discoverProviderKeys(args: {
   }
 
   for (const fill_ of fills) announce(`humanish keys: ${fill_.name} from ${fill_.source}`);
-  for (const name of ignored) announce(`humanish keys: ignored non-provider name ${name} — implicit discovery fills provider keys only; pass the file via --env-file to load everything in it`);
+  for (const name of ignored)
+    announce(
+      `humanish keys: ignored non-provider name ${name} — implicit discovery fills provider keys only; pass the file via --env-file to load everything in it`,
+    );
   return fills;
 }
 
@@ -286,22 +307,29 @@ export function describeMissingKeys(names: string[], env: NodeJS.ProcessEnv): st
  */
 export async function probeKeySources(
   names: readonly string[],
-  args: { cwd: string; env: NodeJS.ProcessEnv; deps?: KeyResolutionDeps }
+  args: { cwd: string; env: NodeJS.ProcessEnv; deps?: KeyResolutionDeps },
 ): Promise<KeySourceProbe[]> {
   const scratch: NodeJS.ProcessEnv = { ...args.env };
   const fills = await discoverProviderKeys({
     cwd: args.cwd,
     env: scratch,
     announce: () => {},
-    ...(args.deps === undefined ? {} : { deps: args.deps })
+    ...(args.deps === undefined ? {} : { deps: args.deps }),
   });
   const bySource = new Map(fills.map((fill) => [fill.name, fill.source]));
   return names.map((name) => {
     const inEnv = args.env[name] !== undefined && args.env[name]?.trim() !== "";
     // GH_TOKEN and GITHUB_TOKEN are one credential with two spellings; a doctor row that says
     // "missing" while GITHUB_TOKEN sits in the env would be wrong (red-team nit).
-    const aliasInEnv = name === "GH_TOKEN" && args.env.GITHUB_TOKEN !== undefined && args.env.GITHUB_TOKEN.trim() !== "";
-    const source = inEnv ? "process env" : aliasInEnv ? "process env (GITHUB_TOKEN)" : (bySource.get(name) ?? null);
+    const aliasInEnv =
+      name === "GH_TOKEN" &&
+      args.env.GITHUB_TOKEN !== undefined &&
+      args.env.GITHUB_TOKEN.trim() !== "";
+    const source = inEnv
+      ? "process env"
+      : aliasInEnv
+        ? "process env (GITHUB_TOKEN)"
+        : (bySource.get(name) ?? null);
     return { name, source, hint: missingKeyHint(name) };
   });
 }
@@ -324,7 +352,7 @@ export function setUserKey(
   name: string,
   value: string,
   env: NodeJS.ProcessEnv,
-  deps: KeyResolutionDeps = {}
+  deps: KeyResolutionDeps = {},
 ): { path: string } {
   const trimmed = value.trim();
   if (trimmed.length === 0 || /[\u0000-\u001f\u007f]/.test(trimmed)) {
@@ -335,7 +363,7 @@ export function setUserKey(
   }
   if (!PROVIDER_KEY_SET.has(name)) {
     throw new Error(
-      `The store holds provider keys only (${[...PROVIDER_KEY_SET].join(", ")}). For anything else, use an explicit --env-file.`
+      `The store holds provider keys only (${[...PROVIDER_KEY_SET].join(", ")}). For anything else, use an explicit --env-file.`,
     );
   }
   const storePath = userKeyStorePath(env, deps);
@@ -354,14 +382,20 @@ export function setUserKey(
   // would silently resolve to a DIFFERENT secret on the next run.
   const roundTrip = parseStoreLine(`${name}=${trimmed}`);
   if (roundTrip === null || roundTrip[0] !== name || roundTrip[1] !== trimmed) {
-    throw new Error("The value does not round-trip the store format (avoid leading quotes and '#'); pass it via --env-file instead.");
+    throw new Error(
+      "The value does not round-trip the store format (avoid leading quotes and '#'); pass it via --env-file instead.",
+    );
   }
   writeStore(storePath, entries);
   return { path: storePath };
 }
 
 /** Remove one key from the user store. Returns whether it was present. */
-export function unsetUserKey(name: string, env: NodeJS.ProcessEnv, deps: KeyResolutionDeps = {}): boolean {
+export function unsetUserKey(
+  name: string,
+  env: NodeJS.ProcessEnv,
+  deps: KeyResolutionDeps = {},
+): boolean {
   const storePath = userKeyStorePath(env, deps);
   if (!isRegularFile(storePath) || dirIsSymlink(storePath)) return false;
   const entries = readStoreEntries(storePath);
@@ -393,7 +427,11 @@ function writeStore(storePath: string, entries: Map<string, string>): void {
   const text = body.length > 0 ? `${body}\n` : "";
   // O_NOFOLLOW: a symlinked keys.env must never carry the write to its target (red-team
   // reproduced writing a secret through the link into an attacker-chosen file).
-  const fd = openSync(storePath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW, 0o600);
+  const fd = openSync(
+    storePath,
+    fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW,
+    0o600,
+  );
   try {
     ftruncateSync(fd, 0);
     writeSync(fd, text, 0, "utf8");

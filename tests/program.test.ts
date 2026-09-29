@@ -6,7 +6,14 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 
-import { createProgram, formatCuaLabHuman, followObserver, resolveBackendShouldOpen, studyFactsFor, writeResult } from "../src/program.js";
+import {
+  createProgram,
+  formatCuaLabHuman,
+  followObserver,
+  resolveBackendShouldOpen,
+  studyFactsFor,
+  writeResult,
+} from "../src/program.js";
 import * as humanishIndex from "../src/index.js";
 
 // process.getuid is POSIX-only and absent under Node's typings on some platforms;
@@ -30,7 +37,7 @@ async function runCli(args: string[]): Promise<CliResult> {
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
 
   program.exitOverride();
@@ -45,7 +52,7 @@ async function runCli(args: string[]): Promise<CliResult> {
       return {
         exitCode: 0,
         stderr: stderr.join(""),
-        stdout: stdout.join("")
+        stdout: stdout.join(""),
       };
     }
 
@@ -55,13 +62,13 @@ async function runCli(args: string[]): Promise<CliResult> {
   return {
     exitCode,
     stderr: stderr.join(""),
-    stdout: stdout.join("")
+    stdout: stdout.join(""),
   };
 }
 
 async function withTempApp<T>(
   files: Record<string, string>,
-  callback: (cwd: string) => Promise<T>
+  callback: (cwd: string) => Promise<T>,
 ): Promise<T> {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-init-test-"));
 
@@ -83,21 +90,40 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 describe("humanish CLI scaffold", () => {
-  it.each(["0", "65535", "2525.5", "2525oops", "NaN"])("rejects invalid catch SMTP port %s before creating files", async smtpPort => {
-    await withTempApp({}, async cwd => {
-      const result = await runCli(["comms", "catch", "--smtp-port", smtpPort, "--dir", path.join(cwd, "catch")]);
-      expect(result.exitCode).toBe(2);
-      expect(result.stderr).toContain("--smtp-port must be an integer");
-      expect(await readdir(cwd)).toEqual([]);
-    });
-  });
+  it.each(["0", "65535", "2525.5", "2525oops", "NaN"])(
+    "rejects invalid catch SMTP port %s before creating files",
+    async (smtpPort) => {
+      await withTempApp({}, async (cwd) => {
+        const result = await runCli([
+          "comms",
+          "catch",
+          "--smtp-port",
+          smtpPort,
+          "--dir",
+          path.join(cwd, "catch"),
+        ]);
+        expect(result.exitCode).toBe(2);
+        expect(result.stderr).toContain("--smtp-port must be an integer");
+        expect(await readdir(cwd)).toEqual([]);
+      });
+    },
+  );
 
   it.each([
     ["--port", "2525"],
-    ["--inbox-port", "2525"]
+    ["--inbox-port", "2525"],
   ])("rejects an SMTP port shared with %s before creating files", async (flag, port) => {
-    await withTempApp({}, async cwd => {
-      const result = await runCli(["comms", "catch", flag, port, "--smtp-port", "2525", "--dir", path.join(cwd, "catch")]);
+    await withTempApp({}, async (cwd) => {
+      const result = await runCli([
+        "comms",
+        "catch",
+        flag,
+        port,
+        "--smtp-port",
+        "2525",
+        "--dir",
+        path.join(cwd, "catch"),
+      ]);
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("--smtp-port must differ");
       expect(await readdir(cwd)).toEqual([]);
@@ -105,27 +131,50 @@ describe("humanish CLI scaffold", () => {
   });
 
   it.each([
-    ["run", "lanes"], ["run", "roster"], ["lab run", "lanes"], ["lab run", "roster"]
-  ] as const)("%s rejects unknown %s fields in JSON before creating run evidence (#343)", async (command, field) => {
-    const manifest = {
-      schema: "humanish.lab.v2", id: "typo",
-      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", [field]: [
-        { id: "reader", runtme: "different", ...(field === "roster" ? { count: 2 } : {}) }
-      ] }], execution: { target: "e2b-desktop" }
-    };
-    await withTempApp({ "humanish/labs/typo.yaml": JSON.stringify(manifest) }, async (cwd) => {
-      // A regression can only reach a dry backend; this contract test never permits paid work.
-      const result = await runCli([...command.split(" "), "typo", "--dry-run", "--no-open", "--json", "--cwd", cwd]);
-      expect(result.exitCode).toBe(2);
-      expect(result.stderr).toBe("");
-      const envelope = JSON.parse(result.stdout);
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_LAB_INVALID");
-      expect(envelope.error.message).toContain(`Unknown \`actors[0].${field}[0]\` field(s): runtme`);
-      expect(await readdir(cwd)).not.toContain(".humanish");
-    });
-  });
+    ["run", "lanes"],
+    ["run", "roster"],
+    ["lab run", "lanes"],
+    ["lab run", "roster"],
+  ] as const)(
+    "%s rejects unknown %s fields in JSON before creating run evidence (#343)",
+    async (command, field) => {
+      const manifest = {
+        schema: "humanish.lab.v2",
+        id: "typo",
+        subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+        actors: [
+          {
+            type: "openai-computer-use",
+            [field]: [
+              { id: "reader", runtme: "different", ...(field === "roster" ? { count: 2 } : {}) },
+            ],
+          },
+        ],
+        execution: { target: "e2b-desktop" },
+      };
+      await withTempApp({ "humanish/labs/typo.yaml": JSON.stringify(manifest) }, async (cwd) => {
+        // A regression can only reach a dry backend; this contract test never permits paid work.
+        const result = await runCli([
+          ...command.split(" "),
+          "typo",
+          "--dry-run",
+          "--no-open",
+          "--json",
+          "--cwd",
+          cwd,
+        ]);
+        expect(result.exitCode).toBe(2);
+        expect(result.stderr).toBe("");
+        const envelope = JSON.parse(result.stdout);
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error.code).toBe("HUMANISH_LAB_INVALID");
+        expect(envelope.error.message).toContain(
+          `Unknown \`actors[0].${field}[0]\` field(s): runtme`,
+        );
+        expect(await readdir(cwd)).not.toContain(".humanish");
+      });
+    },
+  );
 
   it("cleans up attached Observer watches on package-manager style termination signals", async () => {
     let exitCode = 0;
@@ -141,7 +190,7 @@ describe("humanish CLI scaffold", () => {
         writeErr: (text) => stderr.push(text),
         setExitCode: (code) => {
           exitCode = code;
-        }
+        },
       },
       {
         schema: "humanish.observer-result.v1",
@@ -149,7 +198,7 @@ describe("humanish CLI scaffold", () => {
         cwd: "/tmp/humanish",
         observerPath: ".humanish/runs/run/observer/index.html",
         run: "run",
-        warnings: []
+        warnings: [],
       },
       {
         opened: false,
@@ -158,7 +207,7 @@ describe("humanish CLI scaffold", () => {
         addPublicOrigin: () => {},
         close: async () => {
           closed += 1;
-        }
+        },
       },
       {
         onStop: async () => {
@@ -166,8 +215,8 @@ describe("humanish CLI scaffold", () => {
           return ["E2B sandbox cleanup killed 1, skipped 0."];
         },
         signalTarget,
-        signals: ["SIGTERM"]
-      }
+        signals: ["SIGTERM"],
+      },
     );
 
     signalTarget.emit("SIGTERM");
@@ -210,7 +259,7 @@ describe("humanish CLI scaffold", () => {
       observe: "Follow a run's saved evidence over loopback http.",
       codex: "Run Codex-native Humanish integration surfaces.",
       lab: "List, inspect, and run Humanish lab manifests.",
-      feedback: "Create public-safe feedback drafts, no GitHub API."
+      feedback: "Create public-safe feedback drafts, no GitHub API.",
     };
 
     for (const [name, summary] of Object.entries(expectedSummaries)) {
@@ -241,242 +290,302 @@ describe("humanish CLI scaffold", () => {
   });
 
   it("plans init changes without mutating files during JSON dry-run", async () => {
-    await withTempApp({
-      ".gitignore": "node_modules/\n.env.example\n!.env.example\n",
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { dev: "vite" } }, null, 2)
-    }, async (cwd) => {
-      const result = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
+    await withTempApp(
+      {
+        ".gitignore": "node_modules/\n.env.example\n!.env.example\n",
+        "package.json": JSON.stringify({ name: "fixture-app", scripts: { dev: "vite" } }, null, 2),
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
 
-      expect(result.exitCode).toBe(0);
-      expect(result.stderr).toBe("");
+        expect(result.exitCode).toBe(0);
+        expect(result.stderr).toBe("");
 
-      const envelope = JSON.parse(result.stdout) as {
-        schema: string;
-        ok: boolean;
-        mode: string;
-        changes: Array<{ action: string; path: string }>;
-      };
+        const envelope = JSON.parse(result.stdout) as {
+          schema: string;
+          ok: boolean;
+          mode: string;
+          changes: Array<{ action: string; path: string }>;
+        };
 
-      expect(envelope.schema).toBe("humanish.init-result.v1");
-      expect(envelope.ok).toBe(true);
-      expect(envelope.mode).toBe("dry-run");
-      expect(envelope.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
+        expect(envelope.schema).toBe("humanish.init-result.v1");
+        expect(envelope.ok).toBe(true);
+        expect(envelope.mode).toBe("dry-run");
+        expect(envelope.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
 
-      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
-      const packageJson = await readJson(path.join(cwd, "package.json")) as {
-        scripts: Record<string, string>;
-      };
-      expect(packageJson.scripts).toEqual({ dev: "vite" });
-    });
+        await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+        const packageJson = (await readJson(path.join(cwd, "package.json"))) as {
+          scripts: Record<string, string>;
+        };
+        expect(packageJson.scripts).toEqual({ dev: "vite" });
+      },
+    );
   });
 
   it("applies init safely and preserves .env.example exceptions", async () => {
-    await withTempApp({
-      ".gitignore": "node_modules/\n.env.example\n!.env.example\n",
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { dev: "vite" } }, null, 2)
-    }, async (cwd) => {
-      const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
+    await withTempApp(
+      {
+        ".gitignore": "node_modules/\n.env.example\n!.env.example\n",
+        "package.json": JSON.stringify({ name: "fixture-app", scripts: { dev: "vite" } }, null, 2),
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
 
-      expect(result.exitCode).toBe(0);
+        expect(result.exitCode).toBe(0);
 
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        mode: string;
-        changes: Array<{ action: string; path: string }>;
-      };
-      expect(envelope.ok).toBe(true);
-      expect(envelope.mode).toBe("applied");
-      expect(envelope.changes.some((change) => change.path === ".humanish/runs" && change.action === "mkdir")).toBe(true);
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          mode: string;
+          changes: Array<{ action: string; path: string }>;
+        };
+        expect(envelope.ok).toBe(true);
+        expect(envelope.mode).toBe("applied");
+        expect(
+          envelope.changes.some(
+            (change) => change.path === ".humanish/runs" && change.action === "mkdir",
+          ),
+        ).toBe(true);
 
-      await expect(stat(path.join(cwd, "humanish/personas/synthetic-new-user.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, "humanish/labs/first-run.yaml"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".humanish/runs"))).resolves.toBeTruthy();
-      await expect(stat(path.join(cwd, ".humanish/local/labs"))).resolves.toBeTruthy();
+        await expect(
+          stat(path.join(cwd, "humanish/personas/synthetic-new-user.yaml")),
+        ).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, "humanish/labs/first-run.yaml"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, ".humanish/runs"))).resolves.toBeTruthy();
+        await expect(stat(path.join(cwd, ".humanish/local/labs"))).resolves.toBeTruthy();
 
-      const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
-      expect(gitignore).toContain(".humanish/");
-      expect(gitignore).toContain(".env*");
-      expect(gitignore).toContain("!.env.example");
-      expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(gitignore.lastIndexOf(".env*"));
+        const gitignore = await readFile(path.join(cwd, ".gitignore"), "utf8");
+        expect(gitignore).toContain(".humanish/");
+        expect(gitignore).toContain(".env*");
+        expect(gitignore).toContain("!.env.example");
+        expect(gitignore.lastIndexOf("!.env.example")).toBeGreaterThan(
+          gitignore.lastIndexOf(".env*"),
+        );
 
-      const packageJson = await readJson(path.join(cwd, "package.json")) as {
-        scripts: Record<string, string>;
-      };
-      expect(packageJson.scripts.dev).toBe("vite");
-      expect(packageJson.scripts.humanish).toBe("humanish");
-      expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
-      expect(packageJson.scripts["humanish:watch:ci"]).toBe("humanish watch --json --no-open");
-      expect(packageJson.scripts["humanish:verify"]).toBe("humanish verify");
-    });
+        const packageJson = (await readJson(path.join(cwd, "package.json"))) as {
+          scripts: Record<string, string>;
+        };
+        expect(packageJson.scripts.dev).toBe("vite");
+        expect(packageJson.scripts.humanish).toBe("humanish");
+        expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
+        expect(packageJson.scripts["humanish:watch:ci"]).toBe("humanish watch --json --no-open");
+        expect(packageJson.scripts["humanish:verify"]).toBe("humanish verify");
+      },
+    );
   });
 
   it("makes dry-run win over yes", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2)
-    }, async (cwd) => {
-      const result = await runCli(["init", "--dry-run", "--yes", "--json", "--cwd", cwd]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--dry-run", "--yes", "--json", "--cwd", cwd]);
 
-      const envelope = JSON.parse(result.stdout) as { mode: string };
-      expect(result.exitCode).toBe(0);
-      expect(envelope.mode).toBe("dry-run");
-      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
-    });
+        const envelope = JSON.parse(result.stdout) as { mode: string };
+        expect(result.exitCode).toBe(0);
+        expect(envelope.mode).toBe("dry-run");
+        await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+      },
+    );
   });
 
   it("keeps the next action visible after setup while JSON and dry-run retain the file inventory", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" })
-    }, async (cwd) => {
-      const plan = await runCli(["init", "--dry-run", "--cwd", cwd]);
-      expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
-      const applied = await runCli(["init", "--yes", "--cwd", cwd]);
-      expect(applied.exitCode).toBe(0);
-      const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
-      expect(firstScreen).toContain("humanish run first-run");
-      expect(firstScreen).toContain("evidence preview: no browser or model runs");
-      expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
-      const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
-      expect(JSON.parse(details.stdout).changes).toContainEqual(expect.objectContaining({
-        path: "humanish/personas/synthetic-new-user.yaml", action: "skip"
-      }));
-    });
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }),
+      },
+      async (cwd) => {
+        const plan = await runCli(["init", "--dry-run", "--cwd", cwd]);
+        expect(plan.stdout).toContain("humanish/personas/synthetic-new-user.yaml");
+        const applied = await runCli(["init", "--yes", "--cwd", cwd]);
+        expect(applied.exitCode).toBe(0);
+        const firstScreen = applied.stdout.split("\n").slice(0, 20).join("\n");
+        expect(firstScreen).toContain("humanish run first-run");
+        expect(firstScreen).toContain("evidence preview: no browser or model runs");
+        expect(applied.stdout).not.toContain("humanish/personas/synthetic-new-user.yaml");
+        const details = await runCli(["init", "--dry-run", "--json", "--cwd", cwd]);
+        expect(JSON.parse(details.stdout).changes).toContainEqual(
+          expect.objectContaining({
+            path: "humanish/personas/synthetic-new-user.yaml",
+            action: "skip",
+          }),
+        );
+      },
+    );
   });
 
   it("keeps preservation warnings visible in compact setup output", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { humanish: "custom command" } }),
-      "humanish/README.md": "# Existing harness\n"
-    }, async (cwd) => {
-      const result = await runCli(["init", "--yes", "--cwd", cwd]);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain("Skipped existing humanish/README.md");
-      expect(result.stdout).toContain("Preserved existing script values");
-      expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe("# Existing harness\n");
-    });
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({
+          name: "fixture-app",
+          scripts: { humanish: "custom command" },
+        }),
+        "humanish/README.md": "# Existing harness\n",
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--yes", "--cwd", cwd]);
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("Skipped existing humanish/README.md");
+        expect(result.stdout).toContain("Preserved existing script values");
+        expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe(
+          "# Existing harness\n",
+        );
+      },
+    );
   });
 
   it("does not overwrite existing starter files or conflicting scripts", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app", scripts: { humanish: "custom command" } }, null, 2),
-      "humanish/README.md": "# Existing harness\n"
-    }, async (cwd) => {
-      const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify(
+          { name: "fixture-app", scripts: { humanish: "custom command" } },
+          null,
+          2,
+        ),
+        "humanish/README.md": "# Existing harness\n",
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
 
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        changes: Array<{ action: string; path: string; reason: string }>;
-        warnings: string[];
-      };
-      expect(result.exitCode).toBe(0);
-      expect(envelope.ok).toBe(true);
-      expect(envelope.changes).toContainEqual(expect.objectContaining({
-        action: "skip",
-        path: "humanish/README.md"
-      }));
-      expect(envelope.changes).toContainEqual(expect.objectContaining({
-        action: "update",
-        path: "package.json",
-        reason: expect.stringContaining("add scripts")
-      }));
-      expect(envelope.warnings.join("\n")).toContain("Skipped existing humanish/README.md");
-      expect(envelope.warnings.join("\n")).toContain("Preserved existing script values");
-      expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe("# Existing harness\n");
-      const packageJson = await readJson(path.join(cwd, "package.json")) as {
-        scripts: Record<string, string>;
-      };
-      expect(packageJson.scripts.humanish).toBe("custom command");
-      expect(packageJson.scripts["humanish:run"]).toBe("humanish run --dry-run");
-      expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
-    });
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          changes: Array<{ action: string; path: string; reason: string }>;
+          warnings: string[];
+        };
+        expect(result.exitCode).toBe(0);
+        expect(envelope.ok).toBe(true);
+        expect(envelope.changes).toContainEqual(
+          expect.objectContaining({
+            action: "skip",
+            path: "humanish/README.md",
+          }),
+        );
+        expect(envelope.changes).toContainEqual(
+          expect.objectContaining({
+            action: "update",
+            path: "package.json",
+            reason: expect.stringContaining("add scripts"),
+          }),
+        );
+        expect(envelope.warnings.join("\n")).toContain("Skipped existing humanish/README.md");
+        expect(envelope.warnings.join("\n")).toContain("Preserved existing script values");
+        expect(await readFile(path.join(cwd, "humanish/README.md"), "utf8")).toBe(
+          "# Existing harness\n",
+        );
+        const packageJson = (await readJson(path.join(cwd, "package.json"))) as {
+          scripts: Record<string, string>;
+        };
+        expect(packageJson.scripts.humanish).toBe("custom command");
+        expect(packageJson.scripts["humanish:run"]).toBe("humanish run --dry-run");
+        expect(packageJson.scripts["humanish:watch"]).toBe("humanish watch");
+      },
+    );
   });
 
   it("lists and inspects lab manifests from the CLI", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "humanish/labs/first-run.yaml": [
-        "schema: humanish.lab.v2",
-        "id: first-run",
-        "title: First run",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-        "    count: 2"
-      ].join("\n")
-    }, async (cwd) => {
-      const list = await runCli(["lab", "list", "--cwd", cwd]);
-      const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+        "humanish/labs/first-run.yaml": [
+          "schema: humanish.lab.v2",
+          "id: first-run",
+          "title: First run",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+          "    count: 2",
+        ].join("\n"),
+      },
+      async (cwd) => {
+        const list = await runCli(["lab", "list", "--cwd", cwd]);
+        const inspect = await runCli(["lab", "inspect", "first-run", "--cwd", cwd, "--json"]);
 
-      expect(list.exitCode).toBe(0);
-      expect(list.stdout).toContain("humanish labs");
-      expect(list.stdout).toContain("first-run this-repo committed");
+        expect(list.exitCode).toBe(0);
+        expect(list.stdout).toContain("humanish labs");
+        expect(list.stdout).toContain("first-run this-repo committed");
 
-      const envelope = JSON.parse(inspect.stdout) as {
-        ok: boolean;
-        config: { id: string; subject: { source: string }; actors: Array<{ type: string; count?: number }> };
-      };
-      expect(inspect.exitCode).toBe(0);
-      expect(envelope.ok).toBe(true);
-      expect(envelope.config).toEqual(expect.objectContaining({
-        id: "first-run",
-        subject: { source: "this-repo" }
-      }));
-      expect(envelope.config.actors[0]).toEqual(expect.objectContaining({ type: "synthetic-persona", count: 2 }));
-    });
+        const envelope = JSON.parse(inspect.stdout) as {
+          ok: boolean;
+          config: {
+            id: string;
+            subject: { source: string };
+            actors: Array<{ type: string; count?: number }>;
+          };
+        };
+        expect(inspect.exitCode).toBe(0);
+        expect(envelope.ok).toBe(true);
+        expect(envelope.config).toEqual(
+          expect.objectContaining({
+            id: "first-run",
+            subject: { source: "this-repo" },
+          }),
+        );
+        expect(envelope.config.actors[0]).toEqual(
+          expect.objectContaining({ type: "synthetic-persona", count: 2 }),
+        );
+      },
+    );
   });
 
   it("runs a synthetic lab manifest through run and watch", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "humanish/labs/first-run.yaml": [
-        "schema: humanish.lab.v2",
-        "id: first-run",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-        "    count: 2",
-        "scenario:",
-        "  mode: dry-run"
-      ].join("\n")
-    }, async (cwd) => {
-      const run = await runCli([
-        "run",
-        "first-run",
-        "--cwd",
-        cwd,
-        "--run-id",
-        "lab-run-test",
-        "--json"
-      ]);
-      const watch = await runCli([
-        "watch",
-        "first-run",
-        "--cwd",
-        cwd,
-        "--run-id",
-        "lab-watch-test",
-        "--json",
-        "--no-open"
-      ]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+        "humanish/labs/first-run.yaml": [
+          "schema: humanish.lab.v2",
+          "id: first-run",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+          "    count: 2",
+          "scenario:",
+          "  mode: dry-run",
+        ].join("\n"),
+      },
+      async (cwd) => {
+        const run = await runCli([
+          "run",
+          "first-run",
+          "--cwd",
+          cwd,
+          "--run-id",
+          "lab-run-test",
+          "--json",
+        ]);
+        const watch = await runCli([
+          "watch",
+          "first-run",
+          "--cwd",
+          cwd,
+          "--run-id",
+          "lab-watch-test",
+          "--json",
+          "--no-open",
+        ]);
 
-      expect(run.exitCode).toBe(0);
-      expect(JSON.parse(run.stdout)).toEqual(expect.objectContaining({
-        ok: true,
-        runId: "lab-run-test",
-        simCount: 2
-      }));
+        expect(run.exitCode).toBe(0);
+        expect(JSON.parse(run.stdout)).toEqual(
+          expect.objectContaining({
+            ok: true,
+            runId: "lab-run-test",
+            simCount: 2,
+          }),
+        );
 
-      const watchEnvelope = JSON.parse(watch.stdout) as {
-        ok: boolean;
-        run: string;
-        observerPath: string;
-      };
-      expect(watch.exitCode).toBe(0);
-      expect(watchEnvelope.ok).toBe(true);
-      expect(watchEnvelope.run).toBe("lab-watch-test");
-      expect(watchEnvelope.observerPath).toContain("observer/index.html");
-    });
+        const watchEnvelope = JSON.parse(watch.stdout) as {
+          ok: boolean;
+          run: string;
+          observerPath: string;
+        };
+        expect(watch.exitCode).toBe(0);
+        expect(watchEnvelope.ok).toBe(true);
+        expect(watchEnvelope.run).toBe("lab-watch-test");
+        expect(watchEnvelope.observerPath).toContain("observer/index.html");
+      },
+    );
   });
 
   it("gates human-mode auto-open behind a real TTY for both bare and lab-backed watch", async () => {
@@ -490,7 +599,54 @@ describe("humanish CLI scaffold", () => {
     process.stdout.isTTY = false;
 
     try {
-      await withTempApp({
+      await withTempApp(
+        {
+          "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+          "humanish/labs/first-run.yaml": [
+            "schema: humanish.lab.v2",
+            "id: first-run",
+            "subject:",
+            "  source: this-repo",
+            "actors:",
+            "  - type: synthetic-persona",
+            "    count: 2",
+            "scenario:",
+            "  mode: dry-run",
+          ].join("\n"),
+        },
+        async (cwd) => {
+          const bareWatch = await runCli([
+            "watch",
+            "--cwd",
+            cwd,
+            "--run-id",
+            "tty-gate-bare",
+            "--detach",
+          ]);
+          expect(bareWatch.exitCode).toBe(0);
+          expect(bareWatch.stdout).toContain("opened: no");
+
+          const labWatch = await runCli([
+            "watch",
+            "first-run",
+            "--cwd",
+            cwd,
+            "--run-id",
+            "tty-gate-lab",
+            "--detach",
+          ]);
+          expect(labWatch.exitCode).toBe(0);
+          expect(labWatch.stdout).toContain("opened: no");
+        },
+      );
+    } finally {
+      process.stdout.isTTY = originalIsTTY;
+    }
+  });
+
+  it("fails closed when rerun flags are used on a non-CUA lab", async () => {
+    await withTempApp(
+      {
         "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
         "humanish/labs/first-run.yaml": [
           "schema: humanish.lab.v2",
@@ -499,107 +655,69 @@ describe("humanish CLI scaffold", () => {
           "  source: this-repo",
           "actors:",
           "  - type: synthetic-persona",
-          "    count: 2",
           "scenario:",
-          "  mode: dry-run"
-        ].join("\n")
-      }, async (cwd) => {
-        const bareWatch = await runCli([
-          "watch",
-          "--cwd",
-          cwd,
-          "--run-id",
-          "tty-gate-bare",
-          "--detach"
-        ]);
-        expect(bareWatch.exitCode).toBe(0);
-        expect(bareWatch.stdout).toContain("opened: no");
-
-        const labWatch = await runCli([
-          "watch",
+          "  mode: dry-run",
+        ].join("\n"),
+      },
+      async (cwd) => {
+        const result = await runCli([
+          "lab",
+          "run",
           "first-run",
           "--cwd",
           cwd,
-          "--run-id",
-          "tty-gate-lab",
-          "--detach"
+          "--rerun-failed-from",
+          "latest",
+          "--json",
         ]);
-        expect(labWatch.exitCode).toBe(0);
-        expect(labWatch.stdout).toContain("opened: no");
-      });
-    } finally {
-      process.stdout.isTTY = originalIsTTY;
-    }
-  });
 
-  it("fails closed when rerun flags are used on a non-CUA lab", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "humanish/labs/first-run.yaml": [
-        "schema: humanish.lab.v2",
-        "id: first-run",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-        "scenario:",
-        "  mode: dry-run"
-      ].join("\n")
-    }, async (cwd) => {
-      const result = await runCli([
-        "lab",
-        "run",
-        "first-run",
-        "--cwd",
-        cwd,
-        "--rerun-failed-from",
-        "latest",
-        "--json"
-      ]);
-
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        error: { code: string; message: string };
-      };
-      expect(result.exitCode).toBe(2);
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
-      expect(envelope.error.message).toContain("CUA fan-out");
-      expect(envelope.error.message).toContain("synthetic");
-    });
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          error: { code: string; message: string };
+        };
+        expect(result.exitCode).toBe(2);
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error.code).toBe("HUMANISH_UNSUPPORTED_RERUN_FLAGS");
+        expect(envelope.error.message).toContain("CUA fan-out");
+        expect(envelope.error.message).toContain("synthetic");
+      },
+    );
   });
 
   it("fails closed when direct run-only options are mixed with lab manifests", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "humanish/labs/first-run.yaml": [
-        "schema: humanish.lab.v2",
-        "id: first-run",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona"
-      ].join("\n")
-    }, async (cwd) => {
-      const result = await runCli([
-        "run",
-        "first-run",
-        "--app-url",
-        "http://127.0.0.1:3000",
-        "--cwd",
-        cwd,
-        "--json"
-      ]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+        "humanish/labs/first-run.yaml": [
+          "schema: humanish.lab.v2",
+          "id: first-run",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+        ].join("\n"),
+      },
+      async (cwd) => {
+        const result = await runCli([
+          "run",
+          "first-run",
+          "--app-url",
+          "http://127.0.0.1:3000",
+          "--cwd",
+          cwd,
+          "--json",
+        ]);
 
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        error: { code: string; message: string };
-      };
-      expect(result.exitCode).toBe(2);
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_APP_URL_OPTION_CONFLICT");
-      expect(envelope.error.message).toContain("lab-compatible options");
-    });
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          error: { code: string; message: string };
+        };
+        expect(result.exitCode).toBe(2);
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error.code).toBe("HUMANISH_APP_URL_OPTION_CONFLICT");
+        expect(envelope.error.message).toContain("lab-compatible options");
+      },
+    );
   });
 
   it("fails closed for invalid target cwd and invalid package.json", async () => {
@@ -616,63 +734,72 @@ describe("humanish CLI scaffold", () => {
     expect(missingEnvelope.ok).toBe(false);
     expect(missingEnvelope.error.code).toBe("HUMANISH_INVALID_CWD");
 
-    await withTempApp({
-      "package.json": "{ nope"
-    }, async (cwd) => {
-      const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        error: { code: string };
-      };
+    await withTempApp(
+      {
+        "package.json": "{ nope",
+      },
+      async (cwd) => {
+        const result = await runCli(["init", "--yes", "--json", "--cwd", cwd]);
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          error: { code: string };
+        };
 
-      expect(result.exitCode).toBe(2);
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_INVALID_PACKAGE_JSON");
-      await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
-    });
+        expect(result.exitCode).toBe(2);
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error.code).toBe("HUMANISH_INVALID_PACKAGE_JSON");
+        await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
+      },
+    );
   });
 
   it("fails closed for feedback issue output when no run bundle exists", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2)
-    }, async (cwd) => {
-      const result = await runCli([
-        "feedback",
-        "issue",
-        "--run",
-        "latest",
-        "--repo",
-        "example/app",
-        "--format",
-        "markdown",
-        "--cwd",
-        cwd,
-        "--json"
-      ]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      },
+      async (cwd) => {
+        const result = await runCli([
+          "feedback",
+          "issue",
+          "--run",
+          "latest",
+          "--repo",
+          "example/app",
+          "--format",
+          "markdown",
+          "--cwd",
+          cwd,
+          "--json",
+        ]);
 
-      const envelope = JSON.parse(result.stdout) as {
-        ok: boolean;
-        error: { code: string };
-        schema: string;
-      };
+        const envelope = JSON.parse(result.stdout) as {
+          ok: boolean;
+          error: { code: string };
+          schema: string;
+        };
 
-      expect(result.exitCode).toBe(2);
-      expect(envelope.schema).toBe("humanish.feedback-result.v1");
-      expect(envelope.ok).toBe(false);
-      expect(envelope.error.code).toBe("HUMANISH_RUN_NOT_FOUND");
-    });
+        expect(result.exitCode).toBe(2);
+        expect(envelope.schema).toBe("humanish.feedback-result.v1");
+        expect(envelope.ok).toBe(false);
+        expect(envelope.error.code).toBe("HUMANISH_RUN_NOT_FOUND");
+      },
+    );
   });
 
   it("keeps feedback draft fail-closed without a run bundle", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2)
-    }, async (cwd) => {
-      const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+      },
+      async (cwd) => {
+        const result = await runCli(["feedback", "draft", "--run", "latest", "--cwd", cwd]);
 
-      expect(result.exitCode).toBe(2);
-      expect(result.stdout).toContain("HUMANISH_RUN_NOT_FOUND");
-      expect(result.stderr).toBe("");
-    });
+        expect(result.exitCode).toBe(2);
+        expect(result.stdout).toContain("HUMANISH_RUN_NOT_FOUND");
+        expect(result.stderr).toBe("");
+      },
+    );
   });
 
   it("catches an unexpected fs error at the command boundary and emits a single HUMANISH_UNEXPECTED envelope (issue #262 repro A)", async () => {
@@ -734,7 +861,7 @@ describe("humanish CLI scaffold", () => {
       writeErr: (text: string) => stderr.push(text),
       setExitCode: (code: number) => {
         exitCode = code;
-      }
+      },
     };
     const program = createProgram(io);
 
@@ -742,12 +869,19 @@ describe("humanish CLI scaffold", () => {
       .command("__test-scratch-envelope-then-throw")
       .option("--json")
       .action((_options: unknown, command) => {
-        writeResult(command, io, { schema: "humanish.test-scratch-result.v1", ok: true }, () => "ok\n");
+        writeResult(
+          command,
+          io,
+          { schema: "humanish.test-scratch-result.v1", ok: true },
+          () => "ok\n",
+        );
         throw new Error("scratch failure after a successful write");
       });
 
     program.exitOverride();
-    await program.parseAsync(["node", "humanish", "__test-scratch-envelope-then-throw", "--json"], { from: "node" });
+    await program.parseAsync(["node", "humanish", "__test-scratch-envelope-then-throw", "--json"], {
+      from: "node",
+    });
 
     const stdoutText = stdout.join("");
     // The real-world failure mode this guards against: JSON.parse(stdout)
@@ -793,7 +927,7 @@ describe("humanish CLI scaffold", () => {
           await chmod(runsRoot, 0o755);
         }
       });
-    }
+    },
   );
 
   it("reports ok:true with an empty list for a fresh cwd with no .humanish/runs yet (not an error)", async () => {
@@ -801,7 +935,11 @@ describe("humanish CLI scaffold", () => {
       const result = await runCli(["runs", "--cwd", cwd, "--json"]);
 
       expect(result.exitCode).toBe(0);
-      const envelope = JSON.parse(result.stdout) as { ok: boolean; runs: unknown[]; latest: string | null };
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        runs: unknown[];
+        latest: string | null;
+      };
       expect(envelope.ok).toBe(true);
       expect(envelope.runs).toEqual([]);
       expect(envelope.latest).toBeNull();
@@ -826,37 +964,87 @@ describe("humanish CLI scaffold", () => {
   });
 });
 
-
 describe("resolveBackendShouldOpen (shared lab-backend auto-open gate)", () => {
   const origTTY = process.stdout.isTTY;
-  afterEach(() => { process.stdout.isTTY = origTTY; });
+  afterEach(() => {
+    process.stdout.isTTY = origTTY;
+  });
 
   it("--no-open (open=false) never opens, even on a TTY watch", () => {
     process.stdout.isTTY = true;
-    expect(resolveBackendShouldOpen({ optionOpen: false, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(false);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: false,
+        defaultsOpen: undefined,
+        mode: "watch",
+        wantsMachine: false,
+      }),
+    ).toBe(false);
   });
 
   it("--json (machine mode) only opens with an explicit --open", () => {
     process.stdout.isTTY = true;
-    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: true })).toBe(false);
-    expect(resolveBackendShouldOpen({ optionOpen: true, defaultsOpen: undefined, mode: "watch", wantsMachine: true })).toBe(true);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: undefined,
+        defaultsOpen: undefined,
+        mode: "watch",
+        wantsMachine: true,
+      }),
+    ).toBe(false);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: true,
+        defaultsOpen: undefined,
+        mode: "watch",
+        wantsMachine: true,
+      }),
+    ).toBe(true);
   });
 
   it("human watch opens on a real TTY and NOT without one (the fix)", () => {
     process.stdout.isTTY = true;
-    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(true);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: undefined,
+        defaultsOpen: undefined,
+        mode: "watch",
+        wantsMachine: false,
+      }),
+    ).toBe(true);
     process.stdout.isTTY = false;
-    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "watch", wantsMachine: false })).toBe(false);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: undefined,
+        defaultsOpen: undefined,
+        mode: "watch",
+        wantsMachine: false,
+      }),
+    ).toBe(false);
   });
 
   it("run mode never auto-opens by default (only watch does)", () => {
     process.stdout.isTTY = true;
-    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: undefined, mode: "run", wantsMachine: false })).toBe(false);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: undefined,
+        defaultsOpen: undefined,
+        mode: "run",
+        wantsMachine: false,
+      }),
+    ).toBe(false);
   });
 
   it("lab-config defaults.open wins over the TTY fallback", () => {
     process.stdout.isTTY = false;
-    expect(resolveBackendShouldOpen({ optionOpen: undefined, defaultsOpen: true, mode: "run", wantsMachine: false })).toBe(true);
+    expect(
+      resolveBackendShouldOpen({
+        optionOpen: undefined,
+        defaultsOpen: true,
+        mode: "run",
+        wantsMachine: false,
+      }),
+    ).toBe(true);
   });
 });
 
@@ -888,8 +1076,8 @@ const SERVE_LAB_FIXTURE: Record<string, string> = {
     "  - type: synthetic-persona",
     "    count: 2",
     "scenario:",
-    "  mode: dry-run"
-  ].join("\n")
+    "  mode: dry-run",
+  ].join("\n"),
 };
 
 async function seedDryRunBundle(cwd: string, runId: string): Promise<void> {
@@ -914,23 +1102,31 @@ function startAttachedCli(args: string[]): {
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
   program.exitOverride();
-  const finished = program.parseAsync(["node", "humanish", ...args], { from: "node" }).then(() => undefined);
+  const finished = program
+    .parseAsync(["node", "humanish", ...args], { from: "node" })
+    .then(() => undefined);
   return {
     exitCode: () => exitCode,
     stdout: () => stdout.join(""),
     stderr: () => stderr.join(""),
-    finished
+    finished,
   };
 }
 
-async function waitForOutput(read: () => string, needle: string, timeoutMs = 10_000): Promise<void> {
+async function waitForOutput(
+  read: () => string,
+  needle: string,
+  timeoutMs = 10_000,
+): Promise<void> {
   const start = Date.now();
   while (!read().includes(needle)) {
     if (Date.now() - start > timeoutMs) {
-      throw new Error(`timed out waiting for ${JSON.stringify(needle)}; saw: ${JSON.stringify(read())}`);
+      throw new Error(
+        `timed out waiting for ${JSON.stringify(needle)}; saw: ${JSON.stringify(read())}`,
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
@@ -1003,41 +1199,73 @@ describe("humanish serve command", () => {
   }, 20_000);
 
   it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes (fail-closed matrix)", async () => {
-    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
-      const matrix: Array<{ args: string[]; code: string }> = [
-        // Exposure requires EITHER edge auth OR --safe: a bare tunnel to local bundles is refused.
-        { args: ["--expose", "--tunnel", "ngrok"], code: "HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE" },
-        // --oauth is only meaningful on the ngrok edge.
-        { args: ["--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
-        { args: ["--expose", "--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
-        // Allow rules require --oauth.
-        { args: ["--allow-email", "a@example.com"], code: "HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH" },
-        // Tunnel + public-url are mutually exclusive origins.
-        { args: ["--expose", "--tunnel", "ngrok", "--oauth", "google", "--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--tunnel", "ngrok"], code: "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE" },
-        { args: ["--tunnel-domain", "observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--public-url", "https://observer.example.com"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--expose", "--public-url", "notaurl"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
-        { args: ["--port", "99999"], code: "HUMANISH_INVALID_PORT" }
-      ];
+    await withTempApp(
+      { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
+      async (cwd) => {
+        const matrix: Array<{ args: string[]; code: string }> = [
+          // Exposure requires EITHER edge auth OR --safe: a bare tunnel to local bundles is refused.
+          {
+            args: ["--expose", "--tunnel", "ngrok"],
+            code: "HUMANISH_SERVE_EXPOSE_REQUIRES_EDGE_AUTH_OR_SAFE",
+          },
+          // --oauth is only meaningful on the ngrok edge.
+          { args: ["--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
+          { args: ["--expose", "--oauth", "google"], code: "HUMANISH_SERVE_OAUTH_REQUIRES_TUNNEL" },
+          // Allow rules require --oauth.
+          { args: ["--allow-email", "a@example.com"], code: "HUMANISH_SERVE_ALLOW_REQUIRES_OAUTH" },
+          // Tunnel + public-url are mutually exclusive origins.
+          {
+            args: [
+              "--expose",
+              "--tunnel",
+              "ngrok",
+              "--oauth",
+              "google",
+              "--public-url",
+              "https://observer.example.com",
+            ],
+            code: "HUMANISH_SERVE_OPTION_CONFLICT",
+          },
+          { args: ["--tunnel", "ngrok"], code: "HUMANISH_SERVE_TUNNEL_REQUIRES_EXPOSE" },
+          {
+            args: ["--tunnel-domain", "observer.example.com"],
+            code: "HUMANISH_SERVE_OPTION_CONFLICT",
+          },
+          {
+            args: ["--public-url", "https://observer.example.com"],
+            code: "HUMANISH_SERVE_OPTION_CONFLICT",
+          },
+          { args: ["--expose", "--public-url", "notaurl"], code: "HUMANISH_SERVE_OPTION_CONFLICT" },
+          { args: ["--port", "99999"], code: "HUMANISH_INVALID_PORT" },
+        ];
 
-      for (const row of matrix) {
-        const result = await runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...row.args]);
-        const envelope = JSON.parse(result.stdout) as ServeEnvelope;
-        expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
-        expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
-      }
-    });
+        for (const row of matrix) {
+          const result = await runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...row.args]);
+          const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+          expect(result.exitCode, `exit code for: ${row.args.join(" ")}`).toBe(2);
+          expect(envelope.error?.code, `error code for: ${row.args.join(" ")}`).toBe(row.code);
+        }
+      },
+    );
   }, 20_000);
 
   it("rejects the removed --auth and --ttl flags as unknown options (capability-link machinery deleted)", async () => {
-    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
-      for (const removed of [["--auth", "link"], ["--auth", "none"], ["--ttl", "5"]]) {
-        // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
-        // a thrown error), rather than silently accepting a no-op — the pre-1.0 breaking change.
-        await expect(runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed])).rejects.toThrow();
-      }
-    });
+    await withTempApp(
+      { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
+      async (cwd) => {
+        for (const removed of [
+          ["--auth", "link"],
+          ["--auth", "none"],
+          ["--ttl", "5"],
+        ]) {
+          // The flags are gone: commander refuses the unknown option (a non-zero exit, surfaced here as
+          // a thrown error), rather than silently accepting a no-op — the pre-1.0 breaking change.
+          await expect(
+            runCli(["serve", "--cwd", cwd, "--json", "--no-open", ...removed]),
+          ).rejects.toThrow();
+        }
+      },
+    );
   }, 20_000);
 
   it("fails HUMANISH_RUN_NOT_FOUND for an unknown --run before printing any serving banner", async () => {
@@ -1063,10 +1291,19 @@ describe("humanish serve command", () => {
       await writeFile(
         path.join(cwd, ".humanish/runs/serve-blocked-run/events.ndjson"),
         `{"message":"synthetic ${"sk-" + "testsecretvalue1234567890abcd"}"}\n`,
-        "utf8"
+        "utf8",
       );
 
-      const result = await runCli(["serve", "--safe", "--run", "serve-blocked-run", "--cwd", cwd, "--json", "--no-open"]);
+      const result = await runCli([
+        "serve",
+        "--safe",
+        "--run",
+        "serve-blocked-run",
+        "--cwd",
+        cwd,
+        "--json",
+        "--no-open",
+      ]);
       const envelope = JSON.parse(result.stdout) as ServeEnvelope;
       expect(result.exitCode).toBe(2);
       expect(envelope.error?.code).toBe("HUMANISH_SERVE_RUN_NOT_SHAREABLE");
@@ -1081,8 +1318,14 @@ describe("humanish serve command", () => {
 
       const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
       const cli = startAttachedCli([
-        "serve", "--cwd", cwd, "--expose",
-        "--public-url", "https://observer.example.com", "--json", "--no-open"
+        "serve",
+        "--cwd",
+        cwd,
+        "--expose",
+        "--public-url",
+        "https://observer.example.com",
+        "--json",
+        "--no-open",
       ]);
       await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
@@ -1114,17 +1357,25 @@ describe("humanish serve command", () => {
           `printf '%s\\n' '${startedTunnelLine}'`,
           "sleep 120 &",
           "SLEEP_PID=$!",
-          "wait \"$SLEEP_PID\"",
-          ""
+          'wait "$SLEEP_PID"',
+          "",
         ].join("\n"),
-        { encoding: "utf8", mode: 0o755 }
+        { encoding: "utf8", mode: 0o755 },
       );
       const originalPath = process.env.PATH;
       process.env.PATH = `${stubDir}${path.delimiter}${originalPath ?? ""}`;
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve", "--cwd", cwd, "--safe", "--expose", "--tunnel", "ngrok", "--json", "--no-open"
+          "serve",
+          "--cwd",
+          cwd,
+          "--safe",
+          "--expose",
+          "--tunnel",
+          "ngrok",
+          "--json",
+          "--no-open",
         ]);
         await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
@@ -1164,10 +1415,10 @@ describe("humanish serve command", () => {
           `printf '%s\\n' '${startedTunnelLine}'`,
           "sleep 120 &",
           "SLEEP_PID=$!",
-          "wait \"$SLEEP_PID\"",
-          ""
+          'wait "$SLEEP_PID"',
+          "",
         ].join("\n"),
-        { encoding: "utf8", mode: 0o755 }
+        { encoding: "utf8", mode: 0o755 },
       );
 
       const originalPath = process.env.PATH;
@@ -1175,8 +1426,18 @@ describe("humanish serve command", () => {
       try {
         const preexisting = new Set<unknown>(process.listeners("SIGTERM"));
         const cli = startAttachedCli([
-          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok",
-          "--oauth", "google", "--allow-email", "you@example.com", "--json", "--no-open"
+          "serve",
+          "--cwd",
+          cwd,
+          "--expose",
+          "--tunnel",
+          "ngrok",
+          "--oauth",
+          "google",
+          "--allow-email",
+          "you@example.com",
+          "--json",
+          "--no-open",
         ]);
         await waitForOutput(cli.stderr, "serving: press Ctrl-C to stop");
 
@@ -1184,7 +1445,11 @@ describe("humanish serve command", () => {
         expect(envelope.mode).toBe("exposed");
         expect(envelope.tunnel).toEqual({ provider: "ngrok", url: "https://observer.example.com" });
         expect(envelope.publicUrl).toBe("https://observer.example.com");
-        expect(envelope.oauth).toEqual({ provider: "google", allowEmails: ["you@example.com"], allowDomains: [] });
+        expect(envelope.oauth).toEqual({
+          provider: "google",
+          allowEmails: ["you@example.com"],
+          allowDomains: [],
+        });
         // No in-process token leaked into the envelope.
         expect((envelope as { capabilityUrl?: string }).capabilityUrl).toBeUndefined();
         if (typeof envelope.port !== "number") {
@@ -1211,32 +1476,45 @@ describe("humanish serve command", () => {
   }, 20_000);
 
   it("fails HUMANISH_SERVE_TUNNEL_NOT_FOUND when ngrok is absent and tears the bound server down", async () => {
-    await withTempApp({ "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) }, async (cwd) => {
-      await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
+    await withTempApp(
+      { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
+      async (cwd) => {
+        await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
 
-      const emptyDir = await mkdtemp(path.join(os.tmpdir(), "humanish-empty-path-"));
-      const port = await findFreePort();
-      const originalPath = process.env.PATH;
-      // The CLI runs in-process and spawns nothing but ngrok on this path, so a
-      // PATH of one empty directory makes that exact spawn fail ENOENT.
-      process.env.PATH = emptyDir;
-      try {
-        const result = await runCli([
-          "serve", "--cwd", cwd, "--expose", "--tunnel", "ngrok", "--oauth", "google",
-          "--port", String(port), "--json", "--no-open"
-        ]);
-        const envelope = JSON.parse(result.stdout) as ServeEnvelope;
-        expect(result.exitCode).toBe(2);
-        expect(envelope.ok).toBe(false);
-        expect(envelope.error?.code).toBe("HUMANISH_SERVE_TUNNEL_NOT_FOUND");
-        expect(result.stdout).not.toContain("serving:");
-        expect(result.stderr).not.toContain("serving:");
-        expect(await portRefusesConnections(port)).toBe(true);
-      } finally {
-        process.env.PATH = originalPath;
-        await rm(emptyDir, { force: true, recursive: true });
-      }
-    });
+        const emptyDir = await mkdtemp(path.join(os.tmpdir(), "humanish-empty-path-"));
+        const port = await findFreePort();
+        const originalPath = process.env.PATH;
+        // The CLI runs in-process and spawns nothing but ngrok on this path, so a
+        // PATH of one empty directory makes that exact spawn fail ENOENT.
+        process.env.PATH = emptyDir;
+        try {
+          const result = await runCli([
+            "serve",
+            "--cwd",
+            cwd,
+            "--expose",
+            "--tunnel",
+            "ngrok",
+            "--oauth",
+            "google",
+            "--port",
+            String(port),
+            "--json",
+            "--no-open",
+          ]);
+          const envelope = JSON.parse(result.stdout) as ServeEnvelope;
+          expect(result.exitCode).toBe(2);
+          expect(envelope.ok).toBe(false);
+          expect(envelope.error?.code).toBe("HUMANISH_SERVE_TUNNEL_NOT_FOUND");
+          expect(result.stdout).not.toContain("serving:");
+          expect(result.stderr).not.toContain("serving:");
+          expect(await portRefusesConnections(port)).toBe(true);
+        } finally {
+          process.env.PATH = originalPath;
+          await rm(emptyDir, { force: true, recursive: true });
+        }
+      },
+    );
   }, 20_000);
 });
 
@@ -1258,8 +1536,8 @@ const CUA_LAB_FIXTURE: Record<string, string> = {
     "  target: e2b-desktop",
     "  timeoutMs: 60000",
     "scenario:",
-    "  mode: live"
-  ].join("\n")
+    "  mode: live",
+  ].join("\n"),
 };
 
 interface CuaEnvelope {
@@ -1271,7 +1549,16 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   it("refuses a live watch --expose --tunnel ngrok with NO edge auth (edge auth is required)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       // No --json: --json would trip the live-follow refusal first; here we isolate the edge-auth gate.
-      const result = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok"]);
+      const result = await runCli([
+        "watch",
+        "cua-live",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--tunnel",
+        "ngrok",
+      ]);
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_EDGE_AUTH");
       // Aborted before any run: no attach/serving banner.
@@ -1282,7 +1569,15 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
 
   it("refuses a live watch --expose --safe with SAFE_NOT_APPLICABLE (--safe is a `serve` filter, not a watch gate)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
-      const result = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--safe"]);
+      const result = await runCli([
+        "watch",
+        "cua-live",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--safe",
+      ]);
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
     });
@@ -1291,8 +1586,17 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   it("refuses watch --expose --json (no attached follow) with EXPOSE_REQUIRES_LIVE_FOLLOW", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       const result = await runCli([
-        "watch", "cua-live", "--cwd", cwd, "--no-open",
-        "--expose", "--tunnel", "ngrok", "--oauth", "google", "--json"
+        "watch",
+        "cua-live",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--tunnel",
+        "ngrok",
+        "--oauth",
+        "google",
+        "--json",
       ]);
       expect(result.exitCode).toBe(2);
       const envelope = JSON.parse(result.stdout) as CuaEnvelope;
@@ -1305,22 +1609,51 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
       for (const extra of [["--dry-run"], ["--detach"]]) {
         const result = await runCli([
-          "watch", "cua-live", "--cwd", cwd, "--no-open",
-          "--expose", "--tunnel", "ngrok", "--oauth", "google", ...extra
+          "watch",
+          "cua-live",
+          "--cwd",
+          cwd,
+          "--no-open",
+          "--expose",
+          "--tunnel",
+          "ngrok",
+          "--oauth",
+          "google",
+          ...extra,
         ]);
         expect(result.exitCode, extra.join(" ")).toBe(2);
-        expect(result.stdout, extra.join(" ")).toContain("HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW");
+        expect(result.stdout, extra.join(" ")).toContain(
+          "HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW",
+        );
       }
     });
   }, 20_000);
 
   it("refuses --oauth without --tunnel and --allow-email without --oauth", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
-      const noTunnel = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--oauth", "google"]);
+      const noTunnel = await runCli([
+        "watch",
+        "cua-live",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--oauth",
+        "google",
+      ]);
       expect(noTunnel.exitCode).toBe(2);
       expect(noTunnel.stdout).toContain("HUMANISH_WATCH_OAUTH_REQUIRES_TUNNEL");
 
-      const noOauth = await runCli(["watch", "cua-live", "--cwd", cwd, "--no-open", "--expose", "--allow-email", "you@example.com"]);
+      const noOauth = await runCli([
+        "watch",
+        "cua-live",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--allow-email",
+        "you@example.com",
+      ]);
       expect(noOauth.exitCode).toBe(2);
       expect(noOauth.stdout).toContain("HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH");
     });
@@ -1328,7 +1661,18 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
 
   it("refuses exposure on a non-CUA (synthetic) lab: no live desktop to stream", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
-      const result = await runCli(["watch", "first-run", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok", "--oauth", "google"]);
+      const result = await runCli([
+        "watch",
+        "first-run",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--tunnel",
+        "ngrok",
+        "--oauth",
+        "google",
+      ]);
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
@@ -1337,7 +1681,19 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
   it("refuses exposure on the non-lab watch path (existing evidence)", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
       await seedDryRunBundle(cwd, "watch-existing-run");
-      const result = await runCli(["watch", "--run", "latest", "--cwd", cwd, "--no-open", "--expose", "--tunnel", "ngrok", "--oauth", "google"]);
+      const result = await runCli([
+        "watch",
+        "--run",
+        "latest",
+        "--cwd",
+        cwd,
+        "--no-open",
+        "--expose",
+        "--tunnel",
+        "ngrok",
+        "--oauth",
+        "google",
+      ]);
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
@@ -1356,12 +1712,15 @@ describe("provider-key discovery at the CLI seam (#436)", () => {
         calls.push({ cwd: args.cwd });
         args.announce("humanish keys: FAKE_KEY from fake-source");
         return [{ name: "FAKE_KEY", source: "fake-source" }];
-      }
+      },
     });
     program.exitOverride();
     // `lab preflight` goes through the same applyEnvFileOption seam as watch/run/lab run.
     try {
-      await program.parseAsync(["node", "humanish", "lab", "preflight", "missing-lab", "--cwd", "/nonexistent", "--json"], { from: "node" });
+      await program.parseAsync(
+        ["node", "humanish", "lab", "preflight", "missing-lab", "--cwd", "/nonexistent", "--json"],
+        { from: "node" },
+      );
     } catch {
       // The command itself may fail on the bogus cwd; the seam runs first.
     }
@@ -1372,7 +1731,12 @@ describe("provider-key discovery at the CLI seam (#436)", () => {
 
   it("`humanish keys list` reports an empty store without ever printing values", async () => {
     const result = await runCli(["keys", "list", "--json"]);
-    const envelope = JSON.parse(result.stdout) as { schema: string; ok: boolean; action: string; names: string[] };
+    const envelope = JSON.parse(result.stdout) as {
+      schema: string;
+      ok: boolean;
+      action: string;
+      names: string[];
+    };
     expect(envelope.schema).toBe("humanish.keys-result.v1");
     expect(envelope.ok).toBe(true);
     expect(envelope.action).toBe("list");
@@ -1401,12 +1765,20 @@ describe("lab provenance survives the whole CLI path (#455)", () => {
           "  - type: synthetic-persona",
           "scenario:",
           "  mode: dry-run",
-          ""
+          "",
         ].join("\n"),
-        "utf8"
+        "utf8",
       );
 
-      const result = await runCli(["lab", "run", "provenance-demo", "--cwd", cwd, "--json", "--no-open"]);
+      const result = await runCli([
+        "lab",
+        "run",
+        "provenance-demo",
+        "--cwd",
+        cwd,
+        "--json",
+        "--no-open",
+      ]);
       expect(result.exitCode).toBe(0);
 
       const runsDir = path.join(cwd, ".humanish", "runs");
@@ -1419,10 +1791,12 @@ describe("lab provenance survives the whole CLI path (#455)", () => {
       expect(bundle.lab).toEqual({
         id: "provenance-demo",
         path: path.join("humanish", "labs", "provenance-demo.yaml"),
-        origin: "committed"
+        origin: "committed",
       });
 
-      const status = JSON.parse(await readFile(path.join(runsDir, runId!, "status.json"), "utf8")) as {
+      const status = JSON.parse(
+        await readFile(path.join(runsDir, runId!, "status.json"), "utf8"),
+      ) as {
         schema: string;
         state: string;
         mode: string;
@@ -1443,14 +1817,33 @@ describe("study facts ride the result seam", () => {
     const io = { writeOut: () => {}, writeErr: () => {}, setExitCode: () => {} };
     const program = createProgram(io);
     const command = program.command("probe-study-facts");
-    writeResult(command, io, {
-      schema: "humanish.cua-lab-result.v2", ok: true, labId: "try-live", actor: "openai-computer-use",
-      dryRun: false, session: { status: "abandoned", completionReason: "gave_up", reason: "", screenshots: 3 }
-    }, () => "");
-    expect(studyFactsFor(command)).toEqual({ mode: "live", lab: "try-live", outcome: "abandoned", brain: "provider-key" });
+    writeResult(
+      command,
+      io,
+      {
+        schema: "humanish.cua-lab-result.v2",
+        ok: true,
+        labId: "try-live",
+        actor: "openai-computer-use",
+        dryRun: false,
+        session: { status: "abandoned", completionReason: "gave_up", reason: "", screenshots: 3 },
+      },
+      () => "",
+    );
+    expect(studyFactsFor(command)).toEqual({
+      mode: "live",
+      lab: "try-live",
+      outcome: "abandoned",
+      brain: "provider-key",
+    });
     // A command that wrote no study leaves nothing behind.
     const other = program.command("probe-nothing");
-    writeResult(other, io, { schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] }, () => "");
+    writeResult(
+      other,
+      io,
+      { schema: "humanish.doctor-result.v1", ok: true, cwd: "/x", checks: [] },
+      () => "",
+    );
     expect(studyFactsFor(other)).toEqual({});
   });
 });
@@ -1459,7 +1852,13 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
   it("names what is still alive after a command settles, and only when asked", async () => {
     const previous = process.env.HUMANISH_DEBUG_HANDLES;
     const stderr: string[] = [];
-    const io = { writeOut: () => {}, writeErr: (text: string) => { stderr.push(text); }, setExitCode: () => {} };
+    const io = {
+      writeOut: () => {},
+      writeErr: (text: string) => {
+        stderr.push(text);
+      },
+      setExitCode: () => {},
+    };
     const program = createProgram(io);
     program.command("__probe-handles").action(() => {});
     try {
@@ -1467,7 +1866,9 @@ describe("HUMANISH_DEBUG_HANDLES (#581)", () => {
       await program.parseAsync(["node", "humanish", "__probe-handles"]);
       await new Promise((resolve) => setImmediate(resolve));
       await new Promise((resolve) => setImmediate(resolve));
-      expect(stderr.join("")).toMatch(/humanish debug: active resources after `__probe-handles` settled: /);
+      expect(stderr.join("")).toMatch(
+        /humanish debug: active resources after `__probe-handles` settled: /,
+      );
       stderr.length = 0;
       delete process.env.HUMANISH_DEBUG_HANDLES;
       await program.parseAsync(["node", "humanish", "__probe-handles"]);
@@ -1485,11 +1886,27 @@ describe("a taken port at the command boundary (#484)", () => {
     const { PortInUseError } = await import("../src/listen.js");
     const stdout: string[] = [];
     const stderr: string[] = [];
-    const io = { writeOut: (t: string) => { stdout.push(t); }, writeErr: (t: string) => { stderr.push(t); }, setExitCode: () => {} };
+    const io = {
+      writeOut: (t: string) => {
+        stdout.push(t);
+      },
+      writeErr: (t: string) => {
+        stderr.push(t);
+      },
+      setExitCode: () => {},
+    };
     const program = createProgram(io);
-    program.command("__probe-port").option("--json").action(() => { throw new PortInUseError(8791, "humanish"); });
+    program
+      .command("__probe-port")
+      .option("--json")
+      .action(() => {
+        throw new PortInUseError(8791, "humanish");
+      });
     await program.parseAsync(["node", "humanish", "__probe-port", "--json"]);
-    const envelope = JSON.parse(stdout.join("")) as { ok: boolean; error: { code: string; message: string } };
+    const envelope = JSON.parse(stdout.join("")) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
     expect(envelope.ok).toBe(false);
     expect(envelope.error.code).toBe("HUMANISH_PORT_IN_USE");
     expect(envelope.error.message).toContain("8791");
@@ -1502,59 +1919,119 @@ describe("a taken port at the command boundary (#484)", () => {
 
 describe("run writes the same bundle watch does (#597)", () => {
   it("a `run` bundle carries observer/index.html, so it can be exported and opened like a watched one", async () => {
-    await withTempApp({
-      "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-      "humanish/labs/first-run.yaml": [
-        "schema: humanish.lab.v2",
-        "id: first-run",
-        "title: First run",
-        "subject:",
-        "  source: this-repo",
-        "actors:",
-        "  - type: synthetic-persona",
-        "    count: 2"
-      ].join("\n")
-    }, async (cwd) => {
-      const viaLab = await runCli(["lab", "run", "first-run", "--cwd", cwd, "--json", "--no-open"]);
-      expect(viaLab.exitCode).toBe(0);
-      const labEnvelope = JSON.parse(viaLab.stdout) as { ok: boolean; runId?: string; warnings: string[] };
-      expect(labEnvelope.ok).toBe(true);
-      expect(labEnvelope.warnings.some((w) => w.includes("observer/index.html was not written"))).toBe(false);
-      await expect(stat(path.join(cwd, ".humanish", "runs", labEnvelope.runId!, "observer", "index.html"))).resolves.toBeTruthy();
+    await withTempApp(
+      {
+        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
+        "humanish/labs/first-run.yaml": [
+          "schema: humanish.lab.v2",
+          "id: first-run",
+          "title: First run",
+          "subject:",
+          "  source: this-repo",
+          "actors:",
+          "  - type: synthetic-persona",
+          "    count: 2",
+        ].join("\n"),
+      },
+      async (cwd) => {
+        const viaLab = await runCli([
+          "lab",
+          "run",
+          "first-run",
+          "--cwd",
+          cwd,
+          "--json",
+          "--no-open",
+        ]);
+        expect(viaLab.exitCode).toBe(0);
+        const labEnvelope = JSON.parse(viaLab.stdout) as {
+          ok: boolean;
+          runId?: string;
+          warnings: string[];
+        };
+        expect(labEnvelope.ok).toBe(true);
+        expect(
+          labEnvelope.warnings.some((w) => w.includes("observer/index.html was not written")),
+        ).toBe(false);
+        await expect(
+          stat(path.join(cwd, ".humanish", "runs", labEnvelope.runId!, "observer", "index.html")),
+        ).resolves.toBeTruthy();
 
-      const direct = await runCli(["run", "--cwd", cwd, "--json", "--dry-run"]);
-      expect(direct.exitCode).toBe(0);
-      const directEnvelope = JSON.parse(direct.stdout) as { ok: boolean; runId?: string };
-      expect(directEnvelope.ok).toBe(true);
-      await expect(stat(path.join(cwd, ".humanish", "runs", directEnvelope.runId!, "observer", "index.html"))).resolves.toBeTruthy();
-    });
+        const direct = await runCli(["run", "--cwd", cwd, "--json", "--dry-run"]);
+        expect(direct.exitCode).toBe(0);
+        const directEnvelope = JSON.parse(direct.stdout) as { ok: boolean; runId?: string };
+        expect(directEnvelope.ok).toBe(true);
+        await expect(
+          stat(
+            path.join(cwd, ".humanish", "runs", directEnvelope.runId!, "observer", "index.html"),
+          ),
+        ).resolves.toBeTruthy();
+      },
+    );
   });
 });
 
-
 describe("CUA ending output", () => {
   it("shows distinct lane causes without calling the first lane the whole session", () => {
-    const output = formatCuaLabHuman({ schema: "humanish.cua-lab-result.v2", ok: false, cwd: "/synthetic", labId: "synthetic",
-      actor: "openai-computer-use", appUrl: "http://127.0.0.1:3000/", dryRun: false, runId: "synthetic", warnings: [],
+    const output = formatCuaLabHuman({
+      schema: "humanish.cua-lab-result.v2",
+      ok: false,
+      cwd: "/synthetic",
+      labId: "synthetic",
+      actor: "openai-computer-use",
+      appUrl: "http://127.0.0.1:3000/",
+      dryRun: false,
+      runId: "synthetic",
+      warnings: [],
       diagnostics: { category: "mixed", stopCause: "mixed" },
-      session: { status: "incomplete", completionReason: "budget_reached", stopCause: "provider_output_limit", reason: "Synthetic", screenshots: 0 },
+      session: {
+        status: "incomplete",
+        completionReason: "budget_reached",
+        stopCause: "provider_output_limit",
+        reason: "Synthetic",
+        screenshots: 0,
+      },
       lanes: ["provider_output_limit", "time_limit"].map((stopCause, index) => ({
-        id: `lane-${index + 1}`, index: index + 1, persona: "synthetic", device: "desktop", resolution: [1440, 950] as [number, number],
-        status: "incomplete" as const, ok: false, subject: { source: "app-url" as const, state: { provenance: "undeclared" as const } },
-        diagnostics: { category: "session_interrupted" as const, stopCause: stopCause as "provider_output_limit" | "time_limit" }
-      }))
+        id: `lane-${index + 1}`,
+        index: index + 1,
+        persona: "synthetic",
+        device: "desktop",
+        resolution: [1440, 950] as [number, number],
+        status: "incomplete" as const,
+        ok: false,
+        subject: { source: "app-url" as const, state: { provenance: "undeclared" as const } },
+        diagnostics: {
+          category: "session_interrupted" as const,
+          stopCause: stopCause as "provider_output_limit" | "time_limit",
+        },
+      })),
     });
     expect(output).toContain("diagnostic: mixed endings (mixed)");
-    expect(output).toContain("lane lane-1: incomplete · session interrupted (provider output limit)");
+    expect(output).toContain(
+      "lane lane-1: incomplete · session interrupted (provider output limit)",
+    );
     expect(output).toContain("lane lane-2: incomplete · session interrupted (time limit)");
     expect(output).not.toContain("session: incomplete");
   });
 
   it("prints and verifies an actual N2 preview with no live participant verdict", async () => {
-    const manifest = { schema: "humanish.lab.v2", id: "preview", subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-      actors: [{ type: "openai-computer-use", count: 2 }], execution: { target: "e2b-desktop" } };
+    const manifest = {
+      schema: "humanish.lab.v2",
+      id: "preview",
+      subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
+      actors: [{ type: "openai-computer-use", count: 2 }],
+      execution: { target: "e2b-desktop" },
+    };
     await withTempApp({ "humanish/labs/preview.yaml": JSON.stringify(manifest) }, async (cwd) => {
-      const result = await runCli(["lab", "run", "preview", "--dry-run", "--no-open", "--cwd", cwd]);
+      const result = await runCli([
+        "lab",
+        "run",
+        "preview",
+        "--dry-run",
+        "--no-open",
+        "--cwd",
+        cwd,
+      ]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("diagnostic: preview");
       expect(result.stdout.match(/contract_proof_only · preview/g)).toHaveLength(2);

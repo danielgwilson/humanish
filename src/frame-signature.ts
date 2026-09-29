@@ -95,7 +95,7 @@ function quantizedGrid(data: Buffer, srcW: number, srcH: number): number[] {
   const span = hi - lo;
   const top = SIGNATURE_LEVELS - 1;
   return grays.map((gray) =>
-    span <= 0 ? 0 : Math.min(top, Math.max(0, Math.round(((gray - lo) / span) * top)))
+    span <= 0 ? 0 : Math.min(top, Math.max(0, Math.round(((gray - lo) / span) * top))),
   );
 }
 
@@ -116,7 +116,7 @@ function brightnessAnchor(data: Buffer, srcW: number, srcH: number): string {
     n += 1;
   }
   const mean = n ? sum / n : 0;
-  return (Math.min(15, Math.floor(mean / 16))).toString(16);
+  return Math.min(15, Math.floor(mean / 16)).toString(16);
 }
 
 /** Pack 4-bit cells (two per byte) into a compact hex string. */

@@ -46,7 +46,7 @@ export function nodeBootstrapCommand(major: number = BOOTSTRAP_NODE_MAJOR): stri
     "else",
     `  curl -fsSL https://deb.nodesource.com/setup_${major}.x | sudo -n -E bash - &&`,
     "  sudo -n apt-get install -y nodejs;",
-    "fi"
+    "fi",
   ].join("\n");
 }
 
@@ -68,6 +68,6 @@ export function corepackCommandFor(commands: readonly (string | undefined)[]): s
     "else",
     "  sudo -n corepack enable >/dev/null 2>&1 || true;",
     `  corepack prepare ${binary}@latest --activate 2>/dev/null || sudo -n npm install -g ${binary};`,
-    "fi"
+    "fi",
   ].join("\n");
 }

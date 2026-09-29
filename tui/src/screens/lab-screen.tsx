@@ -10,7 +10,7 @@ import {
   formatDuration,
   labSummaryLine,
   listWindow,
-  normalizeThought
+  normalizeThought,
 } from "../../../src/run-projection.js";
 import { glyphColor, gutter, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
@@ -39,7 +39,7 @@ export function labItems(runs: readonly RunIndexEntry[], canStart: boolean): Lab
   const starts: LabItem[] = canStart
     ? [
         { kind: "start", mode: "dry-run" },
-        { kind: "start", mode: "live" }
+        { kind: "start", mode: "live" },
       ]
     : [];
   return [...starts, ...runs.map((run): LabItem => ({ kind: "run", run }))];
@@ -84,7 +84,7 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
             summary.model,
             // The effort is part of "which model" — a knob nobody could see is how it stayed
             // pinned at the provider default for every run humanish ever did (#497).
-            summary.reasoningEffort === undefined ? undefined : `${summary.reasoningEffort} effort`
+            summary.reasoningEffort === undefined ? undefined : `${summary.reasoningEffort} effort`,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -99,14 +99,28 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         </Text>
         <Box flexGrow={1} />
         {summary?.keysReady === undefined ? null : (
-          <Text {...color(summary.keysReady ? PALETTE.ok : PALETTE.warn)}>{summary.keysReady ? "keys ✓" : "keys ✗"}</Text>
+          <Text {...color(summary.keysReady ? PALETTE.ok : PALETTE.warn)}>
+            {summary.keysReady ? "keys ✓" : "keys ✗"}
+          </Text>
         )}
       </Box>
       {summary?.analysis === undefined ? null : (
-        <Text wrap="wrap">{summary.analysis.provider === "codex" ? `After live runs: Codex account analyst · ${summary.analysis.model} · remote inference · account limits apply; dollar cost unknown` : `After live runs: analysis · ${summary.analysis.model} · separate $${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap`}</Text>
+        <Text wrap="wrap">
+          {summary.analysis.provider === "codex"
+            ? `After live runs: Codex account analyst · ${summary.analysis.model} · remote inference · account limits apply; dollar cost unknown`
+            : `After live runs: analysis · ${summary.analysis.model} · separate $${summary.analysis.maxCostUsd} admission estimate limit · not a billing cap`}
+        </Text>
       )}
-      {summary?.runtime ? <Text color={summary.runtime.ok ? PALETTE.ok : PALETTE.warn}>{summary.runtime.message}</Text> : null}
-      {summary?.participantReadiness ? <Text color={summary.participantReadiness.ok ? PALETTE.ok : PALETTE.warn}>{summary.participantReadiness.message}</Text> : null}
+      {summary?.runtime ? (
+        <Text color={summary.runtime.ok ? PALETTE.ok : PALETTE.warn}>
+          {summary.runtime.message}
+        </Text>
+      ) : null}
+      {summary?.participantReadiness ? (
+        <Text color={summary.participantReadiness.ok ? PALETTE.ok : PALETTE.warn}>
+          {summary.participantReadiness.message}
+        </Text>
+      ) : null}
       {summary?.communications ? <Text color={PALETTE.warn}>{summary.communications}</Text> : null}
       {summary?.keysReady === false ? (
         // Naming what is missing is only half of it. Someone reading this has the keys SOMEWHERE —
@@ -119,8 +133,12 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
         // command you cannot finish typing is not advice.
         <Box flexDirection="column" width={columns}>
           <Text {...color(PALETTE.warn)}>{summary.missingKeys?.join(", ")} not found</Text>
-          <Text dimColor>{"  "}humanish keys set openai{"   "}— stores them for every project</Text>
-          <Text dimColor>{"  "}humanish tui --env-file .env{"   "}— or just this session</Text>
+          <Text dimColor>
+            {"  "}humanish keys set openai{"   "}— stores them for every project
+          </Text>
+          <Text dimColor>
+            {"  "}humanish tui --env-file .env{"   "}— or just this session
+          </Text>
         </Box>
       ) : null}
 
@@ -144,7 +162,13 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
           {props.confirming === "live" ? (
             <Box marginTop={1}>
               <Text color={PALETTE.warn}>
-                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}{summary?.analysis ? summary.analysis.provider === "codex" ? " + Codex account analysis (remote inference; account limits apply, dollar cost unknown)" : ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)` : ""} · ⏎ confirm · esc cancel
+                {"  "}start a live run? {expectationLine(props.row.liveExpectation)}
+                {summary?.analysis
+                  ? summary.analysis.provider === "codex"
+                    ? " + Codex account analysis (remote inference; account limits apply, dollar cost unknown)"
+                    : ` + analysis ($${summary.analysis.maxCostUsd} admission estimate limit, separate from participant spend)`
+                  : ""}{" "}
+                · ⏎ confirm · esc cancel
               </Text>
             </Box>
           ) : null}
@@ -152,22 +176,27 @@ export function LabScreen(props: LabScreenProps): React.ReactElement {
       ) : null}
       {row.declared ? null : (
         <Box marginTop={1}>
-          <Text color={PALETTE.warn}>no manifest here — renamed, deleted, or run from elsewhere</Text>
+          <Text color={PALETTE.warn}>
+            no manifest here — renamed, deleted, or run from elsewhere
+          </Text>
         </Box>
       )}
       {row.sharesIdWith > 0 ? (
         <Text color={PALETTE.warn}>
-          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot; — these runs are shared between them
+          {row.sharesIdWith + 1} manifests declare &quot;{row.labId}&quot; — these runs are shared
+          between them
         </Text>
       ) : null}
 
       <Box marginTop={1} flexDirection="column">
         <Text dimColor>Runs</Text>
         {props.liveDetail?.automaticAnalysis === undefined ? null : (
-          <Text>Latest analysis: {props.liveDetail.automaticAnalysis.state} · open run for details</Text>
+          <Text>
+            Latest analysis: {props.liveDetail.automaticAnalysis.state} · open run for details
+          </Text>
         )}
         {runs.length === 0 ? (
-          <Text dimColor>  none yet</Text>
+          <Text dimColor>{"  none yet"}</Text>
         ) : (
           <RunList
             runs={runs}
@@ -207,10 +236,14 @@ function StartRow({
   active,
   columns,
   row,
-  summary
+  summary,
 }: LabScreenProps & { active: boolean; mode: LabRunMode }): React.ReactElement {
   const live = mode === "live";
-  const blocked = live && (summary?.keysReady === false || summary?.runtime?.ok === false || summary?.participantReadiness?.ok === false);
+  const blocked =
+    live &&
+    (summary?.keysReady === false ||
+      summary?.runtime?.ok === false ||
+      summary?.participantReadiness?.ok === false);
   const accent = live ? PALETTE.warn : PALETTE.accent;
   return (
     <Box width={columns}>
@@ -242,7 +275,7 @@ function RunList({
   viewport,
   now,
   tick,
-  expectedMs
+  expectedMs,
 }: {
   runs: RunIndexEntry[];
   liveDetail: RunDetail | null | undefined;
@@ -256,29 +289,33 @@ function RunList({
   const window = listWindow({ total: runs.length, selected, viewport });
   return (
     <Box flexDirection="column">
-      {window.start > 0 ? <Text dimColor>  ↑ {window.start} more</Text> : null}
-      {runs.slice(window.start, window.end).map((run, offset) =>
-        run.liveness === "running" ? (
-          <LiveRun
-            key={run.runId}
-            run={run}
-            detail={liveDetail}
-            active={window.start + offset === selected}
-            columns={columns}
-            now={now}
-            tick={tick}
-            expectedMs={expectedMs}
-          />
-        ) : (
-          <PastRun
-            key={run.runId}
-            run={run}
-            active={window.start + offset === selected}
-            columns={columns}
-          />
-        )
-      )}
-      {window.end < runs.length ? <Text dimColor>  ↓ {runs.length - window.end} more</Text> : null}
+      {window.start > 0 ? <Text dimColor>{`  ↑ ${window.start} more`}</Text> : null}
+      {runs
+        .slice(window.start, window.end)
+        .map((run, offset) =>
+          run.liveness === "running" ? (
+            <LiveRun
+              key={run.runId}
+              run={run}
+              detail={liveDetail}
+              active={window.start + offset === selected}
+              columns={columns}
+              now={now}
+              tick={tick}
+              expectedMs={expectedMs}
+            />
+          ) : (
+            <PastRun
+              key={run.runId}
+              run={run}
+              active={window.start + offset === selected}
+              columns={columns}
+            />
+          ),
+        )}
+      {window.end < runs.length ? (
+        <Text dimColor>{`  ↓ ${runs.length - window.end} more`}</Text>
+      ) : null}
     </Box>
   );
 }
@@ -295,7 +332,7 @@ function LiveRun({
   columns,
   now,
   tick,
-  expectedMs
+  expectedMs,
 }: {
   run: RunIndexEntry;
   detail: RunDetail | null | undefined;
@@ -312,7 +349,10 @@ function LiveRun({
   const thought =
     participant?.thought === undefined
       ? undefined
-      : normalizeThought(participant.thought.text, { width: Math.max(16, columns - 6), maxLines: 3 });
+      : normalizeThought(participant.thought.text, {
+          width: Math.max(16, columns - 6),
+          maxLines: 3,
+        });
 
   return (
     <Box flexDirection="column">
@@ -339,7 +379,10 @@ function LiveRun({
       )}
       {participant === undefined ? null : (
         <Box width={columns}>
-          <Text dimColor>{"    "}{activityLine(participant)}</Text>
+          <Text dimColor>
+            {"    "}
+            {activityLine(participant)}
+          </Text>
         </Box>
       )}
     </Box>
@@ -359,7 +402,7 @@ function activityLine(participant: NonNullable<RunDetail["participants"][number]
 function PastRun({
   run,
   active,
-  columns
+  columns,
 }: {
   run: RunIndexEntry;
   active: boolean;

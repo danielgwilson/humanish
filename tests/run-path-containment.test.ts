@@ -1,13 +1,4 @@
-import {
-  access,
-  link,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  symlink,
-  writeFile
-} from "node:fs/promises";
+import { access, link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -36,14 +27,18 @@ async function withTempProject<T>(callback: (cwd: string, root: string) => Promi
   }
 }
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
   const program = createProgram({
     writeOut: (text) => stdout.push(text),
     writeErr: (text) => stderr.push(text),
-    setExitCode: (code) => { exitCode = code; }
+    setExitCode: (code) => {
+      exitCode = code;
+    },
   });
   await program.parseAsync(["node", "humanish", ...args], { from: "node" });
   return { exitCode, stdout: stdout.join(""), stderr: stderr.join("") };
@@ -78,7 +73,7 @@ describe("run path containment", () => {
           doctor(cwd),
           new Promise<never>((_resolve, reject) => {
             setTimeout(() => reject(new Error(`Doctor hung on ${kind} .gitignore`)), 5_000);
-          })
+          }),
         ]);
 
         expect(result.ok).toBe(false);
@@ -88,7 +83,7 @@ describe("run path containment", () => {
         expect(result.checks.find((check) => check.name === "runtime ignore")?.ok).toBe(false);
         expect(await readFile(outside, "utf8")).toBe(".humanish/\nOUTSIDE-SENTINEL\n");
       });
-    }
+    },
   );
 
   it("preserves safe legacy ids, explicit latest, and same-id overwrite", async () => {
@@ -111,26 +106,29 @@ describe("run path containment", () => {
       await withTempProject(async (cwd, root) => {
         const sentinel = path.join(root, "sentinel.txt");
         await writeFile(sentinel, "unchanged\n", "utf8");
-        await expect(runDryRun({ cwd, dryRun: true, runId })).rejects.toThrow(/run id|path segment|reserved/i);
+        await expect(runDryRun({ cwd, dryRun: true, runId })).rejects.toThrow(
+          /run id|path segment|reserved/i,
+        );
         expect(await readFile(sentinel, "utf8")).toBe("unchanged\n");
       });
-    }
+    },
   );
 
   it("derives latest navigation from runId and rejects a mismatched pointer path", async () => {
     await withTempProject(async (cwd) => {
       await runDryRun({ cwd, dryRun: true, runId: "safe-run" });
       const pointerPath = path.join(cwd, ".humanish", "runs", "latest.json");
-      const writePointer = (declaredPath: string): Promise<void> => writeFile(
-        pointerPath,
-        `${JSON.stringify({
-          schema: "humanish.latest-run.v1",
-          runId: "safe-run",
-          path: declaredPath,
-          updatedAt: new Date().toISOString()
-        })}\n`,
-        "utf8"
-      );
+      const writePointer = (declaredPath: string): Promise<void> =>
+        writeFile(
+          pointerPath,
+          `${JSON.stringify({
+            schema: "humanish.latest-run.v1",
+            runId: "safe-run",
+            path: declaredPath,
+            updatedAt: new Date().toISOString(),
+          })}\n`,
+          "utf8",
+        );
 
       await writePointer(path.join(".humanish", "runs", "safe-run"));
       expect((await verifyRun(cwd, "latest")).ok).toBe(true);
@@ -140,7 +138,7 @@ describe("run path containment", () => {
         "\\\\server\\share\\run",
         path.join(".humanish", "runs", "other"),
         ".humanish/runs/other/../safe-run",
-        path.join("..", "..", "outside")
+        path.join("..", "..", "outside"),
       ]) {
         await writePointer(invalidPath);
         expect((await verifyRun(cwd, "latest")).ok, invalidPath).toBe(false);
@@ -151,11 +149,22 @@ describe("run path containment", () => {
 
   it("emits one structured JSON error for an invalid CLI run id", async () => {
     await withTempProject(async (cwd) => {
-      const result = await runCli(["run", "--dry-run", "--run-id", "../escape", "--cwd", cwd, "--json"]);
+      const result = await runCli([
+        "run",
+        "--dry-run",
+        "--run-id",
+        "../escape",
+        "--cwd",
+        cwd,
+        "--json",
+      ]);
       expect(result.exitCode).toBe(2);
       const documents = result.stdout.trim().split(/\n(?=\{)/);
       expect(documents).toHaveLength(1);
-      const envelope = JSON.parse(result.stdout) as { ok: boolean; error?: { code: string; message: string } };
+      const envelope = JSON.parse(result.stdout) as {
+        ok: boolean;
+        error?: { code: string; message: string };
+      };
       expect(envelope.ok).toBe(false);
       expect(envelope.error?.code).toBe("HUMANISH_UNEXPECTED");
       expect(envelope.error?.message).not.toContain(cwd);
@@ -170,7 +179,9 @@ describe("run path containment", () => {
       const sentinel = path.join(outside, "sentinel.txt");
       await writeFile(sentinel, "unchanged\n", "utf8");
       await symlink(outside, path.join(cwd, ".humanish"));
-      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(/symbolic link/i);
+      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(
+        /symbolic link/i,
+      );
       expect(await readFile(sentinel, "utf8")).toBe("unchanged\n");
     });
 
@@ -179,7 +190,9 @@ describe("run path containment", () => {
       await mkdir(outside);
       await mkdir(path.join(cwd, ".humanish"));
       await symlink(outside, path.join(cwd, ".humanish", "runs"));
-      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(/symbolic link/i);
+      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(
+        /symbolic link/i,
+      );
     });
 
     await withTempProject(async (cwd, root) => {
@@ -187,7 +200,9 @@ describe("run path containment", () => {
       await mkdir(outside);
       await mkdir(path.join(cwd, ".humanish", "runs"), { recursive: true });
       await symlink(outside, path.join(cwd, ".humanish", "runs", "blocked"));
-      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(/symbolic link/i);
+      await expect(runDryRun({ cwd, dryRun: true, runId: "blocked" })).rejects.toThrow(
+        /symbolic link/i,
+      );
     });
 
     await withTempProject(async (cwd, root) => {
@@ -195,9 +210,16 @@ describe("run path containment", () => {
       const outside = path.join(root, "outside.txt");
       await writeFile(outside, "unchanged\n", "utf8");
       await symlink(outside, path.join(cwd, ".humanish", "runs", "existing", "linked.txt"));
-      const before = await readFile(path.join(cwd, ".humanish", "runs", "existing", "run.json"), "utf8");
-      await expect(runDryRun({ cwd, dryRun: true, runId: "existing" })).rejects.toThrow(/symbolic link/i);
-      expect(await readFile(path.join(cwd, ".humanish", "runs", "existing", "run.json"), "utf8")).toBe(before);
+      const before = await readFile(
+        path.join(cwd, ".humanish", "runs", "existing", "run.json"),
+        "utf8",
+      );
+      await expect(runDryRun({ cwd, dryRun: true, runId: "existing" })).rejects.toThrow(
+        /symbolic link/i,
+      );
+      expect(
+        await readFile(path.join(cwd, ".humanish", "runs", "existing", "run.json"), "utf8"),
+      ).toBe(before);
       expect(await readFile(outside, "utf8")).toBe("unchanged\n");
     });
 
@@ -209,7 +231,9 @@ describe("run path containment", () => {
       await writeFile(externalPointer, "{}\n", "utf8");
       await symlink(externalPointer, pointer);
       expect((await verifyRun(cwd, "latest")).ok).toBe(false);
-      await expect(runDryRun({ cwd, dryRun: true, runId: "new-run" })).rejects.toThrow(/regular files|symbolic links/i);
+      await expect(runDryRun({ cwd, dryRun: true, runId: "new-run" })).rejects.toThrow(
+        /regular files|symbolic links/i,
+      );
       expect(await readFile(externalPointer, "utf8")).toBe("{}\n");
     });
 
@@ -225,7 +249,9 @@ describe("run path containment", () => {
         if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
         throw error;
       }
-      await expect(prepareRunArtifactPaths(cwd, "hardlink-safe")).rejects.toThrow(/hardlink|single-link/i);
+      await expect(prepareRunArtifactPaths(cwd, "hardlink-safe")).rejects.toThrow(
+        /hardlink|single-link/i,
+      );
       expect(await readFile(outside, "utf8")).toBe("unchanged\n");
     });
   });
@@ -262,7 +288,9 @@ describe("run path containment", () => {
       const linkedProject = path.join(root, "linked-project");
       await mkdir(realProject);
       await symlink(realProject, linkedProject);
-      expect((await runDryRun({ cwd: linkedProject, dryRun: true, runId: "linked-cwd" })).ok).toBe(true);
+      expect((await runDryRun({ cwd: linkedProject, dryRun: true, runId: "linked-cwd" })).ok).toBe(
+        true,
+      );
       expect((await listRuns(linkedProject)).runs.map((run) => run.runId)).toContain("linked-cwd");
       expect((await verifyRun(linkedProject, "latest")).ok).toBe(true);
       expect((await renderObserver(linkedProject, "latest")).ok).toBe(true);
@@ -287,7 +315,9 @@ describe("run path containment", () => {
       await writeFile(secondSentinel, "unchanged\n", "utf8");
       await rm(alias);
       await symlink(second, alias, "dir");
-      await expect(validatePreparedRunArtifactPaths(prepared)).rejects.toThrow(/changed physical destination/i);
+      await expect(validatePreparedRunArtifactPaths(prepared)).rejects.toThrow(
+        /changed physical destination/i,
+      );
       expect(await readFile(secondSentinel, "utf8")).toBe("unchanged\n");
 
       const directProject = path.join(root, "direct-project");
@@ -296,8 +326,12 @@ describe("run path containment", () => {
       await rm(recreated.physicalRunRoot, { recursive: true });
       await mkdir(recreated.physicalRunRoot);
       await writeFile(path.join(recreated.physicalRunRoot, "sentinel.txt"), "unchanged\n", "utf8");
-      await expect(validatePreparedRunArtifactPaths(recreated)).rejects.toThrow(/identity changed/i);
-      expect(await readFile(path.join(recreated.physicalRunRoot, "sentinel.txt"), "utf8")).toBe("unchanged\n");
+      await expect(validatePreparedRunArtifactPaths(recreated)).rejects.toThrow(
+        /identity changed/i,
+      );
+      expect(await readFile(path.join(recreated.physicalRunRoot, "sentinel.txt"), "utf8")).toBe(
+        "unchanged\n",
+      );
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -315,8 +349,9 @@ describe("run path containment", () => {
         if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
         throw error;
       }
-      await expect(writePreparedRunLatestPointer(prepared, "mutated\n", "utf8"))
-        .rejects.toThrow(/hardlink|single-link/i);
+      await expect(writePreparedRunLatestPointer(prepared, "mutated\n", "utf8")).rejects.toThrow(
+        /hardlink|single-link/i,
+      );
       expect(await readFile(outside, "utf8")).toBe("unchanged\n");
     });
   });
@@ -327,15 +362,17 @@ describe("run path containment", () => {
       const events = path.join(cwd, ".humanish", "runs", "linked-evidence", "events.ndjson");
       const outside = path.join(root, "outside-events.ndjson");
       await rm(events);
-      await writeFile(outside, "{\"event\":\"outside\"}\n", "utf8");
+      await writeFile(outside, '{"event":"outside"}\n', "utf8");
       await symlink(outside, events);
       const verified = await verifyRun(cwd, "linked-evidence");
       expect(verified.ok).toBe(false);
       expect(verified.error?.code).toBe("HUMANISH_INVALID_RUN_BUNDLE");
-      expect(verified.checks).toContainEqual(expect.objectContaining({
-        name: "run storage containment",
-        ok: false
-      }));
+      expect(verified.checks).toContainEqual(
+        expect.objectContaining({
+          name: "run storage containment",
+          ok: false,
+        }),
+      );
     });
   });
 
@@ -343,16 +380,16 @@ describe("run path containment", () => {
     await withTempProject(async (cwd, root) => {
       await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
       await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
-      await writeFile(path.join(cwd, "package.json"), "{\"name\":\"safe-project\"}\n", "utf8");
+      await writeFile(path.join(cwd, "package.json"), '{"name":"safe-project"}\n', "utf8");
       await writeFile(
         path.join(cwd, "humanish", "personas", "synthetic-new-user.yaml"),
         "id: safe-user\nname: Safe User\n",
-        "utf8"
+        "utf8",
       );
       await writeFile(
         path.join(cwd, "humanish", "scenarios", "first-run-smoke.yaml"),
         "id: safe-smoke\ntitle: Safe Smoke\ngoal: Safe goal\n",
-        "utf8"
+        "utf8",
       );
       const outside = path.join(root, "outside-secret.yaml");
       await writeFile(outside, "id: SHOULD-NOT-BE-READ\ntitle: secret\n", "utf8");
@@ -364,8 +401,9 @@ describe("run path containment", () => {
         throw error;
       }
 
-      await expect(runDryRun({ cwd, dryRun: true, runId: "unsafe-config" }))
-        .rejects.toThrow(/single-link/i);
+      await expect(runDryRun({ cwd, dryRun: true, runId: "unsafe-config" })).rejects.toThrow(
+        /single-link/i,
+      );
       await expect(access(path.join(cwd, ".humanish"))).rejects.toThrow();
       expect(await readFile(outside, "utf8")).toBe("id: SHOULD-NOT-BE-READ\ntitle: secret\n");
     });
@@ -377,8 +415,12 @@ describe("run path containment", () => {
       await mkdir(outside);
       await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
       await symlink(outside, path.join(cwd, ".humanish"));
-      await expect(runOssLab({ cwd, repos: ["owner/repo"], limit: 1, runId: "oss-safe" })).rejects.toThrow(/symbolic link/i);
-      await expect(preflightOssMetaRepoAccess({ assignments: [], cwd, env: {} })).rejects.toThrow(/symbolic link/i);
+      await expect(
+        runOssLab({ cwd, repos: ["owner/repo"], limit: 1, runId: "oss-safe" }),
+      ).rejects.toThrow(/symbolic link/i);
+      await expect(preflightOssMetaRepoAccess({ assignments: [], cwd, env: {} })).rejects.toThrow(
+        /symbolic link/i,
+      );
       expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
     });
   });
@@ -390,7 +432,7 @@ describe("run path containment", () => {
       "shared-world-lab.ts",
       "concurrent-shared-world-lab.ts",
       "scripted-browser-lab.ts",
-      "e2b-terminal-lab.ts"
+      "e2b-terminal-lab.ts",
     ];
     for (const producer of producers) {
       const source = await readFile(path.resolve("src", producer), "utf8");
@@ -407,7 +449,7 @@ describe("init path containment", () => {
     { target: ".humanish", kind: "directory" },
     { target: "humanish/personas/synthetic-new-user.yaml", kind: "file" },
     { target: ".gitignore", kind: "file" },
-    { target: "package.json", kind: "file" }
+    { target: "package.json", kind: "file" },
   ])("rejects a symlinked init target: $target", async ({ target, kind }) => {
     await withTempProject(async (cwd, root) => {
       const outsideDir = path.join(root, "outside");
@@ -432,12 +474,14 @@ describe("init path containment", () => {
       const realProject = path.join(root, "real-project");
       const linkedProject = path.join(root, "linked-project");
       await mkdir(realProject);
-      await writeFile(path.join(realProject, "package.json"), "{\"name\":\"fixture\"}\n", "utf8");
+      await writeFile(path.join(realProject, "package.json"), '{"name":"fixture"}\n', "utf8");
       await symlink(realProject, linkedProject);
       const result = await runInit({ cwd: linkedProject, yes: true });
       expect(result.ok).toBe(true);
       expect(result.cwd).toBe(path.resolve(linkedProject));
-      expect(await readFile(path.join(realProject, "humanish", "README.md"), "utf8")).toContain("# Humanish");
+      expect(await readFile(path.join(realProject, "humanish", "README.md"), "utf8")).toContain(
+        "# Humanish",
+      );
     } finally {
       await rm(root, { force: true, recursive: true });
     }

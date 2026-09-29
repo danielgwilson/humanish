@@ -6,7 +6,7 @@ import {
   DEVICE_PRESET_NAMES,
   isDevicePresetName,
   resolveDevicePreset,
-  type DevicePreset
+  type DevicePreset,
 } from "../src/device-presets.js";
 
 describe("device presets", () => {
@@ -19,14 +19,19 @@ describe("device presets", () => {
       "narrow-mobile": { width: 320, height: 700, isMobile: true, deviceScaleFactor: 2 },
       tablet: { width: 820, height: 1180, isMobile: false, deviceScaleFactor: 2 },
       desktop: { width: 1440, height: 950, isMobile: false, deviceScaleFactor: 1 },
-      wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 }
+      wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 },
     });
   });
 
   it("defaults to the desktop laptop baseline (1440x950), with wide=1920x1080 available", () => {
     expect(DEFAULT_DEVICE_PRESET).toBe("desktop");
     expect(resolveDevicePreset(undefined)).toEqual(DEVICE_PRESETS.desktop);
-    expect(DEVICE_PRESETS.wide).toEqual({ width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 });
+    expect(DEVICE_PRESETS.wide).toEqual({
+      width: 1920,
+      height: 1080,
+      isMobile: false,
+      deviceScaleFactor: 1,
+    });
   });
 
   it("phone presets are mobile with a retina-class DSF; desktop/tablet are not mobile", () => {

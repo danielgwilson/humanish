@@ -11,12 +11,20 @@ export default function DocumentationLayout({ children }: { children: React.Reac
       <div className="humanish-docs">
         <DocsLayout
           tree={docsSource.pageTree}
-          nav={{ title: <span className="wm">human<Ish /></span>, url: "/" }}
+          nav={{
+            title: (
+              <span className="wm">
+                human
+                <Ish />
+              </span>
+            ),
+            url: "/",
+          }}
           githubUrl="https://github.com/danielgwilson/humanish"
           links={[
             { text: "Docs", url: "/docs", active: "nested-url" },
             { text: "Known limits", url: "/failure-modes" },
-            { type: "custom", secondary: true, children: <ThemeToggle /> }
+            { type: "custom", secondary: true, children: <ThemeToggle /> },
           ]}
           themeSwitch={{ enabled: false }}
           sidebar={{ collapsible: false }}

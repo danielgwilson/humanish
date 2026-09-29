@@ -5,7 +5,7 @@ import {
   buildOssRemoteTelemetry,
   parseOssRemoteCompletion,
   redactOssRemoteTelemetryText,
-  sanitizeOssRemoteTelemetryUrl
+  sanitizeOssRemoteTelemetryUrl,
 } from "../src/oss-remote-telemetry.js";
 
 describe("OSS remote telemetry", () => {
@@ -19,10 +19,10 @@ describe("OSS remote telemetry", () => {
         nestedObserverPresent: true,
         nestedVerifyStatus: "passed",
         reason: "Nested Humanish proof completed and nested Observer path was checked.",
-        status: "passed"
+        status: "passed",
       }),
       nestedObserverPath: "/home/user/repo/.humanish/runs/nested/observer/index.html",
-      streamUrl: "https://stream.example/e2b"
+      streamUrl: "https://stream.example/e2b",
     });
 
     expect(telemetry.schema).toBe(OSS_REMOTE_TELEMETRY_SCHEMA);
@@ -33,11 +33,11 @@ describe("OSS remote telemetry", () => {
       nestedObserverPresent: true,
       nestedVerifyPassed: true,
       present: true,
-      status: "passed"
+      status: "passed",
     });
     expect(telemetry.nestedObserver).toEqual({
       path: "[redacted-remote-path]",
-      presence: "present"
+      presence: "present",
     });
     expect(telemetry.actor.state).toBe("passed");
   });
@@ -50,7 +50,7 @@ describe("OSS remote telemetry", () => {
       nestedObserverPresent: false,
       nestedVerifyStatus: "failed",
       reason: "Bootstrap exited before nested Humanish proof completed.",
-      status: "failed"
+      status: "failed",
     });
 
     expect(completion).toMatchObject({
@@ -59,7 +59,7 @@ describe("OSS remote telemetry", () => {
       nestedObserverPresent: false,
       nestedVerifyPassed: false,
       present: true,
-      status: "failed"
+      status: "failed",
     });
     expect(completion.logTail).toContain("verification failed");
 
@@ -70,9 +70,9 @@ describe("OSS remote telemetry", () => {
         nestedObserverPresent: false,
         nestedVerifyStatus: "failed",
         reason: "Bootstrap exited before nested Humanish proof completed.",
-        status: "failed"
+        status: "failed",
       },
-      processStateText: "pid=1234 exited with exit code 1"
+      processStateText: "pid=1234 exited with exit code 1",
     });
 
     expect(telemetry.status).toBe("failed");
@@ -86,13 +86,13 @@ describe("OSS remote telemetry", () => {
       checkedAt: "2026-06-03T10:04:00.000Z",
       completionJson: null,
       logTail: `bootstrap still running\nOPENAI_API_KEY=${fakeOpenAIKey}`,
-      processStateText: "pid=4242 state=R running"
+      processStateText: "pid=4242 state=R running",
     });
 
     expect(telemetry.completion).toMatchObject({
       checkedAt: "2026-06-03T10:04:00.000Z",
       present: false,
-      status: "missing"
+      status: "missing",
     });
     expect(telemetry.completion.logTail).toContain("[redacted-openai-key]");
     expect(telemetry.status).toBe("running");
@@ -103,7 +103,7 @@ describe("OSS remote telemetry", () => {
     const telemetry = buildOssRemoteTelemetry({
       actorStateText: "codex actor suspended after SIGTSTP",
       checkedAt: "2026-06-03T10:05:00.000Z",
-      processStateText: "PID STAT COMMAND\n1234 T+ codex"
+      processStateText: "PID STAT COMMAND\n1234 T+ codex",
     });
 
     expect(telemetry.process.state).toBe("suspended");
@@ -116,12 +116,12 @@ describe("OSS remote telemetry", () => {
     const telemetry = buildOssRemoteTelemetry({
       appStatusText: "HTTP/1.1 200 OK - Vite ready at http://127.0.0.1:5173",
       appUrl: "http://127.0.0.1:5173",
-      checkedAt: "2026-06-03T10:06:00.000Z"
+      checkedAt: "2026-06-03T10:06:00.000Z",
     });
 
     expect(telemetry.app).toMatchObject({
       status: "running",
-      url: "http://127.0.0.1:5173"
+      url: "http://127.0.0.1:5173",
     });
     expect(telemetry.status).toBe("running");
   });
@@ -143,9 +143,9 @@ describe("OSS remote telemetry", () => {
       completionJson: {
         logTail: `GH_TOKEN=${fakeGitHubPat}\nE2B_API_KEY=${fakeE2bKey}`,
         reason: `used ${fakeGitHubToken} and ${fakeOpenAIKey}`,
-        status: "blocked"
+        status: "blocked",
       },
-      streamUrl
+      streamUrl,
     });
 
     const serialized = JSON.stringify(telemetry);
@@ -155,22 +155,29 @@ describe("OSS remote telemetry", () => {
     expect(serialized).toContain("[redacted-openai-key]");
     expect(serialized).toContain("[redacted-github-token]");
     expect(serialized).toContain("[redacted-e2b-key]");
-    expect(telemetry.stream.url).toBe("https://stream.e2b.dev/sandbox?authKey=[redacted-url-param]&token=[redacted-url-param]&viewOnly=true&resize=scale");
-    expect(telemetry.app.url).toBe("https://app.example.test/callback?access_token=[redacted-url-param]&ok=1");
+    expect(telemetry.stream.url).toBe(
+      "https://stream.e2b.dev/sandbox?authKey=[redacted-url-param]&token=[redacted-url-param]&viewOnly=true&resize=scale",
+    );
+    expect(telemetry.app.url).toBe(
+      "https://app.example.test/callback?access_token=[redacted-url-param]&ok=1",
+    );
     expect(telemetry.redaction.redacted).toBe(true);
     expect(telemetry.redaction.fields).toEqual([
       "actorStateText",
       "appStatusText",
       "appUrl",
-      "streamUrl"
+      "streamUrl",
     ]);
 
-    expect(redactOssRemoteTelemetryText(`E2B_API_KEY=${fakeE2bKey}`)).toContain("[redacted-e2b-key]");
+    expect(redactOssRemoteTelemetryText(`E2B_API_KEY=${fakeE2bKey}`)).toContain(
+      "[redacted-e2b-key]",
+    );
     expect(sanitizeOssRemoteTelemetryUrl(streamUrl)).toContain("authKey=[redacted-url-param]");
   });
 
   it("redacts remote sandbox filesystem paths from public-safe telemetry", () => {
-    const text = "project=/home/user/repo-01 bootstrap=/home/user/.humanish-oss-lab/repo-01/bootstrap.sh package=/tmp/humanish-0.1.8.tgz";
+    const text =
+      "project=/home/user/repo-01 bootstrap=/home/user/.humanish-oss-lab/repo-01/bootstrap.sh package=/tmp/humanish-0.1.8.tgz";
     const redacted = redactOssRemoteTelemetryText(text);
 
     expect(redacted).toContain("[redacted-remote-path]");

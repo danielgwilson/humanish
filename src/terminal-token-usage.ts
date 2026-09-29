@@ -64,12 +64,14 @@ export function parseTerminalTokenUsage(transcript: string): ActorTokenUsage | u
       ...(input === undefined ? {} : { input }),
       ...(output === undefined ? {} : { output }),
       ...(cachedInput === undefined ? {} : { cachedInput }),
-      ...(cacheWriteInput === undefined ? {} : { cacheWriteInput })
+      ...(cacheWriteInput === undefined ? {} : { cacheWriteInput }),
     });
   }
   if (turns.length === 0) return undefined;
 
-  const sum = (field: "input" | "output" | "cachedInput" | "cacheWriteInput"): number | undefined => {
+  const sum = (
+    field: "input" | "output" | "cachedInput" | "cacheWriteInput",
+  ): number | undefined => {
     const present = turns.filter((t) => t[field] !== undefined);
     if (present.length === 0) return undefined;
     return present.reduce((acc, t) => acc + (t[field] ?? 0), 0);
@@ -84,7 +86,7 @@ export function parseTerminalTokenUsage(transcript: string): ActorTokenUsage | u
     ...(cachedInput === undefined ? {} : { cachedInput }),
     ...(cacheWriteInput === undefined ? {} : { cacheWriteInput }),
     ...(input === undefined && output === undefined ? {} : { total: (input ?? 0) + (output ?? 0) }),
-    turns
+    turns,
   };
 }
 

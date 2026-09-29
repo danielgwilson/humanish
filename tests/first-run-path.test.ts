@@ -7,7 +7,7 @@ import {
   AGENTS_SECTION_MARKER,
   agentsSection,
   firstRunSteps,
-  starterActorFor
+  starterActorFor,
 } from "../src/first-run-path.js";
 import { runInit } from "../src/init.js";
 
@@ -20,8 +20,20 @@ import { runInit } from "../src/init.js";
 describe("what to do next, resolved against this machine", () => {
   it("always leads with the run that needs nothing", () => {
     for (const env of [
-      { hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: true, installedInProject: true },
-      { hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: true, installedInProject: true }
+      {
+        hasE2bKey: false,
+        hasProviderKey: false,
+        localAgents: [],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      },
+      {
+        hasE2bKey: true,
+        hasProviderKey: true,
+        localAgents: [],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      },
     ]) {
       expect(firstRunSteps(env)[0]?.command).toBe("humanish run first-run");
     }
@@ -29,8 +41,13 @@ describe("what to do next, resolved against this machine", () => {
 
   it("offers supported hosts the local route without sending them to E2B or an API key", () => {
     const linux = firstRunSteps({
-      hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: false,
-      installedInProject: true, platform: "linux", arch: "x64"
+      hasE2bKey: false,
+      hasProviderKey: false,
+      localAgents: [],
+      hasDesktopSdk: false,
+      installedInProject: true,
+      platform: "linux",
+      arch: "x64",
     });
     expect(linux.at(-1)?.command).toBe("humanish doctor --lab local-browser");
     expect(linux.at(-1)?.why).toContain("Docker, KVM, TUN");
@@ -39,47 +56,87 @@ describe("what to do next, resolved against this machine", () => {
     expect(linux.at(-1)?.why).toContain("humanish run local-browser");
 
     const mac = firstRunSteps({
-      hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: false,
-      installedInProject: true, platform: "darwin", arch: "arm64"
+      hasE2bKey: false,
+      hasProviderKey: false,
+      localAgents: [],
+      hasDesktopSdk: false,
+      installedInProject: true,
+      platform: "darwin",
+      arch: "arm64",
     });
     expect(mac.at(-1)?.why).toContain("M3-or-newer Mac");
     expect(mac.at(-1)?.why).toContain("Lima 2.2+");
   });
 
   it("asks for the ONE credential a live study always needs, when it is missing", () => {
-    const steps = firstRunSteps({ hasE2bKey: false, hasProviderKey: true, localAgents: ["Codex"], hasDesktopSdk: true,
-      installedInProject: true, platform: "win32", arch: "x64" });
+    const steps = firstRunSteps({
+      hasE2bKey: false,
+      hasProviderKey: true,
+      localAgents: ["Codex"],
+      hasDesktopSdk: true,
+      installedInProject: true,
+      platform: "win32",
+      arch: "x64",
+    });
     expect(steps.at(-1)?.command).toBe("humanish keys set e2b");
     expect(steps.at(-1)?.why).toContain("Local browsers are unavailable on this host");
   });
 
   it("offers the real run when the machine can do one — by key OR by signed-in agent", () => {
-    const byKey = firstRunSteps({ hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: true, installedInProject: true });
+    const byKey = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: true,
+      installedInProject: true,
+    });
     expect(byKey.at(-1)?.command).toBe("humanish run try-live");
     expect(byKey.at(-1)?.why).toContain("your provider key");
 
-    const byAgent = firstRunSteps({ hasE2bKey: true, hasProviderKey: false, localAgents: ["Codex"], hasDesktopSdk: true, installedInProject: true });
+    const byAgent = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: false,
+      localAgents: ["Codex"],
+      hasDesktopSdk: true,
+      installedInProject: true,
+    });
     expect(byAgent.at(-1)?.command).toBe("humanish run try-live");
     // The point of the local-agent route: no API key hunt before the first real run.
     expect(byAgent.at(-1)?.why).toContain("no API key needed");
   });
 
   it("names the model credential only when there is genuinely no brain available", () => {
-    const steps = firstRunSteps({ hasE2bKey: true, hasProviderKey: false, localAgents: [], hasDesktopSdk: true, installedInProject: true });
+    const steps = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: false,
+      localAgents: [],
+      hasDesktopSdk: true,
+      installedInProject: true,
+    });
     expect(steps.at(-1)?.command).toBe("humanish keys set openai");
   });
-
 
   it("folds the optional desktop SDK into the step when the project does not have it", () => {
     // Found by running the PUBLISHED artifact cold: `npx humanish` does not install the optional
     // peer, so "run try-live" stopped with "install this other package first" — the same dead end
     // one layer down. Two local runs had passed only because they resolved it from the repo.
-    const missing = firstRunSteps({ hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: false, installedInProject: true });
+    const missing = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: false,
+      installedInProject: true,
+    });
     expect(missing.at(-1)?.command).toBe("npm i -D @e2b/desktop && humanish run try-live");
-    const present = firstRunSteps({ hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: true, installedInProject: true });
+    const present = firstRunSteps({
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: true,
+      installedInProject: true,
+    });
     expect(present.at(-1)?.command).toBe("humanish run try-live");
   });
-
 
   it("tells an npx one-shot to install humanish TOO, because the peer alone cannot be found", () => {
     // `npx humanish@latest` resolves its optional peer relative to ITSELF, not the project, so
@@ -87,21 +144,49 @@ describe("what to do next, resolved against this machine", () => {
     // verification runs before the difference was spotted — both "failed" identically while the
     // advice on screen was impossible to follow.
     const viaNpx = firstRunSteps({
-      hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: false, installedInProject: false
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: false,
+      installedInProject: false,
     });
-    expect(viaNpx.at(-1)?.command).toBe("npm i -D humanish @e2b/desktop && npx humanish run try-live");
+    expect(viaNpx.at(-1)?.command).toBe(
+      "npm i -D humanish @e2b/desktop && npx humanish run try-live",
+    );
 
     const installed = firstRunSteps({
-      hasE2bKey: true, hasProviderKey: true, localAgents: [], hasDesktopSdk: false, installedInProject: true
+      hasE2bKey: true,
+      hasProviderKey: true,
+      localAgents: [],
+      hasDesktopSdk: false,
+      installedInProject: true,
     });
     expect(installed.at(-1)?.command).toBe("npm i -D @e2b/desktop && humanish run try-live");
   });
 
   it("stays SHORT — a list of options is the same as no guidance", () => {
     for (const env of [
-      { hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: true, installedInProject: true },
-      { hasE2bKey: true, hasProviderKey: false, localAgents: ["Codex"], hasDesktopSdk: true, installedInProject: true },
-      { hasE2bKey: true, hasProviderKey: true, localAgents: ["Codex", "Claude Code"], hasDesktopSdk: true, installedInProject: true }
+      {
+        hasE2bKey: false,
+        hasProviderKey: false,
+        localAgents: [],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      },
+      {
+        hasE2bKey: true,
+        hasProviderKey: false,
+        localAgents: ["Codex"],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      },
+      {
+        hasE2bKey: true,
+        hasProviderKey: true,
+        localAgents: ["Codex", "Claude Code"],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      },
     ]) {
       expect(firstRunSteps(env).length).toBeLessThanOrEqual(2);
     }
@@ -110,22 +195,50 @@ describe("what to do next, resolved against this machine", () => {
 
 describe("the starter live lab is written for the brain this machine has", () => {
   it("uses the operator's signed-in agent when there is no provider key", () => {
-    expect(starterActorFor({ hasE2bKey: true, hasProviderKey: false, localAgents: ["Codex"], hasDesktopSdk: true, installedInProject: true })).toBe("local-agent");
+    expect(
+      starterActorFor({
+        hasE2bKey: true,
+        hasProviderKey: false,
+        localAgents: ["Codex"],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      }),
+    ).toBe("local-agent");
   });
 
   it("prefers the provider key when there is one — it is the calibrated path", () => {
-    expect(starterActorFor({ hasE2bKey: true, hasProviderKey: true, localAgents: ["Codex"], hasDesktopSdk: true, installedInProject: true })).toBe("openai-computer-use");
+    expect(
+      starterActorFor({
+        hasE2bKey: true,
+        hasProviderKey: true,
+        localAgents: ["Codex"],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      }),
+    ).toBe("openai-computer-use");
   });
 
   it("falls back to the provider actor when nothing is signed in, so the file is still a template that works once keys exist", () => {
-    expect(starterActorFor({ hasE2bKey: false, hasProviderKey: false, localAgents: [], hasDesktopSdk: true, installedInProject: true })).toBe("openai-computer-use");
+    expect(
+      starterActorFor({
+        hasE2bKey: false,
+        hasProviderKey: false,
+        localAgents: [],
+        hasDesktopSdk: true,
+        installedInProject: true,
+      }),
+    ).toBe("openai-computer-use");
   });
 });
 
 describe("init leaves instructions for the next coding agent", () => {
   async function project(): Promise<string> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-firstrun-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "demo", version: "1.0.0" }), "utf8");
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "demo", version: "1.0.0" }),
+      "utf8",
+    );
     return cwd;
   }
 
@@ -149,10 +262,15 @@ describe("init leaves instructions for the next coding agent", () => {
   it("configures a local browser app and mission without YAML editing", async () => {
     const cwd = await project();
     try {
-      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
-        appUrl: "http://localhost:4173/app",
-        mission: "Create a synthetic note and save it."
-      } });
+      const result = await runInit({
+        cwd,
+        yes: true,
+        env: {},
+        localBrowser: {
+          appUrl: "http://localhost:4173/app",
+          mission: "Create a synthetic note and save it.",
+        },
+      });
       expect(result.ok).toBe(true);
       const lab = await readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8");
       expect(lab).toContain('appUrl: "http://localhost:4173/app"');
@@ -167,11 +285,21 @@ describe("init leaves instructions for the next coding agent", () => {
   it("refuses a non-loopback local browser target before writing", async () => {
     const cwd = await project();
     try {
-      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
-        appUrl: "https://public.example.test:4443"
-      } });
-      expect(result).toMatchObject({ ok: false, error: { code: "HUMANISH_INVALID_LOCAL_BROWSER" } });
-      await expect(readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8")).rejects.toThrow();
+      const result = await runInit({
+        cwd,
+        yes: true,
+        env: {},
+        localBrowser: {
+          appUrl: "https://public.example.test:4443",
+        },
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_INVALID_LOCAL_BROWSER" },
+      });
+      await expect(
+        readFile(path.join(cwd, "humanish/labs/local-browser.yaml"), "utf8"),
+      ).rejects.toThrow();
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -183,17 +311,24 @@ describe("init leaves instructions for the next coding agent", () => {
       await runInit({ cwd, yes: true, env: {} });
       const file = path.join(cwd, "humanish/labs/local-browser.yaml");
       const before = await readFile(file, "utf8");
-      const result = await runInit({ cwd, yes: true, env: {}, localBrowser: {
-        appUrl: "http://localhost:4173",
-        mission: "Use a different flow."
-      } });
+      const result = await runInit({
+        cwd,
+        yes: true,
+        env: {},
+        localBrowser: {
+          appUrl: "http://localhost:4173",
+          mission: "Use a different flow.",
+        },
+      });
       expect(await readFile(file, "utf8")).toBe(before);
       expect(result.warnings).toContain(
-        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it."
+        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
       );
 
       const ordinaryRepeat = await runInit({ cwd, yes: true, env: {} });
-      expect(ordinaryRepeat.warnings).not.toEqual(expect.arrayContaining([expect.stringContaining("--local-browser")]));
+      expect(ordinaryRepeat.warnings).not.toEqual(
+        expect.arrayContaining([expect.stringContaining("--local-browser")]),
+      );
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -216,7 +351,11 @@ describe("init leaves instructions for the next coding agent", () => {
   it("APPENDS to an existing AGENTS.md and never rewrites what someone else wrote", async () => {
     const cwd = await project();
     try {
-      await writeFile(path.join(cwd, "AGENTS.md"), "# AGENTS.md\n\n## House rules\n\nUse pnpm.\n", "utf8");
+      await writeFile(
+        path.join(cwd, "AGENTS.md"),
+        "# AGENTS.md\n\n## House rules\n\nUse pnpm.\n",
+        "utf8",
+      );
       await runInit({ cwd, yes: true, env: {} });
       const agents = await readFile(path.join(cwd, "AGENTS.md"), "utf8");
       expect(agents).toContain("## House rules");

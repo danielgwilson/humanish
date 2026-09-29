@@ -7,6 +7,6 @@ export default defineConfig({
     // instead of interleaving several terminals in one process.
     pool: "forks",
     maxForks: 1,
-    minForks: 1
-  }
+    minForks: 1,
+  },
 });

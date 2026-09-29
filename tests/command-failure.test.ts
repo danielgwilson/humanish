@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { commandFailureInfo, isCommandExitError, runDesktopCommandOrThrow, tailOf } from "../src/command-failure.js";
+import {
+  commandFailureInfo,
+  isCommandExitError,
+  runDesktopCommandOrThrow,
+  tailOf,
+} from "../src/command-failure.js";
 
 /** Shape matching @e2b/desktop's CommandExitError (name + exitCode + stderr/stdout). */
-function commandExitError(fields: { exitCode?: number; stderr?: string; stdout?: string; message?: string }): Error {
+function commandExitError(fields: {
+  exitCode?: number;
+  stderr?: string;
+  stdout?: string;
+  message?: string;
+}): Error {
   return Object.assign(new Error(fields.message ?? `exit status ${fields.exitCode ?? 1}`), {
     name: "CommandExitError",
     ...fields,
@@ -12,7 +22,9 @@ function commandExitError(fields: { exitCode?: number; stderr?: string; stdout?:
 
 describe("commandFailureInfo", () => {
   it("recovers exitCode + stderr tail from a thrown CommandExitError", () => {
-    const info = commandFailureInfo(commandExitError({ exitCode: 127, stderr: "no browser opener found" }));
+    const info = commandFailureInfo(
+      commandExitError({ exitCode: 127, stderr: "no browser opener found" }),
+    );
     expect(info.exitCode).toBe(127);
     expect(info.stderrTail).toBe("no browser opener found");
   });
@@ -24,8 +36,13 @@ describe("commandFailureInfo", () => {
   });
 
   it("prefers stderr, then stdout, then error, then message", () => {
-    expect(commandFailureInfo({ exitCode: 1, stderr: "E", stdout: "O", error: "X", message: "M" }).stderrTail).toBe("E");
-    expect(commandFailureInfo({ exitCode: 1, stdout: "O", error: "X", message: "M" }).stderrTail).toBe("O");
+    expect(
+      commandFailureInfo({ exitCode: 1, stderr: "E", stdout: "O", error: "X", message: "M" })
+        .stderrTail,
+    ).toBe("E");
+    expect(
+      commandFailureInfo({ exitCode: 1, stdout: "O", error: "X", message: "M" }).stderrTail,
+    ).toBe("O");
     expect(commandFailureInfo({ exitCode: 1, error: "X", message: "M" }).stderrTail).toBe("X");
     expect(commandFailureInfo({ exitCode: 1, message: "M" }).stderrTail).toBe("M");
   });
@@ -51,7 +68,9 @@ describe("isCommandExitError", () => {
   });
 
   it("is true for any Error carrying a numeric exitCode (structural fake, no SDK name)", () => {
-    expect(isCommandExitError(Object.assign(new Error("exit status 1"), { exitCode: 1 }))).toBe(true);
+    expect(isCommandExitError(Object.assign(new Error("exit status 1"), { exitCode: 1 }))).toBe(
+      true,
+    );
     expect(isCommandExitError({ exitCode: 0 })).toBe(true); // 0 is still a numeric exit signal
   });
 
@@ -88,9 +107,13 @@ describe("runDesktopCommandOrThrow", () => {
   it("converts a thrown CommandExitError into the caller's intended error", async () => {
     const thrown = await runDesktopCommandOrThrow(
       async () => {
-        throw commandExitError({ exitCode: 127, stderr: "requested browser firefox was not found" });
+        throw commandExitError({
+          exitCode: 127,
+          stderr: "requested browser firefox was not found",
+        });
       },
-      ({ exitCode, stderrTail }) => new Error(`browser launch failed with exit ${exitCode}: ${stderrTail}`),
+      ({ exitCode, stderrTail }) =>
+        new Error(`browser launch failed with exit ${exitCode}: ${stderrTail}`),
     ).catch((error: unknown) => error);
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).message).toBe(

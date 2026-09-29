@@ -75,13 +75,15 @@ function wrapperScript(name: string, command: string, cwd: string | undefined): 
     "#!/bin/bash",
     `mkdir -p ${shq(dir)}`,
     `echo $$ > ${shq(`${dir}/pid`)}`,
-    cwd === undefined ? ": # no cwd override" : `cd ${shq(cwd)} || { echo 127 > ${shq(`${dir}/status.tmp`)}; mv ${shq(`${dir}/status.tmp`)} ${shq(`${dir}/status`)}; exit 127; }`,
+    cwd === undefined
+      ? ": # no cwd override"
+      : `cd ${shq(cwd)} || { echo 127 > ${shq(`${dir}/status.tmp`)}; mv ${shq(`${dir}/status.tmp`)} ${shq(`${dir}/status`)}; exit 127; }`,
     `( ${command} ) > ${shq(`${dir}/log.txt`)} 2>&1`,
     "code=$?",
     `echo $code > ${shq(`${dir}/status.tmp`)}`,
     `mv ${shq(`${dir}/status.tmp`)} ${shq(`${dir}/status`)}`,
     "exit $code",
-    ""
+    "",
   ].join("\n");
 }
 
@@ -90,7 +92,7 @@ async function writeAndLaunch(
   name: string,
   command: string,
   cwd: string | undefined,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
 ): Promise<void> {
   assertName(name);
   const dir = stepDir(name);
@@ -99,7 +101,7 @@ async function writeAndLaunch(
   await desktop.files.write(scriptPath, wrapperScript(name, command, cwd));
   await desktop.commands.run(
     `chmod +x ${shq(scriptPath)} && setsid -f ${shq(scriptPath)} < /dev/null > /dev/null 2>&1`,
-    { requestTimeoutMs }
+    { requestTimeoutMs },
   );
 }
 
@@ -107,12 +109,12 @@ async function writeAndLaunch(
 export async function readDetachedLog(
   desktop: E2BDesktopSandbox,
   name: string,
-  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
+  requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<string> {
   assertName(name);
   const result = await desktop.commands.run(
     `tail -c ${LOG_TAIL_BYTES} ${shq(`${stepDir(name)}/log.txt`)} 2>/dev/null || true`,
-    { requestTimeoutMs }
+    { requestTimeoutMs },
   );
   return result.stdout ?? "";
 }
@@ -124,19 +126,22 @@ export async function readDetachedLog(
  */
 export async function runDetachedStep(
   desktop: E2BDesktopSandbox,
-  options: DetachedStepOptions
+  options: DetachedStepOptions,
 ): Promise<DetachedStepResult> {
   const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const now = options.now ?? Date.now;
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const dir = stepDir(options.name);
 
   await writeAndLaunch(desktop, options.name, options.command, options.cwd, requestTimeoutMs);
 
   const deadline = now() + options.timeoutMs;
   for (;;) {
-    const status = await desktop.commands.run(`cat ${shq(`${dir}/status`)} 2>/dev/null || true`, { requestTimeoutMs });
+    const status = await desktop.commands.run(`cat ${shq(`${dir}/status`)} 2>/dev/null || true`, {
+      requestTimeoutMs,
+    });
     const text = (status.stdout ?? "").trim();
     if (text.length > 0) {
       const exitCode = Number.parseInt(text, 10);
@@ -146,7 +151,9 @@ export async function runDetachedStep(
     if (now() >= deadline) {
       // Kill the whole process group (the script is its own session leader via setsid).
       await desktop.commands
-        .run(`kill -- -$(cat ${shq(`${dir}/pid`)} 2>/dev/null) 2>/dev/null || true`, { requestTimeoutMs })
+        .run(`kill -- -$(cat ${shq(`${dir}/pid`)} 2>/dev/null) 2>/dev/null || true`, {
+          requestTimeoutMs,
+        })
         .catch(() => undefined);
       const logTail = await readDetachedLog(desktop, options.name, requestTimeoutMs);
       return { ok: false, timedOut: true, logTail };
@@ -162,14 +169,14 @@ export async function runDetachedStep(
  */
 export async function startDetachedProcess(
   desktop: E2BDesktopSandbox,
-  options: { name: string; command: string; cwd?: string; requestTimeoutMs?: number }
+  options: { name: string; command: string; cwd?: string; requestTimeoutMs?: number },
 ): Promise<void> {
   await writeAndLaunch(
     desktop,
     options.name,
     options.command,
     options.cwd,
-    options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS
+    options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
   );
 }
 
@@ -180,17 +187,20 @@ export async function startDetachedProcess(
 export async function probeUrl(
   desktop: E2BDesktopSandbox,
   url: string,
-  options: { timeoutMs: number; intervalMs?: number; requestTimeoutMs?: number } & DetachedTimers
+  options: { timeoutMs: number; intervalMs?: number; requestTimeoutMs?: number } & DetachedTimers,
 ): Promise<boolean> {
   const requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const intervalMs = options.intervalMs ?? 1500;
   const now = options.now ?? Date.now;
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep =
+    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const deadline = now() + options.timeoutMs;
 
   for (;;) {
     const result = await desktop.commands
-      .run(`curl -sf -o /dev/null --max-time 5 ${shq(url)} && echo READY || echo WAIT`, { requestTimeoutMs })
+      .run(`curl -sf -o /dev/null --max-time 5 ${shq(url)} && echo READY || echo WAIT`, {
+        requestTimeoutMs,
+      })
       .catch(() => ({ stdout: "WAIT" }));
     if ((result.stdout ?? "").includes("READY")) {
       return true;

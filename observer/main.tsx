@@ -33,8 +33,12 @@ async function boot(): Promise<void> {
   if (!root) throw new Error("observer: #root missing");
   createRoot(root).render(
     <StrictMode>
-      <App data={data} snapshot={isSnapshotArtifact(document)} analysis={readInlineStudyAnalysis(document, data)} />
-    </StrictMode>
+      <App
+        data={data}
+        snapshot={isSnapshotArtifact(document)}
+        analysis={readInlineStudyAnalysis(document, data)}
+      />
+    </StrictMode>,
   );
 }
 

@@ -69,7 +69,13 @@ const LIVE_CONFIRM_MIN_MS = 400;
 /** Spinner cadence. Fast enough to read as motion, slow enough not to strobe over SSH. */
 const SPINNER_MS = 120;
 
-export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: AppProps): React.ReactElement {
+export function App({
+  options,
+  onReady,
+  onKeyEntry,
+  now,
+  tick: frozenTick,
+}: AppProps): React.ReactElement {
   const { exit } = useApp();
   const size = useTerminalSize();
   const [nav, dispatch] = useReducer(navigate, undefined, initialNav);
@@ -80,9 +86,13 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
   // Launch state is SCOPED TO THE LAB it belongs to: it is one surface with one piece of state, and
   // an unscoped note follows the operator to a different lab's screen and reports something about
   // that lab which is not true of it.
-  const [launchError, setLaunchError] = useState<{ labKey: string; text: string } | undefined>(undefined);
+  const [launchError, setLaunchError] = useState<{ labKey: string; text: string } | undefined>(
+    undefined,
+  );
   /** A launch in flight, or one whose record has not appeared yet. NOT an error. */
-  const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(undefined);
+  const [launchNote, setLaunchNote] = useState<{ labKey: string; text: string } | undefined>(
+    undefined,
+  );
   /** When the live confirmation was armed, so a HELD key cannot blow through it. */
   const [armedAt, setArmedAt] = useState<number | undefined>(undefined);
   /**
@@ -128,7 +138,7 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
           // Caching is the CAPABILITY's business, not the view's — the injected reader keeps a
           // stat-keyed cache across these calls, so a refresh re-reads only what changed.
           options.capabilities.readRunIndex(options.cwd),
-          options.capabilities.listLabs(options.cwd)
+          options.capabilities.listLabs(options.cwd),
         ]);
         if (cancelled) return;
         setError(undefined);
@@ -197,7 +207,12 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
       setArmedAt(undefined);
       setLaunchError(undefined);
       setLaunchNote({ labKey: row.key, text: `starting ${row.name}…` });
-      const result = await options.capabilities.startRun({ cwd: options.cwd, lab: row.name, ...(row.path ? { manifestPath: row.path } : {}), mode });
+      const result = await options.capabilities.startRun({
+        cwd: options.cwd,
+        lab: row.name,
+        ...(row.path ? { manifestPath: row.path } : {}),
+        mode,
+      });
       if (!result.ok) {
         setLaunchNote(undefined);
         setLaunchError({ labKey: row.key, text: result.error.message });
@@ -232,7 +247,10 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
           // to LAUNCH_RECORD_TIMEOUT_MS later, by which time they may have gone somewhere else, and
           // yanking the screen out from under them is worse than not following.
           if (screenRef.current.name === "lab" && screenRef.current.labKey === row.key) {
-            dispatch({ type: "enter", screen: { name: "run", labId: row.labId, runId: started.runId } });
+            dispatch({
+              type: "enter",
+              screen: { name: "run", labId: row.labId, runId: started.runId },
+            });
           }
           return;
         }
@@ -249,10 +267,10 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
         text:
           log === ""
             ? `${row.name} started (pid ${result.run.pid}) but has not reported in. Check ${result.run.logPath}.`
-            : `${row.name} did not report in. Its log ends:\n${log.split("\n").slice(-3).join("\n")}`
+            : `${row.name} did not report in. Its log ends:\n${log.split("\n").slice(-3).join("\n")}`,
       });
     },
-    [confirming, armedAt, options]
+    [confirming, armedAt, options],
   );
 
   /**
@@ -260,19 +278,30 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
    * indistinguishable from one that is broken.
    */
   const act = useCallback(
-    async (run: RunIndexEntry, action: "observer" | "again" | "reclaim" | "stop" | "cancel-analysis"): Promise<void> => {
+    async (
+      run: RunIndexEntry,
+      action: "observer" | "again" | "reclaim" | "stop" | "cancel-analysis",
+    ): Promise<void> => {
       if (action === "stop" || action === "cancel-analysis") {
         // Armed like a live start, and for the same reason: it ends work that has already been paid
         // for, and a single keystroke should not be able to do that by accident.
         if (stopArmedAt === undefined) {
           setStopArmedAt(Date.now());
-          setActionNote(action === "cancel-analysis" ? "cancel analysis? ⏎ again to confirm · esc keep analyzing" : "stop this run? ⏎ again to confirm · esc cancel");
+          setActionNote(
+            action === "cancel-analysis"
+              ? "cancel analysis? ⏎ again to confirm · esc keep analyzing"
+              : "stop this run? ⏎ again to confirm · esc cancel",
+          );
           return;
         }
         if (Date.now() - stopArmedAt < LIVE_CONFIRM_MIN_MS) return;
         setStopArmedAt(undefined);
         setActionNote(action === "cancel-analysis" ? "cancelling analysis…" : "stopping…");
-        const result = await options.capabilities.stopRun(options.cwd, run.runId, action === "cancel-analysis" ? "analysis" : "run");
+        const result = await options.capabilities.stopRun(
+          options.cwd,
+          run.runId,
+          action === "cancel-analysis" ? "analysis" : "run",
+        );
         setActionNote(result.message);
         return;
       }
@@ -293,14 +322,23 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
         setActionNote(
           result.ok
             ? `reclaimed ${result.receiptCount} recorded resource${result.receiptCount === 1 ? "" : "s"}`
-            : `could not reclaim: ${result.error?.message ?? "unknown"}`
+            : `could not reclaim: ${result.error?.message ?? "unknown"}`,
         );
         return;
       }
       // Run again: the SAME lab, in the same mode it ran in, launched the same detached way.
       const labId = run.lab?.id;
-      const matching = labId === undefined ? [] : data?.rows.filter(candidate => candidate.labId === labId && candidate.declared) ?? [];
-      if (matching.length > 1) { setActionNote("multiple manifests share this lab id — choose the exact lab from the list to run again"); return; }
+      const matching =
+        labId === undefined
+          ? []
+          : (data?.rows.filter((candidate) => candidate.labId === labId && candidate.declared) ??
+            []);
+      if (matching.length > 1) {
+        setActionNote(
+          "multiple manifests share this lab id — choose the exact lab from the list to run again",
+        );
+        return;
+      }
       const row = matching[0];
       if (row === undefined || !row.declared) {
         setActionNote("cannot run this again — its lab has no manifest here any more");
@@ -311,17 +349,32 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
         cwd: options.cwd,
         lab: row.name,
         ...(row.path ? { manifestPath: row.path } : {}),
-        mode: run.mode === "live" ? "live" : "dry-run"
+        mode: run.mode === "live" ? "live" : "dry-run",
       });
-      setActionNote(started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message);
+      setActionNote(
+        started.ok ? `started ${row.name} (pid ${started.run.pid})` : started.error.message,
+      );
     },
-    [detail, options, data, stopArmedAt]
+    [detail, options, data, stopArmedAt],
   );
 
   useInput(
     useCallback(
-      (input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean; escape?: boolean; leftArrow?: boolean; rightArrow?: boolean }) => {
-        if (showConnections) { if (input === "q") exit(); return; }
+      (
+        input: string,
+        key: {
+          upArrow?: boolean;
+          downArrow?: boolean;
+          return?: boolean;
+          escape?: boolean;
+          leftArrow?: boolean;
+          rightArrow?: boolean;
+        },
+      ) => {
+        if (showConnections) {
+          if (input === "q") exit();
+          return;
+        }
         if (showHelp) {
           // Any key leaves: a help screen you can get stuck in is worse than none. `q` still quits.
           setShowHelp(false);
@@ -422,8 +475,24 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
           if (next !== undefined) dispatch({ type: "enter", screen: next });
         }
       },
-      [exit, rowCount, screen, data, selected, confirming, start, detail, act, stopArmedAt, showHelp, showConnections, initArmedAt, projectState, options]
-    )
+      [
+        exit,
+        rowCount,
+        screen,
+        data,
+        selected,
+        confirming,
+        start,
+        detail,
+        act,
+        stopArmedAt,
+        showHelp,
+        showConnections,
+        initArmedAt,
+        projectState,
+        options,
+      ],
+    ),
   );
 
   useEffect(() => {
@@ -472,12 +541,16 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
 
   // Live participants plus the latest run of the OPEN lab, so its post-run analysis stays visible.
   // Never open all historical bundles merely to populate a list.
-  const watchedLab = screen.name === "lab" ? data?.rows.find(row => row.key === screen.labKey) : undefined;
-  const watchedLatestId = watchedLab === undefined ? undefined : data?.runsByLab.get(watchedLab.labId)?.[0]?.runId;
-  const liveRunIds = [...new Set([
-    ...(data?.rows ?? []).flatMap(row => row.liveRuns.map(run => run.runId)),
-    ...(watchedLatestId === undefined ? [] : [watchedLatestId])
-  ])].join(",");
+  const watchedLab =
+    screen.name === "lab" ? data?.rows.find((row) => row.key === screen.labKey) : undefined;
+  const watchedLatestId =
+    watchedLab === undefined ? undefined : data?.runsByLab.get(watchedLab.labId)?.[0]?.runId;
+  const liveRunIds = [
+    ...new Set([
+      ...(data?.rows ?? []).flatMap((row) => row.liveRuns.map((run) => run.runId)),
+      ...(watchedLatestId === undefined ? [] : [watchedLatestId]),
+    ]),
+  ].join(",");
   useEffect(() => {
     if (liveRunIds === "") {
       setLiveDetails(new Map());
@@ -491,11 +564,16 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
       const ids = liveRunIds.split(",");
       const entries = await Promise.all(
         ids.map(async (runId): Promise<[string, RunDetail] | null> => {
-          const read = await options.capabilities.readRunDetail(options.cwd, runId).catch(() => null);
+          const read = await options.capabilities
+            .readRunDetail(options.cwd, runId)
+            .catch(() => null);
           return read === null ? null : [runId, read];
-        })
+        }),
       );
-      if (!cancelled) setLiveDetails(new Map(entries.filter((entry): entry is [string, RunDetail] => entry !== null)));
+      if (!cancelled)
+        setLiveDetails(
+          new Map(entries.filter((entry): entry is [string, RunDetail] => entry !== null)),
+        );
       reading = false;
     };
     void read();
@@ -510,7 +588,8 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
   // What the open lab IS. Includes the key probe, which is why it is read per lab rather than for
   // the whole list.
   const openLabKey = screen.name === "lab" ? screen.labKey : undefined;
-  const openLabRow = openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey);
+  const openLabRow =
+    openLabKey === undefined ? undefined : data?.rows.find((row) => row.key === openLabKey);
   const openLabName = openLabRow?.path ?? openLabRow?.name;
   useEffect(() => {
     if (openLabName === undefined) {
@@ -532,26 +611,84 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
 
   const viewport = Math.max(1, size.rows - CHROME_ROWS);
   const body = useMemo(() => {
-    if (showConnections && options.capabilities.comms) return <ConnectionsScreen
-      capabilities={options.capabilities.comms} columns={contentWidth(size.columns)} notice={options.connectionNotice}
-      onBack={() => setShowConnections(false)} onKeyEntry={() => { onKeyEntry?.(); exit(); }} />;
-    if (showHelp) return <HelpScreen columns={contentWidth(size.columns)} connections={!!options.capabilities.comms} />;
-    if (error !== undefined) return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
+    if (showConnections && options.capabilities.comms)
+      return (
+        <ConnectionsScreen
+          capabilities={options.capabilities.comms}
+          columns={contentWidth(size.columns)}
+          notice={options.connectionNotice}
+          onBack={() => setShowConnections(false)}
+          onKeyEntry={() => {
+            onKeyEntry?.();
+            exit();
+          }}
+        />
+      );
+    if (showHelp)
+      return (
+        <HelpScreen
+          columns={contentWidth(size.columns)}
+          connections={!!options.capabilities.comms}
+        />
+      );
+    if (error !== undefined)
+      return <Text color={PALETTE.bad}>could not read this project: {error}</Text>;
     if (data === undefined) return <Text dimColor>reading project…</Text>;
     return renderScreen({
-      screen, data, selected, columns: contentWidth(size.columns), viewport, now: clock,
-      confirming, launchError, launchNote, detail, summary, liveDetails, tick,
-      initialized: projectState.initialized, actionNote, initArmed: initArmedAt !== undefined
+      screen,
+      data,
+      selected,
+      columns: contentWidth(size.columns),
+      viewport,
+      now: clock,
+      confirming,
+      launchError,
+      launchNote,
+      detail,
+      summary,
+      liveDetails,
+      tick,
+      initialized: projectState.initialized,
+      actionNote,
+      initArmed: initArmedAt !== undefined,
     });
-  }, [showHelp, showConnections, options, onKeyEntry, exit, error, data, screen, selected, size.columns, viewport, clock, confirming, launchError, launchNote, detail, summary, liveDetails, tick, projectState, actionNote]);
+  }, [
+    showHelp,
+    showConnections,
+    options,
+    onKeyEntry,
+    exit,
+    error,
+    data,
+    screen,
+    selected,
+    size.columns,
+    viewport,
+    clock,
+    confirming,
+    launchError,
+    launchNote,
+    detail,
+    summary,
+    liveDetails,
+    tick,
+    projectState,
+    actionNote,
+  ]);
 
   return (
     <Frame
       columns={size.columns}
       context={contextLine(screen, data, options)}
       breadcrumb={showConnections ? "‹ connections" : breadcrumbOf(screen, data)}
-      hints={showConnections ? "↑↓ move   ⏎ select   esc back   q quit" : showHelp ? "any key returns   q quit"
-        : keyHints(screen, data, selected, confirming, projectState.initialized) + (options.capabilities.comms ? "   c connections" : "")}
+      hints={
+        showConnections
+          ? "↑↓ move   ⏎ select   esc back   q quit"
+          : showHelp
+            ? "any key returns   q quit"
+            : keyHints(screen, data, selected, confirming, projectState.initialized) +
+              (options.capabilities.comms ? "   c connections" : "")
+      }
     >
       {body}
     </Frame>
@@ -565,7 +702,7 @@ export function App({ options, onReady, onKeyEntry, now, tick: frozenTick }: App
 function contextLine(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData | undefined,
-  options: TuiOptions
+  options: TuiOptions,
 ): string | undefined {
   const project = options.cwd.split("/").filter(Boolean).pop();
   // On a run card the context carries WHICH RUN, because the card itself leads with the verdict —
@@ -584,7 +721,7 @@ function contextLine(
 /** Where you are, as a path back. */
 function breadcrumbOf(
   screen: ReturnType<typeof currentScreen>,
-  data: ProjectData | undefined
+  data: ProjectData | undefined,
 ): string | undefined {
   if (screen.name === "labs") return undefined;
   if (screen.name === "all-runs") return "‹ labs / all runs";
@@ -622,7 +759,7 @@ function keyHints(
   data: ProjectData | undefined,
   selected: number,
   confirming: "live" | undefined,
-  initialized?: boolean
+  initialized?: boolean,
 ): string {
   const move = "↑↓ move";
   switch (screen.name) {
@@ -635,7 +772,8 @@ function keyHints(
       return initialized === false ? "⏎ set up humanish here   ? keys   q quit" : "? keys   q quit";
     case "lab": {
       if (confirming !== undefined) return "↵ confirm · esc cancel";
-      const item = data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
+      const item =
+        data === undefined ? undefined : itemsForLab(data, screen.labKey).items[selected];
       const enter = item?.kind === "start" ? "⏎ start" : "⏎ open run";
       return `${move}   ${enter}   esc back   ? keys   q quit`;
     }
@@ -644,9 +782,14 @@ function keyHints(
     default: {
       // Only when the card actually has actions — an empty legend beats one promising a key that
       // does nothing on a run still in flight.
-      const run = data === undefined ? undefined : data.runsById.get(screen.name === "run" ? screen.runId : "");
+      const run =
+        data === undefined
+          ? undefined
+          : data.runsById.get(screen.name === "run" ? screen.runId : "");
       const hasActions = run !== undefined && runActions(run, undefined).length > 0;
-      return hasActions ? `${move}   ⏎ select   esc back   ? keys   q quit` : "esc back   ? keys   q quit";
+      return hasActions
+        ? `${move}   ⏎ select   esc back   ? keys   q quit`
+        : "esc back   ? keys   q quit";
     }
   }
 }
@@ -658,9 +801,9 @@ function project(index: RunIndexResult, labs: readonly LabListEntry[]): ProjectD
       ...(lab.title === undefined ? {} : { title: lab.title }),
       ...(lab.description === undefined ? {} : { description: lab.description }),
       path: lab.path,
-      origin: lab.origin
+      origin: lab.origin,
     })),
-    index.runs
+    index.runs,
   );
   const runsByLab = new Map<string, RunIndexEntry[]>();
   const runsById = new Map<string, RunIndexEntry>();
@@ -700,13 +843,20 @@ function labelForLab(data: ProjectData, labId: string | undefined): string {
 }
 
 /** The lab screen's rows, from the one definition both counting and opening share. */
-function itemsForLab(data: ProjectData, labKey: string): { row?: LabRow; items: ReturnType<typeof labItems> } {
+function itemsForLab(
+  data: ProjectData,
+  labKey: string,
+): { row?: LabRow; items: ReturnType<typeof labItems> } {
   const row = data.rows.find((candidate) => candidate.key === labKey);
   if (row === undefined) return { items: [] };
   return { row, items: labItems(data.runsByLab.get(row.labId) ?? [], row.declared) };
 }
 
-function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData | undefined, detail?: RunDetail | null): number {
+function countRows(
+  screen: ReturnType<typeof currentScreen>,
+  data: ProjectData | undefined,
+  detail?: RunDetail | null,
+): number {
   if (data === undefined) return 0;
   switch (screen.name) {
     case "labs":
@@ -732,7 +882,7 @@ function countRows(screen: ReturnType<typeof currentScreen>, data: ProjectData |
 function identityOf(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData | undefined,
-  selected: number
+  selected: number,
 ): string | undefined {
   if (data === undefined) return undefined;
   if (screen.name === "labs") return data.rows[selected]?.key ?? "peer:all-runs";
@@ -749,17 +899,21 @@ function identityOf(
 function indexOfIdentity(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData,
-  identity: string
+  identity: string,
 ): number {
   if (screen.name === "labs") {
-    return identity === "peer:all-runs" ? data.rows.length : data.rows.findIndex((row) => row.key === identity);
+    return identity === "peer:all-runs"
+      ? data.rows.length
+      : data.rows.findIndex((row) => row.key === identity);
   }
   if (screen.name === "all-runs") {
     return liveRunsOf(data).findIndex((run) => run.runId === identity);
   }
   if (screen.name === "lab") {
     return itemsForLab(data, screen.labKey).items.findIndex((item) =>
-      item.kind === "start" ? identity === `start:${item.mode}` : `run:${item.run.runId}` === identity
+      item.kind === "start"
+        ? identity === `start:${item.mode}`
+        : `run:${item.run.runId}` === identity,
     );
   }
   return -1;
@@ -768,7 +922,7 @@ function indexOfIdentity(
 function openSelected(
   screen: ReturnType<typeof currentScreen>,
   data: ProjectData | undefined,
-  selected: number
+  selected: number,
 ): NavState["stack"][number] | undefined {
   if (data === undefined) return undefined;
   if (screen.name === "labs") {
@@ -779,7 +933,13 @@ function openSelected(
   }
   if (screen.name === "all-runs") {
     const run = liveRunsOf(data)[selected];
-    return run === undefined ? undefined : { name: "run", ...(run.lab?.id === undefined ? {} : { labId: run.lab.id }), runId: run.runId };
+    return run === undefined
+      ? undefined
+      : {
+          name: "run",
+          ...(run.lab?.id === undefined ? {} : { labId: run.lab.id }),
+          runId: run.runId,
+        };
   }
   if (screen.name === "lab") {
     // Indexed through the SAME item list that counting uses. Reading `selected` as an index into
@@ -811,7 +971,18 @@ function renderScreen(args: {
   actionNote: string | undefined;
   initArmed?: boolean;
 }): React.ReactElement {
-  const { screen, data, selected, columns, viewport, now, confirming, launchError, launchNote, detail } = args;
+  const {
+    screen,
+    data,
+    selected,
+    columns,
+    viewport,
+    now,
+    confirming,
+    launchError,
+    launchNote,
+    detail,
+  } = args;
   const { summary, liveDetails, tick, initialized, actionNote } = args;
   if (screen.name === "labs") {
     return (
@@ -834,7 +1005,7 @@ function renderScreen(args: {
                 const who = value.participants[0]?.personaId ?? value.participants[0]?.label;
                 return who === undefined ? null : [runId, who];
               })
-              .filter((entry): entry is [string, string] => entry !== null)
+              .filter((entry): entry is [string, string] => entry !== null),
           )
         }
         now={now}
@@ -843,13 +1014,16 @@ function renderScreen(args: {
   }
   if (screen.name === "lab") {
     const row = data.rows.find((candidate) => candidate.key === screen.labKey);
-    if (row === undefined) return <Text color={PALETTE.warn}>that lab is no longer in this project</Text>;
+    if (row === undefined)
+      return <Text color={PALETTE.warn}>that lab is no longer in this project</Text>;
     return (
       <LabScreen
         row={row}
         summary={summary}
         runs={data.runsByLab.get(row.labId) ?? []}
-        liveDetail={liveDetails.get(row.liveRuns[0]?.runId ?? data.runsByLab.get(row.labId)?.[0]?.runId ?? "")}
+        liveDetail={liveDetails.get(
+          row.liveRuns[0]?.runId ?? data.runsByLab.get(row.labId)?.[0]?.runId ?? "",
+        )}
         selected={selected}
         columns={columns}
         viewport={viewport}
@@ -873,9 +1047,11 @@ function renderScreen(args: {
           new Map(
             data.rows
               .map((row): [string, number] | null =>
-                row.liveExpectation.medianDurationMs === undefined ? null : [row.labId, row.liveExpectation.medianDurationMs]
+                row.liveExpectation.medianDurationMs === undefined
+                  ? null
+                  : [row.labId, row.liveExpectation.medianDurationMs],
               )
-              .filter((entry): entry is [string, number] => entry !== null)
+              .filter((entry): entry is [string, number] => entry !== null),
           )
         }
         selected={selected}

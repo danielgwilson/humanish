@@ -8,21 +8,41 @@ import { parse } from "yaml";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ACTOR_TRACE_SCHEMA, type ActorCompletionReason, type ActorStatus, type ActorTrace } from "../src/actor-contract.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  type ActorCompletionReason,
+  type ActorStatus,
+  type ActorTrace,
+} from "../src/actor-contract.js";
 import type { CuaActorSessionOptions } from "../src/computer-use-actor.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
-import type { E2BDesktopCreateOptions, E2BDesktopModule, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
-import { concurrentSharedWorldValidationReason, LAB_CONFIG_SCHEMA, parseLabConfig, routesToConcurrentSharedWorld, type LabConfig } from "../src/lab-config.js";
+import type {
+  E2BDesktopCreateOptions,
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+} from "../src/e2b-desktop-launch.js";
+import {
+  concurrentSharedWorldValidationReason,
+  LAB_CONFIG_SCHEMA,
+  parseLabConfig,
+  routesToConcurrentSharedWorld,
+  type LabConfig,
+} from "../src/lab-config.js";
 import { runLab, selectLabBackend } from "../src/lab-engine.js";
 import {
   runConcurrentSharedWorld,
   extractLobbyCodeFromNarration,
   parseLobbyCodeReply,
   extractResponsesOutputText,
-  readLobbyCodeFromFrame
+  readLobbyCodeFromFrame,
 } from "../src/concurrent-shared-world-lab.js";
 import type { SharedWorldLabHooks } from "../src/shared-world-lab.js";
-import type { BrowserLabScoringContext, RunAdapterScore, RunBundle, SubjectPhaseEvent } from "../src/index.js";
+import type {
+  BrowserLabScoringContext,
+  RunAdapterScore,
+  RunBundle,
+  SubjectPhaseEvent,
+} from "../src/index.js";
 import { verifyRun } from "../src/run.js";
 import { serveObserver, type ObserverResult, type ObserverServer } from "../src/observer.js";
 import type { LocalTreeArchive } from "../src/source-archive.js";
@@ -58,7 +78,10 @@ function browserTargetFromCalls(calls: Array<[string, ...unknown[]]>): string | 
   return undefined;
 }
 
-function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdout?: string } | undefined): FakeSandbox {
+function makeFakeSandbox(
+  id: string,
+  commandHandler: (command: string) => { stdout?: string } | undefined,
+): FakeSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
   const sandbox = {
     calls,
@@ -67,7 +90,7 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
       run: async (command: string) => {
         calls.push(["commands.run", command]);
         return commandHandler(command) ?? { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       // Raw data (never String()-coerced): existing callers write string script content
@@ -76,23 +99,36 @@ function makeFakeSandbox(id: string, commandHandler: (command: string) => { stdo
       write: async (filePath: string, data: string | ArrayBuffer) => {
         calls.push(["files.write", filePath, data]);
         return undefined;
-      }
+      },
     },
-    launch: async (application: string, uri?: string) => { calls.push(["launch", application, uri]); },
-    open: async (fileOrUrl: string) => { calls.push(["open", fileOrUrl]); },
+    launch: async (application: string, uri?: string) => {
+      calls.push(["launch", application, uri]);
+    },
+    open: async (fileOrUrl: string) => {
+      calls.push(["open", fileOrUrl]);
+    },
     getHost: (port: number) => `${port}-${id}.e2b.app`, // BARE host (no scheme) — matches the real @e2b SDK
-    async screenshot() { return new Uint8Array([1, 2, 3, 4]); },
-    async wait(ms: number) { calls.push(["wait", ms]); },
+    async screenshot() {
+      return new Uint8Array([1, 2, 3, 4]);
+    },
+    async wait(ms: number) {
+      calls.push(["wait", ms]);
+    },
     stream: {
       getAuthKey: () => "fake-auth-key",
       getUrl: () => "https://stream.invalid/fake-auth-key",
-      start: async (options?: unknown) => { calls.push(["stream.start", options]); }
-    }
+      start: async (options?: unknown) => {
+        calls.push(["stream.start", options]);
+      },
+    },
   };
   return sandbox as unknown as FakeSandbox;
 }
 
-function makeFakeModule(commandHandler: (command: string) => { stdout?: string } | undefined, fitToResolution = true): {
+function makeFakeModule(
+  commandHandler: (command: string) => { stdout?: string } | undefined,
+  fitToResolution = true,
+): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
   templates: (string | undefined)[];
@@ -109,15 +145,23 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
   const module: E2BDesktopModule = {
     Sandbox: {
       // Mirror the real @e2b/desktop overload: create(opts) OR create(template, opts).
-      create: async (templateOrOptions: string | E2BDesktopCreateOptions, maybeOptions?: E2BDesktopCreateOptions) => {
+      create: async (
+        templateOrOptions: string | E2BDesktopCreateOptions,
+        maybeOptions?: E2BDesktopCreateOptions,
+      ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
-        const createOptions = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        const createOptions =
+          typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         n += 1;
         const [width, height] = createOptions.resolution ?? [1440, 950];
         const sandbox = makeFakeSandbox(`fake-sandbox-${String(n).padStart(3, "0")}`, (command) => {
           // A phone seat has its own physical display, including in the committed live fixture.
-          if (fitToResolution && command.includes("xdpyinfo")) return { stdout: `dimensions: ${width}x${height} pixels\n` };
-          if (fitToResolution && command.includes("xwininfo -id")) return { stdout: `Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: ${width}\nHeight: ${height}\nMap State: IsViewable\n` };
+          if (fitToResolution && command.includes("xdpyinfo"))
+            return { stdout: `dimensions: ${width}x${height} pixels\n` };
+          if (fitToResolution && command.includes("xwininfo -id"))
+            return {
+              stdout: `Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: ${width}\nHeight: ${height}\nMap State: IsViewable\n`,
+            };
           return commandHandler(command);
         });
         templates.push(template);
@@ -125,25 +169,42 @@ function makeFakeModule(commandHandler: (command: string) => { stdout?: string }
         sandboxes.push(sandbox);
         return sandbox;
       },
-      kill: async (sandboxId) => { killed.push(sandboxId); return true; }
+      kill: async (sandboxId) => {
+        killed.push(sandboxId);
+        return true;
+      },
       // NOTE: NO `list` method.
-    }
+    },
   };
   return { module, created, templates, killed, sandboxes };
 }
 
-function makeCommandHandler(state: { worldVersion: number }): (command: string) => { stdout?: string } | undefined {
+function makeCommandHandler(state: {
+  worldVersion: number;
+}): (command: string) => { stdout?: string } | undefined {
   return (command: string): { stdout?: string } | undefined => {
-    if (command.includes("xdpyinfo")) return { stdout: "dimensions: 1440x950 pixels (381x251 millimeters)\n" };
-    if (command.includes("browser_preference='default'")) return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
+    if (command.includes("xdpyinfo"))
+      return { stdout: "dimensions: 1440x950 pixels (381x251 millimeters)\n" };
+    if (command.includes("browser_preference='default'"))
+      return { stdout: "HUMANISH_BROWSER_RESOLVED=google-chrome\n" };
     if (command.includes("/status")) return { stdout: "0" };
     if (command.includes("rev-parse")) return { stdout: "abc123def4567890abc1\n" };
     if (command.includes("curl")) return { stdout: "READY" };
-    if (command.includes("checkpoint-") && command.includes("tail -c")) return { stdout: `world=${state.worldVersion}\n` };
+    if (command.includes("checkpoint-") && command.includes("tail -c"))
+      return { stdout: `world=${state.worldVersion}\n` };
     if (command.includes("find_chrome_window")) return { stdout: "WINDOW_ID=424242\n" };
-    if (command.includes("xwininfo -id")) return { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n" };
+    if (command.includes("xwininfo -id"))
+      return {
+        stdout:
+          "Absolute upper-left X: 0\nAbsolute upper-left Y: 0\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n",
+      };
     if (command.includes("browserWindow: { x: window.screenX")) {
-      return { stdout: JSON.stringify({ browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN }, viewport: FAKE_DESKTOP_VIEWPORT }) };
+      return {
+        stdout: JSON.stringify({
+          browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN },
+          viewport: FAKE_DESKTOP_VIEWPORT,
+        }),
+      };
     }
     if (command.includes("tail -c")) return { stdout: "" };
     return undefined;
@@ -155,7 +216,9 @@ function makeCommandHandler(state: { worldVersion: number }): (command: string) 
 function makeRendezvous(count: number): () => Promise<void> {
   let arrived = 0;
   let release: () => void = () => {};
-  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   return async () => {
     arrived += 1;
     if (arrived >= count) release();
@@ -163,16 +226,29 @@ function makeRendezvous(count: number): () => Promise<void> {
   };
 }
 
-async function waitForCondition(label: string, condition: () => boolean | Promise<boolean>, timeoutMs = 2_000): Promise<void> {
+async function waitForCondition(
+  label: string,
+  condition: () => boolean | Promise<boolean>,
+  timeoutMs = 2_000,
+): Promise<void> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (await condition()) return;
-    await new Promise<void>((resolve) => { setTimeout(resolve, 25); });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 25);
+    });
   }
   throw new Error(`Timed out waiting for ${label}`);
 }
 
-function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promptDigest: string }; status: ActorStatus; completionReason: ActorCompletionReason; actions: number; messages: number; reason?: string }): ActorTrace {
+function makeTrace(args: {
+  persona: { id: string; traitsApplied: string[]; promptDigest: string };
+  status: ActorStatus;
+  completionReason: ActorCompletionReason;
+  actions: number;
+  messages: number;
+  reason?: string;
+}): ActorTrace {
   return {
     schema: ACTOR_TRACE_SCHEMA,
     provider: "fake-cua",
@@ -189,10 +265,38 @@ function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promp
     ids: {},
     counts: { actions: args.actions, messages: args.messages, screenshots: 0 },
     items: [
-      ...(args.messages > 0 ? [{ id: "i-msg", kind: "message" as const, lifecycle: "completed" as const, title: "message", text: "did my task" }] : []),
-      ...(args.actions > 0 ? [{ id: "i-act", kind: "ui_action" as const, lifecycle: "completed" as const, title: "click" }] : [])
+      ...(args.messages > 0
+        ? [
+            {
+              id: "i-msg",
+              kind: "message" as const,
+              lifecycle: "completed" as const,
+              title: "message",
+              text: "did my task",
+            },
+          ]
+        : []),
+      ...(args.actions > 0
+        ? [
+            {
+              id: "i-act",
+              kind: "ui_action" as const,
+              lifecycle: "completed" as const,
+              title: "click",
+            },
+          ]
+        : []),
     ],
-    capabilities: { headless: true, structuredTrace: true, lanes: ["computer-use"], producesScreenshots: true, byoModel: false, preGrantableApprovals: false, inProcessTools: false, license: "proprietary" }
+    capabilities: {
+      headless: true,
+      structuredTrace: true,
+      lanes: ["computer-use"],
+      producesScreenshots: true,
+      byoModel: false,
+      preGrantableApprovals: false,
+      inProcessTools: false,
+      license: "proprietary",
+    },
   };
 }
 
@@ -201,7 +305,14 @@ function makeTrace(args: { persona: { id: string; traitsApplied: string[]; promp
 function makeRunSession(
   state: { worldVersion: number },
   rendezvous: () => Promise<void>,
-  override?: (index: number) => { throwMessage?: string; status?: ActorStatus; completionReason?: ActorCompletionReason; reason?: string } | undefined
+  override?: (index: number) =>
+    | {
+        throwMessage?: string;
+        status?: ActorStatus;
+        completionReason?: ActorCompletionReason;
+        reason?: string;
+      }
+    | undefined,
 ): (options: CuaActorSessionOptions) => Promise<CuaLoopResult> {
   let calls = -1;
   return async (options: CuaActorSessionOptions): Promise<CuaLoopResult> => {
@@ -216,7 +327,9 @@ function makeRunSession(
     // REAL orchestrator clock records overlapping [start,end] windows (Date.now is ms-resolution —
     // without this the instant fake collapses every window to a zero-width point). The overlap is
     // genuinely produced (all lanes are in this delay at once), not injected.
-    await new Promise<void>((resolve) => { setTimeout(resolve, 15); });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 15);
+    });
     state.worldVersion += 1; // each actor's turn mutates the shared world
     const o = override?.(myIndex);
     if (o?.throwMessage) {
@@ -224,7 +337,14 @@ function makeRunSession(
     }
     const status = o?.status ?? "passed";
     const completionReason = o?.completionReason ?? "goal_satisfied";
-    const trace = makeTrace({ persona: options.persona, status, completionReason, actions: 1, messages: 1, ...(o?.reason === undefined ? {} : { reason: o.reason }) });
+    const trace = makeTrace({
+      persona: options.persona,
+      status,
+      completionReason,
+      actions: 1,
+      messages: 1,
+      ...(o?.reason === undefined ? {} : { reason: o.reason }),
+    });
     return { status, completionReason, reason: trace.reason, trace };
   };
 }
@@ -236,7 +356,7 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): La
     surface: i === 0 ? "intake" : "review",
     caseGroup: "case-001",
     persona: `persona-${i + 1}`,
-    entry: `/seat-${i + 1}`
+    entry: `/seat-${i + 1}`,
   }));
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
@@ -248,29 +368,37 @@ function concurrentConfig(roleCount = 3, concurrency = 3, template?: string): La
       exposure: "synthetic",
       repos: ["example-org/collab-app"],
       env: ["DATABASE_URL"],
-      serve: { install: "pnpm install", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+      serve: {
+        install: "pnpm install",
+        start: "pnpm start -H 0.0.0.0",
+        url: "http://127.0.0.1:3000/",
+      },
       state: {
         seed: [{ name: "migrate", command: "pnpm db:migrate" }],
         checkpoint: [
           { name: "notes-count", command: "psql query notes" },
-          { name: "reviews-count", command: "psql query reviews" }
-        ]
-      }
+          { name: "reviews-count", command: "psql query reviews" },
+        ],
+      },
     },
     actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
     execution: {
       target: "e2b-desktop",
       timeoutMs: 60_000,
       concurrency,
-      ...(template === undefined ? {} : { desktop: { template } })
+      ...(template === undefined ? {} : { desktop: { template } }),
     },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.config;
 }
 
-function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<void>, override?: Parameters<typeof makeRunSession>[2]): {
+function baseHooks(
+  state: { worldVersion: number },
+  rendezvous: () => Promise<void>,
+  override?: Parameters<typeof makeRunSession>[2],
+): {
   hooks: SharedWorldLabHooks;
   created: E2BDesktopCreateOptions[];
   templates: (string | undefined)[];
@@ -278,17 +406,25 @@ function baseHooks(state: { worldVersion: number }, rendezvous: () => Promise<vo
   sandboxes: FakeSandbox[];
   phaseEvents: SubjectPhaseEvent[];
 } {
-  const { module, created, templates, killed, sandboxes } = makeFakeModule(makeCommandHandler(state));
+  const { module, created, templates, killed, sandboxes } = makeFakeModule(
+    makeCommandHandler(state),
+  );
   const phaseEvents: SubjectPhaseEvent[] = [];
   const hooks: SharedWorldLabHooks = {
-    env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+    env: {
+      OPENAI_API_KEY: "test-openai-key",
+      E2B_API_KEY: "test-e2b-key",
+      DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
+    },
     loadDesktopModule: async () => module,
     runSession: makeRunSession(state, rendezvous, override),
     detachedTimers: { now: () => 0, sleep: async () => {} },
     proberCadenceMs: 100_000, // large: no periodic snapshot fires in the fast test (baseline+final carry the gate)
     // Captures instead of writing to real stderr (the call-site default when this is absent);
     // also lets tests assert the ordered phase-boundary sequence.
-    onPhase: (event) => { phaseEvents.push(event); }
+    onPhase: (event) => {
+      phaseEvents.push(event);
+    },
   };
   return { hooks, created, templates, killed, sandboxes, phaseEvents };
 }
@@ -304,32 +440,56 @@ function concurrentFailScore(ctx: BrowserLabScoringContext): RunAdapterScore {
     summary: `${ctx.backend} adapter found no product-level concurrent success evidence.`,
     data: {
       backend: ctx.backend,
-      laneCount: ctx.laneCount
-    }
+      laneCount: ctx.laneCount,
+    },
   };
 }
 
 let cwd: string;
-beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-sw-")); });
-afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+beforeEach(async () => {
+  cwd = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-sw-"));
+});
+afterEach(async () => {
+  await rm(cwd, { recursive: true, force: true });
+});
 
 describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous latch, $0)", () => {
   it.each([true, false])("preserves each role's authored focus (dryRun %s)", async (dryRun) => {
     const config = concurrentConfig();
     delete config.review; // Omitted config uses the separate default analysis budget.
     const analyze = automaticAnalysisBoundary();
-    config.actors[0]!.lanes!.forEach((lane, i) => { lane.instruction = `Review section ${i + 1}.`; });
+    config.actors[0]!.lanes!.forEach((lane, i) => {
+      lane.instruction = `Review section ${i + 1}.`;
+    });
     config.actors[0]!.mission = "Use the shared app with test-openai-key.";
     const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config, dryRun, hooks, automaticAnalysis: { run: analyze } });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config,
+      dryRun,
+      hooks,
+      automaticAnalysis: { run: analyze },
+    });
     expect(analyze).toHaveBeenCalledTimes(dryRun ? 0 : 1);
-    expect(result.automaticAnalysis?.reason).toBe(dryRun ? "analysis_dry_run" : "synthetic_no_provider");
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
-    expect(bundle.streams.map((stream) => stream.assignment)).toEqual([1, 2, 3].map((i) => ({
-      mission: "Use the shared app with [REDACTED_SECRET].", focus: `Review section ${i}.`
-    })));
+    expect(result.automaticAnalysis?.reason).toBe(
+      dryRun ? "analysis_dry_run" : "synthetic_no_provider",
+    );
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(bundle.streams.map((stream) => stream.assignment)).toEqual(
+      [1, 2, 3].map((i) => ({
+        mission: "Use the shared app with [REDACTED_SECRET].",
+        focus: `Review section ${i}.`,
+      })),
+    );
     expect(JSON.stringify(bundle)).not.toContain("test-openai-key");
-    expect(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8")).not.toContain("test-openai-key");
+    expect(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"),
+        "utf8",
+      ),
+    ).not.toContain("test-openai-key");
     expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
   });
 
@@ -340,7 +500,10 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
     const session = hooks.runSession!;
     const seen: CuaActorSessionOptions[] = [];
-    hooks.runSession = (options) => { seen.push(options); return session(options); };
+    hooks.runSession = (options) => {
+      seen.push(options);
+      return session(options);
+    };
     await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(seen).toHaveLength(3);
     const usage = { input: 5000, output: 0 };
@@ -368,7 +531,11 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(created).toHaveLength(0);
   });
   it("dry-run produces a verified contract bundle (concurrent shape + attributionClass + limits), no sandboxes", async () => {
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(), dryRun: true });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(),
+      dryRun: true,
+    });
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.subjectSandbox).toBeUndefined();
@@ -376,24 +543,45 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(result.roleCount).toBe(3);
     expect(result.concurrency).toBe(3);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.timeline).toBeUndefined();
     expect(bundle.sharedWorld.attributionLimits).toEqual(
-      expect.arrayContaining(["concurrent", "best-effort-causal-attribution", "non-deterministic-shared-state", "window-and-snapshot-granularity", "contention-observed-not-proven-safe", "state-change-not-isolated-to-actors"])
+      expect.arrayContaining([
+        "concurrent",
+        "best-effort-causal-attribution",
+        "non-deterministic-shared-state",
+        "window-and-snapshot-granularity",
+        "contention-observed-not-proven-safe",
+        "state-change-not-isolated-to-actors",
+      ]),
     );
     expect(bundle.sharedWorld.attributionLimits).not.toContain("sequential-only");
-    const publicTruth = JSON.stringify({ events: bundle.events, review: bundle.review }).toLowerCase();
-    expect(publicTruth).toContain("this contract-only run proves no live concurrency, scale, or adoption");
-    expect(publicTruth).toContain("proves contract shape only, not live behavior, scale, or adopter-harness replacement");
+    const publicTruth = JSON.stringify({
+      events: bundle.events,
+      review: bundle.review,
+    }).toLowerCase();
+    expect(publicTruth).toContain(
+      "this contract-only run proves no live concurrency, scale, or adoption",
+    );
+    expect(publicTruth).toContain(
+      "proves contract shape only, not live behavior, scale, or adopter-harness replacement",
+    );
     expect(publicTruth).not.toContain("receipt");
     expect(publicTruth).not.toContain("deferred live receipt");
     expect(publicTruth).not.toContain("capability at scale");
-    expect(bundle.streams.every((stream: { viewport?: unknown }) => stream.viewport === undefined)).toBe(true);
-    expect(bundle.streams.map((stream: { desktopGeometry: { screen: { requested: unknown } } }) => stream.desktopGeometry.screen.requested)).toEqual([
-      FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN
-    ]);
+    expect(
+      bundle.streams.every((stream: { viewport?: unknown }) => stream.viewport === undefined),
+    ).toBe(true);
+    expect(
+      bundle.streams.map(
+        (stream: { desktopGeometry: { screen: { requested: unknown } } }) =>
+          stream.desktopGeometry.screen.requested,
+      ),
+    ).toEqual([FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN, FAKE_DESKTOP_SCREEN]);
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -404,29 +592,48 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // With a custom template: all N+1 creates (subject + N actors) get it.
     const withState = { worldVersion: 0 };
     const withTemplate = baseHooks(withState, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3, "acme-desktop-with-runtimes"), dryRun: false, hooks: withTemplate.hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3, "acme-desktop-with-runtimes"),
+      dryRun: false,
+      hooks: withTemplate.hooks,
+    });
     expect(result.ok).toBe(true);
     expect(withTemplate.created).toHaveLength(4); // 1 subject + 3 actors
     expect(withTemplate.templates).toHaveLength(4);
     expect(withTemplate.templates.every((t) => t === "acme-desktop-with-runtimes")).toBe(true);
-    const withBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const withBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(withBundle.desktopTemplate).toBe("acme-desktop-with-runtimes");
 
     // Byte-stable default: NO template → every create called with NO template arg, bundle omits it.
     const noState = { worldVersion: 0 };
     const noTemplate = baseHooks(noState, makeRendezvous(3));
-    const result2 = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks: noTemplate.hooks });
+    const result2 = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks: noTemplate.hooks,
+    });
     expect(result2.ok).toBe(true);
     expect(noTemplate.templates).toHaveLength(4);
     expect(noTemplate.templates.every((t) => t === undefined)).toBe(true);
-    const noBundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"));
+    const noBundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result2.runId, "run.json"), "utf8"),
+    );
     expect(noBundle.desktopTemplate).toBeUndefined();
   });
 
   it("GOOD run: ONE subject + N actors all torn down BY id (killed==created, N+1), same getHost URL, REAL overlap, state delta, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
@@ -447,7 +654,9 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     }
 
     // provisionCloneSubject ran EXACTLY once, on the SUBJECT sandbox only (one git clone written).
-    const cloneWrites = sandboxes.flatMap((s) => s.calls).filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    const cloneWrites = sandboxes
+      .flatMap((s) => s.calls)
+      .filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
     expect(cloneWrites).toHaveLength(1);
 
     // Every actor ACTUALLY opened the SAME harness-minted getHost URL (FIX-2): one shared plane.
@@ -463,15 +672,27 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // The published bundle records the host as a DIGEST (public-safe), never the raw e2b URL; the
     // raw tokenless URL is surfaced only on the ephemeral result.
     expect(result.host).toBe(getHostUrl);
-    const runText = await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8");
+    const runText = await readFile(
+      path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
+      "utf8",
+    );
     expect(runText).not.toContain("e2b.app");
 
     const bundle = JSON.parse(runText);
-    const livePublicTruth = JSON.stringify({ events: bundle.events, review: bundle.review }).toLowerCase();
-    expect(livePublicTruth).toContain("this run reports only its own observed overlap and state changes");
-    expect(livePublicTruth).toContain("does not prove scale, repeatability, or adopter-harness replacement");
+    const livePublicTruth = JSON.stringify({
+      events: bundle.events,
+      review: bundle.review,
+    }).toLowerCase();
+    expect(livePublicTruth).toContain(
+      "this run reports only its own observed overlap and state changes",
+    );
+    expect(livePublicTruth).toContain(
+      "does not prove scale, repeatability, or adopter-harness replacement",
+    );
     expect(livePublicTruth).not.toContain("receipt");
-    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([100, 100, 100]);
+    expect(bundle.simulations.map((sim: { progress: number }) => sim.progress)).toEqual([
+      100, 100, 100,
+    ]);
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.plane.hostDigest).toMatch(/^[0-9a-f]{16}$/);
     expect(bundle.sharedWorld.plane.exposure).toBe("synthetic");
@@ -479,23 +700,32 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       expect(stream.desktopGeometry).toEqual({
         screen: {
           requested: FAKE_DESKTOP_SCREEN,
-          verified: { ...FAKE_DESKTOP_SCREEN, source: "xdpyinfo" }
+          verified: { ...FAKE_DESKTOP_SCREEN, source: "xdpyinfo" },
         },
         browserWindow: { x: 0, y: 0, ...FAKE_DESKTOP_SCREEN, source: "xwininfo" },
-        viewport: { ...FAKE_DESKTOP_VIEWPORT, source: "cdp" }
+        viewport: { ...FAKE_DESKTOP_VIEWPORT, source: "cdp" },
       });
       expect(stream.viewport).toEqual({ ...FAKE_DESKTOP_VIEWPORT, isMobile: false });
     }
 
     // PROVEN CONCURRENCY (FIX-1): the laneWindows the REAL clock measured overlap (≥2 in flight).
-    const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number; routeHostDigest: string; actorType?: string; surface?: string; caseGroup?: string }>;
+    const windows = bundle.sharedWorld.laneWindows as Array<{
+      startedAt: number;
+      endedAt: number;
+      routeHostDigest: string;
+      actorType?: string;
+      surface?: string;
+      caseGroup?: string;
+    }>;
     expect(windows).toHaveLength(3);
     expect(windows.map((w) => [w.actorType, w.surface, w.caseGroup])).toEqual([
       ["initiator", "intake", "case-001"],
       ["collaborator", "review", "case-001"],
-      ["collaborator", "review", "case-001"]
+      ["collaborator", "review", "case-001"],
     ]);
-    const overlapping = windows.some((a, i) => windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt));
+    const overlapping = windows.some((a, i) =>
+      windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt),
+    );
     expect(overlapping).toBe(true);
     expect(result.overlapProven).toBe(true);
     // Every actor drove EXACTLY the harness-minted host (FIX-2): routeHostDigest == plane.hostDigest.
@@ -510,10 +740,18 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
     // Per-persona outcomes recorded (the "M of N" headline).
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
-    expect((bundle.sharedWorld.outcomes as Array<{ actorType?: string; surface?: string; caseGroup?: string }>).map((o) => [o.actorType, o.surface, o.caseGroup])).toEqual([
+    expect(
+      (
+        bundle.sharedWorld.outcomes as Array<{
+          actorType?: string;
+          surface?: string;
+          caseGroup?: string;
+        }>
+      ).map((o) => [o.actorType, o.surface, o.caseGroup]),
+    ).toEqual([
       ["initiator", "intake", "case-001"],
       ["collaborator", "review", "case-001"],
-      ["collaborator", "review", "case-001"]
+      ["collaborator", "review", "case-001"],
     ]);
     expect((bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).every((o) => o.ok)).toBe(true);
 
@@ -522,13 +760,38 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(verify.ok).toBe(true);
     expect(verify.checks.find((c) => c.name === "shared-world evidence")?.ok).toBe(true);
 
-    const observerData = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"), "utf8"));
+    const observerData = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", result.runId, "observer", "observer-data.json"),
+        "utf8",
+      ),
+    );
     expect(observerData.laneGroups).toEqual([
-      expect.objectContaining({ roleId: "persona-01", actorType: "initiator", surface: "intake", caseGroup: "case-001", status: "passed" }),
-      expect.objectContaining({ roleId: "persona-02", actorType: "collaborator", surface: "review", caseGroup: "case-001", status: "passed" }),
-      expect.objectContaining({ roleId: "persona-03", actorType: "collaborator", surface: "review", caseGroup: "case-001", status: "passed" })
+      expect.objectContaining({
+        roleId: "persona-01",
+        actorType: "initiator",
+        surface: "intake",
+        caseGroup: "case-001",
+        status: "passed",
+      }),
+      expect.objectContaining({
+        roleId: "persona-02",
+        actorType: "collaborator",
+        surface: "review",
+        caseGroup: "case-001",
+        status: "passed",
+      }),
+      expect.objectContaining({
+        roleId: "persona-03",
+        actorType: "collaborator",
+        surface: "review",
+        caseGroup: "case-001",
+        status: "passed",
+      }),
     ]);
-    expect(observerData.streams.map((stream: { label: string }) => stream.label).join("\n")).toContain("type:initiator / surface:intake / case:case-001");
+    expect(
+      observerData.streams.map((stream: { label: string }) => stream.label).join("\n"),
+    ).toContain("type:initiator / surface:intake / case:case-001");
 
     // Per-actor traces written.
     const actorsDir = await readdir(path.join(cwd, ".humanish", "runs", result.runId, "actors"));
@@ -538,29 +801,52 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("comms:email:fake — deploys the catch on the SUBJECT sandbox, injects env there ONLY, drains to run-level evidence", async () => {
     const state = { worldVersion: 0 };
     const commsPort = 8025;
-    const verificationHtml = '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const verificationHtml =
+      '<p>Confirm.</p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["user@example.test"],
+          subject: "Confirm your email",
+          html: verificationHtml,
+        }),
+      }) + "\n";
     // The base subject handler + comms overrides (health service-marker + the teardown drain `cat`).
     const baseHandler = makeCommandHandler(state);
     const commandHandler = (command: string): { stdout?: string } | undefined => {
       // Both the loopback capture (commsPort) and the 0.0.0.0 inbox (commsPort+1) listeners are probed on
       // /health; the serve readiness probe hits `/` (no /health), so this only marks the comms listeners.
-      if (command.includes("/health")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-      if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+      if (command.includes("/health"))
+        return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+      if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+        return { stdout: capturedNdjson };
       return baseHandler(command);
     };
     const { module, created } = makeFakeModule(commandHandler);
     const hooks: SharedWorldLabHooks = {
-      env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+      env: {
+        OPENAI_API_KEY: "test-openai-key",
+        E2B_API_KEY: "test-e2b-key",
+        DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
+      },
       loadDesktopModule: async () => module,
       runSession: makeRunSession(state, makeRendezvous(3)),
       detachedTimers: { now: () => 0, sleep: async () => {} },
-      proberCadenceMs: 100_000
+      proberCadenceMs: 100_000,
     };
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "user", address: "user@example.test" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_API_URL",
+          port: commsPort,
+          recipients: [{ lane: "user", address: "user@example.test" }],
+        },
+      },
     };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(result.ok).toBe(true);
@@ -569,15 +855,22 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     // and NOWHERE else: the actor sandboxes still carry no envs (FIX-10 preserved).
     expect(created[0]?.envs?.RESEND_API_URL).toBe(`http://127.0.0.1:${commsPort}`);
     expect(created[0]?.envs?.DATABASE_URL).toBe("opaque-pw-7f3a9c2e-do-not-leak");
-    for (let i = 1; i < created.length; i += 1) expect((created[i]?.envs as Record<string, string> | undefined)?.RESEND_API_URL).toBeUndefined();
+    for (let i = 1; i < created.length; i += 1)
+      expect(
+        (created[i]?.envs as Record<string, string> | undefined)?.RESEND_API_URL,
+      ).toBeUndefined();
 
     // The captured mail was drained at subject teardown + written as a run-level digest-only artifact,
     // registered ONCE on the first stream (a property of the shared app, not any single persona).
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
-    const onStream0 = bundle.streams[0].artifacts.find((a: { path: string; kind: string; label: string }) => a.path === "comms/thread.json");
+    const onStream0 = bundle.streams[0].artifacts.find(
+      (a: { path: string; kind: string; label: string }) => a.path === "comms/thread.json",
+    );
     expect(onStream0).toMatchObject({ kind: "log", label: "comms thread" });
-    expect(bundle.streams[1]?.artifacts.find((a: { path: string }) => a.path === "comms/thread.json")).toBeUndefined();
+    expect(
+      bundle.streams[1]?.artifacts.find((a: { path: string }) => a.path === "comms/thread.json"),
+    ).toBeUndefined();
     const threadRaw = await readFile(path.join(runDir, "comms", "thread.json"), "utf8");
     const thread = JSON.parse(threadRaw) as { schema: string; count: number };
     expect(thread.schema).toBe("humanish.comms-thread.v1");
@@ -596,13 +889,25 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("comms:email:fake — getHost-exposes the inbox, renders the live surface on the SUBJECT, and tells the matching persona its inbox URL", async () => {
     const state = { worldVersion: 0 };
     const commsPort = 8025;
-    const verificationHtml = '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
+    const verificationHtml =
+      '<p>Confirm.</p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a><p>Code: 481920</p>';
     const capturedNdjson =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user@example.test"], subject: "Confirm your email", html: verificationHtml }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: ["user@example.test"],
+          subject: "Confirm your email",
+          html: verificationHtml,
+        }),
+      }) + "\n";
     const baseHandler = makeCommandHandler(state);
     const commandHandler = (command: string): { stdout?: string } | undefined => {
-      if (command.includes("/health")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
-      if (command.startsWith("cat ") && command.includes("deliveries.ndjson")) return { stdout: capturedNdjson };
+      if (command.includes("/health"))
+        return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
+      if (command.startsWith("cat ") && command.includes("deliveries.ndjson"))
+        return { stdout: capturedNdjson };
       return baseHandler(command);
     };
     const { module, sandboxes } = makeFakeModule(commandHandler);
@@ -610,16 +915,30 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const seenInstructions: string[] = [];
     const baseRun = makeRunSession(state, makeRendezvous(3));
     const hooks: SharedWorldLabHooks = {
-      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k", DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak" },
+      env: {
+        OPENAI_API_KEY: "k",
+        E2B_API_KEY: "k",
+        DATABASE_URL: "opaque-pw-7f3a9c2e-do-not-leak",
+      },
       loadDesktopModule: async () => module,
-      runSession: async (options) => { seenInstructions.push(options.instructions); return baseRun(options); },
+      runSession: async (options) => {
+        seenInstructions.push(options.instructions);
+        return baseRun(options);
+      },
       detachedTimers: { now: () => 0, sleep: async () => {} },
-      proberCadenceMs: 100_000
+      proberCadenceMs: 100_000,
     };
     const config: LabConfig = {
       ...concurrentConfig(3, 3),
       // Recipient lane matches the FIRST persona's lane id, so only it is told to check the inbox.
-      comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, recipients: [{ lane: "persona-01", address: "user@example.test" }] } }
+      comms: {
+        email: {
+          kind: "fake",
+          injectEnv: "RESEND_API_URL",
+          port: commsPort,
+          recipients: [{ lane: "persona-01", address: "user@example.test" }],
+        },
+      },
     };
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(result.ok).toBe(true);
@@ -629,25 +948,47 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const inboxHost = `https://${commsPort + 1}-${sandboxes[0]!.sandboxId}.e2b.app/inbox`;
     expect(seenInstructions.some((text) => text.includes(inboxHost))).toBe(true);
     // The full handoff (#351) rides the same injection on this route too: address + wait steering.
-    expect(seenInstructions.some((text) => text.includes("Your email address is user@example.test"))).toBe(true);
-    expect(seenInstructions.some((text) => text.includes("stop based on your situation and what you observe"))).toBe(true);
+    expect(
+      seenInstructions.some((text) => text.includes("Your email address is user@example.test")),
+    ).toBe(true);
+    expect(
+      seenInstructions.some((text) =>
+        text.includes("stop based on your situation and what you observe"),
+      ),
+    ).toBe(true);
     expect(seenInstructions.some((text) => text.includes(`127.0.0.1:${commsPort}`))).toBe(false); // never the capture URL
 
     // The live inbox surface was rendered into the SUBJECT sandbox (created first) during the run.
-    expect(sandboxes[0]!.calls.some(([name, p]) => name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"))).toBe(true);
+    expect(
+      sandboxes[0]!.calls.some(
+        ([name, p]) =>
+          name === "files.write" && typeof p === "string" && p.endsWith("/surface/inbox/index"),
+      ),
+    ).toBe(true);
   });
 
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(phaseEvents.length).toBeGreaterThan(0);
 
-    const cloneStartedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.started");
-    const cloneCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.clone.completed");
-    const readyCompletedIndex = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    const cloneStartedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.clone.started",
+    );
+    const cloneCompletedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.clone.completed",
+    );
+    const readyCompletedIndex = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.ready.completed",
+    );
     expect(cloneStartedIndex).toBeGreaterThanOrEqual(0);
     expect(cloneCompletedIndex).toBeGreaterThan(cloneStartedIndex);
     expect(readyCompletedIndex).toBeGreaterThan(cloneCompletedIndex);
@@ -665,9 +1006,13 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const runRoot = path.join(cwd, ".humanish", "runs", runId);
     let actorSessionsStarted = 0;
     let resolveActorsStarted: () => void = () => {};
-    const actorsStarted = new Promise<void>((resolve) => { resolveActorsStarted = resolve; });
+    const actorsStarted = new Promise<void>((resolve) => {
+      resolveActorsStarted = resolve;
+    });
     let releaseActors: () => void = () => {};
-    const actorsReleased = new Promise<void>((resolve) => { releaseActors = resolve; });
+    const actorsReleased = new Promise<void>((resolve) => {
+      releaseActors = resolve;
+    });
     let readyObserver: (ObserverResult & { ok: true }) | undefined;
     let observerServer: ObserverServer | undefined;
 
@@ -678,7 +1023,13 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       }
       await actorsReleased;
       state.worldVersion += 1;
-      const trace = makeTrace({ persona: options.persona, status: "passed", completionReason: "goal_satisfied", actions: 1, messages: 1 });
+      const trace = makeTrace({
+        persona: options.persona,
+        status: "passed",
+        completionReason: "goal_satisfied",
+        actions: 1,
+        messages: 1,
+      });
       return { status: "passed", completionReason: "goal_satisfied", reason: trace.reason, trace };
     };
 
@@ -691,7 +1042,7 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         readyObserver = observer;
         observerServer = await serveObserver(observer, { port: 0 });
       },
-      runId
+      runId,
     });
 
     try {
@@ -699,20 +1050,31 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       await actorsStarted;
       await waitForCondition("all actor sessions started", () => actorSessionsStarted === 3);
       const streamStarts = sandboxes.flatMap((sandbox) =>
-        sandbox.calls.filter(([name]) => name === "stream.start")
+        sandbox.calls.filter(([name]) => name === "stream.start"),
       );
       expect(streamStarts).toHaveLength(3);
-      expect(streamStarts.every(([, options]) => (options as { windowId?: string }).windowId === "424242")).toBe(true);
+      expect(
+        streamStarts.every(
+          ([, options]) => (options as { windowId?: string }).windowId === "424242",
+        ),
+      ).toBe(true);
 
       const persistedRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
-      expect((JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment)).toEqual([
-        { mission: "Use the shared app with [REDACTED_SECRET]." }, { mission: "Use the shared app with [REDACTED_SECRET]." }, { mission: "Use the shared app with [REDACTED_SECRET]." }
+      expect(
+        (JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment),
+      ).toEqual([
+        { mission: "Use the shared app with [REDACTED_SECRET]." },
+        { mission: "Use the shared app with [REDACTED_SECRET]." },
+        { mission: "Use the shared app with [REDACTED_SECRET]." },
       ]);
       expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");
       expect(persistedRunText).not.toContain("stream.invalid");
 
-      const persistedObserverDataText = await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8");
+      const persistedObserverDataText = await readFile(
+        path.join(runRoot, "observer", "observer-data.json"),
+        "utf8",
+      );
       expect(persistedObserverDataText).not.toContain("test-openai-key");
       expect(persistedObserverDataText).not.toContain("fake-auth-key");
       expect(persistedObserverDataText).not.toContain("stream.invalid");
@@ -722,30 +1084,48 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
         summary: { active: number };
       };
       expect(persistedObserverData.summary.active).toBe(3);
-      expect(persistedObserverData.streams.map((stream) => stream.status)).toEqual(["running", "running", "running"]);
-      expect(persistedObserverData.events.filter((event) => event.type === "actor.running")).toHaveLength(3);
+      expect(persistedObserverData.streams.map((stream) => stream.status)).toEqual([
+        "running",
+        "running",
+        "running",
+      ]);
+      expect(
+        persistedObserverData.events.filter((event) => event.type === "actor.running"),
+      ).toHaveLength(3);
 
       expect(readyObserver).toBeTruthy();
       expect(observerServer).toBeTruthy();
       const served = await fetch(new URL("observer-data.json", observerServer!.url));
-      const servedObserverData = await served.json() as {
+      const servedObserverData = (await served.json()) as {
         streams: Array<{ embed?: { kind: string; url?: string }; transport: string; url?: string }>;
       };
       expect(servedObserverData.streams).toHaveLength(3);
       expect(servedObserverData.streams.every((stream) => stream.transport === "sse")).toBe(true);
-      expect(servedObserverData.streams.every((stream) => stream.embed?.kind === "iframe")).toBe(true);
-      expect(servedObserverData.streams.every((stream) => stream.url === "https://stream.invalid/fake-auth-key")).toBe(true);
+      expect(servedObserverData.streams.every((stream) => stream.embed?.kind === "iframe")).toBe(
+        true,
+      );
+      expect(
+        servedObserverData.streams.every(
+          (stream) => stream.url === "https://stream.invalid/fake-auth-key",
+        ),
+      ).toBe(true);
 
       releaseActors();
       const result = await runPromise;
       expect(result.ok).toBe(true);
 
-      const finalObserverData = JSON.parse(await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8")) as {
+      const finalObserverData = JSON.parse(
+        await readFile(path.join(runRoot, "observer", "observer-data.json"), "utf8"),
+      ) as {
         summary: { active: number };
         streams: Array<{ status: string }>;
       };
       expect(finalObserverData.summary.active).toBe(0);
-      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual(["passed", "passed", "passed"]);
+      expect(finalObserverData.streams.map((stream) => stream.status)).toEqual([
+        "passed",
+        "passed",
+        "passed",
+      ]);
       const finalRunText = await readFile(path.join(runRoot, "run.json"), "utf8");
       expect(finalRunText).not.toContain("fake-auth-key");
       expect(finalRunText).not.toContain("stream.invalid");
@@ -786,7 +1166,12 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
     const config = concurrentConfig(3, 3);
-    const actorDefault = { when: { any: [{ id: "in-room", urlIncludes: "/room/" }] }, ms: 30_000, everyMs: 10_000, then: "continue" as const };
+    const actorDefault = {
+      when: { any: [{ id: "in-room", urlIncludes: "/room/" }] },
+      ms: 30_000,
+      everyMs: 10_000,
+      then: "continue" as const,
+    };
     const laneOverride = { ms: 5_000, everyMs: 1_000, then: "stop" as const };
     config.actors[0]!.dwell = actorDefault;
     config.actors[0]!.lanes![1]!.dwell = laneOverride;
@@ -815,36 +1200,51 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       await mkdir(path.join(ctx.runDir, "adapter"), { recursive: true });
       await writeFile(
         path.join(ctx.runDir, "adapter", "concurrent-readback.json"),
-        `${JSON.stringify({
-          schema: "example.concurrent-readback.v1",
-          status: "review-required",
-          backend: ctx.backend,
-          laneCount: ctx.laneCount
-        }, null, 2)}\n`,
-        "utf8"
+        `${JSON.stringify(
+          {
+            schema: "example.concurrent-readback.v1",
+            status: "review-required",
+            backend: ctx.backend,
+            laneCount: ctx.laneCount,
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
       );
-      return [{
-        schema: "humanish.adapter-artifact.v1",
-        namespace: CONCURRENT_ADAPTER_NAMESPACE,
-        label: "Concurrent adapter readback",
-        path: "adapter/concurrent-readback.json",
-        kind: "state",
-        note: "Adapter-owned concurrent shared-world readback."
-      }];
+      return [
+        {
+          schema: "humanish.adapter-artifact.v1",
+          namespace: CONCURRENT_ADAPTER_NAMESPACE,
+          label: "Concurrent adapter readback",
+          path: "adapter/concurrent-readback.json",
+          kind: "state",
+          note: "Adapter-owned concurrent shared-world readback.",
+        },
+      ];
     };
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain("Adapter scorer failed the run");
     expect(result.overlapProven).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.adapterScore?.namespace).toBe(CONCURRENT_ADAPTER_NAMESPACE);
     expect(bundle.adapterScore?.status).toBe("fail");
     expect(bundle.adapterScore?.data?.backend).toBe("concurrent-shared-world");
     expect(bundle.adapterArtifacts?.[0]?.path).toBe("adapter/concurrent-readback.json");
     expect(bundle.review.verdict).toBe("fail");
-    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(true);
+    expect(bundle.review.gaps.some((gap) => gap.includes("Adapter scorer failed the run"))).toBe(
+      true,
+    );
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.ok).toBe(true);
@@ -853,51 +1253,77 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
 
   it("fails review when a lane returns a terminal failed actor trace", async () => {
     const state = { worldVersion: 0 };
-    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (
-      index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined
-    ));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
+      index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined,
+    );
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain("2/3 actor(s) reached a terminal, engaged passed session");
+    expect(result.error?.message).toContain(
+      "2/3 actor(s) reached a terminal, engaged passed session",
+    );
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.summary).toContain("2/3 actor session(s) passed credibility checks");
     expect(bundle.review.summary).toContain("mission endpoint: 2/3 ended goal_satisfied");
-    expect(bundle.review.summary).toContain("completion reasons: actor_error 1/3, goal_satisfied 2/3");
+    expect(bundle.review.summary).toContain(
+      "completion reasons: actor_error 1/3, goal_satisfied 2/3",
+    );
     expect(bundle.review.summary).not.toContain("reached their goal");
     expect(bundle.review.gaps.some((gap) => gap.includes("persona-02"))).toBe(true);
     expect(bundle.sharedWorld?.outcomes).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ roleId: "persona-02", status: "failed", completionReason: "actor_error", ok: false })
-      ])
+        expect.objectContaining({
+          roleId: "persona-02",
+          status: "failed",
+          completionReason: "actor_error",
+          ok: false,
+        }),
+      ]),
     );
   });
 
   it("fails review when a lane self-reports a blocker while claiming goal_satisfied", async () => {
     const state = { worldVersion: 0 };
-    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
       index === 0
         ? {
             status: "passed",
             completionReason: "goal_satisfied",
-            reason: "I cannot complete the approval because the app shows an error: APP_USER_ID is not set."
+            reason:
+              "I cannot complete the approval because the app shows an error: APP_USER_ID is not set.",
           }
-        : undefined
-    ));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+        : undefined,
+    );
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.roles[0]?.ok).toBe(false);
     expect(result.roles[0]?.error?.message).toContain("not a credible pass");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8")) as RunBundle;
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.review.gaps.some((gap) => gap.includes("APP_USER_ID is not set"))).toBe(true);
-    expect(bundle.events.some((event) =>
-      event.level === "warn" && event.message.includes("NOT counted as a pass")
-    )).toBe(true);
+    expect(
+      bundle.events.some(
+        (event) => event.level === "warn" && event.message.includes("NOT counted as a pass"),
+      ),
+    ).toBe(true);
   });
 
   it("routes through runLab(sharedWorldHooks) to the concurrent backend", async () => {
@@ -914,28 +1340,50 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
   it("INDEPENDENT actors (FIX-11): one actor's harness error does NOT block the swarm or suppress overlap", async () => {
     const state = { worldVersion: 0 };
     // Actor index 1 throws AFTER entering the rendezvous (so all 3 windows still overlap).
-    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (index === 1 ? { throwMessage: "boom in actor 1" } : undefined));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
+      index === 1 ? { throwMessage: "boom in actor 1" } : undefined,
+    );
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     // The swarm did not run fully coherently → ok false, but the other actors STILL ran (no gate).
     expect(result.ok).toBe(false);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     // All 3 windows + outcomes intact (no pipeline-gate / fail-fast corrupting the "M of N").
     expect(bundle.sharedWorld.laneWindows).toHaveLength(3);
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
     const windows = bundle.sharedWorld.laneWindows as Array<{ startedAt: number; endedAt: number }>;
-    expect(windows.some((a, i) => windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt))).toBe(true);
+    expect(
+      windows.some((a, i) =>
+        windows.some((b, j) => i !== j && a.startedAt < b.endedAt && b.startedAt < a.endedAt),
+      ),
+    ).toBe(true);
     // 2 of 3 sessions passed the credibility checks; the failed one is recorded as data, not a
     // swarm-blocker. Mission and convergence claims remain separate in the review summary (#364).
-    const okCount = (bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).filter((o) => o.ok).length;
+    const okCount = (bundle.sharedWorld.outcomes as Array<{ ok: boolean }>).filter(
+      (o) => o.ok,
+    ).length;
     expect(okCount).toBe(2);
   });
 
   it("literal-scrubs a provisioned value injected into a forced error before persist", async () => {
     const state = { worldVersion: 0 };
     const secret = "opaque-pw-7f3a9c2e-do-not-leak";
-    const { hooks } = baseHooks(state, makeRendezvous(3), (index) => (index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
+      index === 0 ? { throwMessage: `connection failed using ${secret}` } : undefined,
+    );
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(false);
     for (const file of ["run.json", "review.json", "review.md", "events.ndjson"]) {
       const text = await readFile(path.join(cwd, ".humanish", "runs", result.runId, file), "utf8");
@@ -956,7 +1404,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     archiveSha256: "ef".repeat(32),
     fileCount: 5,
     totalBytes: 99,
-    git: { commit: "12".repeat(20), dirty: false }
+    git: { commit: "12".repeat(20), dirty: false },
   };
   const FAKE_ARCHIVE_BYTES = new TextEncoder().encode("fake-packed-archive-bytes").buffer;
 
@@ -964,7 +1412,7 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const lanes = Array.from({ length: roleCount }, (_unused, i) => ({
       id: `persona-${String(i + 1).padStart(2, "0")}`,
       persona: `persona-${i + 1}`,
-      entry: `/seat-${i + 1}`
+      entry: `/seat-${i + 1}`,
     }));
     const parsed = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
@@ -975,25 +1423,33 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
         topology: "shared-world",
         exposure: "synthetic",
         env: ["DATABASE_URL"],
-        serve: { install: "pnpm install", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+        serve: {
+          install: "pnpm install",
+          start: "pnpm start -H 0.0.0.0",
+          url: "http://127.0.0.1:3000/",
+        },
         state: {
           seed: [{ name: "migrate", command: "pnpm db:migrate" }],
           checkpoint: [
             { name: "notes-count", command: "psql query notes" },
-            { name: "reviews-count", command: "psql query reviews" }
-          ]
-        }
+            { name: "reviews-count", command: "psql query reviews" },
+          ],
+        },
       },
       actors: [{ type: "openai-computer-use", mission: "Use the shared app.", lanes }],
       execution: { target: "e2b-desktop", timeoutMs: 60_000, concurrency },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
   }
 
   it("dry-run: subject.source local-tree, no archiveSha256, verified concurrent contract bundle", async () => {
-    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(), dryRun: true });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: localTreeConcurrentConfig(),
+      dryRun: true,
+    });
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.subjectSandbox).toBeUndefined();
@@ -1012,7 +1468,12 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       packCalls.push(args);
       return { archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES };
     };
-    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: localTreeConcurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(result.error).toBeUndefined();
@@ -1028,17 +1489,22 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
     // The archive uploaded ONLY to the subject sandbox (sandboxes[0]), never any actor sandbox.
     const subjectUploads = sandboxes[0]!.calls.filter(
-      (call): call is [string, string, ArrayBuffer] => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz"
+      (call): call is [string, string, ArrayBuffer] =>
+        call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
     );
     expect(subjectUploads).toHaveLength(1);
     expect(subjectUploads[0]?.[2]).toBe(FAKE_ARCHIVE_BYTES);
     for (const actorSandbox of sandboxes.slice(1)) {
-      const actorUploads = actorSandbox.calls.filter((call) => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz");
+      const actorUploads = actorSandbox.calls.filter(
+        (call) => call[0] === "files.write" && call[1] === "/home/user/.humanish-source.tar.gz",
+      );
       expect(actorUploads).toHaveLength(0);
     }
 
     // The local-tree route never runs git: no clone script written on any sandbox.
-    const cloneWrites = sandboxes.flatMap((s) => s.calls).filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
+    const cloneWrites = sandboxes
+      .flatMap((s) => s.calls)
+      .filter(([name, , data]) => name === "files.write" && String(data).includes("git clone"));
     expect(cloneWrites).toHaveLength(0);
 
     // Provenance: source local-tree + archiveSha256 (the pin - ONE archive, no per-lane unanimity
@@ -1049,10 +1515,24 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
       commit: FIXED_ARCHIVE.git!.commit,
       dirty: false,
       envNames: ["DATABASE_URL"],
-      state: { provenance: "seeded", seed: [{ name: "migrate", when: "before-start", commandDigest: expect.any(String), ok: true, exitCode: 0, durationMs: expect.any(Number) }] }
+      state: {
+        provenance: "seeded",
+        seed: [
+          {
+            name: "migrate",
+            when: "before-start",
+            commandDigest: expect.any(String),
+            ok: true,
+            exitCode: 0,
+            durationMs: expect.any(Number),
+          },
+        ],
+      },
     };
     expect(result.subject).toEqual(expectedSubject);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.subject).toEqual(expectedSubject);
     expect(bundle.sharedWorld.plane.commit).toBe(FIXED_ARCHIVE.git!.commit);
     // The concurrency-on-pass gate still holds on the local-tree route (real overlap + a state delta).
@@ -1067,12 +1547,21 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));
     hooks.packLocalTree = async () => ({ archive: FIXED_ARCHIVE, buffer: FAKE_ARCHIVE_BYTES });
-    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: localTreeConcurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     const uploadStarted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.upload.started");
-    const extractCompleted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.extract.completed");
-    const readyCompleted = phaseEvents.findIndex((e) => e.type === "cua-lab.subject.ready.completed");
+    const extractCompleted = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.extract.completed",
+    );
+    const readyCompleted = phaseEvents.findIndex(
+      (e) => e.type === "cua-lab.subject.ready.completed",
+    );
     expect(uploadStarted).toBeGreaterThanOrEqual(0);
     expect(extractCompleted).toBeGreaterThan(uploadStarted);
     expect(readyCompleted).toBeGreaterThan(extractCompleted);
@@ -1083,9 +1572,16 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     const state = { worldVersion: 0 };
     const { hooks, created } = baseHooks(state, makeRendezvous(3));
     hooks.packLocalTree = async () => {
-      throw new Error("Local tree root produced zero packable entries after the always-on denylist.");
+      throw new Error(
+        "Local tree root produced zero packable entries after the always-on denylist.",
+      );
     };
-    const result = await runConcurrentSharedWorld({ cwd, config: localTreeConcurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: localTreeConcurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
@@ -1107,7 +1603,9 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
   it("engine re-enforcement rejects path-shaped role ids before loading a desktop", async () => {
     const valid = concurrentConfig(3, 3);
     const actor = valid.actors[0]!;
-    const lanes = actor.lanes!.map((lane, index) => index === 0 ? { ...lane, id: "..\\escape" } : lane);
+    const lanes = actor.lanes!.map((lane, index) =>
+      index === 0 ? { ...lane, id: "..\\escape" } : lane,
+    );
     const broken: LabConfig = { ...valid, actors: [{ ...actor, lanes }] };
     let desktopLoads = 0;
     const result = await runConcurrentSharedWorld({
@@ -1118,8 +1616,8 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
         loadDesktopModule: async () => {
           desktopLoads += 1;
           throw new Error("must not load");
-        }
-      }
+        },
+      },
     });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
@@ -1129,7 +1627,10 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
   it("engine re-enforcement: a local-tree config declaring subject.localTree.keep on the concurrent route fails closed (would orphan the N actor sandboxes)", async () => {
     const valid = localTreeConcurrentConfig();
-    const broken: LabConfig = { ...valid, subject: { ...valid.subject, localTree: { keep: true } } };
+    const broken: LabConfig = {
+      ...valid,
+      subject: { ...valid.subject, localTree: { keep: true } },
+    };
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
@@ -1138,7 +1639,10 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
 
   it("engine re-enforcement: a local-tree config with a non-e2b-desktop execution.target fails closed", async () => {
     const valid = localTreeConcurrentConfig();
-    const broken = { ...valid, execution: { ...valid.execution, target: "local" } } as unknown as LabConfig;
+    const broken = {
+      ...valid,
+      execution: { ...valid.execution, target: "local" },
+    } as unknown as LabConfig;
     const result = await runConcurrentSharedWorld({ cwd, config: broken, dryRun: false });
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
@@ -1161,14 +1665,24 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
   async function goodBundlePath(): Promise<{ runId: string; bundlePath: string }> {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(3, 3), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
     const baseline = await verifyRun(cwd, result.runId);
     expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return { runId: result.runId, bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json") };
+    return {
+      runId: result.runId,
+      bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
+    };
   }
 
-  async function mutateAndVerify(mutate: (bundle: Record<string, unknown>) => void): Promise<boolean> {
+  async function mutateAndVerify(
+    mutate: (bundle: Record<string, unknown>) => void,
+  ): Promise<boolean> {
     const { runId, bundlePath } = await goodBundlePath();
     const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
     mutate(bundle);
@@ -1178,8 +1692,13 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
 
   it("(a) a 'concurrent' bundle whose laneWindows do NOT overlap", async () => {
     const ok = await mutateAndVerify((bundle) => {
-      const sw = bundle.sharedWorld as { laneWindows: Array<{ startedAt: number; endedAt: number }> };
-      sw.laneWindows.forEach((w, i) => { w.startedAt = i * 1000; w.endedAt = i * 1000 + 10; }); // sequential, no overlap
+      const sw = bundle.sharedWorld as {
+        laneWindows: Array<{ startedAt: number; endedAt: number }>;
+      };
+      sw.laneWindows.forEach((w, i) => {
+        w.startedAt = i * 1000;
+        w.endedAt = i * 1000 + 10;
+      }); // sequential, no overlap
     });
     expect(ok).toBe(false);
   });
@@ -1187,7 +1706,9 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
   it("(b) missing best-effort-causal-attribution", async () => {
     const ok = await mutateAndVerify((bundle) => {
       const sw = bundle.sharedWorld as { attributionLimits: string[] };
-      sw.attributionLimits = sw.attributionLimits.filter((l) => l !== "best-effort-causal-attribution");
+      sw.attributionLimits = sw.attributionLimits.filter(
+        (l) => l !== "best-effort-causal-attribution",
+      );
     });
     expect(ok).toBe(false);
   });
@@ -1227,7 +1748,9 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
 
   it("(f) a persona with goal_satisfied + zero engagement", async () => {
     const ok = await mutateAndVerify((bundle) => {
-      const streams = bundle.streams as Array<{ actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] } }>;
+      const streams = bundle.streams as Array<{
+        actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] };
+      }>;
       const stream = streams.find((s) => s.actor)!;
       stream.actor!.completionReason = "goal_satisfied";
       stream.actor!.counts = { actions: 0, messages: 0, screenshots: 0 };
@@ -1239,7 +1762,14 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
   it("(g) the topologyMode discriminator is enforced (sequential timeline smuggled onto a concurrent bundle)", async () => {
     const ok = await mutateAndVerify((bundle) => {
       const sw = bundle.sharedWorld as Record<string, unknown>;
-      sw.timeline = [{ kind: "checkpoint", name: "cp-baseline", digest: "abc123def4567890", deltaFromPrev: false }];
+      sw.timeline = [
+        {
+          kind: "checkpoint",
+          name: "cp-baseline",
+          digest: "abc123def4567890",
+          deltaFromPrev: false,
+        },
+      ];
     });
     expect(ok).toBe(false);
   });
@@ -1263,18 +1793,35 @@ describe("concurrent physical geometry guard", () => {
     const state = { worldVersion: 0 };
     const { hooks } = baseHooks(state, async () => undefined);
     const handler = makeCommandHandler(state);
-    const { module, sandboxes, killed } = makeFakeModule((command) => command.includes("xwininfo -id")
-      ? { stdout: "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n" }
-      : handler(command), false);
+    const { module, sandboxes, killed } = makeFakeModule(
+      (command) =>
+        command.includes("xwininfo -id")
+          ? {
+              stdout:
+                "Absolute upper-left X: 0\nAbsolute upper-left Y: 32\nWidth: 1440\nHeight: 950\nMap State: IsViewable\n",
+            }
+          : handler(command),
+      false,
+    );
     let participantSessions = 0;
     hooks.loadDesktopModule = async () => module;
-    hooks.runSession = async () => { participantSessions++; throw new Error("participant must not start"); };
-    const result = await runConcurrentSharedWorld({ cwd, config: concurrentConfig(2, 2), dryRun: false, hooks });
+    hooks.runSession = async () => {
+      participantSessions++;
+      throw new Error("participant must not start");
+    };
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(2, 2),
+      dryRun: false,
+      hooks,
+    });
     expect(result.ok).toBe(false);
     expect(participantSessions).toBe(0);
     expect(sandboxes).toHaveLength(3);
     expect(killed.sort()).toEqual(sandboxes.map((sandbox) => sandbox.sandboxId).sort());
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     for (const stream of bundle.streams) {
       expect(stream.desktopGeometry.warnings.join(" ")).toContain("outside the captured");
     }
@@ -1283,7 +1830,12 @@ describe("concurrent physical geometry guard", () => {
 
 describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
   function loadLiveLab(): LabConfig {
-    const raw = parse(readFileSync(path.join(process.cwd(), "humanish/labs/shared-world-concurrent-live.yaml"), "utf8"));
+    const raw = parse(
+      readFileSync(
+        path.join(process.cwd(), "humanish/labs/shared-world-concurrent-live.yaml"),
+        "utf8",
+      ),
+    );
     const parsed = parseLabConfig(raw);
     if (!parsed.ok) throw new Error(parsed.error.message);
     return parsed.config;
@@ -1301,10 +1853,12 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect((config.subject.state?.seed ?? []).length).toBeGreaterThan(0);
     expect((config.subject.state?.checkpoint ?? []).length).toBeGreaterThan(0);
     expect(config.actors[0]?.lanes).toHaveLength(3);
-    expect(config.actors[0]?.lanes?.map((lane) => [lane.actorType, lane.surface, lane.caseGroup])).toEqual([
+    expect(
+      config.actors[0]?.lanes?.map((lane) => [lane.actorType, lane.surface, lane.caseGroup]),
+    ).toEqual([
       ["planner", "task-board", "board-001"],
       ["coordinator", "task-board", "board-001"],
-      ["contributor", "task-board", "board-001"]
+      ["contributor", "task-board", "board-001"],
     ]);
     expect(config.execution?.concurrency).toBe(3);
   });
@@ -1314,19 +1868,42 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(outcome.backend).toBe("concurrent-shared-world");
     if (outcome.backend !== "concurrent-shared-world") return;
     expect(outcome.result.ok).toBe(true);
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.attributionClass).toBe("shared-world");
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
-    expect(bundle.sharedWorld.laneWindows.map((lane: { actorType?: string; surface?: string; caseGroup?: string }) => [lane.actorType, lane.surface, lane.caseGroup])).toEqual([
+    expect(
+      bundle.sharedWorld.laneWindows.map(
+        (lane: { actorType?: string; surface?: string; caseGroup?: string }) => [
+          lane.actorType,
+          lane.surface,
+          lane.caseGroup,
+        ],
+      ),
+    ).toEqual([
       ["planner", "task-board", "board-001"],
       ["coordinator", "task-board", "board-001"],
-      ["contributor", "task-board", "board-001"]
+      ["contributor", "task-board", "board-001"],
     ]);
-    const observerData = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "observer", "observer-data.json"), "utf8"));
-    expect(observerData.laneGroups.map((lane: { actorType?: string; surface?: string; caseGroup?: string }) => [lane.actorType, lane.surface, lane.caseGroup])).toEqual([
+    const observerData = JSON.parse(
+      await readFile(
+        path.join(cwd, ".humanish", "runs", outcome.result.runId, "observer", "observer-data.json"),
+        "utf8",
+      ),
+    );
+    expect(
+      observerData.laneGroups.map(
+        (lane: { actorType?: string; surface?: string; caseGroup?: string }) => [
+          lane.actorType,
+          lane.surface,
+          lane.caseGroup,
+        ],
+      ),
+    ).toEqual([
       ["planner", "task-board", "board-001"],
       ["coordinator", "task-board", "board-001"],
-      ["contributor", "task-board", "board-001"]
+      ["contributor", "task-board", "board-001"],
     ]);
     const verify = await verifyRun(cwd, outcome.result.runId);
     expect(verify.ok).toBe(true);
@@ -1336,7 +1913,12 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
   it("drives this exact committed config through the REAL orchestrator on a fake N+1 substrate ($0): one plane, real overlap, a state delta, verify ok", async () => {
     const state = { worldVersion: 0 };
     const { hooks, created, killed, sandboxes } = baseHooks(state, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({ cwd, config: loadLiveLab(), dryRun: false, hooks });
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: loadLiveLab(),
+      dryRun: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     // ONE subject sandbox + 3 actor sandboxes, ALL torn down BY id (N+1).
@@ -1345,7 +1927,9 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
     expect(result.subjectSandbox?.killed).toBe(true);
     expect(result.overlapProven).toBe(true);
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"));
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    );
     expect(bundle.sharedWorld.topologyMode).toBe("concurrent");
     expect(bundle.sharedWorld.outcomes).toHaveLength(3);
     const series = bundle.sharedWorld.stateSeries as Array<{ digest: string }>;
@@ -1358,12 +1942,18 @@ describe("committed live-fixture lab (deterministic $0 wiring proof)", () => {
 
 describe("lobby-code handoff relays (CDP-independent: narration + vision-off-frame)", () => {
   it("extractLobbyCodeFromNarration reads a /lobby/CODE or a labeled UPPERCASE code, never lowercase prose", () => {
-    expect(extractLobbyCodeFromNarration("I'm in! The link is https://lobby-trivia.example.test/en/lobby/UDYCPH now.")).toBe("UDYCPH");
+    expect(
+      extractLobbyCodeFromNarration(
+        "I'm in! The link is https://lobby-trivia.example.test/en/lobby/UDYCPH now.",
+      ),
+    ).toBe("UDYCPH");
     expect(extractLobbyCodeFromNarration("lobby code: MHDTP2")).toBe("MHDTP2");
     expect(extractLobbyCodeFromNarration("LOBBY_CODE=AB8K9Q done")).toBe("AB8K9Q");
     // A wrong latch fails the whole run: ordinary lowercase words after "lobby code" must NOT latch,
     // even though the label match is case-insensitive (regression: the /i flag used to grab them).
-    expect(extractLobbyCodeFromNarration("I clicked the lobby code screen to check")).toBeUndefined();
+    expect(
+      extractLobbyCodeFromNarration("I clicked the lobby code screen to check"),
+    ).toBeUndefined();
     expect(extractLobbyCodeFromNarration("the lobby code button was there")).toBeUndefined();
     expect(extractLobbyCodeFromNarration("no code here")).toBeUndefined();
     expect(extractLobbyCodeFromNarration(undefined)).toBeUndefined();
@@ -1373,7 +1963,9 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     expect(parseLobbyCodeReply("UDYCPH")).toBe("UDYCPH");
     expect(parseLobbyCodeReply("  mhdtp2 ")).toBe("MHDTP2");
     expect(parseLobbyCodeReply("/lobby/QW3RTY")).toBe("QW3RTY");
-    expect(parseLobbyCodeReply("https://lobby-trivia.example.test/en/lobby/QW3RTY?x=1")).toBe("QW3RTY");
+    expect(parseLobbyCodeReply("https://lobby-trivia.example.test/en/lobby/QW3RTY?x=1")).toBe(
+      "QW3RTY",
+    );
     // A wrong latch fails the whole run, so these must NOT match — a miss just retries next frame.
     expect(parseLobbyCodeReply("The code is ABC234")).toBeUndefined();
     expect(parseLobbyCodeReply("I see a home SCREEN")).toBeUndefined();
@@ -1386,7 +1978,9 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
   it("extractResponsesOutputText handles the output_text convenience field and the output[] array", () => {
     expect(extractResponsesOutputText({ output_text: "AB8K9Q" })).toBe("AB8K9Q");
     expect(
-      extractResponsesOutputText({ output: [{ type: "message", content: [{ type: "output_text", text: "ZZ4T5U" }] }] })
+      extractResponsesOutputText({
+        output: [{ type: "message", content: [{ type: "output_text", text: "ZZ4T5U" }] }],
+      }),
     ).toBe("ZZ4T5U");
     expect(extractResponsesOutputText({})).toBeUndefined();
     expect(extractResponsesOutputText(null)).toBeUndefined();
@@ -1397,7 +1991,11 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     const calls: Array<{ url: string; body: string; signal: unknown }> = [];
     const okFetch = (async (url: string, init: { body: string; signal: unknown }) => {
       calls.push({ url, body: init.body, signal: init.signal });
-      return { ok: true, status: 200, json: async () => ({ output_text: "QW3RTY" }) } as unknown as Response;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ output_text: "QW3RTY" }),
+      } as unknown as Response;
     }) as unknown as typeof fetch;
     const code = await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: okFetch });
     expect(code).toBe("QW3RTY");
@@ -1409,7 +2007,12 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
     // wedge the caller's in-flight guard.
     expect(calls[0]!.signal).toBeInstanceOf(AbortSignal);
 
-    const notOk = (async () => ({ ok: false, status: 500, json: async () => ({}) } as unknown as Response)) as unknown as typeof fetch;
+    const notOk = (async () =>
+      ({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      }) as unknown as Response) as unknown as typeof fetch;
     expect(await readLobbyCodeFromFrame(frame, "sk-test", { fetchFn: notOk })).toBeUndefined();
 
     const threw = (async () => {
@@ -1424,7 +2027,9 @@ describe("lobby-code handoff relays (CDP-independent: narration + vision-off-fra
       return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
     }) as unknown as typeof fetch;
     expect(await readLobbyCodeFromFrame(frame, "", { fetchFn: spy })).toBeUndefined();
-    expect(await readLobbyCodeFromFrame(Buffer.alloc(0), "sk-test", { fetchFn: spy })).toBeUndefined();
+    expect(
+      await readLobbyCodeFromFrame(Buffer.alloc(0), "sk-test", { fetchFn: spy }),
+    ).toBeUndefined();
     expect(called).toBe(false);
   });
 });
@@ -1438,21 +2043,34 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
   config.actors[0]!.lanes![1]!.reasoningEffort = "high";
   const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
   delete hooks.runSession;
-  hooks.prepareDesktop = async desktop => {
-    desktop.screenshot = async () => new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 })));
+  hooks.prepareDesktop = async (desktop) => {
+    desktop.screenshot = async () =>
+      new Uint8Array(PNG.sync.write(new PNG({ width: 4, height: 4 })));
   };
   hooks.readLobbyCodeFromFrame = async () => "AB2CD9";
-  const captured = JSON.parse(readFileSync(new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url), "utf8"));
+  const captured = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+      "utf8",
+    ),
+  );
   const bodies: Array<{ max_output_tokens?: number; reasoning?: { effort?: string } }> = [];
   vi.stubGlobal("fetch", async (_url: unknown, init: { body: string }) => {
     bodies.push(JSON.parse(init.body));
-    return { ok: true, status: 200, json: async () => captured, text: async () => JSON.stringify(captured) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => captured,
+      text: async () => JSON.stringify(captured),
+    };
   });
   try {
     const result = await runConcurrentSharedWorld({ cwd, config, dryRun: false, hooks });
     expect(bodies).toHaveLength(3);
-    expect(bodies.map(body => body.max_output_tokens)).toEqual([8192, 8192, 8192]);
-    expect(bodies.map(body => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
+    expect(bodies.map((body) => body.max_output_tokens)).toEqual([8192, 8192, 8192]);
+    expect(bodies.map((body) => body.reasoning?.effort).sort()).toEqual(["high", "low", "low"]);
     expect(result.roles).toHaveLength(3);
-  } finally { vi.unstubAllGlobals(); }
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

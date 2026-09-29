@@ -20,12 +20,15 @@ import { build } from "esbuild";
 const stubOptionalPeers = {
   name: "stub-optional-peers",
   setup(build) {
-    build.onResolve({ filter: /^react-devtools-core$/ }, () => ({ path: "react-devtools-core", namespace: "stub" }));
+    build.onResolve({ filter: /^react-devtools-core$/ }, () => ({
+      path: "react-devtools-core",
+      namespace: "stub",
+    }));
     build.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
       contents: "export default {}; export const connectToDevTools = () => {};",
-      loader: "js"
+      loader: "js",
     }));
-  }
+  },
 };
 
 const result = await build({
@@ -47,11 +50,11 @@ const result = await build({
   banner: {
     js: [
       "import { createRequire as __humanishCreateRequire } from 'node:module';",
-      "const require = __humanishCreateRequire(import.meta.url);"
-    ].join("\n")
+      "const require = __humanishCreateRequire(import.meta.url);",
+    ].join("\n"),
   },
   metafile: true,
-  logLevel: "warning"
+  logLevel: "warning",
 });
 
 const bytes = Object.values(result.metafile.outputs)[0]?.bytes ?? 0;

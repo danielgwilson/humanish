@@ -27,9 +27,9 @@ The fixture contract keeps three boundaries explicit:
 
 The committed fixture set lives under `adapters/fixtures/`.
 
-| Fixture | Proves | Required artifacts |
-| --- | --- | --- |
-| `post-auth-return-dry-run` | A web-app adapter can keep upload, studio, and auth-return milestones adapter-owned while emitting a product-neutral dry-run bundle. | `adapter.json`, `persona.json`, `scenario.json`, `milestones.json`, `run-bundle.json` |
+| Fixture                       | Proves                                                                                                                                                                                            | Required artifacts                                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `post-auth-return-dry-run`    | A web-app adapter can keep upload, studio, and auth-return milestones adapter-owned while emitting a product-neutral dry-run bundle.                                                              | `adapter.json`, `persona.json`, `scenario.json`, `milestones.json`, `run-bundle.json`                                               |
 | `terminal-feedback-lifecycle` | A terminal-first adapter can emit sanitized transcript evidence, issue-draft material, cost/redaction policy, verification checks, and feedback lifecycle proof without browser-only assumptions. | `adapter.json`, `policy.json`, `run-bundle.json`, `feedback-draft.json`, `verify-result.json`, `transcripts/sanitized-terminal.txt` |
 
 ## Promotion Gates

@@ -6,7 +6,12 @@ import path from "node:path";
 import { feedbackProofCommands } from "./feedback-proof.js";
 
 import { runDesktopCommandOrThrow } from "./command-failure.js";
-import { beginRunStatus, type RunLabProvenance, type RunStatusHandle , withRunStatusScope} from "./run-status.js";
+import {
+  beginRunStatus,
+  type RunLabProvenance,
+  type RunStatusHandle,
+  withRunStatusScope,
+} from "./run-status.js";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -17,13 +22,13 @@ import type {
   E2BCommandResult,
   E2BCommandRunOptions,
   E2BDesktopSandbox,
-  E2BSandboxInfo
+  E2BSandboxInfo,
 } from "./e2b-desktop-launch.js";
 import {
   DEFAULT_OSS_REPOS,
   normalizeOssRepoSlugs,
   repoSlug,
-  validateOssRepoSlug
+  validateOssRepoSlug,
 } from "./oss-lab.js";
 import { redactOssRemoteTelemetryText } from "./oss-remote-telemetry.js";
 import {
@@ -31,17 +36,15 @@ import {
   prepareExclusiveHumanishStorageDirectory,
   prepareReusableHumanishStorageDirectory,
   type PreparedRunArtifactPaths,
-  validatePreparedRunArtifactPaths
+  validatePreparedRunArtifactPaths,
 } from "./run-paths.js";
-import {
-  writeContainedOutputFile
-} from "./selected-output-paths.js";
+import { writeContainedOutputFile } from "./selected-output-paths.js";
 import {
   buildRunSource,
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
   RUN_BUNDLE_SCHEMA,
-  runDryRun
+  runDryRun,
 } from "./run.js";
 import type {
   ReviewSummary,
@@ -52,7 +55,7 @@ import type {
   RunSimulation,
   RunSetupQualitySnapshot,
   RunStream,
-  RunStreamCompletion
+  RunStreamCompletion,
 } from "./run.js";
 import { scoreOssMetaMeaningfulUse } from "./oss-meta-lab-scoring.js";
 
@@ -133,8 +136,22 @@ interface OssMetaLabBootstrap {
 }
 
 export type OssMetaLabCompletionStatus = "running" | "passed" | "failed" | "blocked" | "timed_out";
-export type OssMetaLabAppStatus = "not_started" | "running" | "blocked" | "failed" | "missing" | "unknown";
-export type OssMetaLabActorStatus = "not_started" | "running" | "passed" | "failed" | "blocked" | "timed_out" | "suspended" | "unknown";
+export type OssMetaLabAppStatus =
+  | "not_started"
+  | "running"
+  | "blocked"
+  | "failed"
+  | "missing"
+  | "unknown";
+export type OssMetaLabActorStatus =
+  | "not_started"
+  | "running"
+  | "passed"
+  | "failed"
+  | "blocked"
+  | "timed_out"
+  | "suspended"
+  | "unknown";
 export type OssMetaLabVisualStatus = "not_started" | "visible" | "blocked" | "unknown";
 
 export interface OssMetaLabCompletion {
@@ -332,7 +349,7 @@ const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 const liveRuntimeByResult = new WeakMap<OssMetaLabResult, OssMetaLabRuntime>();
 const OSS_META_LAB_PROVIDER_METADATA = {
   mode: "oss-meta-lab",
-  tool: "humanish"
+  tool: "humanish",
 } as const;
 const OSS_META_LAB_REMOTE_ENV_NAMES = [
   "HUMANISH_OSS_META_ACTOR_FIRST",
@@ -340,7 +357,7 @@ const OSS_META_LAB_REMOTE_ENV_NAMES = [
   "HUMANISH_OSS_META_HOST_CODEX_ACTOR",
   "HUMANISH_OSS_META_CODEX_APP_SERVER",
   "HUMANISH_OSS_META_ACTOR_TIMEOUT_MS",
-  "HUMANISH_OSS_META_REQUIRE_ACTOR"
+  "HUMANISH_OSS_META_REQUIRE_ACTOR",
 ] as const;
 const OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER = "CODEX_API_KEY or CODEX_ACCESS_TOKEN";
 const OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER = "Codex actor API quota/auth preflight";
@@ -356,7 +373,7 @@ interface ExecFileAsyncOptions {
 type ExecFileAsyncImpl = (
   file: string,
   args: readonly string[],
-  options: ExecFileAsyncOptions
+  options: ExecFileAsyncOptions,
 ) => Promise<{ stderr: string | Buffer; stdout: string | Buffer }>;
 
 interface OssMetaLabOutcome {
@@ -384,7 +401,7 @@ export function buildOssRepoAssignments(repos: string[], count: number): OssMeta
       repo,
       scenarioId: `oss-meta-${repoSlug(repo)}`,
       simId: `oss-${String(index + 1).padStart(2, "0")}`,
-      streamId: `oss-${String(index + 1).padStart(2, "0")}-desktop`
+      streamId: `oss-${String(index + 1).padStart(2, "0")}-desktop`,
     };
   });
 }
@@ -404,25 +421,32 @@ function githubTokenFromEnv(env: NodeJS.ProcessEnv): string {
   return env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim() || env.GITHUB_PAT?.trim() || "";
 }
 
-async function createGitHubAskPassEnv(root: string, env: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
+async function createGitHubAskPassEnv(
+  root: string,
+  env: NodeJS.ProcessEnv,
+): Promise<NodeJS.ProcessEnv> {
   await mkdir(root, { recursive: true });
   const askPassPath = path.join(root, `git-askpass-${randomBytes(4).toString("hex")}.sh`);
-  await writeFile(askPassPath, [
-    "#!/usr/bin/env bash",
-    "case \"$1\" in",
-    "  *Username*) echo \"x-access-token\" ;;",
-    "  *Password*) echo \"${HUMANISH_GITHUB_TOKEN_RUNTIME:-}\" ;;",
-    "  *) echo \"\" ;;",
-    "esac",
-    ""
-  ].join("\n"), { encoding: "utf8", mode: 0o700 });
+  await writeFile(
+    askPassPath,
+    [
+      "#!/usr/bin/env bash",
+      'case "$1" in',
+      '  *Username*) echo "x-access-token" ;;',
+      '  *Password*) echo "${HUMANISH_GITHUB_TOKEN_RUNTIME:-}" ;;',
+      '  *) echo "" ;;',
+      "esac",
+      "",
+    ].join("\n"),
+    { encoding: "utf8", mode: 0o700 },
+  );
 
   const token = githubTokenFromEnv(env);
   return {
     ...gitCredentialIsolatedEnv(env),
     GIT_ASKPASS: askPassPath,
     GIT_TERMINAL_PROMPT: "0",
-    ...(token ? { HUMANISH_GITHUB_TOKEN_RUNTIME: token } : {})
+    ...(token ? { HUMANISH_GITHUB_TOKEN_RUNTIME: token } : {}),
   };
 }
 
@@ -431,7 +455,7 @@ function gitEnvWithoutGitHubToken(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     ...gitCredentialIsolatedEnv(env),
     GIT_ASKPASS: "false",
     SSH_ASKPASS: "false",
-    GIT_TERMINAL_PROMPT: "0"
+    GIT_TERMINAL_PROMPT: "0",
   };
 }
 
@@ -452,7 +476,7 @@ function gitCredentialIsolatedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     ...isolated,
     GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_NOSYSTEM: "1",
-    GIT_TERMINAL_PROMPT: "0"
+    GIT_TERMINAL_PROMPT: "0",
   };
 }
 
@@ -461,13 +485,13 @@ async function runGitRepoAccessProbe(
   cwd: string,
   repoUrl: string,
   env: NodeJS.ProcessEnv,
-  sourceEnv: NodeJS.ProcessEnv
+  sourceEnv: NodeJS.ProcessEnv,
 ): Promise<void> {
   await execImpl("git", ["-c", "credential.helper=", "ls-remote", "--exit-code", repoUrl, "HEAD"], {
     cwd,
     env,
     maxBuffer: 256 * 1024,
-    timeout: readPositiveInt(sourceEnv.HUMANISH_OSS_META_REPO_PREFLIGHT_TIMEOUT_MS, 45_000)
+    timeout: readPositiveInt(sourceEnv.HUMANISH_OSS_META_REPO_PREFLIGHT_TIMEOUT_MS, 45_000),
   });
 }
 
@@ -486,7 +510,9 @@ export async function preflightOssMetaRepoAccess(args: {
 
   try {
     await mkdir(root.physicalPath, { recursive: true });
-    const tokenGitEnv = tokenPresent ? await createGitHubAskPassEnv(root.physicalPath, args.env) : undefined;
+    const tokenGitEnv = tokenPresent
+      ? await createGitHubAskPassEnv(root.physicalPath, args.env)
+      : undefined;
     const anonymousGitEnv = gitEnvWithoutGitHubToken(args.env);
     const results: OssMetaLabRepoAccessPreflight[] = [];
 
@@ -495,7 +521,13 @@ export async function preflightOssMetaRepoAccess(args: {
 
       let anonymousError: unknown;
       try {
-        await runGitRepoAccessProbe(execImpl, root.physicalPath, repoUrl, anonymousGitEnv, args.env);
+        await runGitRepoAccessProbe(
+          execImpl,
+          root.physicalPath,
+          repoUrl,
+          anonymousGitEnv,
+          args.env,
+        );
         results.push({
           ok: true,
           reason: tokenPresent
@@ -503,7 +535,7 @@ export async function preflightOssMetaRepoAccess(args: {
             : "GitHub repo clone access preflight passed without token auth.",
           repo: assignment.repo,
           streamId: assignment.streamId,
-          tokenPresent
+          tokenPresent,
         });
         continue;
       } catch (error) {
@@ -516,10 +548,11 @@ export async function preflightOssMetaRepoAccess(args: {
           await runGitRepoAccessProbe(execImpl, root.physicalPath, repoUrl, tokenGitEnv, args.env);
           results.push({
             ok: true,
-            reason: "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
+            reason:
+              "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
             repo: assignment.repo,
             streamId: assignment.streamId,
-            tokenPresent: true
+            tokenPresent: true,
           });
           continue;
         } catch (error) {
@@ -534,11 +567,11 @@ export async function preflightOssMetaRepoAccess(args: {
           redactRepoName: args.redactRepoNames === true,
           repo: assignment.repo,
           tokenError,
-          tokenPresent
+          tokenPresent,
         }),
         repo: assignment.repo,
         streamId: assignment.streamId,
-        tokenPresent
+        tokenPresent,
       });
     }
 
@@ -556,17 +589,24 @@ async function pinCleanupDirectory(directoryInput: string): Promise<PinnedCleanu
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
     throw new Error("OSS meta-lab cleanup roots must be physical directories.");
   }
-  return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino, physicalPath });
+  return Object.freeze({
+    birthtimeNs: stats.birthtimeNs,
+    dev: stats.dev,
+    ino: stats.ino,
+    physicalPath,
+  });
 }
 
 async function validatePinnedCleanupDirectory(directory: PinnedCleanupDirectory): Promise<boolean> {
   const stats = await lstat(directory.physicalPath, { bigint: true });
-  return !stats.isSymbolicLink()
-    && stats.isDirectory()
-    && stats.birthtimeNs === directory.birthtimeNs
-    && stats.dev === directory.dev
-    && stats.ino === directory.ino
-    && await realpath(directory.physicalPath) === directory.physicalPath;
+  return (
+    !stats.isSymbolicLink() &&
+    stats.isDirectory() &&
+    stats.birthtimeNs === directory.birthtimeNs &&
+    stats.dev === directory.dev &&
+    stats.ino === directory.ino &&
+    (await realpath(directory.physicalPath)) === directory.physicalPath
+  );
 }
 
 export async function preflightOssMetaActorApiKey(args: {
@@ -577,7 +617,7 @@ export async function preflightOssMetaActorApiKey(args: {
   if (!apiKey) {
     return {
       ok: true,
-      reason: "No API-key actor auth present; preflight skipped."
+      reason: "No API-key actor auth present; preflight skipped.",
     };
   }
 
@@ -588,37 +628,40 @@ export async function preflightOssMetaActorApiKey(args: {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        input: "Return a JSON object exactly like {\"status\":\"passed\"}. This is an actor auth preflight.",
+        input:
+          'Return a JSON object exactly like {"status":"passed"}. This is an actor auth preflight.',
         max_output_tokens: 32,
         model,
         text: {
           format: {
-            type: "json_object"
-          }
-        }
-      })
+            type: "json_object",
+          },
+        },
+      }),
     });
     if (response.ok) {
       return {
         ok: true,
         reason: `OpenAI actor API-key preflight passed for ${model}.`,
-        status: response.status
+        status: response.status,
       };
     }
 
     const body = await response.text().catch(() => "");
     return {
       ok: false,
-      reason: compactError(`OpenAI actor API-key preflight failed with HTTP ${response.status}: ${body}`),
-      status: response.status
+      reason: compactError(
+        `OpenAI actor API-key preflight failed with HTTP ${response.status}: ${body}`,
+      ),
+      status: response.status,
     };
   } catch (error) {
     return {
       ok: false,
-      reason: compactError(error)
+      reason: compactError(error),
     };
   }
 }
@@ -646,7 +689,7 @@ async function createHostActorPlans(_args: {
   runId: string;
 }): Promise<OssMetaLabHostActorPlanResult[]> {
   throw new Error(
-    "Host actor planning is disabled until live OSS meta-lab execution has an isolated credential boundary."
+    "Host actor planning is disabled until live OSS meta-lab execution has an isolated credential boundary.",
   );
 }
 
@@ -664,16 +707,25 @@ function repoAccessFailureReason(args: {
   const authHint = args.tokenPresent
     ? "A GitHub token was present, but `git ls-remote` could not read the repo with token or anonymous access. Check token repo access and scopes."
     : "No GitHub token was present. Public repos should pass unauthenticated; private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT with read access.";
-  return `${authHint} Anonymous access failed: ${anonymous}${token}`.replace(/\s+/g, " ").trim().slice(0, 420);
+  return `${authHint} Anonymous access failed: ${anonymous}${token}`
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 420);
 }
 
 function sanitizeRepoAccessError(error: unknown, repo: string, redactRepoName: boolean): string {
   let message = compactError(error)
     .replace(/github_pat_[A-Za-z0-9_]{12,}/g, "[redacted-github-token]")
-    .replace(/\bHUMANISH_GITHUB_TOKEN_RUNTIME=[^\s]+/g, "HUMANISH_GITHUB_TOKEN_RUNTIME=[redacted-github-token]");
+    .replace(
+      /\bHUMANISH_GITHUB_TOKEN_RUNTIME=[^\s]+/g,
+      "HUMANISH_GITHUB_TOKEN_RUNTIME=[redacted-github-token]",
+    );
   if (redactRepoName) {
     message = message
-      .replaceAll(`https://github.com/${repo}.git`, "https://github.com/[redacted-authorized-repo].git")
+      .replaceAll(
+        `https://github.com/${repo}.git`,
+        "https://github.com/[redacted-authorized-repo].git",
+      )
       .replaceAll(`github.com/${repo}.git`, "github.com/[redacted-authorized-repo].git")
       .replaceAll(repo, "[redacted-authorized-repo]");
   }
@@ -694,7 +746,7 @@ function blockedLiveDesktopsForRepoAccess(args: {
     const preflight = preflightByStream.get(assignment.streamId);
     const reason = preflight?.ok
       ? `GitHub repo clone access preflight passed for ${repoLabel}, but live launch was skipped because ${failedCount} assigned repo${failedCount === 1 ? "" : "s"} failed preflight.`
-      : preflight?.reason ?? `GitHub repo clone access preflight did not run for ${repoLabel}.`;
+      : (preflight?.reason ?? `GitHub repo clone access preflight did not run for ${repoLabel}.`);
 
     return {
       completion: {
@@ -709,11 +761,11 @@ function blockedLiveDesktopsForRepoAccess(args: {
         status: "blocked",
         visualReason: "No headed desktop was launched before repo clone access was proven.",
         visualStatus: "not_started",
-        visualWindowCount: 0
+        visualWindowCount: 0,
       },
       repo: repoLabel,
       simId: assignment.simId,
-      streamId: assignment.streamId
+      streamId: assignment.streamId,
     };
   });
 }
@@ -771,12 +823,12 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "HUMANISH_INVALID_OSS_COUNT",
-        message: "--count must be a positive integer."
+        message: "--count must be a positive integer.",
       },
       liveRequested,
       repos,
       sandboxes: [],
-      warnings
+      warnings,
     };
   }
 
@@ -791,19 +843,23 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "HUMANISH_INVALID_OSS_REPO",
-        message: `Only GitHub owner/repo slugs are supported: ${invalid}`
+        message: `Only GitHub owner/repo slugs are supported: ${invalid}`,
       },
       liveRequested,
       repos,
       sandboxes: [],
-      warnings
+      warnings,
     };
   }
 
-  const redactRepoNames = options.redactRepoNames ?? (liveRequested && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length)));
+  const redactRepoNames =
+    options.redactRepoNames ??
+    (liveRequested && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length)));
   const assignments = buildOssRepoAssignments(repos, count);
   const publicAssignments = redactAssignments(assignments, redactRepoNames);
-  const publicRepos = redactRepoNames ? publicAssignments.map((assignment) => assignment.repo) : repos;
+  const publicRepos = redactRepoNames
+    ? publicAssignments.map((assignment) => assignment.repo)
+    : repos;
 
   if (liveRequested) {
     return {
@@ -815,26 +871,30 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED",
-        message: "Live OSS meta-lab execution is unavailable because repository-derived instructions require an isolated credential boundary. Use --dry-run."
+        message:
+          "Live OSS meta-lab execution is unavailable because repository-derived instructions require an isolated credential boundary. Use --dry-run.",
       },
       liveRequested,
       repos: publicRepos,
       sandboxes: [],
-      warnings
+      warnings,
     };
   }
 
-  const codexAppServerMode = codexAppServerModeRequested(process.env, options.codexAppServer === true);
+  const codexAppServerMode = codexAppServerModeRequested(
+    process.env,
+    options.codexAppServer === true,
+  );
   const hostActorMode = liveRequested && hostCodexActorRequested(process.env);
   const missingKeys = missingLiveKeys(process.env);
   const runId = options.runId ?? makeMetaRunId();
   const physicalCwd = await realpath(cwd);
   const runResult: RunResult = await runDryRun({
     cwd: physicalCwd,
-      ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
     dryRun: true,
     runId,
-    simCount: count
+    simCount: count,
   });
 
   if (!runResult.ok || !runResult.runId) {
@@ -847,12 +907,12 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       dryRun,
       error: {
         code: "HUMANISH_META_RUN_FAILED",
-        message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle."
+        message: runResult.error?.message ?? "Failed to create OSS meta-lab run bundle.",
       },
       liveRequested,
       repos: publicRepos,
       sandboxes: [],
-      warnings: [...warnings, ...runResult.warnings]
+      warnings: [...warnings, ...runResult.warnings],
     };
   }
 
@@ -863,7 +923,7 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
   const runStatus: RunStatusHandle = beginRunStatus(preparedRunPaths, {
     runId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = preparedRunPaths;
   const createdAt = new Date().toISOString();
@@ -871,7 +931,7 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     capturedAt: createdAt,
     cwd: physicalCwd,
     humanishSource: "present",
-    packageName: "humanish"
+    packageName: "humanish",
   });
   const persistScreenshots = liveRequested;
   let liveDesktops: OssMetaLabLiveDesktop[] = [];
@@ -886,7 +946,7 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     missingKeys: substrateMissingKeys,
     redactRepoNames,
     runId,
-    source
+    source,
   });
   await writeMetaBundleArtifacts(artifactRoot, initialBundle);
 
@@ -896,22 +956,25 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     await validatePreparedRunArtifactPaths(preparedRunPaths);
   }
 
-  const shouldPreflightRepoAccess = liveRequested
-    && missingKeys.length === 0
-    && process.env.HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT !== "1"
-    && (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length));
+  const shouldPreflightRepoAccess =
+    liveRequested &&
+    missingKeys.length === 0 &&
+    process.env.HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT !== "1" &&
+    (Boolean(githubTokenFromEnv(process.env)) || Boolean(options.repos?.length));
   const repoAccessPreflight = shouldPreflightRepoAccess
     ? await preflightOssMetaRepoAccess({
         assignments,
         cwd,
         env: process.env,
-        redactRepoNames
+        redactRepoNames,
       })
     : [];
   const repoAccessPreflightBlocked = repoAccessPreflight.some((result) => !result.ok);
   if (repoAccessPreflight.length > 0) {
     const passed = repoAccessPreflight.filter((result) => result.ok).length;
-    warnings.push(`GitHub repo clone access preflight passed ${passed}/${repoAccessPreflight.length} assigned repo${repoAccessPreflight.length === 1 ? "" : "s"}.`);
+    warnings.push(
+      `GitHub repo clone access preflight passed ${passed}/${repoAccessPreflight.length} assigned repo${repoAccessPreflight.length === 1 ? "" : "s"}.`,
+    );
     for (const failed of repoAccessPreflight.filter((result) => !result.ok)) {
       const assignment = assignments.find((candidate) => candidate.streamId === failed.streamId);
       const repoLabel = assignment && redactRepoNames ? repoArtifactLabel(assignment) : failed.repo;
@@ -919,84 +982,118 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     }
   }
 
-  const hostActorPlanResults = hostActorMode && missingKeys.length === 0 && !repoAccessPreflightBlocked
-    ? await createHostActorPlans({
-        assignments,
-        cwd,
-        redactRepoNames,
-        runId
-      })
-    : [];
-  const hostActorPlansByStream = new Map(hostActorPlanResults.flatMap((result) =>
-    result.plan?.status === "passed" ? [[result.streamId, result] as const] : []
-  ));
+  const hostActorPlanResults =
+    hostActorMode && missingKeys.length === 0 && !repoAccessPreflightBlocked
+      ? await createHostActorPlans({
+          assignments,
+          cwd,
+          redactRepoNames,
+          runId,
+        })
+      : [];
+  const hostActorPlansByStream = new Map(
+    hostActorPlanResults.flatMap((result) =>
+      result.plan?.status === "passed" ? [[result.streamId, result] as const] : [],
+    ),
+  );
   if (hostActorPlanResults.length > 0) {
     const passed = hostActorPlanResults.filter((result) => result.plan?.status === "passed").length;
-    warnings.push(`Host Codex actor authored ${passed}/${hostActorPlanResults.length} public-safe Humanish plan${hostActorPlanResults.length === 1 ? "" : "s"}.`);
-    for (const failed of hostActorPlanResults.filter((result) => result.plan?.status !== "passed")) {
-      warnings.push(`Host Codex actor plan failed for ${redactRepoNames ? "[redacted-authorized-repo]" : failed.repo}: ${failed.error ?? failed.plan?.summary ?? "unknown failure"}`);
+    warnings.push(
+      `Host Codex actor authored ${passed}/${hostActorPlanResults.length} public-safe Humanish plan${hostActorPlanResults.length === 1 ? "" : "s"}.`,
+    );
+    for (const failed of hostActorPlanResults.filter(
+      (result) => result.plan?.status !== "passed",
+    )) {
+      warnings.push(
+        `Host Codex actor plan failed for ${redactRepoNames ? "[redacted-authorized-repo]" : failed.repo}: ${failed.error ?? failed.plan?.summary ?? "unknown failure"}`,
+      );
     }
   }
-  const hostActorPlanBlocked = hostActorMode
-    && actorRequired(process.env)
-    && hostActorPlanResults.length > 0
-    && hostActorPlanResults.some((result) => result.plan?.status !== "passed");
-  const actorAuthPreflight = liveRequested
-    && missingKeys.length === 0
-    && !hostActorMode
-    && actorRequired(process.env)
-    && process.env.HUMANISH_OSS_META_SKIP_ACTOR_PREFLIGHT !== "1"
-    ? await preflightOssMetaActorApiKey({ env: process.env })
-    : undefined;
+  const hostActorPlanBlocked =
+    hostActorMode &&
+    actorRequired(process.env) &&
+    hostActorPlanResults.length > 0 &&
+    hostActorPlanResults.some((result) => result.plan?.status !== "passed");
+  const actorAuthPreflight =
+    liveRequested &&
+    missingKeys.length === 0 &&
+    !hostActorMode &&
+    actorRequired(process.env) &&
+    process.env.HUMANISH_OSS_META_SKIP_ACTOR_PREFLIGHT !== "1"
+      ? await preflightOssMetaActorApiKey({ env: process.env })
+      : undefined;
   const actorAuthPreflightBlocked = actorAuthPreflight !== undefined && !actorAuthPreflight.ok;
   substrateMissingKeys = [
     ...missingKeys,
     ...(hostActorPlanBlocked ? [OSS_META_LAB_HOST_ACTOR_PLACEHOLDER] : []),
-    ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : [])
+    ...(actorAuthPreflightBlocked ? [OSS_META_LAB_ACTOR_PREFLIGHT_PLACEHOLDER] : []),
   ];
   if (actorAuthPreflight) {
-    warnings.push(actorAuthPreflight.ok
-      ? actorAuthPreflight.reason
-      : `Remote Codex actor API-key preflight blocked live launch: ${actorAuthPreflight.reason}`);
+    warnings.push(
+      actorAuthPreflight.ok
+        ? actorAuthPreflight.reason
+        : `Remote Codex actor API-key preflight blocked live launch: ${actorAuthPreflight.reason}`,
+    );
   }
   let localPackage: OssMetaLabLocalPackage | undefined;
-  if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
+  if (
+    liveRequested &&
+    missingKeys.length === 0 &&
+    !repoAccessPreflightBlocked &&
+    !hostActorPlanBlocked &&
+    !actorAuthPreflightBlocked
+  ) {
     try {
       localPackage = await packLocalHumanishPackage(cwd, runId);
-      warnings.push(`Packed local humanish package for sandbox install (${localPackage.fileName}).`);
+      warnings.push(
+        `Packed local humanish package for sandbox install (${localPackage.fileName}).`,
+      );
     } catch (error) {
-      warnings.push(`Local humanish package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`);
+      warnings.push(
+        `Local humanish package pack failed; sandbox bootstrap will try public npm fallback. ${compactError(error)}`,
+      );
     }
   }
-  if (liveRequested && missingKeys.length === 0 && !repoAccessPreflightBlocked && !hostActorPlanBlocked && !actorAuthPreflightBlocked) {
+  if (
+    liveRequested &&
+    missingKeys.length === 0 &&
+    !repoAccessPreflightBlocked &&
+    !hostActorPlanBlocked &&
+    !actorAuthPreflightBlocked
+  ) {
     try {
       liveDesktops = await launchLiveDesktops(assignments, {
         codexAppServerMode,
         cwd,
         hostActorPlansByStream,
         ...(localPackage ? { localPackage } : {}),
-        redactRepoNames
+        redactRepoNames,
       });
       const completionSummary = await pollLiveDesktopCompletions(liveDesktops, {
         ...(options.completionTimeoutMs === undefined
           ? {}
           : {
               timeoutMs: options.completionTimeoutMs,
-              timeoutReason: "attached watch mode serves the Observer immediately after desktop streams are created"
-            })
+              timeoutReason:
+                "attached watch mode serves the Observer immediately after desktop streams are created",
+            }),
       });
       warnings.push(...completionSummary.warnings);
     } catch (error) {
       warnings.push(compactError(error));
       liveDesktops = assignments.map((assignment) => {
-        const hostActorPlanResult = hostActorPlanResults.find((result) => result.streamId === assignment.streamId);
+        const hostActorPlanResult = hostActorPlanResults.find(
+          (result) => result.streamId === assignment.streamId,
+        );
         return {
           error: compactError(error),
           ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
-          ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
+          ...(hostActorPlanResult?.artifactPath
+            ? { hostActorPlanPath: hostActorPlanResult.artifactPath }
+            : {}),
           repo: redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo,
           simId: assignment.simId,
-          streamId: assignment.streamId
+          streamId: assignment.streamId,
         };
       });
     }
@@ -1004,46 +1101,74 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     liveDesktops = blockedLiveDesktopsForRepoAccess({
       assignments,
       preflight: repoAccessPreflight,
-      redactRepoNames
+      redactRepoNames,
     });
     warnings.push("Live E2B launch skipped because GitHub repo clone access preflight failed.");
   } else if (hostActorPlanBlocked) {
-    warnings.push("Live E2B launch skipped because required host Codex actor plan evidence did not pass preflight.");
+    warnings.push(
+      "Live E2B launch skipped because required host Codex actor plan evidence did not pass preflight.",
+    );
   } else if (actorAuthPreflightBlocked) {
-    warnings.push("Live E2B launch skipped because required Codex actor API-key quota/auth preflight failed.");
+    warnings.push(
+      "Live E2B launch skipped because required Codex actor API-key quota/auth preflight failed.",
+    );
   }
   const liveDesktopCount = liveDesktops.filter((desktop) => desktop.url).length;
   const failedLiveDesktopCount = liveDesktops.filter((desktop) => desktop.error).length;
-  const startedBootstrapCount = liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started").length;
-  const terminalCompletionCount = liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion)).length;
-  const runningAppCount = liveDesktops.filter((desktop) => desktop.completion?.appStatus === "running").length;
-  const visibleDesktopCount = liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible").length;
+  const startedBootstrapCount = liveDesktops.filter(
+    (desktop) => desktop.bootstrap?.status === "started",
+  ).length;
+  const terminalCompletionCount = liveDesktops.filter((desktop) =>
+    isTerminalCompletion(desktop.completion),
+  ).length;
+  const runningAppCount = liveDesktops.filter(
+    (desktop) => desktop.completion?.appStatus === "running",
+  ).length;
+  const visibleDesktopCount = liveDesktops.filter(
+    (desktop) => desktop.completion?.visualStatus === "visible",
+  ).length;
   if (liveDesktops.length > 0) {
-    warnings.push(`Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`);
+    warnings.push(
+      `Launched ${liveDesktopCount}/${liveDesktops.length} live E2B desktop stream${liveDesktops.length === 1 ? "" : "s"}.`,
+    );
     if (startedBootstrapCount > 0) {
-      warnings.push(`Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Humanish setup, and ${codexAppServerMode ? "Codex app-server client surface" : "Codex actor attempt"}.`);
+      warnings.push(
+        `Started ${startedBootstrapCount}/${liveDesktops.length} visible bootstrap terminal${liveDesktops.length === 1 ? "" : "s"} for target app startup, nested Humanish setup, and ${codexAppServerMode ? "Codex app-server client surface" : "Codex actor attempt"}.`,
+      );
       if (terminalCompletionCount > 0) {
-        warnings.push(`Classified ${terminalCompletionCount}/${startedBootstrapCount} bootstrap terminal state${startedBootstrapCount === 1 ? "" : "s"} from remote public-safe evidence.`);
-        warnings.push(`Detected ${runningAppCount}/${terminalCompletionCount} target app HTTP-ready surface${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
-        warnings.push(`Detected ${visibleDesktopCount}/${terminalCompletionCount} headed desktop visual layout${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`);
+        warnings.push(
+          `Classified ${terminalCompletionCount}/${startedBootstrapCount} bootstrap terminal state${startedBootstrapCount === 1 ? "" : "s"} from remote public-safe evidence.`,
+        );
+        warnings.push(
+          `Detected ${runningAppCount}/${terminalCompletionCount} target app HTTP-ready surface${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`,
+        );
+        warnings.push(
+          `Detected ${visibleDesktopCount}/${terminalCompletionCount} headed desktop visual layout${terminalCompletionCount === 1 ? "" : "s"} from remote public-safe evidence.`,
+        );
       }
     } else {
-      warnings.push(codexAppServerMode
-        ? "Codex app-server client surfacing and nested Humanish execution remain the next substrate slice behind these live desktops."
-        : "Codex TUI injection and nested Humanish execution remain the next substrate slice behind these live desktops.");
+      warnings.push(
+        codexAppServerMode
+          ? "Codex app-server client surfacing and nested Humanish execution remain the next substrate slice behind these live desktops."
+          : "Codex TUI injection and nested Humanish execution remain the next substrate slice behind these live desktops.",
+      );
     }
   }
   if (failedLiveDesktopCount > 0) {
-    warnings.push(`${failedLiveDesktopCount} E2B desktop launch${failedLiveDesktopCount === 1 ? "" : "es"} failed; see stream events in the Observer.`);
+    warnings.push(
+      `${failedLiveDesktopCount} E2B desktop launch${failedLiveDesktopCount === 1 ? "" : "es"} failed; see stream events in the Observer.`,
+    );
   }
 
   if (persistScreenshots) {
-    const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops, { redactRepoNames });
+    const screenshotSummary = await captureLiveDesktopScreenshots(artifactRoot, liveDesktops, {
+      redactRepoNames,
+    });
     warnings.push(...screenshotSummary.warnings);
   }
   const actorEvidenceSummary = await writeActorEvidenceArtifacts(artifactRoot, liveDesktops, {
     assignments,
-    redactRepoNames
+    redactRepoNames,
   });
   warnings.push(...actorEvidenceSummary.warnings);
   const bundle = buildMetaBundle({
@@ -1056,12 +1181,12 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
     missingKeys: substrateMissingKeys,
     redactRepoNames,
     runId,
-    source
+    source,
   });
 
   await writeMetaBundleArtifacts(artifactRoot, bundle);
   await runStatus.finish({
-    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict })
+    ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
   });
 
   const finalObserver = await renderObserver(physicalCwd, runId, { open: options.open === true });
@@ -1073,15 +1198,15 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
         .filter((desktop) => desktop.url)
         .map((desktop) => ({
           streamId: desktop.streamId,
-          url: desktop.url as string
-        }))
+          url: desktop.url as string,
+        })),
     );
   }
   const outcome = classifyMetaLabOutcome({
     dryRun,
     liveDesktops,
     liveRequested,
-    missingKeys: substrateMissingKeys
+    missingKeys: substrateMissingKeys,
   });
 
   const result: OssMetaLabResult = {
@@ -1096,18 +1221,23 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       : {
           error: {
             code: "HUMANISH_META_RUN_FAILED" as const,
-            message: observer.ok ? outcome.reason : observer.error?.message ?? "OSS meta-lab Observer failed."
-          }
+            message: observer.ok
+              ? outcome.reason
+              : (observer.error?.message ?? "OSS meta-lab Observer failed."),
+          },
         }),
     liveRequested,
     observer,
     repos: publicRepos,
     runId,
     sandboxes: liveDesktops.map((desktop) => formatLiveDesktopForResult(desktop, redactRepoNames)),
-    warnings: [...warnings, ...observer.warnings]
+    warnings: [...warnings, ...observer.warnings],
   };
 
-  if (observer.ok && liveDesktops.some((desktop) => desktop.desktop && desktop.bootstrap?.status === "started")) {
+  if (
+    observer.ok &&
+    liveDesktops.some((desktop) => desktop.desktop && desktop.bootstrap?.status === "started")
+  ) {
     liveRuntimeByResult.set(result, {
       artifactRoot,
       assignments,
@@ -1122,52 +1252,74 @@ async function runOssMetaLabInScope(options: OssMetaLabOptions): Promise<OssMeta
       redactRepoNames,
       runId,
       source,
-      startedAt: Date.now()
+      startedAt: Date.now(),
     });
   }
 
   return result;
 }
 
-async function writeMetaBundleArtifacts(artifactRoot: PreparedRunArtifactPaths, bundle: RunBundle): Promise<void> {
+async function writeMetaBundleArtifacts(
+  artifactRoot: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<void> {
   const publicBundle = publicSafeOssMetaBundle(bundle);
   await writeJson(artifactRoot, "run.json", publicBundle);
   await writeJson(artifactRoot, "review.json", publicBundle.review);
-  await writeContainedOutputFile(artifactRoot, "review.md", renderMetaReviewMarkdown(publicBundle), "utf8");
-  await writeContainedOutputFile(artifactRoot, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    artifactRoot,
+    "review.md",
+    renderMetaReviewMarkdown(publicBundle),
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    artifactRoot,
+    "events.ndjson",
+    `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 }
 
 export function publicSafeOssMetaBundle(bundle: RunBundle): RunBundle {
   return {
     ...bundle,
     cwd: PUBLIC_TARGET_CWD,
-    streams: bundle.streams.map(publicSafeMetaStream)
+    streams: bundle.streams.map(publicSafeMetaStream),
   };
 }
 
 function publicSafeMetaStream(stream: RunStream): RunStream {
   return {
     ...stream,
-    artifacts: uniqueStreamArtifacts(stream.artifacts.filter((artifact) => isLocalEvidenceArtifactPath(artifact.path))),
-    ...(stream.terminal ? {
-      terminal: {
-        ...stream.terminal,
-        tail: sanitizeRemoteLog(stream.terminal.tail)
-      }
-    } : {}),
-    ...(stream.ui ? { ui: publicSafeMetaStreamUi(stream.ui) } : {})
+    artifacts: uniqueStreamArtifacts(
+      stream.artifacts.filter((artifact) => isLocalEvidenceArtifactPath(artifact.path)),
+    ),
+    ...(stream.terminal
+      ? {
+          terminal: {
+            ...stream.terminal,
+            tail: sanitizeRemoteLog(stream.terminal.tail),
+          },
+        }
+      : {}),
+    ...(stream.ui ? { ui: publicSafeMetaStreamUi(stream.ui) } : {}),
   };
 }
 
 function publicSafeMetaStreamUi(ui: NonNullable<RunStream["ui"]>): NonNullable<RunStream["ui"]> {
-  const { nestedObserverPath: rawNestedObserverPath, nestedObserverUrl: _rawNestedObserverUrl, ...rest } = ui;
-  const nestedObserverPath = rawNestedObserverPath && isLocalEvidenceArtifactPath(rawNestedObserverPath)
-    ? rawNestedObserverPath
-    : undefined;
+  const {
+    nestedObserverPath: rawNestedObserverPath,
+    nestedObserverUrl: _rawNestedObserverUrl,
+    ...rest
+  } = ui;
+  const nestedObserverPath =
+    rawNestedObserverPath && isLocalEvidenceArtifactPath(rawNestedObserverPath)
+      ? rawNestedObserverPath
+      : undefined;
 
   return {
     ...rest,
-    ...(nestedObserverPath === undefined ? {} : { nestedObserverPath })
+    ...(nestedObserverPath === undefined ? {} : { nestedObserverPath }),
   };
 }
 
@@ -1177,16 +1329,21 @@ export function startOssMetaLabLiveRefresh(
     intervalMs?: number;
     screenshotIntervalMs?: number;
     timeoutMs?: number;
-  } = {}
+  } = {},
 ): OssMetaLabLiveRefreshController | null {
   const runtime = liveRuntimeByResult.get(result);
   if (!runtime) {
     return null;
   }
 
-  const intervalMs = options.intervalMs ?? readPositiveInt(process.env.HUMANISH_OSS_META_WATCH_REFRESH_MS, 5_000);
-  const screenshotIntervalMs = options.screenshotIntervalMs ?? readPositiveInt(process.env.HUMANISH_OSS_META_SCREENSHOT_REFRESH_MS, 15_000);
-  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const intervalMs =
+    options.intervalMs ?? readPositiveInt(process.env.HUMANISH_OSS_META_WATCH_REFRESH_MS, 5_000);
+  const screenshotIntervalMs =
+    options.screenshotIntervalMs ??
+    readPositiveInt(process.env.HUMANISH_OSS_META_SCREENSHOT_REFRESH_MS, 15_000);
+  const timeoutMs =
+    options.timeoutMs ??
+    readNonNegativeInt(process.env.HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
   const deadline = timeoutMs === 0 ? null : runtime.startedAt + timeoutMs;
   let lastScreenshotAt = 0;
   let timer: NodeJS.Timeout | null = null;
@@ -1202,19 +1359,22 @@ export function startOssMetaLabLiveRefresh(
     try {
       const now = Date.now();
       const timedOut = deadline !== null && now >= deadline;
-      const shouldCaptureScreenshot = runtime.persistScreenshots
-        && (timedOut || lastScreenshotAt === 0 || now - lastScreenshotAt >= screenshotIntervalMs);
+      const shouldCaptureScreenshot =
+        runtime.persistScreenshots &&
+        (timedOut || lastScreenshotAt === 0 || now - lastScreenshotAt >= screenshotIntervalMs);
       await refreshOssMetaLabLiveRuntime(runtime, {
         captureScreenshots: shouldCaptureScreenshot,
         timedOut,
-        timeoutMs
+        timeoutMs,
       });
-      result.sandboxes = runtime.liveDesktops.map((desktop) => formatLiveDesktopForResult(desktop, runtime.redactRepoNames));
+      result.sandboxes = runtime.liveDesktops.map((desktop) =>
+        formatLiveDesktopForResult(desktop, runtime.redactRepoNames),
+      );
       const outcome = classifyMetaLabOutcome({
         dryRun: runtime.dryRun,
         liveDesktops: runtime.liveDesktops,
         liveRequested: runtime.liveRequested,
-        missingKeys: runtime.missingKeys
+        missingKeys: runtime.missingKeys,
       });
       result.ok = result.observer?.ok === true && outcome.ok;
       if (result.ok) {
@@ -1222,7 +1382,7 @@ export function startOssMetaLabLiveRefresh(
       } else {
         result.error = {
           code: "HUMANISH_META_RUN_FAILED",
-          message: outcome.reason
+          message: outcome.reason,
         };
       }
       if (shouldCaptureScreenshot) {
@@ -1265,7 +1425,7 @@ export function startOssMetaLabLiveRefresh(
     },
     async stop(): Promise<void> {
       await stop();
-    }
+    },
   };
 }
 
@@ -1274,13 +1434,19 @@ function cleanupOssMetaLabLiveDesktops(
   options: {
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
     requestTimeoutMs?: number;
-  } = {}
+  } = {},
 ): Promise<OssMetaLabCleanupResult> {
-  const ids = [...new Set(liveDesktops.flatMap((entry) => entry.desktop?.sandboxId ? [entry.desktop.sandboxId] : []))];
+  const ids = [
+    ...new Set(
+      liveDesktops.flatMap((entry) => (entry.desktop?.sandboxId ? [entry.desktop.sandboxId] : [])),
+    ),
+  ];
   return killOssMetaLabProviderSandboxIds(ids, {
     ...(options.killSandbox === undefined ? {} : { killSandbox: options.killSandbox }),
-    ...(options.requestTimeoutMs === undefined ? {} : { requestTimeoutMs: options.requestTimeoutMs }),
-    skipped: liveDesktops.length - ids.length
+    ...(options.requestTimeoutMs === undefined
+      ? {}
+      : { requestTimeoutMs: options.requestTimeoutMs }),
+    skipped: liveDesktops.length - ids.length,
   });
 }
 
@@ -1289,11 +1455,13 @@ export interface OssMetaLabProviderListRequest {
   requestTimeoutMs: number;
 }
 
-export async function cleanupStaleOssMetaLabSandboxes(options: {
-  killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
-  listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
-  requestTimeoutMs?: number;
-} = {}): Promise<OssMetaLabCleanupResult> {
+export async function cleanupStaleOssMetaLabSandboxes(
+  options: {
+    killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
+    listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
+    requestTimeoutMs?: number;
+  } = {},
+): Promise<OssMetaLabCleanupResult> {
   return cleanupOssMetaLabSandboxesAndProviderMatches({ sandboxes: [] }, options);
 }
 
@@ -1303,25 +1471,32 @@ export async function cleanupOssMetaLabSandboxesAndProviderMatches(
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
     listSandboxes?: (request: OssMetaLabProviderListRequest) => Promise<E2BSandboxInfo[]>;
     requestTimeoutMs?: number;
-  } = {}
+  } = {},
 ): Promise<OssMetaLabCleanupResult> {
-  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs =
+    options.requestTimeoutMs ??
+    readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const listed = await listOssMetaLabProviderSandboxIds({
     ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
-    requestTimeoutMs
+    requestTimeoutMs,
   });
   const cleanup = await killOssMetaLabProviderSandboxIds(listed.ids, {
     ...(options.killSandbox === undefined ? {} : { killSandbox: options.killSandbox }),
     redactIds: true,
     requestTimeoutMs,
-    skipped: listed.skipped
+    skipped: listed.skipped,
   });
-  const remaining = listed.errors.length > 0 || cleanup.errors.length > 0
-    ? undefined
-    : (await listOssMetaLabProviderSandboxIds({
-        ...(options.listSandboxes === undefined ? {} : { listSandboxes: options.listSandboxes }),
-        requestTimeoutMs
-      })).ids.length;
+  const remaining =
+    listed.errors.length > 0 || cleanup.errors.length > 0
+      ? undefined
+      : (
+          await listOssMetaLabProviderSandboxIds({
+            ...(options.listSandboxes === undefined
+              ? {}
+              : { listSandboxes: options.listSandboxes }),
+            requestTimeoutMs,
+          })
+        ).ids.length;
 
   return {
     killed: cleanup.killed,
@@ -1330,11 +1505,13 @@ export async function cleanupOssMetaLabSandboxesAndProviderMatches(
     skipped: result.sandboxes.length + cleanup.skipped,
     errors: [
       ...(result.sandboxes.length > 0
-        ? ["Stored OSS meta-lab sandbox IDs were not used; cleanup requires verified provider metadata."]
+        ? [
+            "Stored OSS meta-lab sandbox IDs were not used; cleanup requires verified provider metadata.",
+          ]
         : []),
       ...listed.errors,
-      ...cleanup.errors
-    ]
+      ...cleanup.errors,
+    ],
   };
 }
 
@@ -1353,7 +1530,9 @@ async function listOssMetaLabProviderSandboxIds(options: {
       return {
         ids: [],
         skipped: 0,
-        errors: ["Provider-wide Sandbox.list discovery is disabled by default (humanish never enumerates an E2B account); set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for a maintainer-run orphan sweep."]
+        errors: [
+          "Provider-wide Sandbox.list discovery is disabled by default (humanish never enumerates an E2B account); set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for a maintainer-run orphan sweep.",
+        ],
       };
     }
 
@@ -1362,7 +1541,7 @@ async function listOssMetaLabProviderSandboxIds(options: {
       return {
         ids: [],
         skipped: 0,
-        errors: ["E2B_API_KEY is not present; provider metadata cleanup readback skipped."]
+        errors: ["E2B_API_KEY is not present; provider metadata cleanup readback skipped."],
       };
     }
 
@@ -1371,14 +1550,16 @@ async function listOssMetaLabProviderSandboxIds(options: {
       return {
         ids: [],
         skipped: 0,
-        errors: ["Installed @e2b/desktop SDK does not expose Sandbox.list; provider metadata cleanup readback skipped."]
+        errors: [
+          "Installed @e2b/desktop SDK does not expose Sandbox.list; provider metadata cleanup readback skipped.",
+        ],
       };
     }
 
     listSandboxes = async (request) => {
       const paginator = desktopModule.Sandbox.list?.({
         metadata: request.metadata,
-        requestTimeoutMs: request.requestTimeoutMs
+        requestTimeoutMs: request.requestTimeoutMs,
       });
       const sandboxes: E2BSandboxInfo[] = [];
       if (!paginator) {
@@ -1386,7 +1567,9 @@ async function listOssMetaLabProviderSandboxIds(options: {
       }
 
       while (true) {
-        sandboxes.push(...await paginator.nextItems({ requestTimeoutMs: request.requestTimeoutMs }));
+        sandboxes.push(
+          ...(await paginator.nextItems({ requestTimeoutMs: request.requestTimeoutMs })),
+        );
         if (!paginator.hasNext) {
           return sandboxes;
         }
@@ -1397,7 +1580,7 @@ async function listOssMetaLabProviderSandboxIds(options: {
   try {
     const sandboxes = await listSandboxes({
       metadata: { ...OSS_META_LAB_PROVIDER_METADATA },
-      requestTimeoutMs: options.requestTimeoutMs
+      requestTimeoutMs: options.requestTimeoutMs,
     });
     let skipped = 0;
     const ids = sandboxes.flatMap((sandbox) => {
@@ -1414,7 +1597,7 @@ async function listOssMetaLabProviderSandboxIds(options: {
     return {
       ids: [],
       skipped: 0,
-      errors: [`provider metadata cleanup readback failed: ${compactError(error)}`]
+      errors: [`provider metadata cleanup readback failed: ${compactError(error)}`],
     };
   }
 }
@@ -1431,7 +1614,11 @@ function sandboxProviderId(sandbox: E2BSandboxInfo): string | null {
 
 function isCleanupEligibleOssMetaLabSandbox(sandbox: E2BSandboxInfo): boolean {
   const metadata = sandbox.metadata;
-  if (!metadata || metadata.tool !== OSS_META_LAB_PROVIDER_METADATA.tool || metadata.mode !== OSS_META_LAB_PROVIDER_METADATA.mode) {
+  if (
+    !metadata ||
+    metadata.tool !== OSS_META_LAB_PROVIDER_METADATA.tool ||
+    metadata.mode !== OSS_META_LAB_PROVIDER_METADATA.mode
+  ) {
     return false;
   }
 
@@ -1445,14 +1632,16 @@ export async function cleanupOssMetaLabSandboxes(
     killSandbox?: (sandboxId: string, requestTimeoutMs: number) => Promise<unknown>;
     redactIds?: boolean;
     requestTimeoutMs?: number;
-  } = {}
+  } = {},
 ): Promise<OssMetaLabCleanupResult> {
   return {
     killed: 0,
     skipped: result.sandboxes.length,
     errors: result.sandboxes.some((sandbox) => sandbox.sandboxId)
-      ? ["Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep."]
-      : []
+      ? [
+          "Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep.",
+        ]
+      : [],
   };
 }
 
@@ -1463,7 +1652,7 @@ async function killOssMetaLabProviderSandboxIds(
     redactIds?: boolean;
     requestTimeoutMs?: number;
     skipped?: number;
-  } = {}
+  } = {},
 ): Promise<OssMetaLabCleanupResult> {
   const ids = [...new Set(idsInput.filter((id) => id.trim()))];
   const skipped = options.skipped ?? 0;
@@ -1471,7 +1660,9 @@ async function killOssMetaLabProviderSandboxIds(
     return { killed: 0, skipped, errors: [] };
   }
 
-  const requestTimeoutMs = options.requestTimeoutMs ?? readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
+  const requestTimeoutMs =
+    options.requestTimeoutMs ??
+    readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   let killSandbox = options.killSandbox;
   if (!killSandbox) {
     const e2bApiKey = process.env.E2B_API_KEY;
@@ -1479,7 +1670,7 @@ async function killOssMetaLabProviderSandboxIds(
       return {
         killed: 0,
         skipped: skipped + ids.length,
-        errors: ["E2B_API_KEY is not present; remote sandbox cleanup skipped."]
+        errors: ["E2B_API_KEY is not present; remote sandbox cleanup skipped."],
       };
     }
 
@@ -1488,11 +1679,14 @@ async function killOssMetaLabProviderSandboxIds(
       return {
         killed: 0,
         skipped: skipped + ids.length,
-        errors: ["Installed @e2b/desktop SDK does not expose Sandbox.kill; remote sandbox cleanup skipped."]
+        errors: [
+          "Installed @e2b/desktop SDK does not expose Sandbox.kill; remote sandbox cleanup skipped.",
+        ],
       };
     }
 
-    killSandbox = async (sandboxId, timeout) => desktopModule.Sandbox.kill?.(sandboxId, { requestTimeoutMs: timeout });
+    killSandbox = async (sandboxId, timeout) =>
+      desktopModule.Sandbox.kill?.(sandboxId, { requestTimeoutMs: timeout });
   }
 
   let killed = 0;
@@ -1503,7 +1697,9 @@ async function killOssMetaLabProviderSandboxIds(
       killed += 1;
     } catch (error) {
       const errorText = compactError(error);
-      errors.push(`${options.redactIds ? "[provider-runtime]" : id}: ${options.redactIds ? errorText.replaceAll(id, "[provider-runtime]") : errorText}`);
+      errors.push(
+        `${options.redactIds ? "[provider-runtime]" : id}: ${options.redactIds ? errorText.replaceAll(id, "[provider-runtime]") : errorText}`,
+      );
     }
   }
 
@@ -1543,7 +1739,7 @@ export function buildOssMetaBundleFixture(args: {
     liveRequested: args.liveRequested,
     missingKeys: args.missingKeys,
     redactRepoNames: args.redactRepoNames === true,
-    runId: args.runId
+    runId: args.runId,
   });
 }
 
@@ -1559,10 +1755,11 @@ export function buildOssMetaBootstrapScriptFixture(): string {
     completionPath: "/home/user/.humanish-oss-lab/maciekt07-todoapp/completion.json",
     displayRepo: "maciekt07/TodoApp",
     logPath: "/home/user/.humanish-oss-lab/maciekt07-todoapp/bootstrap.log",
-    nestedObserverPath: "/home/user/maciekt07-todoapp/.humanish/runs/nested-maciekt07-todoapp/observer/index.html",
+    nestedObserverPath:
+      "/home/user/maciekt07-todoapp/.humanish/runs/nested-maciekt07-todoapp/observer/index.html",
     remoteHostActorPlanPath: "/home/user/.humanish-oss-lab/maciekt07-todoapp/host-actor-plan.json",
     stateDir: "/home/user/.humanish-oss-lab/maciekt07-todoapp",
-    token: "maciekt07-todoapp"
+    token: "maciekt07-todoapp",
   });
 }
 
@@ -1576,16 +1773,16 @@ function syntheticOssMetaRunSource(createdAt: string): RunBundle["source"] {
       capturedAt: createdAt,
       head: {
         shortSha: null,
-        refState: "unknown"
+        refState: "unknown",
       },
       changes: {
         staged: 0,
         unstaged: 0,
         untracked: 0,
-        total: 0
+        total: 0,
       },
-      note: "public-safe synthetic OSS meta-lab fixture"
-    }
+      note: "public-safe synthetic OSS meta-lab fixture",
+    },
   };
 }
 
@@ -1609,16 +1806,19 @@ function buildMetaBundle(args: {
       at: args.createdAt,
       level: "info",
       type: "oss-meta.contract.created",
-      message: "Created public-safe OSS meta-lab Observer-of-Observers contract."
-    }
+      message: "Created public-safe OSS meta-lab Observer-of-Observers contract.",
+    },
   ];
 
   for (const assignment of args.assignments) {
     const prompt = buildCodexBootstrapPrompt(assignment, args.redactRepoNames);
-    const rawLiveDesktop = args.liveDesktops.find((desktop) => desktop.streamId === assignment.streamId);
-    const liveDesktop = rawLiveDesktop && args.redactRepoNames
-      ? redactLiveDesktopRepoMentions(rawLiveDesktop, assignment.repo)
-      : rawLiveDesktop;
+    const rawLiveDesktop = args.liveDesktops.find(
+      (desktop) => desktop.streamId === assignment.streamId,
+    );
+    const liveDesktop =
+      rawLiveDesktop && args.redactRepoNames
+        ? redactLiveDesktopRepoMentions(rawLiveDesktop, assignment.repo)
+        : rawLiveDesktop;
     const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
     const scenarioId = args.redactRepoNames ? `oss-meta-${repoLabel}` : assignment.scenarioId;
     const status = statusForMeta(args, liveDesktop);
@@ -1640,29 +1840,119 @@ function buildMetaBundle(args: {
       summary: completion
         ? `Headed E2B desktop lane assigned to ${repoLabel}; ${completion.reason}`
         : liveDesktop?.bootstrap?.status === "started"
-        ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Humanish and open the nested Observer${appServerMode ? " plus Codex app-server client surface" : ""}.`
-        : `Headed E2B desktop lane assigned to ${repoLabel}; remote bootstrap should set up Humanish and open a nested Observer inside that desktop.`,
+          ? `Headed E2B desktop lane assigned to ${repoLabel}; bootstrap terminal launched to set up Humanish and open the nested Observer${appServerMode ? " plus Codex app-server client surface" : ""}.`
+          : `Headed E2B desktop lane assigned to ${repoLabel}; remote bootstrap should set up Humanish and open a nested Observer inside that desktop.`,
       streamIds: [assignment.streamId],
       startedAt: args.createdAt,
-      updatedAt: args.createdAt
+      updatedAt: args.createdAt,
     });
 
     const artifacts = uniqueStreamArtifacts([
       { label: "run bundle", path: "run.json", kind: "bundle" as const },
       { label: "review", path: "review.md", kind: "review" as const },
       { label: "events", path: "events.ndjson", kind: "events" as const },
-      ...(completion?.appServerActorEvidence?.tracePath ? [{ label: "codex app-server trace", path: completion.appServerActorEvidence.tracePath, kind: "trace" as const }] : []),
-      ...(completion?.appServerActorEvidence?.eventsPath ? [{ label: "codex app-server events", path: completion.appServerActorEvidence.eventsPath, kind: "events" as const }] : []),
-      ...(completion?.appServerActorEvidence?.transcriptPath ? [{ label: "codex app-server transcript", path: completion.appServerActorEvidence.transcriptPath, kind: "log" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath ? [{ label: "actor last-message tail", path: liveDesktop.actorEvidence.actorLastMessageTailPath, kind: "log" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.actorLogTailPath ? [{ label: "actor log tail", path: liveDesktop.actorEvidence.actorLogTailPath, kind: "log" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.appServerTracePath ? [{ label: "codex app-server trace", path: liveDesktop.actorEvidence.appServerTracePath, kind: "trace" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.appServerEventsPath ? [{ label: "codex app-server events", path: liveDesktop.actorEvidence.appServerEventsPath, kind: "events" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.appServerTranscriptPath ? [{ label: "codex app-server transcript", path: liveDesktop.actorEvidence.appServerTranscriptPath, kind: "log" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? [{ label: "nested Humanish proof", path: liveDesktop.actorEvidence.nestedEvidencePath, kind: "trace" as const }] : []),
-      ...(liveDesktop?.actorEvidence?.setupQualityPath ? [{ label: "setup quality", path: liveDesktop.actorEvidence.setupQualityPath, kind: "filesystem" as const }] : []),
-      ...(liveDesktop?.hostActorPlanPath ? [{ label: "host Codex actor plan", path: liveDesktop.hostActorPlanPath, kind: "trace" as const }] : []),
-      ...(screenshot ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }] : [])
+      ...(completion?.appServerActorEvidence?.tracePath
+        ? [
+            {
+              label: "codex app-server trace",
+              path: completion.appServerActorEvidence.tracePath,
+              kind: "trace" as const,
+            },
+          ]
+        : []),
+      ...(completion?.appServerActorEvidence?.eventsPath
+        ? [
+            {
+              label: "codex app-server events",
+              path: completion.appServerActorEvidence.eventsPath,
+              kind: "events" as const,
+            },
+          ]
+        : []),
+      ...(completion?.appServerActorEvidence?.transcriptPath
+        ? [
+            {
+              label: "codex app-server transcript",
+              path: completion.appServerActorEvidence.transcriptPath,
+              kind: "log" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.actorLastMessageTailPath
+        ? [
+            {
+              label: "actor last-message tail",
+              path: liveDesktop.actorEvidence.actorLastMessageTailPath,
+              kind: "log" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.actorLogTailPath
+        ? [
+            {
+              label: "actor log tail",
+              path: liveDesktop.actorEvidence.actorLogTailPath,
+              kind: "log" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.appServerTracePath
+        ? [
+            {
+              label: "codex app-server trace",
+              path: liveDesktop.actorEvidence.appServerTracePath,
+              kind: "trace" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.appServerEventsPath
+        ? [
+            {
+              label: "codex app-server events",
+              path: liveDesktop.actorEvidence.appServerEventsPath,
+              kind: "events" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.appServerTranscriptPath
+        ? [
+            {
+              label: "codex app-server transcript",
+              path: liveDesktop.actorEvidence.appServerTranscriptPath,
+              kind: "log" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.nestedEvidencePath
+        ? [
+            {
+              label: "nested Humanish proof",
+              path: liveDesktop.actorEvidence.nestedEvidencePath,
+              kind: "trace" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.actorEvidence?.setupQualityPath
+        ? [
+            {
+              label: "setup quality",
+              path: liveDesktop.actorEvidence.setupQualityPath,
+              kind: "filesystem" as const,
+            },
+          ]
+        : []),
+      ...(liveDesktop?.hostActorPlanPath
+        ? [
+            {
+              label: "host Codex actor plan",
+              path: liveDesktop.hostActorPlanPath,
+              kind: "trace" as const,
+            },
+          ]
+        : []),
+      ...(screenshot
+        ? [{ label: "desktop screenshot", path: screenshot.path, kind: "screenshot" as const }]
+        : []),
     ]);
 
     const stream: RunStream = {
@@ -1671,21 +1961,27 @@ function buildMetaBundle(args: {
       kind: "browser",
       label: `E2B desktop - ${repoLabel}`,
       status,
-      transport: liveStreamPresent ? "sse" : screenshot ? "snapshot" : status === "contract_proof_only" ? "snapshot" : "sse",
+      transport: liveStreamPresent
+        ? "sse"
+        : screenshot
+          ? "snapshot"
+          : status === "contract_proof_only"
+            ? "snapshot"
+            : "sse",
       updatedAt: args.createdAt,
       embed: {
         kind: screenshot ? "screenshot" : "placeholder",
         ...(screenshot ? { url: screenshot.observerUrl } : {}),
-        title: `E2B desktop ${assignment.index}`
+        title: `E2B desktop ${assignment.index}`,
       },
       desktopGeometry: {
-        screen: { requested: { width: 1440, height: 960 } }
+        screen: { requested: { width: 1440, height: 960 } },
       },
       terminal: {
         title: `${appServerMode ? "Codex app-server" : "Codex"} bootstrap - ${repoLabel}`,
         format: "plain",
         stdin: liveDesktop?.bootstrap ? "sent" : "planned",
-        tail: terminalTail
+        tail: terminalTail,
       },
       ui: {
         route: completion?.appUrl ?? `e2b://desktop/${repoLabel}`,
@@ -1695,7 +1991,9 @@ function buildMetaBundle(args: {
         ...(completion?.actorStatus ? { actorStatus: completion.actorStatus } : {}),
         ...(completion?.appStatus ? { appStatus: completion.appStatus } : {}),
         ...(completion?.appUrl ? { appUrl: completion.appUrl } : {}),
-        ...(liveDesktop?.actorEvidence?.nestedEvidencePath ? { nestedObserverPath: liveDesktop.actorEvidence.nestedEvidencePath } : {}),
+        ...(liveDesktop?.actorEvidence?.nestedEvidencePath
+          ? { nestedObserverPath: liveDesktop.actorEvidence.nestedEvidencePath }
+          : {}),
         ...(screenshot ? { screenshotUrl: screenshot.observerUrl } : {}),
         ...(completion?.visualStatus ? { visualStatus: completion.visualStatus } : {}),
         state: completion
@@ -1703,14 +2001,20 @@ function buildMetaBundle(args: {
               completion.reason,
               completion.appStatus ? `app=${completion.appStatus}` : "",
               completion.actorStatus ? `actor=${completion.actorStatus}` : "",
-              completion.visualStatus ? `visual=${completion.visualStatus}` : ""
-            ].filter(Boolean).join(" | ")
+              completion.visualStatus ? `visual=${completion.visualStatus}` : "",
+            ]
+              .filter(Boolean)
+              .join(" | ")
           : liveDesktop?.bootstrap?.status === "started"
-          ? "bootstrap terminal launched; target app and nested Observer setup running"
-          : liveStreamPresent ? "live E2B desktop stream present; stream URL is runtime-only" : args.dryRun ? "contract desktop" : "headed E2B desktop"
+            ? "bootstrap terminal launched; target app and nested Observer setup running"
+            : liveStreamPresent
+              ? "live E2B desktop stream present; stream URL is runtime-only"
+              : args.dryRun
+                ? "contract desktop"
+                : "headed E2B desktop",
       },
       ...(completion ? { completion: completionForStream(completion, appServerMode) } : {}),
-      artifacts
+      artifacts,
     };
     if (appServerMode) {
       stream.codex = codexMetadataForMetaStream(liveDesktop, completion);
@@ -1725,7 +2029,7 @@ function buildMetaBundle(args: {
         type: "oss-meta.repo.assigned",
         message: `Assigned ${repoLabel} to Codex desktop lane ${assignment.index}.`,
         simId: assignment.simId,
-        streamId: assignment.streamId
+        streamId: assignment.streamId,
       },
       {
         id: `event-${String(assignment.index).padStart(3, "0")}-prompt`,
@@ -1736,8 +2040,8 @@ function buildMetaBundle(args: {
           ? "Codex app-server client hook is available in the stream logs tab."
           : "Codex bootstrap prompt is available in the stream logs tab.",
         simId: assignment.simId,
-        streamId: assignment.streamId
-      }
+        streamId: assignment.streamId,
+      },
     );
 
     if (liveStreamPresent && liveDesktop) {
@@ -1748,7 +2052,7 @@ function buildMetaBundle(args: {
         type: "oss-meta.e2b.stream.started",
         message: `Live E2B desktop stream started for ${repoLabel}; auth URL is runtime-only and not persisted in run artifacts.`,
         simId: assignment.simId,
-        streamId: assignment.streamId
+        streamId: assignment.streamId,
       });
       if (liveDesktop.bootstrap?.status === "started") {
         events.push({
@@ -1758,7 +2062,7 @@ function buildMetaBundle(args: {
           type: "oss-meta.bootstrap.started",
           message: `Visible bootstrap terminal launched for ${repoLabel}.`,
           simId: assignment.simId,
-          streamId: assignment.streamId
+          streamId: assignment.streamId,
         });
         if (completion) {
           events.push({
@@ -1768,7 +2072,7 @@ function buildMetaBundle(args: {
             type: `oss-meta.bootstrap.${completion.status}`,
             message: `${repoLabel}: ${completion.reason}`,
             simId: assignment.simId,
-            streamId: assignment.streamId
+            streamId: assignment.streamId,
           });
           if (completion.nestedStepTraceSummary) {
             events.push({
@@ -1778,7 +2082,7 @@ function buildMetaBundle(args: {
               type: "oss-meta.nested.step_trace.summary",
               message: `${repoLabel}: Nested browser trace summary captured ${completion.nestedStepTraceSummary.counts.passedSteps}/${completion.nestedStepTraceSummary.counts.totalSteps} steps across ${completion.nestedStepTraceSummary.counts.surfaces} surface(s).`,
               simId: assignment.simId,
-              streamId: assignment.streamId
+              streamId: assignment.streamId,
             });
           }
         }
@@ -1790,7 +2094,7 @@ function buildMetaBundle(args: {
           type: "oss-meta.bootstrap.failed",
           message: `Bootstrap launcher failed for ${repoLabel}.`,
           simId: assignment.simId,
-          streamId: assignment.streamId
+          streamId: assignment.streamId,
         });
       }
     } else if (completion) {
@@ -1801,7 +2105,7 @@ function buildMetaBundle(args: {
         type: `oss-meta.bootstrap.${completion.status}`,
         message: `${repoLabel}: ${completion.reason}`,
         simId: assignment.simId,
-        streamId: assignment.streamId
+        streamId: assignment.streamId,
       });
       if (completion.nestedStepTraceSummary) {
         events.push({
@@ -1811,7 +2115,7 @@ function buildMetaBundle(args: {
           type: "oss-meta.nested.step_trace.summary",
           message: `${repoLabel}: Nested browser trace summary captured ${completion.nestedStepTraceSummary.counts.passedSteps}/${completion.nestedStepTraceSummary.counts.totalSteps} steps across ${completion.nestedStepTraceSummary.counts.surfaces} surface(s).`,
           simId: assignment.simId,
-          streamId: assignment.streamId
+          streamId: assignment.streamId,
         });
       }
     } else if (liveDesktop?.error) {
@@ -1822,7 +2126,7 @@ function buildMetaBundle(args: {
         type: "oss-meta.e2b.stream.failed",
         message: `E2B desktop stream failed for ${repoLabel}: ${liveDesktop.error}`,
         simId: assignment.simId,
-        streamId: assignment.streamId
+        streamId: assignment.streamId,
       });
     }
   }
@@ -1833,7 +2137,7 @@ function buildMetaBundle(args: {
       at: args.createdAt,
       level: "warn",
       type: "oss-meta.live.keys_missing",
-      message: `Live launch is blocked until ${args.missingKeys.join(", ")} are present.`
+      message: `Live launch is blocked until ${args.missingKeys.join(", ")} are present.`,
     });
   }
 
@@ -1843,9 +2147,10 @@ function buildMetaBundle(args: {
       at: args.createdAt,
       level: "warn",
       type: "oss-meta.live.substrate_planned",
-      message: args.missingKeys.length > 0
-        ? "E2B desktop launch is waiting on required environment variables."
-        : "Codex TUI injection and nested Humanish execution are planned behind this Observer contract."
+      message:
+        args.missingKeys.length > 0
+          ? "E2B desktop launch is waiting on required environment variables."
+          : "Codex TUI injection and nested Humanish execution are planned behind this Observer contract.",
     });
   }
   if (args.liveDesktops.some((desktop) => desktop.url)) {
@@ -1856,7 +2161,7 @@ function buildMetaBundle(args: {
       type: "oss-meta.live.substrate_started",
       message: args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
         ? "E2B desktop streams are connected and bootstrap terminals are launched."
-        : "E2B desktop streams are connected; Codex TUI injection is still pending."
+        : "E2B desktop streams are connected; Codex TUI injection is still pending.",
     });
   }
 
@@ -1865,7 +2170,7 @@ function buildMetaBundle(args: {
     assignments: args.assignments,
     liveDesktops: args.liveDesktops,
     redactRepoNames: args.redactRepoNames,
-    runId: args.runId
+    runId: args.runId,
   });
   return {
     schema: RUN_BUNDLE_SCHEMA,
@@ -1880,48 +2185,49 @@ function buildMetaBundle(args: {
       id: "oss-meta-codex-tui-operators",
       name: "Codex TUI OSS Setup Operators",
       source: "lab:oss:meta",
-      sourceDigest: "public-safe"
+      sourceDigest: "public-safe",
     },
     scenario: {
       id: "oss-meta-observer-of-observers",
       title: "OSS Observer-of-Observers Meta-Lab",
       goal: "Launch headed E2B desktops where Codex agents clone authorized GitHub repos, set up Humanish, run nested Humanish proof commands, attempt Codex TUI, and keep each nested Observer visible.",
       source: "lab:oss:meta",
-      sourceDigest: "public-safe"
+      sourceDigest: "public-safe",
     },
     lifecycle: [
       {
         at: args.createdAt,
         event: "oss-meta.run.created",
-        message: `Created OSS meta-lab run with ${args.assignments.length} headed desktop lane${args.assignments.length === 1 ? "" : "s"}.`
+        message: `Created OSS meta-lab run with ${args.assignments.length} headed desktop lane${args.assignments.length === 1 ? "" : "s"}.`,
       },
       {
         at: args.createdAt,
         event: "oss-meta.repos.assigned",
-        message: `Assigned repos: ${args.assignments.map((assignment) => args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo).join(", ")}.`
+        message: `Assigned repos: ${args.assignments.map((assignment) => (args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo)).join(", ")}.`,
       },
       {
         at: args.createdAt,
         event: "oss-meta.observer.ready",
-        message: "Top-level Observer is ready to watch nested Humanish Observers."
-      }
+        message: "Top-level Observer is ready to watch nested Humanish Observers.",
+      },
     ],
     simulations,
     streams,
     events,
     redaction: {
       status: "passed",
-      notes: "OSS meta-lab artifacts contain GitHub slugs and redacted/synthetic bootstrap evidence only."
+      notes:
+        "OSS meta-lab artifacts contain GitHub slugs and redacted/synthetic bootstrap evidence only.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
-    feedbackCandidates
+    feedbackCandidates,
   };
 }
 
@@ -1939,7 +2245,7 @@ function uniqueStreamArtifacts(artifacts: RunStream["artifacts"]): RunStream["ar
 
 function codexMetadataForMetaStream(
   liveDesktop: OssMetaLabLiveDesktop | undefined,
-  completion: OssMetaLabCompletion | undefined
+  completion: OssMetaLabCompletion | undefined,
 ): NonNullable<RunStream["codex"]> {
   const trace = completion?.appServerActorEvidence?.traceJson;
   const traceRecord = isRecord(trace) ? trace : undefined;
@@ -1948,40 +2254,66 @@ function codexMetadataForMetaStream(
   return {
     provider: "codex-app-server",
     state: codexStateForMeta(completion),
-    contract: "Codex app-server JSON-RPC actor telemetry projected from redacted event envelopes, trace summary, transcript tail, and filesystem setup evidence.",
+    contract:
+      "Codex app-server JSON-RPC actor telemetry projected from redacted event envelopes, trace summary, transcript tail, and filesystem setup evidence.",
     ...(eventCount === undefined ? {} : { eventCount }),
-    ...(liveDesktop?.actorEvidence?.appServerTracePath ? { tracePath: liveDesktop.actorEvidence.appServerTracePath } : {}),
-    ...(typeof traceRecord?.threadId === "string" && traceRecord.threadId.trim() ? { threadId: traceRecord.threadId } : {}),
-    ...(typeof traceRecord?.turnId === "string" && traceRecord.turnId.trim() ? { turnId: traceRecord.turnId } : {}),
-    ...(typeof traceRecord?.sessionId === "string" && traceRecord.sessionId.trim() ? { sessionId: traceRecord.sessionId } : {}),
-    ...(typeof traceRecord?.model === "string" && traceRecord.model.trim() ? { model: traceRecord.model } : {})
+    ...(liveDesktop?.actorEvidence?.appServerTracePath
+      ? { tracePath: liveDesktop.actorEvidence.appServerTracePath }
+      : {}),
+    ...(typeof traceRecord?.threadId === "string" && traceRecord.threadId.trim()
+      ? { threadId: traceRecord.threadId }
+      : {}),
+    ...(typeof traceRecord?.turnId === "string" && traceRecord.turnId.trim()
+      ? { turnId: traceRecord.turnId }
+      : {}),
+    ...(typeof traceRecord?.sessionId === "string" && traceRecord.sessionId.trim()
+      ? { sessionId: traceRecord.sessionId }
+      : {}),
+    ...(typeof traceRecord?.model === "string" && traceRecord.model.trim()
+      ? { model: traceRecord.model }
+      : {}),
   };
 }
 
-function codexStateForMeta(completion: OssMetaLabCompletion | undefined): NonNullable<RunStream["codex"]>["state"] {
+function codexStateForMeta(
+  completion: OssMetaLabCompletion | undefined,
+): NonNullable<RunStream["codex"]>["state"] {
   if (!completion) return "connecting";
   if (completion.actorStatus === "passed") return "completed";
   if (completion.actorStatus === "running") return "running";
-  if (completion.actorStatus === "timed_out" || completion.status === "timed_out") return "timed_out";
+  if (completion.actorStatus === "timed_out" || completion.status === "timed_out")
+    return "timed_out";
   if (completion.actorStatus === "blocked" || completion.status === "blocked") return "blocked";
   if (completion.actorStatus === "failed" || completion.status === "failed") return "failed";
   return completion.status === "running" ? "running" : "watching";
 }
 
-function statusForMeta(args: {
-  dryRun: boolean;
-  liveDesktops: OssMetaLabLiveDesktop[];
-  liveRequested: boolean;
-  missingKeys: string[];
-}, liveDesktop: OssMetaLabLiveDesktop | undefined): RunSimulation["status"] {
+function statusForMeta(
+  args: {
+    dryRun: boolean;
+    liveDesktops: OssMetaLabLiveDesktop[];
+    liveRequested: boolean;
+    missingKeys: string[];
+  },
+  liveDesktop: OssMetaLabLiveDesktop | undefined,
+): RunSimulation["status"] {
   if (args.dryRun) return "contract_proof_only";
-  if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.appStatus !== "running") return "blocked";
-  if (liveDesktop?.completion?.status === "passed" && liveDesktop.completion.visualStatus !== "visible") return "blocked";
   if (
-    liveDesktop?.completion?.status === "passed"
-    && liveDesktop.bootstrap?.codexMode === "app-server-client"
-    && liveDesktop.completion.actorStatus !== "passed"
-  ) return "blocked";
+    liveDesktop?.completion?.status === "passed" &&
+    liveDesktop.completion.appStatus !== "running"
+  )
+    return "blocked";
+  if (
+    liveDesktop?.completion?.status === "passed" &&
+    liveDesktop.completion.visualStatus !== "visible"
+  )
+    return "blocked";
+  if (
+    liveDesktop?.completion?.status === "passed" &&
+    liveDesktop.bootstrap?.codexMode === "app-server-client" &&
+    liveDesktop.completion.actorStatus !== "passed"
+  )
+    return "blocked";
   if (liveDesktop?.completion?.status === "passed") return "passed";
   if (liveDesktop?.completion?.status === "failed") return "failed";
   if (liveDesktop?.completion?.status === "blocked") return "blocked";
@@ -1993,7 +2325,10 @@ function statusForMeta(args: {
   return "preparing";
 }
 
-function progressForMeta(status: RunSimulation["status"], liveDesktop: OssMetaLabLiveDesktop | undefined): number {
+function progressForMeta(
+  status: RunSimulation["status"],
+  liveDesktop: OssMetaLabLiveDesktop | undefined,
+): number {
   if (status === "contract_proof_only") return 100;
   if (status === "passed") return 100;
   if (status === "timed_out") return 100;
@@ -2006,13 +2341,17 @@ function progressForMeta(status: RunSimulation["status"], liveDesktop: OssMetaLa
   return 34;
 }
 
-function currentStepForMeta(args: {
-  dryRun: boolean;
-  liveDesktops: OssMetaLabLiveDesktop[];
-  liveRequested: boolean;
-  missingKeys: string[];
-  redactRepoNames?: boolean;
-}, assignment: OssMetaLabAssignment, liveDesktop?: OssMetaLabLiveDesktop): string {
+function currentStepForMeta(
+  args: {
+    dryRun: boolean;
+    liveDesktops: OssMetaLabLiveDesktop[];
+    liveRequested: boolean;
+    missingKeys: string[];
+    redactRepoNames?: boolean;
+  },
+  assignment: OssMetaLabAssignment,
+  liveDesktop?: OssMetaLabLiveDesktop,
+): string {
   const repoLabel = args.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
   if (args.dryRun) {
     return `Contract ready for ${repoLabel}; no E2B desktop launched.`;
@@ -2047,55 +2386,70 @@ function createMetaReview(args: {
   missingKeys: string[];
 }): ReviewSummary {
   const started = args.liveDesktops.filter((desktop) => desktop.bootstrap?.status === "started");
-  const terminalCompletions = args.liveDesktops.filter((desktop) => isTerminalCompletion(desktop.completion));
-  const appRunning = args.liveDesktops.filter((desktop) => desktop.completion?.appStatus === "running");
-  const visualVisible = args.liveDesktops.filter((desktop) => desktop.completion?.visualStatus === "visible");
-  const nestedLiveProof = args.liveDesktops.some((desktop) =>
-    desktop.completion?.nestedVerifyPassed === true
-    && /\bhumanish run live\b/.test(desktop.completion.logTail ?? "")
+  const terminalCompletions = args.liveDesktops.filter((desktop) =>
+    isTerminalCompletion(desktop.completion),
+  );
+  const appRunning = args.liveDesktops.filter(
+    (desktop) => desktop.completion?.appStatus === "running",
+  );
+  const visualVisible = args.liveDesktops.filter(
+    (desktop) => desktop.completion?.visualStatus === "visible",
+  );
+  const nestedLiveProof = args.liveDesktops.some(
+    (desktop) =>
+      desktop.completion?.nestedVerifyPassed === true &&
+      /\bhumanish run live\b/.test(desktop.completion.logTail ?? ""),
   );
   const outcome = classifyMetaLabOutcome(args);
   const gaps = [
     nestedLiveProof && appRunning.length > 0 && visualVisible.length > 0
       ? "Target app browser surfaces, nested Observer windows, and nested Humanish live app-url proof are visible inside headed desktops."
       : appRunning.length > 0 && visualVisible.length > 0
-      ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; nested Humanish live proof is still missing."
-      : appRunning.length > 0
-      ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
-      : started.length > 0 && terminalCompletions.length === started.length
-      ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence, but target app HTTP readiness was not detected."
-      : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-      ? "Visible E2B bootstrap terminals are launched and run nested Humanish setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
-      : "Nested Humanish Observer evidence is represented as a lane contract until Codex TUI injection and nested Humanish execution land.",
+        ? "Target app browser surfaces and nested Observer windows are visible inside headed desktops; nested Humanish live proof is still missing."
+        : appRunning.length > 0
+          ? "Target app surfaces responded over HTTP, but headed desktop browser-window visibility was not detected for every lane."
+          : started.length > 0 && terminalCompletions.length === started.length
+            ? "OSS lane terminal states are classified from public-safe remote bootstrap evidence, but target app HTTP readiness was not detected."
+            : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
+              ? "Visible E2B bootstrap terminals are launched and run nested Humanish setup plus target app startup; completion is watched in the desktop stream until remote evidence is polled back."
+              : "Nested Humanish Observer evidence is represented as a lane contract until Codex TUI injection and nested Humanish execution land.",
     nestedLiveProof
       ? "Nested Humanish proof reached live app-url mode with desktop/mobile browser persona evidence; richer app-specific journey manifests remain the next adapter slice."
       : "Nested Humanish proof did not reach live app-url mode; target app startup or browser evidence is still missing.",
     "The top-level run does not clone, modify, commit, push, or file issues in target repos.",
-    "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default."
+    "Public runs may record GitHub owner/repo slugs; token-backed maintainer/private runs redact repo labels in durable artifacts by default.",
   ];
 
   if (args.liveRequested && args.missingKeys.length > 0) {
-    gaps.unshift(`Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`);
+    gaps.unshift(
+      `Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`,
+    );
   }
-  if (args.liveDesktops.some((desktop) => desktop.url) && !args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")) {
-    gaps.unshift("Live E2B desktop streams are connected, but Codex TUI injection and nested Humanish execution are not yet automated.");
+  if (
+    args.liveDesktops.some((desktop) => desktop.url) &&
+    !args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
+  ) {
+    gaps.unshift(
+      "Live E2B desktop streams are connected, but Codex TUI injection and nested Humanish execution are not yet automated.",
+    );
   }
 
   return {
     schema: REVIEW_SCHEMA,
     verdict: outcome.verdict,
-    summary: outcome.verdict === "fail" || outcome.verdict === "timed_out" || outcome.verdict === "blocked"
-      ? outcome.reason
-      : args.dryRun
-      ? "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend."
-      : terminalCompletions.length > 0
-        ? `OSS meta-lab launched live E2B desktop streams, classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence, detected ${appRunning.length}/${terminalCompletions.length} target app HTTP-ready surface${terminalCompletions.length === 1 ? "" : "s"}, and detected ${visualVisible.length}/${terminalCompletions.length} headed desktop visual layout${terminalCompletions.length === 1 ? "" : "s"}.`
-      : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
-        ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started target app plus nested Humanish setup inside each desktop."
-        : args.liveDesktops.some((desktop) => desktop.url)
-          ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
-        : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
-    gaps
+    summary:
+      outcome.verdict === "fail" || outcome.verdict === "timed_out" || outcome.verdict === "blocked"
+        ? outcome.reason
+        : args.dryRun
+          ? "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend."
+          : terminalCompletions.length > 0
+            ? `OSS meta-lab launched live E2B desktop streams, classified ${terminalCompletions.length}/${started.length || terminalCompletions.length} bootstrap terminal state${terminalCompletions.length === 1 ? "" : "s"} from public-safe remote evidence, detected ${appRunning.length}/${terminalCompletions.length} target app HTTP-ready surface${terminalCompletions.length === 1 ? "" : "s"}, and detected ${visualVisible.length}/${terminalCompletions.length} headed desktop visual layout${terminalCompletions.length === 1 ? "" : "s"}.`
+            : args.liveDesktops.some((desktop) => desktop.bootstrap?.status === "started")
+              ? "OSS meta-lab launched live E2B desktop streams, injected visible bootstrap terminals, and started target app plus nested Humanish setup inside each desktop."
+              : args.liveDesktops.some((desktop) => desktop.url)
+                ? "OSS meta-lab launched live E2B desktop streams and rendered them in the top-level Observer."
+                : "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
+    gaps,
   };
 }
 
@@ -2108,8 +2462,9 @@ function classifyMetaLabOutcome(args: {
   if (args.dryRun) {
     return {
       ok: true,
-      reason: "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend.",
-      verdict: "contract_proof_only"
+      reason:
+        "OSS meta-lab dry-run rendered the Observer-of-Observers contract without provider spend.",
+      verdict: "contract_proof_only",
     };
   }
 
@@ -2117,99 +2472,115 @@ function classifyMetaLabOutcome(args: {
     return {
       ok: true,
       reason: `Live launch is blocked until ${args.missingKeys.join(", ")} are available in environment.`,
-      verdict: "blocked"
+      verdict: "blocked",
     };
   }
 
-  const launchFailures = args.liveDesktops.filter((desktop) => desktop.error || desktop.bootstrap?.status === "failed");
+  const launchFailures = args.liveDesktops.filter(
+    (desktop) => desktop.error || desktop.bootstrap?.status === "failed",
+  );
   if (launchFailures.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab failed ${launchFailures.length}/${args.liveDesktops.length} live desktop or bootstrap launch${launchFailures.length === 1 ? "" : "es"}.`,
-      verdict: "fail"
+      verdict: "fail",
     };
   }
 
-  const failedCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "failed");
+  const failedCompletions = args.liveDesktops.filter(
+    (desktop) => desktop.completion?.status === "failed",
+  );
   if (failedCompletions.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab classified ${failedCompletions.length}/${args.liveDesktops.length} bootstrap terminal state${failedCompletions.length === 1 ? "" : "s"} as failed from public-safe remote evidence.`,
-      verdict: "fail"
+      verdict: "fail",
     };
   }
 
-  const timedOutCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "timed_out");
+  const timedOutCompletions = args.liveDesktops.filter(
+    (desktop) => desktop.completion?.status === "timed_out",
+  );
   if (timedOutCompletions.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab timed out waiting for ${timedOutCompletions.length}/${args.liveDesktops.length} bootstrap completion marker${timedOutCompletions.length === 1 ? "" : "s"}.`,
-      verdict: "timed_out"
+      verdict: "timed_out",
     };
   }
 
-  const blockedCompletions = args.liveDesktops.filter((desktop) => desktop.completion?.status === "blocked");
+  const blockedCompletions = args.liveDesktops.filter(
+    (desktop) => desktop.completion?.status === "blocked",
+  );
   if (blockedCompletions.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab classified ${blockedCompletions.length}/${args.liveDesktops.length} bootstrap terminal state${blockedCompletions.length === 1 ? "" : "s"} as blocked from public-safe remote evidence.`,
-      verdict: "blocked"
+      verdict: "blocked",
     };
   }
 
-  const completedWithMissingApp = args.liveDesktops.filter((desktop) =>
-    desktop.completion?.status === "passed"
-    && desktop.completion.appStatus !== "running"
+  const completedWithMissingApp = args.liveDesktops.filter(
+    (desktop) =>
+      desktop.completion?.status === "passed" && desktop.completion.appStatus !== "running",
   );
   if (completedWithMissingApp.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab completed nested Humanish setup but did not detect ${completedWithMissingApp.length}/${args.liveDesktops.length} target app HTTP-ready surface${completedWithMissingApp.length === 1 ? "" : "s"}.`,
-      verdict: "blocked"
+      verdict: "blocked",
     };
   }
 
-  const completedWithMissingVisual = args.liveDesktops.filter((desktop) =>
-    desktop.completion?.status === "passed"
-    && desktop.completion.visualStatus !== "visible"
+  const completedWithMissingVisual = args.liveDesktops.filter(
+    (desktop) =>
+      desktop.completion?.status === "passed" && desktop.completion.visualStatus !== "visible",
   );
   if (completedWithMissingVisual.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab completed nested Humanish setup but did not detect ${completedWithMissingVisual.length}/${args.liveDesktops.length} headed desktop visual layout${completedWithMissingVisual.length === 1 ? "" : "s"}.`,
-      verdict: "blocked"
+      verdict: "blocked",
     };
   }
 
-  const completedWithMissingAppServerActor = args.liveDesktops.filter((desktop) =>
-    desktop.bootstrap?.codexMode === "app-server-client"
-    && desktop.completion?.status === "passed"
-    && desktop.completion.actorStatus !== "passed"
+  const completedWithMissingAppServerActor = args.liveDesktops.filter(
+    (desktop) =>
+      desktop.bootstrap?.codexMode === "app-server-client" &&
+      desktop.completion?.status === "passed" &&
+      desktop.completion.actorStatus !== "passed",
   );
   if (completedWithMissingAppServerActor.length > 0) {
     return {
       ok: false,
       reason: `OSS meta-lab completed nested Humanish setup but did not capture passed Codex app-server actor evidence for ${completedWithMissingAppServerActor.length}/${args.liveDesktops.length} headed desktop lane${completedWithMissingAppServerActor.length === 1 ? "" : "s"}.`,
-      verdict: "blocked"
+      verdict: "blocked",
     };
   }
 
-  if (args.liveDesktops.length > 0 && args.liveDesktops.every((desktop) => desktop.completion?.status === "passed")) {
+  if (
+    args.liveDesktops.length > 0 &&
+    args.liveDesktops.every((desktop) => desktop.completion?.status === "passed")
+  ) {
     return {
       ok: true,
       reason: `OSS meta-lab passed ${args.liveDesktops.length}/${args.liveDesktops.length} bootstrap terminal states with target app HTTP readiness and headed desktop visual layout detected from public-safe remote evidence.`,
-      verdict: "pass"
+      verdict: "pass",
     };
   }
 
   return {
     ok: true,
-    reason: "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
-    verdict: "contract_proof_only"
+    reason:
+      "OSS meta-lab rendered the live headed-desktop control surface and marked the missing substrate truth in-lane.",
+    verdict: "contract_proof_only",
   };
 }
 
-function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop | undefined): string {
+function terminalTailForMeta(
+  prompt: string,
+  liveDesktop: OssMetaLabLiveDesktop | undefined,
+): string {
   if (!liveDesktop?.completion) {
     return liveDesktop?.bootstrap?.tail ?? prompt;
   }
@@ -2217,24 +2588,50 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
   const lines = [
     `Remote bootstrap ${liveDesktop.completion.status}: ${liveDesktop.completion.reason}`,
     `checked_at: ${liveDesktop.completion.checkedAt}`,
-    ...(liveDesktop.completion.appStatus === undefined ? [] : [`app_status: ${liveDesktop.completion.appStatus}`]),
-    ...(liveDesktop.completion.appUrl === undefined ? [] : [`app_url: ${liveDesktop.completion.appUrl}`]),
-    ...(liveDesktop.completion.appReason === undefined ? [] : [`app_reason: ${liveDesktop.completion.appReason}`]),
-    ...(liveDesktop.completion.actorStatus === undefined ? [] : [`actor_status: ${liveDesktop.completion.actorStatus}`]),
-    ...(liveDesktop.completion.exitCode === undefined ? [] : [`exit_code: ${liveDesktop.completion.exitCode}`]),
-    ...(liveDesktop.completion.nestedVerifyPassed === undefined ? [] : [`nested_verify_passed: ${liveDesktop.completion.nestedVerifyPassed ? "true" : "false"}`]),
-    ...(liveDesktop.completion.nestedObserverPresent === undefined ? [] : [`nested_observer_present: ${liveDesktop.completion.nestedObserverPresent ? "true" : "false"}`]),
-    ...(liveDesktop.completion.visualStatus === undefined ? [] : [`visual_status: ${liveDesktop.completion.visualStatus}`]),
-    ...(liveDesktop.completion.visualWindowCount === undefined ? [] : [`visual_window_count: ${liveDesktop.completion.visualWindowCount}`]),
-    ...(liveDesktop.completion.visualReason === undefined ? [] : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
-    ...(liveDesktop.completion.setupQuality === undefined ? [] : [
-      `setup_quality: ${liveDesktop.completion.setupQuality.status}`,
-      `setup_summary: ${liveDesktop.completion.setupQuality.summary}`,
-      ...(liveDesktop.completion.setupQuality.studyQuality === undefined ? [] : [
-        `study_quality: ${liveDesktop.completion.setupQuality.studyQuality.rating}`,
-        `study_summary: ${liveDesktop.completion.setupQuality.studyQuality.summary}`
-      ])
-    ]),
+    ...(liveDesktop.completion.appStatus === undefined
+      ? []
+      : [`app_status: ${liveDesktop.completion.appStatus}`]),
+    ...(liveDesktop.completion.appUrl === undefined
+      ? []
+      : [`app_url: ${liveDesktop.completion.appUrl}`]),
+    ...(liveDesktop.completion.appReason === undefined
+      ? []
+      : [`app_reason: ${liveDesktop.completion.appReason}`]),
+    ...(liveDesktop.completion.actorStatus === undefined
+      ? []
+      : [`actor_status: ${liveDesktop.completion.actorStatus}`]),
+    ...(liveDesktop.completion.exitCode === undefined
+      ? []
+      : [`exit_code: ${liveDesktop.completion.exitCode}`]),
+    ...(liveDesktop.completion.nestedVerifyPassed === undefined
+      ? []
+      : [`nested_verify_passed: ${liveDesktop.completion.nestedVerifyPassed ? "true" : "false"}`]),
+    ...(liveDesktop.completion.nestedObserverPresent === undefined
+      ? []
+      : [
+          `nested_observer_present: ${liveDesktop.completion.nestedObserverPresent ? "true" : "false"}`,
+        ]),
+    ...(liveDesktop.completion.visualStatus === undefined
+      ? []
+      : [`visual_status: ${liveDesktop.completion.visualStatus}`]),
+    ...(liveDesktop.completion.visualWindowCount === undefined
+      ? []
+      : [`visual_window_count: ${liveDesktop.completion.visualWindowCount}`]),
+    ...(liveDesktop.completion.visualReason === undefined
+      ? []
+      : [`visual_reason: ${liveDesktop.completion.visualReason}`]),
+    ...(liveDesktop.completion.setupQuality === undefined
+      ? []
+      : [
+          `setup_quality: ${liveDesktop.completion.setupQuality.status}`,
+          `setup_summary: ${liveDesktop.completion.setupQuality.summary}`,
+          ...(liveDesktop.completion.setupQuality.studyQuality === undefined
+            ? []
+            : [
+                `study_quality: ${liveDesktop.completion.setupQuality.studyQuality.rating}`,
+                `study_summary: ${liveDesktop.completion.setupQuality.studyQuality.summary}`,
+              ]),
+        ]),
     "",
     "public-safe actor last message tail:",
     liveDesktop.completion.actorLastMessageTail?.trim() || "(no actor last-message captured)",
@@ -2243,36 +2640,51 @@ function terminalTailForMeta(prompt: string, liveDesktop: OssMetaLabLiveDesktop 
     liveDesktop.completion.actorLogTail?.trim() || "(no actor log tail captured)",
     "",
     "public-safe bootstrap log tail:",
-    liveDesktop.completion.logTail?.trim() || "(no log tail captured)"
+    liveDesktop.completion.logTail?.trim() || "(no log tail captured)",
   ];
 
   return lines.join("\n").trim();
 }
 
-function completionForStream(completion: OssMetaLabCompletion, appServerMode = false): RunStreamCompletion {
-  const effectiveStatus = appServerMode && completion.status === "passed" && completion.actorStatus !== "passed"
-    ? "blocked"
-    : completion.status;
-  const effectiveReason = effectiveStatus === "blocked" && completion.status === "passed" && completion.actorStatus !== "passed"
-    ? "Codex app-server mode requires passed app-server actor evidence; actor evidence did not reach passed."
-    : completion.reason;
+function completionForStream(
+  completion: OssMetaLabCompletion,
+  appServerMode = false,
+): RunStreamCompletion {
+  const effectiveStatus =
+    appServerMode && completion.status === "passed" && completion.actorStatus !== "passed"
+      ? "blocked"
+      : completion.status;
+  const effectiveReason =
+    effectiveStatus === "blocked" &&
+    completion.status === "passed" &&
+    completion.actorStatus !== "passed"
+      ? "Codex app-server mode requires passed app-server actor evidence; actor evidence did not reach passed."
+      : completion.reason;
   const meaningfulUse = scoreOssMetaMeaningfulUse({
-    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: completion.actorLastMessageTail }),
+    ...(completion.actorLastMessageTail === undefined
+      ? {}
+      : { actorLastMessageTail: completion.actorLastMessageTail }),
     ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
     actorRequired: appServerMode,
     ...(completion.actorStatus === undefined ? {} : { actorStatus: completion.actorStatus }),
     ...(completion.appStatus === undefined ? {} : { appStatus: completion.appStatus }),
     ...(completion.appUrl === undefined ? {} : { appUrl: completion.appUrl }),
-    ...(completion.nestedObserverPresent === undefined ? {} : { nestedObserverPresent: completion.nestedObserverPresent }),
-    ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
+    ...(completion.nestedObserverPresent === undefined
+      ? {}
+      : { nestedObserverPresent: completion.nestedObserverPresent }),
+    ...(completion.nestedVerifyPassed === undefined
+      ? {}
+      : { nestedVerifyPassed: completion.nestedVerifyPassed }),
     ...(completion.setupQuality === undefined ? {} : { setupQuality: completion.setupQuality }),
     status: effectiveStatus,
-    ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus })
+    ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
   });
   return {
     ...(completion.actorLogPath === undefined ? {} : { actorLogPath: completion.actorLogPath }),
     ...(completion.actorLogTail === undefined ? {} : { actorLogTail: completion.actorLogTail }),
-    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: completion.actorLastMessageTail }),
+    ...(completion.actorLastMessageTail === undefined
+      ? {}
+      : { actorLastMessageTail: completion.actorLastMessageTail }),
     ...(completion.actorPid === undefined ? {} : { actorPid: completion.actorPid }),
     ...(completion.actorStatus === undefined ? {} : { actorStatus: completion.actorStatus }),
     ...(completion.appLogPath === undefined ? {} : { appLogPath: completion.appLogPath }),
@@ -2283,14 +2695,20 @@ function completionForStream(completion: OssMetaLabCompletion, appServerMode = f
     checkedAt: completion.checkedAt,
     ...(completion.exitCode === undefined ? {} : { exitCode: completion.exitCode }),
     ...(completion.logTail === undefined ? {} : { logTail: completion.logTail }),
-    ...(completion.nestedObserverPresent === undefined ? {} : { nestedObserverPresent: completion.nestedObserverPresent }),
-    ...(completion.nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed: completion.nestedVerifyPassed }),
+    ...(completion.nestedObserverPresent === undefined
+      ? {}
+      : { nestedObserverPresent: completion.nestedObserverPresent }),
+    ...(completion.nestedVerifyPassed === undefined
+      ? {}
+      : { nestedVerifyPassed: completion.nestedVerifyPassed }),
     reason: effectiveReason,
     status: effectiveStatus,
     meaningfulUse,
     ...(completion.visualReason === undefined ? {} : { visualReason: completion.visualReason }),
     ...(completion.visualStatus === undefined ? {} : { visualStatus: completion.visualStatus }),
-    ...(completion.visualWindowCount === undefined ? {} : { visualWindowCount: completion.visualWindowCount })
+    ...(completion.visualWindowCount === undefined
+      ? {}
+      : { visualWindowCount: completion.visualWindowCount }),
   };
 }
 
@@ -2312,7 +2730,8 @@ function buildMetaFeedbackCandidates(args: {
     const scenarioId = args.redactRepoNames ? `oss-meta-${repoLabel}` : assignment.scenarioId;
     const baseEvidence = feedbackEvidenceForDesktop(desktop);
     const setupQualityPath = desktop.actorEvidence?.setupQualityPath;
-    const failedSetupChecks = desktop.completion?.setupQuality?.checks.filter((check) => !check.ok) ?? [];
+    const failedSetupChecks =
+      desktop.completion?.setupQuality?.checks.filter((check) => !check.ok) ?? [];
     const studyQuality = desktop.completion?.setupQuality?.studyQuality;
 
     if (setupQualityPath && failedSetupChecks.length > 0) {
@@ -2328,26 +2747,27 @@ function buildMetaFeedbackCandidates(args: {
         substrate: "e2b-desktop",
         failure_owner: "actor",
         summary: `Generated Humanish setup for ${repoLabel} needs review`,
-        expected: "The setup actor should create committed Humanish source files, useful personas/scenarios, a package script, and a .humanish/ runtime ignore without preserving private state.",
+        expected:
+          "The setup actor should create committed Humanish source files, useful personas/scenarios, a package script, and a .humanish/ runtime ignore without preserving private state.",
         actual: failedSetupChecks.map((check) => `${check.label}: ${check.detail}`).join(" "),
         evidence: [
           {
             path: setupQualityPath,
             kind: "filesystem",
-            note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
+            note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews.",
           },
-          ...baseEvidence
+          ...baseEvidence,
         ],
         redaction: {
           status: "passed",
-          notes: "Feedback candidate references local public-safe run artifacts only."
+          notes: "Feedback candidate references local public-safe run artifacts only.",
         },
         idempotency_key: `humanish:${args.runId}:${assignment.streamId}:setup-quality`,
         proposed_next_state: "setup-quality-review",
         acceptance_proof: [
           feedbackProofCommands(args.runId).verify,
-          feedbackProofCommands(args.runId).watch
-        ]
+          feedbackProofCommands(args.runId).watch,
+        ],
       });
     }
 
@@ -2365,24 +2785,30 @@ function buildMetaFeedbackCandidates(args: {
         substrate: "e2b-desktop",
         failure_owner: "harness",
         summary: "Published Humanish install path blocked app-url proof",
-        expected: "A fresh npm-installed Humanish CLI should support the app-url live proof path documented for agents.",
-        actual: "The actor evidence reports that the installed CLI did not accept or expose the app-url proof option.",
+        expected:
+          "A fresh npm-installed Humanish CLI should support the app-url live proof path documented for agents.",
+        actual:
+          "The actor evidence reports that the installed CLI did not accept or expose the app-url proof option.",
         evidence: baseEvidence,
         redaction: {
           status: "passed",
-          notes: "Actor evidence was redacted before persistence."
+          notes: "Actor evidence was redacted before persistence.",
         },
         idempotency_key: `humanish:${args.runId}:${assignment.streamId}:published-cli-app-url`,
         proposed_next_state: "adapter-hardening",
         acceptance_proof: [
           "npm view humanish version",
           "npx --yes --package humanish humanish run --help | grep -- --app-url",
-          feedbackProofCommands(args.runId).verify
-        ]
+          feedbackProofCommands(args.runId).verify,
+        ],
       });
     }
 
-    if (setupQualityPath && studyQuality && (studyQuality.rating === "none" || studyQuality.rating === "ceremonial")) {
+    if (
+      setupQualityPath &&
+      studyQuality &&
+      (studyQuality.rating === "none" || studyQuality.rating === "ceremonial")
+    ) {
       candidates.push({
         schema: "humanish.feedback-candidate.v1",
         id: `study-quality-${safeArtifactToken(assignment.streamId)}`,
@@ -2395,27 +2821,28 @@ function buildMetaFeedbackCandidates(args: {
         substrate: "e2b-desktop",
         failure_owner: "actor",
         summary: `Generated Humanish setup for ${repoLabel} was ${studyQuality.rating}`,
-        expected: "The setup actor should turn Humanish init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
+        expected:
+          "The setup actor should turn Humanish init into an app-aware user-study plan with customized coverage, personas, scenarios, app-url proof, and public-safe feedback.",
         actual: studyQuality.summary,
         evidence: [
           {
             path: setupQualityPath,
             kind: "filesystem",
-            note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals."
+            note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals.",
           },
-          ...baseEvidence
+          ...baseEvidence,
         ],
         redaction: {
           status: "passed",
-          notes: "Study-quality feedback candidate references local public-safe artifacts only."
+          notes: "Study-quality feedback candidate references local public-safe artifacts only.",
         },
         idempotency_key: `humanish:${args.runId}:${assignment.streamId}:study-quality`,
         proposed_next_state: "study-quality-review",
         acceptance_proof: [
           feedbackProofCommands(args.runId).verify,
           feedbackProofCommands(args.runId).watch,
-          "Study-quality rating is useful or high_leverage, or the remaining ceremonial state is explicitly explained."
-        ]
+          "Study-quality rating is useful or high_leverage, or the remaining ceremonial state is explicitly explained.",
+        ],
       });
     }
   }
@@ -2423,34 +2850,36 @@ function buildMetaFeedbackCandidates(args: {
   return candidates.slice(0, 20);
 }
 
-function feedbackEvidenceForDesktop(desktop: OssMetaLabLiveDesktop): RunFeedbackCandidate["evidence"] {
+function feedbackEvidenceForDesktop(
+  desktop: OssMetaLabLiveDesktop,
+): RunFeedbackCandidate["evidence"] {
   const evidence: RunFeedbackCandidate["evidence"] = [];
   if (desktop.actorEvidence?.actorLastMessageTailPath) {
     evidence.push({
       path: desktop.actorEvidence.actorLastMessageTailPath,
       kind: "log",
-      note: "Public-safe actor last-message tail."
+      note: "Public-safe actor last-message tail.",
     });
   }
   if (desktop.actorEvidence?.actorLogTailPath) {
     evidence.push({
       path: desktop.actorEvidence.actorLogTailPath,
       kind: "log",
-      note: "Public-safe actor log tail."
+      note: "Public-safe actor log tail.",
     });
   }
   if (desktop.screenshot?.path) {
     evidence.push({
       path: desktop.screenshot.path,
       kind: "screenshot",
-      note: "Headed desktop screenshot fallback."
+      note: "Headed desktop screenshot fallback.",
     });
   }
   if (desktop.hostActorPlanPath) {
     evidence.push({
       path: desktop.hostActorPlanPath,
       kind: "trace",
-      note: "Host-authored public-safe actor plan."
+      note: "Host-authored public-safe actor plan.",
     });
   }
   return evidence;
@@ -2467,8 +2896,13 @@ function isTerminalCompletion(completion: OssMetaLabCompletion | undefined): boo
   return completion !== undefined && completion.status !== "running";
 }
 
-function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoName = false): string {
-  const repoLabel = redactRepoName ? "[redacted-authorized-repo]" : `https://github.com/${assignment.repo}.git`;
+function buildCodexBootstrapPrompt(
+  assignment: OssMetaLabAssignment,
+  redactRepoName = false,
+): string {
+  const repoLabel = redactRepoName
+    ? "[redacted-authorized-repo]"
+    : `https://github.com/${assignment.repo}.git`;
   return [
     `# Humanish OSS Meta-Lab Actor ${assignment.index}`,
     "",
@@ -2492,7 +2926,7 @@ function buildCodexBootstrapPrompt(assignment: OssMetaLabAssignment, redactRepoN
     "12. Final summary must be public-safe and include: personas/scenarios created, product journeys covered, one observed friction/improvement or `none observed`, and evidence paths. Do not stop at install/init proof.",
     "13. Record public-safe blockers and evidence paths only.",
     "",
-    "Expected nested outcome: the top-level Humanish Observer shows this desktop, and this desktop shows its own nested Humanish Observer."
+    "Expected nested outcome: the top-level Humanish Observer shows this desktop, and this desktop shows its own nested Humanish Observer.",
   ].join("\n");
 }
 
@@ -2528,7 +2962,7 @@ async function launchLiveDesktops(
     hostActorPlansByStream?: Map<string, OssMetaLabHostActorPlanResult>;
     localPackage?: OssMetaLabLocalPackage;
     redactRepoNames?: boolean;
-  } = {}
+  } = {},
 ): Promise<OssMetaLabLiveDesktop[]> {
   const e2bApiKey = process.env.E2B_API_KEY;
   if (!e2bApiKey) {
@@ -2539,111 +2973,140 @@ async function launchLiveDesktops(
   const timeoutMs = readPositiveInt(process.env.HUMANISH_E2B_TIMEOUT_MS, 60 * 60 * 1000);
   const requestTimeoutMs = readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
-  return Promise.all(assignments.map(async (assignment) => {
-    const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
-    const hostActorPlanResult = options.hostActorPlansByStream?.get(assignment.streamId);
-    // Retain the provider object in process memory so attached cleanup can use a trusted handle.
-    // Durable result IDs are evidence only and never authorize provider mutation.
-    let desktop: E2BDesktopSandbox | undefined;
-    try {
-      desktop = await desktopModule.Sandbox.create({
-        apiKey: e2bApiKey,
-        requestTimeoutMs,
-        timeoutMs,
-        metadata: {
-          ...OSS_META_LAB_PROVIDER_METADATA,
-          repo: repoLabel,
-          simId: assignment.simId
-        },
-        envs: {
-          ...collectOssMetaLabRemoteEnv(process.env),
-          ...(options.codexAppServerMode ? { HUMANISH_OSS_META_CODEX_APP_SERVER: "1" } : {})
-        },
-        resolution: [1440, 960],
-        dpi: 96,
-        lifecycle: {
-          onTimeout: "kill"
-        }
-      });
-      const bootstrap = await startOssBootstrap(desktop, assignment, options.localPackage, requestTimeoutMs, {
-        ...(options.codexAppServerMode === undefined ? {} : { codexAppServerMode: options.codexAppServerMode }),
-        ...(hostActorPlanResult === undefined ? {} : { hostActorPlanResult }),
-        repoLabel,
-        token: options.redactRepoNames ? repoLabel : repoSlug(assignment.repo)
-      });
-      await desktop.wait(750).catch(() => undefined);
-      await desktop.stream.start({ requireAuth: true });
-      const authKey = desktop.stream.getAuthKey();
-      const url = desktop.stream.getUrl({
-        authKey,
-        autoConnect: true,
-        viewOnly: true,
-        resize: "scale"
-      });
+  return Promise.all(
+    assignments.map(async (assignment) => {
+      const repoLabel = options.redactRepoNames ? repoArtifactLabel(assignment) : assignment.repo;
+      const hostActorPlanResult = options.hostActorPlansByStream?.get(assignment.streamId);
+      // Retain the provider object in process memory so attached cleanup can use a trusted handle.
+      // Durable result IDs are evidence only and never authorize provider mutation.
+      let desktop: E2BDesktopSandbox | undefined;
+      try {
+        desktop = await desktopModule.Sandbox.create({
+          apiKey: e2bApiKey,
+          requestTimeoutMs,
+          timeoutMs,
+          metadata: {
+            ...OSS_META_LAB_PROVIDER_METADATA,
+            repo: repoLabel,
+            simId: assignment.simId,
+          },
+          envs: {
+            ...collectOssMetaLabRemoteEnv(process.env),
+            ...(options.codexAppServerMode ? { HUMANISH_OSS_META_CODEX_APP_SERVER: "1" } : {}),
+          },
+          resolution: [1440, 960],
+          dpi: 96,
+          lifecycle: {
+            onTimeout: "kill",
+          },
+        });
+        const bootstrap = await startOssBootstrap(
+          desktop,
+          assignment,
+          options.localPackage,
+          requestTimeoutMs,
+          {
+            ...(options.codexAppServerMode === undefined
+              ? {}
+              : { codexAppServerMode: options.codexAppServerMode }),
+            ...(hostActorPlanResult === undefined ? {} : { hostActorPlanResult }),
+            repoLabel,
+            token: options.redactRepoNames ? repoLabel : repoSlug(assignment.repo),
+          },
+        );
+        await desktop.wait(750).catch(() => undefined);
+        await desktop.stream.start({ requireAuth: true });
+        const authKey = desktop.stream.getAuthKey();
+        const url = desktop.stream.getUrl({
+          authKey,
+          autoConnect: true,
+          viewOnly: true,
+          resize: "scale",
+        });
 
-      return {
-        bootstrap,
-        desktop,
-        ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
-        ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
-        repo: repoLabel,
-        sandboxId: desktop.sandboxId,
-        simId: assignment.simId,
-        streamId: assignment.streamId,
-        url
-      };
-    } catch (error) {
-      return {
-        error: compactError(error),
-        ...(desktop ? { desktop } : {}),
-        ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
-        ...(hostActorPlanResult?.artifactPath ? { hostActorPlanPath: hostActorPlanResult.artifactPath } : {}),
-        repo: repoLabel,
-        // Keep the id as public-safe lifecycle evidence only. Cleanup authority comes from the
-        // in-memory provider object above or a separately verified provider-metadata sweep.
-        ...(desktop?.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
-        simId: assignment.simId,
-        streamId: assignment.streamId
-      };
-    }
-  }));
+        return {
+          bootstrap,
+          desktop,
+          ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
+          ...(hostActorPlanResult?.artifactPath
+            ? { hostActorPlanPath: hostActorPlanResult.artifactPath }
+            : {}),
+          repo: repoLabel,
+          sandboxId: desktop.sandboxId,
+          simId: assignment.simId,
+          streamId: assignment.streamId,
+          url,
+        };
+      } catch (error) {
+        return {
+          error: compactError(error),
+          ...(desktop ? { desktop } : {}),
+          ...(hostActorPlanResult?.plan ? { hostActorPlan: hostActorPlanResult.plan } : {}),
+          ...(hostActorPlanResult?.artifactPath
+            ? { hostActorPlanPath: hostActorPlanResult.artifactPath }
+            : {}),
+          repo: repoLabel,
+          // Keep the id as public-safe lifecycle evidence only. Cleanup authority comes from the
+          // in-memory provider object above or a separately verified provider-metadata sweep.
+          ...(desktop?.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
+          simId: assignment.simId,
+          streamId: assignment.streamId,
+        };
+      }
+    }),
+  );
 }
 
 async function pollLiveDesktopCompletions(
   liveDesktops: OssMetaLabLiveDesktop[],
-  options: { timeoutMs?: number; timeoutReason?: string } = {}
+  options: { timeoutMs?: number; timeoutReason?: string } = {},
 ): Promise<{ warnings: string[] }> {
-  const pollable = liveDesktops.filter((desktop) =>
-    desktop.desktop
-    && desktop.bootstrap?.status === "started"
-    && desktop.bootstrap.completionPath
+  const pollable = liveDesktops.filter(
+    (desktop) =>
+      desktop.desktop &&
+      desktop.bootstrap?.status === "started" &&
+      desktop.bootstrap.completionPath,
   );
   if (pollable.length === 0) {
     return { warnings: [] };
   }
 
-  const timeoutMs = options.timeoutMs ?? readNonNegativeInt(process.env.HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
+  const timeoutMs =
+    options.timeoutMs ??
+    readNonNegativeInt(process.env.HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS, 240_000);
   const intervalMs = readPositiveInt(process.env.HUMANISH_OSS_META_COMPLETION_INTERVAL_MS, 5_000);
   const requestTimeoutMs = readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
   const warnings: string[] = [];
 
   if (timeoutMs === 0) {
-    warnings.push(`Initial OSS meta-lab completion wait skipped because ${options.timeoutReason ?? "HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS=0"}; attached watch continues polling while the Observer is open.`);
+    warnings.push(
+      `Initial OSS meta-lab completion wait skipped because ${options.timeoutReason ?? "HUMANISH_OSS_META_COMPLETION_TIMEOUT_MS=0"}; attached watch continues polling while the Observer is open.`,
+    );
     return { warnings };
   }
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() <= deadline) {
-    await Promise.all(pollable.map(async (desktop) => {
-      if (isTerminalCompletion(desktop.completion) || !desktop.desktop || !desktop.bootstrap?.completionPath) {
-        return;
-      }
+    await Promise.all(
+      pollable.map(async (desktop) => {
+        if (
+          isTerminalCompletion(desktop.completion) ||
+          !desktop.desktop ||
+          !desktop.bootstrap?.completionPath
+        ) {
+          return;
+        }
 
-      const completion = await readRemoteCompletion(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
-      if (completion) {
-        desktop.completion = completion;
-      }
-    }));
+        const completion = await readRemoteCompletion(
+          desktop.desktop,
+          desktop.bootstrap,
+          requestTimeoutMs,
+        );
+        if (completion) {
+          desktop.completion = completion;
+        }
+      }),
+    );
 
     if (pollable.every((desktop) => isTerminalCompletion(desktop.completion))) {
       return { warnings };
@@ -2652,20 +3115,24 @@ async function pollLiveDesktopCompletions(
     await wait(Math.min(intervalMs, Math.max(0, deadline - Date.now())));
   }
 
-  await Promise.all(pollable.map(async (desktop) => {
-    if (isTerminalCompletion(desktop.completion) || !desktop.desktop || !desktop.bootstrap) {
-      return;
-    }
+  await Promise.all(
+    pollable.map(async (desktop) => {
+      if (isTerminalCompletion(desktop.completion) || !desktop.desktop || !desktop.bootstrap) {
+        return;
+      }
 
-    desktop.completion = {
-      checkedAt: new Date().toISOString(),
-      logTail: await readRemoteLogTail(desktop.desktop, desktop.bootstrap, requestTimeoutMs),
-      reason: `Timed out waiting ${timeoutMs}ms for remote bootstrap completion marker.`,
-      status: "timed_out"
-    };
-  }));
+      desktop.completion = {
+        checkedAt: new Date().toISOString(),
+        logTail: await readRemoteLogTail(desktop.desktop, desktop.bootstrap, requestTimeoutMs),
+        reason: `Timed out waiting ${timeoutMs}ms for remote bootstrap completion marker.`,
+        status: "timed_out",
+      };
+    }),
+  );
 
-  warnings.push(`Timed out waiting for ${pollable.filter((desktop) => desktop.completion?.status === "timed_out").length}/${pollable.length} OSS meta-lab bootstrap completion marker${pollable.length === 1 ? "" : "s"}.`);
+  warnings.push(
+    `Timed out waiting for ${pollable.filter((desktop) => desktop.completion?.status === "timed_out").length}/${pollable.length} OSS meta-lab bootstrap completion marker${pollable.length === 1 ? "" : "s"}.`,
+  );
   return { warnings };
 }
 
@@ -2675,11 +3142,11 @@ async function refreshOssMetaLabLiveRuntime(
     captureScreenshots: boolean;
     timedOut: boolean;
     timeoutMs: number;
-  }
+  },
 ): Promise<void> {
   await refreshLiveDesktopProgress(runtime.liveDesktops, {
     timedOut: options.timedOut,
-    timeoutMs: options.timeoutMs
+    timeoutMs: options.timeoutMs,
   });
 
   if (options.captureScreenshots) {
@@ -2687,7 +3154,7 @@ async function refreshOssMetaLabLiveRuntime(
   }
   await writeActorEvidenceArtifacts(runtime.artifactRoot, runtime.liveDesktops, {
     assignments: runtime.assignments,
-    redactRepoNames: runtime.redactRepoNames
+    redactRepoNames: runtime.redactRepoNames,
   });
 
   const bundle = buildMetaBundle({
@@ -2700,7 +3167,7 @@ async function refreshOssMetaLabLiveRuntime(
     missingKeys: runtime.missingKeys,
     redactRepoNames: runtime.redactRepoNames,
     runId: runtime.runId,
-    source: runtime.source
+    source: runtime.source,
   });
   await writeMetaBundleArtifacts(runtime.artifactRoot, bundle);
   await renderObserver(runtime.physicalCwd, runtime.runId, { open: false });
@@ -2708,52 +3175,60 @@ async function refreshOssMetaLabLiveRuntime(
 
 async function refreshLiveDesktopProgress(
   liveDesktops: OssMetaLabLiveDesktop[],
-  options: { timedOut: boolean; timeoutMs: number }
+  options: { timedOut: boolean; timeoutMs: number },
 ): Promise<void> {
   const requestTimeoutMs = readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
 
-  await Promise.all(liveDesktops.map(async (desktop) => {
-    if (!desktop.desktop || desktop.bootstrap?.status !== "started") {
-      return;
-    }
-    if (isTerminalCompletion(desktop.completion)) {
-      return;
-    }
+  await Promise.all(
+    liveDesktops.map(async (desktop) => {
+      if (!desktop.desktop || desktop.bootstrap?.status !== "started") {
+        return;
+      }
+      if (isTerminalCompletion(desktop.completion)) {
+        return;
+      }
 
-    const completion = await readRemoteCompletion(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
-    if (completion) {
-      desktop.completion = completion;
-      return;
-    }
+      const completion = await readRemoteCompletion(
+        desktop.desktop,
+        desktop.bootstrap,
+        requestTimeoutMs,
+      );
+      if (completion) {
+        desktop.completion = completion;
+        return;
+      }
 
-    const logTail = await readRemoteLogTail(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
-    desktop.completion = {
-      checkedAt: new Date().toISOString(),
-      logTail,
-      reason: options.timedOut
-        ? `Timed out waiting ${options.timeoutMs}ms for remote bootstrap completion marker.`
-        : logTail
-          ? "Remote bootstrap is running; latest public-safe log tail is available."
-          : "Remote bootstrap is running; waiting for first public-safe log output.",
-      status: options.timedOut ? "timed_out" : "running"
-    };
-  }));
+      const logTail = await readRemoteLogTail(desktop.desktop, desktop.bootstrap, requestTimeoutMs);
+      desktop.completion = {
+        checkedAt: new Date().toISOString(),
+        logTail,
+        reason: options.timedOut
+          ? `Timed out waiting ${options.timeoutMs}ms for remote bootstrap completion marker.`
+          : logTail
+            ? "Remote bootstrap is running; latest public-safe log tail is available."
+            : "Remote bootstrap is running; waiting for first public-safe log output.",
+        status: options.timedOut ? "timed_out" : "running",
+      };
+    }),
+  );
 }
 
 async function readRemoteCompletion(
   desktop: E2BDesktopSandbox,
   bootstrap: OssMetaLabBootstrap,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
 ): Promise<OssMetaLabCompletion | null> {
   if (!bootstrap.completionPath) {
     return null;
   }
 
   const command = `if [ -f ${shellQuote(bootstrap.completionPath)} ]; then cat ${shellQuote(bootstrap.completionPath)}; else exit 3; fi`;
-  const result = await desktop.commands.run(`bash -lc ${shellQuote(command)}`, {
-    requestTimeoutMs,
-    timeoutMs: 30_000
-  }).catch(() => null);
+  const result = await desktop.commands
+    .run(`bash -lc ${shellQuote(command)}`, {
+      requestTimeoutMs,
+      timeoutMs: 30_000,
+    })
+    .catch(() => null);
   if (!result || (result.exitCode && result.exitCode !== 0) || !result.stdout) {
     return null;
   }
@@ -2764,17 +3239,19 @@ async function readRemoteCompletion(
 async function readRemoteLogTail(
   desktop: E2BDesktopSandbox,
   bootstrap: OssMetaLabBootstrap,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
 ): Promise<string> {
   if (!bootstrap.logPath) {
     return "";
   }
 
   const command = `tail -n 80 ${shellQuote(bootstrap.logPath)} 2>/dev/null || true`;
-  const result = await desktop.commands.run(`bash -lc ${shellQuote(command)}`, {
-    requestTimeoutMs,
-    timeoutMs: 30_000
-  }).catch(() => null);
+  const result = await desktop.commands
+    .run(`bash -lc ${shellQuote(command)}`, {
+      requestTimeoutMs,
+      timeoutMs: 30_000,
+    })
+    .catch(() => null);
 
   return sanitizeRemoteLog(result?.stdout ?? "");
 }
@@ -2782,7 +3259,7 @@ async function readRemoteLogTail(
 async function captureLiveDesktopScreenshots(
   artifactRoot: PreparedRunArtifactPaths,
   liveDesktops: OssMetaLabLiveDesktop[],
-  options: { redactRepoNames: boolean } = { redactRepoNames: false }
+  options: { redactRepoNames: boolean } = { redactRepoNames: false },
 ): Promise<{ warnings: string[] }> {
   const candidates = liveDesktops.filter((desktop) => desktop.desktop && desktop.url);
   if (candidates.length === 0) {
@@ -2791,37 +3268,47 @@ async function captureLiveDesktopScreenshots(
 
   const warnings: string[] = [];
 
-  await Promise.all(candidates.map(async (desktop) => {
-    if (!desktop.desktop) {
-      return;
-    }
+  await Promise.all(
+    candidates.map(async (desktop) => {
+      if (!desktop.desktop) {
+        return;
+      }
 
-    try {
-      await arrangeLiveDesktopForScreenshot(
-        desktop.desktop,
-        desktop.bootstrap?.terminalTitle,
-        readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000)
-      );
-      await desktop.desktop.wait(readPositiveInt(process.env.HUMANISH_OSS_META_SCREENSHOT_SETTLE_MS, 2_500)).catch(() => undefined);
-      const bytes = await desktop.desktop.screenshot("bytes");
-      const fileName = `${safeArtifactToken(desktop.streamId)}.png`;
-      await writeContainedOutputFile(artifactRoot, path.join("screenshots", fileName), Buffer.from(bytes));
-      desktop.screenshot = {
-        capturedAt: new Date().toISOString(),
-        observerUrl: `../screenshots/${fileName}`,
-        path: path.join("screenshots", fileName)
-      };
-    } catch (error) {
-      const laneLabel = options.redactRepoNames ? desktop.streamId : desktop.repo;
-      warnings.push(`Screenshot capture failed for ${laneLabel}: ${compactError(error)}`);
-    }
-  }));
+      try {
+        await arrangeLiveDesktopForScreenshot(
+          desktop.desktop,
+          desktop.bootstrap?.terminalTitle,
+          readPositiveInt(process.env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000),
+        );
+        await desktop.desktop
+          .wait(readPositiveInt(process.env.HUMANISH_OSS_META_SCREENSHOT_SETTLE_MS, 2_500))
+          .catch(() => undefined);
+        const bytes = await desktop.desktop.screenshot("bytes");
+        const fileName = `${safeArtifactToken(desktop.streamId)}.png`;
+        await writeContainedOutputFile(
+          artifactRoot,
+          path.join("screenshots", fileName),
+          Buffer.from(bytes),
+        );
+        desktop.screenshot = {
+          capturedAt: new Date().toISOString(),
+          observerUrl: `../screenshots/${fileName}`,
+          path: path.join("screenshots", fileName),
+        };
+      } catch (error) {
+        const laneLabel = options.redactRepoNames ? desktop.streamId : desktop.repo;
+        warnings.push(`Screenshot capture failed for ${laneLabel}: ${compactError(error)}`);
+      }
+    }),
+  );
 
   const capturedCount = liveDesktops.filter((desktop) => desktop.screenshot).length;
   if (capturedCount > 0) {
-    warnings.push(options.redactRepoNames
-      ? `Captured ${capturedCount}/${candidates.length} local-only redacted E2B desktop screenshot fallback${candidates.length === 1 ? "" : "s"}; do not publish private screenshots.`
-      : `Captured ${capturedCount}/${candidates.length} E2B desktop screenshot fallback${candidates.length === 1 ? "" : "s"}.`);
+    warnings.push(
+      options.redactRepoNames
+        ? `Captured ${capturedCount}/${candidates.length} local-only redacted E2B desktop screenshot fallback${candidates.length === 1 ? "" : "s"}; do not publish private screenshots.`
+        : `Captured ${capturedCount}/${candidates.length} E2B desktop screenshot fallback${candidates.length === 1 ? "" : "s"}.`,
+    );
   }
 
   return { warnings };
@@ -2833,16 +3320,17 @@ async function writeActorEvidenceArtifacts(
   options: {
     assignments: OssMetaLabAssignment[];
     redactRepoNames: boolean;
-  }
+  },
 ): Promise<{ warnings: string[] }> {
-  const candidates = liveDesktops.filter((desktop) =>
-    desktop.completion?.actorLastMessageTail
-    || desktop.completion?.actorLogTail
-    || desktop.completion?.appServerActorEvidence
-    || desktop.completion?.nestedObserverPresent !== undefined
-    || desktop.completion?.nestedStepTraceSummary !== undefined
-    || desktop.completion?.nestedVerifyPassed !== undefined
-    || desktop.completion?.setupQuality
+  const candidates = liveDesktops.filter(
+    (desktop) =>
+      desktop.completion?.actorLastMessageTail ||
+      desktop.completion?.actorLogTail ||
+      desktop.completion?.appServerActorEvidence ||
+      desktop.completion?.nestedObserverPresent !== undefined ||
+      desktop.completion?.nestedStepTraceSummary !== undefined ||
+      desktop.completion?.nestedVerifyPassed !== undefined ||
+      desktop.completion?.setupQuality,
   );
   if (candidates.length === 0) {
     return { warnings: [] };
@@ -2851,7 +3339,9 @@ async function writeActorEvidenceArtifacts(
   let written = 0;
 
   for (const desktop of candidates) {
-    const assignment = options.assignments.find((candidate) => candidate.streamId === desktop.streamId);
+    const assignment = options.assignments.find(
+      (candidate) => candidate.streamId === desktop.streamId,
+    );
     const repoForRedaction = options.redactRepoNames ? assignment?.repo : undefined;
     const baseName = safeArtifactToken(desktop.streamId);
     const actorEvidence: OssMetaLabActorEvidenceArtifacts = {};
@@ -2861,11 +3351,16 @@ async function writeActorEvidenceArtifacts(
       await writeContainedOutputFile(
         artifactRoot,
         relativePath,
-        renderPublicSafeActorEvidenceText("actor-last-message", desktop.streamId, desktop.completion.actorLastMessageTail, {
-          providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
-          repo: repoForRedaction
-        }),
-        "utf8"
+        renderPublicSafeActorEvidenceText(
+          "actor-last-message",
+          desktop.streamId,
+          desktop.completion.actorLastMessageTail,
+          {
+            providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
+            repo: repoForRedaction,
+          },
+        ),
+        "utf8",
       );
       actorEvidence.actorLastMessageTailPath = relativePath;
       written += 1;
@@ -2876,11 +3371,16 @@ async function writeActorEvidenceArtifacts(
       await writeContainedOutputFile(
         artifactRoot,
         relativePath,
-        renderPublicSafeActorEvidenceText("actor-log", desktop.streamId, desktop.completion.actorLogTail, {
-          providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
-          repo: repoForRedaction
-        }),
-        "utf8"
+        renderPublicSafeActorEvidenceText(
+          "actor-log",
+          desktop.streamId,
+          desktop.completion.actorLogTail,
+          {
+            providerRuntimeId: options.redactRepoNames ? desktop.sandboxId : undefined,
+            repo: repoForRedaction,
+          },
+        ),
+        "utf8",
       );
       actorEvidence.actorLogTailPath = relativePath;
       written += 1;
@@ -2889,34 +3389,41 @@ async function writeActorEvidenceArtifacts(
     if (desktop.completion?.setupQuality) {
       const relativePath = path.join("setup-quality", `${baseName}-setup-quality.json`);
       const snapshot = options.redactRepoNames
-        ? redactSetupQualityRepoMentions(suppressSetupQualityPreviews(desktop.completion.setupQuality), repoForRedaction)
+        ? redactSetupQualityRepoMentions(
+            suppressSetupQualityPreviews(desktop.completion.setupQuality),
+            repoForRedaction,
+          )
         : desktop.completion.setupQuality;
       await writeJson(artifactRoot, relativePath, snapshot);
       actorEvidence.setupQualityPath = relativePath;
       written += 1;
     }
 
-    if (desktop.completion && (
-      desktop.completion.nestedObserverPresent !== undefined
-      || desktop.completion.nestedStepTraceSummary !== undefined
-      || desktop.completion.nestedVerifyPassed !== undefined
-    )) {
+    if (
+      desktop.completion &&
+      (desktop.completion.nestedObserverPresent !== undefined ||
+        desktop.completion.nestedStepTraceSummary !== undefined ||
+        desktop.completion.nestedVerifyPassed !== undefined)
+    ) {
       const relativePath = path.join("nested-evidence", `${baseName}-nested-proof.json`);
       await writeJson(artifactRoot, relativePath, {
         schema: "humanish.oss-meta-nested-proof.v1",
         streamId: desktop.streamId,
         redaction: {
           status: "passed",
-          notes: "Nested proof summary contains booleans and redacted local artifact pointers only; remote sandbox paths are intentionally omitted."
+          notes:
+            "Nested proof summary contains booleans and redacted local artifact pointers only; remote sandbox paths are intentionally omitted.",
         },
         status: desktop.completion.status,
         reason: desktop.completion.reason,
         checkedAt: desktop.completion.checkedAt,
         nestedObserverPresent: desktop.completion.nestedObserverPresent === true,
         nestedVerifyPassed: desktop.completion.nestedVerifyPassed === true,
-        ...(desktop.completion.nestedStepTraceSummary ? { stepTraceSummary: desktop.completion.nestedStepTraceSummary } : {}),
+        ...(desktop.completion.nestedStepTraceSummary
+          ? { stepTraceSummary: desktop.completion.nestedStepTraceSummary }
+          : {}),
         appStatus: desktop.completion.appStatus ?? "unknown",
-        actorStatus: desktop.completion.actorStatus ?? "unknown"
+        actorStatus: desktop.completion.actorStatus ?? "unknown",
       });
       actorEvidence.nestedEvidencePath = relativePath;
       written += 1;
@@ -2937,11 +3444,21 @@ async function writeActorEvidenceArtifacts(
               redaction: { status: "passed" },
               status: evidence.status ?? "unknown",
               reason: evidence.reason ?? "Remote app-server trace JSON was not captured.",
-              traceText: evidence.traceText ?? ""
-            }
+              traceText: evidence.traceText ?? "",
+            },
       );
-      await writeContainedOutputFile(artifactRoot, eventsPath, evidence.eventsText ?? "No app-server event envelope tail captured.\n", "utf8");
-      await writeContainedOutputFile(artifactRoot, transcriptPath, evidence.transcriptText ?? "No app-server transcript tail captured.\n", "utf8");
+      await writeContainedOutputFile(
+        artifactRoot,
+        eventsPath,
+        evidence.eventsText ?? "No app-server event envelope tail captured.\n",
+        "utf8",
+      );
+      await writeContainedOutputFile(
+        artifactRoot,
+        transcriptPath,
+        evidence.transcriptText ?? "No app-server transcript tail captured.\n",
+        "utf8",
+      );
       evidence.tracePath = tracePath;
       evidence.eventsPath = eventsPath;
       evidence.transcriptPath = transcriptPath;
@@ -2956,8 +3473,8 @@ async function writeActorEvidenceArtifacts(
 
   return {
     warnings: [
-      `Persisted ${written} public-safe local actor evidence artifact${written === 1 ? "" : "s"}.`
-    ]
+      `Persisted ${written} public-safe local actor evidence artifact${written === 1 ? "" : "s"}.`,
+    ],
   };
 }
 
@@ -2968,15 +3485,17 @@ function suppressSetupQualityPreviews(snapshot: RunSetupQualitySnapshot): RunSet
     checks: snapshot.checks.map((check) => ({
       ...check,
       label: sanitizeSetupQualityText(check.label),
-      detail: sanitizeSetupQualityText(check.detail)
+      detail: sanitizeSetupQualityText(check.detail),
     })),
-    ...(snapshot.studyQuality ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) } : {}),
+    ...(snapshot.studyQuality
+      ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) }
+      : {}),
     previews: [],
     redaction: {
       status: "passed",
       rawPreviews: "suppressed",
-      notes: "Raw file previews are suppressed for token-backed/private OSS meta-lab runs."
-    }
+      notes: "Raw file previews are suppressed for token-backed/private OSS meta-lab runs.",
+    },
   };
 }
 
@@ -2984,75 +3503,135 @@ function renderPublicSafeActorEvidenceText(
   kind: string,
   streamId: string,
   text: string,
-  redaction?: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+  redaction?: { providerRuntimeId?: string | undefined; repo?: string | undefined },
 ): string {
   const sanitized = sanitizeRemoteLog(redactPrivateActorEvidence(text, redaction));
-  return [
-    `schema: humanish.oss-meta-actor-evidence.v1`,
-    `kind: ${kind}`,
-    `stream: ${streamId}`,
-    `redaction: passed`,
-    "",
-    sanitized || "(no actor evidence captured)"
-  ].join("\n").trimEnd() + "\n";
+  return (
+    [
+      `schema: humanish.oss-meta-actor-evidence.v1`,
+      `kind: ${kind}`,
+      `stream: ${streamId}`,
+      `redaction: passed`,
+      "",
+      sanitized || "(no actor evidence captured)",
+    ]
+      .join("\n")
+      .trimEnd() + "\n"
+  );
 }
 
-function redactLiveDesktopRepoMentions(desktop: OssMetaLabLiveDesktop, repo: string): OssMetaLabLiveDesktop {
+function redactLiveDesktopRepoMentions(
+  desktop: OssMetaLabLiveDesktop,
+  repo: string,
+): OssMetaLabLiveDesktop {
   return {
     ...desktop,
     ...(desktop.bootstrap
       ? {
           bootstrap: {
             ...desktop.bootstrap,
-            tail: redactPrivateRuntimeMentions(desktop.bootstrap.tail, { providerRuntimeId: desktop.sandboxId, repo })
-          }
+            tail: redactPrivateRuntimeMentions(desktop.bootstrap.tail, {
+              providerRuntimeId: desktop.sandboxId,
+              repo,
+            }),
+          },
         }
       : {}),
     ...(desktop.completion
       ? { completion: redactCompletionRepoMentions(desktop.completion, repo, desktop.sandboxId) }
-      : {})
+      : {}),
   };
 }
 
-function redactCompletionRepoMentions(completion: OssMetaLabCompletion, repo: string, providerRuntimeId?: string): OssMetaLabCompletion {
+function redactCompletionRepoMentions(
+  completion: OssMetaLabCompletion,
+  repo: string,
+  providerRuntimeId?: string,
+): OssMetaLabCompletion {
   const redaction = { providerRuntimeId, repo };
   return {
     ...completion,
-    ...(completion.actorLogTail === undefined ? {} : { actorLogTail: redactPrivateActorEvidence(completion.actorLogTail, redaction) }),
-    ...(completion.actorLastMessageTail === undefined ? {} : { actorLastMessageTail: redactPrivateActorEvidence(completion.actorLastMessageTail, redaction) }),
-    ...(completion.appServerActorEvidence === undefined ? {} : { appServerActorEvidence: redactAppServerActorEvidence(completion.appServerActorEvidence, redaction) }),
-    ...(completion.appReason === undefined ? {} : { appReason: redactPrivateRuntimeMentions(completion.appReason, redaction) }),
-    ...(completion.logTail === undefined ? {} : { logTail: redactPrivateRuntimeMentions(completion.logTail, redaction) }),
-    ...(completion.nestedStepTraceSummary === undefined ? {} : { nestedStepTraceSummary: redactNestedStepTraceSummary(completion.nestedStepTraceSummary, redaction) }),
+    ...(completion.actorLogTail === undefined
+      ? {}
+      : { actorLogTail: redactPrivateActorEvidence(completion.actorLogTail, redaction) }),
+    ...(completion.actorLastMessageTail === undefined
+      ? {}
+      : {
+          actorLastMessageTail: redactPrivateActorEvidence(
+            completion.actorLastMessageTail,
+            redaction,
+          ),
+        }),
+    ...(completion.appServerActorEvidence === undefined
+      ? {}
+      : {
+          appServerActorEvidence: redactAppServerActorEvidence(
+            completion.appServerActorEvidence,
+            redaction,
+          ),
+        }),
+    ...(completion.appReason === undefined
+      ? {}
+      : { appReason: redactPrivateRuntimeMentions(completion.appReason, redaction) }),
+    ...(completion.logTail === undefined
+      ? {}
+      : { logTail: redactPrivateRuntimeMentions(completion.logTail, redaction) }),
+    ...(completion.nestedStepTraceSummary === undefined
+      ? {}
+      : {
+          nestedStepTraceSummary: redactNestedStepTraceSummary(
+            completion.nestedStepTraceSummary,
+            redaction,
+          ),
+        }),
     reason: redactPrivateRuntimeMentions(completion.reason, redaction),
-    ...(completion.setupQuality === undefined ? {} : { setupQuality: redactSetupQualityRepoMentions(completion.setupQuality, repo) }),
-    ...(completion.visualReason === undefined ? {} : { visualReason: redactPrivateRuntimeMentions(completion.visualReason, redaction) })
+    ...(completion.setupQuality === undefined
+      ? {}
+      : { setupQuality: redactSetupQualityRepoMentions(completion.setupQuality, repo) }),
+    ...(completion.visualReason === undefined
+      ? {}
+      : { visualReason: redactPrivateRuntimeMentions(completion.visualReason, redaction) }),
   };
 }
 
 function redactNestedStepTraceSummary(
   summary: OssMetaLabNestedStepTraceSummary,
-  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined },
 ): OssMetaLabNestedStepTraceSummary {
   return normalizeNestedStepTraceSummary(redactJsonValue(summary, redaction)) ?? summary;
 }
 
 function redactAppServerActorEvidence(
   evidence: OssMetaLabAppServerActorEvidence,
-  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined },
 ): OssMetaLabAppServerActorEvidence {
   return {
     ...evidence,
-    ...(evidence.eventsText === undefined ? {} : { eventsText: redactPrivateActorEvidence(evidence.eventsText, redaction) }),
-    ...(evidence.reason === undefined ? {} : { reason: redactPrivateRuntimeMentions(evidence.reason, redaction) }),
-    ...(evidence.status === undefined ? {} : { status: redactPrivateRuntimeMentions(evidence.status, redaction) }),
-    ...(evidence.traceJson === undefined ? {} : { traceJson: redactJsonValue(evidence.traceJson, redaction) }),
-    ...(evidence.traceText === undefined ? {} : { traceText: redactPrivateActorEvidence(evidence.traceText, redaction) }),
-    ...(evidence.transcriptText === undefined ? {} : { transcriptText: redactPrivateActorEvidence(evidence.transcriptText, redaction) })
+    ...(evidence.eventsText === undefined
+      ? {}
+      : { eventsText: redactPrivateActorEvidence(evidence.eventsText, redaction) }),
+    ...(evidence.reason === undefined
+      ? {}
+      : { reason: redactPrivateRuntimeMentions(evidence.reason, redaction) }),
+    ...(evidence.status === undefined
+      ? {}
+      : { status: redactPrivateRuntimeMentions(evidence.status, redaction) }),
+    ...(evidence.traceJson === undefined
+      ? {}
+      : { traceJson: redactJsonValue(evidence.traceJson, redaction) }),
+    ...(evidence.traceText === undefined
+      ? {}
+      : { traceText: redactPrivateActorEvidence(evidence.traceText, redaction) }),
+    ...(evidence.transcriptText === undefined
+      ? {}
+      : { transcriptText: redactPrivateActorEvidence(evidence.transcriptText, redaction) }),
   };
 }
 
-function redactJsonValue(value: unknown, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined }): unknown {
+function redactJsonValue(
+  value: unknown,
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined },
+): unknown {
   try {
     return JSON.parse(redactPrivateActorEvidence(JSON.stringify(value), redaction));
   } catch {
@@ -3060,7 +3639,10 @@ function redactJsonValue(value: unknown, redaction: { providerRuntimeId?: string
   }
 }
 
-function redactPrivateActorEvidence(text: string, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined): string {
+function redactPrivateActorEvidence(
+  text: string,
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined,
+): string {
   const redacted = redactPrivateRuntimeMentions(text, redaction);
   return redaction?.repo ? stripSourceDiffBlocks(redacted) : redacted;
 }
@@ -3082,7 +3664,11 @@ function stripSourceDiffBlocks(text: string): string {
     }
 
     if (inDiff) {
-      if (/^(tokens used|Installed\b|Humanish\b|Created personas:|Created browser scenarios:|Product journeys covered:|Observed friction|Evidence paths:|Verification:|If you want\b)/.test(line)) {
+      if (
+        /^(tokens used|Installed\b|Humanish\b|Created personas:|Created browser scenarios:|Product journeys covered:|Observed friction|Evidence paths:|Verification:|If you want\b)/.test(
+          line,
+        )
+      ) {
         inDiff = false;
       } else {
         continue;
@@ -3095,14 +3681,19 @@ function stripSourceDiffBlocks(text: string): string {
   return output.join("\n");
 }
 
-function redactSetupQualityRepoMentions(snapshot: RunSetupQualitySnapshot, repo: string | undefined): RunSetupQualitySnapshot {
+function redactSetupQualityRepoMentions(
+  snapshot: RunSetupQualitySnapshot,
+  repo: string | undefined,
+): RunSetupQualitySnapshot {
   if (!repo) {
     return snapshot;
   }
 
-  return JSON.parse(JSON.stringify(snapshot, (_key, value) =>
-    typeof value === "string" ? redactRepoMentions(value, repo) : value
-  )) as RunSetupQualitySnapshot;
+  return JSON.parse(
+    JSON.stringify(snapshot, (_key, value) =>
+      typeof value === "string" ? redactRepoMentions(value, repo) : value,
+    ),
+  ) as RunSetupQualitySnapshot;
 }
 
 function redactRepoMentions(text: string, repo: string): string {
@@ -3113,8 +3704,17 @@ function redactRepoMentions(text: string, repo: string): string {
 
   const replacement = "[redacted-authorized-repo]";
   let redacted = text
-    .replace(new RegExp(`https://github\\.com/${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`, "gi"), replacement)
-    .replace(new RegExp(`git@github\\.com:${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`, "gi"), replacement)
+    .replace(
+      new RegExp(
+        `https://github\\.com/${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`,
+        "gi",
+      ),
+      replacement,
+    )
+    .replace(
+      new RegExp(`git@github\\.com:${escapeRegExp(owner)}/${escapeRegExp(name)}(?:\\.git)?`, "gi"),
+      replacement,
+    )
     .replace(new RegExp(`\\b${escapeRegExp(owner)}/${escapeRegExp(name)}\\b`, "gi"), replacement);
 
   if (name.length >= 4 && !isCommonRepoBasename(name)) {
@@ -3124,19 +3724,37 @@ function redactRepoMentions(text: string, repo: string): string {
   return redacted;
 }
 
-function redactPrivateRuntimeMentions(text: string, redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined): string {
+function redactPrivateRuntimeMentions(
+  text: string,
+  redaction: { providerRuntimeId?: string | undefined; repo?: string | undefined } | undefined,
+): string {
   let redacted = text;
   if (redaction?.repo) {
     redacted = redactRepoMentions(redacted, redaction.repo);
   }
   if (redaction?.providerRuntimeId) {
-    redacted = redacted.replace(new RegExp(escapeRegExp(redaction.providerRuntimeId), "g"), "[redacted-provider-runtime-id]");
+    redacted = redacted.replace(
+      new RegExp(escapeRegExp(redaction.providerRuntimeId), "g"),
+      "[redacted-provider-runtime-id]",
+    );
   }
   return redacted;
 }
 
 function isCommonRepoBasename(value: string): boolean {
-  return new Set(["app", "web", "api", "cli", "repo", "site", "docs", "main", "next", "demo", "test"]).has(value.toLowerCase());
+  return new Set([
+    "app",
+    "web",
+    "api",
+    "cli",
+    "repo",
+    "site",
+    "docs",
+    "main",
+    "next",
+    "demo",
+    "test",
+  ]).has(value.toLowerCase());
 }
 
 function escapeRegExp(value: string): string {
@@ -3145,9 +3763,13 @@ function escapeRegExp(value: string): string {
 
 function hasAppUrlProofBlocker(text: string): boolean {
   const normalized = normalizeActorEvidenceForPattern(text);
-  const blocker = "(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))";
+  const blocker =
+    "(?:unknown option|unsupported|not available|does\\s+\\W*not\\W*(?:support|expose|accept)|did\\s+\\W*not\\W*(?:support|expose|accept)|doesnt\\s+(?:support|expose|accept)|didnt\\s+(?:support|expose|accept))";
   const appUrl = "(?:--app-url|run\\s+--app-url|app-url\\s+proof)";
-  return new RegExp(`${blocker}[\\s\\S]{0,220}${appUrl}|${appUrl}[\\s\\S]{0,220}${blocker}`, "i").test(normalized);
+  return new RegExp(
+    `${blocker}[\\s\\S]{0,220}${appUrl}|${appUrl}[\\s\\S]{0,220}${blocker}`,
+    "i",
+  ).test(normalized);
 }
 
 function normalizeActorEvidenceForPattern(text: string): string {
@@ -3160,13 +3782,15 @@ function normalizeActorEvidenceForPattern(text: string): string {
 async function arrangeLiveDesktopForScreenshot(
   desktop: E2BDesktopSandbox,
   terminalTitle: string | undefined,
-  requestTimeoutMs: number
+  requestTimeoutMs: number,
 ): Promise<void> {
   const command = buildRemoteScreenshotArrangeCommand(terminalTitle);
-  await desktop.commands.run(`bash -lc ${shellQuote(command)}`, {
-    requestTimeoutMs,
-    timeoutMs: 15_000
-  }).catch(() => undefined);
+  await desktop.commands
+    .run(`bash -lc ${shellQuote(command)}`, {
+      requestTimeoutMs,
+      timeoutMs: 15_000,
+    })
+    .catch(() => undefined);
 }
 
 function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
@@ -3201,9 +3825,12 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
       return null;
     }
 
-    const nestedVerifyPassed = parsed.nestedVerifyStatus === "passed"
-      ? true
-      : parsed.nestedVerifyStatus === "failed" ? false : undefined;
+    const nestedVerifyPassed =
+      parsed.nestedVerifyStatus === "passed"
+        ? true
+        : parsed.nestedVerifyStatus === "failed"
+          ? false
+          : undefined;
     const appStatus = normalizeAppStatus(parsed.appStatus);
     const actorStatus = normalizeActorStatus(parsed.actorStatus);
     const visualStatus = normalizeVisualStatus(parsed.visualStatus);
@@ -3211,31 +3838,59 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
     const nestedStepTraceSummary = normalizeNestedStepTraceSummary(parsed.nestedStepTraceSummary);
 
     return {
-      ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim() ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) } : {}),
-      ...(typeof parsed.actorLogTail === "string" && parsed.actorLogTail.trim() ? { actorLogTail: sanitizeRemoteLog(parsed.actorLogTail) } : {}),
-      ...(typeof parsed.actorLastMessageTail === "string" && parsed.actorLastMessageTail.trim() ? { actorLastMessageTail: sanitizeRemoteLog(parsed.actorLastMessageTail) } : {}),
-      ...(typeof parsed.actorPid === "number" && Number.isFinite(parsed.actorPid) ? { actorPid: parsed.actorPid } : {}),
+      ...(typeof parsed.actorLogPath === "string" && parsed.actorLogPath.trim()
+        ? { actorLogPath: sanitizeRemoteLog(parsed.actorLogPath) }
+        : {}),
+      ...(typeof parsed.actorLogTail === "string" && parsed.actorLogTail.trim()
+        ? { actorLogTail: sanitizeRemoteLog(parsed.actorLogTail) }
+        : {}),
+      ...(typeof parsed.actorLastMessageTail === "string" && parsed.actorLastMessageTail.trim()
+        ? { actorLastMessageTail: sanitizeRemoteLog(parsed.actorLastMessageTail) }
+        : {}),
+      ...(typeof parsed.actorPid === "number" && Number.isFinite(parsed.actorPid)
+        ? { actorPid: parsed.actorPid }
+        : {}),
       ...(actorStatus ? { actorStatus } : {}),
       ...(appServerActorEvidence ? { appServerActorEvidence } : {}),
-      ...(typeof parsed.appLogPath === "string" && parsed.appLogPath.trim() ? { appLogPath: sanitizeRemoteLog(parsed.appLogPath) } : {}),
-      ...(typeof parsed.appPid === "number" && Number.isFinite(parsed.appPid) ? { appPid: parsed.appPid } : {}),
-      ...(typeof parsed.appReason === "string" && parsed.appReason.trim() ? { appReason: sanitizeRemoteLog(parsed.appReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
+      ...(typeof parsed.appLogPath === "string" && parsed.appLogPath.trim()
+        ? { appLogPath: sanitizeRemoteLog(parsed.appLogPath) }
+        : {}),
+      ...(typeof parsed.appPid === "number" && Number.isFinite(parsed.appPid)
+        ? { appPid: parsed.appPid }
+        : {}),
+      ...(typeof parsed.appReason === "string" && parsed.appReason.trim()
+        ? { appReason: sanitizeRemoteLog(parsed.appReason).replace(/\s+/g, " ").slice(0, 240) }
+        : {}),
       ...(appStatus ? { appStatus } : {}),
-      ...(typeof parsed.appUrl === "string" && parsed.appUrl.trim() ? { appUrl: sanitizeRemoteLog(parsed.appUrl).replace(/\s+/g, " ").slice(0, 240) } : {}),
-      checkedAt: typeof parsed.completedAt === "string" ? parsed.completedAt : new Date().toISOString(),
+      ...(typeof parsed.appUrl === "string" && parsed.appUrl.trim()
+        ? { appUrl: sanitizeRemoteLog(parsed.appUrl).replace(/\s+/g, " ").slice(0, 240) }
+        : {}),
+      checkedAt:
+        typeof parsed.completedAt === "string" ? parsed.completedAt : new Date().toISOString(),
       ...(typeof parsed.exitCode === "number" ? { exitCode: parsed.exitCode } : {}),
       ...(typeof parsed.logTail === "string" ? { logTail: sanitizeRemoteLog(parsed.logTail) } : {}),
-      ...(typeof parsed.nestedObserverPresent === "boolean" ? { nestedObserverPresent: parsed.nestedObserverPresent } : {}),
+      ...(typeof parsed.nestedObserverPresent === "boolean"
+        ? { nestedObserverPresent: parsed.nestedObserverPresent }
+        : {}),
       ...(nestedStepTraceSummary ? { nestedStepTraceSummary } : {}),
       ...(nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed }),
-      reason: typeof parsed.reason === "string" && parsed.reason.trim()
-        ? sanitizeRemoteLog(parsed.reason).replace(/\s+/g, " ").slice(0, 240)
-        : defaultReasonForCompletion(status),
-      ...(isRunSetupQualitySnapshot(parsed.setupQuality) ? { setupQuality: sanitizeSetupQualitySnapshot(parsed.setupQuality) } : {}),
+      reason:
+        typeof parsed.reason === "string" && parsed.reason.trim()
+          ? sanitizeRemoteLog(parsed.reason).replace(/\s+/g, " ").slice(0, 240)
+          : defaultReasonForCompletion(status),
+      ...(isRunSetupQualitySnapshot(parsed.setupQuality)
+        ? { setupQuality: sanitizeSetupQualitySnapshot(parsed.setupQuality) }
+        : {}),
       status,
-      ...(typeof parsed.visualReason === "string" && parsed.visualReason.trim() ? { visualReason: sanitizeRemoteLog(parsed.visualReason).replace(/\s+/g, " ").slice(0, 240) } : {}),
+      ...(typeof parsed.visualReason === "string" && parsed.visualReason.trim()
+        ? {
+            visualReason: sanitizeRemoteLog(parsed.visualReason).replace(/\s+/g, " ").slice(0, 240),
+          }
+        : {}),
       ...(visualStatus ? { visualStatus } : {}),
-      ...(typeof parsed.visualWindowCount === "number" && Number.isFinite(parsed.visualWindowCount) ? { visualWindowCount: parsed.visualWindowCount } : {})
+      ...(typeof parsed.visualWindowCount === "number" && Number.isFinite(parsed.visualWindowCount)
+        ? { visualWindowCount: parsed.visualWindowCount }
+        : {}),
     };
   } catch {
     return null;
@@ -3243,34 +3898,34 @@ function parseRemoteCompletion(payload: string): OssMetaLabCompletion | null {
 }
 
 function normalizeAppStatus(value: unknown): OssMetaLabAppStatus | null {
-  return value === "not_started"
-    || value === "running"
-    || value === "blocked"
-    || value === "failed"
-    || value === "missing"
-    || value === "unknown"
+  return value === "not_started" ||
+    value === "running" ||
+    value === "blocked" ||
+    value === "failed" ||
+    value === "missing" ||
+    value === "unknown"
     ? value
     : null;
 }
 
 function normalizeVisualStatus(value: unknown): OssMetaLabVisualStatus | null {
-  return value === "not_started"
-    || value === "visible"
-    || value === "blocked"
-    || value === "unknown"
+  return value === "not_started" ||
+    value === "visible" ||
+    value === "blocked" ||
+    value === "unknown"
     ? value
     : null;
 }
 
 function normalizeActorStatus(value: unknown): OssMetaLabActorStatus | null {
-  return value === "not_started"
-    || value === "running"
-    || value === "passed"
-    || value === "failed"
-    || value === "blocked"
-    || value === "timed_out"
-    || value === "suspended"
-    || value === "unknown"
+  return value === "not_started" ||
+    value === "running" ||
+    value === "passed" ||
+    value === "failed" ||
+    value === "blocked" ||
+    value === "timed_out" ||
+    value === "suspended" ||
+    value === "unknown"
     ? value
     : null;
 }
@@ -3285,32 +3940,36 @@ function normalizeNestedStepTraceSummary(value: unknown): OssMetaLabNestedStepTr
     .map((surface) => {
       const steps = Array.isArray(surface.steps)
         ? surface.steps
-          .slice(0, 20)
-          .filter((step) => isRecord(step))
-          .map((step) => {
-            const status = normalizeNestedStepStatus(step.status);
-            const assertionStatuses = Array.isArray(step.assertionStatuses)
-              ? step.assertionStatuses
-                .map((statusValue) => publicSafeSummaryToken(statusValue, "assertion"))
-                .filter(Boolean)
-                .slice(0, 12)
-              : undefined;
-            return {
-              action: publicSafeSummaryToken(step.action, "action"),
-              ...(assertionStatuses && assertionStatuses.length > 0 ? { assertionStatuses } : {}),
-              id: publicSafeSummaryToken(step.id, "step"),
-              ...(typeof step.label === "string" && step.label.trim() ? { label: sanitizeNestedTraceText(step.label, 140) } : {}),
-              reason: sanitizeNestedTraceText(step.reason, 240),
-              status
-            };
-          })
+            .slice(0, 20)
+            .filter((step) => isRecord(step))
+            .map((step) => {
+              const status = normalizeNestedStepStatus(step.status);
+              const assertionStatuses = Array.isArray(step.assertionStatuses)
+                ? step.assertionStatuses
+                    .map((statusValue) => publicSafeSummaryToken(statusValue, "assertion"))
+                    .filter(Boolean)
+                    .slice(0, 12)
+                : undefined;
+              return {
+                action: publicSafeSummaryToken(step.action, "action"),
+                ...(assertionStatuses && assertionStatuses.length > 0 ? { assertionStatuses } : {}),
+                id: publicSafeSummaryToken(step.id, "step"),
+                ...(typeof step.label === "string" && step.label.trim()
+                  ? { label: sanitizeNestedTraceText(step.label, 140) }
+                  : {}),
+                reason: sanitizeNestedTraceText(step.reason, 240),
+                status,
+              };
+            })
         : [];
       return {
         id: publicSafeSummaryToken(surface.id, "surface"),
-        ...(typeof surface.label === "string" && surface.label.trim() ? { label: sanitizeNestedTraceText(surface.label, 140) } : {}),
+        ...(typeof surface.label === "string" && surface.label.trim()
+          ? { label: sanitizeNestedTraceText(surface.label, 140) }
+          : {}),
         ok: surface.ok === true,
         reason: sanitizeNestedTraceText(surface.reason, 240),
-        steps
+        steps,
       };
     })
     .filter((surface) => surface.steps.length > 0);
@@ -3319,15 +3978,31 @@ function normalizeNestedStepTraceSummary(value: unknown): OssMetaLabNestedStepTr
   }
 
   const totalSteps = surfaces.reduce((total, surface) => total + surface.steps.length, 0);
-  const passedSteps = surfaces.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "passed").length, 0);
-  const blockedSteps = surfaces.reduce((total, surface) => total + surface.steps.filter((step) => step.status === "blocked").length, 0);
+  const passedSteps = surfaces.reduce(
+    (total, surface) => total + surface.steps.filter((step) => step.status === "passed").length,
+    0,
+  );
+  const blockedSteps = surfaces.reduce(
+    (total, surface) => total + surface.steps.filter((step) => step.status === "blocked").length,
+    0,
+  );
   const scenario = isRecord(value.scenario)
     ? {
         id: publicSafeSummaryToken(value.scenario.id, "scenario"),
-        ...(typeof value.scenario.source === "string" && isSafeRepoRelativePath(value.scenario.source) ? { source: sanitizeSetupQualityPath(value.scenario.source) } : {}),
-        ...(typeof value.scenario.sourceDigest === "string" && value.scenario.sourceDigest.trim() ? { sourceDigest: publicSafeSummaryToken(value.scenario.sourceDigest, "digest") } : {}),
-        ...(typeof value.scenario.stepCount === "number" && Number.isFinite(value.scenario.stepCount) ? { stepCount: Math.max(0, Math.round(value.scenario.stepCount)) } : {}),
-        ...(typeof value.scenario.title === "string" && value.scenario.title.trim() ? { title: sanitizeNestedTraceText(value.scenario.title, 140) } : {})
+        ...(typeof value.scenario.source === "string" &&
+        isSafeRepoRelativePath(value.scenario.source)
+          ? { source: sanitizeSetupQualityPath(value.scenario.source) }
+          : {}),
+        ...(typeof value.scenario.sourceDigest === "string" && value.scenario.sourceDigest.trim()
+          ? { sourceDigest: publicSafeSummaryToken(value.scenario.sourceDigest, "digest") }
+          : {}),
+        ...(typeof value.scenario.stepCount === "number" &&
+        Number.isFinite(value.scenario.stepCount)
+          ? { stepCount: Math.max(0, Math.round(value.scenario.stepCount)) }
+          : {}),
+        ...(typeof value.scenario.title === "string" && value.scenario.title.trim()
+          ? { title: sanitizeNestedTraceText(value.scenario.title, 140) }
+          : {}),
       }
     : undefined;
 
@@ -3335,18 +4010,19 @@ function normalizeNestedStepTraceSummary(value: unknown): OssMetaLabNestedStepTr
     schema: "humanish.oss-meta-nested-step-trace-summary.v1",
     redaction: {
       status: "passed",
-      notes: "Nested browser trace summary stores counts and redacted step metadata only; URLs, auth streams, remote paths, screenshots, and raw DOM text are omitted."
+      notes:
+        "Nested browser trace summary stores counts and redacted step metadata only; URLs, auth streams, remote paths, screenshots, and raw DOM text are omitted.",
     },
     counts: {
       blockedSteps,
       passedSteps,
       surfaces: surfaces.length,
       totalSteps,
-      traces: surfaces.length
+      traces: surfaces.length,
     },
     ...(scenario ? { scenario } : {}),
     status: blockedSteps > 0 ? "blocked" : passedSteps === totalSteps ? "passed" : "unknown",
-    surfaces
+    surfaces,
   };
 }
 
@@ -3376,40 +4052,62 @@ function normalizeAppServerActorEvidence(value: unknown): OssMetaLabAppServerAct
   if (!isRecord(value)) {
     return null;
   }
-  const tracePath = safeRelativeArtifactPath(typeof value.tracePath === "string" ? value.tracePath : "");
-  const eventsPath = safeRelativeArtifactPath(typeof value.eventsPath === "string" ? value.eventsPath : "");
-  const transcriptPath = safeRelativeArtifactPath(typeof value.transcriptPath === "string" ? value.transcriptPath : "");
+  const tracePath = safeRelativeArtifactPath(
+    typeof value.tracePath === "string" ? value.tracePath : "",
+  );
+  const eventsPath = safeRelativeArtifactPath(
+    typeof value.eventsPath === "string" ? value.eventsPath : "",
+  );
+  const transcriptPath = safeRelativeArtifactPath(
+    typeof value.transcriptPath === "string" ? value.transcriptPath : "",
+  );
   if (!tracePath || !eventsPath || !transcriptPath) {
     return null;
   }
 
   return {
     eventsPath,
-    ...(typeof value.eventsText === "string" && value.eventsText.trim() ? { eventsText: sanitizeRemoteLog(value.eventsText) } : {}),
-    ...(typeof value.reason === "string" && value.reason.trim() ? { reason: sanitizeRemoteLog(value.reason).replace(/\s+/g, " ").slice(0, 240) } : {}),
-    ...(typeof value.status === "string" && value.status.trim() ? { status: sanitizeRemoteLog(value.status).replace(/\s+/g, " ").slice(0, 80) } : {}),
+    ...(typeof value.eventsText === "string" && value.eventsText.trim()
+      ? { eventsText: sanitizeRemoteLog(value.eventsText) }
+      : {}),
+    ...(typeof value.reason === "string" && value.reason.trim()
+      ? { reason: sanitizeRemoteLog(value.reason).replace(/\s+/g, " ").slice(0, 240) }
+      : {}),
+    ...(typeof value.status === "string" && value.status.trim()
+      ? { status: sanitizeRemoteLog(value.status).replace(/\s+/g, " ").slice(0, 80) }
+      : {}),
     ...(isRecord(value.traceJson) ? { traceJson: value.traceJson } : {}),
     tracePath,
-    ...(typeof value.traceText === "string" && value.traceText.trim() ? { traceText: sanitizeRemoteLog(value.traceText) } : {}),
+    ...(typeof value.traceText === "string" && value.traceText.trim()
+      ? { traceText: sanitizeRemoteLog(value.traceText) }
+      : {}),
     transcriptPath,
-    ...(typeof value.transcriptText === "string" && value.transcriptText.trim() ? { transcriptText: sanitizeRemoteLog(value.transcriptText) } : {})
+    ...(typeof value.transcriptText === "string" && value.transcriptText.trim()
+      ? { transcriptText: sanitizeRemoteLog(value.transcriptText) }
+      : {}),
   };
 }
 
 function safeRelativeArtifactPath(value: string): string {
   const normalized = value.replace(/\\/g, "/").replace(/^\.\/+/, "");
-  if (!normalized || normalized.startsWith("/") || normalized.startsWith("../") || normalized.includes("://") || normalized.split("/").includes("..")) {
+  if (
+    !normalized ||
+    normalized.startsWith("/") ||
+    normalized.startsWith("../") ||
+    normalized.includes("://") ||
+    normalized.split("/").includes("..")
+  ) {
     return "";
   }
   return normalized;
 }
 
 function normalizeCompletionStatus(value: unknown): OssMetaLabCompletionStatus | null {
-  return value === "running"
-    || value === "passed"
-    || value === "failed"
-    || value === "blocked"
-    || value === "timed_out"
+  return value === "running" ||
+    value === "passed" ||
+    value === "failed" ||
+    value === "blocked" ||
+    value === "timed_out"
     ? value
     : null;
 }
@@ -3434,24 +4132,31 @@ function isRunSetupQualitySnapshot(value: unknown): value is RunSetupQualitySnap
     return false;
   }
 
-  return Array.isArray(value.checks)
-    && Array.isArray(value.tree)
-    && Array.isArray(value.previews)
-    && isRecord(value.humanish)
-    && isRecord(value.packageScripts)
-    && typeof value.generatedAt === "string"
-    && typeof value.summary === "string"
-    && (value.status === "passed" || value.status === "needs_review" || value.status === "blocked");
+  return (
+    Array.isArray(value.checks) &&
+    Array.isArray(value.tree) &&
+    Array.isArray(value.previews) &&
+    isRecord(value.humanish) &&
+    isRecord(value.packageScripts) &&
+    typeof value.generatedAt === "string" &&
+    typeof value.summary === "string" &&
+    (value.status === "passed" || value.status === "needs_review" || value.status === "blocked")
+  );
 }
 
 function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSetupQualitySnapshot {
   const safeTree = snapshot.tree
-    .filter((entry) => isSafeRepoRelativePath(entry.path) && (entry.type === "file" || entry.type === "directory"))
+    .filter(
+      (entry) =>
+        isSafeRepoRelativePath(entry.path) && (entry.type === "file" || entry.type === "directory"),
+    )
     .slice(0, 240)
     .map((entry) => ({
       path: sanitizeSetupQualityPath(entry.path),
       type: entry.type,
-      ...(typeof entry.sizeBytes === "number" && Number.isFinite(entry.sizeBytes) ? { sizeBytes: Math.max(0, Math.round(entry.sizeBytes)) } : {})
+      ...(typeof entry.sizeBytes === "number" && Number.isFinite(entry.sizeBytes)
+        ? { sizeBytes: Math.max(0, Math.round(entry.sizeBytes)) }
+        : {}),
     }));
   const safePreviews = snapshot.previews
     .filter((preview) => isSafeRepoRelativePath(preview.path))
@@ -3460,11 +4165,13 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
       path: sanitizeSetupQualityPath(preview.path),
       language: sanitizePreviewLanguage(preview.language),
       truncated: preview.truncated === true,
-      text: sanitizeSetupQualityText(preview.text).slice(0, 8_000)
+      text: sanitizeSetupQualityText(preview.text).slice(0, 8_000),
     }));
   const safeScripts: Record<string, string> = {};
   for (const [key, value] of Object.entries(snapshot.packageScripts)) {
-    const safeKey = sanitizeSetupQualityText(key).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80);
+    const safeKey = sanitizeSetupQualityText(key)
+      .replace(/[^a-zA-Z0-9:_-]/g, "")
+      .slice(0, 80);
     if (!safeKey || typeof value !== "string") {
       continue;
     }
@@ -3473,44 +4180,69 @@ function sanitizeSetupQualitySnapshot(snapshot: RunSetupQualitySnapshot): RunSet
 
   return {
     schema: "humanish.setup-quality.v1",
-    generatedAt: sanitizeSetupQualityText(snapshot.generatedAt).slice(0, 80) || new Date().toISOString(),
+    generatedAt:
+      sanitizeSetupQualityText(snapshot.generatedAt).slice(0, 80) || new Date().toISOString(),
     redaction: {
       status: "passed",
       rawPreviews: snapshot.redaction?.rawPreviews === "suppressed" ? "suppressed" : "included",
-      notes: sanitizeSetupQualityText(snapshot.redaction?.notes ?? "Remote setup snapshot was redacted before persistence.").slice(0, 240)
+      notes: sanitizeSetupQualityText(
+        snapshot.redaction?.notes ?? "Remote setup snapshot was redacted before persistence.",
+      ).slice(0, 240),
     },
     summary: sanitizeSetupQualityText(snapshot.summary).slice(0, 320),
     status: snapshot.status,
     checks: snapshot.checks
-      .filter((check) => isRecord(check) && typeof check.id === "string" && typeof check.label === "string" && typeof check.detail === "string")
+      .filter(
+        (check) =>
+          isRecord(check) &&
+          typeof check.id === "string" &&
+          typeof check.label === "string" &&
+          typeof check.detail === "string",
+      )
       .slice(0, 40)
       .map((check) => ({
-        id: sanitizeSetupQualityText(check.id).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80) || "check",
+        id:
+          sanitizeSetupQualityText(check.id)
+            .replace(/[^a-zA-Z0-9:_-]/g, "")
+            .slice(0, 80) || "check",
         label: sanitizeSetupQualityText(check.label).slice(0, 140),
         ok: check.ok === true,
-        detail: sanitizeSetupQualityText(check.detail).slice(0, 320)
+        detail: sanitizeSetupQualityText(check.detail).slice(0, 320),
       })),
     tree: safeTree,
     previews: safePreviews,
-    ...(snapshot.studyQuality ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) } : {}),
+    ...(snapshot.studyQuality
+      ? { studyQuality: sanitizeStudyQualitySnapshot(snapshot.studyQuality) }
+      : {}),
     packageScripts: safeScripts,
     humanish: {
       configPresent: snapshot.humanish.configPresent === true,
-      personaCount: typeof snapshot.humanish.personaCount === "number" && Number.isFinite(snapshot.humanish.personaCount) ? Math.max(0, Math.round(snapshot.humanish.personaCount)) : 0,
-      scenarioCount: typeof snapshot.humanish.scenarioCount === "number" && Number.isFinite(snapshot.humanish.scenarioCount) ? Math.max(0, Math.round(snapshot.humanish.scenarioCount)) : 0,
+      personaCount:
+        typeof snapshot.humanish.personaCount === "number" &&
+        Number.isFinite(snapshot.humanish.personaCount)
+          ? Math.max(0, Math.round(snapshot.humanish.personaCount))
+          : 0,
+      scenarioCount:
+        typeof snapshot.humanish.scenarioCount === "number" &&
+        Number.isFinite(snapshot.humanish.scenarioCount)
+          ? Math.max(0, Math.round(snapshot.humanish.scenarioCount))
+          : 0,
       packageScriptPresent: snapshot.humanish.packageScriptPresent === true,
-      gitignoreContainsRuntimeIgnore: snapshot.humanish.gitignoreContainsRuntimeIgnore === true
-    }
+      gitignoreContainsRuntimeIgnore: snapshot.humanish.gitignoreContainsRuntimeIgnore === true,
+    },
   };
 }
 
-function sanitizeStudyQualitySnapshot(studyQuality: NonNullable<RunSetupQualitySnapshot["studyQuality"]>): NonNullable<RunSetupQualitySnapshot["studyQuality"]> {
-  const rating = studyQuality.rating === "none"
-    || studyQuality.rating === "ceremonial"
-    || studyQuality.rating === "useful"
-    || studyQuality.rating === "high_leverage"
-    ? studyQuality.rating
-    : "none";
+function sanitizeStudyQualitySnapshot(
+  studyQuality: NonNullable<RunSetupQualitySnapshot["studyQuality"]>,
+): NonNullable<RunSetupQualitySnapshot["studyQuality"]> {
+  const rating =
+    studyQuality.rating === "none" ||
+    studyQuality.rating === "ceremonial" ||
+    studyQuality.rating === "useful" ||
+    studyQuality.rating === "high_leverage"
+      ? studyQuality.rating
+      : "none";
 
   return {
     schema: "humanish.study-quality.v1",
@@ -3518,14 +4250,23 @@ function sanitizeStudyQualitySnapshot(studyQuality: NonNullable<RunSetupQualityS
     summary: sanitizeSetupQualityText(studyQuality.summary).slice(0, 320),
     checks: Array.isArray(studyQuality.checks)
       ? studyQuality.checks
-        .filter((check) => isRecord(check) && typeof check.id === "string" && typeof check.label === "string" && typeof check.detail === "string")
-        .slice(0, 20)
-        .map((check) => ({
-          id: sanitizeSetupQualityText(check.id).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80) || "study-check",
-          label: sanitizeSetupQualityText(check.label).slice(0, 140),
-          ok: check.ok === true,
-          detail: sanitizeSetupQualityText(check.detail).slice(0, 320)
-        }))
+          .filter(
+            (check) =>
+              isRecord(check) &&
+              typeof check.id === "string" &&
+              typeof check.label === "string" &&
+              typeof check.detail === "string",
+          )
+          .slice(0, 20)
+          .map((check) => ({
+            id:
+              sanitizeSetupQualityText(check.id)
+                .replace(/[^a-zA-Z0-9:_-]/g, "")
+                .slice(0, 80) || "study-check",
+            label: sanitizeSetupQualityText(check.label).slice(0, 140),
+            ok: check.ok === true,
+            detail: sanitizeSetupQualityText(check.detail).slice(0, 320),
+          }))
       : [],
     signals: {
       appUrlProofBlocked: studyQuality.signals?.appUrlProofBlocked === true,
@@ -3533,19 +4274,28 @@ function sanitizeStudyQualitySnapshot(studyQuality: NonNullable<RunSetupQualityS
       actorInsightCaptured: studyQuality.signals?.actorInsightCaptured === true,
       coverageCustomized: studyQuality.signals?.coverageCustomized === true,
       personaCustomized: studyQuality.signals?.personaCustomized === true,
-      scenarioCustomized: studyQuality.signals?.scenarioCustomized === true
-    }
+      scenarioCustomized: studyQuality.signals?.scenarioCustomized === true,
+    },
   };
 }
 
-function sanitizePreviewLanguage(value: unknown): RunSetupQualitySnapshot["previews"][number]["language"] {
-  return value === "json" || value === "yaml" || value === "typescript" || value === "markdown" || value === "text"
+function sanitizePreviewLanguage(
+  value: unknown,
+): RunSetupQualitySnapshot["previews"][number]["language"] {
+  return value === "json" ||
+    value === "yaml" ||
+    value === "typescript" ||
+    value === "markdown" ||
+    value === "text"
     ? value
     : "text";
 }
 
 function sanitizeSetupQualityPath(value: string): string {
-  return value.replace(/\\/g, "/").replace(/^\.\/+/, "").slice(0, 240);
+  return value
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .slice(0, 240);
 }
 
 function sanitizeSetupQualityText(value: unknown): string {
@@ -3560,11 +4310,17 @@ function isSafeRepoRelativePath(value: unknown): value is string {
     return false;
   }
   const normalized = value.replace(/\\/g, "/").replace(/^\.\/+/, "");
-  return !path.isAbsolute(normalized)
-    && !normalized.includes("://")
-    && !normalized.startsWith("../")
-    && !normalized.split("/").includes("..")
-    && !normalized.split("/").some((segment) => /^(?:\.env(?:\..*)?|\.npmrc|\.git|node_modules|dist|build|\.next)$/.test(segment));
+  return (
+    !path.isAbsolute(normalized) &&
+    !normalized.includes("://") &&
+    !normalized.startsWith("../") &&
+    !normalized.split("/").includes("..") &&
+    !normalized
+      .split("/")
+      .some((segment) =>
+        /^(?:\.env(?:\..*)?|\.npmrc|\.git|node_modules|dist|build|\.next)$/.test(segment),
+      )
+  );
 }
 
 function isLocalEvidenceArtifactPath(value: string): boolean {
@@ -3576,11 +4332,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function sanitizeRemoteLog(value: string): string {
-  return redactOssRemoteTelemetryText(value)
-    .split(/\r?\n/)
-    .slice(-80)
-    .join("\n")
-    .trim();
+  return redactOssRemoteTelemetryText(value).split(/\r?\n/).slice(-80).join("\n").trim();
 }
 
 async function startOssBootstrap(
@@ -3588,10 +4340,15 @@ async function startOssBootstrap(
   assignment: OssMetaLabAssignment,
   localPackage: OssMetaLabLocalPackage | undefined,
   requestTimeoutMs: number,
-  display: { codexAppServerMode?: boolean; hostActorPlanResult?: OssMetaLabHostActorPlanResult; repoLabel: string; token: string } = {
+  display: {
+    codexAppServerMode?: boolean;
+    hostActorPlanResult?: OssMetaLabHostActorPlanResult;
+    repoLabel: string;
+    token: string;
+  } = {
     repoLabel: assignment.repo,
-    token: repoSlug(assignment.repo)
-  }
+    token: repoSlug(assignment.repo),
+  },
 ): Promise<OssMetaLabBootstrap> {
   const token = display.token;
   const appDir = `/home/user/${token}`;
@@ -3604,7 +4361,9 @@ async function startOssBootstrap(
   const completionPath = `${stateDir}/completion.json`;
   const nestedObserverPath = `${appDir}/.humanish/runs/nested-${token}/observer/index.html`;
   const title = `Humanish ${assignment.index} ${display.repoLabel}`;
-  const codexMode = codexAppServerModeRequested(process.env, display.codexAppServerMode === true) ? "app-server-client" : "tui-attempted";
+  const codexMode = codexAppServerModeRequested(process.env, display.codexAppServerMode === true)
+    ? "app-server-client"
+    : "tui-attempted";
   const baseTail = [
     `repo: ${display.repoLabel}`,
     `project: ${appDir}`,
@@ -3613,26 +4372,30 @@ async function startOssBootstrap(
     `bootstrap: ${bootstrapPath}`,
     `completion: ${completionPath}`,
     `log: ${logPath}`,
-    `nested observer: ${nestedObserverPath}`
+    `nested observer: ${nestedObserverPath}`,
   ].join("\n");
 
   try {
     await runDesktopCommand(desktop, `mkdir -p ${shellQuote(stateDir)}`, {
       requestTimeoutMs,
-      timeoutMs: 30_000
+      timeoutMs: 30_000,
     });
 
     if (localPackage) {
       const packageBytes = await readFile(localPackage.path);
       await desktop.files.write(remotePackagePath, toArrayBuffer(packageBytes), {
         requestTimeoutMs,
-        useOctetStream: true
+        useOctetStream: true,
       });
     }
     if (display.hostActorPlanResult?.plan) {
-      await desktop.files.write(remoteHostActorPlanPath, `${JSON.stringify(display.hostActorPlanResult.plan, null, 2)}\n`, {
-        requestTimeoutMs
-      });
+      await desktop.files.write(
+        remoteHostActorPlanPath,
+        `${JSON.stringify(display.hostActorPlanResult.plan, null, 2)}\n`,
+        {
+          requestTimeoutMs,
+        },
+      );
     }
 
     const bootstrapScript = buildRemoteBootstrapScript({
@@ -3645,29 +4408,33 @@ async function startOssBootstrap(
       ...(display.hostActorPlanResult?.plan ? { remoteHostActorPlanPath } : {}),
       stateDir,
       token,
-      ...(localPackage ? { remotePackagePath } : {})
+      ...(localPackage ? { remotePackagePath } : {}),
     });
     const launcherScript = buildRemoteLauncherScript({
       bootstrapPath,
       launcherPath,
       logPath,
-      title
+      title,
     });
 
     await desktop.files.write(bootstrapPath, bootstrapScript, { requestTimeoutMs });
     await desktop.files.write(launcherPath, launcherScript, { requestTimeoutMs });
-    await runDesktopCommand(desktop, `chmod +x ${shellQuote(bootstrapPath)} ${shellQuote(launcherPath)}`, {
-      requestTimeoutMs,
-      timeoutMs: 30_000
-    });
+    await runDesktopCommand(
+      desktop,
+      `chmod +x ${shellQuote(bootstrapPath)} ${shellQuote(launcherPath)}`,
+      {
+        requestTimeoutMs,
+        timeoutMs: 30_000,
+      },
+    );
     await runDesktopCommand(desktop, `bash ${shellQuote(launcherPath)}`, {
       requestTimeoutMs,
-      timeoutMs: 30_000
+      timeoutMs: 30_000,
     });
     await desktop.wait(1200).catch(() => undefined);
     await runDesktopCommand(desktop, buildRemoteFocusCommand(title), {
       requestTimeoutMs,
-      timeoutMs: 10_000
+      timeoutMs: 10_000,
     }).catch(() => undefined);
 
     return {
@@ -3683,9 +4450,9 @@ async function startOssBootstrap(
         codexMode === "app-server-client"
           ? "The terminal clones the authorized repo, installs this local humanish package tarball when available, runs nested Humanish proof commands, opens the nested Observer, and opens the Codex app-server client surface in Chrome when configured."
           : "The terminal clones the authorized repo, installs this local humanish package tarball when available, runs nested Humanish proof commands, attempts Codex TUI, then opens the nested Observer in Chrome.",
-        baseTail
+        baseTail,
       ].join("\n"),
-      terminalTitle: title
+      terminalTitle: title,
     };
   } catch (error) {
     return {
@@ -3699,9 +4466,9 @@ async function startOssBootstrap(
       tail: [
         "Bootstrap launcher failed before the remote terminal could start.",
         baseTail,
-        `error: ${compactError(error)}`
+        `error: ${compactError(error)}`,
       ].join("\n"),
-      terminalTitle: title
+      terminalTitle: title,
     };
   }
 }
@@ -5233,38 +6000,51 @@ exit 0`;
 async function runDesktopCommand(
   desktop: E2BDesktopSandbox,
   command: string,
-  options: E2BCommandRunOptions
+  options: E2BCommandRunOptions,
 ): Promise<E2BCommandResult> {
   const result = await runDesktopCommandOrThrow(
     () => desktop.commands.run(`bash -lc ${shellQuote(command)}`, options),
     // The real Sandbox throws CommandExitError on a non-zero exit, so recover the
     // exit code + output tail from the throw and preserve the formatted error.
     ({ exitCode, stderrTail }) =>
-      new Error(`Remote command failed with exit code ${exitCode ?? "unknown"}.\noutput=${stderrTail}`),
+      new Error(
+        `Remote command failed with exit code ${exitCode ?? "unknown"}.\noutput=${stderrTail}`,
+      ),
   );
   if (result.exitCode && result.exitCode !== 0) {
-    throw new Error([
-      `Remote command failed with exit code ${result.exitCode}.`,
-      `stdout=${result.stdout ?? ""}`,
-      `stderr=${result.stderr ?? ""}`
-    ].join("\n"));
+    throw new Error(
+      [
+        `Remote command failed with exit code ${result.exitCode}.`,
+        `stdout=${result.stdout ?? ""}`,
+        `stderr=${result.stderr ?? ""}`,
+      ].join("\n"),
+    );
   }
   return result;
 }
 
-async function packLocalHumanishPackage(cwd: string, runId: string): Promise<OssMetaLabLocalPackage> {
+async function packLocalHumanishPackage(
+  cwd: string,
+  runId: string,
+): Promise<OssMetaLabLocalPackage> {
   const packageRoot = moduleRoot;
   await prepareReusableHumanishStorageDirectory(cwd, "tmp", "oss-meta", runId);
-  const packDir = await prepareReusableHumanishStorageDirectory(cwd, "tmp", "oss-meta", runId, "package");
+  const packDir = await prepareReusableHumanishStorageDirectory(
+    cwd,
+    "tmp",
+    "oss-meta",
+    runId,
+    "package",
+  );
   await execFileAsync("pnpm", ["build"], {
     cwd: packageRoot,
     env: process.env,
-    maxBuffer: 10 * 1024 * 1024
+    maxBuffer: 10 * 1024 * 1024,
   });
   await execFileAsync("npm", ["pack", "--pack-destination", packDir], {
     cwd: packageRoot,
     env: process.env,
-    maxBuffer: 10 * 1024 * 1024
+    maxBuffer: 10 * 1024 * 1024,
   });
   const files = await readdir(packDir);
   const fileName = files.find((file) => /^humanish-.*\.tgz$/.test(file));
@@ -5276,7 +6056,7 @@ async function packLocalHumanishPackage(cwd: string, runId: string): Promise<Oss
   return {
     fileName,
     path: archivePath,
-    sizeBytes: archiveStat.size
+    sizeBytes: archiveStat.size,
   };
 }
 
@@ -5293,26 +6073,35 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
-function formatLiveDesktopForResult(desktop: OssMetaLabLiveDesktop, redactRepoNames: boolean): OssMetaLabResult["sandboxes"][number] {
+function formatLiveDesktopForResult(
+  desktop: OssMetaLabLiveDesktop,
+  redactRepoNames: boolean,
+): OssMetaLabResult["sandboxes"][number] {
   return {
     ...(desktop.completion?.actorStatus ? { actorStatus: desktop.completion.actorStatus } : {}),
     ...(desktop.completion?.appStatus ? { appStatus: desktop.completion.appStatus } : {}),
     ...(desktop.bootstrap ? { bootstrapStatus: desktop.bootstrap.status } : {}),
-    ...(desktop.completion ? { completionReason: desktop.completion.reason, completionStatus: desktop.completion.status } : {}),
+    ...(desktop.completion
+      ? { completionReason: desktop.completion.reason, completionStatus: desktop.completion.status }
+      : {}),
     repo: desktop.repo,
     ...(desktop.screenshot ? { screenshotPresent: true } : {}),
     ...(!redactRepoNames && desktop.sandboxId ? { sandboxId: desktop.sandboxId } : {}),
     streamId: desktop.streamId,
     urlPresent: Boolean(desktop.url),
     ...(desktop.completion?.visualStatus ? { visualStatus: desktop.completion.visualStatus } : {}),
-    ...(desktop.completion?.visualWindowCount === undefined ? {} : { visualWindowCount: desktop.completion.visualWindowCount })
+    ...(desktop.completion?.visualWindowCount === undefined
+      ? {}
+      : { visualWindowCount: desktop.completion.visualWindowCount }),
   };
 }
 
 function missingLiveKeys(env: NodeJS.ProcessEnv): string[] {
   const missing = ["E2B_API_KEY"].filter((name) => !env[name]?.trim());
   const actorAuthRequested = remoteActorAuthRequested(env);
-  const actorAuthPresent = Boolean(env.CODEX_API_KEY?.trim() || env.CODEX_ACCESS_TOKEN?.trim() || env.OPENAI_API_KEY?.trim());
+  const actorAuthPresent = Boolean(
+    env.CODEX_API_KEY?.trim() || env.CODEX_ACCESS_TOKEN?.trim() || env.OPENAI_API_KEY?.trim(),
+  );
   if (actorAuthRequested && !hostCodexActorRequested(env) && !actorAuthPresent) {
     missing.push(OSS_META_LAB_ACTOR_AUTH_PLACEHOLDER);
   }
@@ -5366,7 +6155,10 @@ function repoArtifactLabel(assignment: OssMetaLabAssignment): string {
   return `repo-${String(assignment.index).padStart(2, "0")}`;
 }
 
-function redactAssignments(assignments: OssMetaLabAssignment[], redactRepoNames: boolean): OssMetaLabAssignment[] {
+function redactAssignments(
+  assignments: OssMetaLabAssignment[],
+  redactRepoNames: boolean,
+): OssMetaLabAssignment[] {
   if (!redactRepoNames) {
     return assignments;
   }
@@ -5374,17 +6166,29 @@ function redactAssignments(assignments: OssMetaLabAssignment[], redactRepoNames:
   return assignments.map((assignment) => ({
     ...assignment,
     repo: repoArtifactLabel(assignment),
-    scenarioId: `oss-meta-${repoArtifactLabel(assignment)}`
+    scenarioId: `oss-meta-${repoArtifactLabel(assignment)}`,
   }));
 }
 
 function safeArtifactToken(value: string): string {
-  const token = value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+  const token = value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return token || "artifact";
 }
 
-async function writeJson(artifactRoot: PreparedRunArtifactPaths, relativePath: string, value: unknown): Promise<void> {
-  await writeContainedOutputFile(artifactRoot, relativePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+async function writeJson(
+  artifactRoot: PreparedRunArtifactPaths,
+  relativePath: string,
+  value: unknown,
+): Promise<void> {
+  await writeContainedOutputFile(
+    artifactRoot,
+    relativePath,
+    `${JSON.stringify(value, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 // E2B desktop interfaces + the optional-peer loader now live in ./e2b-desktop-launch.js

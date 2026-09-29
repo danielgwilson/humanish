@@ -25,7 +25,13 @@ import readline from "node:readline";
 
 import type { ActorCapabilities } from "./actor-contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./computer-use.js";
-import { declaredOutcomeOf, parseAgentJson, promptFor, toCuaActions, LOCAL_AGENT_CAPABILITIES } from "./local-agent-cli.js";
+import {
+  declaredOutcomeOf,
+  parseAgentJson,
+  promptFor,
+  toCuaActions,
+  LOCAL_AGENT_CAPABILITIES,
+} from "./local-agent-cli.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 
 type JsonObject = Record<string, unknown>;
@@ -81,12 +87,23 @@ export function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): Cla
     awaitResult(timeoutMs, signal) {
       if (exited !== undefined) return Promise.reject(new Error(exited));
       return new Promise<JsonObject>((resolve, reject) => {
-        const timer = setTimeout(() => fail(new Error(`Claude Code produced no result within ${timeoutMs}ms`)), timeoutMs);
+        const timer = setTimeout(
+          () => fail(new Error(`Claude Code produced no result within ${timeoutMs}ms`)),
+          timeoutMs,
+        );
         const onAbort = (): void => fail(new Error("run stopped"));
         signal?.addEventListener("abort", onAbort, { once: true });
         waiter = {
-          resolve: (value) => { clearTimeout(timer); signal?.removeEventListener("abort", onAbort); resolve(value); },
-          reject: (error) => { clearTimeout(timer); signal?.removeEventListener("abort", onAbort); reject(error); }
+          resolve: (value) => {
+            clearTimeout(timer);
+            signal?.removeEventListener("abort", onAbort);
+            resolve(value);
+          },
+          reject: (error) => {
+            clearTimeout(timer);
+            signal?.removeEventListener("abort", onAbort);
+            reject(error);
+          },
         };
       });
     },
@@ -94,7 +111,7 @@ export function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): Cla
       rl.close();
       child.stdin.end();
       child.kill();
-    }
+    },
   };
 }
 
@@ -130,7 +147,9 @@ export function userMessage(text: string): JsonObject {
  * computer-use turn. Started EAGERLY (before the first screenshot) so the CLI's own boot is paid
  * while the sandbox is still settling rather than inside turn one.
  */
-export async function startClaudeSession(options: ClaudeSessionOptions = {}): Promise<ClaudeSession> {
+export async function startClaudeSession(
+  options: ClaudeSessionOptions = {},
+): Promise<ClaudeSession> {
   const timeoutMs = options.timeoutMs ?? 180_000;
   const effort = options.reasoningEffort ?? "low";
   const work = await mkdtemp(path.join(options.workRoot ?? tmpdir(), "humanish-claude-session-"));
@@ -139,16 +158,23 @@ export async function startClaudeSession(options: ClaudeSessionOptions = {}): Pr
   let transport = options.transport;
   if (transport === undefined) {
     const spawnFn = options.spawnFn ?? spawn;
-    child = spawnFn("claude", [
-      "-p",
-      "--input-format", "stream-json",
-      "--output-format", "stream-json",
-      // Required for stream-json output in -p mode; it is what makes the per-turn `result` visible.
-      "--verbose",
-      // Read is the only tool it needs — the screenshot — and the only one it gets.
-      "--allowedTools", "Read",
-      ...(options.model === undefined ? [] : ["--model", options.model])
-    ], { cwd: work, stdio: ["pipe", "pipe", "pipe"] }) as ChildProcessWithoutNullStreams;
+    child = spawnFn(
+      "claude",
+      [
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        // Required for stream-json output in -p mode; it is what makes the per-turn `result` visible.
+        "--verbose",
+        // Read is the only tool it needs — the screenshot — and the only one it gets.
+        "--allowedTools",
+        "Read",
+        ...(options.model === undefined ? [] : ["--model", options.model]),
+      ],
+      { cwd: work, stdio: ["pipe", "pipe", "pipe"] },
+    ) as ChildProcessWithoutNullStreams;
     transport = stdioClaudeTransport(child);
   }
 
@@ -163,27 +189,33 @@ export async function startClaudeSession(options: ClaudeSessionOptions = {}): Pr
     async nextTurn(request: CuaTurnRequest, signal?: AbortSignal): Promise<CuaTurn> {
       const frame = request.observation.screenshot;
       if (frame === undefined) {
-        throw new Error("the Claude session provider needs a screenshot and this observation has none");
+        throw new Error(
+          "the Claude session provider needs a screenshot and this observation has none",
+        );
       }
       turnIndex += 1;
       const shot = path.join(work, `screen-${String(turnIndex).padStart(3, "0")}.png`);
       await writeFile(shot, frame);
-      const hint = request.contextHint === undefined ? "" : `\n\nNote from the harness: ${request.contextHint}`;
+      const hint =
+        request.contextHint === undefined
+          ? ""
+          : `\n\nNote from the harness: ${request.contextHint}`;
       // The persona and the reply shape are in the conversation after turn one; re-sending them
       // every turn is what the one-shot version had to do, and it is most of what it cost.
-      const text = turnIndex === 1
-        ? promptFor(request, shot, "claude")
-        : `Read the image file ${shot}. That is the CURRENT SCREEN, after your last actions took effect. `
-          + "Same participant, same task: decide what to do next. "
-          + "Reply with ONLY a JSON object of the same shape as before."
-          + hint;
+      const text =
+        turnIndex === 1
+          ? promptFor(request, shot, "claude")
+          : `Read the image file ${shot}. That is the CURRENT SCREEN, after your last actions took effect. ` +
+            "Same participant, same task: decide what to do next. " +
+            "Reply with ONLY a JSON object of the same shape as before." +
+            hint;
       transport!.send(userMessage(text));
       const result = await transport!.awaitResult(timeoutMs, signal);
       // The frame it already looked at is not needed on disk; the conversation remembers it.
       if (previousShot !== undefined) await unlink(previousShot).catch(() => undefined);
       previousShot = shot;
       return turnFromResult(result);
-    }
+    },
   };
 
   return {
@@ -192,16 +224,21 @@ export async function startClaudeSession(options: ClaudeSessionOptions = {}): Pr
       transport?.close();
       child?.kill();
       await rm(work, { recursive: true, force: true }).catch(() => undefined);
-    }
+    },
   };
 }
 
 /** Read a stream-json `result` message into a CuaTurn. Exported for tests. */
 export function turnFromResult(result: JsonObject): CuaTurn {
-  if (result.is_error === true || (typeof result.subtype === "string" && result.subtype !== "success")) {
+  if (
+    result.is_error === true ||
+    (typeof result.subtype === "string" && result.subtype !== "success")
+  ) {
     // A turn that errored is a BROKEN turn, never an empty one: an empty turn reads to the loop
     // as "the participant chose to do nothing".
-    throw new Error(`Claude Code turn ended ${String(result.subtype ?? "in error")}: ${String(result.result ?? "").slice(0, 160)}`);
+    throw new Error(
+      `Claude Code turn ended ${String(result.subtype ?? "in error")}: ${String(result.result ?? "").slice(0, 160)}`,
+    );
   }
   const text = typeof result.result === "string" ? result.result : "";
   let parsed: JsonObject;
@@ -214,7 +251,8 @@ export function turnFromResult(result: JsonObject): CuaTurn {
   const done = parsed.done === true || (actions.length === 0 && typeof parsed.message === "string");
   const outcome = declaredOutcomeOf(parsed.outcome);
   const usage = result.usage as JsonObject | undefined;
-  const count = (key: string): number | undefined => (typeof usage?.[key] === "number" ? (usage[key] as number) : undefined);
+  const count = (key: string): number | undefined =>
+    typeof usage?.[key] === "number" ? (usage[key] as number) : undefined;
   const input = count("input_tokens");
   const output = count("output_tokens");
   const cachedInput = count("cache_read_input_tokens");
@@ -224,8 +262,12 @@ export function turnFromResult(result: JsonObject): CuaTurn {
     pendingSafetyChecks: [],
     done,
     ...(outcome === undefined ? {} : { outcome }),
-    ...(typeof parsed.reasoning === "string" && parsed.reasoning.length > 0 ? { reasoning: parsed.reasoning } : {}),
-    ...(typeof parsed.message === "string" && parsed.message.length > 0 ? { message: parsed.message } : {}),
+    ...(typeof parsed.reasoning === "string" && parsed.reasoning.length > 0
+      ? { reasoning: parsed.reasoning }
+      : {}),
+    ...(typeof parsed.message === "string" && parsed.message.length > 0
+      ? { message: parsed.message }
+      : {}),
     // Claude Code reports its token counts per turn (#531). They are recorded as counts; the
     // run's cost line stays "not priced", because a subscription is not a rate card.
     ...(input === undefined && output === undefined
@@ -235,8 +277,8 @@ export function turnFromResult(result: JsonObject): CuaTurn {
             ...(input === undefined ? {} : { input }),
             ...(output === undefined ? {} : { output }),
             ...(cachedInput === undefined ? {} : { cachedInput }),
-            ...(cacheWriteInput === undefined ? {} : { cacheWriteInput })
-          }
-        })
+            ...(cacheWriteInput === undefined ? {} : { cacheWriteInput }),
+          },
+        }),
   };
 }

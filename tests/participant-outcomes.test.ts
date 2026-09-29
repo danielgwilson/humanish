@@ -12,7 +12,11 @@
 // tool: the harness kept saying the truncated runs were fine.
 import { describe, expect, it } from "vitest";
 
-import { PARTICIPANT_OUTCOME_STATUSES, type ActorCompletionReason, type ActorStatus } from "../src/actor-contract.js";
+import {
+  PARTICIPANT_OUTCOME_STATUSES,
+  type ActorCompletionReason,
+  type ActorStatus,
+} from "../src/actor-contract.js";
 import { statusForCompletionReason } from "../src/computer-use.js";
 
 describe("completion reason -> status", () => {
@@ -28,7 +32,7 @@ describe("completion reason -> status", () => {
     // Only the harness failing is a harness failure.
     ["actor_error", "failed"],
     ["step_failed", "failed"],
-    ["harness_error", "failed"]
+    ["harness_error", "failed"],
   ];
 
   for (const [reason, status] of expected) {
@@ -48,7 +52,8 @@ describe("completion reason -> status", () => {
     for (const reason of harnessReasons) expect(statusForCompletionReason(reason)).toBe("failed");
     // ...and nothing a participant did produces it.
     const participantReasons: ActorCompletionReason[] = ["gave_up", "budget_reached"];
-    for (const reason of participantReasons) expect(statusForCompletionReason(reason)).not.toBe("failed");
+    for (const reason of participantReasons)
+      expect(statusForCompletionReason(reason)).not.toBe("failed");
   });
 });
 

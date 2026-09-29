@@ -25,34 +25,55 @@ describe("verify declared evidence references", () => {
     await mkdir(path.join(runDir, "screenshots"));
     await writeFile(path.join(runDir, "screenshots", "frame.PNG"), png);
   });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
-  const save = async () => { await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle)); };
+  const save = async () => {
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+  };
   const setActor = (field: "actor" | "liveActor", items: unknown[]) => {
     // The canonical bundle permits partially shaped actor payloads. Verification must
     // inspect declared refs defensively, without requiring unrelated actor fields.
     Object.assign(bundle.streams[0]!, {
-      [field]: { schema: field === "actor" ? ACTOR_TRACE_SCHEMA : "humanish.live-actor.v1", items,
-        redaction: { status: "passed", screenshots: "raw", notes: "Synthetic raw frame." } }
+      [field]: {
+        schema: field === "actor" ? ACTOR_TRACE_SCHEMA : "humanish.live-actor.v1",
+        items,
+        redaction: { status: "passed", screenshots: "raw", notes: "Synthetic raw frame." },
+      },
     });
   };
   const candidateEvidence = (artifactPath: string, kind: "log" | "screenshot" = "log") => {
-    bundle.feedbackCandidates = [{
-      schema: "humanish.feedback-candidate.v1", id: "synthetic-finding", run_id: RUN,
-      adapter_id: "synthetic-app", scenario_id: bundle.scenario.id, persona_id: bundle.persona.id,
-      actor: "synthetic-dry-run", substrate: "local-filesystem", failure_owner: "harness",
-      summary: "Synthetic finding", expected: "Retain supporting evidence.", actual: "An observation was recorded.",
-      evidence: [{ path: artifactPath, kind, note: "Synthetic supporting evidence." }],
-      redaction: { status: "passed", notes: "Synthetic text." }, idempotency_key: "synthetic-finding",
-      proposed_next_state: "watch", acceptance_proof: ["Inspect the retained observation."]
-    }];
+    bundle.feedbackCandidates = [
+      {
+        schema: "humanish.feedback-candidate.v1",
+        id: "synthetic-finding",
+        run_id: RUN,
+        adapter_id: "synthetic-app",
+        scenario_id: bundle.scenario.id,
+        persona_id: bundle.persona.id,
+        actor: "synthetic-dry-run",
+        substrate: "local-filesystem",
+        failure_owner: "harness",
+        summary: "Synthetic finding",
+        expected: "Retain supporting evidence.",
+        actual: "An observation was recorded.",
+        evidence: [{ path: artifactPath, kind, note: "Synthetic supporting evidence." }],
+        redaction: { status: "passed", notes: "Synthetic text." },
+        idempotency_key: "synthetic-finding",
+        proposed_next_state: "watch",
+        acceptance_proof: ["Inspect the retained observation."],
+      },
+    ];
   };
   const expectFailure = async (message: string) => {
     await save();
     const result = await verifyRun(cwd, RUN);
     expect(result.ok).toBe(false);
     expect(result.shareSafety.status).toBe("blocked");
-    expect(result.checks.find((check) => check.name === "local evidence artifacts exist")?.message).toContain(message);
+    expect(
+      result.checks.find((check) => check.name === "local evidence artifacts exist")?.message,
+    ).toContain(message);
   };
 
   for (const field of ["actor", "liveActor"] as const) {
@@ -65,18 +86,30 @@ describe("verify declared evidence references", () => {
     });
 
     it.each([
-      "screenshots/missing.png", "https://example.test/frame.png", "data:image/png;base64,synthetic",
-      "../../outside.png", "../screenshots/frame.PNG", "/tmp/frame.png", "C:\\frames\\frame.png", "file:frame.png"
+      "screenshots/missing.png",
+      "https://example.test/frame.png",
+      "data:image/png;base64,synthetic",
+      "../../outside.png",
+      "../screenshots/frame.PNG",
+      "/tmp/frame.png",
+      "C:\\frames\\frame.png",
+      "file:frame.png",
     ])(`rejects an unbacked or nonlocal ${field} screenshot: %s`, async (artifactPath) => {
       setActor(field, [{ screenshotRef: { path: artifactPath } }]);
-      await expectFailure(artifactPath === "screenshots/missing.png" ? artifactPath : `${field}.items[0].screenshotRef`);
+      await expectFailure(
+        artifactPath === "screenshots/missing.png"
+          ? artifactPath
+          : `${field}.items[0].screenshotRef`,
+      );
     });
 
     it.each([null, [], "frame.png", {}, { path: null }, { path: 3 }, { path: "" }])(
-      `rejects a malformed present ${field} screenshot without throwing: %j`, async (screenshotRef) => {
+      `rejects a malformed present ${field} screenshot without throwing: %j`,
+      async (screenshotRef) => {
         setActor(field, [{ screenshotRef }]);
         await expectFailure(`${field}.items[0].screenshotRef`);
-      });
+      },
+    );
 
     it(`allows ${field} items without screenshot references`, async () => {
       setActor(field, [null, {}, { text: "No screenshot captured." }]);
@@ -90,30 +123,43 @@ describe("verify declared evidence references", () => {
       await expectFailure("expected PNG signature");
     });
 
-    it.each(["none", "blurred", "ocr_scrubbed"])(`uses an explicit %s frame declaration from ${field}`, async (redaction) => {
-      setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
-      if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
-      else {
-        // The official partial shape carries items and a timestamp, not an aggregate
-        // redaction summary; a raw frame must be enough to retain local-only posture.
-        bundle.streams[0]!.liveActor = { schema: "humanish.live-actor.v1", updatedAt: "2026-09-01T00:00:00Z",
-          items: bundle.streams[0]!.liveActor!.items };
-      }
-      await save();
-      const result = await verifyRun(cwd, RUN);
-      expect(result.ok).toBe(true);
-      expect(result.shareSafety.status).toBe(redaction === "none" ? "local_only" : "share_ready");
-      expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(redaction === "none");
-      expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(redaction === "none");
-      if (redaction === "none") expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
-    });
+    it.each(["none", "blurred", "ocr_scrubbed"])(
+      `uses an explicit %s frame declaration from ${field}`,
+      async (redaction) => {
+        setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
+        if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
+        else {
+          // The official partial shape carries items and a timestamp, not an aggregate
+          // redaction summary; a raw frame must be enough to retain local-only posture.
+          bundle.streams[0]!.liveActor = {
+            schema: "humanish.live-actor.v1",
+            updatedAt: "2026-09-01T00:00:00Z",
+            items: bundle.streams[0]!.liveActor!.items,
+          };
+        }
+        await save();
+        const result = await verifyRun(cwd, RUN);
+        expect(result.ok).toBe(true);
+        expect(result.shareSafety.status).toBe(redaction === "none" ? "local_only" : "share_ready");
+        expect(result.shareSafety.reasons.some((reason) => reason.code === "RAW_SCREENSHOTS")).toBe(
+          redaction === "none",
+        );
+        expect(result.warnings.some((warning) => warning.includes("FULL-FIDELITY"))).toBe(
+          redaction === "none",
+        );
+        if (redaction === "none") expect((await draftFeedback(cwd, RUN)).ok).toBe(false);
+      },
+    );
 
-    it.each([undefined, "legacy-unknown"])(`preserves absent/unknown ${field} frame-metadata compatibility: %s`, async (redaction) => {
-      setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
-      if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
-      await save();
-      expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
-    });
+    it.each([undefined, "legacy-unknown"])(
+      `preserves absent/unknown ${field} frame-metadata compatibility: %s`,
+      async (redaction) => {
+        setActor(field, [{ screenshotRef: { path: "screenshots/frame.PNG", redaction } }]);
+        if (field === "actor") bundle.streams[0]!.actor!.redaction.screenshots = "blurred";
+        await save();
+        expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("share_ready");
+      },
+    );
   }
 
   it("keeps an aggregate raw declaration authoritative over a blurred frame", async () => {
@@ -143,14 +189,17 @@ describe("verify declared evidence references", () => {
     await expectFailure("missing.log");
   });
 
-  it.each(["a retained observation\n", ""])("accepts a candidate-only regular log and its feedback draft: %j", async (text) => {
-    await writeFile(path.join(runDir, "candidate.log"), text);
-    candidateEvidence("candidate.log");
-    await save();
-    expect((await verifyRun(cwd, RUN)).ok).toBe(true);
-    expect((await draftFeedback(cwd, RUN)).ok).toBe(true);
-    expect((await verifyFeedback(cwd, RUN)).ok).toBe(true);
-  });
+  it.each(["a retained observation\n", ""])(
+    "accepts a candidate-only regular log and its feedback draft: %j",
+    async (text) => {
+      await writeFile(path.join(runDir, "candidate.log"), text);
+      candidateEvidence("candidate.log");
+      await save();
+      expect((await verifyRun(cwd, RUN)).ok).toBe(true);
+      expect((await draftFeedback(cwd, RUN)).ok).toBe(true);
+      expect((await verifyFeedback(cwd, RUN)).ok).toBe(true);
+    },
+  );
 
   it("accepts a candidate-only PNG and rejects nonimage or empty screenshot evidence", async () => {
     candidateEvidence("screenshots/frame.PNG", "screenshot");
@@ -165,8 +214,16 @@ describe("verify declared evidence references", () => {
   it("does not let an empty candidate log relax a strict adapter requirement", async () => {
     await writeFile(path.join(runDir, "candidate.log"), "");
     candidateEvidence("candidate.log");
-    bundle.adapterArtifacts = [{ schema: "humanish.adapter-artifact.v1", namespace: "synthetic", label: "Strict consumer",
-      path: "candidate.log", kind: "log", note: "Requires nonempty evidence." }];
+    bundle.adapterArtifacts = [
+      {
+        schema: "humanish.adapter-artifact.v1",
+        namespace: "synthetic",
+        label: "Strict consumer",
+        path: "candidate.log",
+        kind: "log",
+        note: "Requires nonempty evidence.",
+      },
+    ];
     await expectFailure("candidate.log");
   });
 });

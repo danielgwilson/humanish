@@ -33,7 +33,7 @@ Merge gate = rungs 1–3 (deterministic, zero-spend):
    timestamps + ambient git working-tree state). Plus the full suite stays green (342 tests).
 3. **Expressiveness** (`tests/lab-structural.test.ts`): a brand-new clone+e2b migration
    composition parses and routes config-only with zero engine edits, AND a behavioral test
-   proves the engine *consumes* config (actor count → simCount), not merely routes a label.
+   proves the engine _consumes_ config (actor count → simCount), not merely routes a label.
 
 Capstone (post-merge, paid): rung 4 = three real private bespoke sims re-expressed as config
 (matrix below); rung 5 = one live E2B run.
@@ -44,19 +44,19 @@ Distinct capabilities exercised by three real, structurally-different private be
 Project A (desktop computer-use), Project B (LLM-vs-LLM conversation), Project C (coding-agent
 study) — vs humanish primitives:
 
-| Capability | humanish today | Status |
-|---|---|---|
-| Headless coding agent in sandbox | `codex-app-server`, `claude-agent-sdk` registry actors | covered |
-| Headed desktop computer-use actor | `computer-use.ts` + `e2b-desktop-executor.ts` engine | **MISSING: not registered as an actor (PR #2)** |
-| Browser persona over real app (scripted) | Playwright `BrowserPersona` (`run.ts`) | covered (scripted) |
-| LLM-vs-LLM conversation actor | — | MISSING (Project B; later) |
-| E2B fanout / parallel sandboxes | `oss-meta-lab` desktops | covered |
-| Nested / mission-control Observer | `observer*.ts` | covered |
-| Personas (typed traits) | `persona.ts` + `personas/*.yaml` | covered |
-| Branching scenario grammar | linear `steps[]` only | MISSING (later) |
-| Scoring / eval rubric | `oss-meta-lab-scoring.ts` | covered (per-lab pluggable: later) |
-| Cost / spend-cap ledger | — | MISSING (later) |
-| Control arm / A-B baseline | — | MISSING (later) |
+| Capability                               | humanish today                                         | Status                                          |
+| ---------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| Headless coding agent in sandbox         | `codex-app-server`, `claude-agent-sdk` registry actors | covered                                         |
+| Headed desktop computer-use actor        | `computer-use.ts` + `e2b-desktop-executor.ts` engine   | **MISSING: not registered as an actor (PR #2)** |
+| Browser persona over real app (scripted) | Playwright `BrowserPersona` (`run.ts`)                 | covered (scripted)                              |
+| LLM-vs-LLM conversation actor            | —                                                      | MISSING (Project B; later)                      |
+| E2B fanout / parallel sandboxes          | `oss-meta-lab` desktops                                | covered                                         |
+| Nested / mission-control Observer        | `observer*.ts`                                         | covered                                         |
+| Personas (typed traits)                  | `persona.ts` + `personas/*.yaml`                       | covered                                         |
+| Branching scenario grammar               | linear `steps[]` only                                  | MISSING (later)                                 |
+| Scoring / eval rubric                    | `oss-meta-lab-scoring.ts`                              | covered (per-lab pluggable: later)              |
+| Cost / spend-cap ledger                  | —                                                      | MISSING (later)                                 |
+| Control arm / A-B baseline               | —                                                      | MISSING (later)                                 |
 
 ## Deferred to PR #2 (live-tested there)
 

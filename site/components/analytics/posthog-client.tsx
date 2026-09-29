@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import type { PostHog } from "posthog-js";
 
 declare global {
-  interface Window { __hmPosthog?: PostHog | true }
+  interface Window {
+    __hmPosthog?: PostHog | true;
+  }
 }
 
 /**
@@ -54,14 +56,17 @@ export default function PostHogClient({ flags }: { flags: Record<string, string>
           respect_dnt: true,
           disable_session_recording: true,
           disable_surveys: true,
-          bootstrap: { ...(distinctId ? { distinctID: distinctId } : {}), featureFlags: flags }
+          bootstrap: { ...(distinctId ? { distinctID: distinctId } : {}), featureFlags: flags },
         });
         window.__hmPosthog = posthog;
         // Reading the flag is what emits the exposure event the experiment counts.
         for (const flag of Object.keys(flags)) posthog.getFeatureFlag(flag);
       });
     });
-    return () => { cancelled = true; cancel(); };
+    return () => {
+      cancelled = true;
+      cancel();
+    };
   }, [flags]);
   return null;
 }

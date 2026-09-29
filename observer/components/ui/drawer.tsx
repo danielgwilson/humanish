@@ -11,7 +11,7 @@ export function Drawer({
   open,
   onOpenChange,
   label,
-  children
+  children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;

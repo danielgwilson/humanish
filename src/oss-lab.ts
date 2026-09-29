@@ -12,23 +12,15 @@ import type { ObserverResult } from "./observer.js";
 import {
   prepareExclusiveHumanishStorageDirectory,
   prepareReusableHumanishStorageDirectory,
-  resolveHumanishStorageDirectory
+  resolveHumanishStorageDirectory,
 } from "./run-paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
-import {
-  doctor,
-  runDryRun,
-  verifyRun
-} from "./run.js";
-import type {
-  DoctorResult,
-  RunResult,
-  VerifyResult
-} from "./run.js";
+import { doctor, runDryRun, verifyRun } from "./run.js";
+import type { DoctorResult, RunResult, VerifyResult } from "./run.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -38,7 +30,7 @@ export const DEFAULT_OSS_REPOS = [
   "CorentinTh/it-tools",
   "drawdb-io/drawdb",
   "maciekt07/TodoApp",
-  "lissy93/dashy"
+  "lissy93/dashy",
 ] as const;
 
 export interface OssLabOptions {
@@ -80,9 +72,12 @@ export interface OssLabResult {
   completedAt: string;
   cwd: string;
   error?: {
-    code: "HUMANISH_INVALID_OSS_REPO" | "HUMANISH_INVALID_OSS_LIMIT" | "HUMANISH_LAB_ANALYSIS_INVALID"
-    | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
-    | "HUMANISH_LAB_COMMS_UNSUPPORTED"
+    code:
+      | "HUMANISH_INVALID_OSS_REPO"
+      | "HUMANISH_INVALID_OSS_LIMIT"
+      | "HUMANISH_LAB_ANALYSIS_INVALID"
+      | "HUMANISH_LAB_ANALYSIS_UNSUPPORTED"
+      | "HUMANISH_LAB_COMMS_UNSUPPORTED"
       | "HUMANISH_LAB_TASKS_UNSUPPORTED";
     message: string;
   };
@@ -122,9 +117,9 @@ export function normalizeOssRepoSlugs(input: string[] | undefined): string[] {
 }
 
 export function validateOssRepoSlug(slug: string): boolean {
-  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(slug)
-    && !slug.includes("..")
-    && !slug.includes("//");
+  return (
+    /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(slug) && !slug.includes("..") && !slug.includes("//")
+  );
 }
 
 export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
@@ -146,13 +141,13 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       cwd,
       error: {
         code: "HUMANISH_INVALID_OSS_LIMIT",
-        message: "--limit must be a positive integer."
+        message: "--limit must be a positive integer.",
       },
       repos: [],
       runId,
       sandboxPath: relativeToCwd(cwd, plannedSandboxPath),
       startedAt,
-      warnings
+      warnings,
     };
   }
 
@@ -167,19 +162,29 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
       cwd,
       error: {
         code: "HUMANISH_INVALID_OSS_REPO",
-        message: `Only public GitHub owner/repo slugs are supported: ${invalid}`
+        message: `Only public GitHub owner/repo slugs are supported: ${invalid}`,
       },
       repos: [],
       runId,
       sandboxPath: relativeToCwd(cwd, plannedSandboxPath),
       startedAt,
-      warnings
+      warnings,
     };
   }
 
-  const preparedReportRoot = await prepareReusableHumanishStorageDirectory(cwd, "lab", "oss", runId);
+  const preparedReportRoot = await prepareReusableHumanishStorageDirectory(
+    cwd,
+    "lab",
+    "oss",
+    runId,
+  );
   const reportRootToken = await pinOssLabDirectory(preparedReportRoot);
-  const preparedSandboxPath = await prepareExclusiveHumanishStorageDirectory(cwd, "tmp", "oss-lab", runId);
+  const preparedSandboxPath = await prepareExclusiveHumanishStorageDirectory(
+    cwd,
+    "tmp",
+    "oss-lab",
+    runId,
+  );
   const sandboxToken = await pinOssLabDirectory(preparedSandboxPath);
   sandboxPath = sandboxToken.physicalPath;
   const publicReportRoot = relativeToCwd(cwd, preparedReportRoot);
@@ -192,14 +197,14 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
 
   let sandboxRemoved = false;
   if (!options.keep) {
-    if (!await validatePinnedOssLabDirectory(sandboxToken)) {
+    if (!(await validatePinnedOssLabDirectory(sandboxToken))) {
       throw new Error("OSS lab cleanup must stay inside its prepared storage root.");
     }
     await rm(sandboxToken.physicalPath, { force: true, recursive: true });
     sandboxRemoved = true;
   }
 
-  if (!await validatePinnedOssLabDirectory(reportRootToken)) {
+  if (!(await validatePinnedOssLabDirectory(reportRootToken))) {
     throw new Error("OSS lab report root changed physical identity.");
   }
 
@@ -214,21 +219,33 @@ export async function runOssLab(options: OssLabOptions): Promise<OssLabResult> {
     reportMarkdownPath: path.join(publicReportRoot, "report.md"),
     repos: repoResults.map((repo) => ({
       ...repo,
-      clonePath: path.join(publicSandboxPath, path.relative(sandboxPath, repo.clonePath))
+      clonePath: path.join(publicSandboxPath, path.relative(sandboxPath, repo.clonePath)),
     })),
     runId,
     sandboxPath: publicSandboxPath,
     startedAt,
-    warnings
+    warnings,
   };
 
-  await writeContainedOutputFile(reportRootToken, "report.json", `${JSON.stringify(result, null, 2)}\n`, "utf8");
-  await writeContainedOutputFile(reportRootToken, "report.md", renderOssLabMarkdown(result), "utf8");
+  await writeContainedOutputFile(
+    reportRootToken,
+    "report.json",
+    `${JSON.stringify(result, null, 2)}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    reportRootToken,
+    "report.md",
+    renderOssLabMarkdown(result),
+    "utf8",
+  );
 
   return result;
 }
 
-async function pinOssLabDirectory(directoryInput: string): Promise<PreparedSelectedOutputDirectory> {
+async function pinOssLabDirectory(
+  directoryInput: string,
+): Promise<PreparedSelectedOutputDirectory> {
   const physicalPath = await realpath(path.resolve(directoryInput));
   const stats = await lstat(physicalPath, { bigint: true });
   if (stats.isSymbolicLink() || !stats.isDirectory()) {
@@ -237,11 +254,13 @@ async function pinOssLabDirectory(directoryInput: string): Promise<PreparedSelec
   return Object.freeze({
     identity: Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino }),
     physicalPath,
-    requestedPath: physicalPath
+    requestedPath: physicalPath,
   });
 }
 
-async function validatePinnedOssLabDirectory(directory: PreparedSelectedOutputDirectory): Promise<boolean> {
+async function validatePinnedOssLabDirectory(
+  directory: PreparedSelectedOutputDirectory,
+): Promise<boolean> {
   try {
     await assertPreparedSelectedOutputDirectory(directory);
     return true;
@@ -268,16 +287,15 @@ async function runRepoTrial(args: {
   const humanishRunId = `${args.runId}-${repoSlug(args.repo)}`;
 
   const clone = await measureStep("clone", async () => {
-    const result = await runCommand(args.cwd, "git", [
-      "clone",
-      "--depth",
-      "1",
-      url,
-      clonePath
-    ], 120_000);
+    const result = await runCommand(
+      args.cwd,
+      "git",
+      ["clone", "--depth", "1", url, clonePath],
+      120_000,
+    );
     return {
       ok: result.ok,
-      summary: result.ok ? "shallow public clone created" : compactCommandFailure(result)
+      summary: result.ok ? "shallow public clone created" : compactCommandFailure(result),
     };
   });
   steps.push(clone);
@@ -290,7 +308,7 @@ async function runRepoTrial(args: {
       repo: args.repo,
       steps,
       url,
-      warnings
+      warnings,
     };
   }
 
@@ -299,9 +317,7 @@ async function runRepoTrial(args: {
     warnings.push(...result.warnings.map((warning) => `init: ${warning}`));
     return {
       ok: result.ok,
-      summary: result.ok
-        ? summarizeInit(result)
-        : result.error?.message ?? "init failed"
+      summary: result.ok ? summarizeInit(result) : (result.error?.message ?? "init failed"),
     };
   });
   steps.push(init);
@@ -314,7 +330,7 @@ async function runRepoTrial(args: {
       repo: args.repo,
       steps,
       url,
-      warnings
+      warnings,
     };
   }
 
@@ -322,7 +338,7 @@ async function runRepoTrial(args: {
     const result: DoctorResult = await doctor(clonePath);
     return {
       ok: result.ok,
-      summary: `${result.checks.filter((check) => check.ok).length}/${result.checks.length} checks passed`
+      summary: `${result.checks.filter((check) => check.ok).length}/${result.checks.length} checks passed`,
     };
   });
   steps.push(readiness);
@@ -332,21 +348,23 @@ async function runRepoTrial(args: {
       cwd: clonePath,
       dryRun: true,
       runId: humanishRunId,
-      simCount: 4
+      simCount: 4,
     });
     if (!runResult.ok || !runResult.runId) {
       return {
         ok: false,
-        summary: runResult.error?.message ?? "dry-run bundle failed"
+        summary: runResult.error?.message ?? "dry-run bundle failed",
       };
     }
 
-    const observer: ObserverResult = await renderObserver(clonePath, runResult.runId, { open: false });
+    const observer: ObserverResult = await renderObserver(clonePath, runResult.runId, {
+      open: false,
+    });
     return {
       ok: observer.ok,
       summary: observer.ok
         ? `observer rendered at ${observer.observerPath}`
-        : observer.error?.message ?? "observer render failed"
+        : (observer.error?.message ?? "observer render failed"),
     };
   });
   steps.push(run);
@@ -355,12 +373,17 @@ async function runRepoTrial(args: {
     const result: VerifyResult = await verifyRun(clonePath, humanishRunId);
     return {
       ok: result.ok,
-      summary: `${result.checks.filter((check) => check.ok).length}/${result.checks.length} checks passed`
+      summary: `${result.checks.filter((check) => check.ok).length}/${result.checks.length} checks passed`,
     };
   });
   steps.push(verify);
 
-  const status = await runCommand(clonePath, "git", ["status", "--short", "--untracked-files=all"], 30_000);
+  const status = await runCommand(
+    clonePath,
+    "git",
+    ["status", "--short", "--untracked-files=all"],
+    30_000,
+  );
   const changedFiles = status.stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -375,13 +398,13 @@ async function runRepoTrial(args: {
     repo: args.repo,
     steps,
     url,
-    warnings
+    warnings,
   };
 }
 
 async function measureStep(
   name: string,
-  callback: () => Promise<{ ok: boolean; summary: string }>
+  callback: () => Promise<{ ok: boolean; summary: string }>,
 ): Promise<OssLabStep> {
   const started = Date.now();
   const result = await callback();
@@ -389,7 +412,7 @@ async function measureStep(
     durationMs: Date.now() - started,
     name,
     ok: result.ok,
-    summary: result.summary
+    summary: result.summary,
   };
 }
 
@@ -397,23 +420,23 @@ async function runCommand(
   cwd: string,
   command: string,
   args: string[],
-  timeout: number
+  timeout: number,
 ): Promise<CommandResult> {
   try {
     const result = await execFileAsync(command, args, {
       cwd,
       env: {
         ...process.env,
-        GIT_TERMINAL_PROMPT: "0"
+        GIT_TERMINAL_PROMPT: "0",
       },
       maxBuffer: 1024 * 1024,
-      timeout
+      timeout,
     });
     return {
       exitCode: 0,
       ok: true,
       stderr: result.stderr,
-      stdout: result.stdout
+      stdout: result.stdout,
     };
   } catch (error) {
     const commandError = error as Partial<Error> & {
@@ -427,7 +450,7 @@ async function runCommand(
       exitCode: typeof commandError.code === "number" ? commandError.code : 1,
       ok: false,
       stderr: commandError.stderr ?? commandError.message ?? "",
-      stdout: commandError.stdout ?? ""
+      stdout: commandError.stdout ?? "",
     };
   }
 }
@@ -446,7 +469,10 @@ function summarizeInit(result: InitResult): string {
 
 /** Repo slug for run-id suffixes/artifact tokens: lowercased, non-alnum -> "-", trimmed. */
 export function repoSlug(repo: string): string {
-  return repo.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return repo
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function relativeToCwd(cwd: string, absolutePath: string): string {
@@ -455,26 +481,29 @@ function relativeToCwd(cwd: string, absolutePath: string): string {
 }
 
 function renderOssLabMarkdown(result: OssLabResult): string {
-  return [
-    "# OSS Lab Report",
-    "",
-    `Run: \`${result.runId}\``,
-    `Started: ${result.startedAt}`,
-    `Completed: ${result.completedAt}`,
-    `Sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
-    "",
-    "| Repo | Result | Steps | Changed files |",
-    "| --- | --- | --- | --- |",
-    ...result.repos.map((repo) => {
-      const steps = repo.steps
-        .map((step) => `${step.ok ? "ok" : "fail"} ${step.name}`)
-        .join("<br>");
-      const changed = repo.changedFiles.length > 0
-        ? repo.changedFiles.map((file) => `\`${file}\``).join("<br>")
-        : "none";
-      return `| \`${repo.repo}\` | ${repo.ok ? "pass" : "fail"} | ${steps} | ${changed} |`;
-    }),
-    "",
-    "All clones are disposable public OSS trials. Do not commit cloned target changes."
-  ].join("\n") + "\n";
+  return (
+    [
+      "# OSS Lab Report",
+      "",
+      `Run: \`${result.runId}\``,
+      `Started: ${result.startedAt}`,
+      `Completed: ${result.completedAt}`,
+      `Sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
+      "",
+      "| Repo | Result | Steps | Changed files |",
+      "| --- | --- | --- | --- |",
+      ...result.repos.map((repo) => {
+        const steps = repo.steps
+          .map((step) => `${step.ok ? "ok" : "fail"} ${step.name}`)
+          .join("<br>");
+        const changed =
+          repo.changedFiles.length > 0
+            ? repo.changedFiles.map((file) => `\`${file}\``).join("<br>")
+            : "none";
+        return `| \`${repo.repo}\` | ${repo.ok ? "pass" : "fail"} | ${steps} | ${changed} |`;
+      }),
+      "",
+      "All clones are disposable public OSS trials. Do not commit cloned target changes.",
+    ].join("\n") + "\n"
+  );
 }

@@ -30,7 +30,8 @@ function makeFakeModule(opts: {
           sandboxId,
           commands: {
             async run(command: string, runOptions?: { onStdout?: (d: string) => void }) {
-              if (command.endsWith(" --version")) return { exitCode: 0, stdout: "codex-cli 0.153.3\n" };
+              if (command.endsWith(" --version"))
+                return { exitCode: 0, stdout: "codex-cli 0.153.3\n" };
               if (command.includes("codex")) {
                 const behavior = opts.codexBehavior(command);
                 if (behavior.stdout && runOptions?.onStdout) runOptions.onStdout(behavior.stdout);
@@ -38,28 +39,40 @@ function makeFakeModule(opts: {
               }
               if (runOptions?.onStdout) runOptions.onStdout("HUMANISH_SHELL_READY\n");
               return { exitCode: 0, stdout: "HUMANISH_SHELL_READY\n" };
-            }
+            },
           },
-          files: { async write() { return undefined; } },
-          async launch() { return undefined; },
-          async wait() { return undefined; },
-          async screenshot() { return new Uint8Array(); },
+          files: {
+            async write() {
+              return undefined;
+            },
+          },
+          async launch() {
+            return undefined;
+          },
+          async wait() {
+            return undefined;
+          },
+          async screenshot() {
+            return new Uint8Array();
+          },
           stream: {
             getAuthKey: () => "fake-auth",
             getUrl: () => "https://fake-stream",
-            async start() { return undefined; }
-          }
+            async start() {
+              return undefined;
+            },
+          },
         };
       },
       async kill(sandboxId: string) {
         opts.killed.push(sandboxId);
         return true; // real-SDK-accurate: kill(id) resolves true ("found and killed")
-      }
+      },
       // No Sandbox.getInfo/list on this fake: exercises the noGetInfo fallback in
       // teardownSandbox, where kill(id)'s own boolean is the by-id proof. This lane's cleanup
       // proof is not what these SLICE 3 cost-ledger tests are about; see
       // tests/e2b-terminal-lab.test.ts for the by-id cleanup coverage.
-    }
+    },
   } as unknown as E2BDesktopModule;
 }
 
@@ -75,12 +88,28 @@ function liveConfig(caps: Record<string, number>): LabConfig {
     title: "Terminal cost-ledger proof",
     subject: {
       source: "terminal-product",
-      product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] }
+      product: { name: "widgetsmith-cli", publicSurfaces: ["https://example.com/widgetsmith"] },
     },
-    actors: [{ type: "codex-exec", persona: "autonomous-creative-agent", mission: "Discover widgetsmith-cli from public surfaces." }],
-    execution: { target: "e2b-terminal", runtimeAuth: "openai-env", timeoutMs: 600_000, terminal: { transport: "exec-stream", stdin: "disabled" } },
+    actors: [
+      {
+        type: "codex-exec",
+        persona: "autonomous-creative-agent",
+        mission: "Discover widgetsmith-cli from public surfaces.",
+      },
+    ],
+    execution: {
+      target: "e2b-terminal",
+      runtimeAuth: "openai-env",
+      timeoutMs: 600_000,
+      terminal: { transport: "exec-stream", stdin: "disabled" },
+    },
     scenario: { mode: "live", caps },
-    policies: { allowPrivateRepoAccess: false, allowProviderCredentials: false, allowPaymentCredentials: false, allowGitHubMutation: false }
+    policies: {
+      allowPrivateRepoAccess: false,
+      allowProviderCredentials: false,
+      allowPaymentCredentials: false,
+      allowGitHubMutation: false,
+    },
   };
   const parsed = parseLabConfig(raw);
   if (!parsed.ok) throw new Error(parsed.error.message);
@@ -92,22 +121,35 @@ function baseEnv(): Record<string, string | undefined> {
 }
 
 function passingCodex() {
-  return (cmd: string) => ({ exitCode: 0, stdout: `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n` });
+  return (cmd: string) => ({
+    exitCode: 0,
+    stdout: `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+  });
 }
 
 describe("terminal-product cost ledger + no-spend proof + caps enforcement (deterministic, $0)", () => {
   let cwd: string;
-  beforeEach(async () => { cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-cost-")); });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-cost-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   it("(a) a no-spend run produces a VERIFIED no-spend proof derived from the ledger", async () => {
     const killed: string[] = [];
     const hooks: TerminalProductLabHooks = {
       env: baseEnv(),
       now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() })
+      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
     };
-    const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(true);
     expect(result.session?.status).toBe("passed");
@@ -115,7 +157,12 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(result.noSpend?.satisfied).toBe(true);
     expect(result.noSpend?.maxUsd).toBe(0);
     // Provider unmeasured this run (no tokenUsage), product/media/payment unmeasured this slice.
-    expect(result.noSpend?.unmeasuredLines.sort()).toEqual(["media", "payment", "product", "provider"]);
+    expect(result.noSpend?.unmeasuredLines.sort()).toEqual([
+      "media",
+      "payment",
+      "product",
+      "provider",
+    ]);
     expect(result.noSpend?.knownZeroLines).toEqual([]);
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -137,23 +184,23 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const codexWithUsage = (cmd: string) => ({
       exitCode: 0,
       stdout:
-        '{"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,'
-        + '"cache_write_input_tokens":30951,"output_tokens":2283}}\n'
-        + '{"type":"turn.completed","usage":{"input_tokens":141536,"cached_input_tokens":106256,'
-        + '"output_tokens":1409}}\n'
-        + `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`
+        '{"type":"turn.completed","usage":{"input_tokens":201536,"cached_input_tokens":170558,' +
+        '"cache_write_input_tokens":30951,"output_tokens":2283}}\n' +
+        '{"type":"turn.completed","usage":{"input_tokens":141536,"cached_input_tokens":106256,' +
+        '"output_tokens":1409}}\n' +
+        `done\nHUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}`,
     });
     const hooks: TerminalProductLabHooks = {
       env: baseEnv(),
       now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage })
+      loadModule: async () => makeFakeModule({ killed, codexBehavior: codexWithUsage }),
     };
     const result = await runTerminalProductLab({
       cwd,
       config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
       dryRun: false,
       open: false,
-      hooks
+      hooks,
     });
 
     expect(result.ok).toBe(true);
@@ -174,7 +221,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.noSpendProof.satisfied).toBe(true);
     expect(ledgers.noSpendProof.statement).toContain("Provider tokens WERE consumed");
     expect(ledgers.noSpendProof.statement).toContain(
-      "provider has a measured token count but no rate"
+      "provider has a measured token count but no rate",
     );
 
     const verified = await verifyRun(cwd, result.runId);
@@ -190,10 +237,21 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
       // Inject a KNOWN-ZERO product line (metered, billed nothing) while media/payment/provider stay
       // null (unmeasured). This is the load-bearing distinction: 0 != null.
       costProbe: () => ({
-        product: { usd: 0, count: 0, source: "no-spend-signal", note: "metered product spend: zero billable jobs" }
-      })
+        product: {
+          usd: 0,
+          count: 0,
+          source: "no-spend-signal",
+          note: "metered product spend: zero billable jobs",
+        },
+      }),
     };
-    const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
 
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);
@@ -208,8 +266,8 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     // The serialized JSON must carry an explicit `null` (the distinction survives persistence) and
     // never silently drop the usd key.
     const raw = await readFile(path.join(runDir, "terminal-ledgers.json"), "utf8");
-    expect(raw).toContain("\"usd\": null");
-    expect(raw).toContain("\"usd\": 0");
+    expect(raw).toContain('"usd": null');
+    expect(raw).toContain('"usd": 0');
 
     // The no-spend proof reflects the distinction: product is a known-zero line it vouches for, the
     // other three are unmeasured and explicitly NOT claimed zero.
@@ -217,7 +275,12 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.noSpendProof.unmeasuredLines.sort()).toEqual(["media", "payment", "provider"]);
     expect(ledgers.noSpendProof.satisfied).toBe(true);
     // "absent / n/a" is reserved: all four applicable lines are present this lane, so none is omitted.
-    expect(Object.keys(ledgers.cost.lines).sort()).toEqual(["media", "payment", "product", "provider"]);
+    expect(Object.keys(ledgers.cost.lines).sort()).toEqual([
+      "media",
+      "payment",
+      "product",
+      "provider",
+    ]);
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
@@ -232,10 +295,20 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
       // A KNOWN provider spend of $2.50 that exceeds the maxUsd:1 cap — the run must fail closed even
       // though the agent itself reported a passing verdict.
       costProbe: () => ({
-        provider: { usd: 2.5, source: "provider-token-usage", note: "metered provider spend (injected for the cap test)" }
-      })
+        provider: {
+          usd: 2.5,
+          source: "provider-token-usage",
+          note: "metered provider spend (injected for the cap test)",
+        },
+      }),
     };
-    const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 1, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 1, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_TERMINAL_LAB_CAPS_EXCEEDED");
@@ -256,9 +329,15 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     const hooks: TerminalProductLabHooks = {
       env: baseEnv(),
       now: () => 1_000,
-      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() })
+      loadModule: async () => makeFakeModule({ killed, codexBehavior: passingCodex() }),
     };
-    const result = await runTerminalProductLab({ cwd, config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }), dryRun: false, open: false, hooks });
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig({ maxUsd: 0, maxJobs: 0, maxMinutes: 10 }),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
     expect(result.ok).toBe(true);
 
     // Tamper the persisted proof to claim zero on a line the ledger marks null — the proof now claims
@@ -269,12 +348,14 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
     expect(ledgers.cost.lines.provider.usd).toBeNull(); // provider IS null (unmeasured)
     ledgers.noSpendProof.knownZeroLines = ["provider"]; // lie: claim it is a proven zero
     ledgers.noSpendProof.unmeasuredLines = ["product", "media", "payment"];
-    await (await import("node:fs/promises")).writeFile(ledgersPath, `${JSON.stringify(ledgers, null, 2)}\n`, "utf8");
+    await (
+      await import("node:fs/promises")
+    ).writeFile(ledgersPath, `${JSON.stringify(ledgers, null, 2)}\n`, "utf8");
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(false);
     const finding = verified.checks.find((c) => c.name === "terminal-product evidence");
     expect(finding?.ok).toBe(false);
-    expect(finding?.message).toContain("claims zero on line \"provider\"");
+    expect(finding?.message).toContain('claims zero on line "provider"');
   });
 });

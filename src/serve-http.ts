@@ -17,7 +17,7 @@ export function buildServeSecurityHeaders(): Record<string, string> {
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
     "content-security-policy": "frame-ancestors 'none'",
-    "x-robots-tag": "noindex, nofollow"
+    "x-robots-tag": "noindex, nofollow",
   };
 }
 
@@ -26,14 +26,22 @@ export function buildServeSecurityHeaders(): Record<string, string> {
  * Generated Observer pages use buildServeSecurityHeaders instead. */
 export function buildArtifactSecurityHeaders(): Record<string, string> {
   const headers = buildServeSecurityHeaders();
-  return { ...headers, "content-security-policy": `${headers["content-security-policy"]}; sandbox allow-scripts` };
+  return {
+    ...headers,
+    "content-security-policy": `${headers["content-security-policy"]}; sandbox allow-scripts`,
+  };
 }
 
-export function hostAllowed(hostHeader: string | undefined, allowlist: ReadonlySet<string>): boolean {
+export function hostAllowed(
+  hostHeader: string | undefined,
+  allowlist: ReadonlySet<string>,
+): boolean {
   return typeof hostHeader === "string" && allowlist.has(hostHeader.trim().toLowerCase());
 }
 
-export function parsePublicOrigin(value: string): { origin: string; host: string; scheme: "http" | "https" } | null {
+export function parsePublicOrigin(
+  value: string,
+): { origin: string; host: string; scheme: "http" | "https" } | null {
   let parsed: URL;
   try {
     parsed = new URL(value);
@@ -43,12 +51,17 @@ export function parsePublicOrigin(value: string): { origin: string; host: string
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return null;
   }
-  if ((parsed.pathname !== "/" && parsed.pathname !== "") || parsed.search || parsed.hash || !parsed.host) {
+  if (
+    (parsed.pathname !== "/" && parsed.pathname !== "") ||
+    parsed.search ||
+    parsed.hash ||
+    !parsed.host
+  ) {
     return null;
   }
   return {
     origin: parsed.origin,
     host: parsed.host.toLowerCase(),
-    scheme: parsed.protocol === "https:" ? "https" : "http"
+    scheme: parsed.protocol === "https:" ? "https" : "http",
   };
 }

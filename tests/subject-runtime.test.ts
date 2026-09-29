@@ -10,7 +10,7 @@ import {
   BOOTSTRAP_NODE_MAJOR,
   corepackCommandFor,
   needsNodeRuntime,
-  nodeBootstrapCommand
+  nodeBootstrapCommand,
 } from "../src/subject-runtime.js";
 
 describe("needsNodeRuntime", () => {
@@ -26,7 +26,9 @@ describe("needsNodeRuntime", () => {
   });
 
   it("does not fire on a pipeline that needs no Node at all", () => {
-    expect(needsNodeRuntime(["pip install -r requirements.txt", "python3 -m build", "python3 app.py"])).toBe(false);
+    expect(
+      needsNodeRuntime(["pip install -r requirements.txt", "python3 -m build", "python3 app.py"]),
+    ).toBe(false);
     expect(needsNodeRuntime(["bundle install", "rails server"])).toBe(false);
     expect(needsNodeRuntime([undefined, undefined, undefined])).toBe(false);
     expect(needsNodeRuntime([])).toBe(false);

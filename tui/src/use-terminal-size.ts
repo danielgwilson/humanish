@@ -26,7 +26,7 @@ export function useTerminalSize(): TerminalSize {
   const { stdout } = useStdout();
   const read = (): TerminalSize => ({
     columns: Math.max(20, stdout.columns || 80),
-    rows: Math.max(6, stdout.rows || 24)
+    rows: Math.max(6, stdout.rows || 24),
   });
   const [size, setSize] = useState<TerminalSize>(read);
 

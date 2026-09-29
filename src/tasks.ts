@@ -16,7 +16,11 @@
 // complete a task; the observed URL, page text, or app state does. That distinction is the whole
 // reason to declare tasks at all.
 
-import { evaluateStopWhen, type StopConditionObservation, type StopWhen } from "./stop-conditions.js";
+import {
+  evaluateStopWhen,
+  type StopConditionObservation,
+  type StopWhen,
+} from "./stop-conditions.js";
 
 export const TASK_FUNNEL_SCHEMA = "humanish.task-funnel.v1" as const;
 
@@ -107,7 +111,7 @@ export class TaskTracker {
         id: task.id,
         turn,
         matchedRuleIndex: match.ruleIndex,
-        matchedKinds: match.kinds
+        matchedKinds: match.kinds,
       };
       this.completions.set(task.id, completion);
       fresh.push(completion);
@@ -136,9 +140,8 @@ export class TaskTracker {
       // A task counts as measured when at least ONE field its criteria read was populated by some
       // observation. `any` semantics: any satisfiable rule needed a field we actually saw.
       const required = observable ? this.fieldsRequiredBy(task) : [];
-      const inputsObserved = required.length === 0
-        ? true
-        : required.some((field) => this.fieldsSeen.has(field));
+      const inputsObserved =
+        required.length === 0 ? true : required.some((field) => this.fieldsSeen.has(field));
       return {
         id: task.id,
         completed: completion !== undefined,
@@ -146,7 +149,7 @@ export class TaskTracker {
         ...(completion === undefined ? {} : { turn: completion.turn }),
         // Only interesting for an observable task that did not complete: that is the case a
         // reader would otherwise misread as a participant failure.
-        ...(observable && completion === undefined ? { inputsObserved } : {})
+        ...(observable && completion === undefined ? { inputsObserved } : {}),
       };
     });
     // Where they stopped is the first task not observed complete — the thing a researcher reads
@@ -156,7 +159,7 @@ export class TaskTracker {
     // unobservable one cannot: nothing could have proven otherwise, so naming it blames the
     // participant for our gap (#514).
     const stoppedAt = tasks.find(
-      (task) => task.observable && !task.completed && task.inputsObserved !== false
+      (task) => task.observable && !task.completed && task.inputsObserved !== false,
     )?.id;
     return {
       schema: TASK_FUNNEL_SCHEMA,
@@ -165,7 +168,7 @@ export class TaskTracker {
       unobservable: tasks.filter((task) => !task.observable).length,
       unmeasured: tasks.filter((task) => task.inputsObserved === false).length,
       ...(stoppedAt === undefined ? {} : { stoppedAt }),
-      tasks
+      tasks,
     };
   }
 }
@@ -189,13 +192,13 @@ export function formatTaskFunnel(funnel: TaskFunnel): string {
   if (funnel.total === 0) return "no tasks declared";
   const base = `${funnel.completed}/${funnel.total} tasks completed`;
   const stopped = funnel.stoppedAt === undefined ? "" : `, stopped at "${funnel.stoppedAt}"`;
-  const unobservable = funnel.unobservable === 0
-    ? ""
-    : `, ${funnel.unobservable} with no completion criterion`;
+  const unobservable =
+    funnel.unobservable === 0 ? "" : `, ${funnel.unobservable} with no completion criterion`;
   // Named separately from failures. "0/3 completed" alone reads as "no participant managed it",
   // which is the wrong story when the criterion was never evaluated against anything (#514).
-  const unmeasured = funnel.unmeasured === 0
-    ? ""
-    : `, ${funnel.unmeasured} NEVER MEASURED (the observations their criteria read never arrived)`;
+  const unmeasured =
+    funnel.unmeasured === 0
+      ? ""
+      : `, ${funnel.unmeasured} NEVER MEASURED (the observations their criteria read never arrived)`;
   return `${base}${stopped}${unobservable}${unmeasured}`;
 }

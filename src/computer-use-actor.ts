@@ -16,16 +16,16 @@ import {
   type CuaLoopOptions,
   type CuaLoopResult,
   type CuaProvider,
-  type CuaSafetyCheck
+  type CuaSafetyCheck,
 } from "./computer-use.js";
 import {
   createE2BDesktopExecutor,
   type E2BDesktopExecutorOptions,
-  type E2BDesktopLike
+  type E2BDesktopLike,
 } from "./e2b-desktop-executor.js";
 import {
   createOpenAiResponsesProvider,
-  type OpenAiResponsesProviderOptions
+  type OpenAiResponsesProviderOptions,
 } from "./openai-responses-cu.js";
 import { defaultRedactionHooks, type RedactionHooks } from "./redaction.js";
 import type { DwellWindow, StopWhen } from "./stop-conditions.js";
@@ -100,15 +100,20 @@ export interface CuaActorSessionOptions {
   /** RUNTIME-ONLY per-turn raw-frame callback threaded to the loop; see CuaLoopOptions.onScreenshot. */
   onScreenshot?: (frame: Buffer) => void;
   /** Per-turn trace snapshot callback threaded to the loop (#441); see CuaLoopOptions.onTrace. */
-  onTrace?: (items: readonly ActorTraceItem[], usage: ActorTokenUsage, metadata?: CuaLiveMetadata) => void;
+  onTrace?: (
+    items: readonly ActorTraceItem[],
+    usage: ActorTokenUsage,
+    metadata?: CuaLiveMetadata,
+  ) => void;
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
   if (options.provider && options.openai?.maxOutputTokens !== undefined) {
     throw new Error("openai.maxOutputTokens cannot be enforced by an injected provider.");
   }
-  const strictSpend = options.requireReportedUsageForSpendCap === true
-    && (options.maxUsd !== undefined || options.overRunBudget !== undefined);
+  const strictSpend =
+    options.requireReportedUsageForSpendCap === true &&
+    (options.maxUsd !== undefined || options.overRunBudget !== undefined);
   const provider = options.provider ?? buildProvider(options.openai, strictSpend);
   const executor = options.executor ?? buildExecutor(options.desktop, options.executorOptions);
 
@@ -123,40 +128,65 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     ...(options.idleSteps === undefined ? {} : { idleSteps: options.idleSteps }),
     ...(options.noProgressSteps === undefined ? {} : { noProgressSteps: options.noProgressSteps }),
-    ...(options.acknowledgeSafetyChecks === undefined ? {} : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),
-    ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
+    ...(options.acknowledgeSafetyChecks === undefined
+      ? {}
+      : { acknowledgeSafetyChecks: options.acknowledgeSafetyChecks }),
+    ...(options.redactScreenshots === undefined
+      ? {}
+      : { redactScreenshots: options.redactScreenshots }),
     ...(options.scrubText === undefined ? {} : { scrubText: options.scrubText }),
     ...(options.writeScreenshot === undefined ? {} : { writeScreenshot: options.writeScreenshot }),
     ...(options.stopWhen === undefined ? {} : { stopWhen: options.stopWhen }),
     ...(options.dwell === undefined ? {} : { dwell: options.dwell }),
     ...(options.tasks === undefined ? {} : { tasks: options.tasks }),
     ...(options.maxUsd === undefined ? {} : { maxUsd: options.maxUsd }),
-    ...(options.estimateTurnCostUsd === undefined ? {} : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
+    ...(options.estimateTurnCostUsd === undefined
+      ? {}
+      : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
     ...(options.overRunBudget === undefined ? {} : { overRunBudget: options.overRunBudget }),
-    ...(options.requireReportedUsageForSpendCap === undefined ? {} : { requireReportedUsageForSpendCap: options.requireReportedUsageForSpendCap }),
+    ...(options.requireReportedUsageForSpendCap === undefined
+      ? {}
+      : { requireReportedUsageForSpendCap: options.requireReportedUsageForSpendCap }),
     ...(options.onObservedUrl === undefined ? {} : { onObservedUrl: options.onObservedUrl }),
     ...(options.onMessage === undefined ? {} : { onMessage: options.onMessage }),
     ...(options.onScreenshot === undefined ? {} : { onScreenshot: options.onScreenshot }),
-    ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace })
+    ...(options.onTrace === undefined ? {} : { onTrace: options.onTrace }),
   };
 
   const result = await runComputerUseLoop(loopOptions);
   if (result.trace.executionProfile?.billing === "account-unknown") {
-    result.trace.estimatedCost = estimateActorCostForExecution(result.trace.tokenUsage, result.trace.ids.model, result.trace.executionProfile);
+    result.trace.estimatedCost = estimateActorCostForExecution(
+      result.trace.tokenUsage,
+      result.trace.ids.model,
+      result.trace.executionProfile,
+    );
   }
   return result;
 }
 
-function buildProvider(openai: OpenAiResponsesProviderOptions | undefined, strictSpend = false): CuaProvider {
+function buildProvider(
+  openai: OpenAiResponsesProviderOptions | undefined,
+  strictSpend = false,
+): CuaProvider {
   if (!openai) {
-    throw new Error("runCuaActorSession requires either `provider` (injected) or `openai` provider options.");
+    throw new Error(
+      "runCuaActorSession requires either `provider` (injected) or `openai` provider options.",
+    );
   }
-  return createOpenAiResponsesProvider({ ...openai, ...(strictSpend ? { singleDispatch: true } : {}) });
+  return createOpenAiResponsesProvider({
+    ...openai,
+    ...(strictSpend ? { singleDispatch: true } : {}),
+  });
 }
 
-function buildExecutor(desktop: E2BDesktopLike | undefined, executorOptions: E2BDesktopExecutorOptions | undefined): CuaExecutor {
+function buildExecutor(
+  desktop: E2BDesktopLike | undefined,
+  executorOptions: E2BDesktopExecutorOptions | undefined,
+): CuaExecutor {
   if (!desktop) {
-    throw new Error("runCuaActorSession requires either `executor` (injected) or `desktop` to build one.");
+    throw new Error(
+      "runCuaActorSession requires either `executor` (injected) or `desktop` to build one.",
+    );
   }
   return createE2BDesktopExecutor(desktop, executorOptions ?? {});
 }

@@ -25,7 +25,11 @@ describe("every lab `humanish init` writes is runnable", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-init-labs-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "scratch", version: "1.0.0" }), "utf8");
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "scratch", version: "1.0.0" }),
+      "utf8",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -49,13 +53,16 @@ describe("every lab `humanish init` writes is runnable", () => {
         cwd,
         dryRun: true,
         open: false,
-        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin }
+        lab: { id: resolved.config.id, path: resolved.path, origin: resolved.origin },
       });
 
-      const result = outcome.result as { ok?: boolean; error?: { code?: string; message?: string } };
+      const result = outcome.result as {
+        ok?: boolean;
+        error?: { code?: string; message?: string };
+      };
       expect(
         result.ok ?? true,
-        `${lab.id} (${lab.path}) failed its dry run: ${result.error?.code ?? "?"} — ${result.error?.message ?? ""}`
+        `${lab.id} (${lab.path}) failed its dry run: ${result.error?.code ?? "?"} — ${result.error?.message ?? ""}`,
       ).not.toBe(false);
     }
   }, 180_000);

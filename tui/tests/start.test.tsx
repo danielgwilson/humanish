@@ -13,27 +13,66 @@ import { LABS, NOW, RUNS } from "./fixtures.js";
 function harness(overrides: Partial<TuiCapabilities> = {}) {
   const started: Omit<LaunchRunOptions, "spawn" | "cliPath" | "now">[] = [];
   const capabilities: TuiCapabilities = {
-    readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }),
-    listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: LABS, warnings: [] }),
+    readRunIndex: async () => ({
+      schema: "humanish.run-index.v1",
+      cwd: "/projects/acme-app",
+      runs: RUNS,
+      unreadable: [],
+    }),
+    listLabs: async () => ({
+      schema: "humanish.lab-list.v1",
+      ok: true,
+      cwd: "/projects/acme-app",
+      labs: LABS,
+      warnings: [],
+    }),
     startRun: async (launch) => {
       started.push(launch);
-      return { ok: true, run: { pid: 4242, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x.log", command: [] } };
+      return {
+        ok: true,
+        run: {
+          pid: 4242,
+          launchedAt: new Date(NOW).toISOString(),
+          logPath: "/tmp/x.log",
+          command: [],
+        },
+      };
     },
     readLaunchLog: async () => "",
     readRunDetail: async () => null,
-      readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1" as const, initialized: true, hasRuntime: true }),
-      openObserver: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "opened" }),
-      reclaimRun: async () => ({ schema: "humanish.reclaim-result.v1" as const, ok: true, cwd: "/x", runId: "r", receiptCount: 0, outcomes: [], warnings: [] }),
-      stopRun: async () => ({ schema: "humanish.tui-action.v1" as const, ok: true, message: "asked the run to stop" }),
-    ...overrides
+    readLabSummary: async () => null,
+    readProjectState: () => ({
+      schema: "humanish.tui-project.v1" as const,
+      initialized: true,
+      hasRuntime: true,
+    }),
+    openObserver: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "opened",
+    }),
+    reclaimRun: async () => ({
+      schema: "humanish.reclaim-result.v1" as const,
+      ok: true,
+      cwd: "/x",
+      runId: "r",
+      receiptCount: 0,
+      outcomes: [],
+      warnings: [],
+    }),
+    stopRun: async () => ({
+      schema: "humanish.tui-action.v1" as const,
+      ok: true,
+      message: "asked the run to stop",
+    }),
+    ...overrides,
   };
   const options: TuiOptions = {
     cwd: "/projects/acme-app",
     version: { cli: "9.9.9" },
     capabilities,
     stdin: process.stdin,
-    stdout: process.stdout
+    stdout: process.stdout,
   };
   return { started, options };
 }
@@ -45,83 +84,145 @@ function harness(overrides: Partial<TuiCapabilities> = {}) {
 async function openLab(options: TuiOptions, columns = 80) {
   const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
     columns,
-    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
+    until: (frame) => frame.trim().length > 0 && !frame.includes("reading project"),
   });
   // The first lab is selected by default; Enter opens it.
-  const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start a dry run"));
+  const frame = await surface.press(KEY.enter, (candidate) =>
+    candidate.includes("❯ Start a dry run"),
+  );
   return { surface, frame };
 }
 
 describe("starting a run", () => {
   it("shows local runtime and Codex-account readiness without implying API keys", async () => {
-    const { options } = harness({ readLabSummary: async () => ({
-      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: {}, keysReady: true,
-      runtime: { ok: true, installed: false, message: "Run humanish runtime setup to prepare it." },
-      participantReadiness: { ok: false, message: "Install the supported Codex CLI version and sign in with a ChatGPT account. No API fallback is used." }
-    }) });
+    const { options } = harness({
+      readLabSummary: async () => ({
+        schema: "humanish.lab-summary.v1",
+        labId: "signup-flow",
+        caps: {},
+        keysReady: true,
+        runtime: {
+          ok: true,
+          installed: false,
+          message: "Run humanish runtime setup to prepare it.",
+        },
+        participantReadiness: {
+          ok: false,
+          message:
+            "Install the supported Codex CLI version and sign in with a ChatGPT account. No API fallback is used.",
+        },
+      }),
+    });
     const { surface } = await openLab(options);
     try {
-      const frame = await surface.press("", candidate => candidate.includes("runtime setup") && candidate.includes("supported Codex CLI version"));
+      const frame = await surface.press(
+        "",
+        (candidate) =>
+          candidate.includes("runtime setup") && candidate.includes("supported Codex CLI version"),
+      );
       expect(frame).toContain("runtime setup");
       expect(frame).toContain("supported Codex CLI version");
       expect(frame).not.toContain("E2B_API_KEY");
       expect(frame).not.toContain("OPENAI_API_KEY");
-      const live = await surface.press(KEY.down, candidate => candidate.includes("needs Codex login"));
+      const live = await surface.press(KEY.down, (candidate) =>
+        candidate.includes("needs Codex login"),
+      );
       expect(live).toContain("needs Codex login");
-    } finally { surface.unmount(); }
+    } finally {
+      surface.unmount();
+    }
   });
 
-  it.each([45, 80])("shows unknown account analysis dollars before starting at %i columns", async columns => {
-    const { options, started } = harness({ readLabSummary: async () => ({
-      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: {},
-      analysis: { provider: "codex", billing: "account-unknown", model: "gpt-6-astra", maxCostUsd: null }
-    }) });
-    const { surface } = await openLab(options, columns);
-    try {
-      const frame = await surface.press(KEY.down, candidate => candidate.includes("unknown"));
-      expect(frame.replace(/\s+/g, " ")).toContain("dollar cost unknown");
-      expect(frame).toContain("Codex"); expect(frame).not.toMatch(/\$null|\$3/);
-      expect(frame.split("\n").every(line => [...line].length <= columns)).toBe(true);
-      const armed = await surface.press(KEY.enter, candidate => candidate.includes("confirm"));
-      expect(armed.replace(/\s+/g, " ")).toContain("Codex account analysis");
-      expect(armed.replace(/\s+/g, " ")).toContain("dollar cost unknown");
-      expect(started).toHaveLength(0);
-    } finally { surface.unmount(); }
-  });
+  it.each([45, 80])(
+    "shows unknown account analysis dollars before starting at %i columns",
+    async (columns) => {
+      const { options, started } = harness({
+        readLabSummary: async () => ({
+          schema: "humanish.lab-summary.v1",
+          labId: "signup-flow",
+          caps: {},
+          analysis: {
+            provider: "codex",
+            billing: "account-unknown",
+            model: "gpt-6-astra",
+            maxCostUsd: null,
+          },
+        }),
+      });
+      const { surface } = await openLab(options, columns);
+      try {
+        const frame = await surface.press(KEY.down, (candidate) => candidate.includes("unknown"));
+        expect(frame.replace(/\s+/g, " ")).toContain("dollar cost unknown");
+        expect(frame).toContain("Codex");
+        expect(frame).not.toMatch(/\$null|\$3/);
+        expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
+        const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
+        expect(armed.replace(/\s+/g, " ")).toContain("Codex account analysis");
+        expect(armed.replace(/\s+/g, " ")).toContain("dollar cost unknown");
+        expect(started).toHaveLength(0);
+      } finally {
+        surface.unmount();
+      }
+    },
+  );
 
-  it.each([45, 80])("shows the separate analysis admission budget before starting at %i columns", async columns => {
-    const { options, started } = harness({ readLabSummary: async () => ({
-      schema: "humanish.lab-summary.v1", labId: "signup-flow", caps: { laneUsd: 1 },
-      analysis: { model: "gpt-6-astra", maxCostUsd: 3 }
-    }) });
-    const { surface } = await openLab(options, columns);
-    try {
-      const frame = await surface.press(KEY.down, candidate => candidate.includes("billing cap"));
-      expect(frame.replace(/\s+/g, " ")).toContain("separate $3 admission estimate limit");
-      expect(frame.replace(/\s+/g, " ")).toContain("not a billing cap");
-      expect(frame.split("\n").every(line => [...line].length <= columns)).toBe(true);
-      const armed = await surface.press(KEY.enter, candidate => candidate.includes("confirm"));
-      expect(armed.replace(/\s+/g, " ")).toContain("analysis ($3 admission estimate limit, separate from participant spend)");
-      expect(started).toHaveLength(0);
-    } finally { surface.unmount(); }
-  });
+  it.each([45, 80])(
+    "shows the separate analysis admission budget before starting at %i columns",
+    async (columns) => {
+      const { options, started } = harness({
+        readLabSummary: async () => ({
+          schema: "humanish.lab-summary.v1",
+          labId: "signup-flow",
+          caps: { laneUsd: 1 },
+          analysis: { model: "gpt-6-astra", maxCostUsd: 3 },
+        }),
+      });
+      const { surface } = await openLab(options, columns);
+      try {
+        const frame = await surface.press(KEY.down, (candidate) =>
+          candidate.includes("billing cap"),
+        );
+        expect(frame.replace(/\s+/g, " ")).toContain("separate $3 admission estimate limit");
+        expect(frame.replace(/\s+/g, " ")).toContain("not a billing cap");
+        expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
+        const armed = await surface.press(KEY.enter, (candidate) => candidate.includes("confirm"));
+        expect(armed.replace(/\s+/g, " ")).toContain(
+          "analysis ($3 admission estimate limit, separate from participant spend)",
+        );
+        expect(started).toHaveLength(0);
+      } finally {
+        surface.unmount();
+      }
+    },
+  );
 
   it("keeps live and dry start rows distinct through a project refresh", async () => {
     let reads = 0;
     const { started, options } = harness({
-      readRunIndex: async () => { reads++; return { schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: RUNS, unreadable: [] }; }
+      readRunIndex: async () => {
+        reads++;
+        return {
+          schema: "humanish.run-index.v1",
+          cwd: "/projects/acme-app",
+          runs: RUNS,
+          unreadable: [],
+        };
+      },
     });
     const { surface } = await openLab(options);
     try {
       await surface.press(KEY.down, (frame) => frame.includes("❯ Start a LIVE run"));
       const deadline = Date.now() + 3000;
-      while (reads < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+      while (reads < 2 && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 10));
       expect(reads).toBeGreaterThanOrEqual(2);
       // Let the observed refresh commit before the human's next keypress.
       await new Promise((resolve) => setTimeout(resolve, 40));
       await surface.press(KEY.enter, (frame) => frame.includes("start a live run?"));
       expect(started).toHaveLength(0);
-    } finally { surface.unmount(); }
+    } finally {
+      surface.unmount();
+    }
   });
 
   it("a dry run starts on one keypress, because it cannot cost anything", async () => {
@@ -170,7 +271,7 @@ describe("starting a run", () => {
     // a bare negation matches those trivially.
     const cancelled = await surface.press(
       KEY.escape,
-      (frame) => frame.includes("Start a dry run") && !frame.includes("start a live run?")
+      (frame) => frame.includes("Start a dry run") && !frame.includes("start a live run?"),
     );
     surface.unmount();
     expect(started).toHaveLength(0);
@@ -182,8 +283,8 @@ describe("starting a run", () => {
     const { options } = harness({
       startRun: async () => ({
         ok: false,
-        error: { code: "HUMANISH_LAUNCH_FAILED", message: "EACCES: permission denied" }
-      })
+        error: { code: "HUMANISH_LAUNCH_FAILED", message: "EACCES: permission denied" },
+      }),
     });
     const { surface } = await openLab(options);
     const failed = await surface.press(KEY.enter, (frame) => frame.includes("EACCES"));
@@ -195,11 +296,17 @@ describe("starting a run", () => {
     // Its runs are still readable evidence, but there is no file to run — so the action is absent
     // rather than present and failing.
     const { started, options } = harness({
-      listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd: "/projects/acme-app", labs: [], warnings: [] })
+      listLabs: async () => ({
+        schema: "humanish.lab-list.v1",
+        ok: true,
+        cwd: "/projects/acme-app",
+        labs: [],
+        warnings: [],
+      }),
     });
     const surface = await renderToText(<App options={options} now={NOW} tick={0} />, {
       columns: 80,
-      until: (frame) => frame.trim().length > 0 && !frame.includes("reading project")
+      until: (frame) => frame.trim().length > 0 && !frame.includes("reading project"),
     });
     const lab = await surface.press(KEY.enter, (frame) => frame.includes("no manifest"));
     expect(lab).not.toContain("Start a dry run");
@@ -224,11 +331,16 @@ describe("what a lab may claim about a live run", () => {
         completedAt: "2026-08-19T11:00:00.008Z",
         durationMs: 8,
         estimatedCostUsd: 0,
-        verdict: "contract_proof_only"
-      }
+        verdict: "contract_proof_only",
+      },
     ];
     const { options } = harness({
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: dryOnly, unreadable: [] })
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: dryOnly,
+        unreadable: [],
+      }),
     });
     const { surface, frame } = await openLab(options);
     surface.unmount();
@@ -249,7 +361,7 @@ describe("what a lab may claim about a live run", () => {
         mode: "dry-run" as const,
         lab: { id: "signup-flow" },
         durationMs: 8,
-        estimatedCostUsd: 0
+        estimatedCostUsd: 0,
       },
       {
         runId: "live-1",
@@ -258,11 +370,16 @@ describe("what a lab may claim about a live run", () => {
         mode: "live" as const,
         lab: { id: "signup-flow" },
         durationMs: 120_000,
-        estimatedCostUsd: 1.2
-      }
+        estimatedCostUsd: 1.2,
+      },
     ];
     const { options } = harness({
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: mixed, unreadable: [] })
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: mixed,
+        unreadable: [],
+      }),
     });
     const { surface, frame } = await openLab(options);
     surface.unmount();
@@ -276,7 +393,6 @@ describe("what a lab may claim about a live run", () => {
   });
 });
 
-
 // Defects found by an adversarial review of this launch path and reproduced against the real
 // component. Each is pinned here because each was invisible to every test that existed.
 
@@ -288,7 +404,7 @@ describe("what the surface says about the run it just started", () => {
     mode: "dry-run" as const,
     pid: 4242,
     lab: { id: "signup-flow" },
-    startedAt: new Date(NOW + 1_000).toISOString()
+    startedAt: new Date(NOW + 1_000).toISOString(),
   };
 
   it("shows the run, instead of reporting it as no longer on disk", async () => {
@@ -300,17 +416,28 @@ describe("what the surface says about the run it just started", () => {
     const { options } = harness({
       startRun: async () => {
         launched = true;
-        return { ok: true, run: { pid: 4242, launchedAt: new Date(NOW).toISOString(), logPath: "/tmp/x.log", command: [] } };
+        return {
+          ok: true,
+          run: {
+            pid: 4242,
+            launchedAt: new Date(NOW).toISOString(),
+            logPath: "/tmp/x.log",
+            command: [],
+          },
+        };
       },
       readRunIndex: async () => ({
         schema: "humanish.run-index.v1",
         cwd: "/projects/acme-app",
         runs: launched ? [startedRun, ...RUNS] : RUNS,
-        unreadable: []
-      })
+        unreadable: [],
+      }),
     });
     const { surface } = await openLab(options);
-    const frame = await surface.press(KEY.enter, (candidate) => candidate.includes("newrun") || candidate.includes("no longer on disk"));
+    const frame = await surface.press(
+      KEY.enter,
+      (candidate) => candidate.includes("newrun") || candidate.includes("no longer on disk"),
+    );
     surface.unmount();
 
     expect(frame).not.toContain("no longer on disk");
@@ -331,10 +458,15 @@ describe("what the surface says about the run it just started", () => {
       startedAt: "2026-08-12T09:00:00.000Z",
       completedAt: "2026-08-12T09:04:00.000Z",
       verdict: "fail",
-      estimatedCostUsd: 3.5
+      estimatedCostUsd: 3.5,
     };
     const { options } = harness({
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd: "/projects/acme-app", runs: [stale, ...RUNS], unreadable: [] })
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd: "/projects/acme-app",
+        runs: [stale, ...RUNS],
+        unreadable: [],
+      }),
     });
     const { surface } = await openLab(options);
     // The launch never resolves to a record, so it ends in the honest "has not reported in" branch
@@ -343,7 +475,7 @@ describe("what the surface says about the run it just started", () => {
       KEY.enter,
       (candidate) => candidate.includes("has not reported in") || candidate.includes("deadbeef"),
       // The launch waits the full record timeout before concluding nothing reported in.
-      8_000
+      8_000,
     );
     surface.unmount();
 
@@ -356,14 +488,21 @@ describe("what the surface says about the run it just started", () => {
 
   it("keeps one lab's launch state off another lab's screen", async () => {
     const { options } = harness({
-      startRun: async () => ({ ok: false, error: { code: "HUMANISH_LAUNCH_FAILED", message: "EACCES: denied" } })
+      startRun: async () => ({
+        ok: false,
+        error: { code: "HUMANISH_LAUNCH_FAILED", message: "EACCES: denied" },
+      }),
     });
     const { surface } = await openLab(options);
     await surface.press(KEY.enter, (candidate) => candidate.includes("EACCES"));
     // Leave, and open a different lab: its screen must say nothing about the other lab's failure.
     await surface.press(KEY.escape, (candidate) => candidate.includes("never-run-lab"));
-    await pressUntilFrame(surface, KEY.down, (candidate) => /❯[^\n]*diagram-editor/.test(candidate));
-    const other = await surface.press(KEY.enter, (candidate) => candidate.includes("❯ Start a dry run"));
+    await pressUntilFrame(surface, KEY.down, (candidate) =>
+      /❯[^\n]*diagram-editor/.test(candidate),
+    );
+    const other = await surface.press(KEY.enter, (candidate) =>
+      candidate.includes("❯ Start a dry run"),
+    );
     surface.unmount();
 
     expect(other).not.toContain("EACCES");
@@ -379,8 +518,8 @@ describe("what the surface says about the run it just started", () => {
         labId: "signup-flow",
         caps: {},
         keysReady: false,
-        missingKeys: ["OPENAI_API_KEY"]
-      })
+        missingKeys: ["OPENAI_API_KEY"],
+      }),
     });
     const { surface } = await openLab(options);
     // The summary arrives after the first lab frame; wait for the frame that actually knows the
@@ -397,7 +536,7 @@ async function pressUntilFrame(
   surface: { press: (key: string, until?: (frame: string) => boolean) => Promise<string> },
   key: string,
   predicate: (frame: string) => boolean,
-  limit = 8
+  limit = 8,
 ): Promise<string> {
   let last = "";
   for (let index = 0; index < limit; index += 1) {

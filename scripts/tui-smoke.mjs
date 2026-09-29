@@ -48,15 +48,30 @@ try {
     version: { cli: "0.0.0-smoke" },
     capabilities: {
       // An empty project: the surface must render its ordinary empty state, not an error.
-      readRunIndex: async () => ({ schema: "humanish.run-index.v1", cwd, runs: [], unreadable: [] }),
-        listLabs: async () => ({ schema: "humanish.lab-list.v1", ok: true, cwd, labs: [], warnings: [] }),
+      readRunIndex: async () => ({
+        schema: "humanish.run-index.v1",
+        cwd,
+        runs: [],
+        unreadable: [],
+      }),
+      listLabs: async () => ({
+        schema: "humanish.lab-list.v1",
+        ok: true,
+        cwd,
+        labs: [],
+        warnings: [],
+      }),
       readRunDetail: async () => null,
       readLabSummary: async () => null,
-      readProjectState: () => ({ schema: "humanish.tui-project.v1", initialized: false, hasRuntime: false })
+      readProjectState: () => ({
+        schema: "humanish.tui-project.v1",
+        initialized: false,
+        hasRuntime: false,
+      }),
     },
     stdin,
     stdout,
-    exitAfterFirstFrame: true
+    exitAfterFirstFrame: true,
   });
 
   const output = frames.join("");
@@ -67,7 +82,7 @@ try {
     ["the empty state", "not a humanish project"],
     // The empty state now OFFERS setup instead of naming a command to go type elsewhere (#505).
     ["the offered next step", "Set up humanish here"],
-    ["the key hints", "q quit"]
+    ["the key hints", "q quit"],
   ];
   for (const [what, needle] of expectations) {
     if (!output.includes(needle)) {

@@ -27,7 +27,10 @@ export interface SandboxReceipt {
  * this id and the TTL backstop covers it instead. Containment is the same prepare step every
  * artifact write uses; append (not atomic-replace) keeps racing lanes' receipts intact.
  */
-export async function appendSandboxReceipt(root: PreparedOutputRoot, receipt: SandboxReceipt): Promise<void> {
+export async function appendSandboxReceipt(
+  root: PreparedOutputRoot,
+  receipt: SandboxReceipt,
+): Promise<void> {
   try {
     const filePath = await prepareContainedOutputFile(root, SANDBOX_RECEIPTS_ARTIFACT);
     await appendFile(filePath, `${JSON.stringify(receipt)}\n`, "utf8");
@@ -44,12 +47,16 @@ export function parseSandboxReceipts(text: string): SandboxReceipt[] {
     if (!trimmed) continue;
     try {
       const parsed = JSON.parse(trimmed) as Partial<SandboxReceipt>;
-      if (typeof parsed.sandboxId === "string" && parsed.sandboxId.length > 0 && typeof parsed.laneId === "string") {
+      if (
+        typeof parsed.sandboxId === "string" &&
+        parsed.sandboxId.length > 0 &&
+        typeof parsed.laneId === "string"
+      ) {
         receipts.push({
           at: typeof parsed.at === "string" ? parsed.at : "",
           laneId: parsed.laneId,
           sandboxId: parsed.sandboxId,
-          ...(typeof parsed.timeoutMs === "number" ? { timeoutMs: parsed.timeoutMs } : {})
+          ...(typeof parsed.timeoutMs === "number" ? { timeoutMs: parsed.timeoutMs } : {}),
         });
       }
     } catch {

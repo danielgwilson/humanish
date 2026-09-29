@@ -1,5 +1,14 @@
-import { resolveAutomaticAnalysis, automaticAnalysisBudget, formatAutomaticAnalysisBudget, DEFAULT_ANALYSIS_TIMEOUT_MS } from "./automatic-analysis-config.js";
-import { automaticAnalysisSucceeded, type AutomaticAnalysisHooks, type AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
+import {
+  resolveAutomaticAnalysis,
+  automaticAnalysisBudget,
+  formatAutomaticAnalysisBudget,
+  DEFAULT_ANALYSIS_TIMEOUT_MS,
+} from "./automatic-analysis-config.js";
+import {
+  automaticAnalysisSucceeded,
+  type AutomaticAnalysisHooks,
+  type AutomaticAnalysisResult,
+} from "./automatic-analysis-completion.js";
 import { formatCuaDiagnostics, formatCuaStopCause } from "./cua-diagnostics.js";
 import { existsSync, readFileSync } from "node:fs";
 import { formatOrientationHuman, readOrientation } from "./orientation.js";
@@ -12,7 +21,14 @@ import { Command, Option } from "commander";
 import { startCodexAppServerUi } from "./codex-app-server-ui.js";
 import type { CodexAppServerUiState } from "./codex-app-server-ui.js";
 import { loadEnvFile } from "./env-file.js";
-import { discoverProviderKeys, listUserKeys, resolveKeyName, setUserKey, unsetUserKey, userKeyStorePath } from "./key-resolution.js";
+import {
+  discoverProviderKeys,
+  listUserKeys,
+  resolveKeyName,
+  setUserKey,
+  unsetUserKey,
+  userKeyStorePath,
+} from "./key-resolution.js";
 import { COMMS_PROVIDERS, readCommsSetup, saveCommsConnection } from "./comms-connections.js";
 import { checkCommsConnection, configureCommsLab, type CommsCheckResult } from "./comms-setup.js";
 import { inspectCommsRecovery, recoverCommsReceiving } from "./comms-receiving.js";
@@ -25,7 +41,7 @@ import {
   listFeedback,
   renderIssueMarkdown,
   renderIssueUrl,
-  verifyFeedback
+  verifyFeedback,
 } from "./feedback.js";
 import type { FeedbackResult } from "./feedback.js";
 import { runInit } from "./init.js";
@@ -43,20 +59,16 @@ import {
   type TelemetryProperties,
   TELEMETRY_NOTICE,
   writeTelemetryState,
-  isOwnCheckoutRun
+  isOwnCheckoutRun,
 } from "./telemetry.js";
 import type { InitChange, InitResult } from "./init.js";
+import { inspectLabManifest, listLabManifests, resolveLabManifest } from "./labs.js";
+import type { LabInspectResult, LabListResult, LabResolveFailure } from "./labs.js";
 import {
-  inspectLabManifest,
-  listLabManifests,
-  resolveLabManifest
-} from "./labs.js";
-import type {
-  LabInspectResult,
-  LabListResult,
-  LabResolveFailure
-} from "./labs.js";
-import { runLabPreflight, type LabPreflightReachabilityMode, type LabPreflightResult } from "./lab-preflight.js";
+  runLabPreflight,
+  type LabPreflightReachabilityMode,
+  type LabPreflightResult,
+} from "./lab-preflight.js";
 import { runLab, resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import type { RunLabProvenance } from "./run-status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "./adapter-scorer-loader.js";
@@ -72,35 +84,22 @@ import type { ConcurrentSharedWorldLabResult } from "./concurrent-shared-world-l
 import type { LabConfig } from "./lab-config.js";
 import { openTarget, renderObserver, serveObserver } from "./observer.js";
 import type { ObserverResult, ObserverServer } from "./observer.js";
-import {
-  SERVE_SCHEMA,
-  serveObserverLibrary
-} from "./observer-serve.js";
+import { SERVE_SCHEMA, serveObserverLibrary } from "./observer-serve.js";
 import type { ServeErrorCode, ServeResult } from "./observer-serve.js";
 import { startExposedObserver, validateExposure } from "./serve-exposure.js";
 import type { ExposureRequest } from "./serve-exposure.js";
 import { ServeTunnelError } from "./serve-tunnel.js";
 import type { ServeTunnel } from "./serve-tunnel.js";
-import {
-  DEFAULT_OSS_REPOS,
-  runOssLab
-} from "./oss-lab.js";
+import { DEFAULT_OSS_REPOS, runOssLab } from "./oss-lab.js";
 import type { OssLabResult } from "./oss-lab.js";
 import {
   cleanupOssMetaLabSandboxes,
   cleanupStaleOssMetaLabSandboxes,
   runOssMetaLab,
-  startOssMetaLabLiveRefresh
+  startOssMetaLabLiveRefresh,
 } from "./oss-meta-lab.js";
 import type { OssMetaLabResult } from "./oss-meta-lab.js";
-import {
-  cleanupRun,
-  doctor,
-  listRuns,
-  readReview,
-  runDryRun,
-  verifyRun
-} from "./run.js";
+import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
 import { readLabSummary } from "./lab-summary.js";
@@ -108,7 +107,12 @@ import { readProjectState } from "./tui-project.js";
 import { createTuiObserverSession, stopRun, TUI_ACTION_SCHEMA } from "./tui-actions.js";
 import { readRunDetail } from "./run-detail.js";
 import { launchRun, readLaunchLogTail } from "./tui-launch.js";
-import { TUI_MIN_NODE_MAJOR, nodeSupportsTui, tuiBundleUrl, type TuiModule} from "./tui-contract.js";
+import {
+  TUI_MIN_NODE_MAJOR,
+  nodeSupportsTui,
+  tuiBundleUrl,
+  type TuiModule,
+} from "./tui-contract.js";
 import { forTerminal } from "./terminal-encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "./study-analysis-service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "./study-analysis-store.js";
@@ -116,20 +120,16 @@ import { resolveRunPath } from "./run.js";
 import { detectAgentSession } from "./agent-session.js";
 import { runCommsCatchHost } from "./comms-catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "./comms-sandbox-catch.js";
-import type {
-  DoctorResult,
-  CleanupResult,
-  RunsResult,
-  RunResult,
-  VerifyResult
-} from "./run.js";
+import type { DoctorResult, CleanupResult, RunsResult, RunResult, VerifyResult } from "./run.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 
 function readCliVersion(): string {
   const packageJsonPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
-  return typeof packageJson.version === "string" && packageJson.version.trim() ? packageJson.version : "0.0.0";
+  return typeof packageJson.version === "string" && packageJson.version.trim()
+    ? packageJson.version
+    : "0.0.0";
 }
 
 const CLI_VERSION = readCliVersion();
@@ -201,7 +201,10 @@ interface CodexAppServerUiCliResult {
   status?: string;
   url?: string;
   error?: {
-    code: "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED" | "HUMANISH_INVALID_PORT" | "HUMANISH_INVALID_TIMEOUT";
+    code:
+      | "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED"
+      | "HUMANISH_INVALID_PORT"
+      | "HUMANISH_INVALID_TIMEOUT";
     message: string;
   };
 }
@@ -218,7 +221,7 @@ const defaultIo: CliIo = {
   writeErr: (text) => process.stderr.write(forStream(process.stderr, text)),
   setExitCode: (code) => {
     process.exitCode = code;
-  }
+  },
 };
 
 // Command boundary catch-all (fix set point 1): every leaf command is created
@@ -262,7 +265,7 @@ async function recordCommandTelemetry(
   command: Command,
   ok: boolean,
   durationMs: number,
-  exitCode: number
+  exitCode: number,
 ): Promise<void> {
   try {
     // `telemetry` itself is never measured: instrumenting the opt-out would be indecent.
@@ -271,7 +274,12 @@ async function recordCommandTelemetry(
     if (disabledByEnvironment(process.env)) return;
     // Our own checkout never reports, from whichever directory the command was started: see
     // isOwnCheckoutRun for the measured reason both walks exist.
-    if (isOwnCheckoutRun(process.cwd(), dirname(fileURLToPath(import.meta.url)), (p) => readFileSync(p, "utf8"))) return;
+    if (
+      isOwnCheckoutRun(process.cwd(), dirname(fileURLToPath(import.meta.url)), (p) =>
+        readFileSync(p, "utf8"),
+      )
+    )
+      return;
     const state = await readTelemetryState();
     if (!state.enabled) return;
     const payload = buildPayload({
@@ -286,10 +294,13 @@ async function recordCommandTelemetry(
         command: name,
         ok: ok && exitCode === 0,
         exitCode,
-        durationBucket: durationBucket(durationMs)
-      }
+        durationBucket: durationBucket(durationMs),
+      },
     });
-    if (process.env.HUMANISH_TELEMETRY_DEBUG !== undefined && process.env.HUMANISH_TELEMETRY_DEBUG !== "") {
+    if (
+      process.env.HUMANISH_TELEMETRY_DEBUG !== undefined &&
+      process.env.HUMANISH_TELEMETRY_DEBUG !== ""
+    ) {
       process.stderr.write(`humanish telemetry (debug, not sent): ${JSON.stringify(payload)}\n`);
       return;
     }
@@ -314,8 +325,11 @@ function reportActiveHandles(command: Command, io: CliIo): void {
     const resources = proc.getActiveResourcesInfo?.() ?? [];
     const counts = new Map<string, number>();
     for (const resource of resources) counts.set(resource, (counts.get(resource) ?? 0) + 1);
-    const summary = [...counts.entries()].map(([type, count]) => `${type}×${count}`).join(", ") || "none";
-    io.writeErr(`humanish debug: active resources after \`${commandPath(command) || "humanish"}\` settled: ${summary}\n`);
+    const summary =
+      [...counts.entries()].map(([type, count]) => `${type}×${count}`).join(", ") || "none";
+    io.writeErr(
+      `humanish debug: active resources after \`${commandPath(command) || "humanish"}\` settled: ${summary}\n`,
+    );
   }).unref?.();
 }
 
@@ -328,9 +342,14 @@ async function renderObserverForRun(cwd: string, result: RunResult): Promise<voi
   if (!result.ok || result.runId === undefined) return;
   try {
     const rendered = await renderObserver(cwd, result.runId, { open: false });
-    if (!rendered.ok) result.warnings.push(`observer/index.html was not written: ${rendered.error?.message ?? "render failed"}`);
+    if (!rendered.ok)
+      result.warnings.push(
+        `observer/index.html was not written: ${rendered.error?.message ?? "render failed"}`,
+      );
   } catch (error) {
-    result.warnings.push(`observer/index.html was not written: ${error instanceof Error ? error.message : String(error)}`);
+    result.warnings.push(
+      `observer/index.html was not written: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -381,15 +400,19 @@ class HumanishCommand extends Command {
         const result = Reflect.apply(fn, this, args) as void | Promise<void>;
         if (result && typeof result.then === "function") {
           return Promise.all([result, noticed]).then(
-            () => { finish(true); },
+            () => {
+              finish(true);
+            },
             (error: unknown) => {
               reportUnexpectedActionError(this, cliIo, error);
               finish(false);
-            }
+            },
           );
         }
         // A synchronous action still has to let the disclosure land before the process exits.
-        return noticed.then(() => { finish(true); });
+        return noticed.then(() => {
+          finish(true);
+        });
         return result;
       } catch (error) {
         reportUnexpectedActionError(this, cliIo, error);
@@ -429,7 +452,8 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   const message = redactText(error instanceof Error ? error.message : String(error));
   // A taken port is the most expected thing a serving command meets; it gets its own code rather
   // than the catch-all's (#484). The message already names the port and whose it is.
-  const code: UnexpectedErrorEnvelope["error"]["code"] = error instanceof PortInUseError ? "HUMANISH_PORT_IN_USE" : "HUMANISH_UNEXPECTED";
+  const code: UnexpectedErrorEnvelope["error"]["code"] =
+    error instanceof PortInUseError ? "HUMANISH_PORT_IN_USE" : "HUMANISH_UNEXPECTED";
 
   if (wantsJson(command)) {
     if (invocationEnvelopeAlreadyWritten(command)) {
@@ -451,8 +475,8 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
       ok: false,
       error: {
         code,
-        message
-      }
+        message,
+      },
     };
     io.writeOut(`${JSON.stringify(envelope, null, 2)}\n`);
   } else {
@@ -462,13 +486,15 @@ function reportUnexpectedActionError(command: Command, io: CliIo, error: unknown
   io.setExitCode(2);
 }
 
-
 /** `unknown option '--x'` -> the sibling commands that DO declare `--x`. */
 function commandsDeclaring(root: Command, flag: string): string[] {
   const found: string[] = [];
   const walk = (command: Command, trail: string[]): void => {
     const names = [...trail, command.name()];
-    if (trail.length > 0 && command.options.some((option) => option.long === flag || option.short === flag)) {
+    if (
+      trail.length > 0 &&
+      command.options.some((option) => option.long === flag || option.short === flag)
+    ) {
       found.push(names.slice(1).join(" "));
     }
     for (const child of command.commands) walk(child, names);
@@ -498,7 +524,10 @@ export function withSiblingFlagHint(text: string, root: Command): string {
 }
 
 export function createProgram(
-  io: Partial<CliIo> & { keyDiscovery?: typeof discoverProviderKeys; tuiRuntime?: Partial<TuiRuntime> } = {}
+  io: Partial<CliIo> & {
+    keyDiscovery?: typeof discoverProviderKeys;
+    tuiRuntime?: Partial<TuiRuntime>;
+  } = {},
 ): Command {
   const given: CliIo = { ...defaultIo, ...io };
   // Telemetry's `ok` used to mean "the handler did not throw", which is true of nearly every
@@ -509,7 +538,7 @@ export function createProgram(
     setExitCode: (code) => {
       lastExitCode = code;
       given.setExitCode(code);
-    }
+    },
   };
   keyDiscoveryFn = io.keyDiscovery ?? discoverProviderKeys;
   tuiRuntime = { ...defaultTuiRuntime, ...io.tuiRuntime };
@@ -542,7 +571,7 @@ export function createProgram(
       // filed it as a documentation mismatch. The flag is genuinely absent — `run` opens
       // nothing — but "unknown" says that badly, because the reader's actual question is
       // "then where does it live?".
-      outputError: (text, write) => write(withSiblingFlagHint(text, program))
+      outputError: (text, write) => write(withSiblingFlagHint(text, program)),
     })
     .addHelpText(
       "after",
@@ -560,8 +589,8 @@ export function createProgram(
         "",
         "Public-safety boundary:",
         "  Humanish must not commit or emit PII, PHI, secrets, keys, raw private transcripts,",
-        "  private screenshots, or private upstream artifacts."
-      ].join("\n")
+        "  private screenshots, or private upstream artifacts.",
+      ].join("\n"),
     );
 
   registerInitCommand(program, cliIo);
@@ -597,34 +626,51 @@ function registerInitCommand(parent: Command, io: CliIo): void {
     .summary("Set up humanish/ source and .humanish/ runtime state.")
     .option("--dry-run", "Print planned changes without writing files.")
     .option("--yes", "Apply safe generated changes without prompting.")
-    .option("--local-browser <url>", "Set the local-browser starter to this loopback app URL (explicit port above 1023).")
+    .option(
+      "--local-browser <url>",
+      "Set the local-browser starter to this loopback app URL (explicit port above 1023).",
+    )
     .option("--local-mission <text>", "Set the local-browser participant mission.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; dryRun?: boolean; json?: boolean; yes?: boolean; localBrowser?: string; localMission?: string }, command) => {
-      const initOptions = {
-        cwd: options.cwd,
-        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.yes === undefined ? {} : { yes: options.yes }),
-        ...(options.localBrowser === undefined && options.localMission === undefined ? {} : {
-          localBrowser: {
-            appUrl: options.localBrowser ?? "http://127.0.0.1:3000",
-            ...(options.localMission === undefined ? {} : { mission: options.localMission })
-          }
-        })
-      };
-      const result = await runInit(initOptions);
+    .action(
+      async (
+        options: {
+          cwd: string;
+          dryRun?: boolean;
+          json?: boolean;
+          yes?: boolean;
+          localBrowser?: string;
+          localMission?: string;
+        },
+        command,
+      ) => {
+        const initOptions = {
+          cwd: options.cwd,
+          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          ...(options.yes === undefined ? {} : { yes: options.yes }),
+          ...(options.localBrowser === undefined && options.localMission === undefined
+            ? {}
+            : {
+                localBrowser: {
+                  appUrl: options.localBrowser ?? "http://127.0.0.1:3000",
+                  ...(options.localMission === undefined ? {} : { mission: options.localMission }),
+                },
+              }),
+        };
+        const result = await runInit(initOptions);
 
-      if (wantsJson(command)) {
-        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-      } else if (result.ok) {
-        io.writeOut(formatInitHuman(result));
-      } else {
-        io.writeErr(formatInitHuman(result));
-      }
+        if (wantsJson(command)) {
+          io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+        } else if (result.ok) {
+          io.writeOut(formatInitHuman(result));
+        } else {
+          io.writeErr(formatInitHuman(result));
+        }
 
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerDoctorCommand(parent: Command, io: CliIo): void {
@@ -633,16 +679,28 @@ function registerDoctorCommand(parent: Command, io: CliIo): void {
     .description("Explain project readiness and missing Humanish setup.")
     .summary("Explain project readiness and missing setup.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--lab <lab>", "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.")
-    .option("--env-file <path>", "Load a local env file for these setup checks without printing values.")
+    .option(
+      "--lab <lab>",
+      "Check the selected lab's desktop, participant authentication and separate analysis requirements; no provider calls.",
+    )
+    .option(
+      "--env-file <path>",
+      "Load a local env file for these setup checks without printing values.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {
-      if (options.envFile && !await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
-      const result = await doctor(options.cwd, options.lab ? { lab: options.lab } : {});
-      writeResult(command, io, result, formatDoctorHuman);
-      // Behavioral change: was exit 1, every other structured command uses 2.
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (options: { cwd: string; lab?: string; envFile?: string; json?: boolean }, command) => {
+        if (
+          options.envFile &&
+          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+        )
+          return;
+        const result = await doctor(options.cwd, options.lab ? { lab: options.lab } : {});
+        writeResult(command, io, result, formatDoctorHuman);
+        // Behavioral change: was exit 1, every other structured command uses 2.
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 /**
@@ -672,7 +730,7 @@ const defaultTuiRuntime: TuiRuntime = {
   loadTui: async (bundle) => {
     if (!existsSync(bundle)) return null;
     return (await import(bundle.href)) as TuiModule;
-  }
+  },
 };
 
 let tuiRuntime: TuiRuntime = defaultTuiRuntime;
@@ -732,7 +790,17 @@ function registerTelemetryCommand(parent: Command, io: CliIo): void {
         event: "cli_command",
         anonymousId: state.anonymousId,
         version: CLI_VERSION,
-        properties: { command: "lab run", lab: "try-live", mode: "live", outcome: "incomplete", brain: "provider-key", durationBucket: "1-5m", ok: false, diagnosticCategory: "session_interrupted", stopCause: "spend_limit" }
+        properties: {
+          command: "lab run",
+          lab: "try-live",
+          mode: "live",
+          outcome: "incomplete",
+          brain: "provider-key",
+          durationBucket: "1-5m",
+          ok: false,
+          diagnosticCategory: "session_interrupted",
+          stopCause: "spend_limit",
+        },
       });
       const result = {
         schema: "humanish.telemetry-status.v1" as const,
@@ -740,27 +808,32 @@ function registerTelemetryCommand(parent: Command, io: CliIo): void {
         enabled: state.enabled && !envOff,
         disabledBy: envOff ? "environment" : state.enabled ? undefined : "config",
         statePath: telemetryStatePath(),
-        example: sample
+        example: sample,
       };
       if (options.json === true || wantsJson(command)) {
         io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
       } else {
-        io.writeOut([
-          `telemetry: ${result.enabled ? "on" : "off"}${envOff ? " (DO_NOT_TRACK / HUMANISH_TELEMETRY_DISABLED)" : ""}`,
-          `state: ${result.statePath}`,
-          "",
-          "a complete example of what is sent — there are no other fields:",
-          JSON.stringify(sample, null, 2),
-          "",
-          "never sent: labs you wrote, subjects, personas, missions, paths, run evidence, key names or values.",
-          "",
-          "humanish telemetry disable   turns it off"
-        ].join("\n") + "\n");
+        io.writeOut(
+          [
+            `telemetry: ${result.enabled ? "on" : "off"}${envOff ? " (DO_NOT_TRACK / HUMANISH_TELEMETRY_DISABLED)" : ""}`,
+            `state: ${result.statePath}`,
+            "",
+            "a complete example of what is sent — there are no other fields:",
+            JSON.stringify(sample, null, 2),
+            "",
+            "never sent: labs you wrote, subjects, personas, missions, paths, run evidence, key names or values.",
+            "",
+            "humanish telemetry disable   turns it off",
+          ].join("\n") + "\n",
+        );
       }
       markInvocationEnvelopeWritten(command);
     });
 
-  for (const [name, enabled] of [["enable", true], ["disable", false]] as const) {
+  for (const [name, enabled] of [
+    ["enable", true],
+    ["disable", false],
+  ] as const) {
     telemetry
       .command(name)
       .description(`Turn anonymous usage collection ${name === "enable" ? "on" : "off"}.`)
@@ -779,180 +852,255 @@ function registerTuiCommand(parent: Command, io: CliIo): void {
   parent
     .command("tui")
     .description("Open the interactive terminal surface for browsing labs and runs (humans only).")
-    .summary("Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.")
+    .summary(
+      "Human terminal for labs and runs; refuses detected agent sessions and non-TTY input/output. Agents: humanish lab list --json, humanish lab inspect <lab> --json, humanish runs --json.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--env-file <path>", "Load a local env file for this terminal session and its runs without printing values.")
+    .option(
+      "--env-file <path>",
+      "Load a local env file for this terminal session and its runs without printing values.",
+    )
     .option("--force", "Open it anyway in a session that looks like an agent's.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; envFile?: string; force?: boolean; json?: boolean }, command) => {
-      const { stdin, stdout } = tuiRuntime;
-      // Production uses process.env, including SDKs used by existing cleanup actions. Tests inject
-      // an isolated host context. Values stay behind the capability closures, never in view data.
-      const sessionEnv = tuiRuntime.env;
+    .action(
+      async (
+        options: { cwd: string; envFile?: string; force?: boolean; json?: boolean },
+        command,
+      ) => {
+        const { stdin, stdout } = tuiRuntime;
+        // Production uses process.env, including SDKs used by existing cleanup actions. Tests inject
+        // an isolated host context. Values stay behind the capability closures, never in view data.
+        const sessionEnv = tuiRuntime.env;
 
-      // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
-      // it runs, so the TTY check below passes and the surface used to open: a study watched an
-      // agent navigate the labs list and start a run it did not mean to start
-      // (labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
-      // reading it. `--force` is the escape for the person who really is at this keyboard —
-      // capturing frames from inside an agent session is exactly that case.
-      const agent = options.force === true ? undefined : detectAgentSession(tuiRuntime.env);
-      if (agent !== undefined) {
-        refuseTui(command, io, {
-          schema: TUI_RESULT_SCHEMA,
-          ok: false,
-          error: {
-            code: "HUMANISH_TUI_AGENT_SESSION",
-            message:
-              `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. `
-              + "It renders frames of escape codes into a transcript, and its keys can start runs. "
-              + "`humanish runs --json` lists runs, `humanish lab list --json` lists the studies in this project, "
-              + "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force."
-          }
-        });
-        return;
-      }
-
-      if (stdin.isTTY !== true || stdout.isTTY !== true) {
-        refuseTui(command, io, {
-          schema: TUI_RESULT_SCHEMA,
-          ok: false,
-          error: {
-            code: "HUMANISH_TUI_REQUIRES_TTY",
-            message:
-              "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one."
-          }
-        });
-        return;
-      }
-
-      if (!nodeSupportsTui(tuiRuntime.nodeVersion)) {
-        refuseTui(command, io, {
-          schema: TUI_RESULT_SCHEMA,
-          ok: false,
-          error: {
-            code: "HUMANISH_TUI_UNSUPPORTED_NODE",
-            message: `humanish tui needs Node ${TUI_MIN_NODE_MAJOR} or newer (this is ${tuiRuntime.nodeVersion}). Every other humanish command still works on this runtime.`
-          }
-        });
-        return;
-      }
-
-      // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded ONLY here, so
-      // no agent-facing command pays its parse cost.
-      const bundle = tuiBundleUrl(import.meta.url);
-      const runIndexCache = new RunIndexCache();
-      const loaded = await tuiRuntime.loadTui(bundle);
-      if (loaded === null) {
-        refuseTui(command, io, {
-          schema: TUI_RESULT_SCHEMA,
-          ok: false,
-          error: {
-            code: "HUMANISH_TUI_BUNDLE_MISSING",
-            message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`
-          }
-        });
-        return;
-      }
-
-      const discoveredKeys = new Set<string>();
-      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io, env: sessionEnv,
-        onDiscovered: names => names.forEach(name => discoveredKeys.add(name)) })) return;
-      // Probe stored credentials afresh. Discovery fills must not become permanent env overrides
-      // when a person replaces a stored key during this terminal session.
-      const connectionEnv = (): NodeJS.ProcessEnv => {
-        const env = { ...sessionEnv };
-        for (const name of discoveredKeys) delete env[name];
-        return env;
-      };
-      const observerSession = createTuiObserverSession(resolve(options.cwd));
-      let exitCode = 0;
-      let connectionNotice: string | undefined;
-      let connectionCheck: CommsCheckResult | undefined;
-      try {
-        for (;;) {
-          const outcome = await loaded.startTui({
-            ...(connectionNotice === undefined ? {} : { initialScreen: "connections" as const, connectionNotice }),
-            cwd: resolve(options.cwd),
-            version: { cli: CLI_VERSION },
-            capabilities: {
-              comms: {
-                read: async () => ({ ...await readCommsSetup(resolve(options.cwd), connectionEnv()), ...(connectionCheck ? { authentication: connectionCheck } : {}) }),
-                save: () => saveCommsConnection(resolve(options.cwd)),
-                check: async () => { connectionCheck = await tuiRuntime.checkComms({ cwd: resolve(options.cwd), env: connectionEnv(), online: true }); return connectionCheck; },
-                labs: async () => (await listLabManifests(resolve(options.cwd))).labs.map(lab => ({ title: lab.title ?? lab.id, path: lab.path })),
-                configure: (lab, apply, planToken) => configureCommsLab({ cwd: resolve(options.cwd), lab, connection: "agentmail", apply, ...(planToken ? { planToken } : {}) }),
-                recovery: () => inspectCommsRecovery({ cwd: resolve(options.cwd) }),
-                recover: async (runId, connectionName) => {
-                  try {
-                    const { connection, adapter } = await resolveReceivingConnection(resolve(options.cwd), connectionName, connectionEnv());
-                    return await recoverCommsReceiving({ cwd: resolve(options.cwd), runId, connectionName, apiKeyEnv: connection.apiKeyEnv, adapter });
-                  } catch { return { ok: false, message: "Could not recover email resources. Check the connection and retry." }; }
-                }
-              },
-              // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
-              // run tree each tick is the cost this index exists to avoid.
-              readRunIndex: (target, readOptions) => readRunIndex(target, { ...readOptions, cache: runIndexCache }),
-              listLabs: listLabManifests,
-              startRun: launchOptions => launchRun({ ...launchOptions, env: sessionEnv }),
-              readLaunchLog: readLaunchLogTail,
-              readRunDetail,
-              readLabSummary: (target, lab, readOptions) => readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
-              readProjectState,
-              openObserver: (target, observerPath) => observerSession.open(target, observerPath),
-              reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
-              stopRun,
-              initProject: async (target: string) => {
-                const result = await runInit({ cwd: target, yes: true });
-                return result.ok
-                  ? {
-                      schema: TUI_ACTION_SCHEMA,
-                      ok: true as const,
-                      message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`
-                    }
-                  : {
-                      schema: TUI_ACTION_SCHEMA,
-                      ok: false as const,
-                      message: result.error?.message ?? "humanish init could not set this directory up"
-                    };
-              }
+        // An agent runner, even with a real terminal. `codex exec` allocates a PTY for the commands
+        // it runs, so the TTY check below passes and the surface used to open: a study watched an
+        // agent navigate the labs list and start a run it did not mean to start
+        // (labs/handed-a-human-surface.yaml). A TTY says a terminal exists, not that anyone is
+        // reading it. `--force` is the escape for the person who really is at this keyboard —
+        // capturing frames from inside an agent session is exactly that case.
+        const agent = options.force === true ? undefined : detectAgentSession(tuiRuntime.env);
+        if (agent !== undefined) {
+          refuseTui(command, io, {
+            schema: TUI_RESULT_SCHEMA,
+            ok: false,
+            error: {
+              code: "HUMANISH_TUI_AGENT_SESSION",
+              message:
+                `humanish tui is a surface for a person, and ${agent.marker} says this session belongs to ${agent.runner}. ` +
+                "It renders frames of escape codes into a transcript, and its keys can start runs. " +
+                "`humanish runs --json` lists runs, `humanish lab list --json` lists the studies in this project, " +
+                "and `humanish lab run <lab> --json` starts one. If you are a person at this keyboard, add --force.",
             },
-            stdin,
-            stdout
           });
-          if (typeof outcome === "number") { exitCode = outcome; break; }
-          if (outcome.action !== "agentmail-key") { exitCode = 1; break; }
-          // startTui has unmounted: only the host reads the credential, then remounts the view.
-          const value = await tuiRuntime.promptSecret("AgentMail API key", stdin, stdout);
-          if (value === null) {
-            connectionNotice = "Key entry cancelled. Nothing was changed.";
-            continue;
-          }
-          try {
-            setUserKey("AGENTMAIL_API_KEY", value, sessionEnv);
-            // Refresh only a value filled implicitly by discovery; explicit env/file wins.
-            if (discoveredKeys.has("AGENTMAIL_API_KEY")) delete sessionEnv.AGENTMAIL_API_KEY;
-            const saved = await saveCommsConnection(resolve(options.cwd));
-            connectionNotice = saved.ok ? "Key stored. Project connection saved."
-              : `Key stored for your user. ${saved.message}`;
-            stdout.write("Checking AgentMail authentication…\n");
-            connectionCheck = await tuiRuntime.checkComms({ cwd: resolve(options.cwd), env: connectionEnv(), online: true });
-            connectionNotice = saved.ok
-              ? connectionCheck.authenticated === true ? "Key stored. Authentication passed."
-                : connectionCheck.authenticated === false ? "Key stored. Authentication rejected; test it for details."
-                  : "Key stored. Authentication unknown; test it to retry."
-              : `${connectionNotice} ${connectionCheck.message}`;
-          } catch {
-            connectionNotice = "Could not store the key. Use a single non-empty line and check key-store permissions.";
-          }
+          return;
         }
-      } finally {
-        await observerSession.close();
-      }
-      // The surface owned the screen; it has already told the operator whatever there was to say.
-      markInvocationEnvelopeWritten(command);
-      io.setExitCode(exitCode);
-    });
+
+        if (stdin.isTTY !== true || stdout.isTTY !== true) {
+          refuseTui(command, io, {
+            schema: TUI_RESULT_SCHEMA,
+            ok: false,
+            error: {
+              code: "HUMANISH_TUI_REQUIRES_TTY",
+              message:
+                "humanish tui needs an interactive terminal. For scripted or agent use, `humanish runs --json` lists the same runs and `humanish lab run --json` starts one.",
+            },
+          });
+          return;
+        }
+
+        if (!nodeSupportsTui(tuiRuntime.nodeVersion)) {
+          refuseTui(command, io, {
+            schema: TUI_RESULT_SCHEMA,
+            ok: false,
+            error: {
+              code: "HUMANISH_TUI_UNSUPPORTED_NODE",
+              message: `humanish tui needs Node ${TUI_MIN_NODE_MAJOR} or newer (this is ${tuiRuntime.nodeVersion}). Every other humanish command still works on this runtime.`,
+            },
+          });
+          return;
+        }
+
+        // The Ink app ships as a pre-built bundle beside the compiled CLI and is loaded ONLY here, so
+        // no agent-facing command pays its parse cost.
+        const bundle = tuiBundleUrl(import.meta.url);
+        const runIndexCache = new RunIndexCache();
+        const loaded = await tuiRuntime.loadTui(bundle);
+        if (loaded === null) {
+          refuseTui(command, io, {
+            schema: TUI_RESULT_SCHEMA,
+            ok: false,
+            error: {
+              code: "HUMANISH_TUI_BUNDLE_MISSING",
+              message: `The terminal surface bundle is missing at ${bundle.pathname}. In a checkout, run \`pnpm build\`; in an install, this package is incomplete — please report it.`,
+            },
+          });
+          return;
+        }
+
+        const discoveredKeys = new Set<string>();
+        if (
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: options.envFile,
+            io,
+            env: sessionEnv,
+            onDiscovered: (names) => names.forEach((name) => discoveredKeys.add(name)),
+          }))
+        )
+          return;
+        // Probe stored credentials afresh. Discovery fills must not become permanent env overrides
+        // when a person replaces a stored key during this terminal session.
+        const connectionEnv = (): NodeJS.ProcessEnv => {
+          const env = { ...sessionEnv };
+          for (const name of discoveredKeys) delete env[name];
+          return env;
+        };
+        const observerSession = createTuiObserverSession(resolve(options.cwd));
+        let exitCode = 0;
+        let connectionNotice: string | undefined;
+        let connectionCheck: CommsCheckResult | undefined;
+        try {
+          for (;;) {
+            const outcome = await loaded.startTui({
+              ...(connectionNotice === undefined
+                ? {}
+                : { initialScreen: "connections" as const, connectionNotice }),
+              cwd: resolve(options.cwd),
+              version: { cli: CLI_VERSION },
+              capabilities: {
+                comms: {
+                  read: async () => ({
+                    ...(await readCommsSetup(resolve(options.cwd), connectionEnv())),
+                    ...(connectionCheck ? { authentication: connectionCheck } : {}),
+                  }),
+                  save: () => saveCommsConnection(resolve(options.cwd)),
+                  check: async () => {
+                    connectionCheck = await tuiRuntime.checkComms({
+                      cwd: resolve(options.cwd),
+                      env: connectionEnv(),
+                      online: true,
+                    });
+                    return connectionCheck;
+                  },
+                  labs: async () =>
+                    (await listLabManifests(resolve(options.cwd))).labs.map((lab) => ({
+                      title: lab.title ?? lab.id,
+                      path: lab.path,
+                    })),
+                  configure: (lab, apply, planToken) =>
+                    configureCommsLab({
+                      cwd: resolve(options.cwd),
+                      lab,
+                      connection: "agentmail",
+                      apply,
+                      ...(planToken ? { planToken } : {}),
+                    }),
+                  recovery: () => inspectCommsRecovery({ cwd: resolve(options.cwd) }),
+                  recover: async (runId, connectionName) => {
+                    try {
+                      const { connection, adapter } = await resolveReceivingConnection(
+                        resolve(options.cwd),
+                        connectionName,
+                        connectionEnv(),
+                      );
+                      return await recoverCommsReceiving({
+                        cwd: resolve(options.cwd),
+                        runId,
+                        connectionName,
+                        apiKeyEnv: connection.apiKeyEnv,
+                        adapter,
+                      });
+                    } catch {
+                      return {
+                        ok: false,
+                        message:
+                          "Could not recover email resources. Check the connection and retry.",
+                      };
+                    }
+                  },
+                },
+                // One cache for the life of the surface: it refreshes on a cadence, and re-walking every
+                // run tree each tick is the cost this index exists to avoid.
+                readRunIndex: (target, readOptions) =>
+                  readRunIndex(target, { ...readOptions, cache: runIndexCache }),
+                listLabs: listLabManifests,
+                startRun: (launchOptions) => launchRun({ ...launchOptions, env: sessionEnv }),
+                readLaunchLog: readLaunchLogTail,
+                readRunDetail,
+                readLabSummary: (target, lab, readOptions) =>
+                  readLabSummary(target, lab, { ...readOptions, env: sessionEnv }),
+                readProjectState,
+                openObserver: (target, observerPath) => observerSession.open(target, observerPath),
+                reclaimRun: (target, runId) => reclaimRunSandboxes(target, runId),
+                stopRun,
+                initProject: async (target: string) => {
+                  const result = await runInit({ cwd: target, yes: true });
+                  return result.ok
+                    ? {
+                        schema: TUI_ACTION_SCHEMA,
+                        ok: true as const,
+                        message: `set up humanish here — ${result.changes.filter((change) => change.action !== "skip").length} files written`,
+                      }
+                    : {
+                        schema: TUI_ACTION_SCHEMA,
+                        ok: false as const,
+                        message:
+                          result.error?.message ?? "humanish init could not set this directory up",
+                      };
+                },
+              },
+              stdin,
+              stdout,
+            });
+            if (typeof outcome === "number") {
+              exitCode = outcome;
+              break;
+            }
+            if (outcome.action !== "agentmail-key") {
+              exitCode = 1;
+              break;
+            }
+            // startTui has unmounted: only the host reads the credential, then remounts the view.
+            const value = await tuiRuntime.promptSecret("AgentMail API key", stdin, stdout);
+            if (value === null) {
+              connectionNotice = "Key entry cancelled. Nothing was changed.";
+              continue;
+            }
+            try {
+              setUserKey("AGENTMAIL_API_KEY", value, sessionEnv);
+              // Refresh only a value filled implicitly by discovery; explicit env/file wins.
+              if (discoveredKeys.has("AGENTMAIL_API_KEY")) delete sessionEnv.AGENTMAIL_API_KEY;
+              const saved = await saveCommsConnection(resolve(options.cwd));
+              connectionNotice = saved.ok
+                ? "Key stored. Project connection saved."
+                : `Key stored for your user. ${saved.message}`;
+              stdout.write("Checking AgentMail authentication…\n");
+              connectionCheck = await tuiRuntime.checkComms({
+                cwd: resolve(options.cwd),
+                env: connectionEnv(),
+                online: true,
+              });
+              connectionNotice = saved.ok
+                ? connectionCheck.authenticated === true
+                  ? "Key stored. Authentication passed."
+                  : connectionCheck.authenticated === false
+                    ? "Key stored. Authentication rejected; test it for details."
+                    : "Key stored. Authentication unknown; test it to retry."
+                : `${connectionNotice} ${connectionCheck.message}`;
+            } catch {
+              connectionNotice =
+                "Could not store the key. Use a single non-empty line and check key-store permissions.";
+            }
+          }
+        } finally {
+          await observerSession.close();
+        }
+        // The surface owned the screen; it has already told the operator whatever there was to say.
+        markInvocationEnvelopeWritten(command);
+        io.setExitCode(exitCode);
+      },
+    );
 }
 
 // The discovery fn the env seam calls; injectable via createProgram for hermetic CLI tests.
@@ -972,7 +1120,11 @@ interface KeysResult {
 }
 
 function formatKeysHuman(result: KeysResult): string {
-  const lines = [`humanish keys ${result.ok ? "ok" : "failed"}`, `store: ${result.store}`, result.message];
+  const lines = [
+    `humanish keys ${result.ok ? "ok" : "failed"}`,
+    `store: ${result.store}`,
+    result.message,
+  ];
   if (result.action === "list" && result.names.length > 0) {
     for (const name of result.names) lines.push(`- ${name}`);
   }
@@ -998,7 +1150,10 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
 
   keys
     .command("set")
-    .argument("<vendor-or-name>", "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME.")
+    .argument(
+      "<vendor-or-name>",
+      "A vendor alias (openai, e2b, anthropic, github, agentmail) or a raw ENV_NAME.",
+    )
     .description("Store one provider key in the user store (0600), prompted with hidden input.")
     .option("--stdin", "Read the value from stdin instead of prompting (for agents/pipes).")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -1007,8 +1162,12 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       const storePath = userKeyStorePath(process.env);
       if (name === null) {
         const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [],
-          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`
+          schema: KEYS_RESULT_SCHEMA,
+          ok: false,
+          action: "set",
+          store: storePath,
+          names: [],
+          message: `Not a vendor alias or valid env name: ${vendorOrName}. Vendors: openai, e2b, anthropic, github, agentmail.`,
         };
         writeResult(command, io, result, formatKeysHuman);
         io.setExitCode(2);
@@ -1017,8 +1176,12 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       const value = await readSecretValue(options.stdin === true, `Value for ${name}`);
       if (value === null) {
         const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [name],
-          message: "No value provided; nothing written."
+          schema: KEYS_RESULT_SCHEMA,
+          ok: false,
+          action: "set",
+          store: storePath,
+          names: [name],
+          message: "No value provided; nothing written.",
         };
         writeResult(command, io, result, formatKeysHuman);
         io.setExitCode(2);
@@ -1027,15 +1190,23 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       try {
         const written = setUserKey(name, value, process.env);
         const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA, ok: true, action: "set", store: written.path, names: [name],
-          message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`
+          schema: KEYS_RESULT_SCHEMA,
+          ok: true,
+          action: "set",
+          store: written.path,
+          names: [name],
+          message: `${name} stored (0600). Live commands resolve it automatically; remove with "humanish keys unset ${name}".`,
         };
         writeResult(command, io, result, formatKeysHuman);
         io.setExitCode(0);
       } catch (error) {
         const result: KeysResult = {
-          schema: KEYS_RESULT_SCHEMA, ok: false, action: "set", store: storePath, names: [name],
-          message: error instanceof Error ? error.message : "Failed to write the key store."
+          schema: KEYS_RESULT_SCHEMA,
+          ok: false,
+          action: "set",
+          store: storePath,
+          names: [name],
+          message: error instanceof Error ? error.message : "Failed to write the key store.",
         };
         writeResult(command, io, result, formatKeysHuman);
         io.setExitCode(2);
@@ -1052,11 +1223,17 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       const storePath = userKeyStorePath(process.env);
       const had = name !== null && unsetUserKey(name, process.env);
       const result: KeysResult = {
-        schema: KEYS_RESULT_SCHEMA, ok: name !== null, action: "unset", store: storePath,
+        schema: KEYS_RESULT_SCHEMA,
+        ok: name !== null,
+        action: "unset",
+        store: storePath,
         names: name === null ? [] : [name],
-        message: name === null
-          ? `Not a vendor alias or valid env name: ${vendorOrName}.`
-          : had ? `${name} removed from the store.` : `${name} was not in the store; nothing changed.`
+        message:
+          name === null
+            ? `Not a vendor alias or valid env name: ${vendorOrName}.`
+            : had
+              ? `${name} removed from the store.`
+              : `${name} was not in the store; nothing changed.`,
       };
       writeResult(command, io, result, formatKeysHuman);
       io.setExitCode(name === null ? 2 : 0);
@@ -1070,10 +1247,15 @@ function registerKeysCommand(parent: Command, io: CliIo): void {
       const storePath = userKeyStorePath(process.env);
       const names = listUserKeys(process.env);
       const result: KeysResult = {
-        schema: KEYS_RESULT_SCHEMA, ok: true, action: "list", store: storePath, names,
-        message: names.length === 0
-          ? "The store is empty. Add a key with `humanish keys set <vendor>`."
-          : `${names.length} key name(s) stored. Values are never printed.`
+        schema: KEYS_RESULT_SCHEMA,
+        ok: true,
+        action: "list",
+        store: storePath,
+        names,
+        message:
+          names.length === 0
+            ? "The store is empty. Add a key with `humanish keys set <vendor>`."
+            : `${names.length} key name(s) stored. Values are never printed.`,
       };
       writeResult(command, io, result, formatKeysHuman);
       io.setExitCode(0);
@@ -1096,109 +1278,132 @@ function registerRunCommand(parent: Command, io: CliIo): void {
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without an attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--app-url <url>", "Capture live desktop/mobile browser evidence against a running loopback app URL.")
-    .addOption(new Option("--actor <actor>", "Explicit live actor to run.").choices(["codex-tui", "codex-exec", "codex-app-server"]))
-    .option("--sims <count>", "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.")
+    .option(
+      "--app-url <url>",
+      "Capture live desktop/mobile browser evidence against a running loopback app URL.",
+    )
+    .addOption(
+      new Option("--actor <actor>", "Explicit live actor to run.").choices([
+        "codex-tui",
+        "codex-exec",
+        "codex-app-server",
+      ]),
+    )
+    .option(
+      "--sims <count>",
+      "Simulation count. Codex exec runs requested lanes with bounded concurrency; Codex TUI supports 1.",
+    )
     .option("--timeout-ms <ms>", "Local actor timeout in milliseconds.", String(900_000))
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this run without persisting values.")
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (lab: string | undefined, options: {
-      actor?: string;
-      appUrl?: string;
-      cwd: string;
-      dryRun?: boolean;
-      envFile?: string;
-      json?: boolean;
-      runId?: string;
-      sims?: string;
-      timeoutMs?: string;
-    }, command) => {
-      if (!await applyEnvFileOption({
+    .action(
+      async (
+        lab: string | undefined,
+        options: {
+          actor?: string;
+          appUrl?: string;
+          cwd: string;
+          dryRun?: boolean;
+          envFile?: string;
+          json?: boolean;
+          runId?: string;
+          sims?: string;
+          timeoutMs?: string;
+        },
         command,
-        cwd: options.cwd,
-        envFile: options.envFile,
-        io
-      })) {
-        return;
-      }
+      ) => {
+        if (
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: options.envFile,
+            io,
+          }))
+        ) {
+          return;
+        }
 
-      if (lab) {
-        if (options.appUrl !== undefined || options.actor !== undefined) {
+        if (lab) {
+          if (options.appUrl !== undefined || options.actor !== undefined) {
+            const result: RunResult = {
+              schema: "humanish.run-result.v1",
+              ok: false,
+              cwd: options.cwd,
+              warnings: [],
+              error: {
+                code: "HUMANISH_APP_URL_OPTION_CONFLICT",
+                message:
+                  "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `humanish run`.",
+              },
+            };
+            writeResult(command, io, result, formatRunHuman);
+            io.setExitCode(2);
+            return;
+          }
+
+          await runLabCommand({
+            command,
+            io,
+            lab,
+            mode: "run",
+            // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
+            // made the two commands disagree in the first place.
+            options: options as LabCommandOptions,
+          });
+          return;
+        }
+
+        const simCount =
+          options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+        const timeoutMs =
+          options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
+        if (options.sims !== undefined && simCount === null) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
             ok: false,
             cwd: options.cwd,
             warnings: [],
             error: {
-              code: "HUMANISH_APP_URL_OPTION_CONFLICT",
-              message: "Use lab manifests with lab-compatible options only; --app-url and --actor belong to direct `humanish run`."
-            }
+              code: "HUMANISH_INVALID_SIM_COUNT",
+              message: "--sims must be a positive integer.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+        if (options.timeoutMs !== undefined && timeoutMs === null) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_INVALID_TIMEOUT",
+              message: "--timeout-ms must be an integer between 1 and 3600000.",
+            },
           };
           writeResult(command, io, result, formatRunHuman);
           io.setExitCode(2);
           return;
         }
 
-        await runLabCommand({
-          command,
-          io,
-          lab,
-          mode: "run",
-          // Forwarded wholesale, exactly as `lab run` does. Cherry-picking a subset here is what
-          // made the two commands disagree in the first place.
-          options: options as LabCommandOptions
+        const result = await runDryRun({
+          cwd: options.cwd,
+          ...(options.actor === undefined ? {} : { actor: options.actor }),
+          ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
+          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+          ...(options.runId === undefined ? {} : { runId: options.runId }),
+          ...(simCount === undefined || simCount === null ? {} : { simCount }),
+          ...(timeoutMs === undefined || timeoutMs === null ? {} : { timeoutMs }),
         });
-        return;
-      }
-
-      const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-      const timeoutMs = options.timeoutMs === undefined ? undefined : parseTimeoutMs(options.timeoutMs);
-      if (options.sims !== undefined && simCount === null) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_INVALID_SIM_COUNT",
-            message: "--sims must be a positive integer."
-          }
-        };
+        await renderObserverForRun(options.cwd, result);
         writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-      if (options.timeoutMs !== undefined && timeoutMs === null) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_INVALID_TIMEOUT",
-            message: "--timeout-ms must be an integer between 1 and 3600000."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      const result = await runDryRun({
-        cwd: options.cwd,
-        ...(options.actor === undefined ? {} : { actor: options.actor }),
-        ...(options.appUrl === undefined ? {} : { appUrl: options.appUrl }),
-        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(simCount === undefined || simCount === null ? {} : { simCount }),
-        ...(timeoutMs === undefined || timeoutMs === null ? {} : { timeoutMs })
-      });
-      await renderObserverForRun(options.cwd, result);
-      writeResult(command, io, result, formatRunHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerVerifyCommand(parent: Command, io: CliIo): void {
@@ -1219,7 +1424,9 @@ function registerVerifyCommand(parent: Command, io: CliIo): void {
 function registerCleanupCommand(parent: Command, io: CliIo): void {
   parent
     .command("cleanup")
-    .description("Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.")
+    .description(
+      "Inspect recorded resource evidence and write cleanup.json; stored ids do not authorize provider mutation.",
+    )
     .summary("Write a resource cleanup inspection receipt.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1247,11 +1454,17 @@ function registerReviewCommand(parent: Command, io: CliIo): void {
 }
 
 /** Commander may collect a shared flag on the parent; only explicit values override leaf defaults. */
-function analysisSelection<T extends { cwd: string; run: string }>(options: T, command: Command): T {
+function analysisSelection<T extends { cwd: string; run: string }>(
+  options: T,
+  command: Command,
+): T {
   const parent = command.parent;
   const selected = { ...options };
   for (const key of ["cwd", "run"] as const) {
-    if (parent?.getOptionValueSource(key) === "cli" && command.getOptionValueSource(key) !== "cli") {
+    if (
+      parent?.getOptionValueSource(key) === "cli" &&
+      command.getOptionValueSource(key) !== "cli"
+    ) {
       selected[key] = parent.getOptionValue(key) as T[typeof key];
     }
   }
@@ -1259,64 +1472,151 @@ function analysisSelection<T extends { cwd: string; run: string }>(options: T, c
 }
 
 function registerAnalyzeCommand(parent: Command, io: CliIo): void {
-  const analyze = parent.command("analyze")
+  const analyze = parent
+    .command("analyze")
     .enablePositionalOptions()
-    .description("Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.")
+    .description(
+      "Analyze retained participant evidence into versioned findings. Selected text and captures go to the chosen remote analyst. Opening Observer never starts analysis.",
+    )
     .summary("Generate evidence-linked study findings.")
     .option("--run <id>", "Completed run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--provider <name>", "Analyst: openai (default) or restricted codex account. No provider fallback.")
-    .option("--max-cost <usd>", "Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex.")
-    .option("--model <id>", "Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort.", "gpt-6-astra")
-    .option("--question <text>", "Additional reviewer question; does not change participant instructions.")
-    .option("--timeout-ms <ms>", "Request timeout, at most 600000 ms.", String(DEFAULT_ANALYSIS_TIMEOUT_MS))
-    .option("--max-output-tokens <n>", "OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.")
-    .option("--dry-run", "Capture and validate local input and estimate admission; no request or analysis artifact.")
-    .option("--rerun", "Create a new immutable version even when the same input and configuration were analyzed.")
+    .option(
+      "--provider <name>",
+      "Analyst: openai (default) or restricted codex account. No provider fallback.",
+    )
+    .option(
+      "--max-cost <usd>",
+      "Required for OpenAI, including dry-run: USD admission estimate ceiling, not a billing cap. Unsupported for Codex.",
+    )
+    .option(
+      "--model <id>",
+      "Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort.",
+      "gpt-6-astra",
+    )
+    .option(
+      "--question <text>",
+      "Additional reviewer question; does not change participant instructions.",
+    )
+    .option(
+      "--timeout-ms <ms>",
+      "Request timeout, at most 600000 ms.",
+      String(DEFAULT_ANALYSIS_TIMEOUT_MS),
+    )
+    .option(
+      "--max-output-tokens <n>",
+      "OpenAI response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.",
+    )
+    .option(
+      "--dry-run",
+      "Capture and validate local input and estimate admission; no request or analysis artifact.",
+    )
+    .option(
+      "--rerun",
+      "Create a new immutable version even when the same input and configuration were analyzed.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; provider?: string; maxCost?: string; model: string; question?: string;
-      timeoutMs: string; maxOutputTokens?: string; dryRun?: boolean; rerun?: boolean }, command) => {
-      const selected = resolveAutomaticAnalysis({
-        ...(options.provider === undefined ? {} : { provider: options.provider }), model: options.model,
-        ...(options.question === undefined ? {} : { question: options.question }), timeoutMs: Number(options.timeoutMs),
-        ...(options.provider === "codex" && options.maxCost === undefined ? {} : { maxCostUsd: Number(options.maxCost) }),
-        ...(options.maxOutputTokens === undefined ? {} : { maxOutputTokens: Number(options.maxOutputTokens) })
-      });
-      if (!selected.ok || !selected.config) {
-        const result = { schema: "humanish.analyze-result.v1", ok: false, run: options.run, dryRun: options.dryRun === true,
-          reused: false, warnings: [], error: { code: "ANALYSIS_CONFIG_INVALID", message: selected.ok ? "Analysis is disabled." : selected.message } };
-        writeResult(command, io, result, value => `${value.error.message}\n`); io.setExitCode(2); return;
-      }
-      const controller = new AbortController();
-      const cancel = (): void => controller.abort();
-      process.once("SIGINT", cancel);
-      try {
-        const result = await analyzeStudy(options.cwd, options.run, {
-          config: selected.config,
-          preferLargerOutput: selected.preferLargerOutput === true,
-          ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-          ...(options.rerun === undefined ? {} : { rerun: options.rerun })
-        }, { signal: controller.signal, onProgress: (progress) => io.writeErr(
-          `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`) });
-        writeResult(command, io, result, (value) => {
-          if (value.ok && value.dryRun && selected.config?.provider === "codex") return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
-          if (value.ok && value.dryRun) return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
-          const lines: string[] = [];
-          if (!value.ok) lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
-          if (value.artifactPath) lines.push(`${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`);
-          if (value.executionReceiptPath) lines.push(`Execution receipt: ${value.executionReceiptPath}`);
-          if (value.usage) {
-            lines.push(`Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`);
-            lines.push(`Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`);
-          }
-          if (value.reused) lines.push("No new request sent.");
-          lines.push(...value.warnings);
-          return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+    .action(
+      async (
+        options: {
+          cwd: string;
+          run: string;
+          provider?: string;
+          maxCost?: string;
+          model: string;
+          question?: string;
+          timeoutMs: string;
+          maxOutputTokens?: string;
+          dryRun?: boolean;
+          rerun?: boolean;
+        },
+        command,
+      ) => {
+        const selected = resolveAutomaticAnalysis({
+          ...(options.provider === undefined ? {} : { provider: options.provider }),
+          model: options.model,
+          ...(options.question === undefined ? {} : { question: options.question }),
+          timeoutMs: Number(options.timeoutMs),
+          ...(options.provider === "codex" && options.maxCost === undefined
+            ? {}
+            : { maxCostUsd: Number(options.maxCost) }),
+          ...(options.maxOutputTokens === undefined
+            ? {}
+            : { maxOutputTokens: Number(options.maxOutputTokens) }),
         });
-        io.setExitCode(result.ok ? 0 : 2);
-      } finally { process.removeListener("SIGINT", cancel); }
-    });
-  analyze.command("list").description("List immutable analysis versions, including failed attempts.")
+        if (!selected.ok || !selected.config) {
+          const result = {
+            schema: "humanish.analyze-result.v1",
+            ok: false,
+            run: options.run,
+            dryRun: options.dryRun === true,
+            reused: false,
+            warnings: [],
+            error: {
+              code: "ANALYSIS_CONFIG_INVALID",
+              message: selected.ok ? "Analysis is disabled." : selected.message,
+            },
+          };
+          writeResult(command, io, result, (value) => `${value.error.message}\n`);
+          io.setExitCode(2);
+          return;
+        }
+        const controller = new AbortController();
+        const cancel = (): void => controller.abort();
+        process.once("SIGINT", cancel);
+        try {
+          const result = await analyzeStudy(
+            options.cwd,
+            options.run,
+            {
+              config: selected.config,
+              preferLargerOutput: selected.preferLargerOutput === true,
+              ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+              ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+            },
+            {
+              signal: controller.signal,
+              onProgress: (progress) =>
+                io.writeErr(
+                  `Analysis ${progress.phase}: ${progress.evidenceCount} evidence items, ${progress.captureCount} captures.\n`,
+                ),
+            },
+          );
+          writeResult(command, io, result, (value) => {
+            if (value.ok && value.dryRun && selected.config?.provider === "codex")
+              return "Local evidence and configuration passed admission. Codex CLI, login and model access were not checked. Dollar cost and output-token ceiling are unknown. No provider request sent.\n";
+            if (value.ok && value.dryRun)
+              return `Admission estimate: $${value.admission?.estimatedCostUsd ?? "unknown"}; output allowance: ${value.admission?.outputTokenAllowance ?? "unknown"} tokens including reasoning. No request sent.\n`;
+            const lines: string[] = [];
+            if (!value.ok)
+              lines.push(value.error?.message ?? "Analysis unavailable.", value.error?.code ?? "");
+            if (value.artifactPath)
+              lines.push(
+                `${value.reused ? "Reused" : "Saved"} ${value.status} analysis: ${value.artifactPath}`,
+              );
+            if (value.executionReceiptPath)
+              lines.push(`Execution receipt: ${value.executionReceiptPath}`);
+            if (value.usage) {
+              lines.push(
+                `Recorded attempt usage${value.usage.usageComplete ? "" : " (incomplete)"}: ${value.usage.inputTokens ?? "unknown"} input tokens, ${value.usage.outputTokens ?? "unknown"} output tokens.`,
+              );
+              lines.push(
+                `Estimated attempt cost: ${value.usage.estimatedCostUsd === null ? "unknown" : `$${value.usage.estimatedCostUsd}`}.`,
+              );
+            }
+            if (value.reused) lines.push("No new request sent.");
+            lines.push(...value.warnings);
+            return forTerminal(lines.filter(Boolean).join("\n") + "\n");
+          });
+          io.setExitCode(result.ok ? 0 : 2);
+        } finally {
+          process.removeListener("SIGINT", cancel);
+        }
+      },
+    );
+  analyze
+    .command("list")
+    .description("List immutable analysis versions, including failed attempts.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -1324,16 +1624,35 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
       options = analysisSelection(options, command);
       const prepared = await resolveRunPath(resolve(options.cwd), options.run).catch(() => null);
       const versions = prepared ? await listStudyAnalyses(prepared) : [];
-      const executions = prepared ? await listStudyAnalysisExecutions(prepared) : { receipts: [], warnings: [] };
-      const result = { schema: "humanish.analysis-history.v1", ok: prepared !== null, run: options.run,
-        executions: executions.receipts, warnings: executions.warnings,
-        versions: versions.map(({ id, state, analysis, warnings }) => ({ id, state, status: analysis?.status ?? null,
-          createdAt: analysis?.createdAt ?? null, findings: analysis?.result?.findings.length ?? null,
-          usage: analysis?.usage ?? null, warnings })) };
-      writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+      const executions = prepared
+        ? await listStudyAnalysisExecutions(prepared)
+        : { receipts: [], warnings: [] };
+      const result = {
+        schema: "humanish.analysis-history.v1",
+        ok: prepared !== null,
+        run: options.run,
+        executions: executions.receipts,
+        warnings: executions.warnings,
+        versions: versions.map(({ id, state, analysis, warnings }) => ({
+          id,
+          state,
+          status: analysis?.status ?? null,
+          createdAt: analysis?.createdAt ?? null,
+          findings: analysis?.result?.findings.length ?? null,
+          usage: analysis?.usage ?? null,
+          warnings,
+        })),
+      };
+      writeResult(command, io, result, (value) =>
+        forTerminal(JSON.stringify(value, null, 2) + "\n"),
+      );
       io.setExitCode(result.ok ? 0 : 2);
     });
-  analyze.command("show").description("Read validated analysis and correction history. Defaults to the latest usable version.")
+  analyze
+    .command("show")
+    .description(
+      "Read validated analysis and correction history. Defaults to the latest usable version.",
+    )
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--id <id>", "Exact analysis version.")
     .option("--cwd <path>", "Target project directory.", ".")
@@ -1341,88 +1660,173 @@ function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     .action(async (options: { cwd: string; run: string; id?: string }, command) => {
       options = analysisSelection(options, command);
       const result = await showStudyAnalysis(options.cwd, options.run, options.id);
-      writeResult(command, io, result, (value) => forTerminal(JSON.stringify(value, null, 2) + "\n"));
+      writeResult(command, io, result, (value) =>
+        forTerminal(JSON.stringify(value, null, 2) + "\n"),
+      );
       io.setExitCode(result.state === "invalid" ? 2 : 0);
     });
-  analyze.command("correct").description("Append a human review note bound to one exact finding version; original claims remain intact.")
+  analyze
+    .command("correct")
+    .description(
+      "Append a human review note bound to one exact finding version; original claims remain intact.",
+    )
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .requiredOption("--analysis <id>", "Analysis version to review.")
     .requiredOption("--finding <id>", "Finding to review.")
-    .addOption(new Option("--status <status>", "Review disposition.").choices(["confirmed", "dismissed", "amended"]).makeOptionMandatory())
+    .addOption(
+      new Option("--status <status>", "Review disposition.")
+        .choices(["confirmed", "dismissed", "amended"])
+        .makeOptionMandatory(),
+    )
     .requiredOption("--reason <text>", "Why this disposition is supported.")
     .option("--claim <text>", "Replacement claim, required only for amended findings.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; analysis: string; finding: string;
-      status: "confirmed" | "dismissed" | "amended"; reason: string; claim?: string }, command) => {
-      options = analysisSelection(options, command);
-      try {
-        const correction = await correctStudyAnalysis(options.cwd, options.run, { analysisId: options.analysis,
-          findingId: options.finding, status: options.status, reason: options.reason,
-          ...(options.claim === undefined ? {} : { replacementClaim: options.claim }) });
-        writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
-          (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`);
-        io.setExitCode(0);
-      } catch (error) {
-        const code = error instanceof Error && ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
-          ? error.message : "ANALYSIS_CORRECTION_INVALID";
-        const message = code === "ANALYSIS_BUSY"
-          ? "Another analysis or correction holds this run's lock. Retry after it finishes."
-          : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
-            ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
-            : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
-        writeResult(command, io, { schema: "humanish.analysis-correction-result.v1", ok: false,
-          error: { code, message } },
-          (value) => value.error.message + "\n");
-        io.setExitCode(2);
-      }
-    });
+    .action(
+      async (
+        options: {
+          cwd: string;
+          run: string;
+          analysis: string;
+          finding: string;
+          status: "confirmed" | "dismissed" | "amended";
+          reason: string;
+          claim?: string;
+        },
+        command,
+      ) => {
+        options = analysisSelection(options, command);
+        try {
+          const correction = await correctStudyAnalysis(options.cwd, options.run, {
+            analysisId: options.analysis,
+            findingId: options.finding,
+            status: options.status,
+            reason: options.reason,
+            ...(options.claim === undefined ? {} : { replacementClaim: options.claim }),
+          });
+          writeResult(
+            command,
+            io,
+            { schema: "humanish.analysis-correction-result.v1", ok: true, correction },
+            (value) => `Saved correction ${value.correction.id}. Original analysis preserved.\n`,
+          );
+          io.setExitCode(0);
+        } catch (error) {
+          const code =
+            error instanceof Error &&
+            ["ANALYSIS_BUSY", "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"].includes(error.message)
+              ? error.message
+              : "ANALYSIS_CORRECTION_INVALID";
+          const message =
+            code === "ANALYSIS_BUSY"
+              ? "Another analysis or correction holds this run's lock. Retry after it finishes."
+              : code === "ANALYSIS_CORRECTION_HISTORY_UNAVAILABLE"
+                ? "Correction history is unavailable or full. No correction was added; existing records were preserved."
+                : "Correction requires a current valid finding, a reason, and a replacement claim only for amended status. Sensitive text is rejected.";
+          writeResult(
+            command,
+            io,
+            {
+              schema: "humanish.analysis-correction-result.v1",
+              ok: false,
+              error: { code, message },
+            },
+            (value) => value.error.message + "\n",
+          );
+          io.setExitCode(2);
+        }
+      },
+    );
 }
 
 function registerExportCommand(parent: Command, io: CliIo): void {
   parent
     .command("export")
-    .description("Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.")
+    .description(
+      "Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.",
+    )
     .summary("Export Observer HTML or a redacted bundle workspace.")
     .option("--run <id>", "Run id or 'latest'.", "latest")
-    .addOption(new Option("--format <format>", "Output format; bundle creates a new standalone workspace.").choices(["html", "bundle"]).default("html"))
-    .option("--redact-screenshots", "Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged.")
-    .option("--out <path>", "HTML file or new bundle workspace. Default: .humanish/exports/<runId>.html or <runId>-redacted/.")
-    .option("--local-only", "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.")
-    .option("--max-bytes <n>", "Refuse an export larger than this.", String(DEFAULT_EXPORT_MAX_BYTES))
+    .addOption(
+      new Option("--format <format>", "Output format; bundle creates a new standalone workspace.")
+        .choices(["html", "bundle"])
+        .default("html"),
+    )
+    .option(
+      "--redact-screenshots",
+      "Bundle only: blur PNG screenshots in a verified copy; keep original evidence unchanged.",
+    )
+    .option(
+      "--out <path>",
+      "HTML file or new bundle workspace. Default: .humanish/exports/<runId>.html or <runId>-redacted/.",
+    )
+    .option(
+      "--local-only",
+      "Export a bundle that is not share_ready, with a LOCAL ONLY banner in the file.",
+    )
+    .option(
+      "--max-bytes <n>",
+      "Refuse an export larger than this.",
+      String(DEFAULT_EXPORT_MAX_BYTES),
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string; out?: string; localOnly?: boolean; maxBytes: string; format: "html" | "bundle"; redactScreenshots?: boolean }, command) => {
-      const maxBytes = options.format === "bundle" ? Number(options.maxBytes) : Number.parseInt(options.maxBytes, 10);
-      const result = await exportRun(options.cwd, options.run, {
-        format: options.format,
-        ...(options.redactScreenshots === undefined ? {} : { redactScreenshots: options.redactScreenshots }),
-        ...(options.out === undefined ? {} : { out: options.out }),
-        ...(options.localOnly === undefined ? {} : { localOnly: options.localOnly }),
-        ...(options.format === "bundle" || (Number.isFinite(maxBytes) && maxBytes > 0) ? { maxBytes } : {})
-      });
-      writeResult(command, io, result, formatExportHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        options: {
+          cwd: string;
+          json?: boolean;
+          run: string;
+          out?: string;
+          localOnly?: boolean;
+          maxBytes: string;
+          format: "html" | "bundle";
+          redactScreenshots?: boolean;
+        },
+        command,
+      ) => {
+        const maxBytes =
+          options.format === "bundle"
+            ? Number(options.maxBytes)
+            : Number.parseInt(options.maxBytes, 10);
+        const result = await exportRun(options.cwd, options.run, {
+          format: options.format,
+          ...(options.redactScreenshots === undefined
+            ? {}
+            : { redactScreenshots: options.redactScreenshots }),
+          ...(options.out === undefined ? {} : { out: options.out }),
+          ...(options.localOnly === undefined ? {} : { localOnly: options.localOnly }),
+          ...(options.format === "bundle" || (Number.isFinite(maxBytes) && maxBytes > 0)
+            ? { maxBytes }
+            : {}),
+        });
+        writeResult(command, io, result, formatExportHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerStatsCommand(parent: Command, io: CliIo): void {
   parent
     .command("stats")
-    .description("Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.")
+    .description(
+      "Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.",
+    )
     .summary("Roll up cost, outcomes, and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
     .option("--since <date>", "Only runs that started on or after this ISO date or datetime.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
-      const result = await computeStats(options.cwd, {
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        ...(options.since === undefined ? {} : { since: options.since })
-      });
-      writeResult(command, io, result, formatStatsHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (options: { cwd: string; json?: boolean; lab?: string; since?: string }, command) => {
+        const result = await computeStats(options.cwd, {
+          ...(options.lab === undefined ? {} : { lab: options.lab }),
+          ...(options.since === undefined ? {} : { since: options.since }),
+        });
+        writeResult(command, io, result, formatStatsHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerRunsCommand(parent: Command, io: CliIo): void {
@@ -1440,23 +1844,41 @@ function registerRunsCommand(parent: Command, io: CliIo): void {
 }
 
 function registerRuntimeCommands(parent: Command, io: CliIo): void {
-  const runtime = parent.command("runtime").description("Prepare or inspect the local browser runtime.");
+  const runtime = parent
+    .command("runtime")
+    .description("Prepare or inspect the local browser runtime.");
   for (const action of ["status", "setup"] as const) {
-    runtime.command(action)
-      .description(action === "status" ? "Check local Docker, virtualization and the cached browser image without downloads." : "Download and install the local browser image. Does not start a study or use model quota.")
+    runtime
+      .command(action)
+      .description(
+        action === "status"
+          ? "Check local Docker, virtualization and the cached browser image without downloads."
+          : "Download and install the local browser image. Does not start a study or use model quota.",
+      )
       .option("--json", JSON_OPTION_DESCRIPTION)
       .option("--media", "Prepare or inspect the optional camera and speech runtime.")
       .action(async (_options, command) => {
         const { localRuntimeStatus, prepareLocalRuntime } = await import("./local-runtime.js");
         try {
-          if (action === "setup") await prepareLocalRuntime({ media: _options.media === true, progress: message => io.writeErr(`${message}\n`) });
+          if (action === "setup")
+            await prepareLocalRuntime({
+              media: _options.media === true,
+              progress: (message) => io.writeErr(`${message}\n`),
+            });
           const status = await localRuntimeStatus({ media: _options.media === true });
           const result = { schema: "humanish.runtime-result.v1", ...status };
           writeResult(command, io, result, () => `${status.message}\n`);
           io.setExitCode(status.ok ? 0 : 2);
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Local runtime setup failed. Run humanish runtime setup to retry.";
-          const result = { schema: "humanish.runtime-result.v1", ok: false, error: { code: "HUMANISH_LOCAL_RUNTIME_SETUP_FAILED", message } };
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Local runtime setup failed. Run humanish runtime setup to retry.";
+          const result = {
+            schema: "humanish.runtime-result.v1",
+            ok: false,
+            error: { code: "HUMANISH_LOCAL_RUNTIME_SETUP_FAILED", message },
+          };
           writeResult(command, io, result, () => `${message}\n`);
           io.setExitCode(2);
         }
@@ -1470,173 +1892,332 @@ function registerCommsCommands(parent: Command, io: CliIo): void {
     .description("Local email capture, real receiving connections, checks and cleanup recovery.")
     .summary("Off-app comms surfaces.");
 
-  comms.command("providers")
+  comms
+    .command("providers")
     .description("List installed communication provider capabilities. No network requests.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((_options, command) => {
-      const result = { schema: "humanish.comms-providers.v1", ok: true, providers: COMMS_PROVIDERS };
-      writeResult(command, io, result, () => COMMS_PROVIDERS.map(provider => `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`).join("\n"));
+      const result = {
+        schema: "humanish.comms-providers.v1",
+        ok: true,
+        providers: COMMS_PROVIDERS,
+      };
+      writeResult(command, io, result, () =>
+        COMMS_PROVIDERS.map(
+          (provider) =>
+            `${provider.label}: ${provider.limitation}\nKey: ${provider.keyEnv}\nSetup: ${provider.setupUrl}\n`,
+        ).join("\n"),
+      );
     });
 
-  const connections = comms.command("connections").description("Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.");
-  connections.command("list")
-    .description("Show saved connections and local credential status; does not authenticate with a provider.")
+  const connections = comms
+    .command("connections")
+    .description(
+      "Manage project-local non-secret connection profiles. A lab explicitly selects its receiving connection.",
+    );
+  connections
+    .command("list")
+    .description(
+      "Show saved connections and local credential status; does not authenticate with a provider.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load credentials for local status without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; envFile?: string }, command) => {
-      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
+      if (!(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })))
+        return;
       const result = await readCommsSetup(resolve(options.cwd), process.env);
-      writeResult(command, io, result, value => `${value.message}\nAgentMail key: ${value.credential.present ? "present" : "missing"}\n${value.connections.map(connection => `${connection.name}: ${connection.provider} (${connection.apiKeyEnv})\n`).join("")}`);
+      writeResult(
+        command,
+        io,
+        result,
+        (value) =>
+          `${value.message}\nAgentMail key: ${value.credential.present ? "present" : "missing"}\n${value.connections.map((connection) => `${connection.name}: ${connection.provider} (${connection.apiKeyEnv})\n`).join("")}`,
+      );
       io.setExitCode(result.ok ? 0 : 2);
     });
-  connections.command("add")
+  connections
+    .command("add")
     .argument("[name]", "Project connection name.", "agentmail")
-    .description("Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.")
+    .description(
+      "Save an AgentMail connection profile. Does not write a key, alter a lab or contact the provider.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--provider <id>", "Installed provider id.", "agentmail")
-    .option("--api-key-env <name>", "Environment variable NAME, never its value.", "AGENTMAIL_API_KEY")
+    .option(
+      "--api-key-env <name>",
+      "Environment variable NAME, never its value.",
+      "AGENTMAIL_API_KEY",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (name: string, options: { cwd: string; provider: string; apiKeyEnv: string }, command) => {
-      const result = { schema: "humanish.comms-connection-result.v1", ...(options.provider === "agentmail"
-        ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
-        : { ok: false, message: "Only AgentMail connection setup is currently available." }) };
-      writeResult(command, io, result, value => `${value.message}\n`);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        name: string,
+        options: { cwd: string; provider: string; apiKeyEnv: string },
+        command,
+      ) => {
+        const result = {
+          schema: "humanish.comms-connection-result.v1",
+          ...(options.provider === "agentmail"
+            ? await saveCommsConnection(resolve(options.cwd), name, options.apiKeyEnv)
+            : { ok: false, message: "Only AgentMail connection setup is currently available." }),
+        };
+        writeResult(command, io, result, (value) => `${value.message}\n`);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 
-  comms.command("check")
-    .description("Check connection and credential presence; --online authenticates without creating inboxes.")
+  comms
+    .command("check")
+    .description(
+      "Check connection and credential presence; --online authenticates without creating inboxes.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--lab <path>", "Check the connection selected by this exact lab.")
     .option("--online", "Make a read-only provider authentication request.")
     .option("--env-file <path>", "Load credentials without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; connection: string; lab?: string; online?: boolean; envFile?: string }, command) => {
-      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
-      let connection = options.connection;
-      if (options.lab) {
-        const lab = await resolveLabManifest(options.cwd, options.lab);
-        if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
-          const result = { ok: false, message: "This lab does not select a real email connection." };
-          writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(2); return;
+    .action(
+      async (
+        options: {
+          cwd: string;
+          connection: string;
+          lab?: string;
+          online?: boolean;
+          envFile?: string;
+        },
+        command,
+      ) => {
+        if (
+          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+        )
+          return;
+        let connection = options.connection;
+        if (options.lab) {
+          const lab = await resolveLabManifest(options.cwd, options.lab);
+          if (!lab.ok || lab.config.comms?.email?.kind !== "real") {
+            const result = {
+              ok: false,
+              message: "This lab does not select a real email connection.",
+            };
+            writeResult(command, io, result, (value) => `${value.message}\n`);
+            io.setExitCode(2);
+            return;
+          }
+          connection = lab.config.comms.email.connection;
         }
-        connection = lab.config.comms.email.connection;
-      }
-      const result = await checkCommsConnection({ cwd: resolve(options.cwd), connection, env: process.env, online: options.online === true });
-      writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
-    });
-  comms.command("configure")
-    .description("Preview or save a local receiving-enabled copy of a supported lab. No provider requests.")
+        const result = await checkCommsConnection({
+          cwd: resolve(options.cwd),
+          connection,
+          env: process.env,
+          online: options.online === true,
+        });
+        writeResult(command, io, result, (value) => `${value.message}\n`);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
+  comms
+    .command("configure")
+    .description(
+      "Preview or save a local receiving-enabled copy of a supported lab. No provider requests.",
+    )
     .requiredOption("--lab <path>", "Exact source lab path or handle.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--connection <name>", "Saved connection name.", "agentmail")
     .option("--apply", "Save the local copy; original lab remains unchanged.")
-    .option("--plan-token <digest>", "Require the source and destination to match a previous preview.")
+    .option(
+      "--plan-token <digest>",
+      "Require the source and destination to match a previous preview.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; lab: string; connection: string; apply?: boolean; planToken?: string }, command) => {
-      const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
-      writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
-    });
-  comms.command("recover")
-    .description("Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.")
+    .action(
+      async (
+        options: {
+          cwd: string;
+          lab: string;
+          connection: string;
+          apply?: boolean;
+          planToken?: string;
+        },
+        command,
+      ) => {
+        const result = await configureCommsLab({ ...options, cwd: resolve(options.cwd) });
+        writeResult(command, io, result, (value) => `${value.message}\n`);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
+  comms
+    .command("recover")
+    .description(
+      "Inspect interrupted email leases; --apply deletes only privately recorded resources owned by this project and account.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run <id>", "One run to inspect or recover.")
     .option("--apply", "Recover the selected inactive run and verify mailbox deletion.")
     .option("--env-file <path>", "Load credentials without printing values.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run?: string; apply?: boolean; envFile?: string }, command) => {
-      if (!await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io })) return;
-      const cwd = resolve(options.cwd);
-      try {
-        const entries = (await inspectCommsRecovery({ cwd })).filter(entry => !options.run || entry.runId === options.run);
-        if (!options.apply) {
-          const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
-          writeResult(command, io, result, value => value.entries.length ? value.entries.map(entry => `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner === null ? "unknown owner" : entry.activeOwner ? "active owner" : "inactive"}\n`).join("") : "No recoverable email leases in this project.\n");
+    .action(
+      async (
+        options: { cwd: string; run?: string; apply?: boolean; envFile?: string },
+        command,
+      ) => {
+        if (
+          !(await applyEnvFileOption({ command, cwd: options.cwd, envFile: options.envFile, io }))
+        )
           return;
+        const cwd = resolve(options.cwd);
+        try {
+          const entries = (await inspectCommsRecovery({ cwd })).filter(
+            (entry) => !options.run || entry.runId === options.run,
+          );
+          if (!options.apply) {
+            const result = { schema: "humanish.comms-recovery.v1", ok: true, entries };
+            writeResult(command, io, result, (value) =>
+              value.entries.length
+                ? value.entries
+                    .map(
+                      (entry) =>
+                        `${entry.runId}: ${entry.unresolvedCount} unresolved; ${entry.activeOwner === null ? "unknown owner" : entry.activeOwner ? "active owner" : "inactive"}\n`,
+                    )
+                    .join("")
+                : "No recoverable email leases in this project.\n",
+            );
+            return;
+          }
+          if (!options.run || entries.length !== 1) throw new Error("selection");
+          const entry = entries[0]!;
+          const { connection, adapter } = await resolveReceivingConnection(
+            cwd,
+            entry.connectionName,
+            process.env,
+          );
+          const result = {
+            schema: "humanish.comms-recovery-result.v1",
+            ...(await recoverCommsReceiving({
+              cwd,
+              runId: options.run,
+              connectionName: entry.connectionName,
+              apiKeyEnv: connection.apiKeyEnv,
+              adapter,
+            })),
+          };
+          writeResult(command, io, result, (value) => `${value.message}\n`);
+          io.setExitCode(result.ok ? 0 : 2);
+        } catch {
+          const result = {
+            schema: "humanish.comms-recovery-result.v1",
+            ok: false,
+            message:
+              "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible.",
+          };
+          writeResult(command, io, result, (value) => `${value.message}\n`);
+          io.setExitCode(2);
         }
-        if (!options.run || entries.length !== 1) throw new Error("selection");
-        const entry = entries[0]!;
-        const { connection, adapter } = await resolveReceivingConnection(cwd, entry.connectionName, process.env);
-        const result = { schema: "humanish.comms-recovery-result.v1", ...await recoverCommsReceiving({ cwd, runId: options.run, connectionName: entry.connectionName, apiKeyEnv: connection.apiKeyEnv, adapter }) };
-        writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(result.ok ? 0 : 2);
-      } catch {
-        const result = { schema: "humanish.comms-recovery-result.v1", ok: false, message: "Recovery could not complete. Select one recorded run with --run, check its connection, and retry. No unrecorded resources are eligible." };
-        writeResult(command, io, result, value => `${value.message}\n`); io.setExitCode(2);
-      }
-    });
+      },
+    );
 
   comms
     .command("catch")
-    .description("Run the email catch on THIS host so humanish can study an app it does not provision (#328). Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.")
+    .description(
+      "Run the email catch on THIS host so humanish can study an app it does not provision (#328). Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
+    )
     .summary("Run the adopter-hosted email catch.")
-    .option("--port <port>", "Port for capture + inbox (default 8025).", String(DEFAULT_SANDBOX_CATCH_PORT))
-    .option("--dir <path>", "Directory for the deliveries log and rendered inbox.", ".humanish/comms-catch")
-    .option("--token <value>", "Require this bearer token on GET /deliveries (recommended when reachable off-host).")
-    .option("--smtp-port <port>", "Also capture SMTP mail on 127.0.0.1:<port>. Point your app's SMTP transport here.")
+    .option(
+      "--port <port>",
+      "Port for capture + inbox (default 8025).",
+      String(DEFAULT_SANDBOX_CATCH_PORT),
+    )
+    .option(
+      "--dir <path>",
+      "Directory for the deliveries log and rendered inbox.",
+      ".humanish/comms-catch",
+    )
+    .option(
+      "--token <value>",
+      "Require this bearer token on GET /deliveries (recommended when reachable off-host).",
+    )
+    .option(
+      "--smtp-port <port>",
+      "Also capture SMTP mail on 127.0.0.1:<port>. Point your app's SMTP transport here.",
+    )
     .option(
       "--inbox-port <port>",
-      "Also serve a READ-ONLY inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only."
+      "Also serve a READ-ONLY inbox listener on 0.0.0.0:<port>, so a persona on another machine can open /inbox. Without it the catch stays loopback-only.",
     )
     .option(
       "--recipient <address>",
       "Only render mail sent to this address (repeatable). Default: render whatever the app actually mailed.",
-      (value: string, previous: string[] = []) => [...previous, value]
+      (value: string, previous: string[] = []) => [...previous, value],
     )
-    .action(async (options: { port: string; dir: string; token?: string; smtpPort?: string; inboxPort?: string; recipient?: string[] }) => {
-      const port = Number.parseInt(options.port, 10);
-      if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
-        io.writeErr("--port must be an integer between 1 and 65534.\n");
-        io.setExitCode(2);
-        return;
-      }
-      let inboxPort: number | undefined;
-      if (options.inboxPort !== undefined) {
-        inboxPort = Number.parseInt(options.inboxPort, 10);
-        if (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_534) {
-          io.writeErr("--inbox-port must be an integer between 1 and 65534.\n");
+    .action(
+      async (options: {
+        port: string;
+        dir: string;
+        token?: string;
+        smtpPort?: string;
+        inboxPort?: string;
+        recipient?: string[];
+      }) => {
+        const port = Number.parseInt(options.port, 10);
+        if (!Number.isInteger(port) || port <= 0 || port > 65_534) {
+          io.writeErr("--port must be an integer between 1 and 65534.\n");
           io.setExitCode(2);
           return;
         }
-        if (inboxPort === port) {
-          io.writeErr("--inbox-port must differ from --port (the capture listener is loopback-only; the inbox listener is not).\n");
-          io.setExitCode(2);
-          return;
+        let inboxPort: number | undefined;
+        if (options.inboxPort !== undefined) {
+          inboxPort = Number.parseInt(options.inboxPort, 10);
+          if (!Number.isInteger(inboxPort) || inboxPort <= 0 || inboxPort > 65_534) {
+            io.writeErr("--inbox-port must be an integer between 1 and 65534.\n");
+            io.setExitCode(2);
+            return;
+          }
+          if (inboxPort === port) {
+            io.writeErr(
+              "--inbox-port must differ from --port (the capture listener is loopback-only; the inbox listener is not).\n",
+            );
+            io.setExitCode(2);
+            return;
+          }
         }
-      }
-      let smtpPort: number | undefined;
-      if (options.smtpPort !== undefined) {
-        smtpPort = Number(options.smtpPort);
-        if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_534) {
-          io.writeErr("--smtp-port must be an integer between 1 and 65534.\n");
-          io.setExitCode(2);
-          return;
+        let smtpPort: number | undefined;
+        if (options.smtpPort !== undefined) {
+          smtpPort = Number(options.smtpPort);
+          if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65_534) {
+            io.writeErr("--smtp-port must be an integer between 1 and 65534.\n");
+            io.setExitCode(2);
+            return;
+          }
+          if (smtpPort === port || smtpPort === inboxPort) {
+            io.writeErr("--smtp-port must differ from --port and --inbox-port.\n");
+            io.setExitCode(2);
+            return;
+          }
         }
-        if (smtpPort === port || smtpPort === inboxPort) {
-          io.writeErr("--smtp-port must differ from --port and --inbox-port.\n");
-          io.setExitCode(2);
-          return;
-        }
-      }
-      await runCommsCatchHost(
-        {
-          port,
-          dir: options.dir,
-          ...(options.token ? { token: options.token } : {}),
-          ...(inboxPort === undefined ? {} : { inboxPort }),
-          ...(smtpPort === undefined ? {} : { smtpPort }),
-          ...(options.recipient && options.recipient.length > 0 ? { recipients: options.recipient } : {})
-        },
-        io
-      );
-    });
+        await runCommsCatchHost(
+          {
+            port,
+            dir: options.dir,
+            ...(options.token ? { token: options.token } : {}),
+            ...(inboxPort === undefined ? {} : { inboxPort }),
+            ...(smtpPort === undefined ? {} : { smtpPort }),
+            ...(options.recipient && options.recipient.length > 0
+              ? { recipients: options.recipient }
+              : {}),
+          },
+          io,
+        );
+      },
+    );
 }
 
 function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
-    .description("Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.")
+    .description(
+      "Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.",
+    )
     .summary("Reclaim an interrupted run's sandboxes by recorded id.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run <id>", "Run id, or 'latest'.", "latest")
@@ -1650,9 +2231,13 @@ function registerReclaimCommand(parent: Command, io: CliIo): void {
 
 function formatReclaimHuman(result: ReclaimResult): string {
   const lines: string[] = [];
-  lines.push(`Reclaim ${result.runId}: ${result.ok ? "ok" : "FAILED"} — ${result.receiptCount} sandbox receipt(s).`);
+  lines.push(
+    `Reclaim ${result.runId}: ${result.ok ? "ok" : "FAILED"} — ${result.receiptCount} sandbox receipt(s).`,
+  );
   for (const outcome of result.outcomes) {
-    lines.push(`  ${outcome.sandboxId} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`);
+    lines.push(
+      `  ${outcome.sandboxId} (${outcome.laneId}): ${outcome.state}${outcome.detail ? ` — ${outcome.detail}` : ""}`,
+    );
   }
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
   if (result.error) lines.push(`  error: ${result.error.message}`);
@@ -1667,7 +2252,9 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
 
   codex
     .command("app-server")
-    .description("Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.")
+    .description(
+      "Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--prompt <text>", "Prompt to submit to Codex app-server.")
     .option("--prompt-file <path>", "Read the Codex app-server prompt from a file.")
@@ -1676,99 +2263,125 @@ function registerCodexCommands(parent: Command, io: CliIo): void {
     .option("--timeout-ms <ms>", "Actor timeout in milliseconds.", String(900_000))
     .option("--port <port>", "Local browser UI port.", "0")
     .option("--model <model>", "Optional Codex model override.")
-    .addOption(new Option("--sandbox <mode>", "Turn sandbox policy.").choices(["read-only", "workspace-write", "danger-full-access"]).default("read-only"))
-    .option("--actor-command <command>", "Override app-server command. Defaults to codex app-server --listen stdio://.")
+    .addOption(
+      new Option("--sandbox <mode>", "Turn sandbox policy.")
+        .choices(["read-only", "workspace-write", "danger-full-access"])
+        .default("read-only"),
+    )
+    .option(
+      "--actor-command <command>",
+      "Override app-server command. Defaults to codex app-server --listen stdio://.",
+    )
     .option("--keep-open", "Keep the browser UI process alive after the actor finishes.")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: {
-      actorCommand?: string;
-      cwd: string;
-      json?: boolean;
-      keepOpen?: boolean;
-      model?: string;
-      port: string;
-      prompt?: string;
-      promptFile?: string;
-      runRoot?: string;
-      sandbox: "read-only" | "workspace-write" | "danger-full-access";
-      stateFile?: string;
-      timeoutMs: string;
-    }, command) => {
-      const timeoutMs = parseTimeoutMs(options.timeoutMs);
-      const port = parseObserverPort(options.port);
-      if (timeoutMs === null) {
-        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_TIMEOUT", "--timeout-ms must be an integer between 1 and 3600000.");
-        writeResult(command, io, result, formatCodexAppServerUiHuman);
-        io.setExitCode(2);
-        return;
-      }
-      if (port === null) {
-        const result = codexAppServerUiError(options.cwd, "HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
-        writeResult(command, io, result, formatCodexAppServerUiHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      const prompt = await readCodexAppServerPrompt(options);
-      if (!prompt) {
-        const result = codexAppServerUiError(options.cwd, "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED", "Provide --prompt or --prompt-file.");
-        writeResult(command, io, result, formatCodexAppServerUiHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      const controller = await startCodexAppServerUi({
-        ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
-        cwd: options.cwd,
-        keepOpen: options.keepOpen === true,
-        ...(options.model === undefined ? {} : { model: options.model }),
-        port,
-        prompt,
-        ...(options.runRoot === undefined ? {} : { runRoot: options.runRoot }),
-        sandbox: options.sandbox,
-        ...(options.stateFile === undefined ? {} : { stateFile: options.stateFile }),
-        timeoutMs
-      });
-
-      const initial = {
-        schema: "humanish.codex-app-server-ui-result.v1" as const,
-        ok: true,
-        cwd: resolve(options.cwd),
-        stateFile: controller.stateFile,
-        url: controller.url,
-        status: controller.initialState.status,
-        reason: controller.initialState.reason
-      };
-      if (options.keepOpen === true) {
-        writeResult(command, io, initial, formatCodexAppServerUiHuman);
-        io.setExitCode(0);
-        try {
-          // Local hardening for the known double-envelope path: the "running"
-          // envelope above has already reached stdout, so a rejection here
-          // (codex-app-server-ui.ts's persistState() write can fail on either
-          // branch of session completion) must not go through the
-          // command-boundary catch-all's --json branch, which would otherwise
-          // append a second JSON document to stdout. Handling it here directly
-          // means this known path stays correct even if that general guard is
-          // ever weakened; it does not replace it.
-          await controller.completion;
-          await new Promise<void>((resolveWait) => {
-            process.once("SIGINT", () => {
-              void controller.close().finally(resolveWait);
-            });
-          });
-        } catch (error) {
-          io.writeErr(`HUMANISH_UNEXPECTED: ${redactText(error instanceof Error ? error.message : String(error))}\n`);
+    .action(
+      async (
+        options: {
+          actorCommand?: string;
+          cwd: string;
+          json?: boolean;
+          keepOpen?: boolean;
+          model?: string;
+          port: string;
+          prompt?: string;
+          promptFile?: string;
+          runRoot?: string;
+          sandbox: "read-only" | "workspace-write" | "danger-full-access";
+          stateFile?: string;
+          timeoutMs: string;
+        },
+        command,
+      ) => {
+        const timeoutMs = parseTimeoutMs(options.timeoutMs);
+        const port = parseObserverPort(options.port);
+        if (timeoutMs === null) {
+          const result = codexAppServerUiError(
+            options.cwd,
+            "HUMANISH_INVALID_TIMEOUT",
+            "--timeout-ms must be an integer between 1 and 3600000.",
+          );
+          writeResult(command, io, result, formatCodexAppServerUiHuman);
           io.setExitCode(2);
+          return;
         }
-        return;
-      }
+        if (port === null) {
+          const result = codexAppServerUiError(
+            options.cwd,
+            "HUMANISH_INVALID_PORT",
+            "--port must be an integer between 0 and 65535.",
+          );
+          writeResult(command, io, result, formatCodexAppServerUiHuman);
+          io.setExitCode(2);
+          return;
+        }
 
-      const completed = await controller.completion;
-      const output = codexAppServerUiResultFromState(completed);
-      writeResult(command, io, output, formatCodexAppServerUiHuman);
-      io.setExitCode(output.ok ? 0 : 2);
-    });
+        const prompt = await readCodexAppServerPrompt(options);
+        if (!prompt) {
+          const result = codexAppServerUiError(
+            options.cwd,
+            "HUMANISH_CODEX_APP_SERVER_PROMPT_REQUIRED",
+            "Provide --prompt or --prompt-file.",
+          );
+          writeResult(command, io, result, formatCodexAppServerUiHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        const controller = await startCodexAppServerUi({
+          ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
+          cwd: options.cwd,
+          keepOpen: options.keepOpen === true,
+          ...(options.model === undefined ? {} : { model: options.model }),
+          port,
+          prompt,
+          ...(options.runRoot === undefined ? {} : { runRoot: options.runRoot }),
+          sandbox: options.sandbox,
+          ...(options.stateFile === undefined ? {} : { stateFile: options.stateFile }),
+          timeoutMs,
+        });
+
+        const initial = {
+          schema: "humanish.codex-app-server-ui-result.v1" as const,
+          ok: true,
+          cwd: resolve(options.cwd),
+          stateFile: controller.stateFile,
+          url: controller.url,
+          status: controller.initialState.status,
+          reason: controller.initialState.reason,
+        };
+        if (options.keepOpen === true) {
+          writeResult(command, io, initial, formatCodexAppServerUiHuman);
+          io.setExitCode(0);
+          try {
+            // Local hardening for the known double-envelope path: the "running"
+            // envelope above has already reached stdout, so a rejection here
+            // (codex-app-server-ui.ts's persistState() write can fail on either
+            // branch of session completion) must not go through the
+            // command-boundary catch-all's --json branch, which would otherwise
+            // append a second JSON document to stdout. Handling it here directly
+            // means this known path stays correct even if that general guard is
+            // ever weakened; it does not replace it.
+            await controller.completion;
+            await new Promise<void>((resolveWait) => {
+              process.once("SIGINT", () => {
+                void controller.close().finally(resolveWait);
+              });
+            });
+          } catch (error) {
+            io.writeErr(
+              `HUMANISH_UNEXPECTED: ${redactText(error instanceof Error ? error.message : String(error))}\n`,
+            );
+            io.setExitCode(2);
+          }
+          return;
+        }
+
+        const completed = await controller.completion;
+        const output = codexAppServerUiResultFromState(completed);
+        writeResult(command, io, output, formatCodexAppServerUiHuman);
+        io.setExitCode(output.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerWatchCommand(parent: Command, io: CliIo): void {
@@ -1780,8 +2393,14 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--lab <id-or-path>", "Explicit lab id or .yaml path.")
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
-    .option("--codex-app-server", "Lab only: use Codex app-server client mode for OSS headed desktops.")
-    .option("--sims <count>", "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.")
+    .option(
+      "--codex-app-server",
+      "Lab only: use Codex app-server client mode for OSS headed desktops.",
+    )
+    .option(
+      "--sims <count>",
+      "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.",
+    )
     .option("--count <count>", "Lab only: override headed desktop lane count.")
     .option("--limit <count>", "Lab only: override smoke lab repo limit.")
     .option("--repo <owner/repo>", "Lab only: GitHub repo slug. Repeatable.", collectRepeated, [])
@@ -1789,7 +2408,10 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--redact-repos", "Lab only: redact repo labels in durable artifacts.")
     .option("--no-redact-repos", "Lab only: persist repo labels. Use only for public-safe runs.")
     .option("--keep", "Lab only: keep disposable clone sandbox for debugging.")
-    .option("--scorer <path>", "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.")
+    .option(
+      "--scorer <path>",
+      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
+    )
     .option("--run-id <id>", "Explicit run id for deterministic fixture tests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--env-file <path>", "Load a local env file for this watch without persisting values.")
@@ -1798,14 +2420,45 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .addOption(new Option("--follow", "Deprecated; human output follows by default.").hideHelp())
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--expose", "CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth.")
-    .addOption(new Option("--tunnel <provider>", "Spawn the external tunnel binary against the loopback port.").choices(["ngrok"]))
-    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.")
-    .addOption(new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices(["google"]))
-    .option("--allow-email <addr>", "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.", collectRepeated, [])
-    .option("--allow-domain <domain>", "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.", collectRepeated, [])
-    .option("--public-url <origin>", "Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose.")
-    .option("--safe", "Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).")
+    .option(
+      "--expose",
+      "CUA lab only: expose the live run through an authenticated edge so you can watch from a phone. Requires edge auth.",
+    )
+    .addOption(
+      new Option(
+        "--tunnel <provider>",
+        "Spawn the external tunnel binary against the loopback port.",
+      ).choices(["ngrok"]),
+    )
+    .option(
+      "--tunnel-domain <domain>",
+      "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.",
+    )
+    .addOption(
+      new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices([
+        "google",
+      ]),
+    )
+    .option(
+      "--allow-email <addr>",
+      "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
+      collectRepeated,
+      [],
+    )
+    .option(
+      "--allow-domain <domain>",
+      "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
+      collectRepeated,
+      [],
+    )
+    .option(
+      "--public-url <origin>",
+      "Bring-your-own authed edge (Cloudflare Access/Tailscale/manual). Binds loopback and trusts your edge. Requires --expose.",
+    )
+    .option(
+      "--safe",
+      "Not applicable to watch: a live run is never share_ready, so --safe (a `serve` library filter) is rejected here. Restrict viewers with edge auth (--allow-email/--allow-domain).",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
@@ -1823,67 +2476,46 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
         "  humanish watch --json --no-open",
         "",
         "Existing evidence:",
-        "  humanish watch --run latest --detach"
-      ].join("\n")
+        "  humanish watch --run latest --detach",
+      ].join("\n"),
     )
-    .action(async (labArg: string | undefined, options: {
-      cwd: string;
-      count?: string;
-      codexAppServer?: boolean;
-      detach?: boolean;
-      dryRun?: boolean;
-      envFile?: string;
-      follow?: boolean;
-      json?: boolean;
-      keep?: boolean;
-      lab?: string;
-      limit?: string;
-      open?: boolean;
-      port: string;
-      redactRepos?: boolean;
-      repo: string[];
-      repos?: string;
-      run?: string;
-      runId?: string;
-      scorer?: string;
-      sims?: string;
-      expose?: boolean;
-      tunnel?: "ngrok";
-      tunnelDomain?: string;
-      oauth?: "google";
-      allowEmail: string[];
-      allowDomain: string[];
-      publicUrl?: string;
-      safe?: boolean;
-    }, command) => {
-      const lab = options.lab ?? labArg;
-      if (options.lab !== undefined && labArg !== undefined) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_WATCH_OPTION_CONFLICT",
-            message: "Use either positional lab or --lab, not both."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      if (!await applyEnvFileOption({
+    .action(
+      async (
+        labArg: string | undefined,
+        options: {
+          cwd: string;
+          count?: string;
+          codexAppServer?: boolean;
+          detach?: boolean;
+          dryRun?: boolean;
+          envFile?: string;
+          follow?: boolean;
+          json?: boolean;
+          keep?: boolean;
+          lab?: string;
+          limit?: string;
+          open?: boolean;
+          port: string;
+          redactRepos?: boolean;
+          repo: string[];
+          repos?: string;
+          run?: string;
+          runId?: string;
+          scorer?: string;
+          sims?: string;
+          expose?: boolean;
+          tunnel?: "ngrok";
+          tunnelDomain?: string;
+          oauth?: "google";
+          allowEmail: string[];
+          allowDomain: string[];
+          publicUrl?: string;
+          safe?: boolean;
+        },
         command,
-        cwd: options.cwd,
-        envFile: options.envFile,
-        io
-      })) {
-        return;
-      }
-
-      if (lab) {
-        if (options.run !== undefined) {
+      ) => {
+        const lab = options.lab ?? labArg;
+        if (options.lab !== undefined && labArg !== undefined) {
           const result: RunResult = {
             schema: "humanish.run-result.v1",
             ok: false,
@@ -1891,182 +2523,226 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
             warnings: [],
             error: {
               code: "HUMANISH_WATCH_OPTION_CONFLICT",
-              message: "Use either a lab to start evidence or --run to watch existing evidence, not both."
-            }
+              message: "Use either positional lab or --lab, not both.",
+            },
           };
           writeResult(command, io, result, formatRunHuman);
           io.setExitCode(2);
           return;
         }
 
-        await runLabCommand({
-          command,
-          io,
-          lab,
-          mode: "watch",
-          options: {
+        if (
+          !(await applyEnvFileOption({
+            command,
             cwd: options.cwd,
-            ...(options.count === undefined ? {} : { count: options.count }),
-            ...(options.codexAppServer === undefined ? {} : { codexAppServer: options.codexAppServer }),
-            ...(options.detach === undefined ? {} : { detach: options.detach }),
-            ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-            ...(options.keep === undefined ? {} : { keep: options.keep }),
-            ...(options.limit === undefined ? {} : { limit: options.limit }),
-            ...(options.open === undefined ? {} : { open: options.open }),
-            port: options.port,
-            ...(options.redactRepos === undefined ? {} : { redactRepos: options.redactRepos }),
-            repo: options.repo,
-            ...(options.repos === undefined ? {} : { repos: options.repos }),
-            ...(options.runId === undefined ? {} : { runId: options.runId }),
-            ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
-            ...(options.sims === undefined ? {} : { sims: options.sims }),
-            ...(options.expose === undefined ? {} : { expose: options.expose }),
-            ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
-            ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
-            ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-            allowEmail: options.allowEmail,
-            allowDomain: options.allowDomain,
-            ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-            ...(options.safe === undefined ? {} : { safe: options.safe }),
-            ...(options.json === undefined ? {} : { json: options.json })
-          }
-        });
-        return;
-      }
+            envFile: options.envFile,
+            io,
+          }))
+        ) {
+          return;
+        }
 
-      // Exposure is only meaningful for a live CUA lab run (it serves the live desktop). The
-      // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
-      // stream, so exposure flags there are refused rather than silently ignored — use `serve`.
-      if (watchExposeRequested(options)) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_WATCH_OPTION_CONFLICT",
-            message: "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`."
+        if (lab) {
+          if (options.run !== undefined) {
+            const result: RunResult = {
+              schema: "humanish.run-result.v1",
+              ok: false,
+              cwd: options.cwd,
+              warnings: [],
+              error: {
+                code: "HUMANISH_WATCH_OPTION_CONFLICT",
+                message:
+                  "Use either a lab to start evidence or --run to watch existing evidence, not both.",
+              },
+            };
+            writeResult(command, io, result, formatRunHuman);
+            io.setExitCode(2);
+            return;
           }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
 
-      const runOptionSource = typeof command.getOptionValueSource === "function"
-        ? command.getOptionValueSource("run")
-        : undefined;
-      const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
-      const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-      const port = parseObserverPort(options.port);
-      if (options.sims !== undefined && simCount === null) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_INVALID_SIM_COUNT",
-            message: "--sims must be a positive integer."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-      if (!runWasOmitted && options.sims !== undefined) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_WATCH_OPTION_CONFLICT",
-            message: "Use either --run to watch existing evidence or --sims to start a fresh run, not both."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-      if (!runWasOmitted && options.runId !== undefined) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_WATCH_OPTION_CONFLICT",
-            message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-      if (port === null) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_INVALID_PORT",
-            message: "--port must be an integer between 0 and 65535."
-          }
-        };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
-      const requestedSimCount = simCount ?? (runWasOmitted ? 4 : undefined);
+          await runLabCommand({
+            command,
+            io,
+            lab,
+            mode: "watch",
+            options: {
+              cwd: options.cwd,
+              ...(options.count === undefined ? {} : { count: options.count }),
+              ...(options.codexAppServer === undefined
+                ? {}
+                : { codexAppServer: options.codexAppServer }),
+              ...(options.detach === undefined ? {} : { detach: options.detach }),
+              ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+              ...(options.keep === undefined ? {} : { keep: options.keep }),
+              ...(options.limit === undefined ? {} : { limit: options.limit }),
+              ...(options.open === undefined ? {} : { open: options.open }),
+              port: options.port,
+              ...(options.redactRepos === undefined ? {} : { redactRepos: options.redactRepos }),
+              repo: options.repo,
+              ...(options.repos === undefined ? {} : { repos: options.repos }),
+              ...(options.runId === undefined ? {} : { runId: options.runId }),
+              ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
+              ...(options.sims === undefined ? {} : { sims: options.sims }),
+              ...(options.expose === undefined ? {} : { expose: options.expose }),
+              ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
+              ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
+              ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
+              allowEmail: options.allowEmail,
+              allowDomain: options.allowDomain,
+              ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
+              ...(options.safe === undefined ? {} : { safe: options.safe }),
+              ...(options.json === undefined ? {} : { json: options.json }),
+            },
+          });
+          return;
+        }
 
-      let runInput = options.run ?? "latest";
-      if (requestedSimCount !== undefined && requestedSimCount !== null) {
-        const runResult = await runDryRun({
-          cwd: options.cwd,
-          dryRun: true,
-          simCount: requestedSimCount,
-          ...(options.runId === undefined ? {} : { runId: options.runId })
-        });
-
-        if (!runResult.ok || !runResult.runId) {
-          writeResult(command, io, runResult, formatRunHuman);
+        // Exposure is only meaningful for a live CUA lab run (it serves the live desktop). The
+        // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
+        // stream, so exposure flags there are refused rather than silently ignored — use `serve`.
+        if (watchExposeRequested(options)) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_WATCH_OPTION_CONFLICT",
+              message:
+                "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
           io.setExitCode(2);
           return;
         }
 
-        runInput = runResult.runId;
-      }
+        const runOptionSource =
+          typeof command.getOptionValueSource === "function"
+            ? command.getOptionValueSource("run")
+            : undefined;
+        const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
+        const simCount =
+          options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+        const port = parseObserverPort(options.port);
+        if (options.sims !== undefined && simCount === null) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_INVALID_SIM_COUNT",
+              message: "--sims must be a positive integer.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+        if (!runWasOmitted && options.sims !== undefined) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_WATCH_OPTION_CONFLICT",
+              message:
+                "Use either --run to watch existing evidence or --sims to start a fresh run, not both.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+        if (!runWasOmitted && options.runId !== undefined) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_WATCH_OPTION_CONFLICT",
+              message:
+                "--run-id only applies to fresh watch runs; remove --run or remove --run-id.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+        if (port === null) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_INVALID_PORT",
+              message: "--port must be an integer between 0 and 65535.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+        const requestedSimCount = simCount ?? (runWasOmitted ? 4 : undefined);
 
-      const wantsMachine = wantsJson(command);
-      const shouldOpen = options.open === false ? false : options.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
-      const wantsFollow = !wantsMachine && options.detach !== true && (options.follow !== false);
-      const rendered = await renderObserver(options.cwd, runInput, { open: wantsFollow ? false : shouldOpen });
-      let server: ObserverServer | null = null;
-      let result = rendered;
-      if (rendered.ok && wantsFollow) {
-        server = await serveObserver(rendered, { open: shouldOpen, port });
-        result = {
-          ...rendered,
-          observerUrl: server.url,
-          serverUrl: server.url,
-          opened: server.opened,
-          ...(server.openCommand ? { openCommand: server.openCommand } : {}),
-          warnings: [
-            ...rendered.warnings,
-            "Live observer server is polling observer-data.json with no-store caching.",
-            ...(server.warning ? [server.warning] : [])
-          ]
-        };
-      }
-      writeResult(command, io, result, formatObserverHuman);
-      io.setExitCode(result.ok ? 0 : 2);
+        let runInput = options.run ?? "latest";
+        if (requestedSimCount !== undefined && requestedSimCount !== null) {
+          const runResult = await runDryRun({
+            cwd: options.cwd,
+            dryRun: true,
+            simCount: requestedSimCount,
+            ...(options.runId === undefined ? {} : { runId: options.runId }),
+          });
 
-      if (result.ok && server) {
-        await followObserver(io, result, server);
-      }
-    });
+          if (!runResult.ok || !runResult.runId) {
+            writeResult(command, io, runResult, formatRunHuman);
+            io.setExitCode(2);
+            return;
+          }
+
+          runInput = runResult.runId;
+        }
+
+        const wantsMachine = wantsJson(command);
+        const shouldOpen =
+          options.open === false
+            ? false
+            : options.open === true
+              ? true
+              : !wantsMachine && process.stdout.isTTY === true;
+        const wantsFollow = !wantsMachine && options.detach !== true && options.follow !== false;
+        const rendered = await renderObserver(options.cwd, runInput, {
+          open: wantsFollow ? false : shouldOpen,
+        });
+        let server: ObserverServer | null = null;
+        let result = rendered;
+        if (rendered.ok && wantsFollow) {
+          server = await serveObserver(rendered, { open: shouldOpen, port });
+          result = {
+            ...rendered,
+            observerUrl: server.url,
+            serverUrl: server.url,
+            opened: server.opened,
+            ...(server.openCommand ? { openCommand: server.openCommand } : {}),
+            warnings: [
+              ...rendered.warnings,
+              "Live observer server is polling observer-data.json with no-store caching.",
+              ...(server.warning ? [server.warning] : []),
+            ],
+          };
+        }
+        writeResult(command, io, result, formatObserverHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+
+        if (result.ok && server) {
+          await followObserver(io, result, server);
+        }
+      },
+    );
 }
 
 function registerObserveCommand(parent: Command, io: CliIo): void {
@@ -2075,7 +2751,11 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
     .description("Follow a run's saved evidence in Observer over loopback http://127.0.0.1.")
     .summary("Follow a run's saved evidence over loopback http.")
     .option("--run <id>", "Run id or latest pointer.", "latest")
-    .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
+    .option(
+      "--port <port>",
+      "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
+      "0",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Serve without opening a browser.")
@@ -2092,77 +2772,84 @@ function registerObserveCommand(parent: Command, io: CliIo): void {
         "",
         "The server binds 127.0.0.1 only and exposes just the run's bundle directory.",
         "It stays attached until Ctrl-C; file:// security policy and live refresh are why",
-        "loopback http is preferred over opening the index.html path directly."
-      ].join("\n")
+        "loopback http is preferred over opening the index.html path directly.",
+      ].join("\n"),
     )
-    .action(async (options: {
-      cwd: string;
-      json?: boolean;
-      open?: boolean;
-      port: string;
-      run: string;
-    }, command) => {
-      const port = parseObserverPort(options.port);
-      if (port === null) {
-        const result: RunResult = {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd: options.cwd,
-          warnings: [],
-          error: {
-            code: "HUMANISH_INVALID_PORT",
-            message: "--port must be an integer between 0 and 65535."
-          }
+    .action(
+      async (
+        options: {
+          cwd: string;
+          json?: boolean;
+          open?: boolean;
+          port: string;
+          run: string;
+        },
+        command,
+      ) => {
+        const port = parseObserverPort(options.port);
+        if (port === null) {
+          const result: RunResult = {
+            schema: "humanish.run-result.v1",
+            ok: false,
+            cwd: options.cwd,
+            warnings: [],
+            error: {
+              code: "HUMANISH_INVALID_PORT",
+              message: "--port must be an integer between 0 and 65535.",
+            },
+          };
+          writeResult(command, io, result, formatRunHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        const rendered = await renderObserver(options.cwd, options.run, { open: false });
+        if (!rendered.ok || !rendered.observerPath) {
+          writeResult(command, io, rendered, formatObserverHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        // Reuse the contained current-data projection, scoped to this run. A raw static
+        // server would miss runtime status and could replay stored iframe grants.
+        const wantsMachine = wantsJson(command);
+        const shouldOpen =
+          options.open === false
+            ? false
+            : options.open === true
+              ? true
+              : !wantsMachine && process.stdout.isTTY === true;
+
+        const server = await serveObserver(rendered, { open: false, port, scope: "run" });
+        const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
+          ? openTarget(server.url)
+          : { opened: false };
+
+        const result: ObserverResult = {
+          ...rendered,
+          observerUrl: server.url,
+          serverUrl: server.url,
+          opened: openResult.opened,
+          ...(openResult.command ? { openCommand: openResult.command } : {}),
+          warnings: [
+            ...rendered.warnings,
+            "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
+            ...(openResult.warning ? [openResult.warning] : []),
+          ],
         };
-        writeResult(command, io, result, formatRunHuman);
-        io.setExitCode(2);
-        return;
-      }
 
-      const rendered = await renderObserver(options.cwd, options.run, { open: false });
-      if (!rendered.ok || !rendered.observerPath) {
-        writeResult(command, io, rendered, formatObserverHuman);
-        io.setExitCode(2);
-        return;
-      }
+        writeResult(command, io, result, formatObserverHuman);
+        io.setExitCode(0);
 
-      // Reuse the contained current-data projection, scoped to this run. A raw static
-      // server would miss runtime status and could replay stored iframe grants.
-      const wantsMachine = wantsJson(command);
-      const shouldOpen = options.open === false
-        ? false
-        : options.open === true
-          ? true
-          : !wantsMachine && process.stdout.isTTY === true;
-
-      const server = await serveObserver(rendered, { open: false, port, scope: "run" });
-      const openResult: { opened: boolean; command?: string; warning?: string } =
-        shouldOpen ? openTarget(server.url) : { opened: false };
-
-      const result: ObserverResult = {
-        ...rendered,
-        observerUrl: server.url,
-        serverUrl: server.url,
-        opened: openResult.opened,
-        ...(openResult.command ? { openCommand: openResult.command } : {}),
-        warnings: [
-          ...rendered.warnings,
-          "Observer is served read-only over loopback http on 127.0.0.1; only this run's bundle directory is exposed.",
-          ...(openResult.warning ? [openResult.warning] : [])
-        ]
-      };
-
-      writeResult(command, io, result, formatObserverHuman);
-      io.setExitCode(0);
-
-      await serveObserveUntilSignal(io, server, { json: wantsMachine });
-    });
+        await serveObserveUntilSignal(io, server, { json: wantsMachine });
+      },
+    );
 }
 
 async function serveObserveUntilSignal(
   io: CliIo,
   server: { close: () => Promise<void>; url: string },
-  options: { json: boolean }
+  options: { json: boolean },
 ): Promise<void> {
   // Keep the JSON envelope on stdout clean: route attach/stop chatter to stderr
   // for machine output, and to stdout for humans.
@@ -2189,7 +2876,9 @@ async function serveObserveUntilSignal(
         try {
           await server.close();
         } catch (error: unknown) {
-          io.writeErr(`observe cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+          io.writeErr(
+            `observe cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
         }
 
         note("observe stopped\n");
@@ -2208,19 +2897,56 @@ async function serveObserveUntilSignal(
 function registerServeCommand(parent: Command, io: CliIo): void {
   parent
     .command("serve")
-    .description("Serve the local run library over loopback http, with optional tunnel-edge authenticated exposure.")
+    .description(
+      "Serve the local run library over loopback http, with optional tunnel-edge authenticated exposure.",
+    )
     .summary("Serve the run library; optional tunnel-edge exposure.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--port <port>", "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.", "0")
+    .option(
+      "--port <port>",
+      "Loopback port to bind on 127.0.0.1. Defaults to an ephemeral port.",
+      "0",
+    )
     .option("--run <id>", "Land on this run id (or latest) instead of the library index.")
-    .option("--safe", "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).")
-    .option("--expose", "Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe.")
-    .addOption(new Option("--tunnel <provider>", "Spawn the external tunnel binary against the loopback port.").choices(["ngrok"]))
-    .option("--tunnel-domain <domain>", "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.")
-    .addOption(new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices(["google"]))
-    .option("--allow-email <addr>", "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.", collectRepeated, [])
-    .option("--allow-domain <domain>", "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.", collectRepeated, [])
-    .option("--public-url <origin>", "Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding.")
+    .option(
+      "--safe",
+      "Serve only runs whose verify shareSafety is share_ready; everything else is absent (fail-closed).",
+    )
+    .option(
+      "--expose",
+      "Declare exposure intent. Requires edge auth (--oauth or --public-url) OR --safe.",
+    )
+    .addOption(
+      new Option(
+        "--tunnel <provider>",
+        "Spawn the external tunnel binary against the loopback port.",
+      ).choices(["ngrok"]),
+    )
+    .option(
+      "--tunnel-domain <domain>",
+      "Reserved domain passed to ngrok as --url (e.g. observer.example.com). Requires --tunnel.",
+    )
+    .addOption(
+      new Option("--oauth <provider>", "Turn on ngrok edge OAuth. Requires --tunnel.").choices([
+        "google",
+      ]),
+    )
+    .option(
+      "--allow-email <addr>",
+      "Edge OAuth allow rule: permit this email. Repeatable. Requires --oauth.",
+      collectRepeated,
+      [],
+    )
+    .option(
+      "--allow-domain <domain>",
+      "Edge OAuth allow rule: permit this domain. Repeatable. Requires --oauth.",
+      collectRepeated,
+      [],
+    )
+    .option(
+      "--public-url <origin>",
+      "Bring-your-own authed edge (e.g. https://observer.example.com). Requires --expose; never affects binding.",
+    )
     .option("--open", "Open the library in the default browser.")
     .option("--no-open", "Serve without opening a browser.")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -2241,177 +2967,200 @@ function registerServeCommand(parent: Command, io: CliIo): void {
         "edge (ngrok --oauth google, or an operator --public-url you secure) forwarding to the",
         "loopback port. humanish carries no in-process auth — the gate lives at the edge. Live",
         "desktop stream URLs are never served here; remote viewers see persisted evidence only.",
-        "--safe composes with any exposure for defense in depth."
-      ].join("\n")
+        "--safe composes with any exposure for defense in depth.",
+      ].join("\n"),
     )
-    .action(async (options: {
-      cwd: string;
-      expose?: boolean;
-      json?: boolean;
-      open?: boolean;
-      port: string;
-      publicUrl?: string;
-      run?: string;
-      safe?: boolean;
-      tunnel?: "ngrok";
-      tunnelDomain?: string;
-      oauth?: "google";
-      allowEmail: string[];
-      allowDomain: string[];
-    }, command) => {
-      const wantsMachine = wantsJson(command);
-      const fail = (code: ServeErrorCode, message: string): void => {
-        const result: ServeResult = {
-          schema: SERVE_SCHEMA,
-          ok: false,
-          cwd: options.cwd,
-          mode: "loopback",
-          safe: options.safe === true,
-          host: "127.0.0.1",
-          runsListed: 0,
-          warnings: [],
-          error: { code, message }
+    .action(
+      async (
+        options: {
+          cwd: string;
+          expose?: boolean;
+          json?: boolean;
+          open?: boolean;
+          port: string;
+          publicUrl?: string;
+          run?: string;
+          safe?: boolean;
+          tunnel?: "ngrok";
+          tunnelDomain?: string;
+          oauth?: "google";
+          allowEmail: string[];
+          allowDomain: string[];
+        },
+        command,
+      ) => {
+        const wantsMachine = wantsJson(command);
+        const fail = (code: ServeErrorCode, message: string): void => {
+          const result: ServeResult = {
+            schema: SERVE_SCHEMA,
+            ok: false,
+            cwd: options.cwd,
+            mode: "loopback",
+            safe: options.safe === true,
+            host: "127.0.0.1",
+            runsListed: 0,
+            warnings: [],
+            error: { code, message },
+          };
+          writeResult(command, io, result, formatServeHuman);
+          io.setExitCode(2);
         };
-        writeResult(command, io, result, formatServeHuman);
-        io.setExitCode(2);
-      };
 
-      const port = parseObserverPort(options.port);
-      if (port === null) {
-        fail("HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
-        return;
-      }
-
-      // Fail-closed exposure matrix (shared validator; tunnel-edge auth only). All guards run before
-      // any bind/spawn.
-      const exposeValidation = validateExposure("serve", {
-        expose: options.expose === true,
-        ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
-        ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
-        ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-        allowEmails: options.allowEmail,
-        allowDomains: options.allowDomain,
-        ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-        safe: options.safe === true
-      });
-      if (!exposeValidation.ok) {
-        fail(exposeValidation.error.code, exposeValidation.error.message);
-        return;
-      }
-      const plan = exposeValidation.plan;
-
-      const started = await serveObserverLibrary(options.cwd, {
-        port,
-        safe: options.safe === true,
-        expose: plan.exposed,
-        edgeAuthed: plan.edgeAuthed,
-        ...(plan.publicOrigin ? { publicOrigin: plan.publicOrigin.origin } : {}),
-        ...(options.run ? { entryRunId: options.run } : {})
-      });
-      if (!started.ok) {
-        fail(started.error.code, started.error.message);
-        return;
-      }
-      const server = started.server;
-
-      let tunnel: ServeTunnel | undefined;
-      let publicUrl: string | undefined;
-      const warnings: string[] = [];
-      if (plan.exposed) {
-        try {
-          const exposeResult = await startExposedObserver(server, plan);
-          tunnel = exposeResult.tunnel;
-          publicUrl = exposeResult.publicUrl;
-          warnings.push(...exposeResult.warnings);
-        } catch (error: unknown) {
-          await server.close();
-          if (error instanceof ServeTunnelError) {
-            fail(error.code, error.message);
-          } else {
-            fail(
-              "HUMANISH_SERVE_TUNNEL_START_FAILED",
-              `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`
-            );
-          }
+        const port = parseObserverPort(options.port);
+        if (port === null) {
+          fail("HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
           return;
         }
-      }
 
-      if (server.mode === "exposed" && options.safe !== true) {
-        warnings.push(
-          `edge-authed exposure grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone who clears the edge auth can view them; add --safe to restrict to share_ready`
-        );
-      }
-      if (server.mode === "exposed" && options.safe === true) {
-        warnings.push(
-          `edge-authed exposure grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even behind the edge`
-        );
-      }
-      if (server.mode === "share-safe-open") {
-        warnings.push(
-          `serving ${server.shareReadyCount ?? 0} share_ready runs to anyone who can reach ${publicUrl ?? server.url}; non-share_ready runs are absent and their URLs 404`
-        );
-      }
-      warnings.push(
-        "live desktop stream URLs are never served here; remote viewers see persisted evidence (screenshots, events, terminal tails) only"
-      );
-
-      // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
-      // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
-      // intent and opens the loopback library.
-      const shouldOpen = options.open === false
-        ? false
-        : options.open === true
-          ? true
-          : !wantsMachine && process.stdout.isTTY === true && plan.exposed !== true;
-      const openResult: { opened: boolean; command?: string; warning?: string } =
-        shouldOpen ? openTarget(server.url) : { opened: false };
-      if (openResult.warning) {
-        warnings.push(openResult.warning);
-      }
-
-      const result: ServeResult = {
-        schema: SERVE_SCHEMA,
-        ok: true,
-        cwd: options.cwd,
-        mode: server.mode,
-        safe: options.safe === true,
-        host: "127.0.0.1",
-        port: server.port,
-        url: server.url,
-        ...(publicUrl ? { publicUrl } : {}),
-        ...(tunnel ? { tunnel: { provider: "ngrok", url: tunnel.url } } : {}),
-        ...(plan.oauth ? { oauth: { provider: plan.oauth.provider, allowEmails: plan.oauth.allowEmails, allowDomains: plan.oauth.allowDomains } } : {}),
-        runsListed: server.runsListed,
-        ...(server.shareReadyCount !== undefined ? { shareReadyCount: server.shareReadyCount } : {}),
-        ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
-        opened: openResult.opened,
-        ...(openResult.command ? { openCommand: openResult.command } : {}),
-        warnings
-      };
-
-      writeResult(command, io, result, formatServeHuman);
-      io.setExitCode(0);
-
-      await serveObserveUntilSignal(io, {
-        url: server.url,
-        close: async () => {
-          if (tunnel) {
-            await tunnel.close();
-          }
-          await server.close();
+        // Fail-closed exposure matrix (shared validator; tunnel-edge auth only). All guards run before
+        // any bind/spawn.
+        const exposeValidation = validateExposure("serve", {
+          expose: options.expose === true,
+          ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
+          ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
+          ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
+          allowEmails: options.allowEmail,
+          allowDomains: options.allowDomain,
+          ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
+          safe: options.safe === true,
+        });
+        if (!exposeValidation.ok) {
+          fail(exposeValidation.error.code, exposeValidation.error.message);
+          return;
         }
-      }, { json: wantsMachine });
-    });
+        const plan = exposeValidation.plan;
+
+        const started = await serveObserverLibrary(options.cwd, {
+          port,
+          safe: options.safe === true,
+          expose: plan.exposed,
+          edgeAuthed: plan.edgeAuthed,
+          ...(plan.publicOrigin ? { publicOrigin: plan.publicOrigin.origin } : {}),
+          ...(options.run ? { entryRunId: options.run } : {}),
+        });
+        if (!started.ok) {
+          fail(started.error.code, started.error.message);
+          return;
+        }
+        const server = started.server;
+
+        let tunnel: ServeTunnel | undefined;
+        let publicUrl: string | undefined;
+        const warnings: string[] = [];
+        if (plan.exposed) {
+          try {
+            const exposeResult = await startExposedObserver(server, plan);
+            tunnel = exposeResult.tunnel;
+            publicUrl = exposeResult.publicUrl;
+            warnings.push(...exposeResult.warnings);
+          } catch (error: unknown) {
+            await server.close();
+            if (error instanceof ServeTunnelError) {
+              fail(error.code, error.message);
+            } else {
+              fail(
+                "HUMANISH_SERVE_TUNNEL_START_FAILED",
+                `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+            return;
+          }
+        }
+
+        if (server.mode === "exposed" && options.safe !== true) {
+          warnings.push(
+            `edge-authed exposure grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone who clears the edge auth can view them; add --safe to restrict to share_ready`,
+          );
+        }
+        if (server.mode === "exposed" && options.safe === true) {
+          warnings.push(
+            `edge-authed exposure grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even behind the edge`,
+          );
+        }
+        if (server.mode === "share-safe-open") {
+          warnings.push(
+            `serving ${server.shareReadyCount ?? 0} share_ready runs to anyone who can reach ${publicUrl ?? server.url}; non-share_ready runs are absent and their URLs 404`,
+          );
+        }
+        warnings.push(
+          "live desktop stream URLs are never served here; remote viewers see persisted evidence (screenshots, events, terminal tails) only",
+        );
+
+        // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
+        // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
+        // intent and opens the loopback library.
+        const shouldOpen =
+          options.open === false
+            ? false
+            : options.open === true
+              ? true
+              : !wantsMachine && process.stdout.isTTY === true && plan.exposed !== true;
+        const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
+          ? openTarget(server.url)
+          : { opened: false };
+        if (openResult.warning) {
+          warnings.push(openResult.warning);
+        }
+
+        const result: ServeResult = {
+          schema: SERVE_SCHEMA,
+          ok: true,
+          cwd: options.cwd,
+          mode: server.mode,
+          safe: options.safe === true,
+          host: "127.0.0.1",
+          port: server.port,
+          url: server.url,
+          ...(publicUrl ? { publicUrl } : {}),
+          ...(tunnel ? { tunnel: { provider: "ngrok", url: tunnel.url } } : {}),
+          ...(plan.oauth
+            ? {
+                oauth: {
+                  provider: plan.oauth.provider,
+                  allowEmails: plan.oauth.allowEmails,
+                  allowDomains: plan.oauth.allowDomains,
+                },
+              }
+            : {}),
+          runsListed: server.runsListed,
+          ...(server.shareReadyCount !== undefined
+            ? { shareReadyCount: server.shareReadyCount }
+            : {}),
+          ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
+          opened: openResult.opened,
+          ...(openResult.command ? { openCommand: openResult.command } : {}),
+          warnings,
+        };
+
+        writeResult(command, io, result, formatServeHuman);
+        io.setExitCode(0);
+
+        await serveObserveUntilSignal(
+          io,
+          {
+            url: server.url,
+            close: async () => {
+              if (tunnel) {
+                await tunnel.close();
+              }
+              await server.close();
+            },
+          },
+          { json: wantsMachine },
+        );
+      },
+    );
 }
 
 function formatServeHuman(result: ServeResult): string {
   if (!result.ok) {
-    return [
-      "humanish serve failed",
-      ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
-      ...result.warnings.map((warning) => `warning: ${warning}`)
-    ].join("\n") + "\n";
+    return (
+      [
+        "humanish serve failed",
+        ...(result.error ? [`error: ${result.error.code} ${result.error.message}`] : []),
+        ...result.warnings.map((warning) => `warning: ${warning}`),
+      ].join("\n") + "\n"
+    );
   }
 
   const modeSuffix = result.safe ? " (share_ready only)" : "";
@@ -2419,7 +3168,7 @@ function formatServeHuman(result: ServeResult): string {
     "humanish serve",
     `mode: ${result.mode}${modeSuffix}`,
     `library: ${result.url ?? ""}`,
-    `runs: ${result.runsListed}`
+    `runs: ${result.runsListed}`,
   ];
   if (result.publicUrl) {
     lines.push(`public: ${result.publicUrl}`);
@@ -2429,7 +3178,9 @@ function formatServeHuman(result: ServeResult): string {
   }
   if (result.oauth) {
     const rules = [...result.oauth.allowEmails, ...result.oauth.allowDomains];
-    lines.push(`edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule — any Google account)"}`);
+    lines.push(
+      `edge auth: ${result.oauth.provider} oauth${rules.length > 0 ? ` (allow: ${rules.join(", ")})` : " (no allow rule — any Google account)"}`,
+    );
   }
   if (result.entryRunId) {
     lines.push(`entry: ${result.entryRunId}`);
@@ -2450,7 +3201,10 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
   feedback
     .command("list")
     .description("List recorded feedback candidates and any saved draft.")
-    .addHelpText("after", "\nWith no candidates, feedback draft and feedback issue can generate a run-summary follow-up. Public drafting still requires share_ready verification.\n")
+    .addHelpText(
+      "after",
+      "\nWith no candidates, feedback draft and feedback issue can generate a run-summary follow-up. Public drafting still requires share_ready verification.\n",
+    )
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
@@ -2467,13 +3221,28 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
-    .option("--candidate <id>", "Which finding to draft (ids from `feedback list`); default: the first.")
+    .option(
+      "--candidate <id>",
+      "Which finding to draft (ids from `feedback list`); default: the first.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; run: string }, command) => {
-      const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
-      writeResult(command, io, result, formatFeedbackHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        options: {
+          candidate?: string;
+          analysis?: string;
+          finding?: string;
+          cwd: string;
+          json?: boolean;
+          run: string;
+        },
+        command,
+      ) => {
+        const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
+        writeResult(command, io, result, formatFeedbackHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 
   feedback
     .command("verify")
@@ -2482,13 +3251,28 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
-    .option("--candidate <id>", "Which finding to verify (ids from `feedback list`); default: the first.")
+    .option(
+      "--candidate <id>",
+      "Which finding to verify (ids from `feedback list`); default: the first.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; run: string }, command) => {
-      const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
-      writeResult(command, io, result, formatFeedbackHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        options: {
+          candidate?: string;
+          analysis?: string;
+          finding?: string;
+          cwd: string;
+          json?: boolean;
+          run: string;
+        },
+        command,
+      ) => {
+        const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
+        writeResult(command, io, result, formatFeedbackHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 
   feedback
     .command("issue")
@@ -2499,25 +3283,47 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--format <format>", "Output format.", "markdown")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
-    .option("--candidate <id>", "Which finding to file (ids from `feedback list`); default: the first.")
+    .option(
+      "--candidate <id>",
+      "Which finding to file (ids from `feedback list`); default: the first.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; format: string; json?: boolean; repo: string; run: string }, command) => {
-      const result = await renderIssueMarkdown(options.cwd, options.run, options.repo, candidateOption(options));
+    .action(
+      async (
+        options: {
+          candidate?: string;
+          analysis?: string;
+          finding?: string;
+          cwd: string;
+          format: string;
+          json?: boolean;
+          repo: string;
+          run: string;
+        },
+        command,
+      ) => {
+        const result = await renderIssueMarkdown(
+          options.cwd,
+          options.run,
+          options.repo,
+          candidateOption(options),
+        );
 
-      if (wantsJson(command)) {
-        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-      } else if (options.format !== "markdown") {
-        io.writeErr("Only --format markdown is supported.\n");
-        io.setExitCode(2);
-        return;
-      } else if (result.ok && result.issueMarkdown) {
-        io.writeOut(result.issueMarkdown);
-      } else {
-        io.writeErr(formatFeedbackHuman(result));
-      }
+        if (wantsJson(command)) {
+          io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+        } else if (options.format !== "markdown") {
+          io.writeErr("Only --format markdown is supported.\n");
+          io.setExitCode(2);
+          return;
+        } else if (result.ok && result.issueMarkdown) {
+          io.writeOut(result.issueMarkdown);
+        } else {
+          io.writeErr(formatFeedbackHuman(result));
+        }
 
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 
   feedback
     .command("issue-url")
@@ -2527,21 +3333,42 @@ function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .requiredOption("--repo <owner/repo>", "Repository slug used in the generated URL.")
     .option("--analysis <id>", "Independent analysis version; use with --finding.")
     .option("--finding <id>", "Finding within --analysis, separate from participant candidates.")
-    .option("--candidate <id>", "Which finding to link (ids from `feedback list`); default: the first.")
+    .option(
+      "--candidate <id>",
+      "Which finding to link (ids from `feedback list`); default: the first.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { candidate?: string; analysis?: string; finding?: string; cwd: string; json?: boolean; repo: string; run: string }, command) => {
-      const result = await renderIssueUrl(options.cwd, options.run, options.repo, candidateOption(options));
+    .action(
+      async (
+        options: {
+          candidate?: string;
+          analysis?: string;
+          finding?: string;
+          cwd: string;
+          json?: boolean;
+          repo: string;
+          run: string;
+        },
+        command,
+      ) => {
+        const result = await renderIssueUrl(
+          options.cwd,
+          options.run,
+          options.repo,
+          candidateOption(options),
+        );
 
-      if (wantsJson(command)) {
-        io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-      } else if (result.ok && result.issueUrl) {
-        io.writeOut(`${result.issueUrl}\n`);
-      } else {
-        io.writeErr(formatFeedbackHuman(result));
-      }
+        if (wantsJson(command)) {
+          io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+        } else if (result.ok && result.issueUrl) {
+          io.writeOut(`${result.issueUrl}\n`);
+        } else {
+          io.writeErr(formatFeedbackHuman(result));
+        }
 
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function registerLabCommands(parent: Command, io: CliIo): void {
@@ -2576,59 +3403,86 @@ function registerLabCommands(parent: Command, io: CliIo): void {
   lab
     .command("preflight")
     .argument("<lab>", "Lab id or .yaml path.")
-    .description("Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.")
+    .description(
+      "Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.",
+    )
     .option("--cwd <path>", "Target project directory.", ".")
-    .addOption(new Option("--reachability <mode>", "Reachability mode.").choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"]).default("metadata"))
+    .addOption(
+      new Option("--reachability <mode>", "Reachability mode.")
+        .choices(["metadata", "public-preview", "sandbox-loopback", "prepared-host"])
+        .default("metadata"),
+    )
     .option("--timeout-ms <ms>", "Target reachability timeout.", String(30_000))
-    .option("--env-file <path>", "Load a local env file for this preflight without persisting values.")
+    .option(
+      "--env-file <path>",
+      "Load a local env file for this preflight without persisting values.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (labName: string, options: { cwd: string; envFile?: string; json?: boolean; reachability: LabPreflightReachabilityMode; timeoutMs: string }, command) => {
-      if (!await applyEnvFileOption({
+    .action(
+      async (
+        labName: string,
+        options: {
+          cwd: string;
+          envFile?: string;
+          json?: boolean;
+          reachability: LabPreflightReachabilityMode;
+          timeoutMs: string;
+        },
         command,
-        cwd: options.cwd,
-        envFile: options.envFile,
-        io
-      })) {
-        return;
-      }
+      ) => {
+        if (
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: options.envFile,
+            io,
+          }))
+        ) {
+          return;
+        }
 
-      const timeoutMs = parsePositiveInteger(options.timeoutMs);
-      if (timeoutMs === null) {
-        const result: LabPreflightResult = {
-          schema: "humanish.lab-preflight-result.v1",
-          ok: false,
-          cwd: resolve(options.cwd),
+        const timeoutMs = parsePositiveInteger(options.timeoutMs);
+        if (timeoutMs === null) {
+          const result: LabPreflightResult = {
+            schema: "humanish.lab-preflight-result.v1",
+            ok: false,
+            cwd: resolve(options.cwd),
+            lab: labName,
+            reachability: options.reachability,
+            checks: [
+              { name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." },
+            ],
+            targets: [],
+            sandbox: { created: false },
+            spend: { e2bDesktop: false, model: false },
+            warnings: [],
+            error: {
+              code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
+              message: "--timeout-ms must be a positive integer.",
+            },
+          };
+          writeResult(command, io, result, formatLabPreflightHuman);
+          io.setExitCode(2);
+          return;
+        }
+
+        const result = await runLabPreflight({
+          cwd: options.cwd,
           lab: labName,
           reachability: options.reachability,
-          checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
-          targets: [],
-          sandbox: { created: false },
-          spend: { e2bDesktop: false, model: false },
-          warnings: [],
-          error: {
-            code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
-            message: "--timeout-ms must be a positive integer."
-          }
-        };
+          timeoutMs,
+        });
         writeResult(command, io, result, formatLabPreflightHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      const result = await runLabPreflight({
-        cwd: options.cwd,
-        lab: labName,
-        reachability: options.reachability,
-        timeoutMs
-      });
-      writeResult(command, io, result, formatLabPreflightHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 
   lab
     .command("cleanup")
     .argument("[lab]", "Provider-backed lab to clean up.", "oss")
-    .description("Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.")
+    .description(
+      "Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (labName: string, _options: { json?: boolean }, command) => {
       if (labName !== "oss") {
@@ -2636,7 +3490,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
           schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
           ok: false,
           lab: labName,
-          cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] }
+          cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] },
         };
         writeResult(command, io, result, formatOssMetaLabCleanupHuman);
         io.setExitCode(2);
@@ -2648,7 +3502,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
         ok: cleanup.errors.length === 0,
         lab: "oss",
-        cleanup
+        cleanup,
       };
       writeResult(command, io, result, formatOssMetaLabCleanupHuman);
       io.setExitCode(result.ok ? 0 : 2);
@@ -2659,25 +3513,48 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
-    .option("--dry-run", "Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode.")
-    .option("--codex-app-server", "Meta only: use Codex app-server client mode for headed desktop actor surfaces.")
+    .option(
+      "--dry-run",
+      "Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode.",
+    )
+    .option(
+      "--codex-app-server",
+      "Meta only: use Codex app-server client mode for headed desktop actor surfaces.",
+    )
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
     .option("--count <count>", "CUA/meta only: override headed desktop lane count.")
-    .option("--rerun-failed-from <run>", "CUA fan-out only: create a new run for failed lanes from a prior run.")
-    .option("--lanes <lane-ids>", "CUA rerun only: comma-separated lane ids to rerun from the source run.")
+    .option(
+      "--rerun-failed-from <run>",
+      "CUA fan-out only: create a new run for failed lanes from a prior run.",
+    )
+    .option(
+      "--lanes <lane-ids>",
+      "CUA rerun only: comma-separated lane ids to rerun from the source run.",
+    )
     .option("--limit <count>", "Smoke labs only: override repo limit.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option("--repo <owner/repo>", "Smoke/meta only: GitHub repo slug. Repeatable.", collectRepeated, [])
+    .option(
+      "--repo <owner/repo>",
+      "Smoke/meta only: GitHub repo slug. Repeatable.",
+      collectRepeated,
+      [],
+    )
     .option("--repos <owner/repo,...>", "Smoke/meta only: comma-separated GitHub repo slugs.")
     .option("--redact-repos", "Meta only: redact repo labels in durable lab artifacts.")
-    .option("--no-redact-repos", "Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs.")
+    .option(
+      "--no-redact-repos",
+      "Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs.",
+    )
     .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
-    .option("--scorer <path>", "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.")
+    .option(
+      "--scorer <path>",
+      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
       "after",
@@ -2695,16 +3572,18 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "  humanish watch --lab .humanish/labs/local.yaml",
         "",
         "OSS safety:",
-        "  Live OSS meta-lab manifests fail closed pending credential isolation."
-      ].join("\n")
+        "  Live OSS meta-lab manifests fail closed pending credential isolation.",
+      ].join("\n"),
     )
     .action(async (labName: string, options: LabCommandOptions, command) => {
-      if (!await applyEnvFileOption({
-        command,
-        cwd: options.cwd,
-        envFile: options.envFile,
-        io
-      })) {
+      if (
+        !(await applyEnvFileOption({
+          command,
+          cwd: options.cwd,
+          envFile: options.envFile,
+          io,
+        }))
+      ) {
         return;
       }
 
@@ -2713,7 +3592,7 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         io,
         lab: labName,
         mode: "run",
-        options
+        options,
       });
     });
 
@@ -2723,19 +3602,33 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
     .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
     .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option("--count <count>", "Number of contract lanes to assign.", String(DEFAULT_OSS_REPOS.length))
+    .option(
+      "--count <count>",
+      "Number of contract lanes to assign.",
+      String(DEFAULT_OSS_REPOS.length),
+    )
     .option("--sims <count>", "Alias for --count.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
-    .option("--dry-run", "Render the Observer-of-Observers contract without provider spend or live E2B launch (default).")
+    .option(
+      "--dry-run",
+      "Render the Observer-of-Observers contract without provider spend or live E2B launch (default).",
+    )
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
-    .option("--no-redact-repos", "Persist repo labels in durable lab artifacts. Defaults to redacted when a GitHub token is present.")
+    .option(
+      "--no-redact-repos",
+      "Persist repo labels in durable lab artifacts. Defaults to redacted when a GitHub token is present.",
+    )
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--smoke", "Run the disposable local clone smoke harness instead of headed meta-sims.")
-    .option("--limit <count>", "Smoke mode only: number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
+    .option(
+      "--limit <count>",
+      "Smoke mode only: number of selected repos to trial.",
+      String(DEFAULT_OSS_REPOS.length),
+    )
     .option("--keep", "Smoke mode only: keep disposable clone sandbox for debugging.")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .addHelpText(
@@ -2765,154 +3658,185 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "Safety:",
         "  Only GitHub owner/repo slugs are accepted. Live OSS meta-lab execution",
         "  fails closed pending credential isolation. Repo labels are redacted by",
-        "  default when overridden; use --no-redact-repos only for public-safe repos."
-      ].join("\n")
+        "  default when overridden; use --no-redact-repos only for public-safe repos.",
+      ].join("\n"),
     )
-    .action(async (options: {
-      count: string;
-      codexAppServer?: boolean;
-      cwd: string;
-      detach?: boolean;
-      dryRun?: boolean;
-      envFile?: string;
-      json?: boolean;
-      keep?: boolean;
-      limit: string;
-      open?: boolean;
-      port: string;
-      redactRepos?: boolean;
-      repo: string[];
-      repos?: string;
-      runId?: string;
-      sims?: string;
-      smoke?: boolean;
-    }, command) => {
-      if (!await applyEnvFileOption({
+    .action(
+      async (
+        options: {
+          count: string;
+          codexAppServer?: boolean;
+          cwd: string;
+          detach?: boolean;
+          dryRun?: boolean;
+          envFile?: string;
+          json?: boolean;
+          keep?: boolean;
+          limit: string;
+          open?: boolean;
+          port: string;
+          redactRepos?: boolean;
+          repo: string[];
+          repos?: string;
+          runId?: string;
+          sims?: string;
+          smoke?: boolean;
+        },
         command,
-        cwd: options.cwd,
-        envFile: options.envFile,
-        io
-      })) {
-        return;
-      }
+      ) => {
+        if (
+          !(await applyEnvFileOption({
+            command,
+            cwd: options.cwd,
+            envFile: options.envFile,
+            io,
+          }))
+        ) {
+          return;
+        }
 
-      if (options.smoke) {
-        await runOssSmokeAction({ command, io, options });
-        return;
-      }
+        if (options.smoke) {
+          await runOssSmokeAction({ command, io, options });
+          return;
+        }
 
-      const countInput = options.sims ?? options.count;
-      const count = parsePositiveInteger(countInput);
-      const dryRun = options.dryRun ?? true;
-      const port = parseObserverPort(options.port);
-      if (port === null) {
-        const result: OssMetaLabResult = {
-          schema: "humanish.oss-meta-lab-result.v1",
-          ok: false,
-          assignments: [],
-          cwd: options.cwd,
-          dryRun,
-          error: {
-            code: "HUMANISH_META_RUN_FAILED",
-            message: "--port must be an integer between 0 and 65535."
-          },
-          liveRequested: !dryRun,
-          repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
-          sandboxes: [],
-          warnings: []
-        };
-        writeResult(command, io, result, formatOssMetaLabHuman);
-        io.setExitCode(2);
-        return;
-      }
+        const countInput = options.sims ?? options.count;
+        const count = parsePositiveInteger(countInput);
+        const dryRun = options.dryRun ?? true;
+        const port = parseObserverPort(options.port);
+        if (port === null) {
+          const result: OssMetaLabResult = {
+            schema: "humanish.oss-meta-lab-result.v1",
+            ok: false,
+            assignments: [],
+            cwd: options.cwd,
+            dryRun,
+            error: {
+              code: "HUMANISH_META_RUN_FAILED",
+              message: "--port must be an integer between 0 and 65535.",
+            },
+            liveRequested: !dryRun,
+            repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+            sandboxes: [],
+            warnings: [],
+          };
+          writeResult(command, io, result, formatOssMetaLabHuman);
+          io.setExitCode(2);
+          return;
+        }
 
-      const wantsMachine = wantsJson(command);
-      const shouldOpen = options.open === false ? false : options.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
-      const wantsFollow = !wantsMachine && options.detach !== true && !dryRun;
-      const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
-      const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
-      let server: ObserverServer | null = null;
-      let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
-      let result: OssMetaLabResult;
-      try {
-        result = await runOssMetaLab({
-          ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
-          ...(options.codexAppServer === undefined ? {} : { codexAppServer: options.codexAppServer }),
-          cwd: options.cwd,
-          ...(wantsFollow
-            ? {
-                onObserverReady: async (observer) => {
-                  if (!server) {
-                    server = await serveObserver(observer, { open: shouldOpen, port });
-                  }
+        const wantsMachine = wantsJson(command);
+        const shouldOpen =
+          options.open === false
+            ? false
+            : options.open === true
+              ? true
+              : !wantsMachine && process.stdout.isTTY === true;
+        const wantsFollow = !wantsMachine && options.detach !== true && !dryRun;
+        const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
+        const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
+        let server: ObserverServer | null = null;
+        let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
+        let result: OssMetaLabResult;
+        try {
+          result = await runOssMetaLab({
+            ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
+            ...(options.codexAppServer === undefined
+              ? {}
+              : { codexAppServer: options.codexAppServer }),
+            cwd: options.cwd,
+            ...(wantsFollow
+              ? {
+                  onObserverReady: async (observer) => {
+                    if (!server) {
+                      server = await serveObserver(observer, { open: shouldOpen, port });
+                    }
+                  },
                 }
-              }
-            : {}),
-          open: wantsFollow ? false : shouldOpen,
-          ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-          repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
-          ...(count === null ? { count: Number.NaN } : { count }),
-          dryRun,
-          ...(options.runId === undefined ? {} : { runId: options.runId })
-        });
-      } catch (error) {
-        const earlyServer = server as ObserverServer | null;
-        await earlyServer?.close().catch((cleanupError: unknown) => {
-          io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
-        });
-        server = null;
-        throw error;
-      }
+              : {}),
+            open: wantsFollow ? false : shouldOpen,
+            ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
+            repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
+            ...(count === null ? { count: Number.NaN } : { count }),
+            dryRun,
+            ...(options.runId === undefined ? {} : { runId: options.runId }),
+          });
+        } catch (error) {
+          const earlyServer = server as ObserverServer | null;
+          await earlyServer?.close().catch((cleanupError: unknown) => {
+            io.writeErr(
+              `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+            );
+          });
+          server = null;
+          throw error;
+        }
 
-      let output = result;
-      if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
-        liveRefresh = startOssMetaLabLiveRefresh(result);
-        output = withOssMetaLabServer(result, server);
-      } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
-        server = await serveObserver(result.observer, { open: shouldOpen, port });
-        liveRefresh = startOssMetaLabLiveRefresh(result);
-        output = withOssMetaLabServer(result, server);
-      } else {
-        const earlyServer = server as ObserverServer | null;
-        await earlyServer?.close().catch((error: unknown) => {
-          io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
-        });
-        server = null;
-      }
+        let output = result;
+        if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
+          liveRefresh = startOssMetaLabLiveRefresh(result);
+          output = withOssMetaLabServer(result, server);
+        } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
+          server = await serveObserver(result.observer, { open: shouldOpen, port });
+          liveRefresh = startOssMetaLabLiveRefresh(result);
+          output = withOssMetaLabServer(result, server);
+        } else {
+          const earlyServer = server as ObserverServer | null;
+          await earlyServer?.close().catch((error: unknown) => {
+            io.writeErr(
+              `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+            );
+          });
+          server = null;
+        }
 
-      const exitCode = exitCodeForOssMetaLab(output);
-      writeResult(command, io, output, formatOssMetaLabHuman);
-      io.setExitCode(exitCode);
+        const exitCode = exitCodeForOssMetaLab(output);
+        writeResult(command, io, output, formatOssMetaLabHuman);
+        io.setExitCode(exitCode);
 
-      if (shouldForceExitAfterOssMetaLab(output, { detach: options.detach === true, wantsMachine })) {
-        // The E2B SDK keeps local handles open after stream URL creation. Detach should
-        // return the user's shell, and JSON mode should exit after printing the result.
-        setTimeout(() => process.exit(exitCode), 50);
-      }
+        if (
+          shouldForceExitAfterOssMetaLab(output, { detach: options.detach === true, wantsMachine })
+        ) {
+          // The E2B SDK keeps local handles open after stream URL creation. Detach should
+          // return the user's shell, and JSON mode should exit after printing the result.
+          setTimeout(() => process.exit(exitCode), 50);
+        }
 
-      if (server && output.observer?.ok) {
-        await followObserver(io, output.observer, server, output.liveRequested
-          ? {
-	          onStop: async () => {
-	            const cleanup = liveRefresh
-	              ? await liveRefresh.cleanup()
-	              : await cleanupOssMetaLabSandboxes(output);
-	            return [
-	              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-	              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
-                ];
-              }
-            }
-          : {});
-      }
-    });
+        if (server && output.observer?.ok) {
+          await followObserver(
+            io,
+            output.observer,
+            server,
+            output.liveRequested
+              ? {
+                  onStop: async () => {
+                    const cleanup = liveRefresh
+                      ? await liveRefresh.cleanup()
+                      : await cleanupOssMetaLabSandboxes(output);
+                    return [
+                      `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+                      ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`),
+                    ];
+                  },
+                }
+              : {},
+          );
+        }
+      },
+    );
 
   lab
     .command("oss-smoke", { hidden: true })
-    .description("Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.")
+    .description(
+      "Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.",
+    )
     .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
     .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option("--limit <count>", "Number of selected repos to trial.", String(DEFAULT_OSS_REPOS.length))
+    .option(
+      "--limit <count>",
+      "Number of selected repos to trial.",
+      String(DEFAULT_OSS_REPOS.length),
+    )
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
     .option("--keep", "Keep disposable clone sandbox for debugging.")
@@ -2928,20 +3852,25 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "",
         "Safety:",
         "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .humanish/",
-        "  runtime state and are removed by default."
-      ].join("\n")
+        "  runtime state and are removed by default.",
+      ].join("\n"),
     )
-    .action(async (options: {
-      cwd: string;
-      json?: boolean;
-      keep?: boolean;
-      limit: string;
-      repo: string[];
-      repos?: string;
-      runId?: string;
-    }, command) => {
-      await runOssSmokeAction({ command, io, options });
-    });
+    .action(
+      async (
+        options: {
+          cwd: string;
+          json?: boolean;
+          keep?: boolean;
+          limit: string;
+          repo: string[];
+          repos?: string;
+          runId?: string;
+        },
+        command,
+      ) => {
+        await runOssSmokeAction({ command, io, options });
+      },
+    );
 }
 
 async function runOssSmokeAction(args: {
@@ -2962,7 +3891,7 @@ async function runOssSmokeAction(args: {
     limit: limit ?? Number.NaN,
     repos: [...args.options.repo, ...(args.options.repos ? [args.options.repos] : [])],
     ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
   };
   const result = await runOssLab(labOptions);
   writeResult(args.command, args.io, result, formatOssLabHuman);
@@ -2988,8 +3917,7 @@ async function maybeLoadAdapterScorer(args: {
   backend: LabBackend;
   flag: string | undefined;
 }): Promise<
-  | { ok: true; scorer?: LoadedAdapterScorer }
-  | { ok: false; error: NonNullable<RunResult["error"]> }
+  { ok: true; scorer?: LoadedAdapterScorer } | { ok: false; error: NonNullable<RunResult["error"]> }
 > {
   const ref = args.flag ?? args.config.review?.scorer?.ref;
   if (ref === undefined) return { ok: true };
@@ -3004,7 +3932,7 @@ function terminalScorerHooks(scorer: LoadedAdapterScorer): TerminalProductLabHoo
   const { hooks } = scorer;
   return {
     ...(hooks.score ? { score: hooks.score } : {}),
-    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {})
+    ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {}),
   };
 }
 
@@ -3014,7 +3942,7 @@ function browserScorerHooks(scorer: LoadedAdapterScorer): BrowserLabAdapterHooks
   return {
     ...(hooks.score ? { score: hooks.score } : {}),
     ...(hooks.deriveFeedback ? { deriveFeedback: hooks.deriveFeedback } : {}),
-    ...(hooks.deriveArtifacts ? { deriveArtifacts: hooks.deriveArtifacts } : {})
+    ...(hooks.deriveArtifacts ? { deriveArtifacts: hooks.deriveArtifacts } : {}),
   };
 }
 
@@ -3062,8 +3990,8 @@ async function runLabCommand(args: {
       warnings: [],
       error: {
         code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backend}.`
-      }
+        message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backend}.`,
+      },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
@@ -3077,7 +4005,7 @@ async function runLabCommand(args: {
     cwd: args.options.cwd,
     config,
     backend,
-    flag: args.options.scorer
+    flag: args.options.scorer,
   });
   if (!scorerLoad.ok) {
     const result: RunResult = {
@@ -3085,7 +4013,7 @@ async function runLabCommand(args: {
       ok: false,
       cwd: resolve(args.options.cwd),
       warnings: [],
-      error: scorerLoad.error
+      error: scorerLoad.error,
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
@@ -3095,7 +4023,9 @@ async function runLabCommand(args: {
   if (scorer) {
     // Cross-repo guardrail: `humanish lab run` now import()s host JS named in the manifest. Surface it
     // visibly so the invoker (who may not be the manifest author) knows executable code just ran.
-    args.io.writeErr(`warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`);
+    args.io.writeErr(
+      `warning: review scorer ${scorer.provenance.ref} (${scorer.provenance.source}) is executable host code loaded and run in-process — review it as code, not config.\n`,
+    );
   }
 
   const analysisBudget = automaticAnalysisBudget(config.review?.analysis, backend);
@@ -3120,13 +4050,28 @@ async function runLabCommand(args: {
       await runScriptedBackend({ ...args, config, labProvenance: lab });
       return;
     case "terminal":
-      await runTerminalBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
+      await runTerminalBackend({
+        ...args,
+        config,
+        labProvenance: lab,
+        ...(scorer ? { scorer } : {}),
+      });
       return;
     case "shared-world":
-      await runSharedWorldBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
+      await runSharedWorldBackend({
+        ...args,
+        config,
+        labProvenance: lab,
+        ...(scorer ? { scorer } : {}),
+      });
       return;
     case "concurrent-shared-world":
-      await runConcurrentSharedWorldBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
+      await runConcurrentSharedWorldBackend({
+        ...args,
+        config,
+        labProvenance: lab,
+        ...(scorer ? { scorer } : {}),
+      });
       return;
     default:
       // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
@@ -3138,11 +4083,14 @@ function labRerunFlagsRequested(options: LabCommandOptions): boolean {
   return options.rerunFailedFrom !== undefined || options.lanes !== undefined;
 }
 
-function writeUnsupportedRerunFlagsResult(args: {
-  command: Command;
-  io: CliIo;
-  options: LabCommandOptions;
-}, backend: string): void {
+function writeUnsupportedRerunFlagsResult(
+  args: {
+    command: Command;
+    io: CliIo;
+    options: LabCommandOptions;
+  },
+  backend: string,
+): void {
   const result: RunResult = {
     schema: "humanish.run-result.v1",
     ok: false,
@@ -3150,8 +4098,8 @@ function writeUnsupportedRerunFlagsResult(args: {
     warnings: [],
     error: {
       code: "HUMANISH_UNSUPPORTED_RERUN_FLAGS",
-      message: `--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to ${backend}.`
-    }
+      message: `--rerun-failed-from/--lanes apply only to CUA fan-out labs; this lab resolved to ${backend}.`,
+    },
   };
   writeResult(args.command, args.io, result, formatRunHuman);
   args.io.setExitCode(2);
@@ -3175,8 +4123,8 @@ async function runSyntheticBackend(args: {
       warnings: [],
       error: {
         code: "HUMANISH_INVALID_SIM_COUNT",
-        message: "--sims must be a positive integer."
-      }
+        message: "--sims must be a positive integer.",
+      },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
@@ -3188,7 +4136,7 @@ async function runSyntheticBackend(args: {
     ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
     count: simCount,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
   });
   if (outcome.backend !== "synthetic") {
     throw new Error(`Expected synthetic backend, got ${outcome.backend}.`);
@@ -3220,7 +4168,7 @@ async function runSyntheticBackend(args: {
     port: args.options.port ?? "0",
     runInput: runResult.runId,
     ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-    ...(openOverride === undefined ? {} : { open: openOverride })
+    ...(openOverride === undefined ? {} : { open: openOverride }),
   });
 }
 
@@ -3238,7 +4186,9 @@ export function resolveBackendShouldOpen(args: {
 }): boolean {
   if (args.optionOpen === false) return false;
   if (args.wantsMachine) return args.optionOpen === true;
-  return args.optionOpen ?? args.defaultsOpen ?? (process.stdout.isTTY === true && args.mode === "watch");
+  return (
+    args.optionOpen ?? args.defaultsOpen ?? (process.stdout.isTTY === true && args.mode === "watch")
+  );
 }
 
 async function runCuaBackend(args: {
@@ -3255,7 +4205,7 @@ async function runCuaBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
   const laneIds = parseLaneIds(args.options.lanes);
   if (laneIds.length > 0 && !args.options.rerunFailedFrom) {
@@ -3263,7 +4213,10 @@ async function runCuaBackend(args: {
     args.io.setExitCode(2);
     return;
   }
-  const count = parseLabCount(args.options.count ?? args.options.sims, args.config.actors[0]?.count ?? 1);
+  const count = parseLabCount(
+    args.options.count ?? args.options.sims,
+    args.config.actors[0]?.count ?? 1,
+  );
   if (count === null) {
     args.io.writeErr("error: --count/--sims must be a positive integer.\n");
     args.io.setExitCode(2);
@@ -3272,7 +4225,8 @@ async function runCuaBackend(args: {
 
   const dryRun = resolveLabDryRun(args.config, args.options.dryRun, true) ?? true;
   const port = parseObserverPort(args.options.port ?? "0");
-  const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const wantsFollow =
+    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
 
   const failCua = (code: CuaActorLabErrorCode, message: string): void => {
     const result: CuaActorLabResult = {
@@ -3285,7 +4239,7 @@ async function runCuaBackend(args: {
       dryRun,
       runId: args.options.runId ?? "not-created",
       warnings: [],
-      error: { code, message }
+      error: { code, message },
     };
     writeResult(args.command, args.io, result, formatCuaLabHuman);
     args.io.setExitCode(2);
@@ -3301,7 +4255,7 @@ async function runCuaBackend(args: {
   const exposeValidation = validateExposure("watch", exposureRequestFromOptions(args.options), {
     dryRun,
     detach: args.options.detach === true,
-    json: wantsMachine
+    json: wantsMachine,
   });
   if (!exposeValidation.ok) {
     failCua(exposeValidation.error.code as CuaActorLabErrorCode, exposeValidation.error.message);
@@ -3338,7 +4292,7 @@ async function runCuaBackend(args: {
                 server = await serveObserver(observer, {
                   open: shouldOpen && !exposeRequested,
                   port,
-                  exposed: exposeRequested
+                  exposed: exposeRequested,
                 });
               }
               if (exposeRequested) {
@@ -3350,24 +4304,28 @@ async function runCuaBackend(args: {
                 exposeWarnings = exposeResult.warnings;
                 const phoneTarget = exposeResult.publicUrl ?? activeServer.url;
                 exposePublicTarget = phoneTarget;
-                args.io.writeOut(`watch: exposed live desktop at ${phoneTarget} (edge-authed; open it on your phone)\n`);
+                args.io.writeOut(
+                  `watch: exposed live desktop at ${phoneTarget} (edge-authed; open it on your phone)\n`,
+                );
                 for (const warning of exposeResult.warnings) {
                   args.io.writeErr(`warning: ${warning}\n`);
                 }
               }
-            }
+            },
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-      ...(args.scorer ? { cuaHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {}),
+      ...(args.scorer
+        ? { cuaHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance }
+        : {}),
       ...(args.options.rerunFailedFrom === undefined
         ? {}
         : {
             rerun: {
               sourceRunId: args.options.rerunFailedFrom,
-              ...(laneIds.length === 0 ? {} : { laneIds })
-            }
-          })
+              ...(laneIds.length === 0 ? {} : { laneIds }),
+            },
+          }),
     });
   } catch (error) {
     // Tear down the loopback server and any tunnel started inside onObserverReady before rethrowing
@@ -3375,7 +4333,9 @@ async function runCuaBackend(args: {
     // onObserverReady returns, so a tunnel failure here cannot orphan one.
     const earlyServer = server as ObserverServer | null;
     await earlyServer?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
+      args.io.writeErr(
+        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+      );
     });
     server = null;
     if (tunnel) {
@@ -3410,12 +4370,12 @@ async function runCuaBackend(args: {
         ...(exposeRequested
           ? [
               `Exposed live desktop stream URLs to an edge-authenticated remote viewer${tunnel ? ` via ${tunnel.url.replace(/\/$/, "")}` : ""}.`,
-              `this live run's raw, unverified evidence (screenshots, events) is viewable by anyone who clears the edge auth at ${exposePublicTarget ?? activeServer.url}; only the run being watched is served, not your other runs`
+              `this live run's raw, unverified evidence (screenshots, events) is viewable by anyone who clears the edge auth at ${exposePublicTarget ?? activeServer.url}; only the run being watched is served, not your other runs`,
             ]
           : []),
         ...exposeWarnings,
-        ...(activeServer.warning ? [activeServer.warning] : [])
-      ]
+        ...(activeServer.warning ? [activeServer.warning] : []),
+      ],
     };
   }
   writeResult(args.command, args.io, output, formatCuaLabHuman);
@@ -3423,7 +4383,9 @@ async function runCuaBackend(args: {
 
   if (server && (result.observer?.ok || attachedObserver)) {
     const activeServer = server as ObserverServer;
-    const followResult = output.observer?.ok ? output.observer : withObserverServer(attachedObserver!, activeServer);
+    const followResult = output.observer?.ok
+      ? output.observer
+      : withObserverServer(attachedObserver!, activeServer);
     await followObserver(args.io, followResult, activeServer, {
       onStop: async () => {
         if (tunnel) {
@@ -3431,7 +4393,7 @@ async function runCuaBackend(args: {
           return ["closed ngrok tunnel"];
         }
         return [];
-      }
+      },
     });
   } else if (args.mode === "watch" && result.ok && !wantsMachine) {
     // Non-follow / dry-run watch keeps today's fallback: render the finished bundle and follow it.
@@ -3442,7 +4404,7 @@ async function runCuaBackend(args: {
       port: args.options.port ?? "0",
       runInput: result.runId,
       ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
     });
   }
 }
@@ -3462,7 +4424,7 @@ async function runScriptedBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
 
   const outcome = await runLab(args.config, {
@@ -3472,7 +4434,7 @@ async function runScriptedBackend(args: {
     // Watch mode opens the served Observer below instead of the static render.
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
   });
   if (outcome.backend !== "scripted") {
     throw new Error(`Expected scripted backend, got ${outcome.backend}.`);
@@ -3490,7 +4452,7 @@ async function runScriptedBackend(args: {
       port: args.options.port ?? "0",
       runInput: result.runId,
       ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
     });
   }
 }
@@ -3511,7 +4473,7 @@ async function runTerminalBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
 
   const outcome = await runLab(args.config, {
@@ -3521,7 +4483,12 @@ async function runTerminalBackend(args: {
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    ...(args.scorer ? { terminalHooks: terminalScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
+    ...(args.scorer
+      ? {
+          terminalHooks: terminalScorerHooks(args.scorer),
+          scorerProvenance: args.scorer.provenance,
+        }
+      : {}),
   });
   if (outcome.backend !== "terminal") {
     throw new Error(`Expected terminal backend, got ${outcome.backend}.`);
@@ -3538,7 +4505,7 @@ async function runTerminalBackend(args: {
       port: args.options.port ?? "0",
       runInput: result.runId,
       ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
     });
   }
 }
@@ -3557,7 +4524,7 @@ async function runSharedWorldBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
 
   const outcome = await runLab(args.config, {
@@ -3567,7 +4534,12 @@ async function runSharedWorldBackend(args: {
     open: args.mode === "watch" ? false : shouldOpen,
     ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    ...(args.scorer ? { sharedWorldHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
+    ...(args.scorer
+      ? {
+          sharedWorldHooks: browserScorerHooks(args.scorer),
+          scorerProvenance: args.scorer.provenance,
+        }
+      : {}),
   });
   if (outcome.backend !== "shared-world") {
     throw new Error(`Expected shared-world backend, got ${outcome.backend}.`);
@@ -3584,28 +4556,38 @@ async function runSharedWorldBackend(args: {
       port: args.options.port ?? "0",
       runInput: result.runId,
       ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
     });
   }
 }
 
 function formatSharedWorldLabHuman(result: SharedWorldLabResult): string {
-  return [
-    `humanish lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId}`,
-    `lab: ${result.labId}`,
-    `actor: ${result.actor}`,
-    `topology: ${result.topology} (${result.roleCount} role${result.roleCount === 1 ? "" : "s"})`,
-    `sequence: ${result.sequence.join(" -> ") || "(none)"}`,
-    ...(result.subject?.commit ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`] : []),
-    ...result.roles.map((role) =>
-      `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` · ${role.skippedReason}` : ""}`),
-    ...(result.sandbox ? [`sandbox: ${result.sandbox.sandboxId} killed=${result.sandbox.killed ? "yes" : "no"}`] : []),
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId}`,
+      `lab: ${result.labId}`,
+      `actor: ${result.actor}`,
+      `topology: ${result.topology} (${result.roleCount} role${result.roleCount === 1 ? "" : "s"})`,
+      `sequence: ${result.sequence.join(" -> ") || "(none)"}`,
+      ...(result.subject?.commit
+        ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`]
+        : []),
+      ...result.roles.map(
+        (role) =>
+          `role ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""}${role.skippedReason ? ` · ${role.skippedReason}` : ""}`,
+      ),
+      ...(result.sandbox
+        ? [`sandbox: ${result.sandbox.sandboxId} killed=${result.sandbox.killed ? "yes" : "no"}`]
+        : []),
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 async function runConcurrentSharedWorldBackend(args: {
@@ -3623,9 +4605,10 @@ async function runConcurrentSharedWorldBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
-  const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const wantsFollow =
+    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
   const port = parseObserverPort(args.options.port ?? "0");
   if (wantsFollow && port === null) {
     const result: ConcurrentSharedWorldLabResult = {
@@ -3644,8 +4627,8 @@ async function runConcurrentSharedWorldBackend(args: {
       warnings: [],
       error: {
         code: "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED",
-        message: "--port must be an integer between 0 and 65535."
-      }
+        message: "--port must be an integer between 0 and 65535.",
+      },
     };
     writeResult(args.command, args.io, result, formatConcurrentSharedWorldLabHuman);
     args.io.setExitCode(2);
@@ -3669,16 +4652,23 @@ async function runConcurrentSharedWorldBackend(args: {
               if (!server) {
                 server = await serveObserver(observer, { open: shouldOpen, port: port ?? 0 });
               }
-            }
+            },
           }
         : {}),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-      ...(args.scorer ? { sharedWorldHooks: browserScorerHooks(args.scorer), scorerProvenance: args.scorer.provenance } : {})
+      ...(args.scorer
+        ? {
+            sharedWorldHooks: browserScorerHooks(args.scorer),
+            scorerProvenance: args.scorer.provenance,
+          }
+        : {}),
     });
   } catch (error) {
     const earlyServer = server as ObserverServer | null;
     await earlyServer?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
+      args.io.writeErr(
+        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+      );
     });
     server = null;
     throw error;
@@ -3698,8 +4688,8 @@ async function runConcurrentSharedWorldBackend(args: {
       warnings: [
         ...result.warnings,
         "Live concurrent shared-world server is polling observer-data.json with no-store caching.",
-        ...(activeServer.warning ? [activeServer.warning] : [])
-      ]
+        ...(activeServer.warning ? [activeServer.warning] : []),
+      ],
     };
   }
   writeResult(args.command, args.io, output, formatConcurrentSharedWorldLabHuman);
@@ -3715,93 +4705,134 @@ async function runConcurrentSharedWorldBackend(args: {
       port: args.options.port ?? "0",
       runInput: result.runId,
       ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen })
+      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
     });
   }
 }
 
 function formatConcurrentSharedWorldLabHuman(result: ConcurrentSharedWorldLabResult): string {
-  return [
-    `humanish lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId}`,
-    `lab: ${result.labId}`,
-    `actor: ${result.actor}`,
-    `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
-    ...(result.host ? [`host: ${result.host}`] : []),
-    ...(result.subject?.commit ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`] : []),
-    ...(result.overlapProven === undefined ? [] : [`overlap: ${result.overlapProven ? "proven" : "not observed"} (this run only; no scale or adoption claim)`]),
-    ...result.roles.map((role) =>
-      `persona ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""} ${role.ok ? "ok" : "not-ok"}`),
-    ...(result.subjectSandbox ? [`subject sandbox: ${result.subjectSandbox.sandboxId} killed=${result.subjectSandbox.killed ? "yes" : "no"}`] : []),
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab concurrent-shared-world ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId}`,
+      `lab: ${result.labId}`,
+      `actor: ${result.actor}`,
+      `topology: ${result.topology}/${result.topologyMode} (${result.roleCount} persona${result.roleCount === 1 ? "" : "s"}, concurrency ${result.concurrency})`,
+      ...(result.host ? [`host: ${result.host}`] : []),
+      ...(result.subject?.commit
+        ? [`plane: ${result.subject.repo}@${result.subject.commit.slice(0, 12)}`]
+        : []),
+      ...(result.overlapProven === undefined
+        ? []
+        : [
+            `overlap: ${result.overlapProven ? "proven" : "not observed"} (this run only; no scale or adoption claim)`,
+          ]),
+      ...result.roles.map(
+        (role) =>
+          `persona ${role.id} (${role.persona}): ${role.status}${role.session ? ` (${role.session.completionReason})` : ""} ${role.ok ? "ok" : "not-ok"}`,
+      ),
+      ...(result.subjectSandbox
+        ? [
+            `subject sandbox: ${result.subjectSandbox.sandboxId} killed=${result.subjectSandbox.killed ? "yes" : "no"}`,
+          ]
+        : []),
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatTerminalLabHuman(result: TerminalProductLabResult): string {
-  return [
-    `humanish lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId}`,
-    `lab: ${result.labId}`,
-    `actor: ${result.actor}`,
-    `product: ${result.product}`,
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab terminal ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId}`,
+      `lab: ${result.labId}`,
+      `actor: ${result.actor}`,
+      `product: ${result.product}`,
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatScriptedLabHuman(result: ScriptedBrowserLabResult): string {
-  return [
-    `humanish lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId}`,
-    `lab: ${result.labId}`,
-    `actor: ${result.actor}`,
-    `subject: ${result.appUrl}`,
-    ...(result.scenario
-      ? [`scenario: ${result.scenario.id} @ ${result.scenario.sourceDigest.slice(0, 12)} (${result.scenario.source}, ${result.scenario.steps} step${result.scenario.steps === 1 ? "" : "s"})`]
-      : []),
-    ...result.sessions.map((session) =>
-      `session ${session.surface}: ${session.status} (${session.completionReason}) · ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`),
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab scripted ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId}`,
+      `lab: ${result.labId}`,
+      `actor: ${result.actor}`,
+      `subject: ${result.appUrl}`,
+      ...(result.scenario
+        ? [
+            `scenario: ${result.scenario.id} @ ${result.scenario.sourceDigest.slice(0, 12)} (${result.scenario.source}, ${result.scenario.steps} step${result.scenario.steps === 1 ? "" : "s"})`,
+          ]
+        : []),
+      ...result.sessions.map(
+        (session) =>
+          `session ${session.surface}: ${session.status} (${session.completionReason}) · ${session.reason} [${session.screenshots} screenshot${session.screenshots === 1 ? "" : "s"}]`,
+      ),
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 export function formatCuaLabHuman(result: CuaActorLabResult): string {
-  return [
-    `humanish lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId}`,
-    `lab: ${result.labId}`,
-    `actor: ${result.actor}`,
-    `subject: ${result.appUrl}`,
-    ...(result.subject?.source === "clone"
-      ? [`repo: ${result.subject.repo}${result.subject.commit ? `@${result.subject.commit.slice(0, 12)}` : ""}${result.subject.envNames && result.subject.envNames.length > 0 ? ` env=[${result.subject.envNames.join(", ")}]` : ""}`]
-      : []),
-    ...(result.rerun
-      ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
-      : []),
-    ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
-    ...((result.lanes?.length ?? 0) > 1
-      ? result.lanes!.map(lane => `lane ${lane.id}: ${lane.status}${lane.session ? ` (${lane.session.completionReason})` : ""}${lane.diagnostics ? ` · ${formatCuaDiagnostics(lane.diagnostics)}` : ""}${lane.session ? ` · ${lane.session.reason}` : ""}`)
-      : []),
-    ...(result.session && (result.lanes?.length ?? 0) <= 1
-      ? [`session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
-         `screenshots: ${result.session.screenshots}`]
-      : []),
-    ...(result.sandbox
-      ? [`sandbox: ${result.sandbox.sandboxId} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`]
-      : []),
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab cua ${result.ok ? (result.dryRun ? "dry-run" : "live") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId}`,
+      `lab: ${result.labId}`,
+      `actor: ${result.actor}`,
+      `subject: ${result.appUrl}`,
+      ...(result.subject?.source === "clone"
+        ? [
+            `repo: ${result.subject.repo}${result.subject.commit ? `@${result.subject.commit.slice(0, 12)}` : ""}${result.subject.envNames && result.subject.envNames.length > 0 ? ` env=[${result.subject.envNames.join(", ")}]` : ""}`,
+          ]
+        : []),
+      ...(result.rerun
+        ? [`rerun: ${result.rerun.selectedLaneIds.join(", ")} from ${result.rerun.sourceRunId}`]
+        : []),
+      ...(result.diagnostics ? [`diagnostic: ${formatCuaDiagnostics(result.diagnostics)}`] : []),
+      ...((result.lanes?.length ?? 0) > 1
+        ? result.lanes!.map(
+            (lane) =>
+              `lane ${lane.id}: ${lane.status}${lane.session ? ` (${lane.session.completionReason})` : ""}${lane.diagnostics ? ` · ${formatCuaDiagnostics(lane.diagnostics)}` : ""}${lane.session ? ` · ${lane.session.reason}` : ""}`,
+          )
+        : []),
+      ...(result.session && (result.lanes?.length ?? 0) <= 1
+        ? [
+            `session: ${result.session.status} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
+            `screenshots: ${result.session.screenshots}`,
+          ]
+        : []),
+      ...(result.sandbox
+        ? [
+            `sandbox: ${result.sandbox.sandboxId} stream=${result.sandbox.streamUrlPresent ? "connected" : "missing"} killed=${result.sandbox.killed ? "yes" : "no"}`,
+          ]
+        : []),
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 async function runSmokeBackend(args: {
@@ -3812,7 +4843,10 @@ async function runSmokeBackend(args: {
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const fanout = args.config.subject.clone?.fanout ?? args.config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
+  const fanout =
+    args.config.subject.clone?.fanout ??
+    args.config.subject.repos?.length ??
+    DEFAULT_OSS_REPOS.length;
   const limit = parseLabCount(args.options.limit ?? args.options.sims, fanout);
   if (limit === null) {
     const result: OssLabResult = {
@@ -3823,13 +4857,13 @@ async function runSmokeBackend(args: {
       cwd: args.options.cwd,
       error: {
         code: "HUMANISH_INVALID_OSS_LIMIT",
-        message: "--limit must be a positive integer."
+        message: "--limit must be a positive integer.",
       },
       repos: [],
       runId: args.options.runId ?? "not-created",
       sandboxPath: ".humanish/tmp/oss-lab/not-created",
       startedAt: new Date().toISOString(),
-      warnings: []
+      warnings: [],
     };
     writeResult(args.command, args.io, result, formatOssLabHuman);
     args.io.setExitCode(2);
@@ -3843,7 +4877,7 @@ async function runSmokeBackend(args: {
     count: limit,
     ...(repos === undefined ? {} : { repos }),
     ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
   });
   if (outcome.backend !== "smoke") {
     throw new Error(`Expected smoke backend, got ${outcome.backend}.`);
@@ -3861,7 +4895,10 @@ async function runMetaBackend(args: {
   mode: "run" | "watch";
   options: LabCommandOptions;
 }): Promise<void> {
-  const metaCountDefault = args.config.subject.clone?.fanout ?? args.config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
+  const metaCountDefault =
+    args.config.subject.clone?.fanout ??
+    args.config.subject.repos?.length ??
+    DEFAULT_OSS_REPOS.length;
   const count = parseLabCount(args.options.count ?? args.options.sims, metaCountDefault);
   const repos = labReposOverride(args.options);
   const port = parseObserverPort(args.options.port ?? "0");
@@ -3874,12 +4911,12 @@ async function runMetaBackend(args: {
       dryRun: args.options.dryRun === true,
       error: {
         code: "HUMANISH_META_RUN_FAILED",
-        message: "--port must be an integer between 0 and 65535."
+        message: "--port must be an integer between 0 and 65535.",
       },
       liveRequested: args.options.dryRun !== true,
       repos: repos ?? args.config.subject.repos ?? [],
       sandboxes: [],
-      warnings: []
+      warnings: [],
     };
     writeResult(args.command, args.io, result, formatOssMetaLabHuman);
     args.io.setExitCode(2);
@@ -3892,11 +4929,14 @@ async function runMetaBackend(args: {
     optionOpen: args.options.open,
     defaultsOpen: args.config.defaults?.open,
     mode: args.mode,
-    wantsMachine
+    wantsMachine,
   });
-  const wantsFollow = args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
-  const codexAppServer = args.options.codexAppServer ?? args.config.execution?.desktop?.codexAppServer;
-  const repoOverrideRequested = (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
+  const wantsFollow =
+    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
+  const codexAppServer =
+    args.options.codexAppServer ?? args.config.execution?.desktop?.codexAppServer;
+  const repoOverrideRequested =
+    (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
   const defaultRedactRepos = repoOverrideRequested ? true : args.config.policies?.redactRepos;
   const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
   let server: ObserverServer | null = null;
@@ -3915,7 +4955,7 @@ async function runMetaBackend(args: {
               if (!server) {
                 server = await serveObserver(observer, { open: shouldOpen, port });
               }
-            }
+            },
           }
         : {}),
       open: wantsFollow ? false : shouldOpen,
@@ -3923,7 +4963,7 @@ async function runMetaBackend(args: {
       ...(redactRepoNames === undefined ? {} : { redactRepos: redactRepoNames }),
       ...(repos === undefined ? {} : { repos }),
       count: count === null ? Number.NaN : count,
-      ...(args.options.runId === undefined ? {} : { runId: args.options.runId })
+      ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
     });
     if (outcome.backend !== "meta") {
       throw new Error(`Expected meta backend, got ${outcome.backend}.`);
@@ -3932,7 +4972,9 @@ async function runMetaBackend(args: {
   } catch (error) {
     const earlyServer = server as ObserverServer | null;
     await earlyServer?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(`watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`);
+      args.io.writeErr(
+        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+      );
     });
     server = null;
     throw error;
@@ -3949,7 +4991,9 @@ async function runMetaBackend(args: {
   } else {
     const earlyServer = server as ObserverServer | null;
     await earlyServer?.close().catch((error: unknown) => {
-      args.io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+      args.io.writeErr(
+        `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
     });
     server = null;
   }
@@ -3958,24 +5002,31 @@ async function runMetaBackend(args: {
   writeResult(args.command, args.io, output, formatOssMetaLabHuman);
   args.io.setExitCode(exitCode);
 
-  if (shouldForceExitAfterOssMetaLab(output, { detach: args.options.detach === true, wantsMachine })) {
+  if (
+    shouldForceExitAfterOssMetaLab(output, { detach: args.options.detach === true, wantsMachine })
+  ) {
     setTimeout(() => process.exit(exitCode), 50);
   }
 
   if (server && output.observer?.ok) {
-    await followObserver(args.io, output.observer, server, output.liveRequested
-	      ? {
-	          onStop: async () => {
-	            const cleanup = liveRefresh
-	              ? await liveRefresh.cleanup()
-	              : await cleanupOssMetaLabSandboxes(output);
-	            return [
-	              `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-	              ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`)
-            ];
+    await followObserver(
+      args.io,
+      output.observer,
+      server,
+      output.liveRequested
+        ? {
+            onStop: async () => {
+              const cleanup = liveRefresh
+                ? await liveRefresh.cleanup()
+                : await cleanupOssMetaLabSandboxes(output);
+              return [
+                `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
+                ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`),
+              ];
+            },
           }
-        }
-      : {});
+        : {},
+    );
   }
 }
 
@@ -3997,8 +5048,8 @@ async function renderAndMaybeFollowObserver(args: {
       warnings: [],
       error: {
         code: "HUMANISH_INVALID_PORT",
-        message: "--port must be an integer between 0 and 65535."
-      }
+        message: "--port must be an integer between 0 and 65535.",
+      },
     };
     writeResult(args.command, args.io, result, formatRunHuman);
     args.io.setExitCode(2);
@@ -4006,9 +5057,16 @@ async function renderAndMaybeFollowObserver(args: {
   }
 
   const wantsMachine = wantsJson(args.command);
-  const shouldOpen = args.open === false ? false : args.open === true ? true : !wantsMachine && process.stdout.isTTY === true;
+  const shouldOpen =
+    args.open === false
+      ? false
+      : args.open === true
+        ? true
+        : !wantsMachine && process.stdout.isTTY === true;
   const wantsFollow = !wantsMachine && args.detach !== true;
-  const rendered = await renderObserver(args.cwd, args.runInput, { open: wantsFollow ? false : shouldOpen });
+  const rendered = await renderObserver(args.cwd, args.runInput, {
+    open: wantsFollow ? false : shouldOpen,
+  });
   let server: ObserverServer | null = null;
   let result = rendered;
   if (rendered.ok && wantsFollow) {
@@ -4051,9 +5109,9 @@ async function applyEnvFileOption(args: {
     const discovered = await keyDiscoveryFn({
       cwd: args.cwd,
       env,
-      announce: (line) => args.io.writeErr(`${line}\n`)
+      announce: (line) => args.io.writeErr(`${line}\n`),
     });
-    args.onDiscovered?.(discovered.map(fill => fill.name));
+    args.onDiscovered?.(discovered.map((fill) => fill.name));
   } catch {
     // Discovery must never break a command; a rung that fails to read is a miss, not an error.
   }
@@ -4061,10 +5119,7 @@ async function applyEnvFileOption(args: {
 }
 
 function labReposOverride(options: LabCommandOptions): string[] | undefined {
-  const override = [
-    ...(options.repo ?? []),
-    ...(options.repos ? [options.repos] : [])
-  ];
+  const override = [...(options.repo ?? []), ...(options.repos ? [options.repos] : [])];
   return override.length > 0 ? override : undefined;
 }
 
@@ -4097,12 +5152,15 @@ function withObserverServer(rendered: ObserverResult, server: ObserverServer): O
     warnings: [
       ...rendered.warnings,
       "Live observer server is polling observer-data.json with no-store caching.",
-      ...(server.warning ? [server.warning] : [])
-    ]
+      ...(server.warning ? [server.warning] : []),
+    ],
   };
 }
 
-function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverResult & { ok: true } }, server: ObserverServer): OssMetaLabResult {
+function withOssMetaLabServer(
+  result: OssMetaLabResult & { observer: ObserverResult & { ok: true } },
+  server: ObserverServer,
+): OssMetaLabResult {
   return {
     ...result,
     observer: {
@@ -4114,14 +5172,14 @@ function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverRes
       warnings: [
         ...result.observer.warnings,
         "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
-        ...(server.warning ? [server.warning] : [])
-      ]
+        ...(server.warning ? [server.warning] : []),
+      ],
     },
     warnings: [
       ...result.warnings,
       "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
-      ...(server.warning ? [server.warning] : [])
-    ]
+      ...(server.warning ? [server.warning] : []),
+    ],
   };
 }
 
@@ -4129,7 +5187,12 @@ function withOssMetaLabServer(result: OssMetaLabResult & { observer: ObserverRes
 // post-write guard (invocationEnvelopeAlreadyWritten above) through the same
 // funnel every real command uses, without duplicating its stdout-vs-formatHuman
 // branching. Not re-exported from src/index.ts; this stays an internal seam.
-export function writeResult<T>(command: Command, io: CliIo, result: T, formatHuman: (result: T) => string): void {
+export function writeResult<T>(
+  command: Command,
+  io: CliIo,
+  result: T,
+  formatHuman: (result: T) => string,
+): void {
   const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
     io.writeOut(`${JSON.stringify(output, null, 2)}\n`);
@@ -4137,7 +5200,10 @@ export function writeResult<T>(command: Command, io: CliIo, result: T, formatHum
     io.writeOut(formatHuman(output));
     if (output !== null && typeof output === "object" && "automaticAnalysis" in output) {
       const analysis = (output as AutomaticAnalysisResult).automaticAnalysis;
-      if (analysis) io.writeOut(`analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`);
+      if (analysis)
+        io.writeOut(
+          `analysis: ${analysis.state}${analysis.reason ? ` (${analysis.reason})` : ""}\n`,
+        );
     }
   }
   markInvocationEnvelopeWritten(command);
@@ -4159,14 +5225,19 @@ export function studyFactsFor(command: Command): TelemetryProperties {
 }
 
 function formatDoctorHuman(result: DoctorResult): string {
-  return [
-    `humanish doctor ${result.ok ? "ok" : "needs setup"}`,
-    `cwd: ${result.cwd}`,
-    // "missing" is a VERDICT, and a row that never ran has none. A participant reading doctor on a
-    // fresh desktop got `- missing package.json: package.json is present and safe to read`, which
-    // contradicts itself in eleven words (labs/tui-self-study.yaml).
-    ...result.checks.map((check) => `- ${check.ok ? "ok" : check.checked === false ? "not checked" : "missing"} ${check.name}: ${check.message}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish doctor ${result.ok ? "ok" : "needs setup"}`,
+      `cwd: ${result.cwd}`,
+      // "missing" is a VERDICT, and a row that never ran has none. A participant reading doctor on a
+      // fresh desktop got `- missing package.json: package.json is present and safe to read`, which
+      // contradicts itself in eleven words (labs/tui-self-study.yaml).
+      ...result.checks.map(
+        (check) =>
+          `- ${check.ok ? "ok" : check.checked === false ? "not checked" : "missing"} ${check.name}: ${check.message}`,
+      ),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatRunHuman(result: RunResult): string {
@@ -4174,25 +5245,33 @@ function formatRunHuman(result: RunResult): string {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
-  return [
-    `humanish run ${result.mode}`,
-    `run: ${result.runId}`,
-    ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
-    `bundle: ${result.bundlePath}`,
-    `review: ${result.reviewPath}`,
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish run ${result.mode}`,
+      `run: ${result.runId}`,
+      ...(result.simCount === undefined ? [] : [`sims: ${result.simCount}`]),
+      `bundle: ${result.bundlePath}`,
+      `review: ${result.reviewPath}`,
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatVerifyHuman(result: VerifyResult): string {
-  return [
-    `humanish verify ${result.ok ? "passed" : "failed"}`,
-    `run: ${result.run}`,
-    `share-safety: ${result.shareSafety.status}`,
-    ...result.shareSafety.reasons.map((reason) => `share-safety reason: ${reason.code}: ${reason.message}`),
-    ...result.checks.map((check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish verify ${result.ok ? "passed" : "failed"}`,
+      `run: ${result.run}`,
+      `share-safety: ${result.shareSafety.status}`,
+      ...result.shareSafety.reasons.map(
+        (reason) => `share-safety reason: ${reason.code}: ${reason.message}`,
+      ),
+      ...result.checks.map(
+        (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
+      ),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatCleanupHuman(result: CleanupResult): string {
@@ -4200,13 +5279,15 @@ function formatCleanupHuman(result: CleanupResult): string {
     return `${result.error.code}: ${result.error.message}\n`;
   }
 
-  return [
-    `humanish cleanup ${result.ok ? "passed" : "failed"}`,
-    `run: ${result.runId ?? result.run}`,
-    `resources: killed ${result.summary.killed}, already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
-    ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish cleanup ${result.ok ? "passed" : "failed"}`,
+      `run: ${result.runId ?? result.run}`,
+      `resources: killed ${result.summary.killed}, already-clean ${result.summary.alreadyClean}, skipped ${result.summary.skipped}, failed ${result.summary.failed}`,
+      ...(result.cleanupPath ? [`cleanup: ${result.cleanupPath}`] : []),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatRunsHuman(result: RunsResult): string {
@@ -4218,10 +5299,15 @@ function formatRunsHuman(result: RunsResult): string {
     return `No Humanish runs found in ${result.cwd}\n`;
   }
 
-  return [
-    `latest: ${result.latest ?? "none"}`,
-    ...result.runs.map((run) => `- ${run.runId} ${run.mode ?? "unknown"} ${run.createdAt ?? "unknown"} ${run.path}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `latest: ${result.latest ?? "none"}`,
+      ...result.runs.map(
+        (run) =>
+          `- ${run.runId} ${run.mode ?? "unknown"} ${run.createdAt ?? "unknown"} ${run.path}`,
+      ),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatObserverHuman(result: ObserverResult): string {
@@ -4229,15 +5315,17 @@ function formatObserverHuman(result: ObserverResult): string {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
-  return [
-    "humanish observer rendered",
-    `run: ${result.run}`,
-    `observer: ${result.observerPath}`,
-    ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
-    ...(result.opened === undefined ? [] : [`opened: ${result.opened ? "yes" : "no"}`]),
-    `bundle: ${result.bundlePath}`,
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      "humanish observer rendered",
+      `run: ${result.run}`,
+      `observer: ${result.observerPath}`,
+      ...(result.observerUrl ? [`url: ${result.observerUrl}`] : []),
+      ...(result.opened === undefined ? [] : [`opened: ${result.opened ? "yes" : "no"}`]),
+      `bundle: ${result.bundlePath}`,
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string {
@@ -4245,13 +5333,15 @@ function formatCodexAppServerUiHuman(result: CodexAppServerUiCliResult): string 
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
-  return [
-    "humanish codex app-server",
-    `url: ${result.url ?? "not-started"}`,
-    `status: ${result.status ?? "unknown"}`,
-    `state: ${result.stateFile ?? "none"}`,
-    `reason: ${result.reason}`
-  ].join("\n") + "\n";
+  return (
+    [
+      "humanish codex app-server",
+      `url: ${result.url ?? "not-started"}`,
+      `status: ${result.status ?? "unknown"}`,
+      `state: ${result.stateFile ?? "none"}`,
+      `reason: ${result.reason}`,
+    ].join("\n") + "\n"
+  );
 }
 
 function formatEnvFileHuman(result: EnvFileLoadResult): string {
@@ -4259,28 +5349,37 @@ function formatEnvFileHuman(result: EnvFileLoadResult): string {
     return `${result.error?.code}: ${result.error?.message}\n`;
   }
 
-  return [
-    "humanish env-file loaded",
-    `env-file: ${result.envFile}`,
-    `loaded: ${result.loaded.length ? result.loaded.join(", ") : "none"}`,
-    `skipped-existing: ${result.skipped.length ? result.skipped.join(", ") : "none"}`
-  ].join("\n") + "\n";
+  return (
+    [
+      "humanish env-file loaded",
+      `env-file: ${result.envFile}`,
+      `loaded: ${result.loaded.length ? result.loaded.join(", ") : "none"}`,
+      `skipped-existing: ${result.skipped.length ? result.skipped.join(", ") : "none"}`,
+    ].join("\n") + "\n"
+  );
 }
 
 function formatLabListHuman(result: LabListResult): string {
   if (result.labs.length === 0) {
-    return [
-      `No Humanish labs found in ${result.cwd}`,
-      "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
-      ...result.warnings.map((warning) => `warning: ${warning}`)
-    ].join("\n") + "\n";
+    return (
+      [
+        `No Humanish labs found in ${result.cwd}`,
+        "Create one under humanish/labs/*.yaml, .humanish/labs/*.yaml, or pass a .yaml path.",
+        ...result.warnings.map((warning) => `warning: ${warning}`),
+      ].join("\n") + "\n"
+    );
   }
 
-  return [
-    "humanish labs",
-    ...result.labs.map((lab) => `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      "humanish labs",
+      ...result.labs.map(
+        (lab) =>
+          `- ${lab.id} ${lab.source} ${lab.origin} ${lab.path}${lab.title ? ` (${lab.title})` : ""}`,
+      ),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatLabInspectHuman(result: LabInspectResult): string {
@@ -4289,49 +5388,60 @@ function formatLabInspectHuman(result: LabInspectResult): string {
   }
 
   const config = result.config;
-  return [
-    "humanish lab",
-    `id: ${config.id}`,
-    `subject: ${config.subject.source}`,
-    ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
-    `actors: ${config.actors.map((actor) => actor.type).join(", ")}`,
-    ...(config.title ? [`title: ${config.title}`] : []),
-    ...(config.description ? [`description: ${config.description}`] : []),
-    ...(result.path ? [`path: ${result.path}`] : []),
-    ...(result.origin ? [`origin: ${result.origin}`] : []),
-    ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
-    ...(result.personas ?? []).map(persona => `persona ${persona.id}: ${persona.brief ? `authored context (before runtime additions)\n${persona.brief.text}` : "unresolved; id only"}`),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      "humanish lab",
+      `id: ${config.id}`,
+      `subject: ${config.subject.source}`,
+      ...(config.execution?.target ? [`execution: ${config.execution.target}`] : []),
+      `actors: ${config.actors.map((actor) => actor.type).join(", ")}`,
+      ...(config.title ? [`title: ${config.title}`] : []),
+      ...(config.description ? [`description: ${config.description}`] : []),
+      ...(result.path ? [`path: ${result.path}`] : []),
+      ...(result.origin ? [`origin: ${result.origin}`] : []),
+      ...(config.subject.repos?.length ? [`repos: ${config.subject.repos.join(", ")}`] : []),
+      ...(result.personas ?? []).map(
+        (persona) =>
+          `persona ${persona.id}: ${persona.brief ? `authored context (before runtime additions)\n${persona.brief.text}` : "unresolved; id only"}`,
+      ),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatLabPreflightHuman(result: LabPreflightResult): string {
   const checkedTargets = result.targets.filter((target) => target.checked);
   const reachableTargets = checkedTargets.filter((target) => target.reachable === true);
   const blockedTargets = result.targets.filter((target) => target.status === "blocked");
-  return [
-    `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
-    `lab: ${result.labId ?? result.lab}`,
-    ...(result.backend ? [`backend: ${result.backend}`] : []),
-    `reachability: ${result.reachability}`,
-    `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
-    ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
-    `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
-    ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
-    ...(result.sandbox.created
-      ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
-      : []),
-    ...result.checks.map((check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`),
-    ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab preflight ${result.ok ? "passed" : "failed"}`,
+      `lab: ${result.labId ?? result.lab}`,
+      ...(result.backend ? [`backend: ${result.backend}`] : []),
+      `reachability: ${result.reachability}`,
+      `targets: ${checkedTargets.length ? `${reachableTargets.length}/${checkedTargets.length} reachable` : `${result.targets.length} declared, not checked`}`,
+      ...(blockedTargets.length ? [`blocked-targets: ${blockedTargets.length}`] : []),
+      `spend: ${result.spend.e2bDesktop ? "one e2b desktop, no model calls" : "none"}`,
+      ...(result.analysis ? [formatAutomaticAnalysisBudget(result.analysis)] : []),
+      ...(result.sandbox.created
+        ? [`sandbox: created=yes killed=${result.sandbox.killed === true ? "yes" : "no"}`]
+        : []),
+      ...result.checks.map(
+        (check) => `- ${check.ok ? "ok" : "fail"} ${check.name}: ${check.message}`,
+      ),
+      ...(result.error ? [`error: ${result.error.code}: ${result.error.message}`] : []),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatLabResolveFailureHuman(result: LabResolveFailure): string {
-  return [
-    `${result.error.code}: ${result.error.message}`,
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `${result.error.code}: ${result.error.message}`,
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 async function readCodexAppServerPrompt(options: {
@@ -4353,14 +5463,14 @@ async function readCodexAppServerPrompt(options: {
 function codexAppServerUiError(
   cwd: string,
   code: NonNullable<CodexAppServerUiCliResult["error"]>["code"],
-  message: string
+  message: string,
 ): CodexAppServerUiCliResult {
   return {
     schema: "humanish.codex-app-server-ui-result.v1",
     ok: false,
     cwd: resolve(cwd),
     reason: message,
-    error: { code, message }
+    error: { code, message },
   };
 }
 
@@ -4372,7 +5482,7 @@ function codexAppServerUiResultFromState(state: CodexAppServerUiState): CodexApp
     reason: state.reason,
     stateFile: state.stateFile,
     status: state.status,
-    ...(state.url === undefined ? {} : { url: state.url })
+    ...(state.url === undefined ? {} : { url: state.url }),
   };
 }
 
@@ -4418,7 +5528,7 @@ export async function followObserver(
     onStop?: () => Promise<string[]>;
     signalTarget?: WatchSignalTarget;
     signals?: WatchStopSignal[];
-  } = {}
+  } = {},
 ): Promise<void> {
   io.writeOut(`watching: ${result.serverUrl ?? result.observerUrl ?? result.observerPath}\n`);
   io.writeOut("watching: press Ctrl-C to stop\n");
@@ -4443,7 +5553,9 @@ export async function followObserver(
         try {
           await server.close();
         } catch (error: unknown) {
-          io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+          io.writeErr(
+            `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+          );
         }
 
         if (options.onStop) {
@@ -4453,7 +5565,9 @@ export async function followObserver(
               io.writeOut(`watch cleanup: ${message}\n`);
             }
           } catch (error: unknown) {
-            io.writeErr(`watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`);
+            io.writeErr(
+              `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
+            );
           }
         }
 
@@ -4482,10 +5596,16 @@ function exitCodeForSignal(signal: WatchStopSignal): number {
 }
 
 /** `--candidate` as the module option, absent when not given (exactOptionalPropertyTypes). */
-function candidateOption(options: { candidate?: string; analysis?: string; finding?: string }): { candidate?: string; analysis?: string; finding?: string } {
-  return { ...(options.candidate === undefined ? {} : { candidate: options.candidate }),
+function candidateOption(options: { candidate?: string; analysis?: string; finding?: string }): {
+  candidate?: string;
+  analysis?: string;
+  finding?: string;
+} {
+  return {
+    ...(options.candidate === undefined ? {} : { candidate: options.candidate }),
     ...(options.analysis === undefined ? {} : { analysis: options.analysis }),
-    ...(options.finding === undefined ? {} : { finding: options.finding }) };
+    ...(options.finding === undefined ? {} : { finding: options.finding }),
+  };
 }
 
 function formatFeedbackHuman(result: FeedbackResult): string {
@@ -4495,25 +5615,35 @@ function formatFeedbackHuman(result: FeedbackResult): string {
 
   const candidates = result.candidates ?? [];
   const noCandidates = result.candidates !== undefined && candidates.length === 0;
-  return [
-    noCandidates && result.draft === undefined ? "humanish feedback: no recorded candidates" : "humanish feedback ready",
-    `run: ${result.run}`,
-    ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
-    ...(result.issuePath ? [`issue: ${result.issuePath}`] : []),
-    ...(result.draft?.source_candidate_id ? [`candidate: ${result.draft.source_candidate_id}`] : []),
-    ...(noCandidates ? [
-      "candidates: none recorded",
-      "With no candidates, feedback draft and feedback issue can generate a run-summary follow-up after share_ready verification.",
-      ...(result.draft ? [`summary: ${result.draft.summary}`] : [])
-    ] : []),
-    // Every finding the run produced, so the second and third are one flag away (#609).
-    ...(candidates.length > 1 || (candidates.length === 1 && result.draft === undefined)
-      ? [
-          `candidates (${candidates.length}; choose one with --candidate <id>):`,
-          ...candidates.map((item) => `- ${item.id} [${item.failure_owner}] ${item.persona_id}: ${item.summary}`)
-        ]
-      : [])
-  ].join("\n") + "\n";
+  return (
+    [
+      noCandidates && result.draft === undefined
+        ? "humanish feedback: no recorded candidates"
+        : "humanish feedback ready",
+      `run: ${result.run}`,
+      ...(result.draftPath ? [`draft: ${result.draftPath}`] : []),
+      ...(result.issuePath ? [`issue: ${result.issuePath}`] : []),
+      ...(result.draft?.source_candidate_id
+        ? [`candidate: ${result.draft.source_candidate_id}`]
+        : []),
+      ...(noCandidates
+        ? [
+            "candidates: none recorded",
+            "With no candidates, feedback draft and feedback issue can generate a run-summary follow-up after share_ready verification.",
+            ...(result.draft ? [`summary: ${result.draft.summary}`] : []),
+          ]
+        : []),
+      // Every finding the run produced, so the second and third are one flag away (#609).
+      ...(candidates.length > 1 || (candidates.length === 1 && result.draft === undefined)
+        ? [
+            `candidates (${candidates.length}; choose one with --candidate <id>):`,
+            ...candidates.map(
+              (item) => `- ${item.id} [${item.failure_owner}] ${item.persona_id}: ${item.summary}`,
+            ),
+          ]
+        : []),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatOssLabHuman(result: OssLabResult): string {
@@ -4521,40 +5651,53 @@ function formatOssLabHuman(result: OssLabResult): string {
     return `${result.error.code}: ${result.error.message}\n`;
   }
 
-  return [
-    `humanish lab oss-smoke ${result.ok ? "passed" : "failed"}`,
-    `run: ${result.runId}`,
-    ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
-    `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
-    ...result.repos.map((repo) => {
-      const passed = repo.steps.filter((step) => step.ok).length;
-      return `- ${repo.ok ? "ok" : "fail"} ${repo.repo}: ${passed}/${repo.steps.length} steps, ${repo.changedFiles.length} changed files in disposable clone`;
-    }),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab oss-smoke ${result.ok ? "passed" : "failed"}`,
+      `run: ${result.runId}`,
+      ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
+      `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
+      ...result.repos.map((repo) => {
+        const passed = repo.steps.filter((step) => step.ok).length;
+        return `- ${repo.ok ? "ok" : "fail"} ${repo.repo}: ${passed}/${repo.steps.length} steps, ${repo.changedFiles.length} changed files in disposable clone`;
+      }),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatOssMetaLabHuman(result: OssMetaLabResult): string {
-  return [
-    `humanish lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
-    ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-    `run: ${result.runId ?? "not-created"}`,
-    `repos: ${result.repos.join(", ")}`,
-    ...(result.count === undefined ? [] : [`desktops: ${result.count}`]),
-    ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-    ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
-    ...(result.observer?.opened === undefined ? [] : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-    ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
-    ...result.assignments.map((assignment) => `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Humanish Observer`),
-    ...result.sandboxes.map((sandbox) => {
-      const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
-      const bootstrapLabel = sandbox.bootstrapStatus ? ` bootstrap=${sandbox.bootstrapStatus}` : "";
-      const completionLabel = sandbox.completionStatus ? ` completion=${sandbox.completionStatus}` : "";
-      const screenshotLabel = sandbox.screenshotPresent ? " screenshot=yes" : "";
-      return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${completionLabel}${screenshotLabel}${sandboxLabel}`;
-    }),
-    ...result.warnings.map((warning) => `warning: ${warning}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
+      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
+      `run: ${result.runId ?? "not-created"}`,
+      `repos: ${result.repos.join(", ")}`,
+      ...(result.count === undefined ? [] : [`desktops: ${result.count}`]),
+      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
+      ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
+      ...(result.observer?.opened === undefined
+        ? []
+        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
+      ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
+      ...result.assignments.map(
+        (assignment) =>
+          `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Humanish Observer`,
+      ),
+      ...result.sandboxes.map((sandbox) => {
+        const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
+        const bootstrapLabel = sandbox.bootstrapStatus
+          ? ` bootstrap=${sandbox.bootstrapStatus}`
+          : "";
+        const completionLabel = sandbox.completionStatus
+          ? ` completion=${sandbox.completionStatus}`
+          : "";
+        const screenshotLabel = sandbox.screenshotPresent ? " screenshot=yes" : "";
+        return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${completionLabel}${screenshotLabel}${sandboxLabel}`;
+      }),
+      ...result.warnings.map((warning) => `warning: ${warning}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function formatOssMetaLabCleanupHuman(result: {
@@ -4569,14 +5712,16 @@ function formatOssMetaLabCleanupHuman(result: {
   ok: boolean;
   schema: string;
 }): string {
-  return [
-    `humanish lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
-    ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
-    `killed: ${result.cleanup.killed}`,
-    `skipped: ${result.cleanup.skipped}`,
-    ...(result.cleanup.remaining === undefined ? [] : [`remaining: ${result.cleanup.remaining}`]),
-    ...result.cleanup.errors.map((error) => `error: ${error}`)
-  ].join("\n") + "\n";
+  return (
+    [
+      `humanish lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
+      ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
+      `killed: ${result.cleanup.killed}`,
+      `skipped: ${result.cleanup.skipped}`,
+      ...(result.cleanup.remaining === undefined ? [] : [`remaining: ${result.cleanup.remaining}`]),
+      ...result.cleanup.errors.map((error) => `error: ${error}`),
+    ].join("\n") + "\n"
+  );
 }
 
 function collectRepeated(value: string, previous: string[]): string[] {
@@ -4595,13 +5740,15 @@ function watchExposeRequested(o: {
   allowDomain?: string[] | undefined;
   publicUrl?: string | undefined;
 }): boolean {
-  return o.expose === true
-    || o.tunnel !== undefined
-    || o.tunnelDomain !== undefined
-    || o.oauth !== undefined
-    || (o.allowEmail?.length ?? 0) > 0
-    || (o.allowDomain?.length ?? 0) > 0
-    || o.publicUrl !== undefined;
+  return (
+    o.expose === true ||
+    o.tunnel !== undefined ||
+    o.tunnelDomain !== undefined ||
+    o.oauth !== undefined ||
+    (o.allowEmail?.length ?? 0) > 0 ||
+    (o.allowDomain?.length ?? 0) > 0 ||
+    o.publicUrl !== undefined
+  );
 }
 
 // Map LabCommandOptions onto the shared exposure validator input.
@@ -4614,14 +5761,12 @@ function exposureRequestFromOptions(options: LabCommandOptions): ExposureRequest
     allowEmails: options.allowEmail ?? [],
     allowDomains: options.allowDomain ?? [],
     ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-    safe: options.safe === true
+    safe: options.safe === true,
   };
 }
 
 function formatInitHuman(result: InitResult): string {
-  const title = result.ok
-    ? `humanish init ${result.mode}`
-    : `humanish init ${result.mode} blocked`;
+  const title = result.ok ? `humanish init ${result.mode}` : `humanish init ${result.mode} blocked`;
   const lines = [title, `cwd: ${result.cwd}`];
   if (result.ok && result.mode === "applied") {
     // A successful setup should leave its next action on the first terminal screen.
@@ -4631,10 +5776,16 @@ function formatInitHuman(result: InitResult): string {
       counts.set(change.action, (counts.get(change.action) ?? 0) + 1);
     }
     const labels: Record<InitChange["action"], string> = {
-      create: "created", mkdir: "directories prepared", update: "updated", skip: "preserved"
+      create: "created",
+      mkdir: "directories prepared",
+      update: "updated",
+      skip: "preserved",
     };
-    lines.push("", `changes: ${[...counts].map(([action, count]) => `${count} ${labels[action]}`).join(", ")}`,
-      "Use humanish init --dry-run --json to inspect all files.");
+    lines.push(
+      "",
+      `changes: ${[...counts].map(([action, count]) => `${count} ${labels[action]}`).join(", ")}`,
+      "Use humanish init --dry-run --json to inspect all files.",
+    );
   } else {
     lines.push("", "changes:", ...result.changes.map(formatInitChange));
   }
@@ -4664,19 +5815,20 @@ function formatInitChange(change: InitChange): string {
 
 export function shouldForceExitAfterOssMetaLab(
   output: OssMetaLabResult,
-  options: { detach: boolean; wantsMachine: boolean }
+  options: { detach: boolean; wantsMachine: boolean },
 ): boolean {
-  return output.liveRequested === true
-    && (options.detach || options.wantsMachine)
-    && output.sandboxes.some((sandbox) => sandbox.urlPresent);
+  return (
+    output.liveRequested === true &&
+    (options.detach || options.wantsMachine) &&
+    output.sandboxes.some((sandbox) => sandbox.urlPresent)
+  );
 }
 
 export function shouldServeOssMetaLabObserver(
   output: OssMetaLabResult,
-  options: { wantsFollow: boolean }
+  options: { wantsFollow: boolean },
 ): output is OssMetaLabResult & { observer: ObserverResult & { ok: true } } {
-  return options.wantsFollow
-    && output.observer?.ok === true;
+  return options.wantsFollow && output.observer?.ok === true;
 }
 
 export function exitCodeForOssMetaLab(output: OssMetaLabResult): number {
@@ -4703,18 +5855,28 @@ export function cliAutomaticAnalysisHooks(io: Pick<CliIo, "writeErr">): Automati
   return {
     deps: { signal: controller.signal },
     onStart: () => {
-      const cancel = (): void => { controller.abort(); };
+      const cancel = (): void => {
+        controller.abort();
+      };
       const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
       io.writeErr("Participants finished; preparing analysis…\n");
       for (const signal of signals) process.on(signal, cancel);
-      return () => { for (const signal of signals) process.off(signal, cancel); };
-    }
+      return () => {
+        for (const signal of signals) process.off(signal, cancel);
+      };
+    },
   };
 }
 
 /** Preserve the run's own result while making requested post-processing failures machine-visible. */
 export function automaticAnalysisEnvelope<T>(result: T): T {
-  if (result === null || typeof result !== "object" || !("automaticAnalysis" in result) || !("ok" in result)) return result;
+  if (
+    result === null ||
+    typeof result !== "object" ||
+    !("automaticAnalysis" in result) ||
+    !("ok" in result)
+  )
+    return result;
   const run = result as T & AutomaticAnalysisResult & { ok: boolean };
   return { ...run, runOk: run.ok, ok: run.ok && automaticAnalysisSucceeded(run) };
 }

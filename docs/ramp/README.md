@@ -26,13 +26,13 @@ to resume automatically. Keep one concise current task handoff with the requeste
 outcome, demonstrated behavior, next complete result, constraints and rejected or
 deferred approaches; link evidence rather than repeating its chronology.
 
-| When working on | Reference |
-| --- | --- |
-| Install, commands or first-run UX | [`README.md`](../../README.md), [install experience](../product/open-source-install-experience.md) |
-| Security, evidence handling or defaults | [Invariants and defaults](../principles/invariants-and-defaults.md) |
-| Observer | [Observer architecture](../architecture/observer.md) and its component instructions |
-| Bundle formats or policy | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md) |
-| Public artifacts or packaging | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md) |
+| When working on                            | Reference                                                                                                                                                                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Install, commands or first-run UX          | [`README.md`](../../README.md), [install experience](../product/open-source-install-experience.md)                                                                             |
+| Security, evidence handling or defaults    | [Invariants and defaults](../principles/invariants-and-defaults.md)                                                                                                            |
+| Observer                                   | [Observer architecture](../architecture/observer.md) and its component instructions                                                                                            |
+| Bundle formats or policy                   | [Run bundle](../contracts/run-bundle.md), [policy](../contracts/policy.md)                                                                                                     |
+| Public artifacts or packaging              | [Public-readiness standard](../release/public-readiness-standard.md), [release procedure](../release/open-source-readiness.md)                                                 |
 | Proof architecture or historical decisions | [Proof roadmap](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/goal.md), [historical delivery roadmap](../roadmap/world-class-open-source-v0.md) |
 
 ## Mental Model
@@ -222,7 +222,7 @@ Implemented:
   computer-use, scripted-browser, and terminal-product routes;
 - a computer-use route and clone subject provider: `subject.source: app-url`
   drives a lab-owner loopback app in a hosted desktop, and `subject.source:
-  clone` + `serve` clones, installs, and serves a real app in-sandbox from
+clone` + `serve` clones, installs, and serves a real app in-sandbox from
   config before the actor drives it (`src/cua-actor-lab.ts`);
 - seven declared subject sources: `this-repo` (dry-run-only), `clone`, `app-url`,
   `local-app` (library-assisted, in-process, no desktop), `terminal-product`,
@@ -392,7 +392,6 @@ End substantial work with:
 
 Future agents should be able to continue from the repo, not from the previous
 chat transcript.
-
 
 ## Before you tag: send a participant to meet the build
 

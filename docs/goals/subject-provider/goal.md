@@ -12,15 +12,15 @@ commands, probes readiness, and only then lets the actor drive it — replacing 
 ```yaml
 subject:
   source: clone
-  repos: [example-org/example-app]     # exactly one for this route
-  clone: { depth: 1 }                  # consumed here (was forward-declared)
+  repos: [example-org/example-app] # exactly one for this route
+  clone: { depth: 1 } # consumed here (was forward-declared)
   serve:
-    install: pnpm install --frozen-lockfile   # optional, bounded
-    build: pnpm build                         # optional, bounded
-    start: pnpm start                         # required, long-lived (detached)
-    url: http://127.0.0.1:3000/               # loopback-only; the harness-validated entry
-    readyTimeoutMs: 180000                    # optional probe budget
-  env: [DATABASE_URL]                  # subject-env channel: NAMES from --env-file
+    install: pnpm install --frozen-lockfile # optional, bounded
+    build: pnpm build # optional, bounded
+    start: pnpm start # required, long-lived (detached)
+    url: http://127.0.0.1:3000/ # loopback-only; the harness-validated entry
+    readyTimeoutMs: 180000 # optional probe budget
+  env: [DATABASE_URL] # subject-env channel: NAMES from --env-file
 actors:
   - type: openai-computer-use
 execution: { target: e2b-desktop }

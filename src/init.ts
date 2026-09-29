@@ -1,6 +1,12 @@
 import { lstat, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import { AGENTS_SECTION_MARKER, agentsSection, firstRunGuidance, starterActorFor, type FirstRunEnvironment } from "./first-run-path.js";
+import {
+  AGENTS_SECTION_MARKER,
+  agentsSection,
+  firstRunGuidance,
+  starterActorFor,
+  type FirstRunEnvironment,
+} from "./first-run-path.js";
 import { detectLocalAgents } from "./local-agent-cli.js";
 
 import {
@@ -8,7 +14,7 @@ import {
   humanishScripts,
   runtimeDirectories,
   starterFiles,
-  starterFilesFor
+  starterFilesFor,
 } from "./init-templates.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -16,7 +22,7 @@ import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
 export const INIT_RESPONSE_SCHEMA = "humanish.init-result.v1";
@@ -94,14 +100,19 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       cwd: requestedCwd,
       changes,
       warnings,
-      error: cwdCheck
+      error: cwdCheck,
     };
   }
   const localBrowser = validateLocalBrowserStarter(options.localBrowser);
   if (!localBrowser.ok) {
     return {
-      schema: INIT_RESPONSE_SCHEMA, ok: false, mode, cwd: requestedCwd, changes, warnings,
-      error: { code: "HUMANISH_INVALID_LOCAL_BROWSER", message: localBrowser.message }
+      schema: INIT_RESPONSE_SCHEMA,
+      ok: false,
+      mode,
+      cwd: requestedCwd,
+      changes,
+      warnings,
+      error: { code: "HUMANISH_INVALID_LOCAL_BROWSER", message: localBrowser.message },
     };
   }
   const cwd = await realpath(requestedCwd);
@@ -115,7 +126,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       cwd: requestedCwd,
       changes,
       warnings,
-      error: initialPathCheck
+      error: initialPathCheck,
     };
   }
 
@@ -131,22 +142,37 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     const existingAgents = await readTextIfExists(preparedProjectRoot, agentsPath);
     const section = agentsSection();
     if (existingAgents === null) {
-      changes.push({ path: agentsPath, action: "create", target: "source", reason: "how a coding agent runs humanish here" });
+      changes.push({
+        path: agentsPath,
+        action: "create",
+        target: "source",
+        reason: "how a coding agent runs humanish here",
+      });
       writes.push({
         absolutePath: path.join(cwd, agentsPath),
         relativePath: agentsPath,
         contents: `# AGENTS.md\n${section}`,
-        target: "source"
+        target: "source",
       });
     } else if (existingAgents.includes(AGENTS_SECTION_MARKER)) {
-      changes.push({ path: agentsPath, action: "skip", target: "source", reason: "humanish section already present" });
+      changes.push({
+        path: agentsPath,
+        action: "skip",
+        target: "source",
+        reason: "humanish section already present",
+      });
     } else {
-      changes.push({ path: agentsPath, action: "update", target: "source", reason: "append how a coding agent runs humanish" });
+      changes.push({
+        path: agentsPath,
+        action: "update",
+        target: "source",
+        reason: "append how a coding agent runs humanish",
+      });
       writes.push({
         absolutePath: path.join(cwd, agentsPath),
         relativePath: agentsPath,
         contents: `${existingAgents.replace(/\s*$/, "")}\n${section}`,
-        target: "source"
+        target: "source",
       });
     }
   }
@@ -159,8 +185,14 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     const absolutePath = path.join(cwd, file.path);
     const existing = await readTextIfExists(preparedProjectRoot, file.path);
 
-    if (existing !== null && options.localBrowser !== undefined && file.path === "humanish/labs/local-browser.yaml") {
-      warnings.push("Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.");
+    if (
+      existing !== null &&
+      options.localBrowser !== undefined &&
+      file.path === "humanish/labs/local-browser.yaml"
+    ) {
+      warnings.push(
+        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
+      );
     }
 
     if (existing === null) {
@@ -168,29 +200,31 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
         path: file.path,
         action: "create",
         target: file.plane,
-        reason: "public-safe starter file"
+        reason: "public-safe starter file",
       });
       writes.push({
         absolutePath,
         relativePath: file.path,
         contents: file.contents,
-        target: file.plane
+        target: file.plane,
       });
     } else if (existing === file.contents) {
       changes.push({
         path: file.path,
         action: "skip",
         target: file.plane,
-        reason: "already matches starter"
+        reason: "already matches starter",
       });
     } else {
       changes.push({
         path: file.path,
         action: "skip",
         target: file.plane,
-        reason: "existing file would not be overwritten"
+        reason: "existing file would not be overwritten",
       });
-      warnings.push(`Skipped existing ${file.path}; Humanish never overwrites user files during init.`);
+      warnings.push(
+        `Skipped existing ${file.path}; Humanish never overwrites user files during init.`,
+      );
     }
   }
 
@@ -202,7 +236,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       path: directory.path,
       action: exists ? "skip" : "mkdir",
       target: directory.plane,
-      reason: exists ? "already exists" : "ignored runtime directory"
+      reason: exists ? "already exists" : "ignored runtime directory",
     });
 
     if (!exists) {
@@ -229,7 +263,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       cwd: requestedCwd,
       changes,
       warnings,
-      error: packagePlan.error
+      error: packagePlan.error,
     };
   }
 
@@ -247,8 +281,8 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
       warnings,
       error: {
         code: "HUMANISH_CONFIRMATION_REQUIRED",
-        message: "Re-run with --dry-run to inspect or --yes to apply safe generated changes."
-      }
+        message: "Re-run with --dry-run to inspect or --yes to apply safe generated changes.",
+      },
     };
   }
 
@@ -263,7 +297,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
         cwd: requestedCwd,
         changes,
         warnings,
-        error: applyPathCheck
+        error: applyPathCheck,
       };
     }
 
@@ -272,7 +306,12 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     }
 
     for (const write of writes) {
-      await writeContainedOutputFile(preparedProjectRoot, write.relativePath, write.contents, "utf8");
+      await writeContainedOutputFile(
+        preparedProjectRoot,
+        write.relativePath,
+        write.contents,
+        "utf8",
+      );
     }
   }
 
@@ -284,25 +323,42 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     changes,
     warnings,
     // Resolved against THIS machine, because a next step that cannot work is worse than none.
-    ...(mode === "applied" ? { nextSteps: await resolveFirstRunGuidance(options.env ?? process.env) } : {})
+    ...(mode === "applied"
+      ? { nextSteps: await resolveFirstRunGuidance(options.env ?? process.env) }
+      : {}),
   };
 }
 
-function validateLocalBrowserStarter(input: InitOptions["localBrowser"]):
-  | { ok: true; value: { appUrl: string; mission: string } }
-  | { ok: false; message: string } {
+function validateLocalBrowserStarter(
+  input: InitOptions["localBrowser"],
+): { ok: true; value: { appUrl: string; mission: string } } | { ok: false; message: string } {
   const value = {
     appUrl: input?.appUrl.trim() || DEFAULT_LOCAL_BROWSER_STARTER.appUrl,
-    mission: input?.mission?.trim() || DEFAULT_LOCAL_BROWSER_STARTER.mission
+    mission: input?.mission?.trim() || DEFAULT_LOCAL_BROWSER_STARTER.mission,
   };
   let url: URL;
-  try { url = new URL(value.appUrl); }
-  catch { return { ok: false, message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023." }; }
-  if (!["http:", "https:"].includes(url.protocol) || !["localhost", "127.0.0.1"].includes(url.hostname)
-    || url.username || url.password || Number(url.port) < 1024) {
-    return { ok: false, message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023." };
+  try {
+    url = new URL(value.appUrl);
+  } catch {
+    return {
+      ok: false,
+      message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023.",
+    };
   }
-  if (value.mission.length > 4_000) return { ok: false, message: "--local-mission must be 4,000 characters or fewer." };
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    !["localhost", "127.0.0.1"].includes(url.hostname) ||
+    url.username ||
+    url.password ||
+    Number(url.port) < 1024
+  ) {
+    return {
+      ok: false,
+      message: "--local-browser must be a loopback HTTP(S) URL with an explicit port above 1023.",
+    };
+  }
+  if (value.mission.length > 4_000)
+    return { ok: false, message: "--local-mission must be 4,000 characters or fewer." };
   return { ok: true, value };
 }
 
@@ -333,18 +389,23 @@ async function firstRunEnvironment(env: NodeJS.ProcessEnv): Promise<FirstRunEnvi
     hasDesktopSdk,
     hasE2bKey: (env.E2B_API_KEY ?? "").trim().length > 0,
     hasProviderKey: (env.OPENAI_API_KEY ?? "").trim().length > 0,
-    localAgents: agents.filter((agent) => agent.authStatus === "authenticated").map((agent) => agent.label),
+    localAgents: agents
+      .filter((agent) => agent.authStatus === "authenticated")
+      .map((agent) => agent.label),
     platform: process.platform,
-    arch: process.arch
+    arch: process.arch,
   };
 }
 
 async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"] | null> {
   const targets = [
     ...starterFiles.map((file) => ({ path: file.path, kind: "file" as const })),
-    ...runtimeDirectories.map((directory) => ({ path: directory.path, kind: "directory" as const })),
+    ...runtimeDirectories.map((directory) => ({
+      path: directory.path,
+      kind: "directory" as const,
+    })),
     { path: ".gitignore", kind: "file" as const },
-    { path: "package.json", kind: "file" as const }
+    { path: "package.json", kind: "file" as const },
   ];
 
   for (const targetSpec of targets) {
@@ -362,10 +423,10 @@ async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"
         const stats = await lstat(current);
         const isLeaf = index === parts.length - 1;
         if (
-          stats.isSymbolicLink()
-          || (!isLeaf && !stats.isDirectory())
-          || (isLeaf && targetSpec.kind === "file" && (!stats.isFile() || stats.nlink > 1))
-          || (isLeaf && targetSpec.kind === "directory" && !stats.isDirectory())
+          stats.isSymbolicLink() ||
+          (!isLeaf && !stats.isDirectory()) ||
+          (isLeaf && targetSpec.kind === "file" && (!stats.isFile() || stats.nlink > 1)) ||
+          (isLeaf && targetSpec.kind === "directory" && !stats.isDirectory())
         ) {
           return unsafeProjectPath(relativePath);
         }
@@ -384,7 +445,7 @@ async function validateInitProjectPaths(cwd: string): Promise<InitResult["error"
 function unsafeProjectPath(relativePath: string): NonNullable<InitResult["error"]> {
   return {
     code: "HUMANISH_UNSAFE_PROJECT_PATH",
-    message: `Init target must stay inside the project, use the expected regular-file or directory kind, and not traverse symbolic links or hardlinked files: ${relativePath}`
+    message: `Init target must stay inside the project, use the expected regular-file or directory kind, and not traverse symbolic links or hardlinked files: ${relativePath}`,
   };
 }
 
@@ -402,7 +463,7 @@ function getMode(options: InitOptions): InitMode {
 
 async function planGitignore(
   projectRoot: PreparedSelectedOutputDirectory,
-  cwd: string
+  cwd: string,
 ): Promise<{ write?: PlannedWrite; change: InitChange }> {
   const relativePath = ".gitignore";
   const absolutePath = path.join(cwd, relativePath);
@@ -411,13 +472,12 @@ async function planGitignore(
   const envIndex = currentLines.lastIndexOf(".env*");
   const envExampleIndex = currentLines.lastIndexOf("!.env.example");
   const needsEnv = envIndex === -1;
-  const needsEnvExample = envExampleIndex === -1
-    || (envIndex !== -1 && envExampleIndex < envIndex)
-    || needsEnv;
+  const needsEnvExample =
+    envExampleIndex === -1 || (envIndex !== -1 && envExampleIndex < envIndex) || needsEnv;
   const missingLines = [
     ...(currentLines.includes(".humanish/") ? [] : [".humanish/"]),
     ...(needsEnv ? [".env*"] : []),
-    ...(needsEnvExample ? ["!.env.example"] : [])
+    ...(needsEnvExample ? ["!.env.example"] : []),
   ];
 
   if (missingLines.length === 0) {
@@ -426,14 +486,13 @@ async function planGitignore(
         path: relativePath,
         action: "skip",
         target: "gitignore",
-        reason: "already ignores Humanish runtime and env files"
-      }
+        reason: "already ignores Humanish runtime and env files",
+      },
     };
   }
 
-  const prefix = existing && existing.trim().length > 0
-    ? trimTrailingNewlines(existing) + "\n\n"
-    : "";
+  const prefix =
+    existing && existing.trim().length > 0 ? trimTrailingNewlines(existing) + "\n\n" : "";
   const contents = `${prefix}# Humanish runtime and local secrets\n${missingLines.join("\n")}\n`;
 
   return {
@@ -441,18 +500,21 @@ async function planGitignore(
       absolutePath,
       relativePath,
       contents,
-      target: "gitignore"
+      target: "gitignore",
     },
     change: {
       path: relativePath,
       action: existing === null ? "create" : "update",
       target: "gitignore",
-      reason: `add ${missingLines.join(", ")}`
-    }
+      reason: `add ${missingLines.join(", ")}`,
+    },
   };
 }
 
-async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd: string): Promise<PackagePlan> {
+async function planPackageJson(
+  projectRoot: PreparedSelectedOutputDirectory,
+  cwd: string,
+): Promise<PackagePlan> {
   const relativePath = "package.json";
   const absolutePath = path.join(cwd, relativePath);
   const existing = await readTextIfExists(projectRoot, relativePath);
@@ -463,9 +525,9 @@ async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "package.json not found"
+        reason: "package.json not found",
       },
-      warnings: ["Skipped package.json scripts because package.json was not found."]
+      warnings: ["Skipped package.json scripts because package.json was not found."],
     };
   }
 
@@ -479,13 +541,13 @@ async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "package.json is not valid JSON"
+        reason: "package.json is not valid JSON",
       },
       warnings: ["package.json is not valid JSON; init did not apply partial changes."],
       error: {
         code: "HUMANISH_INVALID_PACKAGE_JSON",
-        message: "package.json is not valid JSON. Fix it before running humanish init."
-      }
+        message: "package.json is not valid JSON. Fix it before running humanish init.",
+      },
     };
   }
 
@@ -495,13 +557,13 @@ async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "package.json root is not an object"
+        reason: "package.json root is not an object",
       },
       warnings: ["package.json root is not an object; init did not apply partial changes."],
       error: {
         code: "HUMANISH_INVALID_PACKAGE_JSON",
-        message: "package.json root must be an object. Fix it before running humanish init."
-      }
+        message: "package.json root must be an object. Fix it before running humanish init.",
+      },
     };
   }
 
@@ -525,11 +587,11 @@ async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: `existing script conflicts: ${conflictingScripts.join(", ")}`
+        reason: `existing script conflicts: ${conflictingScripts.join(", ")}`,
       },
       warnings: [
-        `Skipped package.json script patch because these scripts already exist with different values: ${conflictingScripts.join(", ")}.`
-      ]
+        `Skipped package.json script patch because these scripts already exist with different values: ${conflictingScripts.join(", ")}.`,
+      ],
     };
   }
 
@@ -539,43 +601,44 @@ async function planPackageJson(projectRoot: PreparedSelectedOutputDirectory, cwd
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "Humanish scripts already present"
+        reason: "Humanish scripts already present",
       },
-      warnings: []
+      warnings: [],
     };
   }
 
   parsed.scripts = {
     ...scripts,
-    ...missingScripts
+    ...missingScripts,
   };
 
-  const warnings = conflictingScripts.length === 0
-    ? []
-    : [
-        `Preserved existing script values for conflicting scripts: ${conflictingScripts.join(", ")}.`
-      ];
+  const warnings =
+    conflictingScripts.length === 0
+      ? []
+      : [
+          `Preserved existing script values for conflicting scripts: ${conflictingScripts.join(", ")}.`,
+        ];
 
   return {
     write: {
       absolutePath,
       relativePath,
       contents: `${JSON.stringify(parsed, null, 2)}\n`,
-      target: "package-json"
+      target: "package-json",
     },
     change: {
       path: relativePath,
       action: "update",
       target: "package-json",
-      reason: `add scripts: ${Object.keys(missingScripts).join(", ")}`
+      reason: `add scripts: ${Object.keys(missingScripts).join(", ")}`,
     },
-    warnings
+    warnings,
   };
 }
 
 async function readTextIfExists(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<string | null> {
   const bytes = await readContainedRegularFile(projectRoot, relativePath);
   if (bytes !== null) {
@@ -595,7 +658,7 @@ async function readTextIfExists(
 
 async function pathExists(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<boolean> {
   await assertPreparedSelectedOutputDirectory(projectRoot);
   const filePath = path.join(projectRoot.physicalPath, relativePath);
@@ -621,7 +684,7 @@ async function validateCwd(cwd: string): Promise<InitResult["error"] | null> {
     if (!stats.isDirectory()) {
       return {
         code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd is not a directory: ${cwd}`
+        message: `Target cwd is not a directory: ${cwd}`,
       };
     }
 
@@ -630,7 +693,7 @@ async function validateCwd(cwd: string): Promise<InitResult["error"] | null> {
     if (isNodeError(error) && error.code === "ENOENT") {
       return {
         code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd does not exist: ${cwd}`
+        message: `Target cwd does not exist: ${cwd}`,
       };
     }
 
@@ -648,8 +711,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPathInside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
-  return relative === ""
-    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

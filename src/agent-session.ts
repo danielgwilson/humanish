@@ -31,7 +31,7 @@ const MARKERS: ReadonlyArray<{ marker: string; runner: string }> = [
   { marker: "CODEX_THREAD_ID", runner: "Codex" },
   // Generic, and set alongside the Claude Code markers on the machine this was written on. Kept
   // last so a named runner wins the attribution.
-  { marker: "AI_AGENT", runner: "an AI agent runner" }
+  { marker: "AI_AGENT", runner: "an AI agent runner" },
 ];
 
 /**

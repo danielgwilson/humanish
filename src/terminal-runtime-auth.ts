@@ -14,16 +14,22 @@ export const OPENAI_EGRESS_PLACEHOLDER = "humanish-egress-auth-placeholder";
  */
 export function buildOpenAiEgressNetwork(
   keyValue: string,
-  existing?: E2BNetworkOptions
+  existing?: E2BNetworkOptions,
 ): E2BNetworkOptions {
-  if (Object.keys(existing?.rules ?? {}).some((host) => host.toLowerCase().replace(/\.$/, "") === OPENAI_EGRESS_HOST)) {
-    throw new Error("openai-egress conflicts with an existing api.openai.com network rule; refusing to overwrite it.");
+  if (
+    Object.keys(existing?.rules ?? {}).some(
+      (host) => host.toLowerCase().replace(/\.$/, "") === OPENAI_EGRESS_HOST,
+    )
+  ) {
+    throw new Error(
+      "openai-egress conflicts with an existing api.openai.com network rule; refusing to overwrite it.",
+    );
   }
   return {
     ...existing,
     rules: {
       ...existing?.rules,
-      [OPENAI_EGRESS_HOST]: [{ transform: { headers: { Authorization: `Bearer ${keyValue}` } } }]
-    }
+      [OPENAI_EGRESS_HOST]: [{ transform: { headers: { Authorization: `Bearer ${keyValue}` } } }],
+    },
   };
 }

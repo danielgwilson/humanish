@@ -122,8 +122,8 @@ adapter (roles/personas/rubric stay in the adopter's repo).
 ## Proof (PR1 — deterministic, $0, the merge gate)
 
 - Parser matrix (`tests/lab-config.test.ts`): topology routing + the fail-closed cross-validation
-  + entry same-origin + checkpoint validation + forward-declared warnings off-route + every
-  existing route byte-stable.
+  - entry same-origin + checkpoint validation + forward-declared warnings off-route + every
+    existing route byte-stable.
 - Dry-run: one `run-bundle.v1` with the `sharedWorld` block + `attributionClass: shared-world` +
   `attributionLimits` at $0; `verifyRun` ok.
 - The heart (`tests/shared-world-lab.test.ts`, fake desktop + fake runSession + fake checkpoint

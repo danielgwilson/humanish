@@ -77,7 +77,16 @@ async function buildGitFixture(): Promise<{ root: string }> {
   await writeFile(path.join(root, ".env.example"), "SECRET=\n");
   // Assembled from fragments so the public-surface scanner never sees a
   // key-block literal in this test source; the fixture bytes are identical.
-  const fakePemBody = ["-----BEGIN PRIVATE", " KEY-----", "\n", "fake", "\n", "-----END PRIVATE", " KEY-----", "\n"].join("");
+  const fakePemBody = [
+    "-----BEGIN PRIVATE",
+    " KEY-----",
+    "\n",
+    "fake",
+    "\n",
+    "-----END PRIVATE",
+    " KEY-----",
+    "\n",
+  ].join("");
   await writeFile(path.join(root, "key.pem"), fakePemBody);
 
   await mkdir(path.join(root, "nested-repo"), { recursive: true });
@@ -95,7 +104,12 @@ async function buildGitFixture(): Promise<{ root: string }> {
 
 describe("always-on denylist constants", () => {
   it("exposes the documented path segments, basename patterns, and byte cap", () => {
-    expect(LOCAL_TREE_DENYLIST_PATH_SEGMENTS).toEqual([".git", "node_modules", ".humanish", ".homun"]);
+    expect(LOCAL_TREE_DENYLIST_PATH_SEGMENTS).toEqual([
+      ".git",
+      "node_modules",
+      ".humanish",
+      ".homun",
+    ]);
     expect(LOCAL_TREE_DENYLIST_BASENAME_PATTERNS).toEqual([
       ".env*",
       "*.pem",
@@ -179,7 +193,9 @@ describe("git-aware enumeration", () => {
     expect(relPaths.some((relPath) => relPath.startsWith("nested-repo/"))).toBe(false);
 
     const archive = createLocalTreeArchive(root);
-    expect(listTarEntries(archive.archivePath).some((entry) => entry.startsWith("nested-repo"))).toBe(false);
+    expect(
+      listTarEntries(archive.archivePath).some((entry) => entry.startsWith("nested-repo")),
+    ).toBe(false);
   });
 });
 
@@ -276,7 +292,10 @@ describe("symlinks", () => {
 
     // ...but re-pointing the symlink at a different target string does.
     await rm(path.join(root, "link-to-secret"));
-    await symlink(path.join(outsideDir, "does-not-need-to-exist.txt"), path.join(root, "link-to-secret"));
+    await symlink(
+      path.join(outsideDir, "does-not-need-to-exist.txt"),
+      path.join(root, "link-to-secret"),
+    );
     const afterRetarget = createLocalTreeArchive(root).archiveSha256;
     expect(afterRetarget).not.toBe(beforeContentChange);
   });
@@ -297,7 +316,9 @@ describe("symlinks", () => {
         runGit(root, ["init", "-q", "."]);
       }
 
-      expect(() => createLocalTreeArchive(root, { outputPath })).toThrow(/hardlinked source files/i);
+      expect(() => createLocalTreeArchive(root, { outputPath })).toThrow(
+        /hardlinked source files/i,
+      );
       await expect(stat(outputPath)).rejects.toMatchObject({ code: "ENOENT" });
       const archiveBytes = await readFile(outputPath).catch(() => Buffer.alloc(0));
       expect(archiveBytes.includes(Buffer.from(secretBytes, "utf8"))).toBe(false);
@@ -463,7 +484,9 @@ describe("adversarial-review hardening (PR #265 pre-merge findings)", () => {
   it("rejects absolute-path and glob extraExclude entries instead of silently no-op'ing", async () => {
     const root = await makeTempRoot("exclude-reject");
     await writeFile(path.join(root, "a.txt"), "a\n");
-    expect(() => enumerateLocalTree(root, { extraExclude: ["/etc/secrets"] })).toThrow(/absolute path/);
+    expect(() => enumerateLocalTree(root, { extraExclude: ["/etc/secrets"] })).toThrow(
+      /absolute path/,
+    );
     expect(() => enumerateLocalTree(root, { extraExclude: ["**/secrets"] })).toThrow(/glob syntax/);
   });
 

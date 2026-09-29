@@ -15,7 +15,7 @@ import {
   drainCommsCatch,
   refreshInboxSurface,
   routeCapturedSends,
-  type RawCapturedSend
+  type RawCapturedSend,
 } from "../src/comms-sandbox-catch.js";
 import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { freePort } from "./helpers/free-port.js";
@@ -40,14 +40,15 @@ async function catchIsUp(port: number): Promise<boolean> {
 async function spawnCatchOnFreePorts(
   launch: (port: number, inboxPort: number) => ReturnType<typeof spawn>,
   withInbox: boolean,
-  tries = 3
+  tries = 3,
 ): Promise<{ child: ReturnType<typeof spawn>; port: number; inboxPort: number }> {
   for (let attempt = 0; attempt < tries; attempt += 1) {
     const port = await freePort();
     const inboxPort = withInbox ? await freePort() : 0;
     const child = launch(port, inboxPort);
     for (let i = 0; i < 50; i += 1) {
-      if ((await catchIsUp(port)) && (!withInbox || (await catchIsUp(inboxPort)))) return { child, port, inboxPort };
+      if ((await catchIsUp(port)) && (!withInbox || (await catchIsUp(inboxPort))))
+        return { child, port, inboxPort };
       await new Promise((r) => setTimeout(r, 60));
     }
     child.kill("SIGKILL");
@@ -59,7 +60,9 @@ const VERIFICATION_HTML =
   '<p>Confirm your account.</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
 
 // ---------------------------------------------------------------- fake E2B desktop
-function makeFakeDesktop(handler: (cmd: string) => { stdout?: string; exitCode?: number } | undefined): {
+function makeFakeDesktop(
+  handler: (cmd: string) => { stdout?: string; exitCode?: number } | undefined,
+): {
   desktop: E2BDesktopSandbox;
   calls: Array<[string, ...unknown[]]>;
   files: Record<string, string>;
@@ -71,14 +74,14 @@ function makeFakeDesktop(handler: (cmd: string) => { stdout?: string; exitCode?:
       run: async (cmd: string) => {
         calls.push(["run", cmd]);
         return handler(cmd) ?? { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       write: async (filePath: string, data: string | ArrayBuffer) => {
         calls.push(["write", filePath, data]);
         files[filePath] = String(data);
-      }
-    }
+      },
+    },
   };
   return { desktop: desktop as unknown as E2BDesktopSandbox, calls, files };
 }
@@ -102,7 +105,7 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     const spawned = await spawnCatchOnFreePorts(
       (port) => spawn("python3", [scriptPath, String(port), deliveries], { stdio: "ignore" }),
-      false
+      false,
     );
     child = spawned.child;
     const port = spawned.port;
@@ -110,16 +113,27 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
 
     // Resend flat shape → 200 { id }
     const flat = await fetch(`${base}/emails`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML })
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        from: "no-reply@example.test",
+        to: ["user-07@example.test"],
+        subject: "Confirm",
+        html: VERIFICATION_HTML,
+      }),
     });
     expect(flat.status).toBe(200);
-    expect((await flat.json() as { id: string }).id).toContain("humanish-catch-");
+    expect(((await flat.json()) as { id: string }).id).toContain("humanish-catch-");
 
     // SendGrid path → 202 + x-message-id
     const sg = await fetch(`${base}/v3/mail/send`, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ from: { email: "a@example.test" }, personalizations: [{ to: [{ email: "p@example.test" }] }], content: [{ type: "text/html", value: "hi" }] })
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        from: { email: "a@example.test" },
+        personalizations: [{ to: [{ email: "p@example.test" }] }],
+        content: [{ type: "text/html", value: "hi" }],
+      }),
     });
     expect(sg.status).toBe(202);
     expect(sg.headers.get("x-message-id")).toBeTruthy();
@@ -143,8 +157,11 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     // Two ports, each asked for separately; a stolen one gets a fresh pair (see spawnCatchOnFreePorts).
     const spawned = await spawnCatchOnFreePorts(
-      (port, inboxPort) => spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], { stdio: "ignore" }),
-      true
+      (port, inboxPort) =>
+        spawn("python3", [scriptPath, String(port), deliveries, surfaceDir, String(inboxPort)], {
+          stdio: "ignore",
+        }),
+      true,
     );
     child = spawned.child;
     const { port, inboxPort } = spawned;
@@ -154,10 +171,14 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     expect(g.status).toBe(200);
     expect(await g.text()).toContain("INBOX OK");
     // …but rejects capture POSTs (read-only — nothing on the internet can inject a fake send).
-    expect((await fetch(`http://127.0.0.1:${inboxPort}/emails`, { method: "POST", body: "x" })).status).toBe(405);
+    expect(
+      (await fetch(`http://127.0.0.1:${inboxPort}/emails`, { method: "POST", body: "x" })).status,
+    ).toBe(405);
     // The loopback capture listener still captures.
     const captured = await fetch(`http://127.0.0.1:${port}/emails`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: ["p@example.test"] })
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ to: ["p@example.test"] }),
     });
     expect(captured.status).toBe(200);
     expect((await readFile(deliveries, "utf8")).trim().split("\n")).toHaveLength(1);
@@ -166,41 +187,66 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
 
 describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fake desktop)", () => {
   it("deployCommsCatch writes the script + launches it detached + probes ready", async () => {
-    const { desktop, calls, files } = makeFakeDesktop((cmd) => (cmd.includes("curl") ? { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" } : undefined));
+    const { desktop, calls, files } = makeFakeDesktop((cmd) =>
+      cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
+    );
     const deployed = await deployCommsCatch(desktop, { port: 8025, timers: instantTimers });
 
     expect(deployed.baseUrl).toBe("http://127.0.0.1:8025"); // inject THIS as the app's email-API base URL
     expect(deployed.ready).toBe(true);
     // The self-contained capture script was written into the sandbox…
     const written = Object.entries(files).find(([p]) => p.endsWith("catch.py"));
-    expect(written?.[1]).toContain('ThreadingHTTPServer');
+    expect(written?.[1]).toContain("ThreadingHTTPServer");
     // …and launched detached (setsid) with the fixed port + deliveries path.
-    expect(calls.some(([, c]) => typeof c === "string" && c.includes("setsid -f") && c.includes("comms-catch"))).toBe(true);
+    expect(
+      calls.some(
+        ([, c]) => typeof c === "string" && c.includes("setsid -f") && c.includes("comms-catch"),
+      ),
+    ).toBe(true);
     // …and probed for readiness on /health.
-    expect(calls.some(([, c]) => typeof c === "string" && c.includes("curl") && c.includes("8025/health"))).toBe(true);
+    expect(
+      calls.some(
+        ([, c]) => typeof c === "string" && c.includes("curl") && c.includes("8025/health"),
+      ),
+    ).toBe(true);
   });
 
   it("deployCommsCatch with an inboxPort passes it as the 4th arg, probes BOTH listeners, and returns it", async () => {
-    const { desktop, calls, files } = makeFakeDesktop((cmd) => (cmd.includes("curl") ? { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" } : undefined));
-    const deployed = await deployCommsCatch(desktop, { port: 8025, inboxPort: 8026, timers: instantTimers });
+    const { desktop, calls, files } = makeFakeDesktop((cmd) =>
+      cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
+    );
+    const deployed = await deployCommsCatch(desktop, {
+      port: 8025,
+      inboxPort: 8026,
+      timers: instantTimers,
+    });
 
     expect(deployed.ready).toBe(true);
     expect(deployed.inboxPort).toBe(8026);
     // launched with the inbox port as the 4th arg (the launch command lives in the wrapper run.sh file)…
-    expect(Object.values(files).some((v) => v.includes("catch.py") && v.includes(" 8026"))).toBe(true);
+    expect(Object.values(files).some((v) => v.includes("catch.py") && v.includes(" 8026"))).toBe(
+      true,
+    );
     // …and BOTH listeners were probed for readiness (a dead inbox listener would 502 via getHost).
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("8025/health"))).toBe(true);
     expect(calls.some(([, c]) => typeof c === "string" && c.includes("8026/health"))).toBe(true);
   });
 
   it("deployCommsCatch rejects an inboxPort equal to the capture port", async () => {
-    const { desktop } = makeFakeDesktop((cmd) => (cmd.includes("curl") ? { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" } : undefined));
-    await expect(deployCommsCatch(desktop, { port: 8025, inboxPort: 8025, timers: instantTimers })).rejects.toThrow(/invalid inboxPort/);
+    const { desktop } = makeFakeDesktop((cmd) =>
+      cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
+    );
+    await expect(
+      deployCommsCatch(desktop, { port: 8025, inboxPort: 8025, timers: instantTimers }),
+    ).rejects.toThrow(/invalid inboxPort/);
   });
 
   it("drainCommsCatch reads new NDJSON lines since a cursor (incremental)", async () => {
-    let ndjson = JSON.stringify({ t: 1, path: "/emails", body: '{"to":["a@example.test"]}' }) + "\n";
-    const { desktop } = makeFakeDesktop((cmd) => (cmd.startsWith("cat ") ? { stdout: ndjson } : undefined));
+    let ndjson =
+      JSON.stringify({ t: 1, path: "/emails", body: '{"to":["a@example.test"]}' }) + "\n";
+    const { desktop } = makeFakeDesktop((cmd) =>
+      cmd.startsWith("cat ") ? { stdout: ndjson } : undefined,
+    );
     const deployed = { deliveriesPath: "/tmp/humanish-comms/deliveries.ndjson" };
 
     const first = await drainCommsCatch(desktop, deployed, 0);
@@ -220,8 +266,27 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     const bus = new FakeInbox();
     const user = await bus.provision("user-07");
     const sends: RawCapturedSend[] = [
-      { t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", html: VERIFICATION_HTML }) },
-      { t: 2, path: "/v3/mail/send", body: JSON.stringify({ from: { email: "a@example.test" }, personalizations: [{ to: [{ email: user.value }] }], content: [{ type: "text/html", value: "Code 903117 <a href=\"https://x.example.test/y\">go</a>" }] }) }
+      {
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: [user.value],
+          subject: "Confirm",
+          html: VERIFICATION_HTML,
+        }),
+      },
+      {
+        t: 2,
+        path: "/v3/mail/send",
+        body: JSON.stringify({
+          from: { email: "a@example.test" },
+          personalizations: [{ to: [{ email: user.value }] }],
+          content: [
+            { type: "text/html", value: 'Code 903117 <a href="https://x.example.test/y">go</a>' },
+          ],
+        }),
+      },
     ];
     const delivered = await routeCapturedSends(sends, bus);
     expect(delivered).toBe(2);
@@ -237,9 +302,19 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     const bus = new FakeInbox();
     const user = await bus.provision("user-07");
     // The fake sandbox: /health READY, and cat returns the NDJSON the (simulated) app's POST produced.
-    const captured = JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+    const captured =
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: [user.value],
+          subject: "Confirm",
+          html: VERIFICATION_HTML,
+        }),
+      }) + "\n";
     const { desktop } = makeFakeDesktop((cmd) => {
-      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.includes("curl")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
       if (cmd.startsWith("cat ")) return { stdout: captured };
       return undefined;
     });
@@ -259,9 +334,18 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     const channel = new FakeInbox();
     const user = await channel.provisionAddress("user", "user@example.test");
     const captured =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", html: VERIFICATION_HTML }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "no-reply@example.test",
+          to: [user.value],
+          subject: "Confirm your email",
+          html: VERIFICATION_HTML,
+        }),
+      }) + "\n";
     const { desktop } = makeFakeDesktop((cmd) => {
-      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.includes("curl")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
       if (cmd.startsWith("cat ")) return { stdout: captured };
       return undefined;
     });
@@ -290,26 +374,45 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
     const user = await channel.provisionAddress("user", "user@example.test");
 
     const empty = makeFakeDesktop((cmd) => {
-      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.includes("curl")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
       if (cmd.startsWith("cat ")) return { stdout: "" };
       return undefined;
     });
     const deployedEmpty = await deployCommsCatch(empty.desktop, { timers: instantTimers });
-    const emptyCollected = await collectCommsThread({ desktop: empty.desktop, deployed: deployedEmpty, channel, inboxes: [user] });
+    const emptyCollected = await collectCommsThread({
+      desktop: empty.desktop,
+      deployed: deployedEmpty,
+      channel,
+      inboxes: [user],
+    });
     expect(emptyCollected.artifact).toBeUndefined();
     expect(emptyCollected.captured).toBe(0); // nothing captured at all
 
     // Captured mail addressed to an UNPROVISIONED inbox is dropped by deliverRaw → no artifact, but
     // it WAS captured (matched 0) — the caller warns rather than losing it silently.
     const stranger =
-      JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "x@example.test", to: ["stranger@example.test"], subject: "hi", html: "<p>hi</p>" }) }) + "\n";
+      JSON.stringify({
+        t: 1,
+        path: "/emails",
+        body: JSON.stringify({
+          from: "x@example.test",
+          to: ["stranger@example.test"],
+          subject: "hi",
+          html: "<p>hi</p>",
+        }),
+      }) + "\n";
     const other = makeFakeDesktop((cmd) => {
-      if (cmd.includes("curl")) return { stdout: "{\"ok\":true,\"service\":\"humanish-comms-catch\"}" };
+      if (cmd.includes("curl")) return { stdout: '{"ok":true,"service":"humanish-comms-catch"}' };
       if (cmd.startsWith("cat ")) return { stdout: stranger };
       return undefined;
     });
     const deployedOther = await deployCommsCatch(other.desktop, { timers: instantTimers });
-    const strangerCollected = await collectCommsThread({ desktop: other.desktop, deployed: deployedOther, channel, inboxes: [user] });
+    const strangerCollected = await collectCommsThread({
+      desktop: other.desktop,
+      deployed: deployedOther,
+      channel,
+      inboxes: [user],
+    });
     expect(strangerCollected.artifact).toBeUndefined();
     expect(strangerCollected.captured).toBe(1); // captured but unmatched → caller surfaces a warning
     expect(strangerCollected.matched).toBe(0);
@@ -319,11 +422,22 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
 describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () => {
   const recipients = [{ lane: "user", address: "user-07@example.test" }];
   const captured =
-    JSON.stringify({ t: 1, path: "/emails", body: JSON.stringify({ from: "no-reply@example.test", to: ["user-07@example.test"], subject: "Confirm", html: VERIFICATION_HTML }) }) + "\n";
+    JSON.stringify({
+      t: 1,
+      path: "/emails",
+      body: JSON.stringify({
+        from: "no-reply@example.test",
+        to: ["user-07@example.test"],
+        subject: "Confirm",
+        html: VERIFICATION_HTML,
+      }),
+    }) + "\n";
 
   it("rebuilds from the full NDJSON, renders on new mail, and skips a render when nothing new arrived", async () => {
     const nd = { value: "" };
-    const { desktop, files } = makeFakeDesktop((cmd) => (cmd.startsWith("cat ") ? { stdout: nd.value } : undefined));
+    const { desktop, files } = makeFakeDesktop((cmd) =>
+      cmd.startsWith("cat ") ? { stdout: nd.value } : undefined,
+    );
     const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
 
     // Empty catch → no render.
@@ -352,18 +466,28 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
     const calls: Array<[string, ...unknown[]]> = [];
     const files: Record<string, string> = {};
     const desktop = {
-      commands: { run: async (cmd: string) => { calls.push(["run", cmd]); return cmd.startsWith("cat ") ? { stdout: nd.value } : { exitCode: 0, stdout: "" }; } },
+      commands: {
+        run: async (cmd: string) => {
+          calls.push(["run", cmd]);
+          return cmd.startsWith("cat ") ? { stdout: nd.value } : { exitCode: 0, stdout: "" };
+        },
+      },
       files: {
         write: async (filePath: string, data: string | ArrayBuffer) => {
-          if (failNextWrite && filePath.endsWith("/inbox/index")) { failNextWrite = false; throw new Error("transient files.write timeout"); }
+          if (failNextWrite && filePath.endsWith("/inbox/index")) {
+            failNextWrite = false;
+            throw new Error("transient files.write timeout");
+          }
           files[filePath] = String(data);
-        }
-      }
+        },
+      },
     } as unknown as E2BDesktopSandbox;
     const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
 
     // First refresh throws mid-render (surface partially/not written); count is NOT advanced by the caller.
-    await expect(refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 })).rejects.toThrow();
+    await expect(
+      refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 }),
+    ).rejects.toThrow();
     // Retry (sinceCount still 0, because the caller only advances on rendered:true) rebuilds cleanly.
     const r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 });
     expect(r).toEqual({ count: 1, rendered: true });
@@ -392,12 +516,20 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
 
     // Host-render (typed) the surface for one captured verification email with an app-LOOPBACK verify
     // link, then write the files into surfaceDir exactly as the real host bridge (writeInboxSurface) does.
-    const loopbackEmail = '<p>Hi.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
+    const loopbackEmail =
+      '<p>Hi.</p><p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify</a></p><p>Code: <b>481920</b></p>';
     const bus = new FakeInbox();
     const user = await bus.provisionAddress("user", "user-07@example.test");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", body: loopbackEmail });
+    await bus.deliverRaw({
+      from: "no-reply@example.test",
+      to: [user.value],
+      subject: "Confirm your email",
+      body: loopbackEmail,
+    });
     const messages = await bus.poll(user);
-    const files = buildInboxSurface(messages, { originMap: [["http://127.0.0.1:3000", "https://3000-abc.e2b.app"]] });
+    const files = buildInboxSurface(messages, {
+      originMap: [["http://127.0.0.1:3000", "https://3000-abc.e2b.app"]],
+    });
     for (const file of files) {
       const full = path.join(surfaceDir, file.path);
       await mkdir(path.dirname(full), { recursive: true });
@@ -405,8 +537,9 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     }
 
     const spawned = await spawnCatchOnFreePorts(
-      (port) => spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" }),
-      false
+      (port) =>
+        spawn("python3", [scriptPath, String(port), deliveries, surfaceDir], { stdio: "ignore" }),
+      false,
     );
     child = spawned.child;
     const base = `http://127.0.0.1:${spawned.port}`;
@@ -430,7 +563,7 @@ describe("comms-sandbox-catch: serves the host-rendered inbox SURFACE (script ru
     const apiLatest = await fetch(`${base}/api/inbox/latest`);
     expect(apiLatest.status).toBe(200);
     expect(apiLatest.headers.get("content-type")).toContain("application/json");
-    const json = await apiLatest.json() as { verifyUrl: string; otp: string; to: string[] };
+    const json = (await apiLatest.json()) as { verifyUrl: string; otp: string; to: string[] };
     expect(json.verifyUrl).toBe("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
     expect(json.otp).toBe("481920");
     expect(json.to).toEqual(["user-07@example.test"]);
@@ -445,7 +578,12 @@ describe("comms-evidence: digest-only comms-thread artifact", () => {
   it("digests addresses + links, redacts the subject, and stores the OTP as a COUNT (never a reversible digest)", async () => {
     const bus = new FakeInbox();
     const user = await bus.provision("user-07");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm your email", body: VERIFICATION_HTML });
+    await bus.deliverRaw({
+      from: "no-reply@example.test",
+      to: [user.value],
+      subject: "Confirm your email",
+      body: VERIFICATION_HTML,
+    });
     const messages = await bus.poll(user);
 
     const artifact = buildCommsThreadArtifact(messages);

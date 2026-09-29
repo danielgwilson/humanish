@@ -17,12 +17,12 @@ We made a local patch to TodoMVC's JavaScript ES6 example: a visible native **Ed
 
 Then we ran twelve new synthetic sessions on fresh hosted desktops. Each participant had the same task: add “Draft proposal,” rename that same item to “Send proposal,” and leave it saved. The study crossed original and patched versions with pointer and keyboard-only instructions, with three repetitions per condition. Both versions used `gpt-5.6-sol` and Humanish `0.81.0`.
 
-| Version / input | Attempts | Rename completed | Stopped at rename | Provider interrupted |
-| --- | ---: | ---: | ---: | ---: |
-| Original / pointer | 3 | 3 | 0 | 0 |
-| Edit patch / pointer | 3 | 3 | 0 | 0 |
-| Original / keyboard-only | 3 | 0 | 2 | 1 |
-| Edit patch / keyboard-only | 3 | 2 | 0 | 1 |
+| Version / input            | Attempts | Rename completed | Stopped at rename | Provider interrupted |
+| -------------------------- | -------: | ---------------: | ----------------: | -------------------: |
+| Original / pointer         |        3 |                3 |                 0 |                    0 |
+| Edit patch / pointer       |        3 |                3 |                 0 |                    0 |
+| Original / keyboard-only   |        3 |                0 |                 2 |                    1 |
+| Edit patch / keyboard-only |        3 |                2 |                 0 |                    1 |
 
 Both uninterrupted keyboard participants were blocked on the original app; both completed the task with the patch. One keyboard session in each version was interrupted by a provider failure. Those attempts remain in the table and were not replaced. All six pointer sessions completed.
 

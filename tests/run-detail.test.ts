@@ -11,16 +11,33 @@ import { readRunDetail } from "../src/run-detail.js";
 
 const ACTOR_TRACE = {
   schema: "humanish.actor-trace.v1",
-  persona: { id: "synthetic-new-user", traitsApplied: ["patience:medium", "skill:medium", "constraints:3"] },
+  persona: {
+    id: "synthetic-new-user",
+    traitsApplied: ["patience:medium", "skill:medium", "constraints:3"],
+  },
   status: "passed",
   completionReason: "goal_satisfied",
   counts: { turns: 26, actions: 68, reasonings: 15 },
   estimatedCost: { estimatedCostUsd: 0.629308 },
   items: [
     { id: "screenshot-001", kind: "screenshot", lifecycle: "completed", title: "turn-00-start" },
-    { id: "reasoning-001", kind: "reasoning", lifecycle: "completed", title: "reasoning turn 1", text: "**Starting out**\n\nFirst I will look at the page.", at: "2026-08-19T22:49:20.000Z" },
-    { id: "reasoning-002", kind: "reasoning", lifecycle: "completed", title: "reasoning turn 25", text: "**Connecting fields for relationships**\n\nI'm thinking about connecting fields.", at: "2026-08-19T22:51:00.000Z" }
-  ]
+    {
+      id: "reasoning-001",
+      kind: "reasoning",
+      lifecycle: "completed",
+      title: "reasoning turn 1",
+      text: "**Starting out**\n\nFirst I will look at the page.",
+      at: "2026-08-19T22:49:20.000Z",
+    },
+    {
+      id: "reasoning-002",
+      kind: "reasoning",
+      lifecycle: "completed",
+      title: "reasoning turn 25",
+      text: "**Connecting fields for relationships**\n\nI'm thinking about connecting fields.",
+      at: "2026-08-19T22:51:00.000Z",
+    },
+  ],
 };
 
 async function writeBundle(cwd: string, runId: string, bundle: unknown): Promise<void> {
@@ -42,7 +59,14 @@ describe("what one run's participants are doing (#455)", () => {
     await writeBundle(cwd, "run-a", {
       schema: "humanish.run-bundle.v1",
       runId: "run-a",
-      streams: [{ id: "stream-001", label: "CUA browser — observer-live-check", status: "passed", actor: ACTOR_TRACE }]
+      streams: [
+        {
+          id: "stream-001",
+          label: "CUA browser — observer-live-check",
+          status: "passed",
+          actor: ACTOR_TRACE,
+        },
+      ],
     });
 
     const detail = await readRunDetail(cwd, "run-a");
@@ -68,14 +92,17 @@ describe("what one run's participants are doing (#455)", () => {
         {
           id: "stream-001",
           label: "lane",
-          actor: { ...ACTOR_TRACE, items: [{ kind: "reasoning", lifecycle: "completed", text: "stale" }] },
+          actor: {
+            ...ACTOR_TRACE,
+            items: [{ kind: "reasoning", lifecycle: "completed", text: "stale" }],
+          },
           liveActor: {
             persona: { id: "p", traitsApplied: [] },
             status: "running",
-            items: [{ kind: "reasoning", lifecycle: "completed", text: "current" }]
-          }
-        }
-      ]
+            items: [{ kind: "reasoning", lifecycle: "completed", text: "current" }],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-b");
     expect(detail?.participants[0]?.thought?.text).toBe("current");
@@ -91,11 +118,11 @@ describe("what one run's participants are doing (#455)", () => {
           liveActor: {
             items: [
               { kind: "reasoning", lifecycle: "completed", text: "finished thinking" },
-              { kind: "reasoning", lifecycle: "in_progress", text: "half a th" }
-            ]
-          }
-        }
-      ]
+              { kind: "reasoning", lifecycle: "in_progress", text: "half a th" },
+            ],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-c");
     // Quoting a partial thought would attribute to the participant something they had not said.
@@ -107,8 +134,8 @@ describe("what one run's participants are doing (#455)", () => {
       runId: "run-d",
       streams: [
         { id: "sim-01-ui", label: "UI journey", status: "contract_proof_only" },
-        { id: "sim-02-terminal", label: "CLI actor", status: "contract_proof_only" }
-      ]
+        { id: "sim-02-terminal", label: "CLI actor", status: "contract_proof_only" },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-d");
     expect(detail?.participants.map((p) => p.label)).toEqual(["UI journey", "CLI actor"]);
@@ -131,11 +158,11 @@ describe("what one run's participants are doing (#455)", () => {
             items: [
               { kind: "screenshot", lifecycle: "completed" },
               { kind: "reasoning", lifecycle: "completed", text: "one" },
-              { kind: "reasoning", lifecycle: "completed", text: "two" }
-            ]
-          }
-        }
-      ]
+              { kind: "reasoning", lifecycle: "completed", text: "two" },
+            ],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-live");
     expect(detail?.participants[0]?.thoughts).toBe(2);
@@ -151,8 +178,8 @@ describe("what one run's participants are doing (#455)", () => {
       runId: "run-e",
       streams: [
         { id: "a", actor: { estimatedCost: { estimatedCostUsd: null } } },
-        { id: "b", actor: {} }
-      ]
+        { id: "b", actor: {} },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-e");
     // Declared absent, and never recorded at all: different facts, neither of them 0.
@@ -181,11 +208,16 @@ describe("what a run has spent, while it is still spending it", () => {
           liveActor: {
             status: "running",
             ids: { model: "gpt-5.6-sol" },
-            tokenUsage: { input: 100_000, output: 2_000, cachedInput: 80_000, cacheWriteInput: 10_000 },
-            items: [{ kind: "reasoning", lifecycle: "completed", text: "working" }]
-          }
-        }
-      ]
+            tokenUsage: {
+              input: 100_000,
+              output: 2_000,
+              cachedInput: 80_000,
+              cacheWriteInput: 10_000,
+            },
+            items: [{ kind: "reasoning", lifecycle: "completed", text: "working" }],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-live-cost");
     const cost = detail?.participants[0]?.estimatedCostUsd;
@@ -202,10 +234,10 @@ describe("what a run has spent, while it is still spending it", () => {
           liveActor: {
             ids: { model: "some-model-we-do-not-price" },
             tokenUsage: { input: 100_000, output: 2_000 },
-            items: []
-          }
-        }
-      ]
+            items: [],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-unknown-model");
     // No figure at all beats a wrong one: the surface then says the cost is unknown.
@@ -222,10 +254,10 @@ describe("what a run has spent, while it is still spending it", () => {
             estimatedCost: { estimatedCostUsd: 0.42 },
             ids: { model: "gpt-5.6-sol" },
             tokenUsage: { input: 999_999, output: 99_999 },
-            items: []
-          }
-        }
-      ]
+            items: [],
+          },
+        },
+      ],
     });
     const detail = await readRunDetail(cwd, "run-finished-cost");
     // The recorded figure wins over re-pricing the usage: it is what the run itself concluded.

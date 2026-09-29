@@ -104,7 +104,7 @@ route width/height size the virtual display and browser outer window. The actual
 viewport is smaller because browser chrome occupies space; Chromium-family live bundles
 measure it through CDP and record it separately from requested/verified screen geometry.
 Browsers without that measurement seam omit the viewport rather than guessing. A
-site's width-based responsive CSS still fires, and the model is *told* its device in the
+site's width-based responsive CSS still fires, and the model is _told_ its device in the
 prompt. Without the block below there is no
 touch input, the device-pixel-ratio isn't rendered, and the user-agent stays desktop on this
 route. Set `actors[0].lanes[].device` to override the study preset for a participant.
@@ -185,11 +185,11 @@ is unsupported: declaring `media.microphone.source` is rejected before any spend
 with a custom desktop template. This does not determine whether a custom template has its own
 working audio devices; Humanish does not deliver the declared audio file to them.
 
-| Declared media route | Support |
-| --- | --- |
-| Independent hosted computer-use browser lanes (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera |
-| Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal | Media declarations rejected before execution |
-| `media.microphone.source`, including custom desktop templates | File injection unsupported; declaration rejected |
+| Declared media route                                                                                | Support                                          |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Independent hosted computer-use browser lanes (`app-url`, `clone`, `local-tree`) in Chrome/Chromium | Synthetic or `.y4m` camera                       |
+| Firefox, shared-world, desktop CLI, in-process `local-app`, scripted browser, terminal              | Media declarations rejected before execution     |
+| `media.microphone.source`, including custom desktop templates                                       | File injection unsupported; declaration rejected |
 
 Camera-free studies keep their existing route behavior. A working camera does not
 establish audio, conferencing-provider, TURN or reconnection support.

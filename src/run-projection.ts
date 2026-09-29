@@ -51,7 +51,7 @@ export function groupRunsByLab(entries: readonly RunIndexEntry[]): {
       runs: runs.length,
       live: liveRuns.length,
       ...(runs[0] === undefined ? {} : { latest: runs[0] }),
-      liveRuns
+      liveRuns,
     };
   });
   // A lab someone is working in sorts first; otherwise most recently used.
@@ -101,13 +101,15 @@ export interface LabExpectation {
  */
 export function expectationFor(
   entries: readonly RunIndexEntry[],
-  mode?: "dry-run" | "live"
+  mode?: "dry-run" | "live",
 ): LabExpectation {
   const scoped = mode === undefined ? entries : entries.filter((entry) => entry.mode === mode);
   const finished = scoped.filter((entry) => entry.liveness === "finished");
   const durations = finished
     .map((entry) => entry.durationMs)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0)
+    .filter(
+      (value): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0,
+    )
     .sort((a, b) => a - b);
   const costs = finished
     .map((entry) => entry.estimatedCostUsd)
@@ -118,7 +120,7 @@ export function expectationFor(
   // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
   // denominator the figure does not have.
   const costUnknown = finished.filter(
-    (entry) => entry.estimatedCostUsd === null || entry.estimatedCostUsd === undefined
+    (entry) => entry.estimatedCostUsd === null || entry.estimatedCostUsd === undefined,
   ).length;
   return {
     sample: finished.length,
@@ -126,10 +128,10 @@ export function expectationFor(
       ? {}
       : {
           medianDurationMs: median(durations),
-          durationRangeMs: { min: durations[0]!, max: durations[durations.length - 1]! }
+          durationRangeMs: { min: durations[0]!, max: durations[durations.length - 1]! },
         }),
     ...(costs.length === 0 ? {} : { medianCostUsd: median(costs) }),
-    costUnknown
+    costUnknown,
   };
 }
 
@@ -158,7 +160,12 @@ export function expectationLine(expectation: LabExpectation): string {
   // "2 of 3 unpriced" and "none of them priced" are different facts, and a line that reports the
   // second as the first reads as though a median existed for the rest.
   const allUnpriced = expectation.sample > 0 && expectation.costUnknown === expectation.sample;
-  const unknown = expectation.costUnknown === 0 ? "" : allUnpriced ? ", none priced" : `, ${expectation.costUnknown} unpriced`;
+  const unknown =
+    expectation.costUnknown === 0
+      ? ""
+      : allUnpriced
+        ? ", none priced"
+        : `, ${expectation.costUnknown} unpriced`;
   if (parts.length === 0) {
     return allUnpriced ? `${sample}, nothing recorded` : `${sample}${unknown}, nothing timed`;
   }
@@ -173,7 +180,9 @@ export function expectationLine(expectation: LabExpectation): string {
  * live history it reports the count and claims nothing about time or money — which is why this is
  * shared rather than reimplemented per surface, since the two disagreeing is the whole failure.
  */
-export function labSummaryLine(row: Pick<LabRow, "runs" | "declared" | "expectation" | "liveExpectation">): string {
+export function labSummaryLine(
+  row: Pick<LabRow, "runs" | "declared" | "expectation" | "liveExpectation">,
+): string {
   if (row.runs === 0) return row.declared ? "never run" : "no runs";
   if (row.liveExpectation.sample > 0) return expectationLine(row.liveExpectation);
   return `${row.runs} ${row.runs === 1 ? "run" : "runs"}, none live`;
@@ -203,7 +212,10 @@ export interface NormalizedThought {
  * The text is never paraphrased or shortened by meaning — only wrapped, and cut at a word boundary
  * with an ellipsis when it does not fit. `truncated` is how the surface says so.
  */
-export function normalizeThought(text: string, options: { width: number; maxLines: number }): NormalizedThought {
+export function normalizeThought(
+  text: string,
+  options: { width: number; maxLines: number },
+): NormalizedThought {
   const width = Math.max(8, Math.floor(options.width));
   const maxLines = Math.max(1, Math.floor(options.maxLines));
   const flat = text
@@ -241,7 +253,8 @@ export function normalizeThought(text: string, options: { width: number; maxLine
   const truncated = index < words.length;
   if (truncated && lines.length > 0) {
     const last = lines[lines.length - 1]!;
-    lines[lines.length - 1] = last.length + 1 <= width ? `${last}…` : `${last.slice(0, width - 1)}…`;
+    lines[lines.length - 1] =
+      last.length + 1 <= width ? `${last}…` : `${last.slice(0, width - 1)}…`;
   }
   return { lines, truncated };
 }
@@ -262,9 +275,13 @@ export function listWindow(args: {
   const viewport = Math.max(1, Math.floor(args.viewport));
   if (total <= viewport) return { start: 0, end: total };
   const selected = Math.min(Math.max(0, Math.floor(args.selected)), total - 1);
-  const margin = Math.min(Math.max(0, Math.floor(args.margin ?? 1)), Math.floor((viewport - 1) / 2));
+  const margin = Math.min(
+    Math.max(0, Math.floor(args.margin ?? 1)),
+    Math.floor((viewport - 1) / 2),
+  );
   let start = Math.min(Math.max(0, selected - margin), total - viewport);
-  if (selected >= start + viewport - margin) start = Math.min(selected - viewport + 1 + margin, total - viewport);
+  if (selected >= start + viewport - margin)
+    start = Math.min(selected - viewport + 1 + margin, total - viewport);
   start = Math.max(0, Math.min(start, total - viewport));
   return { start, end: start + viewport };
 }
@@ -368,7 +385,7 @@ export interface DeclaredLab {
  */
 export function labRows(
   declared: readonly DeclaredLab[],
-  entries: readonly RunIndexEntry[]
+  entries: readonly RunIndexEntry[],
 ): { rows: LabRow[]; unattributed: RunIndexEntry[] } {
   const { labs, unattributed } = groupRunsByLab(entries);
   const byId = new Map(labs.map((lab) => [lab.labId, lab]));
@@ -397,7 +414,8 @@ export function labRows(
       declared: isDeclared,
       // Replaced by assignLabels once the whole set is known; a label is only meaningful relative
       // to the rows it sits beside.
-      label: manifest?.title ?? (manifestPath === undefined ? labId : labNameFromPath(manifestPath)),
+      label:
+        manifest?.title ?? (manifestPath === undefined ? labId : labNameFromPath(manifestPath)),
       ...(manifest?.description === undefined ? {} : { description: manifest.description }),
       sharesIdWith: Math.max(0, (idCounts.get(labId) ?? 0) - 1),
       runs: rollup?.runs ?? 0,
@@ -405,14 +423,16 @@ export function labRows(
       ...(rollup?.latest === undefined ? {} : { latest: rollup.latest }),
       liveRuns: rollup?.liveRuns ?? [],
       expectation: expectationFor(runsOf.get(labId) ?? []),
-      liveExpectation: expectationFor(runsOf.get(labId) ?? [], "live")
+      liveExpectation: expectationFor(runsOf.get(labId) ?? [], "live"),
     };
   };
 
   const declaredIds = new Set(declared.map((lab) => lab.id));
   const rows = [
     ...declared.map((lab) => build(lab.id, lab, true)),
-    ...labs.filter((lab) => !declaredIds.has(lab.labId)).map((lab) => build(lab.labId, undefined, false))
+    ...labs
+      .filter((lab) => !declaredIds.has(lab.labId))
+      .map((lab) => build(lab.labId, undefined, false)),
   ];
 
   // Resolve each row's label BEFORE sorting, so the list is ordered by what a reader actually sees.

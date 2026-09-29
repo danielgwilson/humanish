@@ -56,7 +56,7 @@ describe("observer-data.v1 contract freeze", () => {
   for (const id of GOLDENS) {
     it(`${id} golden bundle produces the frozen observer-data shape`, async () => {
       const bundle = JSON.parse(
-        await readFile(path.join(ROOT, "tests", "golden", "labs", `${id}.json`), "utf8")
+        await readFile(path.join(ROOT, "tests", "golden", "labs", `${id}.json`), "utf8"),
       ) as RunBundle;
 
       const data = buildObserverData(bundle, FIXED_GENERATED_AT);

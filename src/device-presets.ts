@@ -45,7 +45,7 @@ export const DEVICE_PRESETS = {
   // laptop baseline (the in-house desktop screen; ~matches humanish's own run.ts desktop surface)
   desktop: { width: 1440, height: 950, isMobile: false, deviceScaleFactor: 1 },
   // external monitor / most-common desktop resolution
-  wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 }
+  wide: { width: 1920, height: 1080, isMobile: false, deviceScaleFactor: 1 },
 } as const satisfies Record<string, DevicePreset>;
 
 export type DevicePresetName = keyof typeof DEVICE_PRESETS;

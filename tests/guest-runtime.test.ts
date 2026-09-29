@@ -1,100 +1,247 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Readable, Writable } from 'node:stream';
-import { runGuestRuntime, type GuestRuntimeOptions } from '../src/guest-runtime.js';
-import { GuestBootstrapReader, encodeGuestBootstrap, guestReadyTimeoutMs } from '../src/guest-bootstrap.js';
-import { createBrowserControlClient } from '../src/browser-control-client.js';
-import { identity, pair, observation, tick } from './browser-control-fixture.js';
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Readable, Writable } from "node:stream";
+import { runGuestRuntime, type GuestRuntimeOptions } from "../src/guest-runtime.js";
+import {
+  GuestBootstrapReader,
+  encodeGuestBootstrap,
+  guestReadyTimeoutMs,
+} from "../src/guest-bootstrap.js";
+import { createBrowserControlClient } from "../src/browser-control-client.js";
+import { identity, pair, observation, tick } from "./browser-control-fixture.js";
 
-afterEach(()=>vi.useRealTimers());
+afterEach(() => vi.useRealTimers());
 function fixture() {
-  const p=pair(),owner=new AbortController(),close=vi.fn(async()=>({complete:true})),execute=vi.fn(async()=>{}),observe=vi.fn(async()=>observation()),marker=vi.fn();
-  const desktop={executor:{execute,observe},close};
-  const createDesktop=vi.fn(async()=>desktop);
-  return {...p,owner,close,execute,observe,marker,desktop,createDesktop};
+  const p = pair(),
+    owner = new AbortController(),
+    close = vi.fn(async () => ({ complete: true })),
+    execute = vi.fn(async () => {}),
+    observe = vi.fn(async () => observation()),
+    marker = vi.fn();
+  const desktop = { executor: { execute, observe }, close };
+  const createDesktop = vi.fn(async () => desktop);
+  return { ...p, owner, close, execute, observe, marker, desktop, createDesktop };
 }
-describe('one guest runtime lifecycle',()=>{
-  it('installs the dispatcher before immediate HELLO and closes exact desktop after EOF',async()=>{
-    const f=fixture();
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop:f.createDesktop});
-    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
-    f.left.write(encodeGuestBootstrap(identity));await ready.identity;ready.handoff();
-    const client=createBrowserControlClient({transport:f.left,identity});f.left.resume();await client.ready();
-    expect(f.marker.mock.calls).toEqual([['A'],['R']]);expect(f.execute).not.toHaveBeenCalled();
+describe("one guest runtime lifecycle", () => {
+  it("installs the dispatcher before immediate HELLO and closes exact desktop after EOF", async () => {
+    const f = fixture();
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop: f.createDesktop,
+    });
+    const ready = new GuestBootstrapReader(f.left, identity.runtimeRevision, f.owner.signal, true);
+    f.left.write(encodeGuestBootstrap(identity));
+    await ready.identity;
+    ready.handoff();
+    const client = createBrowserControlClient({ transport: f.left, identity });
+    f.left.resume();
+    await client.ready();
+    expect(f.marker.mock.calls).toEqual([["A"], ["R"]]);
+    expect(f.execute).not.toHaveBeenCalled();
     expect(await client.executor.observe()).toEqual(observation());
-    const runtime=await running;client.close();expect(await runtime.closed).toEqual({complete:true});expect(f.close).toHaveBeenCalledOnce();
-    await runtime.close();expect(f.close).toHaveBeenCalledOnce();
+    const runtime = await running;
+    client.close();
+    expect(await runtime.closed).toEqual({ complete: true });
+    expect(f.close).toHaveBeenCalledOnce();
+    await runtime.close();
+    expect(f.close).toHaveBeenCalledOnce();
   });
-  it('never creates a desktop for a malformed or early coalesced frame',async()=>{
-    const f=fixture();const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop:f.createDesktop});
-    f.left.write(Buffer.concat([encodeGuestBootstrap(identity),Buffer.from([1])]));await expect(running).rejects.toBeDefined();
-    expect(f.createDesktop).not.toHaveBeenCalled();expect(f.marker).not.toHaveBeenCalled();f.left.destroy();
+  it("never creates a desktop for a malformed or early coalesced frame", async () => {
+    const f = fixture();
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop: f.createDesktop,
+    });
+    f.left.write(Buffer.concat([encodeGuestBootstrap(identity), Buffer.from([1])]));
+    await expect(running).rejects.toBeDefined();
+    expect(f.createDesktop).not.toHaveBeenCalled();
+    expect(f.marker).not.toHaveBeenCalled();
+    f.left.destroy();
   });
-  it('refuses bytes during async desktop preparation and reclaims late resources',async()=>{
-    const f=fixture();let release!:(value:typeof f.desktop)=>void;
-    const createDesktop=vi.fn(()=>new Promise<typeof f.desktop>(resolve=>{release=resolve;}));
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
-    f.left.write(encodeGuestBootstrap(identity));await tick();f.left.write(Buffer.from([1]));await tick();release(f.desktop);
-    await expect(running).rejects.toBeDefined();expect(f.close).toHaveBeenCalledOnce();expect(f.marker.mock.calls).toEqual([['A']]);f.left.destroy();
+  it("refuses bytes during async desktop preparation and reclaims late resources", async () => {
+    const f = fixture();
+    let release!: (value: typeof f.desktop) => void;
+    const createDesktop = vi.fn(
+      () =>
+        new Promise<typeof f.desktop>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop,
+    });
+    f.left.write(encodeGuestBootstrap(identity));
+    await tick();
+    f.left.write(Buffer.from([1]));
+    await tick();
+    release(f.desktop);
+    await expect(running).rejects.toBeDefined();
+    expect(f.close).toHaveBeenCalledOnce();
+    expect(f.marker.mock.calls).toEqual([["A"]]);
+    f.left.destroy();
   });
-  it('bounds an unresolved factory/cleanup and preserves incomplete teardown',async()=>{
-    vi.useFakeTimers();const f=fixture();
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop:()=>new Promise(()=>{})});
-    const rejected=expect(running).rejects.toBeDefined();f.left.write(encodeGuestBootstrap(identity));await vi.advanceTimersByTimeAsync(35000+4000);await rejected;
-    expect(f.right.destroyed).toBe(true);expect(f.marker.mock.calls).toEqual([['A']]);f.left.destroy();
+  it("bounds an unresolved factory/cleanup and preserves incomplete teardown", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop: () => new Promise(() => {}),
+    });
+    const rejected = expect(running).rejects.toBeDefined();
+    f.left.write(encodeGuestBootstrap(identity));
+    await vi.advanceTimersByTimeAsync(35000 + 4000);
+    await rejected;
+    expect(f.right.destroyed).toBe(true);
+    expect(f.marker.mock.calls).toEqual([["A"]]);
+    f.left.destroy();
   });
-  it('revokes before cleanup even if marker transmission fails',async()=>{
-    const f=fixture();let observed:AbortSignal|undefined;
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:value=>{if(value==='R')throw new Error('synthetic');},
-      createDesktop:async signal=>{observed=signal;return f.desktop;}});
-    f.left.write(encodeGuestBootstrap(identity));await expect(running).rejects.toBeDefined();expect(observed?.aborted).toBe(true);expect(f.close).toHaveBeenCalledOnce();f.left.destroy();
+  it("revokes before cleanup even if marker transmission fails", async () => {
+    const f = fixture();
+    let observed: AbortSignal | undefined;
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: (value) => {
+        if (value === "R") throw new Error("synthetic");
+      },
+      createDesktop: async (signal) => {
+        observed = signal;
+        return f.desktop;
+      },
+    });
+    f.left.write(encodeGuestBootstrap(identity));
+    await expect(running).rejects.toBeDefined();
+    expect(observed?.aborted).toBe(true);
+    expect(f.close).toHaveBeenCalledOnce();
+    f.left.destroy();
   });
-  it('withholds READY until initial navigation finishes and forwards only the admitted URL',async()=>{
-    const f=fixture(); let finish!:()=>void;
-    const navigation=new Promise<void>(resolve=>{finish=resolve;});
-    const initialUrl='http://127.0.0.1:3000/notes';
-    const createDesktop=vi.fn(async(_signal:AbortSignal,_terminal:()=>void,url?:string)=>{expect(url).toBe(initialUrl);await navigation;return f.desktop;});
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
-    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
-    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await tick();
-    expect(f.marker.mock.calls).toEqual([['A']]); expect(createDesktop).toHaveBeenCalledOnce();
-    finish();await ready.identity;ready.handoff();
-    expect(f.marker.mock.calls).toEqual([['A'],['R']]);
-    const runtime=await running;f.left.destroy();await runtime.closed;
+  it("withholds READY until initial navigation finishes and forwards only the admitted URL", async () => {
+    const f = fixture();
+    let finish!: () => void;
+    const navigation = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const initialUrl = "http://127.0.0.1:3000/notes";
+    const createDesktop = vi.fn(
+      async (_signal: AbortSignal, _terminal: () => void, url?: string) => {
+        expect(url).toBe(initialUrl);
+        await navigation;
+        return f.desktop;
+      },
+    );
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop,
+    });
+    const ready = new GuestBootstrapReader(f.left, identity.runtimeRevision, f.owner.signal, true);
+    f.left.write(encodeGuestBootstrap(identity, false, initialUrl));
+    await tick();
+    expect(f.marker.mock.calls).toEqual([["A"]]);
+    expect(createDesktop).toHaveBeenCalledOnce();
+    finish();
+    await ready.identity;
+    ready.handoff();
+    expect(f.marker.mock.calls).toEqual([["A"], ["R"]]);
+    const runtime = await running;
+    f.left.destroy();
+    await runtime.closed;
   });
-  it('forwards recording config and exposes its finite byte stream',async()=>{
-    const f=fixture(),body=Buffer.from('recording');
-    const metadata={mimeType:'video/mp4' as const,startedAt:'2026-09-26T00:00:00.000Z',durationMs:1000,bytes:body.length,
-      audioSources:['microphone-input' as const,'speaker-output' as const],complete:true};
-    const finishRecording=vi.fn(async()=>({metadata,stream:Readable.from([body])}));
-    const desktop={...f.desktop,finishRecording};
-    const createDesktop=vi.fn(async(..._args:Parameters<GuestRuntimeOptions['createDesktop']>)=>desktop);
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,createDesktop});
-    const ready=new GuestBootstrapReader(f.left,identity.runtimeRevision,f.owner.signal,true);
-    f.left.write(encodeGuestBootstrap(identity,false,undefined,undefined,{audio:true}));await ready.identity;ready.handoff();
-    const client=createBrowserControlClient({transport:f.left,identity});f.left.resume();await client.ready();
-    const chunks:Buffer[]=[];const destination=new Writable({write(chunk,_encoding,done){chunks.push(Buffer.from(chunk));done();}});
+  it("forwards recording config and exposes its finite byte stream", async () => {
+    const f = fixture(),
+      body = Buffer.from("recording");
+    const metadata = {
+      mimeType: "video/mp4" as const,
+      startedAt: "2026-09-26T00:00:00.000Z",
+      durationMs: 1000,
+      bytes: body.length,
+      audioSources: ["microphone-input" as const, "speaker-output" as const],
+      complete: true,
+    };
+    const finishRecording = vi.fn(async () => ({ metadata, stream: Readable.from([body]) }));
+    const desktop = { ...f.desktop, finishRecording };
+    const createDesktop = vi.fn(
+      async (..._args: Parameters<GuestRuntimeOptions["createDesktop"]>) => desktop,
+    );
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop,
+    });
+    const ready = new GuestBootstrapReader(f.left, identity.runtimeRevision, f.owner.signal, true);
+    f.left.write(encodeGuestBootstrap(identity, false, undefined, undefined, { audio: true }));
+    await ready.identity;
+    ready.handoff();
+    const client = createBrowserControlClient({ transport: f.left, identity });
+    f.left.resume();
+    await client.ready();
+    const chunks: Buffer[] = [];
+    const destination = new Writable({
+      write(chunk, _encoding, done) {
+        chunks.push(Buffer.from(chunk));
+        done();
+      },
+    });
     expect(await client.finishRecording(destination)).toEqual(metadata);
-    expect(Buffer.concat(chunks)).toEqual(body);expect(finishRecording).toHaveBeenCalledOnce();
-    expect(createDesktop.mock.calls[0]?.[4]).toEqual({audio:true});
-    const runtime=await running;await runtime.close();
+    expect(Buffer.concat(chunks)).toEqual(body);
+    expect(finishRecording).toHaveBeenCalledOnce();
+    expect(createDesktop.mock.calls[0]?.[4]).toEqual({ audio: true });
+    const runtime = await running;
+    await runtime.close();
   });
-  it('never acknowledges an initial navigation failure',async()=>{
-    const f=fixture();
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
-      createDesktop:async()=>{throw new Error('Synthetic navigation failure');}});
-    f.left.write(encodeGuestBootstrap(identity,false,'http://localhost:3000/'));
-    await expect(running).rejects.toThrow('Synthetic navigation failure');
-    expect(f.marker.mock.calls).toEqual([['A']]);expect(f.right.destroyed).toBe(true);f.left.destroy();
+  it("never acknowledges an initial navigation failure", async () => {
+    const f = fixture();
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop: async () => {
+        throw new Error("Synthetic navigation failure");
+      },
+    });
+    f.left.write(encodeGuestBootstrap(identity, false, "http://localhost:3000/"));
+    await expect(running).rejects.toThrow("Synthetic navigation failure");
+    expect(f.marker.mock.calls).toEqual([["A"]]);
+    expect(f.right.destroyed).toBe(true);
+    f.left.destroy();
   });
-  it('bounds initial navigation preparation without changing the omitted-URL deadline',async()=>{
-    vi.useFakeTimers();const f=fixture();
-    const initialUrl='http://localhost:3000/';
-    const running=runGuestRuntime({transport:f.right,revision:identity.runtimeRevision,signal:f.owner.signal,marker:f.marker,
-      createDesktop:()=>new Promise(()=>{})});
-    const rejected=expect(running).rejects.toBeDefined();
-    f.left.write(encodeGuestBootstrap(identity,false,initialUrl));await vi.advanceTimersByTimeAsync(35_000);
+  it("bounds initial navigation preparation without changing the omitted-URL deadline", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const initialUrl = "http://localhost:3000/";
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop: () => new Promise(() => {}),
+    });
+    const rejected = expect(running).rejects.toBeDefined();
+    f.left.write(encodeGuestBootstrap(identity, false, initialUrl));
+    await vi.advanceTimersByTimeAsync(35_000);
     expect(f.right.destroyed).toBe(false);
-    await vi.advanceTimersByTimeAsync(guestReadyTimeoutMs(initialUrl)-35_000+4000);await rejected;
-    expect(f.right.destroyed).toBe(true);expect(f.marker.mock.calls).toEqual([['A']]);f.left.destroy();
+    await vi.advanceTimersByTimeAsync(guestReadyTimeoutMs(initialUrl) - 35_000 + 4000);
+    await rejected;
+    expect(f.right.destroyed).toBe(true);
+    expect(f.marker.mock.calls).toEqual([["A"]]);
+    f.left.destroy();
   });
 });

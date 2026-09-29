@@ -9,7 +9,7 @@ import {
   renderInboxList,
   renderInboxMessage,
   renderInboxMessageSynth,
-  rewriteOrigin
+  rewriteOrigin,
 } from "../src/comms-inbox.js";
 import type { CommsMessage } from "../src/comms-types.js";
 
@@ -23,26 +23,41 @@ const MAP: Array<[string, string]> = [["http://127.0.0.1:3000", "https://3000-ab
 async function captured(subject = "Confirm your email"): Promise<CommsMessage[]> {
   const bus = new FakeInbox({ now: () => 1_700_000_000_000 });
   const user = await bus.provisionAddress("user", "user-07@example.test");
-  await bus.deliverRaw({ from: "Example App <no-reply@example.test>", to: [user.value], subject, body: VERIFICATION_HTML });
+  await bus.deliverRaw({
+    from: "Example App <no-reply@example.test>",
+    to: [user.value],
+    subject,
+    body: VERIFICATION_HTML,
+  });
   return bus.poll(user);
 }
 
 describe("comms-inbox: rewriteOrigin + pickVerifyUrl", () => {
   it("rewrites a link whose origin matches the map, leaves others untouched", () => {
-    expect(rewriteOrigin("http://127.0.0.1:3000/verify?t=1", MAP)).toBe("https://3000-abc.e2b.app/verify?t=1");
-    expect(rewriteOrigin("https://elsewhere.example.test/x", MAP)).toBe("https://elsewhere.example.test/x");
+    expect(rewriteOrigin("http://127.0.0.1:3000/verify?t=1", MAP)).toBe(
+      "https://3000-abc.e2b.app/verify?t=1",
+    );
+    expect(rewriteOrigin("https://elsewhere.example.test/x", MAP)).toBe(
+      "https://elsewhere.example.test/x",
+    );
     expect(rewriteOrigin("http://127.0.0.1:3000", [])).toBe("http://127.0.0.1:3000"); // no map → unchanged
   });
 
   it("only rewrites on an ORIGIN BOUNDARY — a sibling origin sharing a prefix/suffix is never mangled", () => {
     expect(rewriteOrigin("http://127.0.0.1:30000/admin", MAP)).toBe("http://127.0.0.1:30000/admin"); // :30000 != :3000
-    expect(rewriteOrigin("http://127.0.0.1:3000.evil.test/x", MAP)).toBe("http://127.0.0.1:3000.evil.test/x");
+    expect(rewriteOrigin("http://127.0.0.1:3000.evil.test/x", MAP)).toBe(
+      "http://127.0.0.1:3000.evil.test/x",
+    );
     expect(rewriteOrigin("http://127.0.0.1:3000", MAP)).toBe("https://3000-abc.e2b.app"); // exact origin
-    expect(rewriteOrigin("http://127.0.0.1:3000/verify?t=1#frag", MAP)).toBe("https://3000-abc.e2b.app/verify?t=1#frag");
+    expect(rewriteOrigin("http://127.0.0.1:3000/verify?t=1#frag", MAP)).toBe(
+      "https://3000-abc.e2b.app/verify?t=1#frag",
+    );
   });
 
   it("picks the verify-looking link, else the first, else undefined", () => {
-    expect(pickVerifyUrl(["https://a.test/home", "https://a.test/confirm?t=1"])).toBe("https://a.test/confirm?t=1");
+    expect(pickVerifyUrl(["https://a.test/home", "https://a.test/confirm?t=1"])).toBe(
+      "https://a.test/confirm?t=1",
+    );
     expect(pickVerifyUrl(["https://a.test/x", "https://a.test/y"])).toBe("https://a.test/x");
     expect(pickVerifyUrl([])).toBeUndefined();
   });
@@ -50,29 +65,41 @@ describe("comms-inbox: rewriteOrigin + pickVerifyUrl", () => {
 
 describe("comms-inbox: buildOriginMap", () => {
   it("maps the serve origin + loopback aliases to the reachable origin (shared-world: loopback → getHost)", () => {
-    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000/", reachableBaseUrl: "https://3000-abc.e2b.app" });
+    const map = buildOriginMap({
+      internalServeUrl: "http://127.0.0.1:3000/",
+      reachableBaseUrl: "https://3000-abc.e2b.app",
+    });
     expect(map).toEqual([
       ["http://127.0.0.1:3000", "https://3000-abc.e2b.app"],
       ["http://localhost:3000", "https://3000-abc.e2b.app"],
-      ["http://0.0.0.0:3000", "https://3000-abc.e2b.app"]
+      ["http://0.0.0.0:3000", "https://3000-abc.e2b.app"],
     ]);
   });
 
   it("drops the identity row when serve origin == reachable origin (CUA same-sandbox), keeps alias rows", () => {
-    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: "http://127.0.0.1:3000/app" });
+    const map = buildOriginMap({
+      internalServeUrl: "http://127.0.0.1:3000",
+      reachableBaseUrl: "http://127.0.0.1:3000/app",
+    });
     expect(map).toEqual([
       ["http://localhost:3000", "http://127.0.0.1:3000"],
-      ["http://0.0.0.0:3000", "http://127.0.0.1:3000"]
+      ["http://0.0.0.0:3000", "http://127.0.0.1:3000"],
     ]);
   });
 
   it("prepends an operator-declared linkOrigin (matched first)", () => {
-    const map = buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: "https://x-abc.e2b.app", linkOrigin: "https://app.example.test" });
+    const map = buildOriginMap({
+      internalServeUrl: "http://127.0.0.1:3000",
+      reachableBaseUrl: "https://x-abc.e2b.app",
+      linkOrigin: "https://app.example.test",
+    });
     expect(map[0]).toEqual(["https://app.example.test", "https://x-abc.e2b.app"]);
   });
 
   it("returns [] when there is no valid reachable origin", () => {
-    expect(buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: undefined })).toEqual([]);
+    expect(
+      buildOriginMap({ internalServeUrl: "http://127.0.0.1:3000", reachableBaseUrl: undefined }),
+    ).toEqual([]);
     expect(buildOriginMap({ reachableBaseUrl: "not a url" })).toEqual([]);
   });
 });
@@ -109,7 +136,12 @@ describe("comms-inbox: real-email message view (the default)", () => {
       '<p><a href="http://127.0.0.1:3000/verify?token=abc123XYZ-9">Verify your account</a></p>';
     const bus = new FakeInbox();
     const user = await bus.provisionAddress("user", "user-07@example.test");
-    await bus.deliverRaw({ from: "no-reply@example.test", to: [user.value], subject: "Confirm", body: hostile });
+    await bus.deliverRaw({
+      from: "no-reply@example.test",
+      to: [user.value],
+      subject: "Confirm",
+      body: hostile,
+    });
     const [message] = await bus.poll(user);
     const html = renderInboxMessage(message!, { originMap: MAP });
     // The load-bearing, browser-enforced protection: a script-forbidding CSP is on the page.
@@ -159,7 +191,16 @@ describe("comms-inbox: buildInboxSurface (the served route→file set)", () => {
     const files = buildInboxSurface(messages, { originMap: MAP });
     const byPath = new Map(files.map((file) => [file.path, file]));
     // index semantics avoid a file-vs-dir collision (`/inbox` → inbox/index; `/inbox/{id}` stays a dir).
-    for (const path of ["inbox/index", `inbox/${id}/index`, `inbox/${id}/synth`, "inbox/latest/index", "inbox/latest/synth", "api/inbox/index", `api/inbox/${id}`, "api/inbox/latest"]) {
+    for (const path of [
+      "inbox/index",
+      `inbox/${id}/index`,
+      `inbox/${id}/synth`,
+      "inbox/latest/index",
+      "inbox/latest/synth",
+      "api/inbox/index",
+      `api/inbox/${id}`,
+      "api/inbox/latest",
+    ]) {
       expect(byPath.has(path)).toBe(true);
     }
     expect(byPath.get("api/inbox/index")!.contentType).toContain("application/json");
@@ -177,7 +218,9 @@ describe("comms-inbox: buildInboxSurface (the served route→file set)", () => {
   it("list JSON verifyUrl is origin-rewritten (consistent with the per-message endpoint)", async () => {
     const messages = await captured();
     const files = buildInboxSurface(messages, { originMap: MAP });
-    const list = JSON.parse(files.find((file) => file.path === "api/inbox/index")!.body) as Array<{ verifyUrl?: string }>;
+    const list = JSON.parse(files.find((file) => file.path === "api/inbox/index")!.body) as Array<{
+      verifyUrl?: string;
+    }>;
     expect(list[0]!.verifyUrl).toBe("https://3000-abc.e2b.app/verify?token=abc123XYZ-9");
   });
 
@@ -205,12 +248,24 @@ describe("recipient-scoped inbox files", () => {
     const bus = new FakeInbox({ now: () => 123 });
     const ada = await bus.provisionAddress("ada", "ada@example.test");
     const grace = await bus.provisionAddress("grace", "grace@example.test");
-    await bus.deliverRaw({ from: "sender@example.test", to: [ada.value], subject: "Ada only", body: "Ada code 192837" });
-    await bus.deliverRaw({ from: "sender@example.test", to: [grace.value], subject: "Grace only", body: "Grace code 918273" });
-    const messages = [...await bus.poll(ada), ...await bus.poll(grace)];
+    await bus.deliverRaw({
+      from: "sender@example.test",
+      to: [ada.value],
+      subject: "Ada only",
+      body: "Ada code 192837",
+    });
+    await bus.deliverRaw({
+      from: "sender@example.test",
+      to: [grace.value],
+      subject: "Grace only",
+      body: "Grace code 918273",
+    });
+    const messages = [...(await bus.poll(ada)), ...(await bus.poll(grace))];
     const files = buildInboxSurface(messages, { recipients: ["empty@example.test"] });
     const scope = `inbox/for/${inboxRecipientScope(ada.value)}`;
-    const scoped = files.filter((file) => file.path.startsWith(scope + "/") || file.path.startsWith("api/" + scope + "/"));
+    const scoped = files.filter(
+      (file) => file.path.startsWith(scope + "/") || file.path.startsWith("api/" + scope + "/"),
+    );
     expect(scoped).toHaveLength(8);
     for (const file of scoped) {
       expect(file.body).not.toContain("Grace only");
@@ -220,11 +275,19 @@ describe("recipient-scoped inbox files", () => {
     }
     expect(files.some((file) => file.path === `${scope}/comms-0002/index`)).toBe(false);
     expect(files.find((file) => file.path === `${scope}/latest/index`)!.body).toContain("Ada only");
-    expect(files.find((file) => file.path === "inbox/index")!.body).toContain("Shared operator inbox");
-    expect(files.find((file) => file.path === `api/inbox/for/${inboxRecipientScope("empty@example.test")}/index`)!.body).toBe("[]");
+    expect(files.find((file) => file.path === "inbox/index")!.body).toContain(
+      "Shared operator inbox",
+    );
+    expect(
+      files.find(
+        (file) => file.path === `api/inbox/for/${inboxRecipientScope("empty@example.test")}/index`,
+      )!.body,
+    ).toBe("[]");
     expect(inboxRecipientScope(" ADA@example.test ")).toBe(inboxRecipientScope(ada.value));
     expect(() => buildInboxSurface(messages, { recipient: "" })).toThrow("must not be empty");
-    expect(() => buildInboxSurface([{ ...messages[0]!, id: "../other" }])).toThrow("Invalid inbox message identity");
+    expect(() => buildInboxSurface([{ ...messages[0]!, id: "../other" }])).toThrow(
+      "Invalid inbox message identity",
+    );
   });
 
   it("never merges accidentally colliding generated addresses, but explicit shared addresses share mail", async () => {
@@ -240,10 +303,21 @@ describe("recipient-scoped inbox files", () => {
 });
 
 describe("captured email images", () => {
-  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+  const png =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
   it("renders captured CID/data rasters, preserves HTTP(S) without referrers, and resolves declared relative sources", async () => {
     const [message] = await captured();
-    const html = renderInboxMessage({ ...message!, body: '<img src="cid:logo%40mail" alt="Logo"><img src="https://images.example.test/remote.png?x=1&amp;y=2"><img src="/logo.png"><img src="data:image/png;base64,' + png + '">', inlineImages: [{ contentId: "logo@mail", contentType: "image/png", base64: png }] }, { originMap: MAP });
+    const html = renderInboxMessage(
+      {
+        ...message!,
+        body:
+          '<img src="cid:logo%40mail" alt="Logo"><img src="https://images.example.test/remote.png?x=1&amp;y=2"><img src="/logo.png"><img src="data:image/png;base64,' +
+          png +
+          '">',
+        inlineImages: [{ contentId: "logo@mail", contentType: "image/png", base64: png }],
+      },
+      { originMap: MAP },
+    );
     expect(html.match(/src="data:image\/png;base64,/g)).toHaveLength(2);
     expect(html).toContain('src="https://images.example.test/remote.png?x=1&amp;y=2"');
     expect(html).toContain('src="https://3000-abc.e2b.app/logo.png"');
@@ -254,21 +328,48 @@ describe("captured email images", () => {
   it("labels missing CID, unresolved relative and malicious/invalid images without an unsafe fallback", async () => {
     const [message] = await captured();
     const svg = Buffer.from('<svg onload="alert(1)"></svg>').toString("base64");
-    const html = renderInboxMessage({ ...message!, body: '<img src="cid:missing" alt="Brand"><img src="/logo.png"><img src="jav&#97;script:alert(1)"><img src="data:image/svg+xml;base64,' + svg + '"><img src="cid:bad">', inlineImages: [{ contentId: "bad", contentType: "image/png", base64: Buffer.from("not image bytes").toString("base64") }] });
+    const html = renderInboxMessage({
+      ...message!,
+      body:
+        '<img src="cid:missing" alt="Brand"><img src="/logo.png"><img src="jav&#97;script:alert(1)"><img src="data:image/svg+xml;base64,' +
+        svg +
+        '"><img src="cid:bad">',
+      inlineImages: [
+        {
+          contentId: "bad",
+          contentType: "image/png",
+          base64: Buffer.from("not image bytes").toString("base64"),
+        },
+      ],
+    });
     expect(html.match(/class="email-image-unavailable"/g)).toHaveLength(5);
-    expect(html).not.toContain('<img src=');
+    expect(html).not.toContain("<img src=");
     expect(html).not.toContain(svg);
     expect(html).toContain("relative URL without a declared app origin");
   });
 
   it("keeps image bytes out of persisted comms evidence and bounds attachment metadata", async () => {
-    const { capturedInlineImages, inlineImageData, MAX_INLINE_IMAGE_BYTES } = await import("../src/comms-images.js");
+    const { capturedInlineImages, inlineImageData, MAX_INLINE_IMAGE_BYTES } =
+      await import("../src/comms-images.js");
     const { buildCommsThreadArtifact } = await import("../src/comms-evidence.js");
     const [message] = await captured();
     const image = { contentId: "logo", contentType: "image/png", base64: png };
-    expect(capturedInlineImages([image, { ...image, base64: "bad" }, { ...image, contentType: "text/html" }])).toEqual([image]);
-    expect(inlineImageData({ ...image, base64: Buffer.alloc(MAX_INLINE_IMAGE_BYTES + 1).toString("base64") })).toBeUndefined();
+    expect(
+      capturedInlineImages([
+        image,
+        { ...image, base64: "bad" },
+        { ...image, contentType: "text/html" },
+      ]),
+    ).toEqual([image]);
+    expect(
+      inlineImageData({
+        ...image,
+        base64: Buffer.alloc(MAX_INLINE_IMAGE_BYTES + 1).toString("base64"),
+      }),
+    ).toBeUndefined();
     expect(capturedInlineImages(Array.from({ length: 20 }, () => image))).toHaveLength(12);
-    expect(JSON.stringify(buildCommsThreadArtifact([{ ...message!, inlineImages: [image] }]))).not.toContain(png);
+    expect(
+      JSON.stringify(buildCommsThreadArtifact([{ ...message!, inlineImages: [image] }])),
+    ).not.toContain(png);
   });
 });

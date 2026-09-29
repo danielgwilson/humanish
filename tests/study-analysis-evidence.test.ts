@@ -15,34 +15,56 @@ describe("bounded study evidence reads", () => {
     cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-study-input-"));
     root = await prepareRunArtifactPaths(cwd, "synthetic-study");
     await mkdir(path.join(root.physicalRunRoot, "evidence"));
-    await writeFile(path.join(root.physicalRunRoot, "evidence", "sample.txt"), "synthetic evidence");
+    await writeFile(
+      path.join(root.physicalRunRoot, "evidence", "sample.txt"),
+      "synthetic evidence",
+    );
   });
-  afterEach(async () => { await rm(cwd, { recursive: true, force: true }); });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
 
   it("reads a contained single-link file within its exact byte budget", async () => {
-    expect((await readBoundedStudyFile(root, "evidence/sample.txt", 18))?.toString()).toBe("synthetic evidence");
+    expect((await readBoundedStudyFile(root, "evidence/sample.txt", 18))?.toString()).toBe(
+      "synthetic evidence",
+    );
     expect(await readBoundedStudyFile(root, "evidence/sample.txt", 17)).toBeNull();
     expect(await readBoundedStudyFile(root, "missing.txt", 100)).toBeNull();
   });
 
-  it.each(["../outside.txt", "/outside.txt", "C:\\outside.txt", "evidence\\sample.txt",
-    "https://example.test/evidence.txt", "data:text/plain,example", "file:evidence.txt",
-    "evidence/../sample.txt", "evidence//sample.txt", "evidence/./sample.txt", "bad\0name", "bad\nname", "captures/%2e%2e/frame.png", "captures/a%2fb.png", "captures/%252e%252e/frame.png"])(
-    "rejects path-shaped or nonlocal evidence %j", async (input) => {
-      expect(isStudyEvidencePath(input)).toBe(false);
-      expect(await readBoundedStudyFile(root, input, 100)).toBeNull();
-    }
-  );
-
-  it.each(["symlink", "hardlink"] as const)("rejects %s leaves without exposing outside content", async (kind) => {
-    const outside = path.join(cwd, "outside.txt");
-    await writeFile(outside, "OUTSIDE-SENTINEL");
-    const target = path.join(root.physicalRunRoot, "evidence", "linked.txt");
-    if (kind === "symlink") await symlink(outside, target);
-    else await link(outside, target);
-    expect(await readBoundedStudyFile(root, "evidence/linked.txt", 100)).toBeNull();
-    expect(await readFile(outside, "utf8")).toBe("OUTSIDE-SENTINEL");
+  it.each([
+    "../outside.txt",
+    "/outside.txt",
+    "C:\\outside.txt",
+    "evidence\\sample.txt",
+    "https://example.test/evidence.txt",
+    "data:text/plain,example",
+    "file:evidence.txt",
+    "evidence/../sample.txt",
+    "evidence//sample.txt",
+    "evidence/./sample.txt",
+    "bad\0name",
+    "bad\nname",
+    "captures/%2e%2e/frame.png",
+    "captures/a%2fb.png",
+    "captures/%252e%252e/frame.png",
+  ])("rejects path-shaped or nonlocal evidence %j", async (input) => {
+    expect(isStudyEvidencePath(input)).toBe(false);
+    expect(await readBoundedStudyFile(root, input, 100)).toBeNull();
   });
+
+  it.each(["symlink", "hardlink"] as const)(
+    "rejects %s leaves without exposing outside content",
+    async (kind) => {
+      const outside = path.join(cwd, "outside.txt");
+      await writeFile(outside, "OUTSIDE-SENTINEL");
+      const target = path.join(root.physicalRunRoot, "evidence", "linked.txt");
+      if (kind === "symlink") await symlink(outside, target);
+      else await link(outside, target);
+      expect(await readBoundedStudyFile(root, "evidence/linked.txt", 100)).toBeNull();
+      expect(await readFile(outside, "utf8")).toBe("OUTSIDE-SENTINEL");
+    },
+  );
 
   it("rejects a symlinked parent and a replaced prepared run root", async () => {
     const outside = path.join(cwd, "outside");
@@ -67,5 +89,4 @@ describe("bounded study evidence reads", () => {
     await promisify(execFile)("mkfifo", [path.join(root.physicalRunRoot, "evidence", "pipe")]);
     expect(await readBoundedStudyFile(root, "evidence/pipe", 100)).toBeNull();
   });
-
 });

@@ -35,7 +35,11 @@ function freePort(): Promise<number> {
 }
 
 /** Drive one SMTP conversation to completion and resolve when the server accepts the message. */
-function sendMail(port: number, message: string, envelope: { from: string; to: string }): Promise<string[]> {
+function sendMail(
+  port: number,
+  message: string,
+  envelope: { from: string; to: string },
+): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const replies: string[] = [];
     const socket = createConnection({ host: "127.0.0.1", port }, () => {});
@@ -45,7 +49,7 @@ function sendMail(port: number, message: string, envelope: { from: string; to: s
       `RCPT TO:<${envelope.to}>`,
       "DATA",
       `${message}\r\n.`,
-      "QUIT"
+      "QUIT",
     ];
     let step = -1;
     socket.setEncoding("utf8");
@@ -80,9 +84,21 @@ describe("sandbox catch: SMTP transport", () => {
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     const httpPort = await freePort();
     const smtpPort = await freePort();
-    child = spawn("python3", [scriptPath, String(httpPort), deliveries, path.join(dir, "surface"), "0", "", String(smtpPort)], {
-      stdio: "ignore"
-    });
+    child = spawn(
+      "python3",
+      [
+        scriptPath,
+        String(httpPort),
+        deliveries,
+        path.join(dir, "surface"),
+        "0",
+        "",
+        String(smtpPort),
+      ],
+      {
+        stdio: "ignore",
+      },
+    );
 
     // Wait for the HTTP side to answer, which means the process is up and the SMTP thread started.
     let up = false;
@@ -102,10 +118,13 @@ describe("sandbox catch: SMTP transport", () => {
       "MIME-Version: 1.0",
       'Content-Type: text/html; charset="utf-8"',
       "",
-      '<p>Welcome!</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Confirm</a></p><p>Code: 481920</p>'
+      '<p>Welcome!</p><p><a href="https://app.example.test/verify?token=abc123XYZ-9">Confirm</a></p><p>Code: 481920</p>',
     ].join("\r\n");
 
-    const replies = await sendMail(smtpPort, message, { from: "no-reply@example.test", to: "ada@example.test" });
+    const replies = await sendMail(smtpPort, message, {
+      from: "no-reply@example.test",
+      to: "ada@example.test",
+    });
     expect(replies.join(" ")).toContain("220 humanish-comms-catch");
     expect(replies.join(" ")).toContain("250 2.0.0 queued");
 
@@ -113,7 +132,12 @@ describe("sandbox catch: SMTP transport", () => {
     expect(sends).toHaveLength(1);
     // Normalized onto the HTTP path, so the existing profiles parse it with no special casing.
     expect(sends[0]!.path).toBe("/emails");
-    const body = JSON.parse(sends[0]!.body) as { from: string; to: string[]; subject: string; html: string };
+    const body = JSON.parse(sends[0]!.body) as {
+      from: string;
+      to: string[];
+      subject: string;
+      html: string;
+    };
     expect(body.from).toBe("no-reply@example.test");
     expect(body.to).toEqual(["ada@example.test"]);
     expect(body.subject).toBe("Verify your email");
@@ -137,7 +161,11 @@ describe("sandbox catch: SMTP transport", () => {
     const httpPort = await freePort();
     const smtpPort = await freePort();
     // No SMTP argv: routes that do not need it must not gain an extra listener.
-    child = spawn("python3", [scriptPath, String(httpPort), deliveries, path.join(dir, "surface")], { stdio: "ignore" });
+    child = spawn(
+      "python3",
+      [scriptPath, String(httpPort), deliveries, path.join(dir, "surface")],
+      { stdio: "ignore" },
+    );
 
     let up = false;
     for (let i = 0; i < 60 && !up; i += 1) {
@@ -150,7 +178,7 @@ describe("sandbox catch: SMTP transport", () => {
     expect(up).toBe(true);
     // Nothing is listening on the SMTP port, so a connection is refused outright.
     await expect(
-      sendMail(smtpPort, "Subject: x", { from: "no-reply@example.test", to: "ada@example.test" })
+      sendMail(smtpPort, "Subject: x", { from: "no-reply@example.test", to: "ada@example.test" }),
     ).rejects.toThrow();
   });
 
@@ -159,24 +187,37 @@ describe("sandbox catch: SMTP transport", () => {
     const scriptPath = path.join(dir, "catch.py");
     await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
     const occupied = createServer();
-    await new Promise<void>(resolve => occupied.listen(0, "127.0.0.1", resolve));
+    await new Promise<void>((resolve) => occupied.listen(0, "127.0.0.1", resolve));
     const address = occupied.address();
     if (!address || typeof address === "string") throw new Error("No occupied port");
     let timer: NodeJS.Timeout | undefined;
     try {
       const httpPort = await freePort();
-      child = spawn("python3", [scriptPath, String(httpPort), path.join(dir, "deliveries.ndjson"),
-        path.join(dir, "surface"), "0", "", String(address.port)], { stdio: "ignore" });
+      child = spawn(
+        "python3",
+        [
+          scriptPath,
+          String(httpPort),
+          path.join(dir, "deliveries.ndjson"),
+          path.join(dir, "surface"),
+          "0",
+          "",
+          String(address.port),
+        ],
+        { stdio: "ignore" },
+      );
       const exitCode = await Promise.race([
-        new Promise<number | null>(resolve => child!.once("exit", resolve)),
-        new Promise<"still-running">(resolve => { timer = setTimeout(() => resolve("still-running"), 2_000); })
+        new Promise<number | null>((resolve) => child!.once("exit", resolve)),
+        new Promise<"still-running">((resolve) => {
+          timer = setTimeout(() => resolve("still-running"), 2_000);
+        }),
       ]);
       expect(exitCode).toBe(1);
       await expect(fetch(`http://127.0.0.1:${httpPort}/health`)).rejects.toThrow();
       expect(occupied.listening).toBe(true);
     } finally {
       clearTimeout(timer);
-      await new Promise<void>(resolve => occupied.close(() => resolve()));
+      await new Promise<void>((resolve) => occupied.close(() => resolve()));
     }
   });
 });

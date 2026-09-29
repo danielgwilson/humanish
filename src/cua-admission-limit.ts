@@ -9,7 +9,9 @@ const admissionLimits = new WeakSet<object>();
  */
 export class CuaAdmissionLimitError extends Error {
   constructor() {
-    super("The adapter refused the request before provider dispatch because a local admission limit was reached.");
+    super(
+      "The adapter refused the request before provider dispatch because a local admission limit was reached.",
+    );
     this.name = "CuaAdmissionLimitError";
     admissionLimits.add(this);
   }

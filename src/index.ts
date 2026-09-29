@@ -1,20 +1,46 @@
-export { ANALYZE_RESULT_SCHEMA, analyzeStudy, showStudyAnalysis, correctStudyAnalysis } from "./study-analysis-service.js";
+export {
+  ANALYZE_RESULT_SCHEMA,
+  analyzeStudy,
+  showStudyAnalysis,
+  correctStudyAnalysis,
+} from "./study-analysis-service.js";
 export type { AnalyzeOptions, AnalyzeResult, AnalyzeDeps } from "./study-analysis-service.js";
-export { runAutomaticStudyAnalysis, readAutomaticStudyAnalysis, requestAutomaticStudyAnalysisCancellation } from "./automatic-study-analysis.js";
+export {
+  runAutomaticStudyAnalysis,
+  readAutomaticStudyAnalysis,
+  requestAutomaticStudyAnalysisCancellation,
+} from "./automatic-study-analysis.js";
 export { resolveAutomaticAnalysis, automaticAnalysisBudget } from "./automatic-analysis-config.js";
 export type { LabAnalysis, AutomaticAnalysisBudget } from "./automatic-analysis-config.js";
-export type { AutomaticAnalysisHooks, AutomaticAnalysisResult } from "./automatic-analysis-completion.js";
-export type { AutomaticStudyAnalysisDeps, AutomaticStudyAnalysisOutcome, AutomaticStudyAnalysisView,
-  AutomaticStudyAnalysisCancellation } from "./automatic-study-analysis.js";
+export type {
+  AutomaticAnalysisHooks,
+  AutomaticAnalysisResult,
+} from "./automatic-analysis-completion.js";
+export type {
+  AutomaticStudyAnalysisDeps,
+  AutomaticStudyAnalysisOutcome,
+  AutomaticStudyAnalysisView,
+  AutomaticStudyAnalysisCancellation,
+} from "./automatic-study-analysis.js";
 export { STUDY_ANALYSIS_SCHEMA, STUDY_ANALYSIS_CORRECTION_SCHEMA } from "./study-analysis.js";
-export type { StudyAnalysisConfig, OpenAIStudyAnalysisConfig, CodexStudyAnalysisConfig, CodexAnalysisIdentity, StudyAnalysisArtifact, StudyAnalysisResult, StudyAnalysisCorrection, AnalysisConcernReview, LoadedStudyAnalysis } from "./study-analysis.js";
+export type {
+  StudyAnalysisConfig,
+  OpenAIStudyAnalysisConfig,
+  CodexStudyAnalysisConfig,
+  CodexAnalysisIdentity,
+  StudyAnalysisArtifact,
+  StudyAnalysisResult,
+  StudyAnalysisCorrection,
+  AnalysisConcernReview,
+  LoadedStudyAnalysis,
+} from "./study-analysis.js";
 export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
   SCRIPTED_BROWSER_CAPABILITIES,
   TERMINAL_AGENT_CAPABILITIES,
   codexResultToActorTrace,
-  codexStatusToCompletionReason
+  codexStatusToCompletionReason,
 } from "./actor-contract.js";
 export type {
   ActorCapabilities,
@@ -29,20 +55,31 @@ export type {
   ActorRuntimeProvenance,
   ActorTraceItem,
   ActorTraceItemKind,
-  ParticipantClosingReport
+  ParticipantClosingReport,
 } from "./actor-contract.js";
-export { actorRegistry, getActor, isCuaActorDescriptor, isScriptedBrowserActorDescriptor, isTerminalActorDescriptor } from "./actor-registry.js";
-export type { ActorDescriptor, ActorId, CuaActorDescriptor, ScriptedBrowserActorDescriptor, TerminalActorDescriptor } from "./actor-registry.js";
+export {
+  actorRegistry,
+  getActor,
+  isCuaActorDescriptor,
+  isScriptedBrowserActorDescriptor,
+  isTerminalActorDescriptor,
+} from "./actor-registry.js";
+export type {
+  ActorDescriptor,
+  ActorId,
+  CuaActorDescriptor,
+  ScriptedBrowserActorDescriptor,
+  TerminalActorDescriptor,
+} from "./actor-registry.js";
 export {
   TERMINAL_AGENT_NOT_IMPLEMENTED_CODE,
-  runTerminalAgentSession
+  runTerminalAgentSession,
 } from "./terminal-agent-actor.js";
-export type { TerminalAgentSessionOptions, TerminalAgentSessionResult } from "./terminal-agent-actor.js";
-export {
-  describeCuaAction,
-  runComputerUseLoop,
-  stableProgressKey
-} from "./computer-use.js";
+export type {
+  TerminalAgentSessionOptions,
+  TerminalAgentSessionResult,
+} from "./terminal-agent-actor.js";
+export { describeCuaAction, runComputerUseLoop, stableProgressKey } from "./computer-use.js";
 export type {
   CuaAction,
   CuaExecutor,
@@ -52,7 +89,7 @@ export type {
   CuaProvider,
   CuaSafetyCheck,
   CuaTurn,
-  CuaTurnRequest
+  CuaTurnRequest,
 } from "./computer-use.js";
 export { runCuaActorSession } from "./computer-use-actor.js";
 export type { CuaActorSessionOptions } from "./computer-use-actor.js";
@@ -63,19 +100,19 @@ export type { E2BDesktopModule, E2BDesktopSandbox } from "./e2b-desktop-launch.j
 export {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
-  createOpenAiResponsesProvider
+  createOpenAiResponsesProvider,
 } from "./openai-responses-cu.js";
 export type { FetchLike, OpenAiResponsesProviderOptions } from "./openai-responses-cu.js";
 export { CuaAdmissionLimitError } from "./cua-admission-limit.js";
 export {
   adapterScoreFailureMessage,
   applyAdapterScoreFailureToReview,
-  applyBrowserAdapterHooks
+  applyBrowserAdapterHooks,
 } from "./adapter-extension.js";
 export type {
   BrowserAdapterBackend,
   BrowserLabAdapterHooks,
-  BrowserLabScoringContext
+  BrowserLabScoringContext,
 } from "./adapter-extension.js";
 // #316 CLI-loadable adopter scorer: the adopter-facing module contract + its read-model context union
 // (so an adopter types its `.mjs` scorer against `import("humanish")` alone). The loader itself is
@@ -94,14 +131,17 @@ export type {
   CommsChannelKind,
   CommsMessage,
   InboundRaw,
-  OutboundMessage
+  OutboundMessage,
 } from "./comms-types.js";
 export { FakeInbox } from "./comms-fake-inbox.js";
 export type { FakeInboxOptions } from "./comms-fake-inbox.js";
 export { COMMS_THREAD_SCHEMA } from "./comms-evidence.js";
 export type { CommsThreadArtifact, CommsThreadEntry } from "./comms-evidence.js";
 export { COMMS_RECEIVING_SCHEMA } from "./comms-receiving-types.js";
-export type { CommsReceivingEvidence, ReceivingParticipantEvidence } from "./comms-receiving-types.js";
+export type {
+  CommsReceivingEvidence,
+  ReceivingParticipantEvidence,
+} from "./comms-receiving-types.js";
 export {
   DESKTOP_RATE,
   DESKTOP_RESOURCE_RATE,
@@ -109,7 +149,7 @@ export {
   PRICING_SCHEMA,
   estimateActorCost,
   estimateAllocatedDesktopCost,
-  estimateDesktopCost
+  estimateDesktopCost,
 } from "./pricing.js";
 export type {
   ActorEstimatedCost,
@@ -117,19 +157,21 @@ export type {
   DesktopRate,
   DesktopResources,
   DesktopResourceRate,
-  ModelRate
+  ModelRate,
 } from "./pricing.js";
 export { normalizeCliArgv } from "./argv.js";
-export {
-  CODEX_APP_SERVER_UI_SCHEMA,
-  startCodexAppServerUi
+export { CODEX_APP_SERVER_UI_SCHEMA, startCodexAppServerUi } from "./codex-app-server-ui.js";
+export type {
+  CodexAppServerUiController,
+  CodexAppServerUiOptions,
+  CodexAppServerUiState,
 } from "./codex-app-server-ui.js";
-export type { CodexAppServerUiController, CodexAppServerUiOptions, CodexAppServerUiState } from "./codex-app-server-ui.js";
-export {
-  CODEX_APP_SERVER_TRACE_SCHEMA,
-  runCodexAppServerSession
+export { CODEX_APP_SERVER_TRACE_SCHEMA, runCodexAppServerSession } from "./codex-app-server.js";
+export type {
+  CodexAppServerRunOptions,
+  CodexAppServerRunResult,
+  CodexAppServerTrace,
 } from "./codex-app-server.js";
-export type { CodexAppServerRunOptions, CodexAppServerRunResult, CodexAppServerTrace } from "./codex-app-server.js";
 export {
   FEEDBACK_RESULT_SCHEMA,
   FEEDBACK_SCHEMA,
@@ -137,7 +179,7 @@ export {
   listFeedback,
   renderIssueMarkdown,
   renderIssueUrl,
-  verifyFeedback
+  verifyFeedback,
 } from "./feedback.js";
 export type { FeedbackDraft, FeedbackResult } from "./feedback.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./init.js";
@@ -145,25 +187,30 @@ export type { InitChange, InitMode, InitOptions, InitResult } from "./init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer-data.js";
 export type { ObserverData, ObserverStream } from "./observer-data.js";
 export { OBSERVER_SCHEMA, openTarget, renderObserver, serveObserver } from "./observer.js";
-export type { ObserverOptions, ObserverResult, ObserverServeOptions, ObserverServer } from "./observer.js";
+export type {
+  ObserverOptions,
+  ObserverResult,
+  ObserverServeOptions,
+  ObserverServer,
+} from "./observer.js";
 export {
   OBSERVER_STATIC_HOST,
   createObserverStaticHandler,
   observerStaticContentType,
   respondToObserverStaticRequest,
-  serveObserverStatic
+  serveObserverStatic,
 } from "./observer-static.js";
 export type {
   ObserverStaticHandlerOptions,
   ObserverStaticServeOptions,
-  ObserverStaticServer
+  ObserverStaticServer,
 } from "./observer-static.js";
 export {
   DEFAULT_OSS_REPOS,
   OSS_LAB_SCHEMA,
   normalizeOssRepoSlugs,
   runOssLab,
-  validateOssRepoSlug
+  validateOssRepoSlug,
 } from "./oss-lab.js";
 export type { OssLabOptions, OssLabRepoResult, OssLabResult, OssLabStep } from "./oss-lab.js";
 export {
@@ -180,7 +227,7 @@ export {
   normalizeLocalActorTranscript,
   readReview,
   runDryRun,
-  verifyRun
+  verifyRun,
 } from "./run.js";
 export { SHARED_WORLD_SCHEMA } from "./run.js";
 export type {
@@ -221,7 +268,7 @@ export type {
   SharedWorldStateSnapshot,
   SharedWorldTimelineEntry,
   SharedWorldTurn,
-  VerifyResult
+  VerifyResult,
 } from "./run.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -230,7 +277,7 @@ export {
   buildCuaBundle,
   buildCuaFanoutBundle,
   resolveCuaLanePlan,
-  runCuaActorLab
+  runCuaActorLab,
 } from "./cua-actor-lab.js";
 export type {
   CuaActorLabErrorCode,
@@ -242,12 +289,9 @@ export type {
   CuaLaneSummary,
   CuaSubjectProjection,
   RunCuaActorLabOptions,
-  SubjectPhaseEvent
+  SubjectPhaseEvent,
 } from "./cua-actor-lab.js";
-export {
-  SCRIPTED_BROWSER_PROVIDER,
-  runScriptedBrowserSession
-} from "./scripted-browser-actor.js";
+export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./scripted-browser-actor.js";
 export type {
   BrowserPersonaJourney,
   BrowserSurface,
@@ -256,23 +300,23 @@ export type {
   ScriptedBrowserSessionOptions,
   ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
-  ScriptedPageLike
+  ScriptedPageLike,
 } from "./scripted-browser-actor.js";
 export {
   SCRIPTED_BROWSER_LAB_SCHEMA,
   buildScriptedLabBundle,
-  runScriptedBrowserLab
+  runScriptedBrowserLab,
 } from "./scripted-browser-lab.js";
 export type {
   RunScriptedBrowserLabOptions,
   ScriptedBrowserLabHooks,
   ScriptedBrowserLabResult,
-  ScriptedBrowserLabSession
+  ScriptedBrowserLabSession,
 } from "./scripted-browser-lab.js";
 export {
   TERMINAL_PRODUCT_LAB_SCHEMA,
   buildTerminalProductBundle,
-  runTerminalProductLab
+  runTerminalProductLab,
 } from "./e2b-terminal-lab.js";
 export type {
   CommandLogRecord,
@@ -286,20 +330,20 @@ export type {
   TerminalLedgers,
   TerminalProductLabHooks,
   TerminalProductLabResult,
-  TerminalProductScoringContext
+  TerminalProductScoringContext,
 } from "./e2b-terminal-lab.js";
 export {
   SHARED_WORLD_LAB_PROVIDER_METADATA,
   SHARED_WORLD_LAB_SCHEMA,
   buildSharedWorldBundle,
-  runSharedWorldLab
+  runSharedWorldLab,
 } from "./shared-world-lab.js";
 export type {
   RunSharedWorldLabOptions,
   SharedWorldLabErrorCode,
   SharedWorldLabHooks,
   SharedWorldLabResult,
-  SharedWorldRoleResult
+  SharedWorldRoleResult,
 } from "./shared-world-lab.js";
 export {
   CONCURRENT_ATTRIBUTION_LIMITS,
@@ -309,23 +353,28 @@ export {
   LOBBY_CODE_PATTERN,
   buildConcurrentSharedWorldBundle,
   extractLobbyCode,
-  runConcurrentSharedWorld
+  runConcurrentSharedWorld,
 } from "./concurrent-shared-world-lab.js";
 export type {
   ConcurrentSharedWorldLabErrorCode,
   ConcurrentSharedWorldLabResult,
   ConcurrentSharedWorldPlaneClass,
   ConcurrentSharedWorldRoleResult,
-  RunConcurrentSharedWorldLabOptions
+  RunConcurrentSharedWorldLabOptions,
 } from "./concurrent-shared-world-lab.js";
-export { probeUrl, readDetachedLog, runDetachedStep, startDetachedProcess } from "./e2b-detached.js";
+export {
+  probeUrl,
+  readDetachedLog,
+  runDetachedStep,
+  startDetachedProcess,
+} from "./e2b-detached.js";
 export type { DetachedStepOptions, DetachedStepResult, DetachedTimers } from "./e2b-detached.js";
 export {
   DEFAULT_DEVICE_PRESET,
   DEVICE_PRESETS,
   DEVICE_PRESET_NAMES,
   isDevicePresetName,
-  resolveDevicePreset
+  resolveDevicePreset,
 } from "./device-presets.js";
 export type { DevicePreset, DevicePresetName } from "./device-presets.js";
 export {
@@ -348,7 +397,7 @@ export {
   routesToSharedWorld,
   routesToTerminalProduct,
   sharedWorldValidationReason,
-  subjectStateInvalidReason
+  subjectStateInvalidReason,
 } from "./lab-config.js";
 export type {
   LabActor,
@@ -368,7 +417,7 @@ export type {
   LabSubjectStateStep,
   LabSubjectTopology,
   LabTerminalStdin,
-  LabTerminalTransport
+  LabTerminalTransport,
 } from "./lab-config.js";
 export { resolveLabDryRun, runLab, selectLabBackend } from "./lab-engine.js";
 export type { LabBackend, LabOutcome, RunLabOptions } from "./lab-engine.js";
@@ -380,13 +429,7 @@ export type {
   LabPreflightSandbox,
   LabPreflightSpend,
   LabPreflightTarget,
-  RunLabPreflightOptions
+  RunLabPreflightOptions,
 } from "./lab-preflight.js";
-export {
-  CLI_RESPONSE_SCHEMA,
-  createProgram
-} from "./program.js";
-export type {
-  CliIo,
-  UnexpectedErrorEnvelope
-} from "./program.js";
+export { CLI_RESPONSE_SCHEMA, createProgram } from "./program.js";
+export type { CliIo, UnexpectedErrorEnvelope } from "./program.js";

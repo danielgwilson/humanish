@@ -13,7 +13,7 @@ import { redactScreenshot } from "../src/redaction.js";
 function encodePng(
   width: number,
   height: number,
-  fill: (x: number, y: number) => [number, number, number, number]
+  fill: (x: number, y: number) => [number, number, number, number],
 ): Buffer {
   const png = new PNG({ width, height });
   for (let y = 0; y < height; y += 1) {
@@ -32,7 +32,8 @@ function encodePng(
 const checkerboard = (x: number, y: number): [number, number, number, number] =>
   (x + y) % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255];
 
-const stripes = (period: number) =>
+const stripes =
+  (period: number) =>
   (x: number, _y: number): [number, number, number, number] =>
     Math.floor(x / period) % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255];
 
@@ -185,7 +186,11 @@ describe("redactScreenshot", () => {
   });
 
   it("always emits a well-formed RGBA PNG, whatever the input", () => {
-    const inputs = [encodePng(300, 200, checkerboard), Buffer.alloc(0), Buffer.from("nope", "utf8")];
+    const inputs = [
+      encodePng(300, 200, checkerboard),
+      Buffer.alloc(0),
+      Buffer.from("nope", "utf8"),
+    ];
     for (const input of inputs) {
       const out = PNG.sync.read(redactScreenshot(input).buffer);
       expect(out.data.length).toBe(out.width * out.height * 4);

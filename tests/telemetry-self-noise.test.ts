@@ -22,7 +22,10 @@ describe("telemetry excludes our own runs (metric integrity)", () => {
 
   it("does not match an adopter's project that merely depends on humanish", () => {
     const files = {
-      "/app/package.json": JSON.stringify({ name: "acme-web", dependencies: { humanish: "^0.62.0" } })
+      "/app/package.json": JSON.stringify({
+        name: "acme-web",
+        dependencies: { humanish: "^0.62.0" },
+      }),
     };
     // This is the case that must keep reporting: a real user, in their own project.
     expect(inHumanishCheckout("/app", fakeReader(files))).toBe(false);
@@ -31,7 +34,7 @@ describe("telemetry excludes our own runs (metric integrity)", () => {
   it("does not match humanish installed inside node_modules", () => {
     const files = {
       "/app/node_modules/humanish/package.json": JSON.stringify({ name: "humanish" }),
-      "/app/package.json": JSON.stringify({ name: "acme-web" })
+      "/app/package.json": JSON.stringify({ name: "acme-web" }),
     };
     expect(inHumanishCheckout("/app/node_modules/humanish", fakeReader(files))).toBe(false);
   });
@@ -47,10 +50,17 @@ describe("telemetry excludes our own runs (metric integrity)", () => {
   it("an adopter's installed copy reports from any cwd: node_modules disqualifies the CLI walk", () => {
     const files = {
       "/app/node_modules/humanish/package.json": JSON.stringify({ name: "humanish" }),
-      "/app/package.json": JSON.stringify({ name: "acme-web", dependencies: { humanish: "^0.75.0" } })
+      "/app/package.json": JSON.stringify({
+        name: "acme-web",
+        dependencies: { humanish: "^0.75.0" },
+      }),
     };
-    expect(isOwnCheckoutRun("/app", "/app/node_modules/humanish/dist", fakeReader(files))).toBe(false);
-    expect(isOwnCheckoutRun("/tmp/scratch", "/app/node_modules/humanish/dist", fakeReader(files))).toBe(false);
+    expect(isOwnCheckoutRun("/app", "/app/node_modules/humanish/dist", fakeReader(files))).toBe(
+      false,
+    );
+    expect(
+      isOwnCheckoutRun("/tmp/scratch", "/app/node_modules/humanish/dist", fakeReader(files)),
+    ).toBe(false);
   });
 
   it("returns false when nothing is readable rather than silencing real telemetry", () => {

@@ -1,4 +1,14 @@
-import { link, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -13,7 +23,7 @@ import {
   prepareSelectedOutputFile,
   readContainedRegularFile,
   writeContainedOutputFile,
-  writePreparedSelectedOutputFile
+  writePreparedSelectedOutputFile,
 } from "../src/selected-output-paths.js";
 
 describe("selected output path containment", () => {
@@ -33,14 +43,29 @@ describe("selected output path containment", () => {
     await mkdir(physicalProject);
     await symlink(physicalProject, cwdAlias, "dir");
 
-    const preparedRoot = await prepareSelectedOutputDirectory(cwdAlias, ".humanish/codex-app-server-ui");
-    const preparedState = await prepareSelectedOutputFile(cwdAlias, ".humanish/codex-app-server-ui/state.json");
+    const preparedRoot = await prepareSelectedOutputDirectory(
+      cwdAlias,
+      ".humanish/codex-app-server-ui",
+    );
+    const preparedState = await prepareSelectedOutputFile(
+      cwdAlias,
+      ".humanish/codex-app-server-ui/state.json",
+    );
     await writePreparedSelectedOutputFile(preparedState, "state\n", "utf8");
 
     expect(preparedRoot.requestedPath).toBe(path.join(cwdAlias, ".humanish/codex-app-server-ui"));
-    expect(preparedRoot.physicalPath).toBe(await realpath(path.join(physicalProject, ".humanish/codex-app-server-ui")));
-    expect(preparedState.requestedPath).toBe(path.join(cwdAlias, ".humanish/codex-app-server-ui/state.json"));
-    expect(await readFile(path.join(physicalProject, ".humanish/codex-app-server-ui/state.json"), "utf8")).toBe("state\n");
+    expect(preparedRoot.physicalPath).toBe(
+      await realpath(path.join(physicalProject, ".humanish/codex-app-server-ui")),
+    );
+    expect(preparedState.requestedPath).toBe(
+      path.join(cwdAlias, ".humanish/codex-app-server-ui/state.json"),
+    );
+    expect(
+      await readFile(
+        path.join(physicalProject, ".humanish/codex-app-server-ui/state.json"),
+        "utf8",
+      ),
+    ).toBe("state\n");
   });
 
   it("binds explicit absolute and lexically outside relative directory aliases to their physical target", async () => {
@@ -83,7 +108,10 @@ describe("selected output path containment", () => {
     await symlink(target, path.join(project, "relative-alias"), "dir");
 
     const relative = await prepareSelectedOutputDirectory(project, "relative-alias");
-    const absolute = await prepareSelectedOutputDirectory(project, path.join(project, "relative-alias"));
+    const absolute = await prepareSelectedOutputDirectory(
+      project,
+      path.join(project, "relative-alias"),
+    );
     expect(relative.physicalPath).toBe(await realpath(target));
     expect(absolute.physicalPath).toBe(relative.physicalPath);
   });
@@ -99,8 +127,9 @@ describe("selected output path containment", () => {
 
     const explicit = await prepareSelectedOutputDirectory(project, ".humanish/codex-app-server-ui");
     expect(explicit.physicalPath).toBe(await realpath(path.join(outside, "codex-app-server-ui")));
-    await expect(prepareManagedHumanishOutputDirectory(project, "codex-app-server-ui"))
-      .rejects.toThrow(/symbolic links/i);
+    await expect(
+      prepareManagedHumanishOutputDirectory(project, "codex-app-server-ui"),
+    ).rejects.toThrow(/symbolic links/i);
     expect(await readFile(sentinel, "utf8")).toBe("unchanged\n");
   });
 
@@ -114,14 +143,16 @@ describe("selected output path containment", () => {
     const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
 
     await symlink(outside, path.join(selectedRoot, "codex-app-server"), "dir");
-    await expect(prepareContainedOutputDirectory(prepared, "codex-app-server"))
-      .rejects.toThrow(/symbolic links/i);
+    await expect(prepareContainedOutputDirectory(prepared, "codex-app-server")).rejects.toThrow(
+      /symbolic links/i,
+    );
     await rm(path.join(selectedRoot, "codex-app-server"));
 
     await mkdir(path.join(selectedRoot, "codex-app-server"));
     await symlink(sentinel, path.join(selectedRoot, "codex-app-server", "summary.json"));
-    await expect(prepareContainedOutputFile(prepared, "codex-app-server/summary.json"))
-      .rejects.toThrow(/regular files/i);
+    await expect(
+      prepareContainedOutputFile(prepared, "codex-app-server/summary.json"),
+    ).rejects.toThrow(/regular files/i);
 
     const selectedState = path.join(root, "selected-state.json");
     await symlink(sentinel, selectedState);
@@ -143,7 +174,9 @@ describe("selected output path containment", () => {
     await symlink(outside, path.join(selectedRoot, "dir-link"), "dir");
 
     const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
-    expect((await readContainedRegularFile(prepared, "ordinary.txt"))?.toString("utf8")).toBe("ordinary\n");
+    expect((await readContainedRegularFile(prepared, "ordinary.txt"))?.toString("utf8")).toBe(
+      "ordinary\n",
+    );
     expect(await readContainedRegularFile(prepared, "../run-sibling/secret.txt")).toBeNull();
     expect(await readContainedRegularFile(prepared, "leaf-link.txt")).toBeNull();
     expect(await readContainedRegularFile(prepared, "dir-link/secret.txt")).toBeNull();
@@ -161,9 +194,12 @@ describe("selected output path containment", () => {
 
     await rm(alias);
     await symlink(second, alias, "dir");
-    await expect(assertPreparedSelectedOutputDirectory(preparedAlias)).rejects.toThrow(/changed physical destination/i);
-    await expect(writeContainedOutputFile(preparedAlias, "sentinel.txt", "mutated\n", "utf8"))
-      .rejects.toThrow(/changed physical destination/i);
+    await expect(assertPreparedSelectedOutputDirectory(preparedAlias)).rejects.toThrow(
+      /changed physical destination/i,
+    );
+    await expect(
+      writeContainedOutputFile(preparedAlias, "sentinel.txt", "mutated\n", "utf8"),
+    ).rejects.toThrow(/changed physical destination/i);
     expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
 
     const recreated = path.join(root, "recreated");
@@ -172,9 +208,12 @@ describe("selected output path containment", () => {
     await rm(recreated, { recursive: true });
     await mkdir(recreated);
     await writeFile(path.join(recreated, "sentinel.txt"), "unchanged\n", "utf8");
-    await expect(assertPreparedSelectedOutputDirectory(preparedRecreated)).rejects.toThrow(/identity changed/i);
-    await expect(writeContainedOutputFile(preparedRecreated, "sentinel.txt", "mutated\n", "utf8"))
-      .rejects.toThrow(/identity changed/i);
+    await expect(assertPreparedSelectedOutputDirectory(preparedRecreated)).rejects.toThrow(
+      /identity changed/i,
+    );
+    await expect(
+      writeContainedOutputFile(preparedRecreated, "sentinel.txt", "mutated\n", "utf8"),
+    ).rejects.toThrow(/identity changed/i);
     expect(await readFile(path.join(recreated, "sentinel.txt"), "utf8")).toBe("unchanged\n");
   });
 
@@ -193,9 +232,12 @@ describe("selected output path containment", () => {
     }
     const prepared = await prepareSelectedOutputDirectory(root, selectedRoot);
     expect(await readContainedRegularFile(prepared, "hardlink.txt")).toBeNull();
-    await expect(writeContainedOutputFile(prepared, "hardlink.txt", "mutated\n", "utf8"))
-      .rejects.toThrow(/hardlinks|single-link/i);
-    await expect(prepareSelectedOutputFile(root, hardlink)).rejects.toThrow(/hardlinks|single-link/i);
+    await expect(
+      writeContainedOutputFile(prepared, "hardlink.txt", "mutated\n", "utf8"),
+    ).rejects.toThrow(/hardlinks|single-link/i);
+    await expect(prepareSelectedOutputFile(root, hardlink)).rejects.toThrow(
+      /hardlinks|single-link/i,
+    );
     expect(await readFile(outside, "utf8")).toBe("unchanged\n");
 
     const ordinary = path.join(selectedRoot, "ordinary.txt");

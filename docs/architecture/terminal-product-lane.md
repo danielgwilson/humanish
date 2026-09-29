@@ -30,19 +30,19 @@ fail-closed cross-validation, and forward-declared warnings.
 
 ## The composition
 
-| Axis | Value |
-| --- | --- |
-| `subject.source` | `terminal-product` |
-| `subject.product` | `{ name, publicSurfaces[] }` — the only world the agent sees |
-| `execution.target` | `e2b-terminal` (or absent → implied) |
-| `execution.terminal` | `{ transport: exec-stream, stdin: disabled }` |
-| `execution.runtimeAuth` | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence |
-| `execution.runtime.version` | Optional exact `@openai/codex` version; observed before keyed execution |
-| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity |
-| `scenario.caps` | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget |
-| `policies` | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
-| `actors[0].type` | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`) |
-| `LabBackend` | `terminal` → `runTerminalProductLab` ([`src/e2b-terminal-lab.ts`](../../src/e2b-terminal-lab.ts)) |
+| Axis                                  | Value                                                                                                                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `subject.source`                      | `terminal-product`                                                                                                           |
+| `subject.product`                     | `{ name, publicSurfaces[] }` — the only world the agent sees                                                                 |
+| `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                         |
+| `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                |
+| `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                |
+| `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                      |
+| `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                 |
+| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget                                                                  |
+| `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
+| `actors[0].type`                      | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                       |
+| `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/e2b-terminal-lab.ts`](../../src/e2b-terminal-lab.ts))                            |
 
 Routing is `routesToTerminalProduct(config)` — the single source of truth that
 both `selectLabBackend` and the forward-declared-warning logic consume, mirroring
@@ -193,11 +193,11 @@ behavior. The desktop route retains its ten-minute runtime step deadline.
 ## The original command-scoped safety contract
 
 The default mode **inverts** the credential-placement default of every other E2B route.
-On the computer-use route the model's key stays *outside* the sandbox; here the
-agent-under-test runs *inside* with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and
+On the computer-use route the model's key stays _outside_ the sandbox; here the
+agent-under-test runs _inside_ with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and
 is **presumed exfiltratable**. The doctrine (invariants-and-defaults.md, the
-placement rule): *keys live where the keyed process runs — and nowhere else;
-blast radius is bounded by key scoping and budgets, not by hoping.*
+placement rule): _keys live where the keyed process runs — and nowhere else;
+blast radius is bounded by key scoping and budgets, not by hoping._
 
 The inversion is declared as registry metadata, not a code convention: the
 terminal actor's capabilities carry `keyPlacement: "in-sandbox-command-scoped"`.

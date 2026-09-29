@@ -15,7 +15,9 @@ export const OBSERVER_DATA_PLACEHOLDER = ["__HUMANISH", "OBSERVER_DATA__"].join(
 
 /** Export renderer metadata, never inferred from a run's status or JSON fields. */
 export function isSnapshotArtifact(doc: Document): boolean {
-  return doc.querySelector('meta[name="humanish-observer-mode"]')?.getAttribute("content") === "snapshot";
+  return (
+    doc.querySelector('meta[name="humanish-observer-mode"]')?.getAttribute("content") === "snapshot"
+  );
 }
 
 export function readInlineObserverData(doc: Document): ObserverData | null {

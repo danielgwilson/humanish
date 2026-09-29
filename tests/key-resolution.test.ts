@@ -13,7 +13,7 @@ import {
   resolveKeyName,
   setUserKey,
   unsetUserKey,
-  userKeyStorePath
+  userKeyStorePath,
 } from "../src/key-resolution.js";
 
 describe("provider-key discovery (#436)", () => {
@@ -34,7 +34,11 @@ describe("provider-key discovery (#436)", () => {
 
   async function writeOverlay(lines: string[]): Promise<void> {
     await mkdir(path.join(cwd, ".humanish", "local"), { recursive: true });
-    await writeFile(path.join(cwd, ".humanish", "local", "provider.env"), `${lines.join("\n")}\n`, "utf8");
+    await writeFile(
+      path.join(cwd, ".humanish", "local", "provider.env"),
+      `${lines.join("\n")}\n`,
+      "utf8",
+    );
   }
   async function writeE2bConfig(value: unknown): Promise<void> {
     await mkdir(path.join(home, ".e2b"), { recursive: true });
@@ -50,9 +54,16 @@ describe("provider-key discovery (#436)", () => {
     await writeOverlay(["OPENAI_API_KEY=sk-test-overlay-secret"]);
     const env: NodeJS.ProcessEnv = {};
     const announced: string[] = [];
-    const fills = await discoverProviderKeys({ cwd, env, announce: (l) => announced.push(l), deps: deps() });
+    const fills = await discoverProviderKeys({
+      cwd,
+      env,
+      announce: (l) => announced.push(l),
+      deps: deps(),
+    });
     expect(env.OPENAI_API_KEY).toBe("sk-test-overlay-secret");
-    expect(fills).toEqual([{ name: "OPENAI_API_KEY", source: path.join(".humanish", "local", "provider.env") }]);
+    expect(fills).toEqual([
+      { name: "OPENAI_API_KEY", source: path.join(".humanish", "local", "provider.env") },
+    ]);
     expect(announced.join("\n")).toContain("OPENAI_API_KEY from");
     expect(announced.join("\n")).not.toContain("sk-test-overlay-secret");
   });
@@ -76,10 +87,19 @@ describe("provider-key discovery (#436)", () => {
   });
 
   it("ignores and NAMES non-provider names in the overlay — NODE_OPTIONS can never ride in (red-team)", async () => {
-    await writeOverlay(["OPENAI_API_KEY=k", "NODE_OPTIONS=--require /tmp/payload.js", "LD_PRELOAD=/tmp/evil.so"]);
+    await writeOverlay([
+      "OPENAI_API_KEY=k",
+      "NODE_OPTIONS=--require /tmp/payload.js",
+      "LD_PRELOAD=/tmp/evil.so",
+    ]);
     const env: NodeJS.ProcessEnv = {};
     const announced: string[] = [];
-    const fills = await discoverProviderKeys({ cwd, env, announce: (l) => announced.push(l), deps: deps() });
+    const fills = await discoverProviderKeys({
+      cwd,
+      env,
+      announce: (l) => announced.push(l),
+      deps: deps(),
+    });
     expect(env.OPENAI_API_KEY).toBe("k");
     expect(env.NODE_OPTIONS).toBeUndefined();
     expect(env.LD_PRELOAD).toBeUndefined();
@@ -128,13 +148,23 @@ describe("provider-key discovery (#436)", () => {
       return "gh-token-value";
     };
     const env: NodeJS.ProcessEnv = {};
-    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: { homeDir: home, execText: gh } });
+    await discoverProviderKeys({
+      cwd,
+      env,
+      announce: () => {},
+      deps: { homeDir: home, execText: gh },
+    });
     expect(env.GH_TOKEN).toBe("gh-token-value");
     expect(calls).toEqual([["gh", "auth", "token"]]);
 
     const env2: NodeJS.ProcessEnv = { GITHUB_TOKEN: "already-here" };
     calls.length = 0;
-    await discoverProviderKeys({ cwd, env: env2, announce: () => {}, deps: { homeDir: home, execText: gh } });
+    await discoverProviderKeys({
+      cwd,
+      env: env2,
+      announce: () => {},
+      deps: { homeDir: home, execText: gh },
+    });
     expect(calls).toEqual([]); // GITHUB_TOKEN present -> gh never runs
     expect(env2.GH_TOKEN).toBeUndefined();
   });
@@ -160,11 +190,19 @@ describe("provider-key discovery (#436)", () => {
   it("probeKeySources reports the winning source per key WITHOUT mutating env", async () => {
     await writeOverlay(["E2B_API_KEY=from-overlay"]);
     const env: NodeJS.ProcessEnv = { OPENAI_API_KEY: "in-env" };
-    const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN"], { cwd, env, deps: deps() });
+    const probes = await probeKeySources(["OPENAI_API_KEY", "E2B_API_KEY", "GH_TOKEN"], {
+      cwd,
+      env,
+      deps: deps(),
+    });
     expect(probes).toEqual([
       { name: "OPENAI_API_KEY", source: "process env", hint: missingKeyHint("OPENAI_API_KEY") },
-      { name: "E2B_API_KEY", source: path.join(".humanish", "local", "provider.env"), hint: missingKeyHint("E2B_API_KEY") },
-      { name: "GH_TOKEN", source: null, hint: missingKeyHint("GH_TOKEN") }
+      {
+        name: "E2B_API_KEY",
+        source: path.join(".humanish", "local", "provider.env"),
+        hint: missingKeyHint("E2B_API_KEY"),
+      },
+      { name: "GH_TOKEN", source: null, hint: missingKeyHint("GH_TOKEN") },
     ]);
     expect(env.E2B_API_KEY).toBeUndefined(); // probe did not fill
   });
@@ -199,7 +237,12 @@ describe("the user key store (`humanish keys`)", () => {
     expect(listUserKeys(env, deps())).toEqual(["OPENAI_API_KEY"]);
 
     const runEnv: NodeJS.ProcessEnv = {};
-    await discoverProviderKeys({ cwd: home, env: runEnv, announce: () => {}, deps: { ...deps(), execText: async () => null } });
+    await discoverProviderKeys({
+      cwd: home,
+      env: runEnv,
+      announce: () => {},
+      deps: { ...deps(), execText: async () => null },
+    });
     expect(runEnv.OPENAI_API_KEY).toBe("sk-user-store-secret");
 
     expect(unsetUserKey("OPENAI_API_KEY", env, deps())).toBe(true);
@@ -221,19 +264,30 @@ describe("the user key store (`humanish keys`)", () => {
   });
 
   it("the store holds PROVIDER keys only — an arbitrary-name store would be env injection with extra steps (red-team)", () => {
-    expect(() => setUserKey("NODE_OPTIONS", "--require /tmp/x.js", {}, deps())).toThrow(/provider keys only/);
+    expect(() => setUserKey("NODE_OPTIONS", "--require /tmp/x.js", {}, deps())).toThrow(
+      /provider keys only/,
+    );
     expect(() => setUserKey("MY_CUSTOM_KEY", "v", {}, deps())).toThrow(/provider keys only/);
   });
 
   it("awkward values ('#'-leading, embedded '=') round-trip set -> discovery byte-identically (red-team)", async () => {
     setUserKey("OPENAI_API_KEY", "#not-a-comment=with=equals", {}, deps());
     const env: NodeJS.ProcessEnv = {};
-    await discoverProviderKeys({ cwd: home, env, announce: () => {}, deps: { ...deps(), execText: async () => null } });
+    await discoverProviderKeys({
+      cwd: home,
+      env,
+      announce: () => {},
+      deps: { ...deps(), execText: async () => null },
+    });
     expect(env.OPENAI_API_KEY).toBe("#not-a-comment=with=equals");
   });
 
   it("set refuses a symlinked store FILE and a symlinked store DIRECTORY (red-team, reproduced writes-through-link)", async () => {
-    const { mkdir: mkdirP, symlink: symlinkP, writeFile: writeFileP } = await import("node:fs/promises");
+    const {
+      mkdir: mkdirP,
+      symlink: symlinkP,
+      writeFile: writeFileP,
+    } = await import("node:fs/promises");
     // Symlinked file: keys.env -> attacker target.
     const cfg = path.join(home, ".config", "humanish");
     await mkdirP(cfg, { recursive: true });
@@ -250,11 +304,18 @@ describe("the user key store (`humanish keys`)", () => {
       await mkdirP(path.join(home2, ".config"), { recursive: true });
       await mkdirP(attackerDir, { recursive: true });
       await symlinkP(attackerDir, path.join(home2, ".config", "humanish"));
-      expect(() => setUserKey("OPENAI_API_KEY", "sk-x", {}, { homeDir: home2 })).toThrow(/symlinked store directory/);
+      expect(() => setUserKey("OPENAI_API_KEY", "sk-x", {}, { homeDir: home2 })).toThrow(
+        /symlinked store directory/,
+      );
       // And discovery refuses to READ through the symlinked dir.
       await writeFileP(path.join(attackerDir, "keys.env"), "OPENAI_API_KEY=planted\n", "utf8");
       const env: NodeJS.ProcessEnv = {};
-      await discoverProviderKeys({ cwd: home2, env, announce: () => {}, deps: { homeDir: home2, execText: async () => null } });
+      await discoverProviderKeys({
+        cwd: home2,
+        env,
+        announce: () => {},
+        deps: { homeDir: home2, execText: async () => null },
+      });
       expect(env.OPENAI_API_KEY).toBeUndefined();
     } finally {
       await rm(home2, { recursive: true, force: true });

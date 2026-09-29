@@ -1,6 +1,16 @@
 import { CommanderError } from "commander";
 import { execFile } from "node:child_process";
-import { link, mkdir, mkdtemp, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -10,7 +20,7 @@ import {
   DEFAULT_OSS_REPOS,
   normalizeOssRepoSlugs,
   runOssLab,
-  validateOssRepoSlug
+  validateOssRepoSlug,
 } from "../src/oss-lab.js";
 import { buildObserverData } from "../src/observer-data.js";
 import {
@@ -24,14 +34,14 @@ import {
   preflightOssMetaActorApiKey,
   preflightOssMetaRepoAccess,
   publicSafeOssMetaBundle,
-  runOssMetaLab
+  runOssMetaLab,
 } from "../src/oss-meta-lab.js";
 import type { OssMetaLabCompletion, OssMetaLabResult } from "../src/oss-meta-lab.js";
 import {
   createProgram,
   exitCodeForOssMetaLab,
   shouldForceExitAfterOssMetaLab,
-  shouldServeOssMetaLabObserver
+  shouldServeOssMetaLabObserver,
 } from "../src/program.js";
 import { PUBLIC_TARGET_CWD, type RunSetupQualitySnapshot } from "../src/run.js";
 
@@ -44,7 +54,7 @@ function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
     redaction: {
       status: "passed",
       rawPreviews: "included",
-      notes: "Only allowlisted setup files are previewed."
+      notes: "Only allowlisted setup files are previewed.",
     },
     summary: "Humanish setup is app-specific and proof-oriented.",
     status: "passed",
@@ -53,53 +63,54 @@ function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
         id: "humanish-config",
         label: "Humanish config",
         ok: true,
-        detail: "humanish/config.ts exists."
+        detail: "humanish/config.ts exists.",
       },
       {
         id: "package-script",
         label: "Package script",
         ok: true,
-        detail: "package.json exposes a Humanish watch script."
+        detail: "package.json exposes a Humanish watch script.",
       },
       {
         id: "runtime-ignore",
         label: "Runtime ignore",
         ok: true,
-        detail: ".gitignore excludes .humanish/ runtime state."
-      }
+        detail: ".gitignore excludes .humanish/ runtime state.",
+      },
     ],
     tree: [
       { path: "package.json", type: "file", sizeBytes: 540 },
       { path: "humanish", type: "directory" },
       { path: "humanish/config.ts", type: "file", sizeBytes: 180 },
       { path: "humanish/personas/product-researcher.yaml", type: "file", sizeBytes: 220 },
-      { path: "humanish/scenarios/desktop-core-flow.yaml", type: "file", sizeBytes: 260 }
+      { path: "humanish/scenarios/desktop-core-flow.yaml", type: "file", sizeBytes: 260 },
     ],
     previews: [
       {
         path: "humanish/config.ts",
         language: "typescript",
         truncated: false,
-        text: "export default { run: { appUrl: 'http://127.0.0.1:5173', sims: 2 } };"
-      }
+        text: "export default { run: { appUrl: 'http://127.0.0.1:5173', sims: 2 } };",
+      },
     ],
     studyQuality: {
       schema: "humanish.study-quality.v1",
       rating: "high_leverage",
-      summary: "Study-quality rating high_leverage from app-specific personas, scenarios, app URL proof, and actor insight.",
+      summary:
+        "Study-quality rating high_leverage from app-specific personas, scenarios, app URL proof, and actor insight.",
       checks: [
         {
           id: "coverage-customized",
           label: "Coverage customized",
           ok: true,
-          detail: "Coverage map names concrete screens and friction paths."
+          detail: "Coverage map names concrete screens and friction paths.",
         },
         {
           id: "persona-customized",
           label: "Persona customized",
           ok: true,
-          detail: "Personas are specific to the product audience."
-        }
+          detail: "Personas are specific to the product audience.",
+        },
       ],
       signals: {
         appUrlProofBlocked: false,
@@ -107,24 +118,26 @@ function highLeverageSetupQualityFixture(): RunSetupQualitySnapshot {
         actorInsightCaptured: true,
         coverageCustomized: true,
         personaCustomized: true,
-        scenarioCustomized: true
-      }
+        scenarioCustomized: true,
+      },
     },
     packageScripts: {
       dev: "vite",
-      humanish: "humanish watch"
+      humanish: "humanish watch",
     },
     humanish: {
       configPresent: true,
       gitignoreContainsRuntimeIgnore: true,
       packageScriptPresent: true,
       personaCount: 2,
-      scenarioCount: 2
-    }
+      scenarioCount: 2,
+    },
   };
 }
 
-async function runCli(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function runCli(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   let exitCode = 0;
   const stdout: string[] = [];
   const stderr: string[] = [];
@@ -133,7 +146,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
     writeErr: (text) => stderr.push(text),
     setExitCode: (code) => {
       exitCode = code;
-    }
+    },
   });
 
   program.exitOverride();
@@ -151,7 +164,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
       return {
         exitCode: 0,
         stderr: stderr.join(""),
-        stdout: stdout.join("")
+        stdout: stdout.join(""),
       };
     }
 
@@ -161,7 +174,7 @@ async function runCli(args: string[]): Promise<{ exitCode: number; stdout: strin
   return {
     exitCode,
     stderr: stderr.join(""),
-    stdout: stdout.join("")
+    stdout: stdout.join(""),
   };
 }
 
@@ -183,70 +196,84 @@ describe("OSS lab command", () => {
           completionStatus: "passed",
           repo: "CorentinTh/it-tools",
           streamId: "oss-01-desktop",
-          urlPresent: true
-        }
+          urlPresent: true,
+        },
       ],
       warnings: [],
-      ...overrides
+      ...overrides,
     };
   }
 
   it("force-exits live OSS meta-lab JSON and detach modes after stream handles are created", () => {
     const result = liveMetaResult();
 
-    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: true })).toBe(true);
-    expect(shouldForceExitAfterOssMetaLab(result, { detach: true, wantsMachine: false })).toBe(true);
-    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: false })).toBe(false);
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: true })).toBe(
+      true,
+    );
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: true, wantsMachine: false })).toBe(
+      true,
+    );
+    expect(shouldForceExitAfterOssMetaLab(result, { detach: false, wantsMachine: false })).toBe(
+      false,
+    );
 
-    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({
-      ok: false,
-      error: {
-        code: "HUMANISH_META_RUN_FAILED",
-        message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
-      },
-      sandboxes: [
-        {
-          completionStatus: "passed",
-          repo: "CorentinTh/it-tools",
-          streamId: "oss-01-desktop",
-          urlPresent: true
-        },
-        {
-          repo: "maciekt07/TodoApp",
-          streamId: "oss-02-desktop",
-          urlPresent: false
-        },
-        {
-          completionStatus: "timed_out",
-          repo: "lissy93/dashy",
-          streamId: "oss-04-desktop",
-          urlPresent: true
-        }
-      ]
-    }), { detach: false, wantsMachine: true })).toBe(true);
+    expect(
+      shouldForceExitAfterOssMetaLab(
+        liveMetaResult({
+          ok: false,
+          error: {
+            code: "HUMANISH_META_RUN_FAILED",
+            message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches.",
+          },
+          sandboxes: [
+            {
+              completionStatus: "passed",
+              repo: "CorentinTh/it-tools",
+              streamId: "oss-01-desktop",
+              urlPresent: true,
+            },
+            {
+              repo: "maciekt07/TodoApp",
+              streamId: "oss-02-desktop",
+              urlPresent: false,
+            },
+            {
+              completionStatus: "timed_out",
+              repo: "lissy93/dashy",
+              streamId: "oss-04-desktop",
+              urlPresent: true,
+            },
+          ],
+        }),
+        { detach: false, wantsMachine: true },
+      ),
+    ).toBe(true);
   });
 
   it("forwards only public-safe actor-control env flags into remote OSS meta-lab sandboxes", () => {
-    expect(collectOssMetaLabRemoteEnv({
-      CODEX_ACCESS_TOKEN: "must-not-forward-from-helper",
-      CODEX_API_KEY: "must-not-forward-from-helper",
-      E2B_API_KEY: "must-not-forward-from-helper",
-      GH_TOKEN: "must-not-forward-from-helper",
+    expect(
+      collectOssMetaLabRemoteEnv({
+        CODEX_ACCESS_TOKEN: "must-not-forward-from-helper",
+        CODEX_API_KEY: "must-not-forward-from-helper",
+        E2B_API_KEY: "must-not-forward-from-helper",
+        GH_TOKEN: "must-not-forward-from-helper",
+        HUMANISH_OSS_META_ACTOR_FIRST: "1",
+        HUMANISH_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
+        HUMANISH_OSS_META_HOST_CODEX_ACTOR: "1",
+        HUMANISH_OSS_META_CODEX_APP_SERVER: "1",
+        HUMANISH_OSS_META_CODEX_APP_SERVER_URL:
+          "https://codex-app-server.example/session/private-token-test",
+        HUMANISH_OSS_META_ACTOR_TIMEOUT_MS: "240000",
+        HUMANISH_OSS_META_REQUIRE_ACTOR: "1",
+        OPENAI_API_KEY: "must-not-forward-from-helper",
+      }),
+    ).toEqual({
       HUMANISH_OSS_META_ACTOR_FIRST: "1",
       HUMANISH_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
       HUMANISH_OSS_META_HOST_CODEX_ACTOR: "1",
       HUMANISH_OSS_META_CODEX_APP_SERVER: "1",
-      HUMANISH_OSS_META_CODEX_APP_SERVER_URL: "https://codex-app-server.example/session/private-token-test",
       HUMANISH_OSS_META_ACTOR_TIMEOUT_MS: "240000",
       HUMANISH_OSS_META_REQUIRE_ACTOR: "1",
-      OPENAI_API_KEY: "must-not-forward-from-helper"
-    })).toEqual({
-      HUMANISH_OSS_META_ACTOR_FIRST: "1",
-      HUMANISH_OSS_META_ACTOR_MODEL: "gpt-5.4-mini",
-      HUMANISH_OSS_META_HOST_CODEX_ACTOR: "1",
-      HUMANISH_OSS_META_CODEX_APP_SERVER: "1",
-      HUMANISH_OSS_META_ACTOR_TIMEOUT_MS: "240000",
-      HUMANISH_OSS_META_REQUIRE_ACTOR: "1"
     });
   });
 
@@ -267,26 +294,29 @@ describe("OSS lab command", () => {
         assignments: [assignment],
         cwd,
         env: {
-          GITHUB_TOKEN: "github-token-test"
+          GITHUB_TOKEN: "github-token-test",
         },
         execFileImpl: async (file, args, options) => {
           calls.push({
             args: args.map(String),
             env: options?.env ?? {},
-            file
+            file,
           });
           if (!options?.env?.HUMANISH_GITHUB_TOKEN_RUNTIME) {
             throw new Error("anonymous access rejected");
           }
           return { stderr: "", stdout: "" };
-        }
+        },
       });
 
-      expect(result).toEqual([expect.objectContaining({
-        ok: true,
-        reason: "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
-        tokenPresent: true
-      })]);
+      expect(result).toEqual([
+        expect.objectContaining({
+          ok: true,
+          reason:
+            "GitHub repo clone access preflight passed with token auth after anonymous clone access failed.",
+          tokenPresent: true,
+        }),
+      ]);
       expect(calls).toHaveLength(2);
       expect(calls[0]?.file).toBe("git");
       expect(calls[0]?.args).toEqual([
@@ -295,7 +325,7 @@ describe("OSS lab command", () => {
         "ls-remote",
         "--exit-code",
         "https://github.com/example/private-fixture.git",
-        "HEAD"
+        "HEAD",
       ]);
       expect(calls[0]?.env.GIT_ASKPASS).toBe("false");
       expect(calls[0]?.env.HUMANISH_GITHUB_TOKEN_RUNTIME).toBeUndefined();
@@ -328,21 +358,23 @@ describe("OSS lab command", () => {
         env: {
           GIT_ASKPASS: "must-not-leak-to-fallback",
           GIT_CONFIG_COUNT: "1",
-          GITHUB_TOKEN: "bad-token-test"
+          GITHUB_TOKEN: "bad-token-test",
         },
         execFileImpl: async (_file, _args, options) => {
           calls += 1;
           envs.push(options.env ?? {});
           return { stderr: "", stdout: "" };
-        }
+        },
       });
 
       expect(calls).toBe(1);
-      expect(result).toEqual([expect.objectContaining({
-        ok: true,
-        reason: "GitHub repo clone access preflight passed with anonymous public clone access.",
-        tokenPresent: true
-      })]);
+      expect(result).toEqual([
+        expect.objectContaining({
+          ok: true,
+          reason: "GitHub repo clone access preflight passed with anonymous public clone access.",
+          tokenPresent: true,
+        }),
+      ]);
       expect(envs[0]?.GIT_ASKPASS).toBe("false");
       expect(envs[0]?.SSH_ASKPASS).toBe("false");
       expect(envs[0]?.GIT_CONFIG_GLOBAL).toBe("/dev/null");
@@ -382,7 +414,7 @@ describe("OSS lab command", () => {
           await mkdir(path.dirname(decoySentinel), { recursive: true });
           await writeFile(decoySentinel, "B-SENTINEL", "utf8");
           return { stderr: "", stdout: "" };
-        }
+        },
       });
 
       expect(result[0]?.ok).toBe(true);
@@ -408,15 +440,21 @@ describe("OSS lab command", () => {
         env: {},
         redactRepoNames: true,
         execFileImpl: async () => {
-          throw new Error("Command failed: git ls-remote https://github.com/example/private-fixture.git HEAD");
-        }
+          throw new Error(
+            "Command failed: git ls-remote https://github.com/example/private-fixture.git HEAD",
+          );
+        },
       });
 
-      expect(result).toEqual([expect.objectContaining({
-        ok: false,
-        tokenPresent: false
-      })]);
-      expect(result[0]?.reason).toContain("private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT");
+      expect(result).toEqual([
+        expect.objectContaining({
+          ok: false,
+          tokenPresent: false,
+        }),
+      ]);
+      expect(result[0]?.reason).toContain(
+        "private repos need GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT",
+      );
       expect(result[0]?.reason).toContain("[redacted-authorized-repo]");
       expect(result[0]?.reason).not.toContain("example/private-fixture");
     } finally {
@@ -426,19 +464,22 @@ describe("OSS lab command", () => {
 
   it("classifies actor API-key quota/auth preflight failures without leaking keys", async () => {
     const fakeOpenAiKey = `sk-${"testsecretvalue1234567890abcd"}`;
-    const response = new Response(JSON.stringify({
-      error: {
-        code: "insufficient_quota",
-        message: `Quota exceeded for ${fakeOpenAiKey}.`
-      }
-    }), { status: 429 });
+    const response = new Response(
+      JSON.stringify({
+        error: {
+          code: "insufficient_quota",
+          message: `Quota exceeded for ${fakeOpenAiKey}.`,
+        },
+      }),
+      { status: 429 },
+    );
 
     const result = await preflightOssMetaActorApiKey({
       env: {
         OPENAI_API_KEY: fakeOpenAiKey,
-        HUMANISH_OSS_META_ACTOR_PREFLIGHT_MODEL: "gpt-test"
+        HUMANISH_OSS_META_ACTOR_PREFLIGHT_MODEL: "gpt-test",
       },
-      fetchImpl: async () => response
+      fetchImpl: async () => response,
     });
 
     expect(result.ok).toBe(false);
@@ -450,13 +491,17 @@ describe("OSS lab command", () => {
 
   it("preserves failed live OSS meta-lab exit codes through the force-exit path", () => {
     expect(exitCodeForOssMetaLab(liveMetaResult())).toBe(0);
-    expect(exitCodeForOssMetaLab(liveMetaResult({
-      ok: false,
-      error: {
-        code: "HUMANISH_META_RUN_FAILED",
-        message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches."
-      }
-    }))).toBe(2);
+    expect(
+      exitCodeForOssMetaLab(
+        liveMetaResult({
+          ok: false,
+          error: {
+            code: "HUMANISH_META_RUN_FAILED",
+            message: "OSS meta-lab failed 2/4 live desktop or bootstrap launches.",
+          },
+        }),
+      ),
+    ).toBe(2);
   });
 
   it("serves the OSS meta-lab Observer when a failed live run still produced evidence", () => {
@@ -464,7 +509,7 @@ describe("OSS lab command", () => {
       ok: false,
       error: {
         code: "HUMANISH_META_RUN_FAILED",
-        message: "OSS meta-lab failed 4/4 live desktop or bootstrap launches."
+        message: "OSS meta-lab failed 4/4 live desktop or bootstrap launches.",
       },
       observer: {
         schema: "humanish.observer-result.v1",
@@ -473,8 +518,8 @@ describe("OSS lab command", () => {
         run: "oss-live-fixture",
         observerPath: ".humanish/runs/oss-live-fixture/observer/index.html",
         observerDataPath: ".humanish/runs/oss-live-fixture/observer/observer-data.json",
-        warnings: []
-      }
+        warnings: [],
+      },
     });
 
     expect(shouldServeOssMetaLabObserver(failedWithObserver, { wantsFollow: true })).toBe(true);
@@ -482,14 +527,25 @@ describe("OSS lab command", () => {
   });
 
   it("does not force-exit OSS meta-lab runs without live stream handles or machine/detach mode", () => {
-    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ dryRun: true, liveRequested: false }), {
-      detach: false,
-      wantsMachine: true
-    })).toBe(false);
-    expect(shouldForceExitAfterOssMetaLab(liveMetaResult({ sandboxes: [{ repo: "CorentinTh/it-tools", streamId: "oss-01-desktop", urlPresent: false }] }), {
-      detach: false,
-      wantsMachine: true
-    })).toBe(false);
+    expect(
+      shouldForceExitAfterOssMetaLab(liveMetaResult({ dryRun: true, liveRequested: false }), {
+        detach: false,
+        wantsMachine: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldForceExitAfterOssMetaLab(
+        liveMetaResult({
+          sandboxes: [
+            { repo: "CorentinTh/it-tools", streamId: "oss-01-desktop", urlPresent: false },
+          ],
+        }),
+        {
+          detach: false,
+          wantsMachine: true,
+        },
+      ),
+    ).toBe(false);
   });
 
   it("never authorizes provider cleanup from mutable result sandbox IDs", async () => {
@@ -497,53 +553,69 @@ describe("OSS lab command", () => {
       sandboxes: [
         { repo: "repo-01", sandboxId: "sandbox-a", streamId: "oss-01-desktop", urlPresent: true },
         { repo: "repo-02", sandboxId: "sandbox-b", streamId: "oss-02-desktop", urlPresent: true },
-        { repo: "repo-02", sandboxId: "sandbox-b", streamId: "oss-02-desktop-retry", urlPresent: true },
-        { repo: "repo-03", streamId: "oss-03-desktop", urlPresent: false }
-      ]
+        {
+          repo: "repo-02",
+          sandboxId: "sandbox-b",
+          streamId: "oss-02-desktop-retry",
+          urlPresent: true,
+        },
+        { repo: "repo-03", streamId: "oss-03-desktop", urlPresent: false },
+      ],
     });
     const killed: string[] = [];
 
-    await expect(cleanupOssMetaLabSandboxes(result, {
-      killSandbox: async (sandboxId) => {
-        killed.push(sandboxId);
-      },
-      requestTimeoutMs: 123
-    })).resolves.toEqual({
+    await expect(
+      cleanupOssMetaLabSandboxes(result, {
+        killSandbox: async (sandboxId) => {
+          killed.push(sandboxId);
+        },
+        requestTimeoutMs: 123,
+      }),
+    ).resolves.toEqual({
       killed: 0,
       skipped: 4,
-      errors: ["Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep."]
+      errors: [
+        "Stored OSS meta-lab sandbox IDs cannot authorize provider mutation; use the explicit metadata-verified orphan sweep.",
+      ],
     });
     expect(killed).toEqual([]);
   });
 
   it("cleans up stale OSS meta-lab sandboxes by provider metadata without exposing ids (explicit listSandboxes DI = opted in)", async () => {
     const killed = new Set<string>();
-    const listSandboxes = async () => [
-      { sandboxId: "sandbox-a", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
-      { id: "sandbox-b", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
-      { sandboxID: "sandbox-c", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
-      { sandboxID: "sandbox-missing-metadata" },
-      { sandboxId: "sandbox-paused", metadata: { mode: "oss-meta-lab", tool: "humanish" }, state: "paused" },
-      { sandboxId: "sandbox-other", metadata: { mode: "other", tool: "humanish" } }
-    ].filter((sandbox) => {
-      const id = sandbox.sandboxId ?? sandbox.sandboxID ?? sandbox.id;
-      return !id || !killed.has(id);
-    });
+    const listSandboxes = async () =>
+      [
+        { sandboxId: "sandbox-a", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
+        { id: "sandbox-b", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
+        { sandboxID: "sandbox-c", metadata: { mode: "oss-meta-lab", tool: "humanish" } },
+        { sandboxID: "sandbox-missing-metadata" },
+        {
+          sandboxId: "sandbox-paused",
+          metadata: { mode: "oss-meta-lab", tool: "humanish" },
+          state: "paused",
+        },
+        { sandboxId: "sandbox-other", metadata: { mode: "other", tool: "humanish" } },
+      ].filter((sandbox) => {
+        const id = sandbox.sandboxId ?? sandbox.sandboxID ?? sandbox.id;
+        return !id || !killed.has(id);
+      });
 
     // Passing an explicit listSandboxes callback IS the opt-in for this test (it bypasses the
     // HUMANISH_OSS_META_ALLOW_PROVIDER_LIST gate, which only guards the REAL @e2b/desktop path).
-    await expect(cleanupStaleOssMetaLabSandboxes({
-      killSandbox: async (sandboxId) => {
-        killed.add(sandboxId);
-      },
-      listSandboxes,
-      requestTimeoutMs: 123
-    })).resolves.toEqual({
+    await expect(
+      cleanupStaleOssMetaLabSandboxes({
+        killSandbox: async (sandboxId) => {
+          killed.add(sandboxId);
+        },
+        listSandboxes,
+        requestTimeoutMs: 123,
+      }),
+    ).resolves.toEqual({
       killed: 3,
       matched: 3,
       remaining: 0,
       skipped: 3,
-      errors: []
+      errors: [],
     });
     expect([...killed]).toEqual(["sandbox-a", "sandbox-b", "sandbox-c"]);
   });
@@ -585,13 +657,15 @@ describe("OSS lab command", () => {
 
   it("redacts metadata-verified provider ids from orphan-sweep errors", async () => {
     const cleanup = await cleanupStaleOssMetaLabSandboxes({
-      listSandboxes: async () => [{
-        sandboxId: "sandbox-secret",
-        metadata: { mode: "oss-meta-lab", tool: "humanish" }
-      }],
+      listSandboxes: async () => [
+        {
+          sandboxId: "sandbox-secret",
+          metadata: { mode: "oss-meta-lab", tool: "humanish" },
+        },
+      ],
       killSandbox: async () => {
         throw new Error("failed to kill sandbox-secret");
-      }
+      },
     });
 
     expect(cleanup.killed).toBe(0);
@@ -601,13 +675,12 @@ describe("OSS lab command", () => {
 
   it("keeps default repo selection lightweight and public", () => {
     expect(normalizeOssRepoSlugs(undefined)).toEqual([...DEFAULT_OSS_REPOS]);
-    expect(normalizeOssRepoSlugs([" CorentinTh/it-tools ", "CorentinTh/it-tools", "drawdb-io/drawdb"])).toEqual([
-      "CorentinTh/it-tools",
-      "drawdb-io/drawdb"
-    ]);
+    expect(
+      normalizeOssRepoSlugs([" CorentinTh/it-tools ", "CorentinTh/it-tools", "drawdb-io/drawdb"]),
+    ).toEqual(["CorentinTh/it-tools", "drawdb-io/drawdb"]);
     expect(normalizeOssRepoSlugs(["CorentinTh/it-tools,drawdb-io/drawdb"])).toEqual([
       "CorentinTh/it-tools",
-      "drawdb-io/drawdb"
+      "drawdb-io/drawdb",
     ]);
   });
 
@@ -620,11 +693,15 @@ describe("OSS lab command", () => {
   });
 
   it("assigns repos across requested headed desktop lanes", () => {
-    expect(buildOssRepoAssignments(["CorentinTh/it-tools", "drawdb-io/drawdb"], 4).map((assignment) => assignment.repo)).toEqual([
+    expect(
+      buildOssRepoAssignments(["CorentinTh/it-tools", "drawdb-io/drawdb"], 4).map(
+        (assignment) => assignment.repo,
+      ),
+    ).toEqual([
       "CorentinTh/it-tools",
       "drawdb-io/drawdb",
       "CorentinTh/it-tools",
-      "drawdb-io/drawdb"
+      "drawdb-io/drawdb",
     ]);
   });
 
@@ -637,7 +714,7 @@ describe("OSS lab command", () => {
         dryRun: true,
         open: false,
         repos: ["CorentinTh/it-tools", "drawdb-io/drawdb"],
-        runId: "oss-meta-count-65"
+        runId: "oss-meta-count-65",
       });
 
       expect(result.ok).toBe(true);
@@ -649,13 +726,19 @@ describe("OSS lab command", () => {
   });
 
   it("normalizes host actor recommended proof to supported Humanish flags", () => {
-    expect(normalizeHostActorRecommendedProof(
-      "Start Vite, then run humanish run --app-url http://127.0.0.1:4173 --browser chromium --viewport desktop,mobile"
-    )).toBe("Start the target app on a loopback URL, then run `humanish run --app-url http://127.0.0.1:<port> --sims 2`.");
+    expect(
+      normalizeHostActorRecommendedProof(
+        "Start Vite, then run humanish run --app-url http://127.0.0.1:4173 --browser chromium --viewport desktop,mobile",
+      ),
+    ).toBe(
+      "Start the target app on a loopback URL, then run `humanish run --app-url http://127.0.0.1:<port> --sims 2`.",
+    );
 
-    expect(normalizeHostActorRecommendedProof(
-      "Run humanish run --app-url http://127.0.0.1:5173 --sims 2 after the app starts."
-    )).toContain("humanish run --app-url");
+    expect(
+      normalizeHostActorRecommendedProof(
+        "Run humanish run --app-url http://127.0.0.1:5173 --sims 2 after the app starts.",
+      ),
+    ).toContain("humanish run --app-url");
   });
 
   it("renders a bash-valid remote bootstrap script with app surfaces and optional required actor readback", async () => {
@@ -667,9 +750,11 @@ describe("OSS lab command", () => {
       await execFileAsync("bash", ["-n", scriptPath]);
 
       expect(script).toContain("STATE_DIR='/home/user/.humanish-oss-lab/maciekt07-todoapp'");
-      expect(script).toContain("ROOT_DIR=\"$STATE_DIR\"");
+      expect(script).toContain('ROOT_DIR="$STATE_DIR"');
       expect(script).toContain("APP_DIR='/home/user/maciekt07-todoapp'");
-      expect(script).toContain("NESTED_OBSERVER='/home/user/maciekt07-todoapp/.humanish/runs/nested-maciekt07-todoapp/observer/index.html'");
+      expect(script).toContain(
+        "NESTED_OBSERVER='/home/user/maciekt07-todoapp/.humanish/runs/nested-maciekt07-todoapp/observer/index.html'",
+      );
       expect(script).not.toContain("/home/user/humanish-oss-lab/maciekt07-todoapp/repo");
       expect(script).toContain("start_target_app_surface");
       expect(script).toContain("write_app_specific_browser_scenario");
@@ -696,12 +781,14 @@ describe("OSS lab command", () => {
       expect(script).toContain("HUMANISH_OSS_META_ACTOR_FIRST");
       expect(script).toContain("HUMANISH_OSS_META_REQUIRE_ACTOR");
       expect(script).toContain("HUMANISH_OSS_META_ACTOR_TIMEOUT_MS");
-      expect(script).toContain('HUMANISH_OSS_META_ACTOR_TIMEOUT_MS:-480000');
+      expect(script).toContain("HUMANISH_OSS_META_ACTOR_TIMEOUT_MS:-480000");
       expect(script).toContain("ACTOR_TIMEOUT_SECONDS");
       expect(script).toContain("Do not wait on long-running watchers");
       expect(script).toContain("coverage-map.md");
       expect(script).toContain("Do not stop at install/init proof");
-      expect(script).toContain("Run npx --no-install humanish run --help and verify --app-url is available");
+      expect(script).toContain(
+        "Run npx --no-install humanish run --help and verify --app-url is available",
+      );
       expect(script).toContain("do not use humanish watch --sims as app behavior proof");
       expect(script).toContain("HUMANISH_OSS_META_ACTOR_MODEL");
       expect(script).toContain("actor_log_tail_begin");
@@ -726,22 +813,40 @@ describe("OSS lab command", () => {
       expect(script).toContain("target app, nested Observer, and Codex app-server client");
       expect(script).toContain('pnpm add --save-dev --workspace-root "$spec" --ignore-scripts');
       expect(script).toContain('pnpm add --save-dev "$spec" --ignore-scripts');
-      expect(script).toContain("@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check");
+      expect(script).toContain(
+        "@openai/codex@latest exec --ephemeral --ignore-user-config --skip-git-repo-check",
+      );
       expect(script).toContain("-m \\$actor_model_q");
       expect(script).toContain("--dangerously-bypass-approvals-and-sandbox");
       expect(script).toContain("--output-last-message");
       expect(script).toContain("CODEX_COMMAND=");
       expect(script).toContain('HUMANISH_PRIVATE_CODEX_API_KEY="${HUMANISH_CODEX_API_KEY:-}"');
-      expect(script).toContain('HUMANISH_PRIVATE_CODEX_APP_SERVER_URL="${HUMANISH_CODEX_APP_SERVER_URL:-}"');
-      expect(script).toContain("unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN");
-      expect(script).toContain("unset HUMANISH_CODEX_API_KEY HUMANISH_CODEX_ACCESS_TOKEN HUMANISH_CODEX_APP_SERVER_URL HUMANISH_GITHUB_TOKEN");
-      expect(script).toContain('CODEX_API_KEY="\\$HUMANISH_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
-      expect(script).toContain('CODEX_ACCESS_TOKEN="\\$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"');
-      expect(script).toContain('HUMANISH_PRIVATE_CODEX_API_KEY="$HUMANISH_PRIVATE_CODEX_API_KEY" HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN="$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"');
-      expect(script).toContain("GIT_ASKPASS=false SSH_ASKPASS=false GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone");
+      expect(script).toContain(
+        'HUMANISH_PRIVATE_CODEX_APP_SERVER_URL="${HUMANISH_CODEX_APP_SERVER_URL:-}"',
+      );
+      expect(script).toContain(
+        "unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN E2B_API_KEY GH_TOKEN GITHUB_TOKEN",
+      );
+      expect(script).toContain(
+        "unset HUMANISH_CODEX_API_KEY HUMANISH_CODEX_ACCESS_TOKEN HUMANISH_CODEX_APP_SERVER_URL HUMANISH_GITHUB_TOKEN",
+      );
+      expect(script).toContain(
+        'CODEX_API_KEY="\\$HUMANISH_PRIVATE_CODEX_API_KEY" CODEX_ACCESS_TOKEN="\\$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"',
+      );
+      expect(script).toContain(
+        'CODEX_ACCESS_TOKEN="\\$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" timeout "\\$ACTOR_TIMEOUT_SECONDS" bash -lc "\\$CODEX_COMMAND"',
+      );
+      expect(script).toContain(
+        'HUMANISH_PRIVATE_CODEX_API_KEY="$HUMANISH_PRIVATE_CODEX_API_KEY" HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN="$HUMANISH_PRIVATE_CODEX_ACCESS_TOKEN" nohup bash "$actor_script"',
+      );
+      expect(script).toContain(
+        "GIT_ASKPASS=false SSH_ASKPASS=false GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone",
+      );
       expect(script).toContain("clone_auth=anonymous");
       expect(script).toContain("clone_auth=anonymous_failed retry=token_clone");
-      expect(script).toContain('HUMANISH_GITHUB_TOKEN_RUNTIME="$HUMANISH_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone');
+      expect(script).toContain(
+        'HUMANISH_GITHUB_TOKEN_RUNTIME="$HUMANISH_PRIVATE_GITHUB_TOKEN" git -c credential.helper= clone',
+      );
       expect(script).toContain("clone_auth=token_failed");
       expect(script).not.toContain("command -v codex");
       expect(script).not.toContain("--ask-for-approval");
@@ -762,7 +867,9 @@ describe("OSS lab command", () => {
     expect(result.stdout).toContain("--repos");
     expect(result.stdout).toContain("humanish lab run oss --dry-run");
     expect(result.stdout).toContain("humanish lab oss-smoke");
-    expect(result.stdout).toContain("No repo clone, provider sandbox, credential forwarding, or Codex actor runs");
+    expect(result.stdout).toContain(
+      "No repo clone, provider sandbox, credential forwarding, or Codex actor runs",
+    );
     expect(result.stdout).toContain("fails closed pending credential isolation");
   });
 
@@ -790,7 +897,7 @@ describe("OSS lab command", () => {
       "--repos",
       "CorentinTh/it-tools,drawdb-io/drawdb",
       "--count",
-      "4"
+      "4",
     ]);
 
     expect(result.exitCode).toBe(0);
@@ -808,11 +915,13 @@ describe("OSS lab command", () => {
       "repo-01",
       "repo-02",
       "repo-03",
-      "repo-04"
+      "repo-04",
     ]);
     expect(json.observer.observerPath).toBe(".humanish/runs/oss-meta-test/observer/index.html");
 
-    const bundle = JSON.parse(await readFile(path.join(cwd, ".humanish", "runs", "oss-meta-test", "run.json"), "utf8")) as {
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "oss-meta-test", "run.json"), "utf8"),
+    ) as {
       cwd: string;
       mode: string;
       streams: Array<{
@@ -832,15 +941,22 @@ describe("OSS lab command", () => {
       { screen: { requested: { width: 1440, height: 960 } } },
       { screen: { requested: { width: 1440, height: 960 } } },
       { screen: { requested: { width: 1440, height: 960 } } },
-      { screen: { requested: { width: 1440, height: 960 } } }
+      { screen: { requested: { width: 1440, height: 960 } } },
     ]);
   });
 
   it("runs the bundled OSS meta-lab through the generic lab runner", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-generic-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "fixture-app" }),
+      "utf8",
+    );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-    const bundledManifest = await readFile(path.join(process.cwd(), "humanish", "labs", "oss.yaml"), "utf8");
+    const bundledManifest = await readFile(
+      path.join(process.cwd(), "humanish", "labs", "oss.yaml"),
+      "utf8",
+    );
     await writeFile(path.join(cwd, "humanish", "labs", "oss.yaml"), bundledManifest, "utf8");
 
     const result = await runCli([
@@ -852,7 +968,7 @@ describe("OSS lab command", () => {
       "--cwd",
       cwd,
       "--run-id",
-      "oss-meta-generic-test"
+      "oss-meta-generic-test",
     ]);
 
     expect(result.exitCode).toBe(0);
@@ -867,7 +983,7 @@ describe("OSS lab command", () => {
       "CorentinTh/it-tools",
       "drawdb-io/drawdb",
       "maciekt07/TodoApp",
-      "lissy93/dashy"
+      "lissy93/dashy",
     ]);
   });
 
@@ -878,16 +994,20 @@ describe("OSS lab command", () => {
     const previousPath = process.env.PATH;
     const previousGitLog = process.env.HUMANISH_OSS_TEST_GIT_LOG;
     await mkdir(binDir);
-    await writeFile(path.join(binDir, "git"), [
-      "#!/bin/sh",
-      "printf '%s\\n' \"$*\" >> \"$HUMANISH_OSS_TEST_GIT_LOG\"",
-      "if [ \"$1\" != clone ]; then exit 97; fi",
-      "for arg in \"$@\"; do clone_path=\"$arg\"; done",
-      "mkdir -p \"$clone_path\"",
-      "printf '{invalid-json' > \"$clone_path/package.json\"",
-      "exit 0",
-      ""
-    ].join("\n"), { encoding: "utf8", mode: 0o700 });
+    await writeFile(
+      path.join(binDir, "git"),
+      [
+        "#!/bin/sh",
+        'printf \'%s\\n\' "$*" >> "$HUMANISH_OSS_TEST_GIT_LOG"',
+        'if [ "$1" != clone ]; then exit 97; fi',
+        'for arg in "$@"; do clone_path="$arg"; done',
+        'mkdir -p "$clone_path"',
+        "printf '{invalid-json' > \"$clone_path/package.json\"",
+        "exit 0",
+        "",
+      ].join("\n"),
+      { encoding: "utf8", mode: 0o700 },
+    );
     process.env.PATH = `${binDir}${path.delimiter}${previousPath ?? ""}`;
     process.env.HUMANISH_OSS_TEST_GIT_LOG = gitLogPath;
 
@@ -896,26 +1016,27 @@ describe("OSS lab command", () => {
         cwd,
         keep: true,
         repos: ["example/broken-init"],
-        runId: "init-failure-stop"
+        runId: "init-failure-stop",
       });
 
       expect(result.ok).toBe(false);
       expect(result.repos).toHaveLength(1);
-      expect(result.repos[0]?.steps.map((step) => step.name)).toEqual([
-        "clone",
-        "humanish init"
-      ]);
+      expect(result.repos[0]?.steps.map((step) => step.name)).toEqual(["clone", "humanish init"]);
       expect(result.repos[0]?.steps[1]?.ok).toBe(false);
       expect((await readFile(gitLogPath, "utf8")).trim().split("\n")).toHaveLength(1);
-      await expect(stat(path.join(
-        cwd,
-        ".humanish",
-        "tmp",
-        "oss-lab",
-        "init-failure-stop",
-        "example__broken-init",
-        ".humanish"
-      ))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(
+        stat(
+          path.join(
+            cwd,
+            ".humanish",
+            "tmp",
+            "oss-lab",
+            "init-failure-stop",
+            "example__broken-init",
+            ".humanish",
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;
@@ -930,7 +1051,7 @@ describe("OSS lab command", () => {
     const runId = "report-hardlink";
     const reportRoot = path.join(cwd, ".humanish", "lab", "oss", runId);
     const externalReport = path.join(cwd, "external-report.json");
-    const original = "{\"sentinel\":true}\n";
+    const original = '{"sentinel":true}\n';
     const binDir = path.join(cwd, "bin");
     const previousPath = process.env.PATH;
 
@@ -938,22 +1059,25 @@ describe("OSS lab command", () => {
     await mkdir(binDir);
     await writeFile(externalReport, original, "utf8");
     await link(externalReport, path.join(reportRoot, "report.json"));
-    await writeFile(path.join(binDir, "git"), [
-      "#!/bin/sh",
-      "exit 1",
-      ""
-    ].join("\n"), { encoding: "utf8", mode: 0o700 });
+    await writeFile(path.join(binDir, "git"), ["#!/bin/sh", "exit 1", ""].join("\n"), {
+      encoding: "utf8",
+      mode: 0o700,
+    });
     process.env.PATH = `${binDir}${path.delimiter}${previousPath ?? ""}`;
 
     try {
-      await expect(runOssLab({
-        cwd,
-        keep: true,
-        repos: ["example/unavailable"],
-        runId
-      })).rejects.toThrow(/single-link regular files|hardlinks/);
+      await expect(
+        runOssLab({
+          cwd,
+          keep: true,
+          repos: ["example/unavailable"],
+          runId,
+        }),
+      ).rejects.toThrow(/single-link regular files|hardlinks/);
       expect(await readFile(externalReport, "utf8")).toBe(original);
-      await expect(stat(path.join(reportRoot, "report.md"))).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(stat(path.join(reportRoot, "report.md"))).rejects.toMatchObject({
+        code: "ENOENT",
+      });
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;
@@ -965,26 +1089,43 @@ describe("OSS lab command", () => {
     // Regression: a CLI --repos override must force redactRepos=true so an authorized private
     // slug never reaches durable artifacts, even with no policies.redactRepos in the lab.
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-oss-meta-redact-"));
-    await writeFile(path.join(cwd, "package.json"), JSON.stringify({ name: "fixture-app" }), "utf8");
+    await writeFile(
+      path.join(cwd, "package.json"),
+      JSON.stringify({ name: "fixture-app" }),
+      "utf8",
+    );
     await mkdir(path.join(cwd, "humanish", "labs"), { recursive: true });
-    await writeFile(path.join(cwd, "humanish", "labs", "oss.yaml"), [
-      "schema: humanish.lab.v2",
-      "id: oss",
-      "subject:",
-      "  source: clone",
-      "  repos:",
-      "    - CorentinTh/it-tools",
-      "execution:",
-      "  target: e2b-desktop",
-      "actors:",
-      "  - type: codex-app-server",
-      "scenario:",
-      "  mode: dry-run"
-    ].join("\n"), "utf8");
+    await writeFile(
+      path.join(cwd, "humanish", "labs", "oss.yaml"),
+      [
+        "schema: humanish.lab.v2",
+        "id: oss",
+        "subject:",
+        "  source: clone",
+        "  repos:",
+        "    - CorentinTh/it-tools",
+        "execution:",
+        "  target: e2b-desktop",
+        "actors:",
+        "  - type: codex-app-server",
+        "scenario:",
+        "  mode: dry-run",
+      ].join("\n"),
+      "utf8",
+    );
 
     const result = await runCli([
-      "lab", "run", "oss", "--json", "--no-open", "--cwd", cwd,
-      "--repos", "example-private/secret-app", "--run-id", "redact-override-test"
+      "lab",
+      "run",
+      "oss",
+      "--json",
+      "--no-open",
+      "--cwd",
+      cwd,
+      "--repos",
+      "example-private/secret-app",
+      "--run-id",
+      "redact-override-test",
     ]);
 
     expect(result.exitCode).toBe(0);
@@ -997,12 +1138,11 @@ describe("OSS lab command", () => {
     const binDir = path.join(cwd, "bin");
     const markerPath = path.join(cwd, "host-command-invoked");
     await mkdir(binDir);
-    await writeFile(path.join(binDir, "git"), [
-      "#!/bin/sh",
-      `printf invoked > ${JSON.stringify(markerPath)}`,
-      "exit 97",
-      ""
-    ].join("\n"), { encoding: "utf8", mode: 0o700 });
+    await writeFile(
+      path.join(binDir, "git"),
+      ["#!/bin/sh", `printf invoked > ${JSON.stringify(markerPath)}`, "exit 97", ""].join("\n"),
+      { encoding: "utf8", mode: 0o700 },
+    );
 
     const envKeys = [
       "CODEX_API_KEY",
@@ -1010,9 +1150,12 @@ describe("OSS lab command", () => {
       "HUMANISH_OSS_META_HOST_CODEX_ACTOR",
       "HUMANISH_OSS_META_REQUIRE_ACTOR",
       "HUMANISH_OSS_META_SKIP_REPO_ACCESS_PREFLIGHT",
-      "PATH"
+      "PATH",
     ] as const;
-    const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<(typeof envKeys)[number], string | undefined>;
+    const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]])) as Record<
+      (typeof envKeys)[number],
+      string | undefined
+    >;
     process.env.CODEX_API_KEY = "test-codex-key";
     process.env.E2B_API_KEY = "test-e2b-key";
     process.env.HUMANISH_OSS_META_HOST_CODEX_ACTOR = "1";
@@ -1029,7 +1172,7 @@ describe("OSS lab command", () => {
           observerReady = true;
         },
         repos: ["private-owner/private-repo"],
-        runId: "live-isolation-gate"
+        runId: "live-isolation-gate",
       });
 
       expect(result).toMatchObject({
@@ -1038,7 +1181,7 @@ describe("OSS lab command", () => {
         liveRequested: true,
         error: { code: "HUMANISH_OSS_META_LIVE_ISOLATION_REQUIRED" },
         repos: ["repo-01"],
-        sandboxes: []
+        sandboxes: [],
       });
       expect(result.error?.message).toContain("Use --dry-run");
       expect(JSON.stringify(result)).not.toContain("private-owner/private-repo");
@@ -1067,14 +1210,15 @@ describe("OSS lab command", () => {
           observerReady = true;
         },
         repos: ["CorentinTh/it-tools"],
-        runId: "dry-run-isolation-gate"
+        runId: "dry-run-isolation-gate",
       });
 
       expect(result.ok).toBe(true);
       expect(result.dryRun).toBe(true);
       expect(observerReady).toBe(true);
-      expect(await stat(path.join(cwd, ".humanish", "runs", "dry-run-isolation-gate", "run.json")))
-        .toMatchObject({});
+      expect(
+        await stat(path.join(cwd, ".humanish", "runs", "dry-run-isolation-gate", "run.json")),
+      ).toMatchObject({});
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
@@ -1103,18 +1247,25 @@ describe("OSS lab command", () => {
           await writeFile(path.join(decoyRun, "must-survive.txt"), "B-SENTINEL", "utf8");
         },
         repos: ["CorentinTh/it-tools"],
-        runId
+        runId,
       });
 
       expect(result.ok).toBe(true);
-      expect(await readFile(path.join(physicalB, ".humanish", "runs", runId, "must-survive.txt"), "utf8"))
-        .toBe("B-SENTINEL");
-      await expect(stat(path.join(physicalB, ".humanish", "runs", runId, "run.json")))
-        .rejects.toMatchObject({ code: "ENOENT" });
-      expect(await stat(path.join(physicalA, ".humanish", "runs", runId, "run.json")))
-        .toMatchObject({});
-      expect(await stat(path.join(physicalA, ".humanish", "runs", runId, "observer", "index.html")))
-        .toMatchObject({});
+      expect(
+        await readFile(
+          path.join(physicalB, ".humanish", "runs", runId, "must-survive.txt"),
+          "utf8",
+        ),
+      ).toBe("B-SENTINEL");
+      await expect(
+        stat(path.join(physicalB, ".humanish", "runs", runId, "run.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+      expect(
+        await stat(path.join(physicalA, ".humanish", "runs", runId, "run.json")),
+      ).toMatchObject({});
+      expect(
+        await stat(path.join(physicalA, ".humanish", "runs", runId, "observer", "index.html")),
+      ).toMatchObject({});
     } finally {
       await unlink(cwdAlias).catch(() => undefined);
       await rm(tempRoot, { recursive: true, force: true });
@@ -1139,42 +1290,43 @@ describe("OSS lab command", () => {
                 id: "learner",
                 name: "Learner",
                 intent: "Inspect the app as a synthetic user.",
-                traits: ["public_safe"]
-              }
+                traits: ["public_safe"],
+              },
             ],
-            recommendedProof: "Start the app, then run humanish run --app-url http://127.0.0.1:5173 --sims 2.",
+            recommendedProof:
+              "Start the app, then run humanish run --app-url http://127.0.0.1:5173 --sims 2.",
             repo: "maciekt07/TodoApp",
             scenarios: [
               {
                 id: "desktop-smoke",
                 title: "Desktop smoke",
                 goal: "Verify the app loads.",
-                steps: ["Open the app.", "Check the primary UI."]
-              }
+                steps: ["Open the app.", "Check the primary UI."],
+              },
             ],
             source: "local-codex-exec",
             status: "passed",
-            summary: "Host actor authored a public-safe plan."
+            summary: "Host actor authored a public-safe plan.",
           },
           hostActorPlanPath: "host-actors/todoapp/actor-plan.json",
           repo: "maciekt07/TodoApp",
           simId: "oss-01",
-          streamId: "oss-01-desktop"
-        }
+          streamId: "oss-01-desktop",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
-      runId: "oss-meta-host-plan-failed-launch"
+      runId: "oss-meta-host-plan-failed-launch",
     });
 
     expect(bundle.review.verdict).toBe("fail");
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "host Codex actor plan",
       path: "host-actors/todoapp/actor-plan.json",
-      kind: "trace"
+      kind: "trace",
     });
     expect(bundle.streams[0]?.desktopGeometry).toEqual({
-      screen: { requested: { width: 1440, height: 960 } }
+      screen: { requested: { width: 1440, height: 960 } },
     });
     expect(bundle.streams[0]?.viewport).toBeUndefined();
   });
@@ -1195,11 +1347,13 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/todoapp/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "codex_app_server_client=provided\nactor_status=suspended source=codex-app-server-client"
+            tail: "codex_app_server_client=provided\nactor_status=suspended source=codex-app-server-client",
           },
           completion: {
-            actorLastMessageTail: "Opened a headed client surface instead of launching @openai/codex exec.",
-            actorLogTail: "codex_app_server_mode=1\nactor_status=suspended\nsource=codex-app-server-client",
+            actorLastMessageTail:
+              "Opened a headed client surface instead of launching @openai/codex exec.",
+            actorLogTail:
+              "codex_app_server_mode=1\nactor_status=suspended\nsource=codex-app-server-client",
             actorStatus: "suspended",
             appStatus: "running",
             appUrl: "http://127.0.0.1:5173",
@@ -1208,35 +1362,42 @@ describe("OSS lab command", () => {
             nestedVerifyPassed: true,
             reason: "Target app surface, nested Humanish proof, and nested Observer were checked.",
             status: "passed",
-            visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
+            visualReason:
+              "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
             visualStatus: "visible",
-            visualWindowCount: 4
+            visualWindowCount: 4,
           },
           repo: "maciekt07/TodoApp",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/todoapp"
-        }
+          url: "https://stream.example/todoapp",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
-      runId: "oss-meta-app-server-fixture"
+      runId: "oss-meta-app-server-fixture",
     });
 
     expect(bundle.review.verdict).not.toBe("pass");
     expect(bundle.simulations[0]?.status).not.toBe("passed");
     expect(bundle.streams[0]?.status).not.toBe("passed");
     expect(bundle.streams[0]?.completion?.status).not.toBe("passed");
-    expect(bundle.streams[0]?.terminal?.title).toBe("Codex app-server bootstrap - maciekt07/TodoApp");
+    expect(bundle.streams[0]?.terminal?.title).toBe(
+      "Codex app-server bootstrap - maciekt07/TodoApp",
+    );
     expect(bundle.streams[0]?.ui?.intent).toContain("Codex app-server client surface");
     expect(bundle.streams[0]?.ui?.intent).not.toContain("attempts a Codex actor");
     expect(bundle.streams[0]?.terminal?.tail).toContain("source=codex-app-server-client");
-    expect(bundle.events.find((event) => event.type === "oss-meta.codex.prompt.ready")?.message).toContain("app-server client hook");
+    expect(
+      bundle.events.find((event) => event.type === "oss-meta.codex.prompt.ready")?.message,
+    ).toContain("app-server client hook");
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
       schema: "humanish.meaningful-use-score.v1",
-      status: "fail"
+      status: "fail",
     });
-    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Required actor did not pass (suspended).");
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain(
+      "Required actor did not pass (suspended).",
+    );
   });
 
   it("labels app-server-backed OSS meta-lab actor evidence artifacts without treating them as TUI exec", () => {
@@ -1248,13 +1409,14 @@ describe("OSS lab command", () => {
         transcriptPath: string;
       };
     } = {
-      actorLastMessageTail: "Completed a public-safe Codex app-server turn and wrote redacted transcript evidence.",
+      actorLastMessageTail:
+        "Completed a public-safe Codex app-server turn and wrote redacted transcript evidence.",
       actorLogTail: "codex_app_server_mode=1\nactor_status=passed\nsource=codex-app-server",
       actorStatus: "passed",
       appServerActorEvidence: {
         eventsPath: "codex-app-server/oss-01-desktop-events.ndjson",
         tracePath: "codex-app-server/oss-01-desktop-summary.json",
-        transcriptPath: "codex-app-server/oss-01-desktop-transcript.txt"
+        transcriptPath: "codex-app-server/oss-01-desktop-transcript.txt",
       },
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -1264,21 +1426,21 @@ describe("OSS lab command", () => {
         schema: "humanish.oss-meta-nested-step-trace-summary.v1",
         redaction: {
           status: "passed",
-          notes: "Fixture summary stores public-safe nested trace metadata only."
+          notes: "Fixture summary stores public-safe nested trace metadata only.",
         },
         counts: {
           blockedSteps: 0,
           passedSteps: 4,
           surfaces: 2,
           totalSteps: 4,
-          traces: 2
+          traces: 2,
         },
         scenario: {
           id: "todo-list-browser",
           source: "humanish/scenarios/todo-list-browser.yaml",
           sourceDigest: "abcdef123456",
           stepCount: 2,
-          title: "Todo list browser"
+          title: "Todo list browser",
         },
         status: "passed",
         surfaces: [
@@ -1294,7 +1456,7 @@ describe("OSS lab command", () => {
                 id: "open-home",
                 label: "Open home",
                 reason: "goto completed for Open home.",
-                status: "passed"
+                status: "passed",
               },
               {
                 action: "click",
@@ -1302,9 +1464,9 @@ describe("OSS lab command", () => {
                 id: "create-todo",
                 label: "Create todo",
                 reason: "Visible page state changed.",
-                status: "passed"
-              }
-            ]
+                status: "passed",
+              },
+            ],
           },
           {
             id: "mobile",
@@ -1316,25 +1478,27 @@ describe("OSS lab command", () => {
                 action: "goto",
                 id: "open-home",
                 reason: "goto completed for Open home.",
-                status: "passed"
+                status: "passed",
               },
               {
                 action: "click",
                 id: "create-todo",
                 reason: "Visible page state changed.",
-                status: "passed"
-              }
-            ]
-          }
-        ]
+                status: "passed",
+              },
+            ],
+          },
+        ],
       },
       nestedVerifyPassed: true,
-      reason: "Target app surface, nested Humanish proof, nested Observer, and Codex app-server actor evidence were checked.",
+      reason:
+        "Target app surface, nested Humanish proof, nested Observer, and Codex app-server actor evidence were checked.",
       setupQuality: highLeverageSetupQualityFixture(),
       status: "passed",
-      visualReason: "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
+      visualReason:
+        "Detected 4 visible Chrome windows including target app, nested Observer, and Codex app-server client surface.",
       visualStatus: "visible",
-      visualWindowCount: 4
+      visualWindowCount: 4,
     };
     const bundle = buildOssMetaBundleFixture({
       assignments,
@@ -1345,7 +1509,7 @@ describe("OSS lab command", () => {
         {
           actorEvidence: {
             nestedEvidencePath: "nested-evidence/oss-01-desktop-nested-proof.json",
-            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json"
+            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json",
           },
           bootstrap: {
             codexMode: "app-server-client",
@@ -1354,96 +1518,117 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/todoapp/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "codex_app_server_client=provided\nactor_status=passed source=codex-app-server"
+            tail: "codex_app_server_client=provided\nactor_status=passed source=codex-app-server",
           },
           completion: appServerCompletion,
           repo: "maciekt07/TodoApp",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/todoapp"
-        }
+          url: "https://stream.example/todoapp",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
-      runId: "oss-meta-app-server-evidence-fixture"
+      runId: "oss-meta-app-server-evidence-fixture",
     });
 
     expect(bundle.review.verdict).toBe("pass");
-    expect(bundle.streams[0]?.terminal?.title).toBe("Codex app-server bootstrap - maciekt07/TodoApp");
+    expect(bundle.streams[0]?.terminal?.title).toBe(
+      "Codex app-server bootstrap - maciekt07/TodoApp",
+    );
     expect(bundle.streams[0]?.ui?.intent).toContain("Codex app-server client surface");
     expect(bundle.streams[0]?.ui?.intent).not.toContain("attempts a Codex actor");
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "codex app-server trace",
       path: "codex-app-server/oss-01-desktop-summary.json",
-      kind: "trace"
+      kind: "trace",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "codex app-server events",
       path: "codex-app-server/oss-01-desktop-events.ndjson",
-      kind: "events"
+      kind: "events",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "codex app-server transcript",
       path: "codex-app-server/oss-01-desktop-transcript.txt",
-      kind: "log"
+      kind: "log",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "setup quality",
       path: "setup-quality/oss-01-desktop-setup-quality.json",
-      kind: "filesystem"
+      kind: "filesystem",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "nested Humanish proof",
       path: "nested-evidence/oss-01-desktop-nested-proof.json",
-      kind: "trace"
+      kind: "trace",
     });
     expect(bundle.streams[0]?.codex).toMatchObject({
       provider: "codex-app-server",
-      state: "completed"
+      state: "completed",
     });
-    expect(bundle.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
-    expect(bundle.events.map((event) => event.type)).toContain("oss-meta.nested.step_trace.summary");
-    expect(bundle.events.find((event) => event.type === "oss-meta.nested.step_trace.summary")?.message)
-      .toContain("4/4 steps across 2 surface");
-    const artifactRefs = bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
-    expect(artifactRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
+    expect(bundle.streams[0]?.ui?.nestedObserverPath).toBe(
+      "nested-evidence/oss-01-desktop-nested-proof.json",
+    );
+    expect(bundle.events.map((event) => event.type)).toContain(
+      "oss-meta.nested.step_trace.summary",
+    );
+    expect(
+      bundle.events.find((event) => event.type === "oss-meta.nested.step_trace.summary")?.message,
+    ).toContain("4/4 steps across 2 surface");
+    const artifactRefs =
+      bundle.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
+    expect(
+      artifactRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json"),
+    ).toHaveLength(1);
     expect(artifactRefs.every((ref) => !ref.includes("/remote/"))).toBe(true);
-    expect(artifactRefs.every((ref) => !path.isAbsolute(ref.split(":").slice(1).join(":")))).toBe(true);
+    expect(artifactRefs.every((ref) => !path.isAbsolute(ref.split(":").slice(1).join(":")))).toBe(
+      true,
+    );
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
       schema: "humanish.meaningful-use-score.v1",
       status: "pass",
       score: 100,
-      hardFailures: []
+      hardFailures: [],
     });
-    expect(bundle.streams[0]?.completion?.meaningfulUse?.components.map((component) => component.id)).toEqual([
+    expect(
+      bundle.streams[0]?.completion?.meaningfulUse?.components.map((component) => component.id),
+    ).toEqual([
       "setup-correctness",
       "filesystem-evidence",
       "nested-humanish-evidence",
       "actor-activity",
       "product-surface",
-      "feedback-quality"
+      "feedback-quality",
     ]);
 
     const persisted = publicSafeOssMetaBundle(bundle);
     const persistedSerialized = JSON.stringify(persisted);
-    const persistedRefs = persisted.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
+    const persistedRefs =
+      persisted.streams[0]?.artifacts.map((artifact) => `${artifact.kind}:${artifact.path}`) ?? [];
     expect(persisted.cwd).toBe("[target-cwd]");
     expect(persistedSerialized).not.toContain("/tmp/humanish-oss-meta-app-server-evidence-fixture");
     expect(persistedSerialized).not.toContain("/remote/todoapp");
     expect(persistedSerialized).not.toContain("/home/user");
     expect(persisted.streams[0]?.codex).toMatchObject({
       provider: "codex-app-server",
-      state: "completed"
+      state: "completed",
     });
-    expect(persisted.streams[0]?.ui?.nestedObserverPath).toBe("nested-evidence/oss-01-desktop-nested-proof.json");
-    expect(persistedRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json")).toHaveLength(1);
+    expect(persisted.streams[0]?.ui?.nestedObserverPath).toBe(
+      "nested-evidence/oss-01-desktop-nested-proof.json",
+    );
+    expect(
+      persistedRefs.filter((ref) => ref === "trace:codex-app-server/oss-01-desktop-summary.json"),
+    ).toHaveLength(1);
     const observerData = buildObserverData(persisted);
     expect(observerData.streams[0]?.artifacts).toContainEqual({
       label: "nested Humanish proof",
       path: "nested-evidence/oss-01-desktop-nested-proof.json",
-      kind: "trace"
+      kind: "trace",
     });
-    expect(observerData.streams[0]?.timeline.map((event) => event.type)).toContain("oss-meta.nested.step_trace.summary");
+    expect(observerData.streams[0]?.timeline.map((event) => event.type)).toContain(
+      "oss-meta.nested.step_trace.summary",
+    );
   });
 
   it("redacts structured Codex app-server trace evidence for private repo meta-labs", () => {
@@ -1458,15 +1643,13 @@ describe("OSS lab command", () => {
           schema: "humanish.codex-app-server-trace.projected.v1",
           status: "passed",
           messages: [
-            { text: "Implemented private-cinema-app setup in maintainer/private-cinema-app." }
+            { text: "Implemented private-cinema-app setup in maintainer/private-cinema-app." },
           ],
-          commands: [
-            { command: "git clone https://github.com/maintainer/private-cinema-app.git" }
-          ]
+          commands: [{ command: "git clone https://github.com/maintainer/private-cinema-app.git" }],
         },
         tracePath: "codex-app-server/oss-01-desktop-summary.json",
         transcriptPath: "codex-app-server/oss-01-desktop-transcript.txt",
-        transcriptText: "private-cinema-app proof passed."
+        transcriptText: "private-cinema-app proof passed.",
       },
       appStatus: "running",
       appUrl: "http://127.0.0.1:3000",
@@ -1476,45 +1659,48 @@ describe("OSS lab command", () => {
         schema: "humanish.oss-meta-nested-step-trace-summary.v1",
         redaction: {
           status: "passed",
-          notes: "mentions private-cinema-app /remote/private-cinema-app github_pat_fakepat123456789012"
+          notes:
+            "mentions private-cinema-app /remote/private-cinema-app github_pat_fakepat123456789012",
         },
         counts: {
           blockedSteps: 0,
           passedSteps: 1,
           surfaces: 1,
           totalSteps: 1,
-          traces: 1
+          traces: 1,
         },
         scenario: {
           id: "private-cinema-app-flow",
           source: "/remote/private-cinema-app/humanish/scenarios/private.yaml",
           sourceDigest: "abc123",
           stepCount: 1,
-          title: "private-cinema-app flow"
+          title: "private-cinema-app flow",
         },
         status: "passed",
         surfaces: [
           {
             id: "desktop-private-cinema-app",
             ok: true,
-            reason: "private-cinema-app passed at https://stream.example/private from /remote/private-cinema-app with github_pat_fakepat123456789012",
+            reason:
+              "private-cinema-app passed at https://stream.example/private from /remote/private-cinema-app with github_pat_fakepat123456789012",
             steps: [
               {
                 action: "goto",
                 assertionStatuses: ["private-cinema-app:passed"],
                 id: "open-private-cinema-app",
                 label: "Open private-cinema-app",
-                reason: "Loaded /remote/private-cinema-app and token github_pat_fakepat123456789012",
-                status: "passed"
-              }
-            ]
-          }
-        ]
+                reason:
+                  "Loaded /remote/private-cinema-app and token github_pat_fakepat123456789012",
+                status: "passed",
+              },
+            ],
+          },
+        ],
       },
       nestedVerifyPassed: true,
       reason: "private-cinema-app setup passed.",
       status: "passed",
-      visualStatus: "visible"
+      visualStatus: "visible",
     };
     const bundle = buildOssMetaBundleFixture({
       assignments,
@@ -1530,19 +1716,19 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "actor_status=passed source=codex-app-server"
+            tail: "actor_status=passed source=codex-app-server",
           },
           completion: appServerCompletion,
           repo: "maintainer/private-cinema-app",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/private"
-        }
+          url: "https://stream.example/private",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
       redactRepoNames: true,
-      runId: "oss-meta-app-server-redaction-fixture"
+      runId: "oss-meta-app-server-redaction-fixture",
     });
 
     const serialized = JSON.stringify(bundle);
@@ -1567,7 +1753,7 @@ describe("OSS lab command", () => {
           actorEvidence: {
             actorLastMessageTailPath: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
             actorLogTailPath: "actor-evidence/oss-01-desktop-actor-log-tail.txt",
-            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json"
+            setupQualityPath: "setup-quality/oss-01-desktop-setup-quality.json",
           },
           bootstrap: {
             codexMode: "tui-attempted",
@@ -1576,12 +1762,13 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/it-tools/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "bootstrap started"
+            tail: "bootstrap started",
           },
           completion: {
             actorLogPath: "/remote/it-tools/actor.log",
             actorLogTail: "codex actor attempt\nnpx --no-install humanish init --yes\nactor_exit=0",
-            actorLastMessageTail: "Set up Humanish, but the installed CLI does **not** expose run --app-url in the proof path.",
+            actorLastMessageTail:
+              "Set up Humanish, but the installed CLI does **not** expose run --app-url in the proof path.",
             actorPid: 4321,
             actorStatus: "running",
             appLogPath: "/remote/it-tools/app.log",
@@ -1601,7 +1788,7 @@ describe("OSS lab command", () => {
               redaction: {
                 status: "passed",
                 rawPreviews: "included",
-                notes: "Only allowlisted setup files are previewed."
+                notes: "Only allowlisted setup files are previewed.",
               },
               summary: "1 setup-quality gap(s) need review.",
               status: "needs_review",
@@ -1610,27 +1797,27 @@ describe("OSS lab command", () => {
                   id: "humanish-config",
                   label: "Humanish config",
                   ok: true,
-                  detail: "humanish/config.ts exists."
+                  detail: "humanish/config.ts exists.",
                 },
                 {
                   id: "package-script",
                   label: "Package script",
                   ok: false,
-                  detail: "package.json does not expose a Humanish script."
-                }
+                  detail: "package.json does not expose a Humanish script.",
+                },
               ],
               tree: [
                 { path: "package.json", type: "file", sizeBytes: 240 },
                 { path: "humanish", type: "directory" },
-                { path: "humanish/config.ts", type: "file", sizeBytes: 120 }
+                { path: "humanish/config.ts", type: "file", sizeBytes: 120 },
               ],
               previews: [
                 {
                   path: "humanish/config.ts",
                   language: "typescript",
                   truncated: false,
-                  text: "export default { run: { appUrl: 'http://127.0.0.1:5173' } };"
-                }
+                  text: "export default { run: { appUrl: 'http://127.0.0.1:5173' } };",
+                },
               ],
               studyQuality: {
                 schema: "humanish.study-quality.v1",
@@ -1641,14 +1828,14 @@ describe("OSS lab command", () => {
                     id: "coverage-customized",
                     label: "Coverage customized",
                     ok: false,
-                    detail: "Coverage map/matrix still appears starter-level or absent."
+                    detail: "Coverage map/matrix still appears starter-level or absent.",
                   },
                   {
                     id: "app-url-proof",
                     label: "App-url proof",
                     ok: false,
-                    detail: "Actor evidence reports that app-url proof was blocked."
-                  }
+                    detail: "Actor evidence reports that app-url proof was blocked.",
+                  },
                 ],
                 signals: {
                   appUrlProofBlocked: true,
@@ -1656,34 +1843,34 @@ describe("OSS lab command", () => {
                   actorInsightCaptured: false,
                   coverageCustomized: false,
                   personaCustomized: false,
-                  scenarioCustomized: true
-                }
+                  scenarioCustomized: true,
+                },
               },
               packageScripts: {
-                dev: "vite"
+                dev: "vite",
               },
               humanish: {
                 configPresent: true,
                 personaCount: 1,
                 scenarioCount: 1,
                 packageScriptPresent: false,
-                gitignoreContainsRuntimeIgnore: true
-              }
+                gitignoreContainsRuntimeIgnore: true,
+              },
             },
             status: "passed",
             visualReason: "Detected 3 visible Chrome windows including nested Observer.",
             visualStatus: "visible",
-            visualWindowCount: 3
+            visualWindowCount: 3,
           },
           repo: "CorentinTh/it-tools",
           screenshot: {
             capturedAt: "2026-06-02T08:31:05.000Z",
             observerUrl: "../screenshots/oss-01-desktop.png",
-            path: "screenshots/oss-01-desktop.png"
+            path: "screenshots/oss-01-desktop.png",
           },
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/it-tools"
+          url: "https://stream.example/it-tools",
         },
         {
           bootstrap: {
@@ -1693,7 +1880,7 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/todoapp/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "bootstrap started"
+            tail: "bootstrap started",
           },
           completion: {
             checkedAt: "2026-06-02T08:31:10.000Z",
@@ -1702,17 +1889,17 @@ describe("OSS lab command", () => {
             nestedObserverPresent: false,
             nestedVerifyPassed: false,
             reason: "Bootstrap exited before nested Humanish proof completed.",
-            status: "failed"
+            status: "failed",
           },
           repo: "maciekt07/TodoApp",
           simId: assignments[1]?.simId ?? "oss-02",
           streamId: assignments[1]?.streamId ?? "oss-02-desktop",
-          url: "https://stream.example/todoapp"
-        }
+          url: "https://stream.example/todoapp",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
-      runId: "oss-meta-completion-fixture"
+      runId: "oss-meta-completion-fixture",
     });
 
     expect(bundle.mode).toBe("live");
@@ -1722,7 +1909,8 @@ describe("OSS lab command", () => {
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["passed", "failed"]);
     expect(bundle.streams[0]?.completion).toMatchObject({
       actorLogTail: "codex actor attempt\nnpx --no-install humanish init --yes\nactor_exit=0",
-      actorLastMessageTail: "Set up Humanish, but the installed CLI does **not** expose run --app-url in the proof path.",
+      actorLastMessageTail:
+        "Set up Humanish, but the installed CLI does **not** expose run --app-url in the proof path.",
       actorStatus: "running",
       appStatus: "running",
       appUrl: "http://127.0.0.1:5173",
@@ -1730,17 +1918,21 @@ describe("OSS lab command", () => {
       nestedVerifyPassed: true,
       status: "passed",
       visualStatus: "visible",
-      visualWindowCount: 3
+      visualWindowCount: 3,
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
       schema: "humanish.meaningful-use-score.v1",
-      status: "partial"
+      status: "partial",
     });
     expect(bundle.streams[0]?.completion?.meaningfulUse?.score).toBeGreaterThanOrEqual(45);
     expect(bundle.streams[0]?.completion?.meaningfulUse?.score).toBeLessThan(80);
-    expect(bundle.streams[0]?.completion?.meaningfulUse?.components.find((component) => component.id === "feedback-quality")).toMatchObject({
+    expect(
+      bundle.streams[0]?.completion?.meaningfulUse?.components.find(
+        (component) => component.id === "feedback-quality",
+      ),
+    ).toMatchObject({
       status: "partial",
-      score: 8
+      score: 8,
     });
     expect(bundle.streams[0]?.terminal?.tail).toContain("public-safe actor last message tail:");
     expect(bundle.streams[0]?.terminal?.tail).toContain("study_quality: ceremonial");
@@ -1753,70 +1945,76 @@ describe("OSS lab command", () => {
         appStatus: "running",
         appUrl: "http://127.0.0.1:5173",
         screenshotUrl: "../screenshots/oss-01-desktop.png",
-        visualStatus: "visible"
-      }
+        visualStatus: "visible",
+      },
     });
     expect(bundle.streams[0]?.url).toBeUndefined();
     expect(JSON.stringify(bundle)).not.toContain("https://stream.example");
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "desktop screenshot",
       path: "screenshots/oss-01-desktop.png",
-      kind: "screenshot"
+      kind: "screenshot",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "actor last-message tail",
       path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
-      kind: "log"
+      kind: "log",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "actor log tail",
       path: "actor-evidence/oss-01-desktop-actor-log-tail.txt",
-      kind: "log"
+      kind: "log",
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "setup quality",
       path: "setup-quality/oss-01-desktop-setup-quality.json",
-      kind: "filesystem"
+      kind: "filesystem",
     });
     expect(bundle.feedbackCandidates).toHaveLength(3);
     for (const candidate of bundle.feedbackCandidates) {
       expect(candidate.acceptance_proof).toContain(`humanish verify --run ${bundle.runId} --json`);
-      expect(candidate.acceptance_proof.some((proof) => proof.startsWith("pnpm humanish"))).toBe(false);
+      expect(candidate.acceptance_proof.some((proof) => proof.startsWith("pnpm humanish"))).toBe(
+        false,
+      );
     }
-    expect(bundle.feedbackCandidates[0]?.acceptance_proof).toContain(`humanish watch --run ${bundle.runId} --no-open`);
-    expect(bundle.feedbackCandidates[2]?.acceptance_proof).toContain(`humanish watch --run ${bundle.runId} --no-open`);
+    expect(bundle.feedbackCandidates[0]?.acceptance_proof).toContain(
+      `humanish watch --run ${bundle.runId} --no-open`,
+    );
+    expect(bundle.feedbackCandidates[2]?.acceptance_proof).toContain(
+      `humanish watch --run ${bundle.runId} --no-open`,
+    );
     expect(bundle.feedbackCandidates[0]).toMatchObject({
       schema: "humanish.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "setup-quality-review",
-      summary: "Generated Humanish setup for CorentinTh/it-tools needs review"
+      summary: "Generated Humanish setup for CorentinTh/it-tools needs review",
     });
     expect(bundle.feedbackCandidates[0]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
       kind: "filesystem",
-      note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews."
+      note: "Setup-quality snapshot with tree, checks, package scripts, and allowlisted previews.",
     });
     expect(bundle.feedbackCandidates[1]).toMatchObject({
       schema: "humanish.feedback-candidate.v1",
       failure_owner: "harness",
       proposed_next_state: "adapter-hardening",
-      summary: "Published Humanish install path blocked app-url proof"
+      summary: "Published Humanish install path blocked app-url proof",
     });
     expect(bundle.feedbackCandidates[1]?.evidence).toContainEqual({
       path: "actor-evidence/oss-01-desktop-actor-last-message-tail.txt",
       kind: "log",
-      note: "Public-safe actor last-message tail."
+      note: "Public-safe actor last-message tail.",
     });
     expect(bundle.feedbackCandidates[2]).toMatchObject({
       schema: "humanish.feedback-candidate.v1",
       failure_owner: "actor",
       proposed_next_state: "study-quality-review",
-      summary: "Generated Humanish setup for CorentinTh/it-tools was ceremonial"
+      summary: "Generated Humanish setup for CorentinTh/it-tools was ceremonial",
     });
     expect(bundle.feedbackCandidates[2]?.evidence).toContainEqual({
       path: "setup-quality/oss-01-desktop-setup-quality.json",
       kind: "filesystem",
-      note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals."
+      note: "Setup-quality snapshot includes study-quality checks and public-safe structural signals.",
     });
     expect(bundle.streams[1]?.terminal?.tail).toContain("verification failed");
     expect(bundle.events.map((event) => event.type)).toContain("oss-meta.bootstrap.passed");
@@ -1845,22 +2043,22 @@ describe("OSS lab command", () => {
             humanishPackageUploaded: true,
             nestedObserverPath: "/remote/drawdb/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
-            tail: "bootstrap started"
+            tail: "bootstrap started",
           },
           completion: {
             checkedAt: "2026-06-02T09:34:00.000Z",
             reason: "Timed out waiting 240000ms for remote bootstrap completion marker.",
-            status: "timed_out"
+            status: "timed_out",
           },
           repo: "drawdb-io/drawdb",
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/drawdb"
-        }
+          url: "https://stream.example/drawdb",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
-      runId: "oss-meta-timeout-fixture"
+      runId: "oss-meta-timeout-fixture",
     });
 
     expect(bundle.mode).toBe("live");
@@ -1870,9 +2068,11 @@ describe("OSS lab command", () => {
     expect(bundle.streams.map((stream) => stream.status)).toEqual(["timed_out"]);
     expect(bundle.streams[0]?.completion?.meaningfulUse).toMatchObject({
       schema: "humanish.meaningful-use-score.v1",
-      status: "fail"
+      status: "fail",
     });
-    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain("Remote bootstrap timed out.");
+    expect(bundle.streams[0]?.completion?.meaningfulUse?.hardFailures).toContain(
+      "Remote bootstrap timed out.",
+    );
 
     const observerData = buildObserverData(bundle, "2026-06-02T09:35:00.000Z");
     expect(observerData.summary.active).toBe(0);
@@ -1897,10 +2097,11 @@ describe("OSS lab command", () => {
             nestedObserverPath: "/remote/repo-01/repo/.humanish/runs/nested/observer/index.html",
             status: "started",
             tail: "bootstrap started",
-            terminalTitle: "Humanish 1 repo-01"
+            terminalTitle: "Humanish 1 repo-01",
           },
           completion: {
-            actorLastMessageTail: "Configured Humanish for maintainer/private-app in sandbox-private-123 and opened the private-app Observer.",
+            actorLastMessageTail:
+              "Configured Humanish for maintainer/private-app in sandbox-private-123 and opened the private-app Observer.",
             actorLogTail: [
               "git clone https://github.com/maintainer/private-app.git",
               "diff --git a/src/private-flow.ts b/src/private-flow.ts",
@@ -1912,34 +2113,35 @@ describe("OSS lab command", () => {
               "+const secretFlow = 'private-app-updated';",
               "tokens used",
               "12,345",
-              "private-app setup complete in sandbox-private-123"
+              "private-app setup complete in sandbox-private-123",
             ].join("\n"),
             appStatus: "running",
             appUrl: "http://127.0.0.1:3000",
             checkedAt: "2026-06-02T10:31:00.000Z",
             nestedObserverPresent: true,
             nestedVerifyPassed: true,
-            reason: "Target app surface, nested Humanish proof, and nested Observer were checked in sandbox-private-123.",
+            reason:
+              "Target app surface, nested Humanish proof, and nested Observer were checked in sandbox-private-123.",
             status: "passed",
             visualStatus: "visible",
-            visualWindowCount: 3
+            visualWindowCount: 3,
           },
           repo: "repo-01",
           sandboxId: "sandbox-private-123",
           screenshot: {
             capturedAt: "2026-06-02T10:31:05.000Z",
             observerUrl: "../screenshots/oss-01-desktop.png",
-            path: "screenshots/oss-01-desktop.png"
+            path: "screenshots/oss-01-desktop.png",
           },
           simId: assignments[0]?.simId ?? "oss-01",
           streamId: assignments[0]?.streamId ?? "oss-01-desktop",
-          url: "https://stream.example/auth-key-should-not-persist"
-        }
+          url: "https://stream.example/auth-key-should-not-persist",
+        },
       ],
       liveRequested: true,
       missingKeys: [],
       redactRepoNames: true,
-      runId: "oss-meta-private-fixture"
+      runId: "oss-meta-private-fixture",
     });
 
     const serialized = JSON.stringify(bundle);
@@ -1953,18 +2155,22 @@ describe("OSS lab command", () => {
     expect(serialized).not.toContain("sandboxId");
     expect(serialized).not.toContain("stream.example");
     expect(serialized).not.toContain("/remote/repo-01");
-    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-authorized-repo]");
-    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain("[redacted-provider-runtime-id]");
+    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain(
+      "[redacted-authorized-repo]",
+    );
+    expect(bundle.streams[0]?.completion?.actorLastMessageTail).toContain(
+      "[redacted-provider-runtime-id]",
+    );
     expect(bundle.streams[0]?.url).toBeUndefined();
     expect(bundle.streams[0]?.label).toBe("E2B desktop - repo-01");
     expect(bundle.streams[0]).toMatchObject({
       embed: { kind: "screenshot", url: "../screenshots/oss-01-desktop.png" },
-      ui: { screenshotUrl: "../screenshots/oss-01-desktop.png" }
+      ui: { screenshotUrl: "../screenshots/oss-01-desktop.png" },
     });
     expect(bundle.streams[0]?.artifacts).toContainEqual({
       label: "desktop screenshot",
       path: "screenshots/oss-01-desktop.png",
-      kind: "screenshot"
+      kind: "screenshot",
     });
   });
 });

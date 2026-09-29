@@ -63,7 +63,9 @@ export function commandFailureInfo(error: unknown): { exitCode?: number; stderrT
   const str = (value: unknown): string | undefined =>
     typeof value === "string" && value.length > 0 ? value : undefined;
   const source = str(e.stderr) ?? str(e.stdout) ?? str(e.error) ?? str(e.message);
-  return exitCode === undefined ? { stderrTail: tailOf(source) } : { exitCode, stderrTail: tailOf(source) };
+  return exitCode === undefined
+    ? { stderrTail: tailOf(source) }
+    : { exitCode, stderrTail: tailOf(source) };
 }
 
 /**

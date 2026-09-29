@@ -6,7 +6,7 @@ import {
   type ActorStatus,
   type ActorTokenUsage,
   type ActorTrace,
-  type ActorTraceItem
+  type ActorTraceItem,
 } from "./actor-contract.js";
 import { redactText } from "./redaction.js";
 
@@ -44,7 +44,13 @@ export type PiAgentEvent =
   | { type: "notice"; method?: string; message?: string };
 
 export interface PiSessionStats {
-  tokens?: { input?: number; output?: number; total?: number; cacheRead?: number; cacheWrite?: number };
+  tokens?: {
+    input?: number;
+    output?: number;
+    total?: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+  };
   cost?: number;
 }
 
@@ -106,7 +112,7 @@ function pickPiTokenUsage(stats: PiSessionStats | undefined): ActorTokenUsage | 
     ...(input === undefined ? {} : { input }),
     ...(output === undefined ? {} : { output }),
     ...(total === undefined ? {} : { total }),
-    ...(costUsd === undefined ? {} : { costUsd })
+    ...(costUsd === undefined ? {} : { costUsd }),
   };
   return Object.keys(usage).length > 0 ? usage : undefined;
 }
@@ -133,7 +139,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
         kind: "reasoning",
         lifecycle: "completed",
         title: "Reasoning",
-        text: redactText(thinking)
+        text: redactText(thinking),
       });
     }
     items.push({
@@ -141,7 +147,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
       kind: "message",
       lifecycle: "completed",
       title: "Assistant message",
-      ...(text.length > 0 ? { text: redactText(text) } : {})
+      ...(text.length > 0 ? { text: redactText(text) } : {}),
     });
     textBuffer = "";
     thinkingBuffer = "";
@@ -150,7 +156,12 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
   for (const event of events) {
     switch (event.type) {
       case "message_start":
-        items.push({ id: `message-start-${messageOrdinal + 1}`, kind: "message", lifecycle: "started", title: "Assistant message" });
+        items.push({
+          id: `message-start-${messageOrdinal + 1}`,
+          kind: "message",
+          lifecycle: "started",
+          title: "Assistant message",
+        });
         break;
       case "message_update":
         if (event.textDelta) {
@@ -171,7 +182,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
           kind: "tool_call",
           lifecycle: "started",
           title: name,
-          tool: { name }
+          tool: { name },
         });
         break;
       }
@@ -183,7 +194,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
           lifecycle: "completed",
           ...(event.isError ? { status: "error" } : {}),
           title: name,
-          tool: { name }
+          tool: { name },
         });
         break;
       }
@@ -194,7 +205,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
           kind: "plan",
           lifecycle: "completed",
           title: "Queue update",
-          ...(event.summary ? { text: redactText(event.summary) } : {})
+          ...(event.summary ? { text: redactText(event.summary) } : {}),
         });
         break;
       case "compaction_start":
@@ -206,7 +217,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
           id: `notice-${noticeOrdinal}`,
           kind: "notice",
           lifecycle: event.type.endsWith("_start") ? "started" : "completed",
-          title: event.type
+          title: event.type,
         });
         break;
       case "notice":
@@ -216,7 +227,7 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
           kind: "notice",
           lifecycle: "completed",
           title: event.method ?? "notice",
-          ...(event.message ? { text: redactText(event.message) } : {})
+          ...(event.message ? { text: redactText(event.message) } : {}),
         });
         break;
       default:
@@ -238,7 +249,10 @@ function piEventsToActorItems(events: PiAgentEvent[]): ActorTraceItem[] {
  * supplied by the harness. Used by the actorRegistry to prove the contract is
  * provider-neutral ahead of the live SDK shim.
  */
-export function piSessionToActorTrace(session: PiSessionResult, persona: ActorPersonaRef): ActorTrace {
+export function piSessionToActorTrace(
+  session: PiSessionResult,
+  persona: ActorPersonaRef,
+): ActorTrace {
   const tokenUsage = pickPiTokenUsage(session.stats);
   const items = piEventsToActorItems(session.events);
   return {
@@ -251,7 +265,7 @@ export function piSessionToActorTrace(session: PiSessionResult, persona: ActorPe
     redaction: {
       status: "passed",
       screenshots: "n/a",
-      notes: "pi event stream projected to actor trace; secret-like text is rejected by verify."
+      notes: "pi event stream projected to actor trace; secret-like text is rejected by verify.",
     },
     startedAt: session.startedAt,
     completedAt: session.completedAt,
@@ -261,14 +275,14 @@ export function piSessionToActorTrace(session: PiSessionResult, persona: ActorPe
     reason: redactText(session.reason),
     ids: {
       ...(session.sessionId === undefined ? {} : { sessionId: session.sessionId }),
-      ...(session.model === undefined ? {} : { model: session.model })
+      ...(session.model === undefined ? {} : { model: session.model }),
     },
     counts: {
       events: session.events.length,
-      items: items.length
+      items: items.length,
     },
     items,
     ...(tokenUsage === undefined ? {} : { tokenUsage }),
-    capabilities: PI_AGENT_CORE_CAPABILITIES
+    capabilities: PI_AGENT_CORE_CAPABILITIES,
   };
 }

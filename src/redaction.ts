@@ -27,7 +27,7 @@ export const SECRET_PATTERNS: RegExp[] = [
   /_authToken\s*=\s*[A-Za-z0-9._~+/=-]{20,}/g,
   /\bBearer\s+[A-Za-z0-9._~+/-]{24,}\b/g,
   /https?:\/\/[^/\s]*e2b[^)\s]+/gi,
-  /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi
+  /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 
 export const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
@@ -36,7 +36,7 @@ export const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/private\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/Users\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_LOCAL_PATH]"],
-  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"]
+  [/\/home\/[A-Za-z0-9._-]+(?:\/[^\s"'`<>)]*)?/g, "[REDACTED_RUNTIME_PATH]"],
 ];
 
 // Sticky/global regexes carry lastIndex state across .test() calls. Always reset
@@ -60,9 +60,12 @@ export function containsSensitive(text: string): boolean {
 // This also works when the closing quote arrives in a later stream callback.
 function redactLocalPaths(text: string, label?: string): string {
   return LOCAL_PATH_PATTERNS.reduce(
-    (current, [pattern, replacement]) => current.replace(pattern, (match: string) =>
-      (label ?? replacement) + (match.match(/\\+$/)?.[0] ?? "")),
-    text
+    (current, [pattern, replacement]) =>
+      current.replace(
+        pattern,
+        (match: string) => (label ?? replacement) + (match.match(/\\+$/)?.[0] ?? ""),
+      ),
+    text,
   );
 }
 
@@ -70,7 +73,7 @@ function redactLocalPaths(text: string, label?: string): string {
 export function redactText(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
-    text
+    text,
   );
   return redactLocalPaths(withoutSecrets);
 }
@@ -79,7 +82,7 @@ export function redactText(text: string): string {
 export function redactToSecretLabel(text: string): string {
   const withoutSecrets = SECRET_PATTERNS.reduce(
     (current, pattern) => current.replace(pattern, "[REDACTED_SECRET]"),
-    text
+    text,
   );
   return redactLocalPaths(withoutSecrets, "[REDACTED_SECRET]");
 }
@@ -183,11 +186,11 @@ export interface RedactScreenshotOptions {
  */
 export function redactScreenshot(
   input: Buffer | Uint8Array,
-  options: RedactScreenshotOptions = {}
+  options: RedactScreenshotOptions = {},
 ): RedactedScreenshot {
   const maxWidth = Math.min(
     SCREENSHOT_MAX_WIDTH_CAP,
-    Math.max(1, Math.floor(options.maxWidth ?? SCREENSHOT_MAX_WIDTH_DEFAULT))
+    Math.max(1, Math.floor(options.maxWidth ?? SCREENSHOT_MAX_WIDTH_DEFAULT)),
   );
   try {
     const source = Buffer.isBuffer(input) ? input : Buffer.from(input);
@@ -206,7 +209,13 @@ export function redactScreenshot(
     const blurred = boxBlurRgba(small, outW, outH, effectiveBlurRadius(outW));
     const out = new PNG({ width: outW, height: outH });
     blurred.copy(out.data);
-    return { buffer: PNG.sync.write(out), mode: "blurred", width: outW, height: outH, decoded: true };
+    return {
+      buffer: PNG.sync.write(out),
+      mode: "blurred",
+      width: outW,
+      height: outH,
+      decoded: true,
+    };
   } catch {
     return placeholderScreenshot(maxWidth);
   }
@@ -224,8 +233,7 @@ function effectiveBlurRadius(outW: number): number {
 // and falls through to PNG.sync.read, which throws and lands on the placeholder.
 function sourcePixelsExceedCap(buf: Buffer): boolean {
   const dimensions = readPngDeclaredDimensions(buf);
-  return dimensions !== null
-    && dimensions.width * dimensions.height > SCREENSHOT_MAX_SOURCE_PIXELS;
+  return dimensions !== null && dimensions.width * dimensions.height > SCREENSHOT_MAX_SOURCE_PIXELS;
 }
 
 function placeholderScreenshot(maxWidth: number): RedactedScreenshot {
@@ -243,7 +251,13 @@ function placeholderScreenshot(maxWidth: number): RedactedScreenshot {
 }
 
 /** Area-average downscale of an RGBA buffer. Output is outW x outH RGBA. */
-function downscaleRgba(src: Buffer, srcW: number, srcH: number, outW: number, outH: number): Buffer {
+function downscaleRgba(
+  src: Buffer,
+  srcW: number,
+  srcH: number,
+  outW: number,
+  outH: number,
+): Buffer {
   const out = Buffer.alloc(outW * outH * 4);
   const xRatio = srcW / outW;
   const yRatio = srcH / outH;
@@ -323,7 +337,11 @@ export function redactedTail(text: string, maxChars: number): string {
  */
 export function promptForLog(raw: string): { placeholder: string; digest: string; length: number } {
   const digest = digestText(raw);
-  return { placeholder: `[persona-prompt sha256:${digest} len:${raw.length}]`, digest, length: raw.length };
+  return {
+    placeholder: `[persona-prompt sha256:${digest} len:${raw.length}]`,
+    digest,
+    length: raw.length,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -348,7 +366,7 @@ export interface RedactionHooks {
   publicPath(value: string, rootCwd: string): string;
   redactScreenshot(
     buffer: Buffer | Uint8Array,
-    meta?: ScreenshotMeta
+    meta?: ScreenshotMeta,
   ): Promise<{ buffer: Buffer; method: "blurred" | "ocr_scrubbed" }>;
   promptForLog(raw: string): { placeholder: string; digest: string; length: number };
 }
@@ -360,14 +378,20 @@ export const defaultRedactionHooks: RedactionHooks = {
   async redactScreenshot(buffer, meta) {
     const result = redactScreenshot(
       buffer,
-      meta?.maxWidth === undefined ? {} : { maxWidth: meta.maxWidth }
+      meta?.maxWidth === undefined ? {} : { maxWidth: meta.maxWidth },
     );
     return { buffer: result.buffer, method: result.mode };
   },
-  promptForLog
+  promptForLog,
 };
 
-function blurPass(src: Buffer, width: number, height: number, radius: number, horizontal: boolean): Buffer {
+function blurPass(
+  src: Buffer,
+  width: number,
+  height: number,
+  radius: number,
+  horizontal: boolean,
+): Buffer {
   const out = Buffer.alloc(src.length);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {

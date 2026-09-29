@@ -55,7 +55,7 @@ describe("defaultRedactionHooks", () => {
   it("publicPath labels a descendant of the run root and redacts outside it", () => {
     const root = "/var/data/app";
     expect(defaultRedactionHooks.publicPath("/var/data/app/sub/file.ts", root)).toBe(
-      "[target-cwd]/sub/file.ts"
+      "[target-cwd]/sub/file.ts",
     );
     // Built dynamically so the literal does not trip the public-surface scanner.
     const outside = ["", "Users", "someone", "secret", "notes.md"].join("/");
@@ -71,13 +71,15 @@ describe("defaultRedactionHooks", () => {
   });
 
   it("redactScreenshot honors a smaller maxWidth from meta", async () => {
-    const { buffer } = await defaultRedactionHooks.redactScreenshot(tinyPng(400, 300), { maxWidth: 32 });
+    const { buffer } = await defaultRedactionHooks.redactScreenshot(tinyPng(400, 300), {
+      maxWidth: 32,
+    });
     expect(PNG.sync.read(buffer).width).toBe(32);
   });
 
   it("redactScreenshot fails closed on non-image input", async () => {
     const { buffer, method } = await defaultRedactionHooks.redactScreenshot(
-      Buffer.from("not an image", "utf8")
+      Buffer.from("not an image", "utf8"),
     );
     expect(method).toBe("blurred");
     expect(() => PNG.sync.read(buffer)).not.toThrow();

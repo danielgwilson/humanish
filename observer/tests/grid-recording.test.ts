@@ -9,9 +9,14 @@ type Item = NonNullable<ObserverStream["actor"]>["items"][number];
 
 function capture(id: string, offset: number | string | null): Item {
   return {
-    id, kind: "screenshot", lifecycle: "completed", title: id,
+    id,
+    kind: "screenshot",
+    lifecycle: "completed",
+    title: id,
     screenshotRef: { path: `screenshots/${id}.png`, redaction: "none" },
-    ...(offset === null ? {} : { at: typeof offset === "number" ? new Date(origin + offset).toISOString() : offset })
+    ...(offset === null
+      ? {}
+      : { at: typeof offset === "number" ? new Date(origin + offset).toISOString() : offset }),
   };
 }
 
@@ -36,22 +41,39 @@ describe("Whole-grid recorded capture clock", () => {
     expect(recording.boundariesMs).toEqual([0, 1000, 2000, 5000].map((time) => origin + time));
     expect(gridMoment(recording, "late", origin + 999)).toEqual({ kind: "before-first" });
     expect(gridMoment(recording, "early", origin + 1999)).toMatchObject({
-      kind: "capture", frame: { index: 0, itemId: "early-1" }, ageMs: 1999, coverage: "within"
+      kind: "capture",
+      frame: { index: 0, itemId: "early-1" },
+      ageMs: 1999,
+      coverage: "within",
     });
     expect(gridMoment(recording, "early", origin + 2000)).toMatchObject({
-      kind: "capture", frame: { index: 1, itemId: "early-2" }, ageMs: 0, coverage: "within"
+      kind: "capture",
+      frame: { index: 1, itemId: "early-2" },
+      ageMs: 0,
+      coverage: "within",
     });
     expect(gridMoment(recording, "early", origin + 5000)).toMatchObject({
-      kind: "capture", frame: { index: 1, itemId: "early-2" }, ageMs: 3000, coverage: "after-last"
+      kind: "capture",
+      frame: { index: 1, itemId: "early-2" },
+      ageMs: 3000,
+      coverage: "after-last",
     });
   });
 
   it("deduplicates seek boundaries while keeping original duplicate-frame identity", () => {
-    const stream = lane("duplicate", [capture("first", 0), capture("second", 1000), capture("third", 1000)]);
+    const stream = lane("duplicate", [
+      capture("first", 0),
+      capture("second", 1000),
+      capture("third", 1000),
+    ]);
     const recording = buildGridRecording([stream, lane("other", [capture("other-first", 1000)])]);
     expect(recording.boundariesMs).toEqual([origin, origin + 1000]);
     const moment = gridMoment(recording, stream.id, origin + 1000);
-    expect(moment).toMatchObject({ kind: "capture", frame: { index: 2, itemId: "third" }, ageMs: 0 });
+    expect(moment).toMatchObject({
+      kind: "capture",
+      frame: { index: 2, itemId: "third" },
+      ageMs: 0,
+    });
     if (moment.kind !== "capture") throw new Error("Expected the original captured frame");
     expect(moment.frame).toBe(recording.lanes.get(stream.id)?.model?.frames[2]);
   });
@@ -59,16 +81,23 @@ describe("Whole-grid recorded capture clock", () => {
   it.each([
     ["missing", [capture("first", 0), capture("missing", null)]],
     ["invalid", [capture("first", 0), capture("invalid", "not-a-timestamp")]],
-    ["descending", [capture("first", 2000), capture("earlier", 1000)]]
-  ] as const)("keeps %s timestamp lanes unavailable without manufacturing shared coverage", (_name, items) => {
-    const stream = lane("unavailable", [...items]);
-    const recording = buildGridRecording([stream, lane("valid", [capture("valid", 10_000)])]);
-    expect(recording.lanes.get(stream.id)?.timing).toBe("unavailable");
-    expect(recording.lanes.get(stream.id)?.times).toBeNull();
-    expect(recording.lanes.get(stream.id)?.model?.frames.map((frame) => frame.itemId)).toEqual(items.map((item) => item.id));
-    expect(recording.boundariesMs).toEqual([origin + 10_000]);
-    expect(gridMoment(recording, stream.id, origin + 10_000)).toEqual({ kind: "timing-unavailable" });
-  });
+    ["descending", [capture("first", 2000), capture("earlier", 1000)]],
+  ] as const)(
+    "keeps %s timestamp lanes unavailable without manufacturing shared coverage",
+    (_name, items) => {
+      const stream = lane("unavailable", [...items]);
+      const recording = buildGridRecording([stream, lane("valid", [capture("valid", 10_000)])]);
+      expect(recording.lanes.get(stream.id)?.timing).toBe("unavailable");
+      expect(recording.lanes.get(stream.id)?.times).toBeNull();
+      expect(recording.lanes.get(stream.id)?.model?.frames.map((frame) => frame.itemId)).toEqual(
+        items.map((item) => item.id),
+      );
+      expect(recording.boundariesMs).toEqual([origin + 10_000]);
+      expect(gridMoment(recording, stream.id, origin + 10_000)).toEqual({
+        kind: "timing-unavailable",
+      });
+    },
+  );
 
   it("uses a single real timestamp even though one capture cannot establish recorded pacing", () => {
     const recording = buildGridRecording([lane("single", [capture("only", 1234)])]);
@@ -78,33 +107,65 @@ describe("Whole-grid recorded capture clock", () => {
     expect(recording.endMs).toBe(origin + 1234);
     expect(clampGridTime(recording, origin)).toBe(origin + 1234);
     expect(gridMoment(recording, "single", origin + 1233)).toEqual({ kind: "before-first" });
-    expect(gridMoment(recording, "single", origin + 1234)).toMatchObject({ kind: "capture", ageMs: 0, coverage: "within" });
-    expect(gridMoment(recording, "single", origin + 1235)).toMatchObject({ kind: "capture", ageMs: 1, coverage: "after-last" });
+    expect(gridMoment(recording, "single", origin + 1234)).toMatchObject({
+      kind: "capture",
+      ageMs: 0,
+      coverage: "within",
+    });
+    expect(gridMoment(recording, "single", origin + 1235)).toMatchObject({
+      kind: "capture",
+      ageMs: 1,
+      coverage: "after-last",
+    });
   });
 
   it("does not borrow terminal tails, status timestamps or final contextual screenshots", () => {
-    const terminal = lane("terminal", [{ id: "command", kind: "command", lifecycle: "completed", title: "check", at: new Date(origin).toISOString() }]);
+    const terminal = lane("terminal", [
+      {
+        id: "command",
+        kind: "command",
+        lifecycle: "completed",
+        title: "check",
+        at: new Date(origin).toISOString(),
+      },
+    ]);
     terminal.kind = "terminal";
     terminal.terminalPlain = "Final output, retained without a screen capture.";
     const notice = lane("notice", [{ ...capture("context-only", 9000), kind: "notice" }]);
-    const visual = lane("visual", [capture("original", 1000), { ...capture("context-after", 9000), kind: "notice" }]);
+    const visual = lane("visual", [
+      capture("original", 1000),
+      { ...capture("context-after", 9000), kind: "notice" },
+    ]);
     const recording = buildGridRecording([terminal, notice, visual]);
     expect(recording.boundariesMs).toEqual([origin + 1000]);
-    for (const id of ["terminal", "notice", "unknown"]) expect(gridMoment(recording, id, origin + 10_000)).toEqual({ kind: "no-captures" });
+    for (const id of ["terminal", "notice", "unknown"])
+      expect(gridMoment(recording, id, origin + 10_000)).toEqual({ kind: "no-captures" });
     expect(gridMoment(recording, "visual", origin)).toEqual({ kind: "before-first" });
     expect(gridMoment(recording, "visual", origin + 10_000)).toMatchObject({
-      kind: "capture", frame: { itemId: "original", href: "../screenshots/original.png", index: 0 }, ageMs: 9000
+      kind: "capture",
+      frame: { itemId: "original", href: "../screenshots/original.png", index: 0 },
+      ageMs: 9000,
     });
   });
 
   it("keeps scripted action captures and mid-run captures on their original frame IDs", () => {
     const scripted = lane("scripted", [{ ...capture("action", 1000), kind: "ui_action" }]);
     const active = lane("active", []);
-    active.liveActor = { schema: "humanish.live-actor.v1", updatedAt: active.updatedAt, items: [capture("live-capture", 2000)] };
+    active.liveActor = {
+      schema: "humanish.live-actor.v1",
+      updatedAt: active.updatedAt,
+      items: [capture("live-capture", 2000)],
+    };
     delete active.actor;
     const recording = buildGridRecording([scripted, active]);
-    expect(gridMoment(recording, scripted.id, origin + 1000)).toMatchObject({ kind: "capture", frame: { index: 0, itemId: "action" } });
-    expect(gridMoment(recording, active.id, origin + 2000)).toMatchObject({ kind: "capture", frame: { index: 0, itemId: "live-capture" } });
+    expect(gridMoment(recording, scripted.id, origin + 1000)).toMatchObject({
+      kind: "capture",
+      frame: { index: 0, itemId: "action" },
+    });
+    expect(gridMoment(recording, active.id, origin + 2000)).toMatchObject({
+      kind: "capture",
+      frame: { index: 0, itemId: "live-capture" },
+    });
   });
 
   it("leaves empty and wholly untimed recordings without a fabricated range", () => {
@@ -120,22 +181,30 @@ describe("Whole-grid recorded capture clock", () => {
   it("extends the shared clock with the actual desktop recording interval", () => {
     const media = lane("media", [capture("still", 5000)]);
     media.recording = {
-      schema: "humanish.desktop-recording.v1", path: "recordings/media.mp4", mimeType: "video/mp4",
-      startedAt: new Date(origin + 1000).toISOString(), durationMs: 8000, bytes: 1234,
-      audioSources: ["speaker-output"], complete: false
+      schema: "humanish.desktop-recording.v1",
+      path: "recordings/media.mp4",
+      mimeType: "video/mp4",
+      startedAt: new Date(origin + 1000).toISOString(),
+      durationMs: 8000,
+      bytes: 1234,
+      audioSources: ["speaker-output"],
+      complete: false,
     };
     const recording = buildGridRecording([media]);
     expect(recording.startMs).toBe(origin + 1000);
     expect(recording.endMs).toBe(origin + 9000);
     expect(recording.boundariesMs).toEqual([origin + 1000, origin + 5000, origin + 9000]);
     expect(recording.lanes.get("media")?.media).toMatchObject({
-      startMs: origin + 1000, endMs: origin + 9000,
-      recording: { path: "recordings/media.mp4", complete: false }
+      startMs: origin + 1000,
+      endMs: origin + 9000,
+      recording: { path: "recordings/media.mp4", complete: false },
     });
   });
 
   it("clamps finite requests and rejects invalid cursors without exposing a future frame", () => {
-    const recording = buildGridRecording([lane("recorded", [capture("first", 1000), capture("last", 3000)])]);
+    const recording = buildGridRecording([
+      lane("recorded", [capture("first", 1000), capture("last", 3000)]),
+    ]);
     expect(clampGridTime(recording, origin)).toBe(origin + 1000);
     expect(clampGridTime(recording, origin + 2000)).toBe(origin + 2000);
     expect(clampGridTime(recording, origin + 4000)).toBe(origin + 3000);

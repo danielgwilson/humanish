@@ -45,7 +45,7 @@ export interface StopConditionMatch {
 
 export function evaluateStopWhen(
   stopWhen: StopWhen | undefined,
-  observation: StopConditionObservation
+  observation: StopConditionObservation,
 ): StopConditionMatch | undefined {
   if (!stopWhen) return undefined;
   for (const [ruleIndex, rule] of stopWhen.any.entries()) {
@@ -79,7 +79,7 @@ export function evaluateStopWhen(
     return {
       id: rule.id ?? `rule-${String(ruleIndex + 1).padStart(2, "0")}`,
       ruleIndex,
-      kinds
+      kinds,
     };
   }
   return undefined;

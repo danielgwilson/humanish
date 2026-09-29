@@ -38,14 +38,22 @@ export interface FixtureRunSpec {
 const DEFAULT_START = "2026-08-19T10:00:00.000Z";
 
 /** Write one synthetic run tree. Returns the run directory. */
-export async function writeFixtureRun(cwd: string, spec: FixtureRunSpec, nowMs = Date.parse("2026-08-19T10:05:00.000Z")): Promise<string> {
+export async function writeFixtureRun(
+  cwd: string,
+  spec: FixtureRunSpec,
+  nowMs = Date.parse("2026-08-19T10:05:00.000Z"),
+): Promise<string> {
   const runDir = path.join(cwd, ".humanish", "runs", spec.runId);
   await mkdir(runDir, { recursive: true });
   const startedAt = spec.startedAt ?? DEFAULT_START;
 
   if (spec.state === "orphan") {
     // Receipts without an outcome: exactly what a dropped connection leaves behind.
-    await writeFile(path.join(runDir, "sandbox-receipts.ndjson"), `${JSON.stringify({ kind: "created" })}\n`, "utf8");
+    await writeFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ kind: "created" })}\n`,
+      "utf8",
+    );
     return runDir;
   }
 
@@ -53,7 +61,7 @@ export async function writeFixtureRun(cwd: string, spec: FixtureRunSpec, nowMs =
     await writeFile(
       path.join(runDir, "run.json"),
       `${JSON.stringify(legacyBundle(spec, startedAt), null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
     return runDir;
   }
@@ -76,8 +84,8 @@ export async function writeFixtureRun(cwd: string, spec: FixtureRunSpec, nowMs =
           lab: {
             id: spec.labId,
             ...(spec.labPath === undefined ? {} : { path: spec.labPath }),
-            ...(spec.labOrigin === undefined ? {} : { origin: spec.labOrigin })
-          }
+            ...(spec.labOrigin === undefined ? {} : { origin: spec.labOrigin }),
+          },
         }),
     pid: 4242,
     startedAt,
@@ -88,15 +96,25 @@ export async function writeFixtureRun(cwd: string, spec: FixtureRunSpec, nowMs =
           outcome: {
             ...(spec.verdict === undefined ? {} : { verdict: spec.verdict }),
             ...(spec.participants === undefined ? {} : { participants: spec.participants }),
-            ...(spec.estimatedCostUsd === undefined ? {} : { estimatedCostUsd: spec.estimatedCostUsd })
-          }
+            ...(spec.estimatedCostUsd === undefined
+              ? {}
+              : { estimatedCostUsd: spec.estimatedCostUsd }),
+          },
         }
-      : {})
+      : {}),
   };
-  await writeFile(path.join(runDir, RUN_STATUS_FILE), `${JSON.stringify(record, null, 2)}\n`, "utf8");
+  await writeFile(
+    path.join(runDir, RUN_STATUS_FILE),
+    `${JSON.stringify(record, null, 2)}\n`,
+    "utf8",
+  );
 
   if (finished) {
-    await writeFile(path.join(runDir, "run.json"), `${JSON.stringify(legacyBundle(spec, startedAt), null, 2)}\n`, "utf8");
+    await writeFile(
+      path.join(runDir, "run.json"),
+      `${JSON.stringify(legacyBundle(spec, startedAt), null, 2)}\n`,
+      "utf8",
+    );
   } else if (spec.thought !== undefined) {
     // A live run's in-progress bundle carries the liveActor partial the surfaces read.
     await writeFile(
@@ -111,15 +129,23 @@ export async function writeFixtureRun(cwd: string, spec: FixtureRunSpec, nowMs =
               liveActor: {
                 schema: "humanish.live-actor.v1",
                 updatedAt,
-                items: [{ id: "reasoning-001", kind: "reasoning", lifecycle: "completed", title: "reasoning turn 1", text: spec.thought }]
-              }
-            }
-          ]
+                items: [
+                  {
+                    id: "reasoning-001",
+                    kind: "reasoning",
+                    lifecycle: "completed",
+                    title: "reasoning turn 1",
+                    text: spec.thought,
+                  },
+                ],
+              },
+            },
+          ],
         },
         null,
-        2
+        2,
       )}\n`,
-      "utf8"
+      "utf8",
     );
   }
   return runDir;
@@ -132,17 +158,28 @@ function legacyBundle(spec: FixtureRunSpec, startedAt: string): Record<string, u
     mode: spec.mode ?? "live",
     createdAt: startedAt,
     // The pre-contract attribution convention, so the legacy bridge has something real to read.
-    persona: { source: spec.labId === undefined ? "humanish/personas/synthetic-new-user.yaml" : `lab:${spec.labId}` },
+    persona: {
+      source:
+        spec.labId === undefined
+          ? "humanish/personas/synthetic-new-user.yaml"
+          : `lab:${spec.labId}`,
+    },
     review: {
       verdict: spec.verdict ?? "pass",
-      ...(spec.participants === undefined ? {} : { participants: spec.participants })
+      ...(spec.participants === undefined ? {} : { participants: spec.participants }),
     },
-    ...(spec.estimatedCostUsd === undefined ? {} : { cost: { estimatedTotalUsd: spec.estimatedCostUsd } })
+    ...(spec.estimatedCostUsd === undefined
+      ? {}
+      : { cost: { estimatedTotalUsd: spec.estimatedCostUsd } }),
   };
 }
 
 /** Write a whole project's worth of runs in one call. */
-export async function writeFixtureRuns(cwd: string, specs: readonly FixtureRunSpec[], nowMs?: number): Promise<void> {
+export async function writeFixtureRuns(
+  cwd: string,
+  specs: readonly FixtureRunSpec[],
+  nowMs?: number,
+): Promise<void> {
   for (const spec of specs) {
     await writeFixtureRun(cwd, spec, nowMs);
   }

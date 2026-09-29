@@ -17,7 +17,9 @@ export type RunAction = "observer" | "again" | "reclaim" | "stop" | "cancel-anal
 
 export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefined): RunAction[] {
   if (["queued", "running"].includes(detail?.automaticAnalysis?.state ?? "")) {
-    return detail?.observerPath === undefined ? ["cancel-analysis"] : ["observer", "cancel-analysis"];
+    return detail?.observerPath === undefined
+      ? ["cancel-analysis"]
+      : ["observer", "cancel-analysis"];
   }
   if (run.liveness === "interrupted") {
     // An interrupted run may have left sandboxes running, and that costs money until something
@@ -76,7 +78,7 @@ export function RunScreen({
   selected,
   tick,
   now,
-  actionNote
+  actionNote,
 }: RunScreenProps): React.ReactElement {
   const participant = detail?.participants[0];
   const actions = runActions(run, detail);
@@ -91,7 +93,13 @@ export function RunScreen({
       </Box>
 
       {interrupted ? (
-        <InterruptedFacts run={run} detail={detail} participant={participant} now={now} columns={columns} />
+        <InterruptedFacts
+          run={run}
+          detail={detail}
+          participant={participant}
+          now={now}
+          columns={columns}
+        />
       ) : (
         <FinishedFacts run={run} participant={participant} columns={columns} />
       )}
@@ -99,7 +107,11 @@ export function RunScreen({
       {detail?.automaticAnalysis === undefined ? null : (
         <Box marginTop={1} flexDirection="column">
           <Text>Analysis: {detail.automaticAnalysis.state}</Text>
-          {detail.automaticAnalysis.reason === null ? null : <Text dimColor wrap="wrap">{detail.automaticAnalysis.reason}</Text>}
+          {detail.automaticAnalysis.reason === null ? null : (
+            <Text dimColor wrap="wrap">
+              {detail.automaticAnalysis.reason}
+            </Text>
+          )}
         </Box>
       )}
 
@@ -107,8 +119,12 @@ export function RunScreen({
         <Box marginTop={1} flexDirection="column">
           {actions.map((action, index) => (
             <Box key={action}>
-              <Text {...color(index === selected ? PALETTE.accent : undefined)} bold={index === selected}>
-                {gutter(index === selected)} {fitLabelToWidth(actionLabel(action), Math.max(10, columns - 3))}
+              <Text
+                {...color(index === selected ? PALETTE.accent : undefined)}
+                bold={index === selected}
+              >
+                {gutter(index === selected)}{" "}
+                {fitLabelToWidth(actionLabel(action), Math.max(10, columns - 3))}
               </Text>
             </Box>
           ))}
@@ -151,7 +167,7 @@ function headline(run: RunIndexEntry, participant: RunParticipant | undefined): 
 function FinishedFacts({
   run,
   participant,
-  columns
+  columns,
 }: {
   run: RunIndexEntry;
   participant: RunParticipant | undefined;
@@ -167,8 +183,10 @@ function FinishedFacts({
   const shape = [
     run.durationMs === undefined ? undefined : formatDuration(run.durationMs),
     participant?.turns === undefined ? undefined : `${participant.turns} turns`,
-    participant?.thoughts === undefined ? undefined : `${participant.thoughts} thoughts`
-  ].filter(Boolean).join(" · ");
+    participant?.thoughts === undefined ? undefined : `${participant.thoughts} thoughts`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Box flexDirection="column">
@@ -199,7 +217,7 @@ function InterruptedFacts({
   detail,
   participant,
   now,
-  columns
+  columns,
 }: {
   run: RunIndexEntry;
   detail: RunDetail | null | undefined;
@@ -211,8 +229,10 @@ function InterruptedFacts({
   const quiet = run.updatedAt === undefined ? Number.NaN : now - Date.parse(run.updatedAt);
   const captured = [
     participant?.thoughts === undefined ? undefined : `${participant.thoughts} thoughts`,
-    participant?.actions === undefined ? undefined : `${participant.actions} actions`
-  ].filter(Boolean).join(" · ");
+    participant?.actions === undefined ? undefined : `${participant.actions} actions`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Box marginTop={1} flexDirection="column" width={columns}>
@@ -229,7 +249,7 @@ function InterruptedFacts({
             ? "cost unknown — it ended before pricing itself"
             : costLine(run, participant)}
         </Text>
-        <Text color={PALETTE.warn}>  sandboxes may still be running</Text>
+        <Text color={PALETTE.warn}>{"  sandboxes may still be running"}</Text>
       </Box>
     </Box>
   );
@@ -243,7 +263,8 @@ function costLine(run: RunIndexEntry, participant: RunParticipant | undefined): 
   // NOT `??` between the two sources: `??` treats null as nullish, so a DECLARED ABSENT cost would
   // fall through to the participant's and then to "not recorded" — collapsing the exact distinction
   // this function exists to keep. Only a genuinely missing field falls through.
-  const value = run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;
+  const value =
+    run.estimatedCostUsd === undefined ? participant?.estimatedCostUsd : run.estimatedCostUsd;
   if (value === undefined) return "cost not recorded";
   if (value === null) return "cost declared absent";
   return `~$${value.toFixed(2)} ${run.estimatedCostUsd === undefined ? "participant model" : "run"} estimate · excludes analysis`;

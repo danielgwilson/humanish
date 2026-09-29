@@ -10,11 +10,14 @@ import type { Server } from "node:http";
 export type PortHolder = "humanish" | "other";
 
 export class PortInUseError extends Error {
-  constructor(readonly port: number, readonly holder: PortHolder) {
+  constructor(
+    readonly port: number,
+    readonly holder: PortHolder,
+  ) {
     super(
       holder === "humanish"
         ? `port ${port} is already served by another humanish process on this machine; stop it, or pass --port 0 for a free port`
-        : `something else is already listening on 127.0.0.1:${port}; pass --port 0 for a free port, or stop it`
+        : `something else is already listening on 127.0.0.1:${port}; pass --port 0 for a free port, or stop it`,
     );
     this.name = "PortInUseError";
   }
@@ -26,7 +29,10 @@ export class PortInUseError extends Error {
  * schema; anything else is somebody's app. Bounded to half a second and never throws: a probe
  * that cannot decide says "other", which is the answer that suggests the safer action.
  */
-export async function probePortHolder(port: number, fetchFn: typeof fetch = fetch): Promise<PortHolder> {
+export async function probePortHolder(
+  port: number,
+  fetchFn: typeof fetch = fetch,
+): Promise<PortHolder> {
   // The whole probe is raced against a hard clock as well: a fetch that ignores its abort signal
   // (a test double, a proxy) must not turn "tell me whose port this is" into a hang.
   let hardTimer: ReturnType<typeof setTimeout> | undefined;
@@ -46,10 +52,13 @@ async function probeRoutes(port: number, fetchFn: typeof fetch): Promise<PortHol
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 500);
     try {
-      const response = await fetchFn(`http://127.0.0.1:${port}${route}`, { signal: controller.signal });
+      const response = await fetchFn(`http://127.0.0.1:${port}${route}`, {
+        signal: controller.signal,
+      });
       if (!response.ok) continue;
       const body = (await response.json()) as { schema?: unknown };
-      if (typeof body?.schema === "string" && body.schema.startsWith("humanish.")) return "humanish";
+      if (typeof body?.schema === "string" && body.schema.startsWith("humanish."))
+        return "humanish";
     } catch {
       // not ours, or not answering: keep probing, then say "other"
     } finally {
@@ -63,7 +72,7 @@ async function probeRoutes(port: number, fetchFn: typeof fetch): Promise<PortHol
 export function listenOnLoopback(
   server: Server,
   port: number,
-  probe: (port: number) => Promise<PortHolder> = probePortHolder
+  probe: (port: number) => Promise<PortHolder> = probePortHolder,
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const onError = (error: NodeJS.ErrnoException): void => {

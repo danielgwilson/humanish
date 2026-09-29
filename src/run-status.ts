@@ -122,7 +122,12 @@ export interface BeginRunStatusOptions {
 
 /** A no-op handle, so a caller that cannot write status still has a uniform interface. */
 export function inertRunStatus(): RunStatusHandle {
-  return { started: Promise.resolve(), touch: async () => {}, finish: async () => {}, stop: async () => {} };
+  return {
+    started: Promise.resolve(),
+    touch: async () => {},
+    finish: async () => {},
+    stop: async () => {},
+  };
 }
 
 /**
@@ -166,7 +171,10 @@ export async function withRunStatusScope<T>(fn: () => Promise<T>): Promise<T> {
  * fails must never fail the run it describes, so every write swallows its error. The interval is
  * `unref`'d — this file can never be the reason a process stays alive.
  */
-export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunStatusOptions): RunStatusHandle {
+export function beginRunStatus(
+  runPaths: PreparedOutputRoot,
+  options: BeginRunStatusOptions,
+): RunStatusHandle {
   const now = options.now ?? (() => Date.now());
   const iso = (): string => new Date(now()).toISOString();
   const startedAt = iso();
@@ -178,7 +186,7 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
     ...(options.lab === undefined ? {} : { lab: options.lab }),
     pid: options.pid ?? process.pid,
     startedAt,
-    updatedAt: startedAt
+    updatedAt: startedAt,
   };
 
   let finished = false;
@@ -187,7 +195,14 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
     // Serialized: two overlapping atomic writes of the same path would be a coin flip over which
     // record survives, and a `running` record landing after a `finished` one would resurrect it.
     writing = writing
-      .then(() => writeContainedOutputFile(runPaths, RUN_STATUS_FILE, `${JSON.stringify(record, null, 2)}\n`, "utf8"))
+      .then(() =>
+        writeContainedOutputFile(
+          runPaths,
+          RUN_STATUS_FILE,
+          `${JSON.stringify(record, null, 2)}\n`,
+          "utf8",
+        ),
+      )
       .catch(() => {
         // Deliberately swallowed: the index is a convenience, the bundle is the evidence.
       });
@@ -232,13 +247,13 @@ export function beginRunStatus(runPaths: PreparedOutputRoot, options: BeginRunSt
         state: "finished",
         updatedAt: completedAt,
         completedAt,
-        ...(outcome === undefined ? {} : { outcome })
+        ...(outcome === undefined ? {} : { outcome }),
       });
     },
     stop() {
       scope?.delete(handle);
       return stop();
-    }
+    },
   };
   // The enclosing run now owns this record's lifetime; see `withRunStatusScope`. A caller outside a
   // scope (a direct library import) simply gets the old behavior.
@@ -256,7 +271,7 @@ export type RunLiveness = "running" | "interrupted" | "finished";
 export function classifyRunStatus(
   record: Pick<RunStatusRecord, "state" | "updatedAt">,
   nowMs: number,
-  staleMs: number = RUN_STATUS_STALE_MS
+  staleMs: number = RUN_STATUS_STALE_MS,
 ): RunLiveness {
   if (record.state === "finished") return "finished";
   const updated = Date.parse(record.updatedAt);

@@ -14,7 +14,7 @@ import {
   classifyCuaAction,
   summarizeAffordanceUse,
   SHORTCUT_AFFORDANCE_CLASSES,
-  NATURALISTIC_AFFORDANCE_CLASSES
+  NATURALISTIC_AFFORDANCE_CLASSES,
 } from "../src/affordance.js";
 import type { CuaAction } from "../src/computer-use.js";
 
@@ -25,7 +25,15 @@ describe("affordance classification (#369)", () => {
     expect(classOf({ kind: "click", x: 10, y: 20 })).toBe("pointer");
     expect(classOf({ kind: "double_click", x: 1, y: 2 })).toBe("pointer");
     expect(classOf({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 120 })).toBe("pointer");
-    expect(classOf({ kind: "drag", path: [{ x: 0, y: 0 }, { x: 5, y: 5 }] })).toBe("pointer");
+    expect(
+      classOf({
+        kind: "drag",
+        path: [
+          { x: 0, y: 0 },
+          { x: 5, y: 5 },
+        ],
+      }),
+    ).toBe("pointer");
     expect(classOf({ kind: "type", text: "hello@example.test" })).toBe("keyboard");
     expect(classOf({ kind: "keypress", keys: ["Enter"] })).toBe("keyboard");
     expect(classOf({ kind: "speak", text: "Hello" })).toBe("speech");
@@ -48,10 +56,14 @@ describe("affordance classification (#369)", () => {
   });
 
   it("catches the field defect: a javascript: URL is script execution, whatever its casing or padding", () => {
-    expect(classOf({ kind: "type", text: "javascript:document.querySelector('#next').click()" })).toBe("script-execution");
+    expect(
+      classOf({ kind: "type", text: "javascript:document.querySelector('#next').click()" }),
+    ).toBe("script-execution");
     expect(classOf({ kind: "type", text: "  JavaScript:void(0)" })).toBe("script-execution");
     // A data: URL can carry executable HTML, so it rides with javascript:.
-    expect(classOf({ kind: "type", text: "data:text/html,<script>alert(1)</script>" })).toBe("script-execution");
+    expect(classOf({ kind: "type", text: "data:text/html,<script>alert(1)</script>" })).toBe(
+      "script-execution",
+    );
   });
 
   it("classifies devtools chords and browser-internal surfaces as shortcuts, not as product use", () => {
@@ -59,7 +71,9 @@ describe("affordance classification (#369)", () => {
     expect(classOf({ kind: "keypress", keys: ["Control", "Shift", "J"] })).toBe("devtools");
     expect(classOf({ kind: "keypress", keys: ["cmd", "alt", "i"] })).toBe("devtools");
     expect(classOf({ kind: "type", text: "chrome://settings" })).toBe("browser-internal");
-    expect(classOf({ kind: "type", text: "view-source:https://example.test" })).toBe("browser-internal");
+    expect(classOf({ kind: "type", text: "view-source:https://example.test" })).toBe(
+      "browser-internal",
+    );
     expect(classOf({ kind: "type", text: "about:blank" })).toBe("browser-internal");
     for (const klass of ["script-execution", "devtools", "browser-internal"] as const) {
       expect(SHORTCUT_AFFORDANCE_CLASSES).toContain(klass);
@@ -74,7 +88,10 @@ describe("affordance classification (#369)", () => {
     expect(JSON.stringify(observation)).not.toContain("SUPER-SECRET-VALUE");
 
     // Same for a URL carrying a session token in its path/query.
-    const tokenUrl = classifyCuaAction({ kind: "type", text: "https://example.test/verify?token=abc123SECRET" });
+    const tokenUrl = classifyCuaAction({
+      kind: "type",
+      text: "https://example.test/verify?token=abc123SECRET",
+    });
     expect(tokenUrl.affordance).toBe("url-navigation");
     expect(JSON.stringify(tokenUrl)).not.toContain("abc123SECRET");
 
@@ -90,11 +107,16 @@ describe("affordance classification (#369)", () => {
       { affordance: "pointer" },
       { affordance: "keyboard" },
       { affordance: "url-navigation" },
-      { affordance: "script-execution", signal: "javascript:" }
+      { affordance: "script-execution", signal: "javascript:" },
     ]);
     expect(summary.schema).toBe(AFFORDANCE_CLASS_SCHEMA);
     expect(summary.total).toBe(5);
-    expect(summary.counts).toEqual({ pointer: 2, keyboard: 1, "url-navigation": 1, "script-execution": 1 });
+    expect(summary.counts).toEqual({
+      pointer: 2,
+      keyboard: 1,
+      "url-navigation": 1,
+      "script-execution": 1,
+    });
     // Absent classes are omitted rather than written as 0 — the record stays small and says only
     // what happened.
     expect(summary.counts).not.toHaveProperty("devtools");
@@ -105,7 +127,7 @@ describe("affordance classification (#369)", () => {
     const summary = summarizeAffordanceUse([
       { affordance: "pointer" },
       { affordance: "url-navigation" },
-      { affordance: "observation" }
+      { affordance: "observation" },
     ]);
     expect(summary.shortcutTotal).toBe(0);
     expect(summary.total).toBe(3);

@@ -13,7 +13,11 @@ import { describe, expect, it } from "vitest";
 
 import { composeLaneInstructions } from "../src/cua-actor-lab.js";
 import { DEVICE_PRESETS } from "../src/device-presets.js";
-import { labPersonaIds, personaTitleFromId, resolveCommittedPersonasForCwd } from "../src/persona-resolve.js";
+import {
+  labPersonaIds,
+  personaTitleFromId,
+  resolveCommittedPersonasForCwd,
+} from "../src/persona-resolve.js";
 import { parseResolvedPersona, personaToDirectives } from "../src/persona.js";
 
 const DEVICE = { name: "desktop", preset: DEVICE_PRESETS.desktop } as const;
@@ -30,7 +34,7 @@ describe("composeLaneInstructions applies committed personas", () => {
       mission: "Sign in and rename the workspace.",
       persona: "skeptical-power-user",
       resolvedPersona: persona,
-      device: DEVICE
+      device: DEVICE,
     });
 
     const expected = personaToDirectives(persona);
@@ -53,12 +57,12 @@ describe("composeLaneInstructions applies committed personas", () => {
     const expert = composeLaneInstructions({
       ...args,
       persona: "skeptical-power-user",
-      resolvedPersona: await committed("skeptical-power-user")
+      resolvedPersona: await committed("skeptical-power-user"),
     });
     const newcomer = composeLaneInstructions({
       ...args,
       persona: "synthetic-new-user",
-      resolvedPersona: await committed("synthetic-new-user")
+      resolvedPersona: await committed("synthetic-new-user"),
     });
 
     expect(expert.instructions).not.toBe(newcomer.instructions);
@@ -70,7 +74,7 @@ describe("composeLaneInstructions applies committed personas", () => {
     const composed = composeLaneInstructions({
       mission: "Sign in and rename the workspace.",
       persona: "not-a-committed-persona",
-      device: DEVICE
+      device: DEVICE,
     });
     expect(composed.instructions).toContain("Persona: not-a-committed-persona.");
     // A persona that declared nothing must never be credited with traits it does not have.
@@ -80,13 +84,18 @@ describe("composeLaneInstructions applies committed personas", () => {
 
 describe("committed persona resolution", () => {
   it("resolves ids the lab config actually declares, per lane and per actor", () => {
-    expect(
-      labPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })
-    ).toEqual(["synthetic-new-user"]);
+    expect(labPersonaIds({ actors: [{ persona: "synthetic-new-user" }] })).toEqual([
+      "synthetic-new-user",
+    ]);
     expect(
       labPersonaIds({
-        actors: [{ persona: "synthetic-new-user", lanes: [{ persona: "skeptical-power-user" }, { persona: "synthetic-new-user" }] }]
-      })
+        actors: [
+          {
+            persona: "synthetic-new-user",
+            lanes: [{ persona: "skeptical-power-user" }, { persona: "synthetic-new-user" }],
+          },
+        ],
+      }),
     ).toEqual(["synthetic-new-user", "skeptical-power-user"]);
     expect(labPersonaIds({ actors: [{ lanes: [{}] }] })).toEqual([]);
   });
@@ -94,7 +103,7 @@ describe("committed persona resolution", () => {
   it("reads committed persona files from the project root", async () => {
     const resolved = await resolveCommittedPersonasForCwd(process.cwd(), [
       "skeptical-power-user",
-      "synthetic-new-user"
+      "synthetic-new-user",
     ]);
     expect(resolved.warnings).toEqual([]);
     expect(resolved.personas.get("skeptical-power-user")?.traits.patience).toBe("low");
@@ -105,7 +114,7 @@ describe("committed persona resolution", () => {
     const resolved = await resolveCommittedPersonasForCwd(process.cwd(), [
       "../../etc/passwd",
       "personas/nested",
-      "no-such-persona"
+      "no-such-persona",
     ]);
     expect(resolved.personas.size).toBe(0);
     expect(resolved.warnings).toHaveLength(3);

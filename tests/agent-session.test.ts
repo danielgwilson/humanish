@@ -8,8 +8,14 @@ import { detectAgentSession } from "../src/agent-session.js";
 
 describe("who is driving this terminal", () => {
   it("names the runner and the variable that gave it away", () => {
-    expect(detectAgentSession({ CODEX_SESSION_ID: "s" })).toEqual({ runner: "Codex", marker: "CODEX_SESSION_ID" });
-    expect(detectAgentSession({ CLAUDECODE: "1" })).toEqual({ runner: "Claude Code", marker: "CLAUDECODE" });
+    expect(detectAgentSession({ CODEX_SESSION_ID: "s" })).toEqual({
+      runner: "Codex",
+      marker: "CODEX_SESSION_ID",
+    });
+    expect(detectAgentSession({ CLAUDECODE: "1" })).toEqual({
+      runner: "Claude Code",
+      marker: "CLAUDECODE",
+    });
     expect(detectAgentSession({ AI_AGENT: "1" })?.marker).toBe("AI_AGENT");
   });
 

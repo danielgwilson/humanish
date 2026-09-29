@@ -11,12 +11,17 @@ function cloneLab(email: unknown) {
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
-      serve: { install: "npm ci", build: "npm run build", start: "npm start", url: "http://127.0.0.1:3000/" }
+      serve: {
+        install: "npm ci",
+        build: "npm run build",
+        start: "npm start",
+        url: "http://127.0.0.1:3000/",
+      },
     },
     actors: [{ type: "openai-computer-use", mission: "sign up" }],
     execution: { target: "e2b-desktop" },
     scenario: { mode: "live" },
-    comms: { email }
+    comms: { email },
   });
 }
 
@@ -28,7 +33,7 @@ describe("comms.email.smtp", () => {
     expect(parsed.config.comms?.email?.smtp).toMatchObject({
       hostEnv: "SMTP_HOST",
       portEnv: "SMTP_PORT",
-      port: 2525 // a default, so the port is known before the sandbox is created
+      port: 2525, // a default, so the port is known before the sandbox is created
     });
     expect(parsed.config.comms?.email?.injectEnv).toBeUndefined();
   });
@@ -40,20 +45,23 @@ describe("comms.email.smtp", () => {
         portEnv: "SMTP_PORT",
         userEnv: "SMTP_USER",
         passwordEnv: "SMTP_PASS",
-        port: 2600
-      }
+        port: 2600,
+      },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.config.comms?.email?.smtp).toMatchObject({
       port: 2600,
       userEnv: "SMTP_USER",
-      passwordEnv: "SMTP_PASS"
+      passwordEnv: "SMTP_PASS",
     });
   });
 
   it("lets a lab declare BOTH transports, for an app that could use either", () => {
-    const parsed = cloneLab({ injectEnv: "RESEND_BASE_URL", smtp: { hostEnv: "SMTP_HOST", portEnv: "SMTP_PORT" } });
+    const parsed = cloneLab({
+      injectEnv: "RESEND_BASE_URL",
+      smtp: { hostEnv: "SMTP_HOST", portEnv: "SMTP_PORT" },
+    });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.config.comms?.email?.injectEnv).toBe("RESEND_BASE_URL");

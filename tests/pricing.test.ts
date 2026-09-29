@@ -9,7 +9,7 @@ import {
   estimateDesktopCost,
   round6,
   type DesktopRate,
-  type ModelRate
+  type ModelRate,
 } from "../src/pricing.js";
 
 // A fake sheet so every assertion is driven by injected numbers, never the live table.
@@ -18,17 +18,21 @@ const FAKE_RATES: Record<string, ModelRate> = {
     inputUsdPerToken: 2e-6,
     outputUsdPerToken: 5e-6,
     asOf: "2024-01-01",
-    source: "fake-sheet://test-model"
+    source: "fake-sheet://test-model",
   },
   "placeholder-model": {
     inputUsdPerToken: 1e-6,
     outputUsdPerToken: 1e-6,
     asOf: "2024-02-02",
     source: "fake-sheet://placeholder",
-    placeholder: true
-  }
+    placeholder: true,
+  },
 };
-const FAKE_DESKTOP: DesktopRate = { usdPerMinute: 0.01, asOf: "2024-03-03", source: "fake-sheet://desktop" };
+const FAKE_DESKTOP: DesktopRate = {
+  usdPerMinute: 0.01,
+  asOf: "2024-03-03",
+  source: "fake-sheet://desktop",
+};
 
 describe("pricing schema constants", () => {
   it("names both schema tags at v1", () => {
@@ -104,7 +108,12 @@ describe("estimateActorCost", () => {
   it("treats a missing input or output token count as 0 (not absent) when the other is present", () => {
     const est = estimateActorCost({ input: 100 }, "test-model", FAKE_RATES);
     expect(est.estimatedCostUsd).toBe(round6(100 * 2e-6));
-    expect(est.breakdown).toEqual({ inputUsd: round6(100 * 2e-6), outputUsd: 0, inputTokens: 100, outputTokens: 0 });
+    expect(est.breakdown).toEqual({
+      inputUsd: round6(100 * 2e-6),
+      outputUsd: 0,
+      inputTokens: 100,
+      outputTokens: 0,
+    });
   });
 });
 
@@ -119,19 +128,27 @@ describe("estimateActorCost: cached input (#391)", () => {
     outputUsdPerToken: 30e-6,
     cachedInputUsdPerToken: 0.5e-6,
     asOf: "2026-08-08",
-    source: "test"
+    source: "test",
   };
   const rates = { "test-model": rate };
 
   it("bills cached input at the cached rate and the remainder at full rate", () => {
-    const cost = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 900_000 }, "test-model", rates);
+    const cost = estimateActorCost(
+      { input: 1_000_000, output: 0, cachedInput: 900_000 },
+      "test-model",
+      rates,
+    );
     // 100k full at $5/1M = $0.50, 900k cached at $0.50/1M = $0.45
     expect(cost.estimatedCostUsd).toBeCloseTo(0.95, 6);
     expect(cost.breakdown?.cachedInputTokens).toBe(900_000);
   });
 
   it("prices exactly as before when the provider reports no cached count", () => {
-    const withCache = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 0 }, "test-model", rates);
+    const withCache = estimateActorCost(
+      { input: 1_000_000, output: 0, cachedInput: 0 },
+      "test-model",
+      rates,
+    );
     const silent = estimateActorCost({ input: 1_000_000, output: 0 }, "test-model", rates);
     expect(silent.estimatedCostUsd).toBe(5);
     expect(withCache.estimatedCostUsd).toBe(5);
@@ -142,12 +159,20 @@ describe("estimateActorCost: cached input (#391)", () => {
   it("prices as before when the rate sheet models no cached rate", () => {
     const { cachedInputUsdPerToken: _omitted, ...rateWithoutCachedField } = rate;
     const noCachedRate = { "test-model": rateWithoutCachedField };
-    const cost = estimateActorCost({ input: 1_000_000, output: 0, cachedInput: 900_000 }, "test-model", noCachedRate);
+    const cost = estimateActorCost(
+      { input: 1_000_000, output: 0, cachedInput: 900_000 },
+      "test-model",
+      noCachedRate,
+    );
     expect(cost.estimatedCostUsd).toBe(5);
   });
 
   it("never lets a bogus cached count exceed the input it came from", () => {
-    const cost = estimateActorCost({ input: 1000, output: 0, cachedInput: 999_999 }, "test-model", rates);
+    const cost = estimateActorCost(
+      { input: 1000, output: 0, cachedInput: 999_999 },
+      "test-model",
+      rates,
+    );
     // Clamped to `input`, so the estimate can never go negative or below the cached floor.
     expect(cost.estimatedCostUsd).toBeCloseTo(1000 * 0.5e-6, 9);
     expect(cost.estimatedCostUsd).toBeGreaterThan(0);
@@ -158,7 +183,10 @@ describe("estimateActorCost: cached input (#391)", () => {
     const metered = estimateActorCost({ input: 1_008_579, output: 3_388 }, "gpt-5.5");
     expect(metered.estimatedCostUsd).toBeCloseTo(5.144535, 6); // what killed the run
 
-    const withCache = estimateActorCost({ input: 1_008_579, output: 3_388, cachedInput: 907_721 }, "gpt-5.5");
+    const withCache = estimateActorCost(
+      { input: 1_008_579, output: 3_388, cachedInput: 907_721 },
+      "gpt-5.5",
+    );
     expect(withCache.estimatedCostUsd).toBeLessThan(1.5); // ~90% cache hits
   });
 });
@@ -207,12 +235,16 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     outputUsdPerToken: 10e-6,
     longContext: { thresholdInputTokens: 1000, inputMultiplier: 2, outputMultiplier: 1.5 },
     asOf: "2026-08-18",
-    source: "fake-sheet://tiered"
+    source: "fake-sheet://tiered",
   };
   const rates = { "tiered-model": rate };
 
   it("bills cache writes at the write rate, as the total rate for those tokens", () => {
-    const cost = estimateActorCost({ input: 1000, output: 0, cacheWriteInput: 400 }, "tiered-model", rates);
+    const cost = estimateActorCost(
+      { input: 1000, output: 0, cacheWriteInput: 400 },
+      "tiered-model",
+      rates,
+    );
     // 600 full at 4e-6 + 400 written at 5e-6 = 0.0024 + 0.0020 = 0.0044.
     expect(cost.estimatedCostUsd).toBeCloseTo(0.0044, 6);
     expect(cost.breakdown?.cacheWriteInputTokens).toBe(400);
@@ -220,7 +252,11 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
 
   it("prices writes as plain input when the sheet has no write rate (pre-5.6 models)", () => {
     const { cacheWriteUsdPerToken: _omitted, longContext: _lc, ...plain } = rate;
-    const cost = estimateActorCost({ input: 1000, output: 0, cacheWriteInput: 400 }, "tiered-model", { "tiered-model": plain });
+    const cost = estimateActorCost(
+      { input: 1000, output: 0, cacheWriteInput: 400 },
+      "tiered-model",
+      { "tiered-model": plain },
+    );
     expect(cost.estimatedCostUsd).toBeCloseTo(0.004, 6);
   });
 
@@ -232,11 +268,11 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
         cachedInput: 500,
         turns: [
           { input: 300, output: 10 }, // short: 300*4e-6 + 10*10e-6 = 0.0013
-          { input: 1200, cachedInput: 500, output: 20 } // long: (700*4e-6 + 500*0.4e-6)*2 + 20*10e-6*1.5 = 0.0063
-        ]
+          { input: 1200, cachedInput: 500, output: 20 }, // long: (700*4e-6 + 500*0.4e-6)*2 + 20*10e-6*1.5 = 0.0063
+        ],
       },
       "tiered-model",
-      rates
+      rates,
     );
     expect(cost.estimatedCostUsd).toBeCloseTo(0.0013 + 0.0063, 6);
     expect(cost.breakdown?.longContextTurns).toBe(1);
@@ -246,9 +282,17 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     // input/output sums match but the ledger carries no cachedInput — trusting it would price
     // 400k cache hits at the full rate (3.5x overstatement, the #391 false-cap-trip direction).
     const cost = estimateActorCost(
-      { input: 1500, output: 30, cachedInput: 1000, turns: [{ input: 700, output: 10 }, { input: 800, output: 20 }] },
+      {
+        input: 1500,
+        output: 30,
+        cachedInput: 1000,
+        turns: [
+          { input: 700, output: 10 },
+          { input: 800, output: 20 },
+        ],
+      },
       "tiered-model",
-      rates
+      rates,
     );
     // Totals path, base tier, split honored: 500 full + 1000 cached.
     expect(cost.estimatedCostUsd).toBeCloseTo(500 * 4e-6 + 1000 * 0.4e-6 + 30 * 10e-6, 6);
@@ -260,7 +304,7 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     const cost = estimateActorCost(
       { input: 1500, output: 0, cacheWriteInput: 400, turns: [{ input: 700 }, { input: 800 }] },
       "tiered-model",
-      rates
+      rates,
     );
     expect(cost.estimatedCostUsd).toBeCloseTo(1100 * 4e-6 + 400 * 5e-6, 6);
     expect(cost.breakdown?.cacheWriteInputTokens).toBe(400);
@@ -272,7 +316,7 @@ describe("estimateActorCost: cache writes + long-context tiering (#334)", () => 
     const cost = estimateActorCost(
       { input: 2000, output: 0, turns: [{ input: 300, output: 0 }] },
       "tiered-model",
-      rates
+      rates,
     );
     expect(cost.estimatedCostUsd).toBeCloseTo(2000 * 4e-6, 6);
     expect(cost.breakdown?.longContextTurns).toBeUndefined();

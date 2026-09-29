@@ -13,7 +13,7 @@ export async function GET(): Promise<Response> {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
       Vary: "Accept",
-      "Cache-Control": "public, max-age=3600"
-    }
+      "Cache-Control": "public, max-age=3600",
+    },
   });
 }

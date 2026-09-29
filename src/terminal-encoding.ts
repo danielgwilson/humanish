@@ -56,7 +56,7 @@ const ASCII_FALLBACKS = new Map<string, string>([
   ["→", "->"],
   ["×", "x"],
   ["≈", "~"],
-  ["✗", "x"]
+  ["✗", "x"],
 ]);
 
 /**

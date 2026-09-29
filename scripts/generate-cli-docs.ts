@@ -13,15 +13,27 @@ const end = "<!-- humanish-cli:end -->";
 const check = process.argv.includes("--check");
 const program = createProgram();
 
-function walk(command: Command, trail: string[] = []): { command: Command; name: string; depth: number }[] {
+function walk(
+  command: Command,
+  trail: string[] = [],
+): { command: Command; name: string; depth: number }[] {
   return command.commands.flatMap((child) => {
     const names = [...trail, child.name()];
-    return [{ command: child, name: `humanish ${names.join(" ")}`, depth: names.length }, ...walk(child, names)];
+    return [
+      { command: child, name: `humanish ${names.join(" ")}`, depth: names.length },
+      ...walk(child, names),
+    ];
   });
 }
 
 const entries = walk(program);
-const mdxText = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("{", "&#123;").replaceAll("}", "&#125;");
+const mdxText = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("{", "&#123;")
+    .replaceAll("}", "&#125;");
 const tableText = (text: string) => mdxText(text).replaceAll("|", "\\|").replaceAll("\n", " ");
 
 function commandReference(command: Command): string[] {
@@ -32,18 +44,28 @@ function commandReference(command: Command): string[] {
     "```text",
     help.commandUsage(command),
     "```",
-    ...(args.length ? [
-      "",
-      "| Argument | Description |",
-      "| --- | --- |",
-      ...args.map((arg) => `| \`${help.argumentTerm(arg)}\` | ${tableText(help.argumentDescription(arg))} |`)
-    ] : []),
-    ...(options.length ? [
-      "",
-      "| Option | Description |",
-      "| --- | --- |",
-      ...options.map((option) => `| \`${help.optionTerm(option).replaceAll("|", "\\|")}\` | ${tableText(help.optionDescription(option))} |`)
-    ] : [])
+    ...(args.length
+      ? [
+          "",
+          "| Argument | Description |",
+          "| --- | --- |",
+          ...args.map(
+            (arg) =>
+              `| \`${help.argumentTerm(arg)}\` | ${tableText(help.argumentDescription(arg))} |`,
+          ),
+        ]
+      : []),
+    ...(options.length
+      ? [
+          "",
+          "| Option | Description |",
+          "| --- | --- |",
+          ...options.map(
+            (option) =>
+              `| \`${help.optionTerm(option).replaceAll("|", "\\|")}\` | ${tableText(help.optionDescription(option))} |`,
+          ),
+        ]
+      : []),
   ];
 }
 
@@ -65,16 +87,21 @@ const reference = [
   "",
   ...commandReference(program),
   "",
-  ...entries.filter(({ depth }) => depth === 1).map(({ name, command }) => `- [${name}](#${name.replaceAll(" ", "-")}): ${mdxText(command.summary() || command.description())}`),
+  ...entries
+    .filter(({ depth }) => depth === 1)
+    .map(
+      ({ name, command }) =>
+        `- [${name}](#${name.replaceAll(" ", "-")}): ${mdxText(command.summary() || command.description())}`,
+    ),
   ...entries.flatMap(({ command, name, depth }) => [
     "",
     `${depth === 1 ? "##" : "###"} ${name}`,
     "",
     mdxText(command.description()),
     "",
-    ...commandReference(command)
+    ...commandReference(command),
   ]),
-  ""
+  "",
 ].join("\n");
 
 const commandIndex = [
@@ -82,16 +109,23 @@ const commandIndex = [
   "",
   "This command index is generated from the shipped CLI. Full arguments and options: https://humanish.dev/docs/cli",
   "",
-  ...entries.map(({ command, name }) => `- \`${name}\`: ${command.summary() || command.description()}`),
+  ...entries.map(
+    ({ command, name }) => `- \`${name}\`: ${command.summary() || command.description()}`,
+  ),
   "",
-  end
+  end,
 ].join("\n");
 const llms = await readFile(llmsPath, "utf8");
-if (!llms.includes(start) || !llms.includes(end)) throw new Error("Missing CLI section markers in llms.txt");
-const nextLlms = llms.slice(0, llms.indexOf(start)) + commandIndex + llms.slice(llms.indexOf(end) + end.length);
+if (!llms.includes(start) || !llms.includes(end))
+  throw new Error("Missing CLI section markers in llms.txt");
+const nextLlms =
+  llms.slice(0, llms.indexOf(start)) + commandIndex + llms.slice(llms.indexOf(end) + end.length);
 
 let stale = false;
-for (const [path, expected] of [[referencePath, reference], [llmsPath, nextLlms]]) {
+for (const [path, expected] of [
+  [referencePath, reference],
+  [llmsPath, nextLlms],
+]) {
   const actual = await readFile(path, "utf8").catch(() => "");
   if (actual === expected) continue;
   if (check) {
@@ -103,4 +137,7 @@ for (const [path, expected] of [[referencePath, reference], [llmsPath, nextLlms]
   }
 }
 if (stale) process.exitCode = 1;
-else console.log(`CLI docs ${check ? "match" : "generated from"} ${entries.length} commands and subcommands.`);
+else
+  console.log(
+    `CLI docs ${check ? "match" : "generated from"} ${entries.length} commands and subcommands.`,
+  );

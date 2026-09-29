@@ -20,44 +20,44 @@ workflow without leaking private upstream truth into core.
 
 ## Ownership Rule
 
-| Layer | Owns | Does not own |
-| --- | --- | --- |
-| Core | Schema versions, run ids, artifact layout, lifecycle events, actor/substrate status, evidence shape, review, verification, redaction, feedback mechanics, latest/history indexes. | Product routes, real customer data, private screenshots, private transcripts, credential values, target-specific acceptance language. |
-| Adapter | Product routes, scenario/persona choices, app topology, env var names, network allowlists, coverage vocabulary, milestones, fixture data, target-specific proof expectations. | Generic run bundle schema, public-safety gates, provider secret values, raw private artifacts, GitHub mutation authority. |
+| Layer   | Owns                                                                                                                                                                              | Does not own                                                                                                                          |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Core    | Schema versions, run ids, artifact layout, lifecycle events, actor/substrate status, evidence shape, review, verification, redaction, feedback mechanics, latest/history indexes. | Product routes, real customer data, private screenshots, private transcripts, credential values, target-specific acceptance language. |
+| Adapter | Product routes, scenario/persona choices, app topology, env var names, network allowlists, coverage vocabulary, milestones, fixture data, target-specific proof expectations.     | Generic run bundle schema, public-safety gates, provider secret values, raw private artifacts, GitHub mutation authority.             |
 
 ## Contract Index
 
-| Contract | Schema | Public-safe fixture |
-| --- | --- | --- |
-| Run bundle | `humanish.run-bundle.v1` | `synthetic-run-bundle` |
-| Adapter | `humanish.adapter.v1` | `synthetic-cli-adapter` |
-| Lab | `humanish.lab.v2` | `first-run` |
-| Persona | `humanish.persona.v1` | `synthetic-maintainer` |
-| Scenario | `humanish.scenario.v1` | `first-run-smoke` |
-| Actor trace | `humanish.actor-trace.v1` | `synthetic-actor-trace` |
-| Substrate | reserved (never shipped) | none |
-| Evidence stream | reserved (streams live inside the run bundle) | see [`run-bundle.md`](run-bundle.md) |
-| Review | `humanish.review.v1` | `contract-proof-review` |
-| Study analysis | `humanish.study-analysis.v1` | see [study analysis](study-analysis.md) and synthetic analysis fixtures in `tests/` |
-| Study analysis correction | `humanish.study-analysis-correction.v1` | see [study analysis](study-analysis.md#human-review-and-sharing) |
-| Analysis execution receipt | `humanish.analysis-execution.v1` | see [study analysis](study-analysis.md#durable-records) |
-| Analysis execution start | `humanish.analysis-execution-start.v1` | see [study analysis](study-analysis.md#durable-records) |
-| Verification | `humanish.verify-result.v1` | `five-check-verify` |
-| Policy | `humanish.policy.v1` (fixture-only; not engine-validated) | `public-safety-policy` |
-| Feedback | `humanish.feedback.v1` | `public-safe-feedback` |
-| Terminal cost ledger | `humanish.terminal-cost-ledger.v1` | see Terminal Cost Ledger below |
-| Terminal no-spend proof | `humanish.terminal-no-spend-proof.v1` | see Terminal Cost Ledger below |
-| Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates) | see Run Cost Summary And Estimated Actor Cost below |
-| Run cost summary | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge) | see Run Cost Summary And Estimated Actor Cost below |
-| Estimated actor cost | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`) | see Run Cost Summary And Estimated Actor Cost below |
-| Model settings | `humanish.model-settings.v1` (additive `ActorTrace.modelSettings`; the reasoning effort the request carried) | see Actor Trace below |
-| Affordance use | `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`; per-class counts of the routes an actor took) | see Affordance Use below |
-| Adapter score | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics) | see Product-Adapter Extension Seam below |
-| Adapter artifact | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references) | see Product-Adapter Extension Seam below |
-| Shared-world evidence | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`) | see Shared-World Evidence below |
-| Comms thread | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of DIGESTS only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest |
-| Serve result | `humanish.serve-result.v1` (`src/observer-serve.ts` is authoritative) | none (command result envelope; see Serve Result below) |
-| Serve control plane | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1) | none |
+| Contract                          | Schema                                                                                                                                                                         | Public-safe fixture                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Run bundle                        | `humanish.run-bundle.v1`                                                                                                                                                       | `synthetic-run-bundle`                                                              |
+| Adapter                           | `humanish.adapter.v1`                                                                                                                                                          | `synthetic-cli-adapter`                                                             |
+| Lab                               | `humanish.lab.v2`                                                                                                                                                              | `first-run`                                                                         |
+| Persona                           | `humanish.persona.v1`                                                                                                                                                          | `synthetic-maintainer`                                                              |
+| Scenario                          | `humanish.scenario.v1`                                                                                                                                                         | `first-run-smoke`                                                                   |
+| Actor trace                       | `humanish.actor-trace.v1`                                                                                                                                                      | `synthetic-actor-trace`                                                             |
+| Substrate                         | reserved (never shipped)                                                                                                                                                       | none                                                                                |
+| Evidence stream                   | reserved (streams live inside the run bundle)                                                                                                                                  | see [`run-bundle.md`](run-bundle.md)                                                |
+| Review                            | `humanish.review.v1`                                                                                                                                                           | `contract-proof-review`                                                             |
+| Study analysis                    | `humanish.study-analysis.v1`                                                                                                                                                   | see [study analysis](study-analysis.md) and synthetic analysis fixtures in `tests/` |
+| Study analysis correction         | `humanish.study-analysis-correction.v1`                                                                                                                                        | see [study analysis](study-analysis.md#human-review-and-sharing)                    |
+| Analysis execution receipt        | `humanish.analysis-execution.v1`                                                                                                                                               | see [study analysis](study-analysis.md#durable-records)                             |
+| Analysis execution start          | `humanish.analysis-execution-start.v1`                                                                                                                                         | see [study analysis](study-analysis.md#durable-records)                             |
+| Verification                      | `humanish.verify-result.v1`                                                                                                                                                    | `five-check-verify`                                                                 |
+| Policy                            | `humanish.policy.v1` (fixture-only; not engine-validated)                                                                                                                      | `public-safety-policy`                                                              |
+| Feedback                          | `humanish.feedback.v1`                                                                                                                                                         | `public-safe-feedback`                                                              |
+| Terminal cost ledger              | `humanish.terminal-cost-ledger.v1`                                                                                                                                             | see Terminal Cost Ledger below                                                      |
+| Terminal no-spend proof           | `humanish.terminal-no-spend-proof.v1`                                                                                                                                          | see Terminal Cost Ledger below                                                      |
+| Pricing (operator-editable rates) | `humanish.pricing.v1` (`src/pricing.ts`; dated per-model + E2B desktop rates)                                                                                                  | see Run Cost Summary And Estimated Actor Cost below                                 |
+| Run cost summary                  | `humanish.run-cost-summary.v1` (additive `RunBundle.cost`; estimate, never a charge)                                                                                           | see Run Cost Summary And Estimated Actor Cost below                                 |
+| Estimated actor cost              | `humanish.actor-estimated-cost.v1` (additive `ActorTrace.estimatedCost`)                                                                                                       | see Run Cost Summary And Estimated Actor Cost below                                 |
+| Model settings                    | `humanish.model-settings.v1` (additive `ActorTrace.modelSettings`; the reasoning effort the request carried)                                                                   | see Actor Trace below                                                               |
+| Affordance use                    | `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`; per-class counts of the routes an actor took)                                                               | see Affordance Use below                                                            |
+| Adapter score                     | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics)                                                                        | see Product-Adapter Extension Seam below                                            |
+| Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                   | see Product-Adapter Extension Seam below                                            |
+| Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                         | see Shared-World Evidence below                                                     |
+| Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of DIGESTS only — from/to/subject/link digests + an OTP count, never raw) | see `comms` under Lab Manifest                                                      |
+| Serve result                      | `humanish.serve-result.v1` (`src/observer-serve.ts` is authoritative)                                                                                                          | none (command result envelope; see Serve Result below)                              |
+| Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                      | none                                                                                |
 
 ## Lab Manifest
 
@@ -119,7 +119,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
 - `subject.state` (clone or local-tree subjects, computer-use route): the
   subject's state story. `state.seed[]` declares ordered, bounded
   seed/migration/fixture steps (`{ name, command, when: before-build |
-  before-start | after-ready, timeoutMs }`) executed in-sandbox around the
+before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   serve sequence; `state.external[]` declares env var NAMES (each must also
   appear in `subject.env`) pointing at state the lab does not control,
   recorded as UNPINNED in provenance. Commands persist in evidence as
@@ -139,7 +139,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   lane (no E2B to fan out);
 - `actors[0].lanes[]` (computer-use E2B route): a DIFFERENTIATED fan-out roster,
   each `{ id?, actorType?, surface?, caseGroup?, persona?, device?,
-  instruction?, target?, entry? }` becoming one independent E2B desktop (or, on the
+instruction?, target?, entry? }` becoming one independent E2B desktop (or, on the
   shared-world routes, one role/seat against the shared plane). `actorType`,
   `surface`, and `caseGroup` are adapter-owned public-safe labels for grouping
   simulated users; they are not core enums, and `actorType` is deliberately
@@ -162,7 +162,7 @@ A lab is a composition over code primitives, not a hardcoded kind:
   browser target; `entry` is a shared-world same-origin seat path;
 - `actors[0].roster[]` (computer-use E2B route): compact authoring sugar for
   repeated lane groups, each `{ id, count, actorType?, surface?, caseGroup?,
-  persona?, device?, instruction?, target?, entry? }`. The parser expands it into
+persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   deterministic `lanes[]` before the engine runs (`viewer-01`, `viewer-02`,
   ...), so the runtime and run bundle keep one normalized lane shape. `roster`
   is XOR with explicit `lanes`, homogeneous `count`, and `laneFocus`;
@@ -437,10 +437,10 @@ Core-owned fields:
   `persona.source = "lab:<id>"` convention and nothing else.
 - `subject` (optional, additive): structured subject provenance —
   `{ source: clone | app-url | local-tree, repo?, commit?, archiveSha256?,
-  dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
-  unpinned | declared-not-run | undeclared, seed?: [{ name, when,
-  commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
-  }`. Emitted by the computer-use backend; absent on pre-existing and other
+dirty?, envNames?, state }` where `state` is `{ provenance: seeded |
+unpinned | declared-not-run | undeclared, seed?: [{ name, when,
+commandDigest, ok?, exitCode?, timedOut?, durationMs? }], externalEnvNames?
+}`. Emitted by the computer-use backend; absent on pre-existing and other
   backends' bundles. `repo`/`commit` are clone-route fields; `archiveSha256`
   (64-hex sha256, the local-tree provenance pin) and `dirty` (host git
   porcelain status at pack time) are local-tree-route fields, additive under
@@ -449,7 +449,7 @@ Core-owned fields:
   sha256-16 of the exact seed command — command text and env values never
   appear. `humanish verify` fails closed when a LIVE `local-tree` bundle carries
   no well-formed `archiveSha256`, in addition to the existing `subject state
-  provenance` check.
+provenance` check.
 - `desktopTemplate` (optional, additive): the custom E2B desktop TEMPLATE (image)
   the run's sandbox(es) launched on, from `execution.desktop.template` — so the
   evidence shows WHICH image ran. Present only when a template was configured;
@@ -563,7 +563,7 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
   SEQUENTIAL shape (`topologyMode: sequential`, #164 PR1):
   - `sequence: [roleId, …]` — the role ids that actually took a turn, in declared order.
   - `skippedTail` (optional, live sequential only) — `{ afterRoleId, roles,
-    cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
+cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
     `{ roleId, simId, streamId }` for an unstarted participant. Together with the
     executed prefix it must account for the full declared denominator. The
     predecessor must have a matching `harness_error`, explicit `session_error`,
@@ -597,7 +597,7 @@ shared-world bundle adds TWO additive, optional fields to `humanish.run-bundle.v
     the internet-reachable getHost URL is synthetic seeded data (author-trust + a
     provenance gate, NOT a no-real-data guarantee).
   - `laneWindows: [{ roleId, simId, streamId, startedAt, endedAt, verdict, routeHostDigest,
-    commit?, seedDigest }]` — one harness-clocked window per actor; OVERLAPPING windows
+commit?, seedDigest }]` — one harness-clocked window per actor; OVERLAPPING windows
     prove ≥2 personas were active simultaneously. `routeHostDigest` == `plane.hostDigest`
     (every actor drove exactly the harness-minted host).
   - `stateSeries: [{ timestamp, digest }]` — cadence digests of the shared world under
@@ -1130,15 +1130,26 @@ Shared-world, scripted-browser, and terminal routes do not yet emit these deskto
 ```yaml
 schema: humanish.run-cost-summary.v1
 currency: usd
-estimatedTotalUsd: 11.60167          # sum of KNOWN lines only; null iff every line null
+estimatedTotalUsd: 11.60167 # sum of KNOWN lines only; null iff every line null
 ratesAsOf: "2026-08-01"
-fullyEstimated: true                  # both breakdown lines are priced (no null line)
-placeholder: true                     # a stand-in rate contributed
+fullyEstimated: true # both breakdown lines are priced (no null line)
+placeholder: true # a stand-in rate contributed
 breakdown:
-  - { kind: model-tokens, laneId: lane-01, modelId: computer-use-preview,
-      estimatedCostUsd: 11.60, ratesAsOf: "2026-08-01", source: "openai.com/api/pricing" }
-  - { kind: desktop-minutes, estimatedCostUsd: 0.00167, ratesAsOf: "2026-08-01",
-      source: "…e2b.dev/pricing", placeholder: true }
+  - {
+      kind: model-tokens,
+      laneId: lane-01,
+      modelId: computer-use-preview,
+      estimatedCostUsd: 11.60,
+      ratesAsOf: "2026-08-01",
+      source: "openai.com/api/pricing",
+    }
+  - {
+      kind: desktop-minutes,
+      estimatedCostUsd: 0.00167,
+      ratesAsOf: "2026-08-01",
+      source: "…e2b.dev/pricing",
+      placeholder: true,
+    }
 tokenUsage: { input: 3843523, output: 5869, total: 3849392 }
 desktopMinutes: 1
 note: "Estimated 11.60167 USD total…"
@@ -1222,15 +1233,15 @@ These computer-use rules do not replace the terminal route's separate
 `humanish.affordance-use.v1` (additive `ActorTrace.affordanceUse`) records WHICH
 KIND of route an actor took, per dispatched action, as counts by class:
 
-| Class | What it covers |
-| --- | --- |
-| `pointer` | click, double-click, drag, scroll — interaction with what is rendered |
-| `keyboard` | typed text and key presses into the page |
-| `url-navigation` | typing a URL (the `nav` subset) — a HUMAN affordance, see below |
-| `script-execution` | a `javascript:` or `data:` URL — not a human affordance |
-| `devtools` | developer tooling opened by keyboard chord |
+| Class              | What it covers                                                                |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `pointer`          | click, double-click, drag, scroll — interaction with what is rendered         |
+| `keyboard`         | typed text and key presses into the page                                      |
+| `url-navigation`   | typing a URL (the `nav` subset) — a HUMAN affordance, see below               |
+| `script-execution` | a `javascript:` or `data:` URL — not a human affordance                       |
+| `devtools`         | developer tooling opened by keyboard chord                                    |
 | `browser-internal` | `chrome://`, `about:`, `view-source:`, `file:` — the browser, not the product |
-| `observation` | screenshots, waits, bare pointer moves — the actor looking rather than acting |
+| `observation`      | screenshots, waits, bare pointer moves — the actor looking rather than acting |
 
 `counts` omits classes that never occurred; `total` is the denominator for any
 rate; `shortcutTotal` rolls up `script-execution` + `devtools` +
@@ -1272,7 +1283,7 @@ record its own:
 
 - **Adapter score** (`humanish.adapter-score.v1`, `RunBundle.adapterScore`).
   A namespaced summary the adapter's `score` hook returns: `{ schema, namespace,
-  status, score, summary, data? }`. Core never reads `data` — the adopter's
+status, score, summary, data? }`. Core never reads `data` — the adopter's
   component rubric rides there; `namespace` (an adopter slug) scopes the whole
   record so a future inert-field audit never misfires.
 - **Namespaced product-noun block** (`RunFeedbackCandidate.adapter`). The

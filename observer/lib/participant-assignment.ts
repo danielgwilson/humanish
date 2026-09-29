@@ -8,5 +8,6 @@ export function recordedParticipantAssignment(stream: ObserverStream): {
   if (stream.assignment) return { assignment: stream.assignment, source: "assignment" };
   const goal = stream.ui?.intent;
   return stream.actor?.lane === "scripted-browser" && typeof goal === "string" && goal.trim()
-    ? { assignment: { mission: goal }, source: "scripted_goal" } : null;
+    ? { assignment: { mission: goal }, source: "scripted_goal" }
+    : null;
 }

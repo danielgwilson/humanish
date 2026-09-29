@@ -6,17 +6,17 @@ real public app possible without any persona-to-persona messaging.
 
 ## The two plane classes side by side
 
-| | provisioned-getHost (historical) | external-public (new) |
-|---|---|---|
-| Shared plane | a `clone`/`local-tree` subject served + `getHost`-exposed IN-SANDBOX | a real operator-OWNED public deployment (`source: app-url`) used DIRECTLY |
-| Harness role | MINTED and controls the host URL | OBSERVES that the seats converged on ONE origin (tolerant of a declared→observed redirect) |
-| Subject sandbox | one (headless service host) + N actor desktops | NONE — only N actor desktops |
-| Attestation | `subject.exposure: synthetic` (synthetic seeded data) | `subject.publicTarget: { owner, authorized }` (you own/operate it) |
-| Provenance | `subject.state.provenance == seeded` | `subject.state.provenance == external-public` |
-| Plane identity | `plane.hostDigest`; every `routeHostDigest == it` (harness-minted) | `plane.publicOriginDigest`; every CDP-observed `routeHostDigest == it` (observed) |
-| Shared-state proof | authoritative in-sandbox checkpoint `stateSeries` + delta-on-pass | NONE — `stateSeries` OMITTED (Option A) |
-| Concurrency-on-pass | ≥2 overlapping windows AND a state delta at/after an overlap start | ≥2 overlapping windows ONLY (temporal co-occupancy) |
-| Extra proof | — | `lobbyConvergenceDigest` (all seats on one `/lobby/CODE`) |
+|                     | provisioned-getHost (historical)                                     | external-public (new)                                                                      |
+| ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Shared plane        | a `clone`/`local-tree` subject served + `getHost`-exposed IN-SANDBOX | a real operator-OWNED public deployment (`source: app-url`) used DIRECTLY                  |
+| Harness role        | MINTED and controls the host URL                                     | OBSERVES that the seats converged on ONE origin (tolerant of a declared→observed redirect) |
+| Subject sandbox     | one (headless service host) + N actor desktops                       | NONE — only N actor desktops                                                               |
+| Attestation         | `subject.exposure: synthetic` (synthetic seeded data)                | `subject.publicTarget: { owner, authorized }` (you own/operate it)                         |
+| Provenance          | `subject.state.provenance == seeded`                                 | `subject.state.provenance == external-public`                                              |
+| Plane identity      | `plane.hostDigest`; every `routeHostDigest == it` (harness-minted)   | `plane.publicOriginDigest`; every CDP-observed `routeHostDigest == it` (observed)          |
+| Shared-state proof  | authoritative in-sandbox checkpoint `stateSeries` + delta-on-pass    | NONE — `stateSeries` OMITTED (Option A)                                                    |
+| Concurrency-on-pass | ≥2 overlapping windows AND a state delta at/after an overlap start   | ≥2 overlapping windows ONLY (temporal co-occupancy)                                        |
+| Extra proof         | —                                                                    | `lobbyConvergenceDigest` (all seats on one `/lobby/CODE`)                                  |
 
 THE HONEST DELTA. getHost = harness-minted host + synthetic-seeded attestation + authoritative
 in-sandbox checkpoint `stateSeries`. external-public = operator-attested public origin + NO synthetic

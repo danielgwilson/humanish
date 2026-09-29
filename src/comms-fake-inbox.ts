@@ -14,7 +14,7 @@ import type {
   CommsMessage,
   CommsInlineImage,
   InboundRaw,
-  OutboundMessage
+  OutboundMessage,
 } from "./comms-types.js";
 
 /** Extract actionable http(s) links from a message body (href="…" and bare URLs), de-duped, in order.
@@ -65,7 +65,8 @@ export function extractOtpCodes(body: string): string[] {
   };
   // The alphanumeric alternative requires at least one DIGIT (lookahead) so a labeled prose word like
   // "your code is INVALID" isn't captured as a code; pure-digit codes (4–8) match directly.
-  const labeledRe = /(?:one[-\s]?time\s+(?:pass)?code|verification\s+code|security\s+code|access\s+code|login\s+code|confirmation\s+code|passcode|\bOTP\b|\bPIN\b|\bcode\b)\D{0,15}\b([0-9]{4,8}|(?=[A-Za-z0-9]*[0-9])[A-Z0-9]{6,8})\b/gi;
+  const labeledRe =
+    /(?:one[-\s]?time\s+(?:pass)?code|verification\s+code|security\s+code|access\s+code|login\s+code|confirmation\s+code|passcode|\bOTP\b|\bPIN\b|\bcode\b)\D{0,15}\b([0-9]{4,8}|(?=[A-Za-z0-9]*[0-9])[A-Z0-9]{6,8})\b/gi;
   let m: RegExpExecArray | null;
   while ((m = labeledRe.exec(text)) !== null) push(labeled, m[1] ?? "");
   if (labeled.length > 0) return labeled.slice(0, 10);
@@ -77,11 +78,18 @@ export function extractOtpCodes(body: string): string[] {
 }
 
 function sanitizeLocalPart(actorId: string): string {
-  return actorId.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "actor";
+  return (
+    actorId
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "actor"
+  );
 }
 
 function smsAddressFor(actorId: string): string {
-  const digits = digestText(actorId, 16).replace(/[a-f]/g, (c) => String(c.charCodeAt(0) % 10)).slice(0, 7);
+  const digits = digestText(actorId, 16)
+    .replace(/[a-f]/g, (c) => String(c.charCodeAt(0) % 10))
+    .slice(0, 7);
   return `+1555${digits}`;
 }
 
@@ -115,16 +123,26 @@ export class FakeInbox implements CommsChannel {
   async provision(actorId: string): Promise<CommsAddress> {
     const existing = this.byActor.get(actorId);
     if (existing) return existing;
-    let value = this.channel === "sms" ? smsAddressFor(actorId) : `${sanitizeLocalPart(actorId)}@${this.domain}`;
+    let value =
+      this.channel === "sms"
+        ? smsAddressFor(actorId)
+        : `${sanitizeLocalPart(actorId)}@${this.domain}`;
     // Minted identities must stay distinct. Explicit duplicate addresses below
     // are the intentional shared-mailbox path.
     if (this.byValue.has(value.toLowerCase())) {
-      if (this.channel === "sms") throw new Error("Generated inbox identity collision; declare distinct addresses");
+      if (this.channel === "sms")
+        throw new Error("Generated inbox identity collision; declare distinct addresses");
       let attempt = 0;
-      do { value = `${sanitizeLocalPart(actorId)}-${digestText(`${actorId}:${attempt++}`, 16)}@${this.domain}`; }
-      while (this.byValue.has(value.toLowerCase()));
+      do {
+        value = `${sanitizeLocalPart(actorId)}-${digestText(`${actorId}:${attempt++}`, 16)}@${this.domain}`;
+      } while (this.byValue.has(value.toLowerCase()));
     }
-    const address: CommsAddress = { channel: this.channel, actorId, value, digest: digestText(value, 16) };
+    const address: CommsAddress = {
+      channel: this.channel,
+      actorId,
+      value,
+      digest: digestText(value, 16),
+    };
     this.byActor.set(actorId, address);
     this.byValue.set(value.toLowerCase(), address);
     this.queues.set(value.toLowerCase(), []);
@@ -146,14 +164,25 @@ export class FakeInbox implements CommsChannel {
       this.byActor.set(actorId, prior);
       return prior;
     }
-    const address: CommsAddress = { channel: this.channel, actorId, value: normalized, digest: digestText(normalized, 16) };
+    const address: CommsAddress = {
+      channel: this.channel,
+      actorId,
+      value: normalized,
+      digest: digestText(normalized, 16),
+    };
     this.byActor.set(actorId, address);
     this.byValue.set(key, address);
     this.queues.set(key, []);
     return address;
   }
 
-  private route(from: string, to: CommsAddress[], subject: string | undefined, body: string, inlineImages?: CommsInlineImage[]): CommsMessage {
+  private route(
+    from: string,
+    to: CommsAddress[],
+    subject: string | undefined,
+    body: string,
+    inlineImages?: CommsInlineImage[],
+  ): CommsMessage {
     const at = this.clock();
     const message: CommsMessage = {
       id: `comms-${(this.counter += 1).toString().padStart(4, "0")}`,
@@ -166,7 +195,7 @@ export class FakeInbox implements CommsChannel {
       links: extractLinks(body),
       codes: extractOtpCodes(body),
       sentAt: at,
-      deliveredAt: at
+      deliveredAt: at,
     };
     for (const addr of to) {
       const queue = this.queues.get(addr.value.toLowerCase());
@@ -176,7 +205,13 @@ export class FakeInbox implements CommsChannel {
   }
 
   async send(message: OutboundMessage): Promise<CommsMessage> {
-    return this.route(message.from.value, message.to, message.subject, message.body, message.inlineImages);
+    return this.route(
+      message.from.value,
+      message.to,
+      message.subject,
+      message.body,
+      message.inlineImages,
+    );
   }
 
   async deliverRaw(inbound: InboundRaw): Promise<CommsMessage[]> {

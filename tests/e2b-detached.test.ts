@@ -4,7 +4,9 @@ import type { E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
 import { probeUrl, runDetachedStep, startDetachedProcess } from "../src/e2b-detached.js";
 
 // A scripted sandbox: every commands.run is recorded; the handler decides stdout per call.
-function makeScriptedDesktop(handler?: (command: string, calls: string[]) => { stdout?: string } | undefined) {
+function makeScriptedDesktop(
+  handler?: (command: string, calls: string[]) => { stdout?: string } | undefined,
+) {
   const commands: string[] = [];
   const files: Array<{ path: string; data: string }> = [];
   const desktop = {
@@ -13,18 +15,18 @@ function makeScriptedDesktop(handler?: (command: string, calls: string[]) => { s
       run: async (command: string) => {
         commands.push(command);
         return handler?.(command, commands) ?? { exitCode: 0, stdout: "" };
-      }
+      },
     },
     files: {
       write: async (path: string, data: string | ArrayBuffer) => {
         files.push({ path, data: String(data) });
         return undefined;
-      }
+      },
     },
     launch: async () => undefined,
     screenshot: async () => new Uint8Array(),
     wait: async () => undefined,
-    stream: { getAuthKey: () => "", getUrl: () => "", start: async () => undefined }
+    stream: { getAuthKey: () => "", getUrl: () => "", start: async () => undefined },
   } as unknown as E2BDesktopSandbox;
   return { desktop, commands, files };
 }
@@ -36,7 +38,7 @@ function fakeTimers() {
     now: () => t,
     sleep: async (ms: number) => {
       t += ms;
-    }
+    },
   };
 }
 
@@ -53,7 +55,7 @@ describe("runDetachedStep", () => {
       command: "pnpm build",
       cwd: "/home/user/subject",
       timeoutMs: 60_000,
-      ...fakeTimers()
+      ...fakeTimers(),
     });
 
     expect(result).toEqual({ ok: true, exitCode: 0, timedOut: false, logTail: "build ok" });
@@ -81,7 +83,7 @@ describe("runDetachedStep", () => {
       name: "subject-install",
       command: "pnpm install",
       timeoutMs: 60_000,
-      ...fakeTimers()
+      ...fakeTimers(),
     });
     expect(result.ok).toBe(false);
     expect(result.exitCode).toBe(3);
@@ -100,7 +102,7 @@ describe("runDetachedStep", () => {
       command: "sleep forever",
       timeoutMs: 10_000,
       pollIntervalMs: 3000,
-      ...fakeTimers()
+      ...fakeTimers(),
     });
     expect(result.ok).toBe(false);
     expect(result.timedOut).toBe(true);
@@ -111,7 +113,12 @@ describe("runDetachedStep", () => {
   it("rejects unsafe step names before touching the sandbox", async () => {
     const { desktop, commands } = makeScriptedDesktop();
     await expect(
-      runDetachedStep(desktop, { name: "bad name; rm -rf /", command: "true", timeoutMs: 1000, ...fakeTimers() })
+      runDetachedStep(desktop, {
+        name: "bad name; rm -rf /",
+        command: "true",
+        timeoutMs: 1000,
+        ...fakeTimers(),
+      }),
     ).rejects.toThrow(/name must match/);
     expect(commands).toHaveLength(0);
   });
@@ -120,8 +127,17 @@ describe("runDetachedStep", () => {
 describe("startDetachedProcess", () => {
   it("writes and launches the script without polling for completion", async () => {
     const { desktop, commands, files } = makeScriptedDesktop();
-    await startDetachedProcess(desktop, { name: "subject-start", command: "pnpm start", cwd: "/home/user/subject" });
-    expect(files.some((file) => file.path.endsWith("subject-start/run.sh") && file.data.includes("( pnpm start )"))).toBe(true);
+    await startDetachedProcess(desktop, {
+      name: "subject-start",
+      command: "pnpm start",
+      cwd: "/home/user/subject",
+    });
+    expect(
+      files.some(
+        (file) =>
+          file.path.endsWith("subject-start/run.sh") && file.data.includes("( pnpm start )"),
+      ),
+    ).toBe(true);
     expect(commands.some((command) => command.includes("setsid -f"))).toBe(true);
     expect(commands.some((command) => command.includes("/status"))).toBe(false);
   });
@@ -137,19 +153,22 @@ describe("probeUrl", () => {
       }
       return undefined;
     });
-    const ready = await probeUrl(desktop, "http://127.0.0.1:3000/", { timeoutMs: 60_000, ...fakeTimers() });
+    const ready = await probeUrl(desktop, "http://127.0.0.1:3000/", {
+      timeoutMs: 60_000,
+      ...fakeTimers(),
+    });
     expect(ready).toBe(true);
     expect(calls).toBe(3);
   });
 
   it("returns false when the budget runs out", async () => {
     const { desktop } = makeScriptedDesktop((command) =>
-      command.includes("curl") ? { stdout: "WAIT" } : undefined
+      command.includes("curl") ? { stdout: "WAIT" } : undefined,
     );
     const ready = await probeUrl(desktop, "http://127.0.0.1:3000/", {
       timeoutMs: 5000,
       intervalMs: 1500,
-      ...fakeTimers()
+      ...fakeTimers(),
     });
     expect(ready).toBe(false);
   });

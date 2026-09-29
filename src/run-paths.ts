@@ -35,12 +35,14 @@ export interface LatestRunPathPointer {
  * existing runs remain readable while rejecting every path-shaped input.
  */
 export function isSafeRunIdSegment(runId: string): boolean {
-  return runId.length > 0
-    && runId !== "."
-    && runId !== ".."
-    && !runId.includes("/")
-    && !runId.includes("\\")
-    && !runId.includes("\0");
+  return (
+    runId.length > 0 &&
+    runId !== "." &&
+    runId !== ".." &&
+    !runId.includes("/") &&
+    !runId.includes("\\") &&
+    !runId.includes("\0")
+  );
 }
 
 export function resolveRunsRoot(cwdInput: string): string {
@@ -78,11 +80,14 @@ export function resolveRunArtifactPaths(cwdInput: string, runId: string): RunArt
     absoluteRunRoot,
     relativeRunRoot: path.join(RUNS_RELATIVE_ROOT, runId),
     absoluteLatestPointer: path.resolve(cwdInput, LATEST_RUN_RELATIVE_PATH),
-    relativeLatestPointer: LATEST_RUN_RELATIVE_PATH
+    relativeLatestPointer: LATEST_RUN_RELATIVE_PATH,
   };
 }
 
-export async function prepareRunArtifactPaths(cwdInput: string, runId: string): Promise<PreparedRunArtifactPaths> {
+export async function prepareRunArtifactPaths(
+  cwdInput: string,
+  runId: string,
+): Promise<PreparedRunArtifactPaths> {
   const paths = resolveRunArtifactPaths(cwdInput, runId);
   const prepared = await prepareHumanishStorageDirectory(cwdInput, "runs", runId);
   if (prepared !== paths.absoluteRunRoot) {
@@ -94,7 +99,7 @@ export async function prepareRunArtifactPaths(cwdInput: string, runId: string): 
 }
 
 export async function validatePreparedRunArtifactPaths(
-  prepared: PreparedRunArtifactPaths
+  prepared: PreparedRunArtifactPaths,
 ): Promise<PreparedRunArtifactPaths> {
   await validatePreparedRunRootIdentity(prepared);
   await assertNoSymlinkDescendants(prepared.physicalRunRoot);
@@ -104,18 +109,21 @@ export async function validatePreparedRunArtifactPaths(
 
 /** Cheap revalidation for repeated contained reads/writes within one prepared run. */
 export async function validatePreparedRunRootIdentity(
-  prepared: PreparedRunArtifactPaths
+  prepared: PreparedRunArtifactPaths,
 ): Promise<PreparedRunArtifactPaths> {
   const [lexicalRunsRoot, lexicalRunRoot] = await Promise.all([
     realpath(path.dirname(prepared.absoluteRunRoot)),
-    realpath(prepared.absoluteRunRoot)
+    realpath(prepared.absoluteRunRoot),
   ]);
-  if (lexicalRunsRoot !== prepared.physicalRunsRoot || lexicalRunRoot !== prepared.physicalRunRoot) {
+  if (
+    lexicalRunsRoot !== prepared.physicalRunsRoot ||
+    lexicalRunRoot !== prepared.physicalRunRoot
+  ) {
     throw new Error("Prepared Humanish run storage changed physical destination.");
   }
   await Promise.all([
     assertDirectoryIdentity(prepared.physicalRunsRoot, prepared.runsRootIdentity),
-    assertDirectoryIdentity(prepared.physicalRunRoot, prepared.runRootIdentity)
+    assertDirectoryIdentity(prepared.physicalRunRoot, prepared.runRootIdentity),
   ]);
   return prepared;
 }
@@ -123,7 +131,7 @@ export async function validatePreparedRunRootIdentity(
 /** Bind an already-existing safe run as a new identity; this is not prior-preparation proof. */
 export async function bindExistingRunArtifactPaths(
   cwdInput: string,
-  runId: string
+  runId: string,
 ): Promise<PreparedRunArtifactPaths> {
   const paths = resolveRunArtifactPaths(cwdInput, runId);
   const existing = await resolveExistingRunDirectory(cwdInput, runId);
@@ -135,7 +143,10 @@ export async function bindExistingRunArtifactPaths(
   return validatePreparedRunArtifactPaths(await capturePreparedRunArtifactPaths(paths, existing));
 }
 
-export async function resolveExistingRunDirectory(cwdInput: string, runId: string): Promise<string | null> {
+export async function resolveExistingRunDirectory(
+  cwdInput: string,
+  runId: string,
+): Promise<string | null> {
   const expected = tryResolveRunDirectory(cwdInput, runId);
   if (!expected) {
     return null;
@@ -151,7 +162,7 @@ export async function resolveExistingRunDirectory(cwdInput: string, runId: strin
  */
 export function resolveLatestRunDirectory(
   cwdInput: string,
-  pointer: LatestRunPathPointer
+  pointer: LatestRunPathPointer,
 ): string | null {
   const expected = tryResolveRunDirectory(cwdInput, pointer.runId);
   if (!expected || !isProjectRelativePath(pointer.path)) {
@@ -164,7 +175,7 @@ export function resolveLatestRunDirectory(
 
 export async function resolveExistingLatestRunDirectory(
   cwdInput: string,
-  pointer: LatestRunPathPointer
+  pointer: LatestRunPathPointer,
 ): Promise<string | null> {
   const expected = resolveLatestRunDirectory(cwdInput, pointer);
   if (!expected) {
@@ -218,7 +229,7 @@ export async function prepareReusableHumanishStorageDirectory(
 
 export async function prepareExclusiveHumanishStorageDirectories(
   cwdInput: string,
-  segmentSets: string[][]
+  segmentSets: string[][],
 ): Promise<string[]> {
   const targets: string[] = [];
   for (const segments of segmentSets) {
@@ -299,24 +310,28 @@ export function isPathInside(rootInput: string, candidateInput: string): boolean
   const root = path.resolve(rootInput);
   const candidate = path.resolve(candidateInput);
   const relative = path.relative(root, candidate);
-  return relative === ""
-    || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 function isProjectRelativePath(value: string): boolean {
   const parts = value.replace(/\\/g, "/").split("/");
-  return value.length > 0
-    && !path.isAbsolute(value)
-    && !path.posix.isAbsolute(value)
-    && !path.win32.isAbsolute(value)
-    && !value.includes("\0")
-    && !parts.some((part) => part === "." || part === "..");
+  return (
+    value.length > 0 &&
+    !path.isAbsolute(value) &&
+    !path.posix.isAbsolute(value) &&
+    !path.win32.isAbsolute(value) &&
+    !value.includes("\0") &&
+    !parts.some((part) => part === "." || part === "..")
+  );
 }
 
 async function walkHumanishStorage(
   cwdInput: string,
   segments: string[],
-  create: boolean
+  create: boolean,
 ): Promise<string | null> {
   assertSafeStorageSegments(segments);
   let current = path.resolve(cwdInput);
@@ -361,12 +376,14 @@ function assertSafeStorageSegments(segments: string[]): void {
 }
 
 function isSafeStorageSegment(segment: string): boolean {
-  return segment.length > 0
-    && segment !== "."
-    && segment !== ".."
-    && !segment.includes("/")
-    && !segment.includes("\\")
-    && !segment.includes("\0");
+  return (
+    segment.length > 0 &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\") &&
+    !segment.includes("\0")
+  );
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
@@ -377,7 +394,9 @@ async function assertRegularFileOrMissing(filePath: string): Promise<void> {
   try {
     const stats = await lstat(filePath);
     if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink > 1) {
-      throw new Error("Humanish storage files must be single-link regular files, not symbolic links or hardlinks.");
+      throw new Error(
+        "Humanish storage files must be single-link regular files, not symbolic links or hardlinks.",
+      );
     }
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
@@ -412,22 +431,29 @@ async function assertNoSymlinkDescendants(directory: string): Promise<void> {
     if (stats.isDirectory()) {
       await assertNoSymlinkDescendants(child);
     } else if (!stats.isFile() || stats.nlink > 1) {
-      throw new Error("Humanish run leaves must be single-link regular files, not hardlinks or special files.");
+      throw new Error(
+        "Humanish run leaves must be single-link regular files, not hardlinks or special files.",
+      );
     }
   }
 }
 
 async function capturePreparedRunArtifactPaths(
   paths: RunArtifactPaths,
-  runRoot: string
+  runRoot: string,
 ): Promise<PreparedRunArtifactPaths> {
   const physicalRunRoot = await realpath(runRoot);
   const physicalRunsRoot = await realpath(path.dirname(runRoot));
   const [runStats, runsStats] = await Promise.all([
     lstat(physicalRunRoot, { bigint: true }),
-    lstat(physicalRunsRoot, { bigint: true })
+    lstat(physicalRunsRoot, { bigint: true }),
   ]);
-  if (!runStats.isDirectory() || runStats.isSymbolicLink() || !runsStats.isDirectory() || runsStats.isSymbolicLink()) {
+  if (
+    !runStats.isDirectory() ||
+    runStats.isSymbolicLink() ||
+    !runsStats.isDirectory() ||
+    runsStats.isSymbolicLink()
+  ) {
     throw new Error("Prepared Humanish run storage must use physical directories.");
   }
   return Object.freeze({
@@ -435,20 +461,28 @@ async function capturePreparedRunArtifactPaths(
     physicalLatestPointer: path.join(physicalRunsRoot, "latest.json"),
     physicalRunRoot,
     physicalRunsRoot,
-    runRootIdentity: Object.freeze({ birthtimeNs: runStats.birthtimeNs, dev: runStats.dev, ino: runStats.ino }),
-    runsRootIdentity: Object.freeze({ birthtimeNs: runsStats.birthtimeNs, dev: runsStats.dev, ino: runsStats.ino })
+    runRootIdentity: Object.freeze({
+      birthtimeNs: runStats.birthtimeNs,
+      dev: runStats.dev,
+      ino: runStats.ino,
+    }),
+    runsRootIdentity: Object.freeze({
+      birthtimeNs: runsStats.birthtimeNs,
+      dev: runsStats.dev,
+      ino: runsStats.ino,
+    }),
   });
 }
 
 async function assertDirectoryIdentity(directory: string, identity: FileIdentity): Promise<void> {
   const stats = await lstat(directory, { bigint: true });
   if (
-    stats.isSymbolicLink()
-    || !stats.isDirectory()
-    || stats.birthtimeNs !== identity.birthtimeNs
-    || stats.dev !== identity.dev
-    || stats.ino !== identity.ino
-    || await realpath(directory) !== directory
+    stats.isSymbolicLink() ||
+    !stats.isDirectory() ||
+    stats.birthtimeNs !== identity.birthtimeNs ||
+    stats.dev !== identity.dev ||
+    stats.ino !== identity.ino ||
+    (await realpath(directory)) !== directory
   ) {
     throw new Error("Prepared Humanish run storage identity changed.");
   }

@@ -25,7 +25,7 @@ import {
   capturedRecipientAddresses,
   inboxMessagesFrom,
   parseDeliveriesNdjson,
-  type InboxSurfaceRecipient
+  type InboxSurfaceRecipient,
 } from "./comms-sandbox-catch.js";
 import { buildInboxSurface } from "./comms-inbox.js";
 
@@ -82,10 +82,13 @@ export async function renderInboxSurfaceLocally(args: {
     text = ""; // no mail captured yet — still render, so /inbox answers "No messages yet."
   }
   const sends = parseDeliveriesNdjson(text);
-  const addresses = args.recipients && args.recipients.length > 0 ? args.recipients : capturedRecipientAddresses(sends);
+  const addresses =
+    args.recipients && args.recipients.length > 0
+      ? args.recipients
+      : capturedRecipientAddresses(sends);
   const recipients: InboxSurfaceRecipient[] = addresses.map((address, index) => ({
     lane: `catch-${String(index + 1).padStart(2, "0")}`,
-    address
+    address,
   }));
   const messages = await inboxMessagesFrom(sends, recipients);
   const files = buildInboxSurface(messages, { recipients: addresses });
@@ -93,10 +96,18 @@ export async function renderInboxSurfaceLocally(args: {
   // recorded as generated routes, so old recipient/message URLs cannot survive that change.
   const manifestPath = path.join(args.surfaceDir, ".inbox-files.json");
   let previous: unknown = [];
-  try { previous = JSON.parse(await readFile(manifestPath, "utf8")); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-  const generatedPath = /^(?:api\/)?inbox\/(?:for\/[a-f0-9]{64}\/)?(?:index|(?:comms-[0-9]+|latest)(?:\/index|\/synth)?)$/;
-  const oldPaths = Array.isArray(previous) ? previous.filter((value): value is string => typeof value === "string" && generatedPath.test(value)) : [];
+  try {
+    previous = JSON.parse(await readFile(manifestPath, "utf8"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const generatedPath =
+    /^(?:api\/)?inbox\/(?:for\/[a-f0-9]{64}\/)?(?:index|(?:comms-[0-9]+|latest)(?:\/index|\/synth)?)$/;
+  const oldPaths = Array.isArray(previous)
+    ? previous.filter(
+        (value): value is string => typeof value === "string" && generatedPath.test(value),
+      )
+    : [];
   const currentPaths = new Set(files.map((file) => file.path));
   const dirs = new Set<string>([args.surfaceDir]);
   for (const file of files) {
@@ -110,8 +121,11 @@ export async function renderInboxSurfaceLocally(args: {
   };
   // Record the union first: a partial write is retryable and its new files remain tracked.
   await saveManifest([...new Set([...oldPaths, ...currentPaths])]);
-  for (const obsolete of oldPaths) if (!currentPaths.has(obsolete)) await rm(path.join(args.surfaceDir, obsolete), { force: true });
-  for (const file of files) await writeFile(path.join(args.surfaceDir, file.path), file.body, "utf8");
+  for (const obsolete of oldPaths)
+    if (!currentPaths.has(obsolete))
+      await rm(path.join(args.surfaceDir, obsolete), { force: true });
+  for (const file of files)
+    await writeFile(path.join(args.surfaceDir, file.path), file.body, "utf8");
   await saveManifest([...currentPaths]);
   return { sends: sends.length, messages: messages.length, files: files.length };
 }
@@ -121,7 +135,10 @@ export async function renderInboxSurfaceLocally(args: {
  * Ctrl-C reaches the child through the shared process group, so the normal way to stop it is the
  * normal way to stop any foreground server.
  */
-export async function runCommsCatchHost(options: CommsCatchHostOptions, io: CatchHostIo): Promise<void> {
+export async function runCommsCatchHost(
+  options: CommsCatchHostOptions,
+  io: CatchHostIo,
+): Promise<void> {
   const dir = path.resolve(options.dir);
   const scriptPath = path.join(dir, "catch.py");
   const deliveriesPath = path.join(dir, "deliveries.ndjson");
@@ -136,7 +153,7 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
   await renderInboxSurfaceLocally({
     deliveriesPath,
     surfaceDir,
-    ...(options.recipients === undefined ? {} : { recipients: options.recipients })
+    ...(options.recipients === undefined ? {} : { recipients: options.recipients }),
   });
 
   const inboxPort = options.inboxPort;
@@ -147,15 +164,19 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
     surfaceDir,
     String(inboxPort ?? 0),
     options.token ?? "",
-    String(options.smtpPort ?? 0)
+    String(options.smtpPort ?? 0),
   ];
   io.writeOut(
     [
       `Starting humanish comms catch on http://127.0.0.1:${options.port}`,
-      ...(options.smtpPort === undefined ? [] : [`  SMTP 127.0.0.1:${options.smtpPort} <- point your app's SMTP transport here`]),
+      ...(options.smtpPort === undefined
+        ? []
+        : [`  SMTP 127.0.0.1:${options.smtpPort} <- point your app's SMTP transport here`]),
       ...(inboxPort === undefined
         ? []
-        : [`  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; expose THIS to personas)`]),
+        : [
+            `  read-only inbox listener on http://0.0.0.0:${inboxPort} (GET only; expose THIS to personas)`,
+          ]),
       `  POST /emails        <- point your app's email-API base URL here`,
       `  GET  /inbox         <- shared operator inbox${inboxPort === undefined ? " (loopback only without --inbox-port)" : ""}`,
       `  GET  /inbox/for/... <- assigned participant inbox (linked by the lab)`,
@@ -168,12 +189,14 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
       `      external:`,
       `        catchBaseUrl: http://<this-host>:${options.port}`,
       ...(inboxPort === undefined ? [] : [`        inboxBaseUrl: http://<this-host>:${inboxPort}`]),
-      ...(options.token ? [`        authTokenEnv: HUMANISH_COMMS_TOKEN   # value read at runtime, never persisted`] : []),
+      ...(options.token
+        ? [`        authTokenEnv: HUMANISH_COMMS_TOKEN   # value read at runtime, never persisted`]
+        : []),
       ``,
       `Captured mail is written to ${deliveriesPath}. Raw bodies stay on THIS host: the run bundle`,
       `only ever receives digests (from/to/subject/link) and an OTP count.`,
-      ``
-    ].join("\n") + "\n"
+      ``,
+    ].join("\n") + "\n",
   );
 
   await new Promise<void>((resolve) => {
@@ -188,8 +211,12 @@ export async function runCommsCatchHost(options: CommsCatchHostOptions, io: Catc
       void renderInboxSurfaceLocally({
         deliveriesPath,
         surfaceDir,
-        ...(options.recipients === undefined ? {} : { recipients: options.recipients })
-      }).catch(() => {}).finally(() => { rendering = false; });
+        ...(options.recipients === undefined ? {} : { recipients: options.recipients }),
+      })
+        .catch(() => {})
+        .finally(() => {
+          rendering = false;
+        });
     }, options.renderIntervalMs ?? DEFAULT_RENDER_INTERVAL_MS);
     renderTimer.unref?.();
     const stopRendering = (): void => clearInterval(renderTimer);

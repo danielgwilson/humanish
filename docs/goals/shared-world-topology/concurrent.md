@@ -45,6 +45,7 @@ Sequential gave strict ordering ("B acted on A's world"). Concurrency destroys t
 mutate one DB at once. The honest evidence model:
 
 CAN claim (decision-grade, mechanically backed):
+
 - **Per-persona behavior at full fidelity** — each actor's own trace (its session is isolated;
   only the service is shared). Unchanged from a fan-out lane.
 - **Per-persona OUTCOME against the contended world** — did each of the N concurrent users reach
@@ -59,6 +60,7 @@ CAN claim (decision-grade, mechanically backed):
   time), explicitly NOT strict causation.
 
 CANNOT claim (declared, verify-enforced):
+
 - Strict causal attribution of a delta to a specific actor (concurrent ⇒ ambiguous).
 - Determinism / reproducibility of exact state (concurrent + LLM + live DB).
 - Per-action granularity (no `onTurn` core-loop hook; turn/window + snapshot-cadence granularity).
@@ -147,12 +149,12 @@ inline detail above they correct (notably the attributionLimits list and the `mo
 name). The implementation must satisfy every one.
 
 - **FIX-1 (the load-bearing one): prove overlap is PRODUCED, not just believed.** The $0 gate as
-  first written proves only the validator (overlap *detection*), not that the real runner produces
+  first written proves only the validator (overlap _detection_), not that the real runner produces
   overlap — injected timestamps make it circular. The deterministic heart test MUST use a
   **rendezvous latch**: fake lane A's `runSession` blocks until lane B's has entered, so two lane
   fns are genuinely in-flight and the REAL orchestrator clock measures the wrapped `[start,end]`
   windows → deterministically proves the real `mapWithConcurrency` + window-wrapping overlap, at
-  $0, no flakiness. AND the PR/docs/bundle MUST state plainly that the concurrency *capability* is
+  $0, no flakiness. AND the PR/docs/bundle MUST state plainly that the concurrency _capability_ is
   backed only by the deferred live receipt; the $0 gate proves the plumbing + the honesty
   contract, never "we proved many concurrent users."
 - **FIX-2 (invariant 2): a first-class getHost target class.** A `getHost` URL is neither loopback
@@ -164,7 +166,7 @@ name). The implementation must satisfy every one.
   it (unlike `stream.getUrl`, no authKey may be recorded — invariant 1).
 - **FIX-3 (synthetic-subject = verify mechanism, NOT a "route invariant").** Humanish can't tell
   synthetic from real data, so enforce: (a) verify FAIL-CLOSED that `subject.state.provenance ==
-  "seeded"` on the getHost route (reject external/unpinned/undeclared — real/external data behind
+"seeded"` on the getHost route (reject external/unpinned/undeclared — real/external data behind
   an internet-reachable URL is the hazard, and this IS checkable); (b) a REQUIRED author
   attestation field (e.g. `subject.exposure: synthetic`) recorded in the bundle, verify fails
   closed if absent; (c) docs say plainly this is author-trust + a provenance gate, NOT a
@@ -188,7 +190,7 @@ name). The implementation must satisfy every one.
   digest; reject all else). "Not causation" is enforced by schema, not just disclaimed.
 - **FIX-8 (validator dispatch fail-closed + discriminator rename).** Rename the discriminator —
   `sharedWorld.mode` collides with `RunBundle.mode` (dry-run|live); use **`topologyMode:
-  "sequential" | "concurrent"`**. Branch on it FIRST; a concurrent bundle has no `timeline` and a
+"sequential" | "concurrent"`**. Branch on it FIRST; a concurrent bundle has no `timeline` and a
   sequential one has no `laneWindows`. Unknown/missing `topologyMode` → FAIL CLOSED; mismatched
   shape (timeline on concurrent, or laneWindows on sequential) → FAIL CLOSED.
 - **FIX-9 (teardown edges, N+1 by id).** Outermost by-id `finally` for the +1 subject sandbox

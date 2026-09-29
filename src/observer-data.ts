@@ -1,8 +1,20 @@
 import { actorEnding, type ActorEnding } from "./actor-stop-cause.js";
 import { isCommsReceivingEvidence, receivingAnalysisContext } from "./comms-receiving-evidence.js";
-import { formatParticipantOutcomes, formatStudyTaskFunnel, participantOutcomeDetails, withCuaReviewProvenance } from "./run.js";
+import {
+  formatParticipantOutcomes,
+  formatStudyTaskFunnel,
+  participantOutcomeDetails,
+  withCuaReviewProvenance,
+} from "./run.js";
 import { cuaGoalSource, CUA_COMPLETION_NOTE } from "./actor-goal-source.js";
-import type { RunBundle, RunCostSummary, RunEvent, RunSimulation, RunStream, RunStreamKind } from "./run.js";
+import type {
+  RunBundle,
+  RunCostSummary,
+  RunEvent,
+  RunSimulation,
+  RunStream,
+  RunStreamKind,
+} from "./run.js";
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 
@@ -104,9 +116,13 @@ export interface ObserverStream extends RunStream {
 }
 
 /** Discard a forged or stale runtime grant before projecting persisted evidence. */
-export function recordedStreamEmbed(embed: NonNullable<RunStream["embed"]>): NonNullable<RunStream["embed"]> {
+export function recordedStreamEmbed(
+  embed: NonNullable<RunStream["embed"]>,
+): NonNullable<RunStream["embed"]> {
   if (!embed) return embed;
-  const { runtimeDesktop: _runtimeGrant, ...recorded } = embed as NonNullable<RunStream["embed"]> & { runtimeDesktop?: unknown };
+  const { runtimeDesktop: _runtimeGrant, ...recorded } = embed as NonNullable<
+    RunStream["embed"]
+  > & { runtimeDesktop?: unknown };
   return recorded;
 }
 
@@ -120,26 +136,45 @@ export interface ObserverLaneGroup {
   caseGroup?: string;
 }
 
-const allKinds: RunStreamKind[] = ["ui", "browser", "terminal", "tui", "codex-ui", "artifact", "summary"];
+const allKinds: RunStreamKind[] = [
+  "ui",
+  "browser",
+  "terminal",
+  "tui",
+  "codex-ui",
+  "artifact",
+  "summary",
+];
 
-export function buildObserverData(bundle: RunBundle, generatedAt = new Date().toISOString()): ObserverData {
-  const byKind = Object.fromEntries(allKinds.map((kind) => [kind, 0])) as Record<RunStreamKind, number>;
+export function buildObserverData(
+  bundle: RunBundle,
+  generatedAt = new Date().toISOString(),
+): ObserverData {
+  const byKind = Object.fromEntries(allKinds.map((kind) => [kind, 0])) as Record<
+    RunStreamKind,
+    number
+  >;
   const events = [...(bundle.events ?? [])];
   // Analysis cites this source-backed aggregate as context, not a participant
   // action. Retain its identity for evidence navigation without inventing a
   // timestamp, capture, or actor-trace entry. Raw provider/message data is never
   // part of this projection, including on the best-effort live polling path.
-  const receiving = isCommsReceivingEvidence(bundle.commsReceiving) ? bundle.commsReceiving : undefined;
+  const receiving = isCommsReceivingEvidence(bundle.commsReceiving)
+    ? bundle.commsReceiving
+    : undefined;
   const streams = (bundle.streams ?? []).map((stream) => {
-    const sim = bundle.simulations.find((candidate) => candidate.id === stream.simId) ?? fallbackSimulation(bundle, stream);
+    const sim =
+      bundle.simulations.find((candidate) => candidate.id === stream.simId) ??
+      fallbackSimulation(bundle, stream);
     // A natural session can finish its protocol while the participant explicitly reports a
     // blocker (#690). Match the review's typed-outcome rule without rewriting the raw trace or
     // guessing from prose. Never turn an active or failed harness into a participant outcome.
-    const status = (stream.status === "passed" || stream.status === "complete")
-      && stream.actor?.completionReason === "goal_satisfied"
-      && stream.actor.declaredOutcome === "blocked"
-      ? "blocked"
-      : stream.status;
+    const status =
+      (stream.status === "passed" || stream.status === "complete") &&
+      stream.actor?.completionReason === "goal_satisfied" &&
+      stream.actor.declaredOutcome === "blocked"
+        ? "blocked"
+        : stream.status;
     byKind[stream.kind] += 1;
 
     return {
@@ -152,18 +187,30 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       terminalPlain: stripAnsi(stream.terminal?.tail ?? ""),
       timeline: [
         ...events.filter((event) => event.simId === sim.id || event.streamId === stream.id),
-        ...(receiving ? [{
-          id: `comms-receiving-${stream.id}`, at: "", level: "info" as const,
-          type: "Harness email receiving (count-only context)",
-          message: receivingAnalysisContext(receiving, stream.laneId), streamId: stream.id
-        }] : [])
-      ]
+        ...(receiving
+          ? [
+              {
+                id: `comms-receiving-${stream.id}`,
+                at: "",
+                level: "info" as const,
+                type: "Harness email receiving (count-only context)",
+                message: receivingAnalysisContext(receiving, stream.laneId),
+                streamId: stream.id,
+              },
+            ]
+          : []),
+      ],
     };
   });
 
   const warnings = events.filter((event) => event.level === "warn").length;
-  const blocked = streams.filter((stream) => stream.status === "blocked" || stream.status === "failed" || stream.status === "timed_out").length;
-  const active = streams.filter((stream) => stream.status === "running" || stream.status === "preparing").length;
+  const blocked = streams.filter(
+    (stream) =>
+      stream.status === "blocked" || stream.status === "failed" || stream.status === "timed_out",
+  ).length;
+  const active = streams.filter(
+    (stream) => stream.status === "running" || stream.status === "preparing",
+  ).length;
 
   return withObserverEndings({
     schema: OBSERVER_DATA_SCHEMA,
@@ -185,21 +232,21 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       ...(bundle.review.participants === undefined
         ? {}
         : {
-            participants: bundle.review.participants
+            participants: bundle.review.participants,
           }),
       ...(bundle.review.tasks === undefined
         ? {}
         : {
             tasks: bundle.review.tasks,
-            tasksLine: formatStudyTaskFunnel(bundle.review.tasks)
-          })
+            tasksLine: formatStudyTaskFunnel(bundle.review.tasks),
+          }),
     },
     summary: {
       streams: streams.length,
       byKind,
       active,
       blocked,
-      warnings
+      warnings,
     },
     laneGroups: buildLaneGroups(bundle),
     ...(bundle.cost === undefined ? {} : { cost: bundle.cost }),
@@ -214,17 +261,17 @@ export function buildObserverData(bundle: RunBundle, generatedAt = new Date().to
       ...(bundle.adapterArtifacts ?? []).map((artifact) => ({
         label: artifact.label,
         href: `../${artifact.path}`,
-        kind: artifact.kind
-      }))
+        kind: artifact.kind,
+      })),
     ],
     publicSafety: {
       publishable: false,
-      note: "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      note: "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
     },
     raw: {
       bundleSchema: bundle.schema,
-      artifactRoot: bundle.artifactRoot
-    }
+      artifactRoot: bundle.artifactRoot,
+    },
   });
 }
 
@@ -237,9 +284,18 @@ export function withObserverEndings(data: ObserverData): ObserverData {
       ...stream,
       ...(ending === undefined ? {} : { ending }),
       ...((stream.status === "passed" || stream.status === "complete") && source !== undefined
-        ? { statusLabel: source === "participant_report" ? "Reported complete" : source === "condition_matched" ? "Condition matched" : "Completion source unavailable" } : {}),
+        ? {
+            statusLabel:
+              source === "participant_report"
+                ? "Reported complete"
+                : source === "condition_matched"
+                  ? "Condition matched"
+                  : "Completion source unavailable",
+          }
+        : {}),
       ...(stream.status === "incomplete" || (ending !== undefined && stream.status === "abandoned")
-        ? { statusLabel: "Interrupted" } : {})
+        ? { statusLabel: "Interrupted" }
+        : {}),
     };
   });
   const details = participantOutcomeDetails(streams);
@@ -248,19 +304,28 @@ export function withObserverEndings(data: ObserverData): ObserverData {
     streams,
     run: {
       ...data.run,
-      ...(data.run.participants !== undefined && data.run.participants.reachedGoal > 0
-        && details.some((entry) => entry.goalSource !== undefined)
-        ? { knownGaps: [...data.run.knownGaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE] } : {}),
-      ...(data.run.participants === undefined ? {} : {
-        participantsLine: formatParticipantOutcomes(data.run.participants, details)
-      })
-    }
+      ...(data.run.participants !== undefined &&
+      data.run.participants.reachedGoal > 0 &&
+      details.some((entry) => entry.goalSource !== undefined)
+        ? {
+            knownGaps: [
+              ...data.run.knownGaps.filter((gap) => gap !== CUA_COMPLETION_NOTE),
+              CUA_COMPLETION_NOTE,
+            ],
+          }
+        : {}),
+      ...(data.run.participants === undefined
+        ? {}
+        : {
+            participantsLine: formatParticipantOutcomes(data.run.participants, details),
+          }),
+    },
   };
 }
 
 function buildLaneGroups(bundle: RunBundle): ObserverLaneGroup[] {
   const outcomes = new Map(
-    (bundle.sharedWorld?.outcomes ?? []).map((outcome) => [outcome.roleId, outcome.status])
+    (bundle.sharedWorld?.outcomes ?? []).map((outcome) => [outcome.roleId, outcome.status]),
   );
   return (bundle.sharedWorld?.laneWindows ?? []).map((lane) => ({
     roleId: lane.roleId,
@@ -269,7 +334,7 @@ function buildLaneGroups(bundle: RunBundle): ObserverLaneGroup[] {
     status: outcomes.get(lane.roleId) ?? lane.verdict,
     ...(lane.actorType === undefined ? {} : { actorType: lane.actorType }),
     ...(lane.surface === undefined ? {} : { surface: lane.surface }),
-    ...(lane.caseGroup === undefined ? {} : { caseGroup: lane.caseGroup })
+    ...(lane.caseGroup === undefined ? {} : { caseGroup: lane.caseGroup }),
   }));
 }
 
@@ -293,7 +358,7 @@ function fallbackSimulation(bundle: RunBundle, stream: RunStream): RunSimulation
     summary: "This stream did not include matching sim metadata.",
     streamIds: [stream.id],
     startedAt: bundle.createdAt,
-    updatedAt: stream.updatedAt
+    updatedAt: stream.updatedAt,
   };
 }
 

@@ -31,14 +31,15 @@ const decideWithPostHog = Boolean(process.env.POSTHOG_PROJECT_API_KEY);
 
 export const homepageVariant = flag<string, Entities>({
   key: "homepage-variant",
-  description: "Which homepage a visitor sees: the released design (option-1, since 2026-09-27) or the 2026-09-14 design (current, kept at /legacy).",
+  description:
+    "Which homepage a visitor sees: the released design (option-1, since 2026-09-27) or the 2026-09-14 design (current, kept at /legacy).",
   defaultValue: "option-1",
   options: [
     { value: "option-1", label: "Released design (2026-09-27)" },
-    { value: "current", label: "Previous design (2026-09-14)" }
+    { value: "current", label: "Previous design (2026-09-14)" },
   ],
   ...(decideWithPostHog ? { adapter: postHogAdapter } : { decide: () => "option-1" }),
-  identify
+  identify,
 });
 
 export const homepageFlags = [homepageVariant] as const;

@@ -88,7 +88,7 @@ interface ScriptCandidate {
 const DEFAULT_PORTS: Record<Exclude<LabAppFramework, "none">, number> = {
   generic: 3000,
   next: 3000,
-  vite: 5173
+  vite: 5173,
 };
 
 const RUNNABLE_SCRIPT_NAMES = ["dev", "start", "serve", "preview"];
@@ -98,16 +98,21 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
   const packageManager = detectPackageManager(metadata);
   const scripts = collectStringMap(metadata.packageJson?.scripts, metadata.scripts);
   const dependencies = collectStringMap(metadata.packageJson?.dependencies, metadata.dependencies);
-  const devDependencies = collectStringMap(metadata.packageJson?.devDependencies, metadata.devDependencies);
+  const devDependencies = collectStringMap(
+    metadata.packageJson?.devDependencies,
+    metadata.devDependencies,
+  );
   const install = buildInstallPlan(packageManager, metadata);
   const candidate = selectScriptCandidate({ dependencies, devDependencies, scripts });
   const warnings: string[] = [];
 
   if (!candidate) {
-    warnings.push("No runnable app script was detected; desktop and mobile app surfaces were not planned.");
+    warnings.push(
+      "No runnable app script was detected; desktop and mobile app surfaces were not planned.",
+    );
     const shell = renderLabAppRunnerShell({
       install,
-      packageManager
+      packageManager,
     });
     return {
       schema: LAB_APP_RUNNER_PLAN_SCHEMA,
@@ -117,11 +122,15 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
       packageManager,
       shell,
       surfaces: [],
-      warnings
+      warnings,
     };
   }
 
-  const port = selectPort(metadata.preferredPort, candidate.rawCommand, DEFAULT_PORTS[candidate.framework]);
+  const port = selectPort(
+    metadata.preferredPort,
+    candidate.rawCommand,
+    DEFAULT_PORTS[candidate.framework],
+  );
   const url = `http://127.0.0.1:${port}`;
   const devServer: LabAppRunnerDevServerPlan = {
     command: buildStartCommand(packageManager, candidate, candidate.rawCommand),
@@ -129,13 +138,13 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
     port,
     reason: candidate.reason,
     scriptName: candidate.name,
-    url
+    url,
   };
   const readiness: LabAppRunnerReadinessPlan = {
     command: `wait_for_http "$APP_URL" ${readinessTimeoutMs(metadata)} ${readinessIntervalMs(metadata)}`,
     intervalMs: readinessIntervalMs(metadata),
     timeoutMs: readinessTimeoutMs(metadata),
-    url
+    url,
   };
   const surfaces = buildSurfaces(url);
   const shell = renderLabAppRunnerShell({
@@ -143,7 +152,7 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
     install,
     packageManager,
     readiness,
-    surfaces
+    surfaces,
   });
 
   return {
@@ -156,7 +165,7 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
     readiness,
     shell,
     surfaces,
-    warnings
+    warnings,
   };
 }
 
@@ -171,7 +180,7 @@ export function renderLabAppRunnerShell(args: {
     ...installCommands(args.install),
     ...(args.devServer ? [args.devServer.command] : []),
     ...(args.readiness ? [args.readiness.command] : []),
-    ...(args.surfaces ?? []).map((surface) => surface.command)
+    ...(args.surfaces ?? []).map((surface) => surface.command),
   ];
 
   return {
@@ -181,9 +190,9 @@ export function renderLabAppRunnerShell(args: {
       "set -Eeuo pipefail",
       "export HUMANISH_PUBLIC_SAFE=1",
       `APP_PORT="\${APP_PORT:-${args.devServer?.port ?? DEFAULT_PORTS.generic}}"`,
-      "APP_HOST=\"${APP_HOST:-0.0.0.0}\"",
-      "APP_URL=\"${APP_URL:-http://127.0.0.1:${APP_PORT}}\"",
-      "APP_RUNNER_LOG=\"${APP_RUNNER_LOG:-humanish-app-runner.log}\"",
+      'APP_HOST="${APP_HOST:-0.0.0.0}"',
+      'APP_URL="${APP_URL:-http://127.0.0.1:${APP_PORT}}"',
+      'APP_RUNNER_LOG="${APP_RUNNER_LOG:-humanish-app-runner.log}"',
       "",
       renderWaitFunction(),
       "",
@@ -193,18 +202,15 @@ export function renderLabAppRunnerShell(args: {
       "",
       ...(args.devServer && args.readiness && args.surfaces
         ? [
-            "echo \"== starting app server ==\"",
+            'echo "== starting app server =="',
             `${args.devServer.command} > "$APP_RUNNER_LOG" 2>&1 &`,
             "APP_RUNNER_PID=$!",
             args.readiness.command,
             ...args.surfaces.map((surface) => surface.command),
-            "wait \"$APP_RUNNER_PID\""
+            'wait "$APP_RUNNER_PID"',
           ]
-        : [
-            "echo \"No runnable app script detected; skipping app surface launch.\"",
-            "exit 2"
-          ])
-    ].join("\n")
+        : ['echo "No runnable app script detected; skipping app surface launch."', "exit 2"]),
+    ].join("\n"),
   };
 }
 
@@ -214,30 +220,34 @@ function detectPackageManager(metadata: LabAppRunnerMetadata): LabPackageManager
 
   if (hint?.startsWith("pnpm@") || lockfiles.has("pnpm-lock.yaml")) return "pnpm";
   if (hint?.startsWith("yarn@") || lockfiles.has("yarn.lock")) return "yarn";
-  if (hint?.startsWith("bun@") || lockfiles.has("bun.lock") || lockfiles.has("bun.lockb")) return "bun";
+  if (hint?.startsWith("bun@") || lockfiles.has("bun.lock") || lockfiles.has("bun.lockb"))
+    return "bun";
   return "npm";
 }
 
-function buildInstallPlan(packageManager: LabPackageManager, metadata: LabAppRunnerMetadata): LabAppRunnerInstallPlan {
+function buildInstallPlan(
+  packageManager: LabPackageManager,
+  metadata: LabAppRunnerMetadata,
+): LabAppRunnerInstallPlan {
   const command = installCommand(packageManager, metadata.lockfiles ?? []);
   if (metadata.hasNodeModules === true) {
     return {
       command,
       mode: "skip",
-      reason: "node_modules is already present."
+      reason: "node_modules is already present.",
     };
   }
   if (metadata.hasNodeModules === false) {
     return {
       command,
       mode: "run",
-      reason: "node_modules is missing."
+      reason: "node_modules is missing.",
     };
   }
   return {
     command,
     mode: "when-missing",
-    reason: "Install only if node_modules is absent at bootstrap time."
+    reason: "Install only if node_modules is absent at bootstrap time.",
   };
 }
 
@@ -277,7 +287,7 @@ function selectScriptCandidate(args: {
       framework: "next",
       name: nextByCommand.name,
       rawCommand: nextByCommand.command,
-      reason: `Selected ${nextByCommand.name} because it matches Next.js app startup.`
+      reason: `Selected ${nextByCommand.name} because it matches Next.js app startup.`,
     };
   }
 
@@ -287,37 +297,42 @@ function selectScriptCandidate(args: {
       framework: "vite",
       name: viteByCommand.name,
       rawCommand: viteByCommand.command,
-      reason: `Selected ${viteByCommand.name} because it matches Vite app startup.`
+      reason: `Selected ${viteByCommand.name} because it matches Vite app startup.`,
     };
   }
 
   if (Object.prototype.hasOwnProperty.call(allDependencies, "next")) {
-    const script = scriptEntries.find((entry) => entry.name === "dev" || entry.name === "start") ?? scriptEntries[0];
+    const script =
+      scriptEntries.find((entry) => entry.name === "dev" || entry.name === "start") ??
+      scriptEntries[0];
     if (script) {
       return {
         framework: "next",
         name: script.name,
         rawCommand: script.command,
-        reason: `Selected ${script.name} because package metadata includes Next.js.`
+        reason: `Selected ${script.name} because package metadata includes Next.js.`,
       };
     }
   }
 
   if (Object.prototype.hasOwnProperty.call(allDependencies, "vite")) {
-    const script = scriptEntries.find((entry) => entry.name === "dev" || entry.name === "start") ?? scriptEntries[0];
+    const script =
+      scriptEntries.find((entry) => entry.name === "dev" || entry.name === "start") ??
+      scriptEntries[0];
     if (script) {
       return {
         framework: "vite",
         name: script.name,
         rawCommand: script.command,
-        reason: `Selected ${script.name} because package metadata includes Vite.`
+        reason: `Selected ${script.name} because package metadata includes Vite.`,
       };
     }
   }
 
-  const generic = scriptEntries.find((entry) => entry.name === "dev")
-    ?? scriptEntries.find((entry) => entry.name === "start")
-    ?? scriptEntries[0];
+  const generic =
+    scriptEntries.find((entry) => entry.name === "dev") ??
+    scriptEntries.find((entry) => entry.name === "start") ??
+    scriptEntries[0];
   if (!generic) {
     return null;
   }
@@ -326,11 +341,13 @@ function selectScriptCandidate(args: {
     framework: "generic",
     name: generic.name,
     rawCommand: generic.command,
-    reason: `Selected ${generic.name} because it is a common runnable app script.`
+    reason: `Selected ${generic.name} because it is a common runnable app script.`,
   };
 }
 
-function runnableScriptEntries(scripts: Record<string, string>): Array<{ command: string; name: string }> {
+function runnableScriptEntries(
+  scripts: Record<string, string>,
+): Array<{ command: string; name: string }> {
   const entries: Array<{ command: string; name: string }> = [];
   for (const name of RUNNABLE_SCRIPT_NAMES) {
     const command = scripts[name]?.trim();
@@ -342,7 +359,11 @@ function runnableScriptEntries(scripts: Record<string, string>): Array<{ command
   return entries;
 }
 
-function selectPort(preferredPort: number | undefined, rawCommand: string, defaultPort: number): number {
+function selectPort(
+  preferredPort: number | undefined,
+  rawCommand: string,
+  defaultPort: number,
+): number {
   if (isValidPort(preferredPort)) return preferredPort;
   const scriptPort = extractPort(rawCommand);
   if (scriptPort) return scriptPort;
@@ -352,7 +373,7 @@ function selectPort(preferredPort: number | undefined, rawCommand: string, defau
 function extractPort(rawCommand: string): number | null {
   const matches = [
     /(?:^|\s)(?:--port|-p)\s+([0-9]{2,5})(?:\s|$)/,
-    /(?:^|\s)PORT=([0-9]{2,5})(?:\s|$)/
+    /(?:^|\s)PORT=([0-9]{2,5})(?:\s|$)/,
   ];
   for (const pattern of matches) {
     const value = pattern.exec(rawCommand)?.[1];
@@ -365,7 +386,7 @@ function extractPort(rawCommand: string): number | null {
 function buildStartCommand(
   packageManager: LabPackageManager,
   candidate: ScriptCandidate,
-  rawCommand: string
+  rawCommand: string,
 ): string {
   const runCommand = `${packageManager} run ${candidate.name}`;
   const envPrefix = 'HOST="$APP_HOST" PORT="$APP_PORT"';
@@ -393,7 +414,9 @@ function frameworkArgs(framework: Exclude<LabAppFramework, "none">, rawCommand: 
 }
 
 function hasHost(rawCommand: string): boolean {
-  return /(?:^|\s)(?:--host|--hostname|-H)(?:\s|=)/.test(rawCommand) || /(?:^|\s)HOST=/.test(rawCommand);
+  return (
+    /(?:^|\s)(?:--host|--hostname|-H)(?:\s|=)/.test(rawCommand) || /(?:^|\s)HOST=/.test(rawCommand)
+  );
 }
 
 function hasPort(rawCommand: string): boolean {
@@ -411,8 +434,8 @@ function buildSurfaces(url: string): LabAppSurface[] {
         deviceScaleFactor: 1,
         height: 960,
         isMobile: false,
-        width: 1440
-      }
+        width: 1440,
+      },
     },
     {
       command: 'open_lab_surface "$APP_URL" mobile 390 844',
@@ -423,9 +446,9 @@ function buildSurfaces(url: string): LabAppSurface[] {
         deviceScaleFactor: 2,
         height: 844,
         isMobile: true,
-        width: 390
-      }
-    }
+        width: 390,
+      },
+    },
   ];
 }
 
@@ -437,20 +460,17 @@ function installCommands(install: LabAppRunnerInstallPlan): string[] {
 function renderInstallShell(install: LabAppRunnerInstallPlan): string[] {
   switch (install.mode) {
     case "skip":
-      return ["echo \"== dependencies already present; skipping install ==\""];
+      return ['echo "== dependencies already present; skipping install =="'];
     case "run":
-      return [
-        "echo \"== installing dependencies ==\"",
-        install.command
-      ];
+      return ['echo "== installing dependencies =="', install.command];
     case "when-missing":
       return [
         "if [ ! -d node_modules ]; then",
-        "  echo \"== installing dependencies ==\"",
+        '  echo "== installing dependencies =="',
         `  ${install.command}`,
         "else",
-        "  echo \"== dependencies already present; skipping install ==\"",
-        "fi"
+        '  echo "== dependencies already present; skipping install =="',
+        "fi",
       ];
   }
 }
@@ -523,11 +543,11 @@ function isValidPort(value: number | undefined): value is number {
 
 function collectStringMap(
   first: Record<string, string> | undefined,
-  second: Record<string, string> | undefined
+  second: Record<string, string> | undefined,
 ): Record<string, string> {
   return {
     ...(first ?? {}),
-    ...(second ?? {})
+    ...(second ?? {}),
   };
 }
 

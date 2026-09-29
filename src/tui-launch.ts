@@ -89,8 +89,8 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
       ok: false,
       error: {
         code: "HUMANISH_LAUNCH_INVALID_LAB",
-        message: `"${options.lab}" is not a usable lab handle. Run it by path with \`humanish lab run <path>\` instead.`
-      }
+        message: `"${options.lab}" is not a usable lab handle. Run it by path with \`humanish lab run <path>\` instead.`,
+      },
     };
   }
 
@@ -98,7 +98,14 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
   let selectedLab = options.lab;
   if (options.manifestPath !== undefined) {
     const resolved = await resolveLabManifest(cwd, options.manifestPath);
-    if (!resolved.ok) return { ok: false, error: { code: "HUMANISH_LAUNCH_INVALID_LAB", message: "The selected lab path could not be read safely. Refresh the lab list." } };
+    if (!resolved.ok)
+      return {
+        ok: false,
+        error: {
+          code: "HUMANISH_LAUNCH_INVALID_LAB",
+          message: "The selected lab path could not be read safely. Refresh the lab list.",
+        },
+      };
     selectedLab = path.relative(cwd, path.resolve(cwd, resolved.path)).replace(/\\/g, "/");
   }
   const now = options.now ?? (() => new Date());
@@ -117,14 +124,18 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     // provider error text — outside the project, and cannot defeat the 0600 mode by pointing at a
     // file that already exists with looser permissions. O_CREAT|O_APPEND keeps ordinary reuse
     // working; only a symlink is refused (ELOOP).
-    handle = await open(logPath, fsConstants.O_CREAT | fsConstants.O_WRONLY | fsConstants.O_APPEND | fsConstants.O_NOFOLLOW, 0o600);
+    handle = await open(
+      logPath,
+      fsConstants.O_CREAT | fsConstants.O_WRONLY | fsConstants.O_APPEND | fsConstants.O_NOFOLLOW,
+      0o600,
+    );
   } catch (cause) {
     return {
       ok: false,
       error: {
         code: "HUMANISH_LAUNCH_FAILED",
-        message: `Could not open a launch log: ${cause instanceof Error ? cause.message : String(cause)}`
-      }
+        message: `Could not open a launch log: ${cause instanceof Error ? cause.message : String(cause)}`,
+      },
     };
   }
 
@@ -141,7 +152,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     ...(options.mode === "dry-run" ? ["--dry-run"] : []),
     // `--` ends option parsing, so the handle can only ever be read as the positional argument.
     "--",
-    selectedLab
+    selectedLab,
   ];
 
   const spawnOptions: SpawnOptions = {
@@ -151,7 +162,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     detached: true,
     // stdin closed, output to the log: a detached process must never hold the terminal, and
     // inheriting a pipe nobody reads is how a run blocks forever on a full buffer.
-    stdio: ["ignore", handle.fd, handle.fd]
+    stdio: ["ignore", handle.fd, handle.fd],
   };
 
   try {
@@ -168,7 +179,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
       await handle.close();
       return {
         ok: false,
-        error: { code: "HUMANISH_LAUNCH_FAILED", message: "The run process did not start." }
+        error: { code: "HUMANISH_LAUNCH_FAILED", message: "The run process did not start." },
       };
     }
     // Release the surface's hold: the parent can now exit whenever it likes and the run continues,
@@ -178,7 +189,7 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     await handle.close();
     return {
       ok: true,
-      run: { pid: child.pid, launchedAt, logPath, command: [process.execPath, ...args] }
+      run: { pid: child.pid, launchedAt, logPath, command: [process.execPath, ...args] },
     };
   } catch (cause) {
     await handle.close().catch(() => undefined);
@@ -186,8 +197,8 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
       ok: false,
       error: {
         code: "HUMANISH_LAUNCH_FAILED",
-        message: cause instanceof Error ? cause.message : String(cause)
-      }
+        message: cause instanceof Error ? cause.message : String(cause),
+      },
     };
   }
 }

@@ -16,10 +16,13 @@ export interface LocalBrowserStarter {
 
 export const DEFAULT_LOCAL_BROWSER_STARTER: LocalBrowserStarter = {
   appUrl: "http://127.0.0.1:3000",
-  mission: "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck."
+  mission:
+    "Use the app's primary flow. Explain anything confusing and stop when the task is complete or you are stuck.",
 };
 
-function localBrowserLab(starter: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER): StarterFile {
+function localBrowserLab(
+  starter: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER,
+): StarterFile {
   return {
     path: "humanish/labs/local-browser.yaml",
     plane: "source",
@@ -46,7 +49,7 @@ scenario:
   mode: live
 defaults:
   open: true
-`
+`,
   };
 }
 
@@ -79,7 +82,7 @@ Format standard:
 - executable integration uses .ts;
 - generated artifacts, synthetic fixtures, and event streams use .json or .ndjson;
 - .yml is reserved for outside ecosystem files such as GitHub Actions, not Humanish source.
-`
+`,
   },
   {
     path: "humanish/config.ts",
@@ -96,7 +99,7 @@ Format standard:
   policiesDir: "humanish/policies",
   artifactsDir: ".humanish/runs"
 };
-`
+`,
   },
   {
     path: "humanish/personas/synthetic-new-user.yaml",
@@ -112,7 +115,7 @@ constraints:
   - Do not use real personal data.
   - Do not use production accounts.
   - Treat all credentials as env var names only.
-`
+`,
   },
   {
     path: "humanish/personas/skeptical-power-user.yaml",
@@ -129,7 +132,7 @@ constraints:
   - Do not use real personal data.
   - Prefer synthetic fixture inputs.
   - Flag unclear recovery paths.
-`
+`,
   },
   {
     path: "humanish/scenarios/first-run-smoke.yaml",
@@ -147,7 +150,7 @@ steps:
     expectation: The user sees a clear next state.
   - name: Capture review notes
     expectation: Notes are public-safe and evidence-backed.
-`
+`,
   },
   {
     path: "humanish/scenarios/onboarding-regression.yaml",
@@ -165,7 +168,7 @@ steps:
     expectation: No real user data is entered.
   - name: Check recovery path
     expectation: The user can back out or retry safely.
-`
+`,
   },
   {
     path: "humanish/labs/first-run.yaml",
@@ -183,7 +186,7 @@ scenario:
   mode: dry-run
 defaults:
   open: true
-`
+`,
   },
   {
     path: "humanish/labs/try-live.yaml",
@@ -231,7 +234,7 @@ scenario:
   mode: live # the point of this lab — the others start as dry-run
 defaults:
   open: true
-`
+`,
   },
   localBrowserLab(),
   {
@@ -308,7 +311,7 @@ scenario:
 #   allowPublicTargets: true      # required to drive a non-loopback app-url (a deployment you own)
 defaults:
   open: true
-`
+`,
   },
   {
     path: "humanish/labs/lobby-trivia-3player.yaml",
@@ -367,7 +370,7 @@ scenario:
   mode: dry-run # default; the live path opens N real mobile-layout seats against the public app
 defaults:
   open: true
-`
+`,
   },
   {
     path: "humanish/policies/redaction.yaml",
@@ -404,7 +407,7 @@ allow:
   - synthetic_personas
   - synthetic_fixtures
   - env_var_names
-`
+`,
   },
   {
     path: "humanish/policies/network.yaml",
@@ -416,7 +419,7 @@ allowed_hosts:
   - 127.0.0.1
 notes:
   - Add external hosts only after confirming they are safe for public proof artifacts.
-`
+`,
   },
   {
     path: "humanish/policies/credentials.example.yaml",
@@ -429,7 +432,7 @@ rules:
   - Store values outside the repository.
   - Commit env var names only.
   - Do not paste keys into personas, scenarios, issue drafts, or run bundles.
-`
+`,
   },
   {
     path: "humanish/adapters/app.ts",
@@ -446,7 +449,7 @@ rules:
     }
   ]
 };
-`
+`,
   },
   {
     path: "humanish/review/vocabulary.yaml",
@@ -461,7 +464,7 @@ labels:
   friction: User-visible friction.
   gap: Missing evidence or missing coverage.
   public_safety: Potential privacy, secret, or public-boundary issue.
-`
+`,
   },
   {
     path: "humanish/review/milestones.yaml",
@@ -474,7 +477,7 @@ milestones:
     description: A synthetic user action reaches an expected state.
   - id: review-ready
     description: Public-safe evidence is ready for review.
-`
+`,
   },
   {
     path: "humanish/coverage-map.md",
@@ -484,7 +487,7 @@ milestones:
 This file should enumerate screens, roles, states, and paths before scenarios are treated as complete.
 
 Current starter coverage is intentionally minimal and synthetic.
-`
+`,
   },
   {
     path: "humanish/coverage-matrix.md",
@@ -495,7 +498,7 @@ Current starter coverage is intentionally minimal and synthetic.
 | --- | --- | --- | --- | --- |
 | First run | synthetic-new-user | planned | planned | starter |
 | Onboarding | skeptical-power-user | planned | planned | starter |
-`
+`,
   },
   {
     path: "humanish/fixtures/synthetic-login-state.json",
@@ -512,8 +515,8 @@ Current starter coverage is intentionally minimal and synthetic.
     "Do not replace with real user data."
   ]
 }
-`
-  }
+`,
+  },
 ];
 
 export const runtimeDirectories: RuntimeDirectory[] = [
@@ -525,7 +528,7 @@ export const runtimeDirectories: RuntimeDirectory[] = [
   { path: ".humanish/local/labs", plane: "runtime" },
   { path: ".humanish/local/personas", plane: "runtime" },
   { path: ".humanish/local/policies", plane: "runtime" },
-  { path: ".humanish/secrets", plane: "runtime" }
+  { path: ".humanish/secrets", plane: "runtime" },
 ];
 
 export const humanishScripts: Record<string, string> = {
@@ -534,9 +537,8 @@ export const humanishScripts: Record<string, string> = {
   "humanish:run": "humanish run --dry-run",
   "humanish:watch": "humanish watch",
   "humanish:watch:ci": "humanish watch --json --no-open",
-  "humanish:verify": "humanish verify"
+  "humanish:verify": "humanish verify",
 };
-
 
 /**
  * The starter files, with the live lab written for the brain this machine can use.
@@ -547,9 +549,11 @@ export const humanishScripts: Record<string, string> = {
  */
 export function starterFilesFor(
   actor: "openai-computer-use" | "local-agent",
-  localBrowser: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER
+  localBrowser: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER,
 ): StarterFile[] {
-  const files = starterFiles.map((file) => file.path === "humanish/labs/local-browser.yaml" ? localBrowserLab(localBrowser) : file);
+  const files = starterFiles.map((file) =>
+    file.path === "humanish/labs/local-browser.yaml" ? localBrowserLab(localBrowser) : file,
+  );
   if (actor === "openai-computer-use") return files;
   return files.map((file) => {
     if (file.path !== "humanish/labs/try-live.yaml") return file;
@@ -557,10 +561,10 @@ export function starterFilesFor(
       ...file,
       contents: file.contents.replace(
         "  - type: openai-computer-use\n",
-        "  # Your machine has a coding agent signed in, so this study uses it: no provider API key,\n"
-        + "  # only E2B. Swap to `type: openai-computer-use` if you would rather use a provider key.\n"
-        + "  - type: local-agent\n"
-      )
+        "  # Your machine has a coding agent signed in, so this study uses it: no provider API key,\n" +
+          "  # only E2B. Swap to `type: openai-computer-use` if you would rather use a provider key.\n" +
+          "  - type: local-agent\n",
+      ),
     };
   });
 }

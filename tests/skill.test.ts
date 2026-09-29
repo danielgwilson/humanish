@@ -11,7 +11,9 @@ describe("agent skill guidance", () => {
     expect(skill).toContain("npx humanish init --yes --json");
     expect(skill).toContain("npx humanish watch");
     expect(skill).toContain("npx humanish watch --json --no-open");
-    expect(skill).toContain("npx humanish feedback issue --run latest --repo example/app --format markdown");
+    expect(skill).toContain(
+      "npx humanish feedback issue --run latest --repo example/app --format markdown",
+    );
     expect(skill).toContain("commit `humanish/`");
     expect(skill).toContain("ignore `.humanish/`");
     expect(skill).toContain("OPENAI_API_KEY");
@@ -26,7 +28,7 @@ describe("agent skill guidance", () => {
     for (const forbidden of [
       "Never read, copy, commit, summarize, or generate PII",
       "Do not edit `.env` or secret files.",
-      "Stop before live"
+      "Stop before live",
     ]) {
       expect(skill).toContain(forbidden);
     }

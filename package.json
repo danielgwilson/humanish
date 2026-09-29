@@ -2,7 +2,6 @@
   "name": "humanish",
   "version": "0.105.0",
   "description": "Open-source-safe CLI for persona simulation, observer review, and public-safe feedback drafts.",
-  "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "keywords": [
     "agent-harness",
     "cli",
@@ -10,19 +9,15 @@
     "ui-testing",
     "ux-research"
   ],
-  "type": "module",
-  "license": "MIT",
-  "packageManager": "pnpm@11.5.2",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+  "homepage": "https://github.com/danielgwilson/humanish#readme",
+  "bugs": {
+    "url": "https://github.com/danielgwilson/humanish/issues"
   },
-  "engines": {
-    "node": ">=20"
+  "license": "MIT",
+  "author": "Daniel G Wilson <daniel@danielgwilson.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielgwilson/humanish.git"
   },
   "bin": {
     "humanish": "./dist/cli.js"
@@ -45,12 +40,21 @@
     "SECURITY.md",
     "CONTRIBUTING.md"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && pnpm --filter humanish-observer build && pnpm --filter humanish-tui build && node scripts/finish-build.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
+    "check": "pnpm format:check && pnpm typecheck && pnpm test && pnpm tui:test && pnpm build && pnpm guest-media:startup:proof && pnpm cli:startup:test && pnpm cli:preflight:test && pnpm tui:smoke",
     "cli:startup:test": "node scripts/terminal-startup-exit-proof.mjs",
     "cli:preflight:test": "node scripts/task-route-preflight-proof.mjs",
     "humanish": "tsx src/cli.ts",
@@ -85,16 +89,10 @@
     "observer:reliability:proof": "node scripts/observer-reliability-proof.mjs",
     "tui:connections:proof": "python3 scripts/tui-connections-proof.py",
     "guest-desktop:proof": "node scripts/guest-desktop-proof.mjs",
-    "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs"
+    "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/danielgwilson/humanish.git"
-  },
-  "bugs": {
-    "url": "https://github.com/danielgwilson/humanish/issues"
-  },
-  "homepage": "https://github.com/danielgwilson/humanish#readme",
   "dependencies": {
     "commander": "^14.0.3",
     "parse5": "^8.0.1",
@@ -103,6 +101,17 @@
     "undici": "^6.28.1",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.0",
+    "@e2b/desktop": "^2.4.0",
+    "@types/node": "^20.19.41",
+    "@types/pngjs": "^6.0.5",
+    "axe-core": "4.13.0",
+    "oxfmt": "0.71.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   },
   "peerDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.0",
@@ -116,14 +125,8 @@
       "optional": true
     }
   },
-  "devDependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.0",
-    "@e2b/desktop": "^2.4.0",
-    "@types/node": "^20.19.41",
-    "@types/pngjs": "^6.0.5",
-    "axe-core": "4.13.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
-  }
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.5.2"
 }

@@ -14,9 +14,17 @@ import { TaskTracker, formatTaskFunnel, renderTaskPrompt, type LabTask } from ".
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../src/lab-config.js";
 
 const PROTOCOL: LabTask[] = [
-  { id: "sign-up", goal: "Create an account.", success: { any: [{ urlIncludes: "/verify-email" }] } },
-  { id: "verify", goal: "Confirm your email address.", success: { any: [{ urlPathEquals: "/documents" }] } },
-  { id: "reflect", goal: "Tell us what felt confusing." } // narrative-only: asked for, not measurable
+  {
+    id: "sign-up",
+    goal: "Create an account.",
+    success: { any: [{ urlIncludes: "/verify-email" }] },
+  },
+  {
+    id: "verify",
+    goal: "Confirm your email address.",
+    success: { any: [{ urlPathEquals: "/documents" }] },
+  },
+  { id: "reflect", goal: "Tell us what felt confusing." }, // narrative-only: asked for, not measurable
 ];
 
 describe("the participant never sees the success criteria", () => {
@@ -81,7 +89,7 @@ describe("TaskTracker", () => {
     // they stopped.
     const tracker = new TaskTracker([
       { id: "narrative", goal: "Think aloud." },
-      { id: "measured", goal: "Sign in.", success: { any: [{ urlPathEquals: "/home" }] } }
+      { id: "measured", goal: "Sign in.", success: { any: [{ urlPathEquals: "/home" }] } },
     ]);
     tracker.observe({ url: "https://app.test/home" }, 1);
 
@@ -121,7 +129,7 @@ describe("tasks config parsing", () => {
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
       actors: [{ type: "openai-computer-use", ...actor }],
       execution: { target: "e2b-desktop" },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     });
 
   it("a prose mission on its own is still a complete lab", () => {
@@ -135,9 +143,13 @@ describe("tasks config parsing", () => {
     const parsed = lab({
       mission: "You are trying out a document signing tool.",
       tasks: [
-        { id: "sign-up", goal: "Create an account.", success: { any: [{ urlIncludes: "/verify" }] } },
-        { id: "reflect", goal: "Say what confused you." }
-      ]
+        {
+          id: "sign-up",
+          goal: "Create an account.",
+          success: { any: [{ urlIncludes: "/verify" }] },
+        },
+        { id: "reflect", goal: "Say what confused you." },
+      ],
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -158,8 +170,8 @@ describe("tasks config parsing", () => {
     const parsed = lab({
       tasks: [
         { id: "same", goal: "One." },
-        { id: "same", goal: "Two." }
-      ]
+        { id: "same", goal: "Two." },
+      ],
     });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error.message).toContain("duplicate");

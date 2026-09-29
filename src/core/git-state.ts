@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
 
-import {
-  inspectVerifiedGitWorkspace,
-  type VerifiedGitWorkspace
-} from "./git-workspace.js";
+import { inspectVerifiedGitWorkspace, type VerifiedGitWorkspace } from "./git-workspace.js";
 
 export const GIT_STATE_SCHEMA = "humanish.git-state.v1";
 
@@ -47,7 +44,7 @@ export async function captureGitState(
     capturedAt?: Date | string;
     commandTimeoutMs?: number;
     runner?: GitCommandRunner;
-  } = {}
+  } = {},
 ): Promise<CapturedGitState> {
   const capturedAt = toIsoString(options.capturedAt ?? new Date());
   const inspection = await inspectVerifiedGitWorkspace(cwd);
@@ -60,7 +57,8 @@ export async function captureGitState(
 
   const commandTimeoutMs = normalizeCommandTimeout(options.commandTimeoutMs);
   const runner: GitCommandRunner = options.runner
-    ? (args, commandCwd) => runGitRunnerWithDeadline(options.runner!, args, commandCwd, commandTimeoutMs)
+    ? (args, commandCwd) =>
+        runGitRunnerWithDeadline(options.runner!, args, commandCwd, commandTimeoutMs)
     : (args) => runGitCommand(args, inspection.workspace, commandTimeoutMs);
   const commandCwd = inspection.workspace.worktreeRoot;
   const inside = await runner(["rev-parse", "--is-inside-work-tree"], commandCwd);
@@ -79,19 +77,17 @@ export async function captureGitState(
       capturedAt,
       head: {
         shortSha: null,
-        refState: "unknown"
+        refState: "unknown",
       },
       changes: emptyChanges(),
-      note: "No git work tree was detected."
+      note: "No git work tree was detected.",
     };
   }
 
-  const statusOutput = await runner([
-    "status",
-    "--porcelain=v1",
-    "--untracked-files=all",
-    "--ignore-submodules=all"
-  ], commandCwd);
+  const statusOutput = await runner(
+    ["status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=all"],
+    commandCwd,
+  );
   if (statusOutput.timedOut) {
     return unavailableState(capturedAt, "Git status capture timed out.");
   }
@@ -118,9 +114,8 @@ export async function captureGitState(
   if (symbolicRef.exitCode === null) {
     return unavailableState(capturedAt, "Git ref-state command could not be started.");
   }
-  const refState: GitRefState = symbolicRef.exitCode === 0
-    ? "attached"
-    : shortSha === null ? "unborn" : "detached";
+  const refState: GitRefState =
+    symbolicRef.exitCode === 0 ? "attached" : shortSha === null ? "unborn" : "detached";
   const changes = summarizePorcelainStatus(statusOutput.stdout);
   const status: GitStateStatus = changes.total === 0 ? "clean" : "dirty";
 
@@ -130,12 +125,13 @@ export async function captureGitState(
     capturedAt,
     head: {
       shortSha,
-      refState
+      refState,
     },
     changes,
-    note: status === "clean"
-      ? "Git work tree was clean; branch names, remotes, paths, and file names were not captured."
-      : "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names."
+    note:
+      status === "clean"
+        ? "Git work tree was clean; branch names, remotes, paths, and file names were not captured."
+        : "Git work tree had changes; only counts were captured, not branch names, remotes, paths, or file names.",
   };
 }
 
@@ -167,38 +163,42 @@ export function summarizePorcelainStatus(output: string): GitStateChangeSummary 
     staged,
     unstaged,
     untracked,
-    total: lines.length
+    total: lines.length,
   };
 }
 
 async function runGitCommand(
   args: string[],
   workspace: VerifiedGitWorkspace,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<GitCommandResult> {
   return await new Promise((resolve) => {
-    const child = spawn("git", [
-      `--git-dir=${workspace.gitDir}`,
-      `--work-tree=${workspace.worktreeRoot}`,
-      "-c",
-      "core.fsmonitor=false",
-      "-c",
-      "core.untrackedCache=false",
-      "-c",
-      `core.excludesFile=${os.devNull}`,
-      "-c",
-      `core.attributesFile=${os.devNull}`,
-      "-c",
-      "core.alternateRefsCommand=",
-      "-c",
-      "core.alternateRefsPrefixes=",
-      ...workspace.configOverrides.flatMap((override) => ["-c", override]),
-      ...args
-    ], {
-      cwd: workspace.worktreeRoot,
-      env: isolatedGitEnvironment(process.env),
-      stdio: ["ignore", "pipe", "pipe"]
-    });
+    const child = spawn(
+      "git",
+      [
+        `--git-dir=${workspace.gitDir}`,
+        `--work-tree=${workspace.worktreeRoot}`,
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "-c",
+        `core.excludesFile=${os.devNull}`,
+        "-c",
+        `core.attributesFile=${os.devNull}`,
+        "-c",
+        "core.alternateRefsCommand=",
+        "-c",
+        "core.alternateRefsPrefixes=",
+        ...workspace.configOverrides.flatMap((override) => ["-c", override]),
+        ...args,
+      ],
+      {
+        cwd: workspace.worktreeRoot,
+        env: isolatedGitEnvironment(process.env),
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     const stdout: string[] = [];
     const stderr: string[] = [];
     let settled = false;
@@ -214,7 +214,7 @@ async function runGitCommand(
         exitCode: null,
         stdout: stdout.join(""),
         stderr: "Git command timed out.",
-        timedOut: true
+        timedOut: true,
       });
     }, timeoutMs);
 
@@ -226,14 +226,14 @@ async function runGitCommand(
       finish({
         exitCode: null,
         stdout: stdout.join(""),
-        stderr: error.message
+        stderr: error.message,
       });
     });
     child.on("close", (exitCode) => {
       finish({
         exitCode,
         stdout: stdout.join(""),
-        stderr: stderr.join("")
+        stderr: stderr.join(""),
       });
     });
   });
@@ -243,7 +243,7 @@ async function runGitRunnerWithDeadline(
   runner: GitCommandRunner,
   args: string[],
   cwd: string,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<GitCommandResult> {
   return await new Promise((resolve) => {
     let settled = false;
@@ -258,7 +258,7 @@ async function runGitRunnerWithDeadline(
         exitCode: null,
         stdout: "",
         stderr: "Git command timed out.",
-        timedOut: true
+        timedOut: true,
       });
     }, timeoutMs);
 
@@ -266,7 +266,7 @@ async function runGitRunnerWithDeadline(
       finish({
         exitCode: null,
         stdout: "",
-        stderr: error instanceof Error ? error.message : String(error)
+        stderr: error instanceof Error ? error.message : String(error),
       });
     });
   });
@@ -287,7 +287,7 @@ function isolatedGitEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     GIT_NO_LAZY_FETCH: "1",
     GIT_NO_REPLACE_OBJECTS: "1",
     GIT_OPTIONAL_LOCKS: "0",
-    GIT_TERMINAL_PROMPT: "0"
+    GIT_TERMINAL_PROMPT: "0",
   };
 }
 
@@ -308,10 +308,10 @@ function unavailableState(capturedAt: string, note: string): CapturedGitState {
     capturedAt,
     head: {
       shortSha: null,
-      refState: "unknown"
+      refState: "unknown",
     },
     changes: emptyChanges(),
-    note
+    note,
   };
 }
 
@@ -322,10 +322,10 @@ function missingState(capturedAt: string): CapturedGitState {
     capturedAt,
     head: {
       shortSha: null,
-      refState: "unknown"
+      refState: "unknown",
     },
     changes: emptyChanges(),
-    note: "No git work tree was detected."
+    note: "No git work tree was detected.",
   };
 }
 
@@ -334,7 +334,7 @@ function emptyChanges(): GitStateChangeSummary {
     staged: 0,
     unstaged: 0,
     untracked: 0,
-    total: 0
+    total: 0,
   };
 }
 

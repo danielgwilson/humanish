@@ -62,7 +62,12 @@ export interface CreateLocalTreeArchiveOptions {
  * in both git and fallback enumeration modes. Not overridable by callers.
  */
 // ".homun" stays denied: user trees may still carry runtime dirs from before the humanish rename.
-export const LOCAL_TREE_DENYLIST_PATH_SEGMENTS = [".git", "node_modules", ".humanish", ".homun"] as const;
+export const LOCAL_TREE_DENYLIST_PATH_SEGMENTS = [
+  ".git",
+  "node_modules",
+  ".humanish",
+  ".homun",
+] as const;
 
 /**
  * Basename glob patterns (single leading or trailing `*` only) that are always
@@ -174,7 +179,10 @@ export function createLocalTreeArchive(
 
   // Check the cap from enumerated sizes BEFORE reading/hashing file bytes, so
   // an oversized tree fails closed without the cost of hashing all of it.
-  const enumeratedBytes = entries.reduce((sum, entry) => (entry.kind === "file" ? sum + entry.size : sum), 0);
+  const enumeratedBytes = entries.reduce(
+    (sum, entry) => (entry.kind === "file" ? sum + entry.size : sum),
+    0,
+  );
   if (enumeratedBytes > maxArchiveBytes) {
     throw new Error(
       `Local tree archive for "${path.basename(resolvedRoot)}" is ${enumeratedBytes} bytes, exceeding maxArchiveBytes ` +
@@ -208,7 +216,9 @@ function assertValidRoot(root: string): void {
     );
   }
   if (!stat.isDirectory()) {
-    throw new Error(`Local tree root "${path.basename(root)}" is not a directory; local-tree packing requires a directory root.`);
+    throw new Error(
+      `Local tree root "${path.basename(root)}" is not a directory; local-tree packing requires a directory root.`,
+    );
   }
 }
 
@@ -225,11 +235,15 @@ function isGitWorkTree(root: string): boolean {
 }
 
 function gitListFiles(root: string): string[] {
-  const out = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
-    cwd: root,
-    stdio: ["ignore", "pipe", "ignore"],
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const out = execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    {
+      cwd: root,
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   const names = out
     .toString("utf8")
     .split("\0")
@@ -345,12 +359,16 @@ function matchesBasenamePattern(basename: string, pattern: string): boolean {
 }
 
 function isDenylistedBasename(basename: string): boolean {
-  return LOCAL_TREE_DENYLIST_BASENAME_PATTERNS.some((pattern) => matchesBasenamePattern(basename, pattern));
+  return LOCAL_TREE_DENYLIST_BASENAME_PATTERNS.some((pattern) =>
+    matchesBasenamePattern(basename, pattern),
+  );
 }
 
 function isDenylistedSegment(relPath: string): boolean {
   const segments = relPath.split("/");
-  return segments.some((segment) => (LOCAL_TREE_DENYLIST_PATH_SEGMENTS as readonly string[]).includes(segment));
+  return segments.some((segment) =>
+    (LOCAL_TREE_DENYLIST_PATH_SEGMENTS as readonly string[]).includes(segment),
+  );
 }
 
 /**
@@ -382,7 +400,11 @@ export function normalizeExtraExcludeEntry(entry: string): string {
   return normalized;
 }
 
-function matchesExtraExclude(relPath: string, basename: string, extraExclude: readonly string[]): boolean {
+function matchesExtraExclude(
+  relPath: string,
+  basename: string,
+  extraExclude: readonly string[],
+): boolean {
   return extraExclude.some(
     (entry) => relPath === entry || relPath.startsWith(`${entry}/`) || basename === entry,
   );
@@ -417,16 +439,22 @@ function validateEntryForRead(root: string, entry: LocalTreeEntry): SourceEntryS
   try {
     stat = lstatSync(path.join(root, entry.relPath));
   } catch {
-    throw new Error("Local tree entry changed after enumeration; refusing to create an inconsistent archive.");
+    throw new Error(
+      "Local tree entry changed after enumeration; refusing to create an inconsistent archive.",
+    );
   }
   if (entry.kind === "symlink") {
     if (!stat.isSymbolicLink()) {
-      throw new Error("Local tree entry changed kind after enumeration; refusing to create an inconsistent archive.");
+      throw new Error(
+        "Local tree entry changed kind after enumeration; refusing to create an inconsistent archive.",
+      );
     }
     return stat;
   }
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== entry.size) {
-    throw new Error("Local tree entry changed after enumeration; refusing to create an inconsistent archive.");
+    throw new Error(
+      "Local tree entry changed after enumeration; refusing to create an inconsistent archive.",
+    );
   }
   assertSingleLinkSourceFile(stat);
   return stat;
@@ -439,7 +467,9 @@ function validateEntryIdentity(
 ): void {
   const current = validateEntryForRead(root, entry);
   if (current.dev !== expected.dev || current.ino !== expected.ino) {
-    throw new Error("Local tree entry changed physical identity while being read; refusing to create an inconsistent archive.");
+    throw new Error(
+      "Local tree entry changed physical identity while being read; refusing to create an inconsistent archive.",
+    );
   }
 }
 
@@ -475,7 +505,11 @@ function computeArchiveSha256(
   return { archiveSha256: hash.digest("hex"), totalBytes };
 }
 
-function writeTarArchive(root: string, entries: readonly LocalTreeEntry[], archivePath: string): void {
+function writeTarArchive(
+  root: string,
+  entries: readonly LocalTreeEntry[],
+  archivePath: string,
+): void {
   // Recheck immediately before tar reads the source tree. Enumeration and
   // hashing already reject hardlinks; this closes the ordinary mutation gap
   // between hashing and packing without dereferencing symlinks.
@@ -488,7 +522,9 @@ function writeTarArchive(root: string, entries: readonly LocalTreeEntry[], archi
     writeFileSync(listFile, `${entries.map((entry) => entry.relPath).join("\0")}\0`);
 
     const darwinArgs =
-      process.platform === "darwin" ? ["--disable-copyfile", "--no-xattrs", "--no-mac-metadata"] : [];
+      process.platform === "darwin"
+        ? ["--disable-copyfile", "--no-xattrs", "--no-mac-metadata"]
+        : [];
     // -C must precede -T: both are position-sensitive in GNU tar, and names
     // read from -T resolve against the directory in effect at that point.
     // bsdtar tolerates either order; GNU tar does not.
@@ -506,7 +542,10 @@ function writeTarArchive(root: string, entries: readonly LocalTreeEntry[], archi
 
 function tarErrorTail(error: unknown): string {
   const stderr =
-    error && typeof error === "object" && "stderr" in error && (error as { stderr?: unknown }).stderr instanceof Buffer
+    error &&
+    typeof error === "object" &&
+    "stderr" in error &&
+    (error as { stderr?: unknown }).stderr instanceof Buffer
       ? (error as { stderr: Buffer }).stderr.toString("utf8")
       : error instanceof Error
         ? error.message

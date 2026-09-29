@@ -107,6 +107,7 @@ deliberately design out here).
    byte count, digest, dirty state), and reviewing the tree before running.
    Content-based secret scanning is a possible future hardening, not a
    current promise.
+
 4. **Only regular files and symlinks are packed.** Symlinks are stored as
    symlinks, never dereferenced: a link pointing at a secrets file outside
    the tree contributes only its target path string, never target bytes.
@@ -129,10 +130,10 @@ deliberately design out here).
    whole archive is buffered for one `files.write` upload, so the cap also
    bounds host memory.
 7. **Tar invocation.** System `tar -czf <out> -C <root> --null -T
-   <listfile>` (the `-C` must precede `-T`: both are position-sensitive in
+<listfile>` (the `-C` must precede `-T`: both are position-sensitive in
    GNU tar, and list names resolve against the directory in effect at that
    point), with darwin metadata suppression flags (`--disable-copyfile
-   --no-xattrs --no-mac-metadata`) when packing on macOS. The archive bytes
+--no-xattrs --no-mac-metadata`) when packing on macOS. The archive bytes
    themselves are not required to be byte-reproducible; identity is the
    file-list digest, not the tar bytes.
 
@@ -142,9 +143,9 @@ deliberately design out here).
   fan-out lane uploads that one archive, and every lane's provenance records
   the same `archiveSha256` because there is only one archive to record.
 - Upload via the sandbox `files.write(remotePath, arrayBuffer,
-  { useOctetStream: true })` seam.
+{ useOctetStream: true })` seam.
 - Extract via one command: `rm -rf <SUBJECT_DIR> && mkdir -p <SUBJECT_DIR>
-  && tar -xzf <remote> -C <SUBJECT_DIR> && rm -f <remote>`, executed as a
+&& tar -xzf <remote> -C <SUBJECT_DIR> && rm -f <remote>`, executed as a
   bounded detached step (`runDetachedStep`, step name `subject-extract`,
   same machinery as the clone/install/build steps) so a failure surfaces a
   scrubbed log tail. The real SDK THROWS `CommandExitError` on any non-zero

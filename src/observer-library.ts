@@ -27,7 +27,7 @@ const STATUS_TONES: Record<string, string> = {
   running: "#4f8ff7",
   failed: "#e5534b",
   blocked: "#d29922",
-  timed_out: "#d29922"
+  timed_out: "#d29922",
 };
 
 export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOptions): string {
@@ -63,7 +63,8 @@ export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOp
 }
 
 function modeLabel(opts: LibraryRenderOptions): string {
-  const auth = opts.mode === "exposed" ? "edge-authed" : opts.mode === "share-safe-open" ? "open" : "loopback";
+  const auth =
+    opts.mode === "exposed" ? "edge-authed" : opts.mode === "share-safe-open" ? "open" : "loopback";
   return opts.safe ? `${auth} · share_ready only` : auth;
 }
 
@@ -203,7 +204,7 @@ function escapeHtml(value: string): string {
         return "&lt;";
       case ">":
         return "&gt;";
-      case "\"":
+      case '"':
         return "&quot;";
       default:
         return "&#39;";

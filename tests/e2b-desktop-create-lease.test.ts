@@ -8,7 +8,7 @@ import {
   guardDesktopSandboxCreate,
   isTransientE2BError,
   type E2BDesktopCreateOptions,
-  type E2BDesktopModule
+  type E2BDesktopModule,
 } from "../src/e2b-desktop-launch.js";
 
 // Conformance against the REAL installed desktop + base SDK. Debug mode avoids allocation;
@@ -21,19 +21,26 @@ const options = {
   timeoutMs: 60_000,
   resolution: [1280, 800],
   dpi: 96,
-  lifecycle: { onTimeout: "kill" }
+  lifecycle: { onTimeout: "kill" },
 } as E2BDesktopCreateOptions;
 
 function deferred() {
   let resolve!: () => void;
-  const promise = new Promise<void>((done) => { resolve = done; });
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
   return { promise, resolve };
 }
 
-function sdkProbe(config: {
-  command?: (command: string, instance: number) => Promise<void>;
-  kill?: (instance: number, opts: { requestTimeoutMs?: number; signal?: AbortSignal }) => Promise<boolean>;
-} = {}) {
+function sdkProbe(
+  config: {
+    command?: (command: string, instance: number) => Promise<void>;
+    kill?: (
+      instance: number,
+      opts: { requestTimeoutMs?: number; signal?: AbortSignal },
+    ) => Promise<boolean>;
+  } = {},
+) {
   const instances: SdkDesktop[] = [];
   const events: string[] = [];
   const killed: number[] = [];
@@ -46,7 +53,13 @@ function sdkProbe(config: {
         events.push(`command-${instance}`);
         await config.command?.(command, instance);
         // SDK method-port values (not API wire): both foreground results and background handles.
-        return { exitCode: 0, stdout: "", stderr: "", pid: instance, disconnect: async () => undefined };
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: "",
+          pid: instance,
+          disconnect: async () => undefined,
+        };
       }) as typeof this.commands.run;
       this.kill = async (opts) => {
         killed.push(instance);
@@ -56,22 +69,39 @@ function sdkProbe(config: {
     }
   }
   // Guard the real allocator too: an SDK debug-mode change must fail this suite before HTTP.
-  const allocation = vi.spyOn(ProbeSandbox as unknown as {
-    createSandbox(...args: unknown[]): Promise<unknown>;
-  }, "createSandbox").mockRejectedValue(new Error("provider allocation forbidden in conformance tests"));
-  const list = vi.spyOn(ProbeSandbox, "list").mockImplementation(() => { throw new Error("account enumeration forbidden"); });
+  const allocation = vi
+    .spyOn(
+      ProbeSandbox as unknown as {
+        createSandbox(...args: unknown[]): Promise<unknown>;
+      },
+      "createSandbox",
+    )
+    .mockRejectedValue(new Error("provider allocation forbidden in conformance tests"));
+  const list = vi.spyOn(ProbeSandbox, "list").mockImplementation(() => {
+    throw new Error("account enumeration forbidden");
+  });
   const create = vi.spyOn(ProbeSandbox, "create");
-  const module = guardDesktopSandboxCreate({ Sandbox: ProbeSandbox } as unknown as E2BDesktopModule);
+  const module = guardDesktopSandboxCreate({
+    Sandbox: ProbeSandbox,
+  } as unknown as E2BDesktopModule);
   return { module, ProbeSandbox, instances, events, killed, list, create, allocation };
 }
 
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("desktop allocation ownership survives startup failure (#581)", () => {
   it("reclaims its constructed instance once through the guarded public create", async () => {
-    const probe = sdkProbe({ command: async () => { throw new Error("Sandbox is probably not running anymore"); } });
+    const probe = sdkProbe({
+      command: async () => {
+        throw new Error("Sandbox is probably not running anymore");
+      },
+    });
     await expect(probe.module.Sandbox.create(options)).rejects.toMatchObject({
-      name: "E2BDesktopStartupError", cleanup: "killed"
+      name: "E2BDesktopStartupError",
+      cleanup: "killed",
     });
     expect(probe.instances).toHaveLength(1);
     expect(probe.killed).toEqual([1]); // Internal SDK cleanup and our fallback share THIS handle.
@@ -80,28 +110,38 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
     expect(probe.allocation).not.toHaveBeenCalled();
   });
 
-  it.each([undefined, "custom-desktop-image"])("keeps successful create options and desktop behavior (%s)", async (template) => {
-    const probe = sdkProbe();
-    const desktop = await createDesktopSandbox(probe.module, options, template);
-    expect(desktop).toBeInstanceOf(SdkDesktop);
-    expect(desktop).toBeInstanceOf(probe.ProbeSandbox);
-    expect(desktop).toBeInstanceOf(probe.module.Sandbox);
-    expect(typeof desktop.screenshot).toBe("function");
-    expect(typeof desktop.stream.start).toBe("function");
-    expect(probe.create.mock.calls).toEqual(template === undefined ? [[options]] : [[template, options]]);
-    expect(probe.killed).toEqual([]); // Successful ownership transfers to the existing lane teardown.
-    expect(probe.list).not.toHaveBeenCalled();
-    expect(probe.allocation).not.toHaveBeenCalled();
-  });
+  it.each([undefined, "custom-desktop-image"])(
+    "keeps successful create options and desktop behavior (%s)",
+    async (template) => {
+      const probe = sdkProbe();
+      const desktop = await createDesktopSandbox(probe.module, options, template);
+      expect(desktop).toBeInstanceOf(SdkDesktop);
+      expect(desktop).toBeInstanceOf(probe.ProbeSandbox);
+      expect(desktop).toBeInstanceOf(probe.module.Sandbox);
+      expect(typeof desktop.screenshot).toBe("function");
+      expect(typeof desktop.stream.start).toBe("function");
+      expect(probe.create.mock.calls).toEqual(
+        template === undefined ? [[options]] : [[template, options]],
+      );
+      expect(probe.killed).toEqual([]); // Successful ownership transfers to the existing lane teardown.
+      expect(probe.list).not.toHaveBeenCalled();
+      expect(probe.allocation).not.toHaveBeenCalled();
+    },
+  );
 
   it("finishes cleanup before a transient startup retry can allocate a second instance", async () => {
     const probe = sdkProbe({
-      command: async (_command, instance) => { if (instance === 1) throw new Error("12: [unimplemented] HTTP 404"); }
+      command: async (_command, instance) => {
+        if (instance === 1) throw new Error("12: [unimplemented] HTTP 404");
+      },
     });
     const reasons: string[] = [];
     const desktop = await createDesktopSandbox(probe.module, options, undefined, {
       sleep: async () => undefined,
-      onRetry: (reason) => { probe.events.push("retry"); reasons.push(reason); }
+      onRetry: (reason) => {
+        probe.events.push("retry");
+        reasons.push(reason);
+      },
     });
     expect(desktop).toBe(probe.instances[1]);
     expect(probe.killed).toEqual([1]);
@@ -114,10 +154,12 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
 
   it("keeps concurrent failure ownership separate when the second create fails first", async () => {
     const gates = [deferred(), deferred()];
-    const probe = sdkProbe({ command: async (_command, instance) => {
-      await gates[instance - 1]!.promise;
-      throw new Error(`synthetic bootstrap failure ${instance}`);
-    } });
+    const probe = sdkProbe({
+      command: async (_command, instance) => {
+        await gates[instance - 1]!.promise;
+        throw new Error(`synthetic bootstrap failure ${instance}`);
+      },
+    });
     const first = probe.module.Sandbox.create(options).catch((error: unknown) => error);
     const second = probe.module.Sandbox.create(options).catch((error: unknown) => error);
     await vi.waitFor(() => expect(probe.instances).toHaveLength(2));
@@ -131,18 +173,30 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
     expect(probe.allocation).not.toHaveBeenCalled();
   });
 
-  it.each(["xdpyinfo", "startxfce4"])("reclaims failures during later desktop bootstrap (%s)", async (phase) => {
-    const probe = sdkProbe({ command: async (command) => {
-      if (command.includes(phase)) throw new Error(`synthetic ${phase} startup failure`);
-    } });
-    await expect(probe.module.Sandbox.create(options)).rejects.toMatchObject({ cleanup: "killed" });
-    expect(probe.killed).toEqual([1]);
-    expect(probe.events.filter((event) => event === "command-1").length).toBeGreaterThan(1);
-    expect(probe.allocation).not.toHaveBeenCalled();
-  });
+  it.each(["xdpyinfo", "startxfce4"])(
+    "reclaims failures during later desktop bootstrap (%s)",
+    async (phase) => {
+      const probe = sdkProbe({
+        command: async (command) => {
+          if (command.includes(phase)) throw new Error(`synthetic ${phase} startup failure`);
+        },
+      });
+      await expect(probe.module.Sandbox.create(options)).rejects.toMatchObject({
+        cleanup: "killed",
+      });
+      expect(probe.killed).toEqual([1]);
+      expect(probe.events.filter((event) => event === "command-1").length).toBeGreaterThan(1);
+      expect(probe.allocation).not.toHaveBeenCalled();
+    },
+  );
 
   it("treats the SDK's exact-id 404 result as already gone", async () => {
-    const probe = sdkProbe({ command: async () => { throw new Error("HTTP 503"); }, kill: async () => false });
+    const probe = sdkProbe({
+      command: async () => {
+        throw new Error("HTTP 503");
+      },
+      kill: async () => false,
+    });
     const error = await probe.module.Sandbox.create(options).catch((value: unknown) => value);
     expect(error).toMatchObject({ cleanup: "already_gone" });
     expect(isTransientE2BError(error)).toBe(true);
@@ -152,12 +206,18 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
   it("fails without retry or cleanup-error leakage when reclamation is unconfirmed", async () => {
     const cleanupSecret = "synthetic-cleanup-credential";
     const probe = sdkProbe({
-      command: async () => { throw new Error("HTTP 503 during startup"); },
-      kill: async () => { throw new Error(cleanupSecret); }
+      command: async () => {
+        throw new Error("HTTP 503 during startup");
+      },
+      kill: async () => {
+        throw new Error(cleanupSecret);
+      },
     });
     const retry = vi.fn();
-    const error = await createDesktopSandbox(probe.module, options, undefined, { onRetry: retry, sleep: async () => undefined })
-      .catch((value: unknown) => value);
+    const error = await createDesktopSandbox(probe.module, options, undefined, {
+      onRetry: retry,
+      sleep: async () => undefined,
+    }).catch((value: unknown) => value);
     expect(error).toBeInstanceOf(E2BDesktopStartupError);
     expect(error).toMatchObject({ cleanup: "unconfirmed" });
     expect(String(error)).toContain("cleanup of the allocated sandbox was not confirmed");
@@ -174,12 +234,19 @@ describe("desktop allocation ownership survives startup failure (#581)", () => {
     vi.useFakeTimers();
     let killOptions: { requestTimeoutMs?: number; signal?: AbortSignal } | undefined;
     const probe = sdkProbe({
-      command: async () => { throw new Error("HTTP 503 during startup"); },
-      kill: async (_instance, opts) => { killOptions = opts; return new Promise(() => undefined); }
+      command: async () => {
+        throw new Error("HTTP 503 during startup");
+      },
+      kill: async (_instance, opts) => {
+        killOptions = opts;
+        return new Promise(() => undefined);
+      },
     });
     const retry = vi.fn();
-    const pending = createDesktopSandbox(probe.module, options, undefined, { onRetry: retry, sleep: async () => undefined })
-      .catch((value: unknown) => value);
+    const pending = createDesktopSandbox(probe.module, options, undefined, {
+      onRetry: retry,
+      sleep: async () => undefined,
+    }).catch((value: unknown) => value);
     await vi.advanceTimersByTimeAsync(DESKTOP_CREATE_CLEANUP_TIMEOUT_MS);
     expect(await pending).toMatchObject({ cleanup: "unconfirmed" });
     expect(killOptions?.requestTimeoutMs).toBe(DESKTOP_CREATE_CLEANUP_TIMEOUT_MS);

@@ -12,7 +12,10 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js"
 import { resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import { labKeyRequirements, localCodexParticipantCheck } from "./doctor-lab.js";
 import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
-import { DEFAULT_OPENAI_CU_MODEL, DEFAULT_OPENAI_CU_REASONING_EFFORT } from "./openai-responses-cu.js";
+import {
+  DEFAULT_OPENAI_CU_MODEL,
+  DEFAULT_OPENAI_CU_REASONING_EFFORT,
+} from "./openai-responses-cu.js";
 import { inspectLabManifest } from "./labs.js";
 import { probeKeySources } from "./key-resolution.js";
 import { receivingRequiredKey } from "./comms-setup.js";
@@ -30,7 +33,12 @@ export interface LabSummary {
   runtime?: Pick<LocalRuntimeStatus, "ok" | "installed" | "message">;
   participantReadiness?: { ok: boolean; message: string };
   communications?: string;
-  analysis?: { provider?: "openai" | "codex"; billing?: "api-estimate" | "account-unknown"; model: string; maxCostUsd: number | null };
+  analysis?: {
+    provider?: "openai" | "codex";
+    billing?: "api-estimate" | "account-unknown";
+    model: string;
+    maxCostUsd: number | null;
+  };
   schema: typeof LAB_SUMMARY_SCHEMA;
   labId: string;
   title?: string;
@@ -77,7 +85,9 @@ function reasoningEffortOf(config: Record<string, unknown>): string {
 
 /** One short phrase for what the lab drives. */
 function subjectOf(config: Record<string, unknown>): string | undefined {
-  const subject = config.subject as { source?: string; repos?: string[]; appUrl?: string } | undefined;
+  const subject = config.subject as
+    | { source?: string; repos?: string[]; appUrl?: string }
+    | undefined;
   if (subject?.source === undefined) return undefined;
   const repo = subject.repos?.[0];
   if (repo !== undefined) return `${subject.source} ${repo}`;
@@ -92,8 +102,11 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
     | undefined;
   const actor = actors?.[0];
   if (actor === undefined) return undefined;
-  const lanePersonas = (actor.lanes ?? []).map((lane) => lane.persona).filter((persona): persona is string => typeof persona === "string");
-  const personas = lanePersonas.length > 0 ? lanePersonas : actor.persona === undefined ? [] : [actor.persona];
+  const lanePersonas = (actor.lanes ?? [])
+    .map((lane) => lane.persona)
+    .filter((persona): persona is string => typeof persona === "string");
+  const personas =
+    lanePersonas.length > 0 ? lanePersonas : actor.persona === undefined ? [] : [actor.persona];
   const count = actor.count ?? actor.lanes?.length ?? personas.length ?? 1;
   const unique = [...new Set(personas)];
   if (unique.length === 0) return `${count} participant${count === 1 ? "" : "s"}`;
@@ -103,11 +116,12 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
 }
 
 function capsOf(config: Record<string, unknown>): LabCaps {
-  const caps = (config.policies as { caps?: { maxUsd?: number; maxTotalUsd?: number } } | undefined)?.caps
-    ?? (config.caps as { maxUsd?: number; maxTotalUsd?: number } | undefined);
+  const caps =
+    (config.policies as { caps?: { maxUsd?: number; maxTotalUsd?: number } } | undefined)?.caps ??
+    (config.caps as { maxUsd?: number; maxTotalUsd?: number } | undefined);
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
-    ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {})
+    ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {}),
   };
 }
 
@@ -124,7 +138,7 @@ export interface ReadLabSummaryOptions {
 export async function readLabSummary(
   cwd: string,
   lab: string,
-  options: ReadLabSummaryOptions = {}
+  options: ReadLabSummaryOptions = {},
 ): Promise<LabSummary | null> {
   const inspected = await inspectLabManifest(cwd, lab).catch(() => null);
   if (inspected === null || !inspected.ok || inspected.config === undefined) return null;
@@ -136,14 +150,31 @@ export async function readLabSummary(
   let missingKeys: string[] | undefined;
   if (options.checkKeys === true) {
     const dryRun = resolveLabDryRun(inspected.config, undefined, true) === true;
-    const subjectKeys = dryRun ? [] : inspected.config.subject.env ?? [];
+    const subjectKeys = dryRun ? [] : (inspected.config.subject.env ?? []);
     const email = inspected.config.comms?.email;
-    const receivingKey = !dryRun && email?.kind === "real" ? await receivingRequiredKey(cwd, email.connection) : undefined;
-    const candidates = ["OPENAI_API_KEY", "CODEX_API_KEY", "E2B_API_KEY", ...subjectKeys, ...(receivingKey ? [receivingKey] : [])];
-    const probes = dryRun ? [] : await probeKeySources(candidates, { cwd, env: options.env ?? process.env }).catch(() => []);
-    const present = new Set(probes.filter(probe => probe.source !== null).map(probe => probe.name));
-    const required = labKeyRequirements(inspected.config, backend, dryRun, name => present.has(name));
-    const missing = [...new Set([...required.keys, ...subjectKeys, ...(receivingKey ? [receivingKey] : [])])].filter(name => !present.has(name));
+    const receivingKey =
+      !dryRun && email?.kind === "real"
+        ? await receivingRequiredKey(cwd, email.connection)
+        : undefined;
+    const candidates = [
+      "OPENAI_API_KEY",
+      "CODEX_API_KEY",
+      "E2B_API_KEY",
+      ...subjectKeys,
+      ...(receivingKey ? [receivingKey] : []),
+    ];
+    const probes = dryRun
+      ? []
+      : await probeKeySources(candidates, { cwd, env: options.env ?? process.env }).catch(() => []);
+    const present = new Set(
+      probes.filter((probe) => probe.source !== null).map((probe) => probe.name),
+    );
+    const required = labKeyRequirements(inspected.config, backend, dryRun, (name) =>
+      present.has(name),
+    );
+    const missing = [
+      ...new Set([...required.keys, ...subjectKeys, ...(receivingKey ? [receivingKey] : [])]),
+    ].filter((name) => !present.has(name));
     if (receivingKey === null) missing.push("email connection");
     keysReady = missing.length === 0;
     if (missing.length > 0) missingKeys = missing;
@@ -153,18 +184,41 @@ export async function readLabSummary(
   const analysis = automaticAnalysisBudget(inspected.config.review?.analysis, backend);
   const subject = subjectOf(config);
   const participants = participantsOf(config);
-  const runtime = options.checkKeys === true && isLocalBrowserLab(inspected.config)
-    ? await localRuntimeStatus({ ...(options.env ? { env: options.env } : {}), media: inspected.config.execution?.desktop?.media !== undefined || inspected.config.execution?.desktop?.recording !== undefined }) : undefined;
-  const participantReadiness = options.checkKeys === true && isLocalBrowserLab(inspected.config)
-    && inspected.config.actors[0]?.type === "local-agent"
-    ? await localCodexParticipantCheck({ env: options.env ?? process.env }) : undefined;
+  const runtime =
+    options.checkKeys === true && isLocalBrowserLab(inspected.config)
+      ? await localRuntimeStatus({
+          ...(options.env ? { env: options.env } : {}),
+          media:
+            inspected.config.execution?.desktop?.media !== undefined ||
+            inspected.config.execution?.desktop?.recording !== undefined,
+        })
+      : undefined;
+  const participantReadiness =
+    options.checkKeys === true &&
+    isLocalBrowserLab(inspected.config) &&
+    inspected.config.actors[0]?.type === "local-agent"
+      ? await localCodexParticipantCheck({ env: options.env ?? process.env })
+      : undefined;
 
   return {
     ...(analysis ? { analysis } : {}),
-    ...(runtime ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } } : {}),
-    ...(participantReadiness ? { participantReadiness: { ok: participantReadiness.ok, message: participantReadiness.message } } : {}),
+    ...(runtime
+      ? { runtime: { ok: runtime.ok, installed: runtime.installed, message: runtime.message } }
+      : {}),
+    ...(participantReadiness
+      ? {
+          participantReadiness: {
+            ok: participantReadiness.ok,
+            message: participantReadiness.message,
+          },
+        }
+      : {}),
     schema: LAB_SUMMARY_SCHEMA,
-    ...(inspected.config.comms?.email?.kind === "real" ? { communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only` } : {}),
+    ...(inspected.config.comms?.email?.kind === "real"
+      ? {
+          communications: `Real email · ${inspected.config.comms.email.connection} · fresh inbox per participant · hosted processing · local review only`,
+        }
+      : {}),
     labId: String(config.id ?? lab),
     ...(typeof config.title === "string" ? { title: config.title } : {}),
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
@@ -174,6 +228,6 @@ export async function readLabSummary(
     reasoningEffort: reasoningEffortOf(config),
     caps: capsOf(config),
     ...(keysReady === undefined ? {} : { keysReady }),
-    ...(missingKeys === undefined ? {} : { missingKeys })
+    ...(missingKeys === undefined ? {} : { missingKeys }),
   };
 }

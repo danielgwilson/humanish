@@ -35,7 +35,10 @@ export interface ReclaimResult {
   receiptCount: number;
   outcomes: ReclaimOutcome[];
   warnings: string[];
-  error?: { code: "HUMANISH_RECLAIM_RUN_NOT_FOUND" | "HUMANISH_RECLAIM_MODULE_UNAVAILABLE"; message: string };
+  error?: {
+    code: "HUMANISH_RECLAIM_RUN_NOT_FOUND" | "HUMANISH_RECLAIM_MODULE_UNAVAILABLE";
+    message: string;
+  };
 }
 
 export interface ReclaimHooks {
@@ -47,17 +50,27 @@ export interface ReclaimHooks {
 export async function reclaimRunSandboxes(
   cwd: string,
   runInput: string,
-  hooks: ReclaimHooks = {}
+  hooks: ReclaimHooks = {},
 ): Promise<ReclaimResult> {
   const warnings: string[] = [];
-  const base = { schema: RECLAIM_RESULT_SCHEMA, cwd, runId: runInput, receiptCount: 0, outcomes: [] as ReclaimOutcome[], warnings } as const;
+  const base = {
+    schema: RECLAIM_RESULT_SCHEMA,
+    cwd,
+    runId: runInput,
+    receiptCount: 0,
+    outcomes: [] as ReclaimOutcome[],
+    warnings,
+  } as const;
 
   const runPaths = await resolveRunPath(cwd, runInput);
   if (!runPaths) {
     return {
       ...base,
       ok: false,
-      error: { code: "HUMANISH_RECLAIM_RUN_NOT_FOUND", message: `No run found for "${runInput}" (use \`humanish runs\` to list runs).` }
+      error: {
+        code: "HUMANISH_RECLAIM_RUN_NOT_FOUND",
+        message: `No run found for "${runInput}" (use \`humanish runs\` to list runs).`,
+      },
     };
   }
   const runId = path.basename(runPaths.absoluteRunRoot);
@@ -68,7 +81,9 @@ export async function reclaimRunSandboxes(
     // nothing to reclaim) or the run predates receipts (0.35.x and earlier — the create-time TTL
     // is the only backstop for those). Either way there is no id to act on, and saying so beats
     // pretending a scan happened.
-    warnings.push("No sandbox-receipts.ndjson in this run dir: either no sandbox was created before the interrupt, or the run predates create-time receipts. Nothing to reclaim by id; server-side kill-on-timeout covers anything that did exist.");
+    warnings.push(
+      "No sandbox-receipts.ndjson in this run dir: either no sandbox was created before the interrupt, or the run predates create-time receipts. Nothing to reclaim by id; server-side kill-on-timeout covers anything that did exist.",
+    );
     return { ...base, runId, ok: true };
   }
 
@@ -82,7 +97,10 @@ export async function reclaimRunSandboxes(
       runId,
       receiptCount: receipts.length,
       ok: false,
-      error: { code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE", message: `Cannot load @e2b/desktop to kill by id: ${redactText(toErrorMessage(error))}` }
+      error: {
+        code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE",
+        message: `Cannot load @e2b/desktop to kill by id: ${redactText(toErrorMessage(error))}`,
+      },
     };
   }
 
@@ -94,12 +112,23 @@ export async function reclaimRunSandboxes(
     if (seen.has(receipt.sandboxId)) continue; // one attempt per id, however many receipts raced
     seen.add(receipt.sandboxId);
     if (typeof kill !== "function") {
-      outcomes.push({ sandboxId: receipt.sandboxId, laneId: receipt.laneId, state: "kill-failed", detail: "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox" });
+      outcomes.push({
+        sandboxId: receipt.sandboxId,
+        laneId: receipt.laneId,
+        state: "kill-failed",
+        detail:
+          "installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the sandbox",
+      });
       continue;
     }
     try {
-      const killed = (await kill.call(sandboxModule.Sandbox, receipt.sandboxId, { requestTimeoutMs })) === true;
-      outcomes.push({ sandboxId: receipt.sandboxId, laneId: receipt.laneId, state: killed ? "killed" : "already-gone" });
+      const killed =
+        (await kill.call(sandboxModule.Sandbox, receipt.sandboxId, { requestTimeoutMs })) === true;
+      outcomes.push({
+        sandboxId: receipt.sandboxId,
+        laneId: receipt.laneId,
+        state: killed ? "killed" : "already-gone",
+      });
     } catch (error) {
       const detail = redactText(toErrorMessage(error));
       const gone = /not.?found|does not exist|404/i.test(detail);
@@ -107,7 +136,7 @@ export async function reclaimRunSandboxes(
         sandboxId: receipt.sandboxId,
         laneId: receipt.laneId,
         state: gone ? "already-gone" : "kill-failed",
-        ...(gone ? {} : { detail })
+        ...(gone ? {} : { detail }),
       });
     }
   }
@@ -120,10 +149,12 @@ export async function reclaimRunSandboxes(
       runPaths,
       RECLAIM_RECEIPT_ARTIFACT,
       `${JSON.stringify({ schema: RECLAIM_RESULT_SCHEMA, at: new Date().toISOString(), runId, receiptCount: receipts.length, outcomes }, null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
   } catch (error) {
-    warnings.push(`Reclaim ran but its receipt could not be written: ${redactText(toErrorMessage(error))}`);
+    warnings.push(
+      `Reclaim ran but its receipt could not be written: ${redactText(toErrorMessage(error))}`,
+    );
   }
   return result;
 }

@@ -18,12 +18,17 @@ function cloneLab(subjectExtra: Record<string, unknown>) {
     subject: {
       source: "clone",
       repos: ["example-org/example-app"],
-      serve: { install: "npm ci", build: "npm run build", start: "npm start", url: "http://127.0.0.1:3000/" },
-      ...subjectExtra
+      serve: {
+        install: "npm ci",
+        build: "npm run build",
+        start: "npm start",
+        url: "http://127.0.0.1:3000/",
+      },
+      ...subjectExtra,
     },
     actors: [{ type: "openai-computer-use", mission: "sign up" }],
     execution: { target: "e2b-desktop" },
-    scenario: { mode: "live" }
+    scenario: { mode: "live" },
   });
 }
 
@@ -33,15 +38,15 @@ describe("subject.envValues", () => {
       envValues: {
         NEXT_PUBLIC_WEBAPP_URL: "http://localhost:3000",
         NEXT_PRIVATE_SMTP_TRANSPORT: "smtp-auth",
-        NEXT_PUBLIC_UPLOAD_TRANSPORT: "database"
-      }
+        NEXT_PUBLIC_UPLOAD_TRANSPORT: "database",
+      },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.config.subject.envValues).toEqual({
       NEXT_PUBLIC_WEBAPP_URL: "http://localhost:3000",
       NEXT_PRIVATE_SMTP_TRANSPORT: "smtp-auth",
-      NEXT_PUBLIC_UPLOAD_TRANSPORT: "database"
+      NEXT_PUBLIC_UPLOAD_TRANSPORT: "database",
     });
   });
 
@@ -50,13 +55,16 @@ describe("subject.envValues", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     // Coerced to strings, because that is what an environment actually holds.
-    expect(parsed.config.subject.envValues).toEqual({ PORT: "3000", DANGEROUS_BYPASS_RATE_LIMITS: "true" });
+    expect(parsed.config.subject.envValues).toEqual({
+      PORT: "3000",
+      DANGEROUS_BYPASS_RATE_LIMITS: "true",
+    });
   });
 
   it("coexists with subject.env — names for secrets, values for configuration", () => {
     const parsed = cloneLab({
       env: ["NEXT_PRIVATE_DATABASE_URL"],
-      envValues: { NEXT_PUBLIC_WEBAPP_URL: "http://localhost:3000" }
+      envValues: { NEXT_PUBLIC_WEBAPP_URL: "http://localhost:3000" },
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

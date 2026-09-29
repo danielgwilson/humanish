@@ -6,16 +6,21 @@ function lab(product: Record<string, unknown>): Record<string, unknown> {
   return {
     schema: "humanish.lab.v2",
     id: "upload-lab",
-    subject: { source: "terminal-product", product: { name: "humanish", publicSurfaces: ["https://example.com/x"], ...product } },
+    subject: {
+      source: "terminal-product",
+      product: { name: "humanish", publicSurfaces: ["https://example.com/x"], ...product },
+    },
     actors: [{ type: "codex-exec", mission: "study it" }],
     execution: { target: "e2b-terminal" },
-    scenario: { mode: "dry-run" }
+    scenario: { mode: "dry-run" },
   };
 }
 
 describe("subject.product.upload — meeting a build that is not published yet", () => {
   it("accepts a project-relative file", () => {
-    const parsed = parseLabConfig(lab({ upload: "humanish-0.57.0.tgz", install: "npm i -g \"$HUMANISH_PRODUCT_UPLOAD\"" }));
+    const parsed = parseLabConfig(
+      lab({ upload: "humanish-0.57.0.tgz", install: 'npm i -g "$HUMANISH_PRODUCT_UPLOAD"' }),
+    );
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.config.subject.product?.upload).toBe("humanish-0.57.0.tgz");
   });

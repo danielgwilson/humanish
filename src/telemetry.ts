@@ -22,13 +22,16 @@ const INGEST_KEY = "phc_oeMeBqxDZhZ9tCHMSnuDFimLqHpU5Myc847WD33hAh4C";
 const INGEST_HOST = "https://us.i.posthog.com";
 
 /** The ONLY lab ids that may be named. Ours, shipped by `init`; everything else is "custom". */
-const STARTER_LABS = new Set(["first-run", "try-live", "cua-browser", "lobby-trivia-3player", "oss"]);
+const STARTER_LABS = new Set([
+  "first-run",
+  "try-live",
+  "cua-browser",
+  "lobby-trivia-3player",
+  "oss",
+]);
 
 /** The ONLY event names. */
-export type TelemetryEvent =
-  | "cli_command"
-  | "project_initialized"
-  | "study_finished";
+export type TelemetryEvent = "cli_command" | "project_initialized" | "study_finished";
 
 export interface TelemetryProperties {
   command?: string;
@@ -62,9 +65,10 @@ export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home = 
   const declared = env.XDG_CONFIG_HOME?.trim();
   // Same XDG rule the key store uses: a relative value MUST be ignored, or state becomes
   // cwd-relative and follows people between projects.
-  const configHome = declared !== undefined && declared !== "" && path.isAbsolute(declared)
-    ? declared
-    : path.join(home, ".config");
+  const configHome =
+    declared !== undefined && declared !== "" && path.isAbsolute(declared)
+      ? declared
+      : path.join(home, ".config");
   return path.join(configHome, "humanish", "telemetry.json");
 }
 
@@ -74,10 +78,13 @@ export function telemetryStatePath(env: NodeJS.ProcessEnv = process.env, home = 
  */
 export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
   const truthy = (value: string | undefined): boolean =>
-    value !== undefined && value.trim() !== "" && value.trim() !== "0" && value.trim().toLowerCase() !== "false";
+    value !== undefined &&
+    value.trim() !== "" &&
+    value.trim() !== "0" &&
+    value.trim().toLowerCase() !== "false";
   return (
-    truthy(env.DO_NOT_TRACK)
-    || truthy(env.HUMANISH_TELEMETRY_DISABLED)
+    truthy(env.DO_NOT_TRACK) ||
+    truthy(env.HUMANISH_TELEMETRY_DISABLED) ||
     // Our OWN development and test runs must never reach the adoption dataset. In the first two
     // days after telemetry shipped, 82% of events (4,042 of 4,932, from 49 of 59 anonymous ids)
     // came from humanish's own CI and suite: ~50 ids each running nearly every subcommand about
@@ -87,7 +94,7 @@ export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
     // Deliberately NOT keyed on CI. An adopter running humanish in their pipeline is real usage
     // and stays countable; the `ci` property already separates it, which is what Next.js does.
     // This keys on being inside the humanish source tree, which only we ever are.
-    || truthy(env.HUMANISH_DEV)
+    truthy(env.HUMANISH_DEV)
   );
 }
 
@@ -100,7 +107,10 @@ export function disabledByEnvironment(env: NodeJS.ProcessEnv): boolean {
  * name. Falls back to "not a checkout" on any read error, because the failure direction that
  * loses one event is better than the one that silently disables real telemetry.
  */
-export function inHumanishCheckout(startDir: string, readFileSyncFn: (p: string) => string): boolean {
+export function inHumanishCheckout(
+  startDir: string,
+  readFileSyncFn: (p: string) => string,
+): boolean {
   let dir = path.resolve(startDir);
   // Any node_modules ANYWHERE in the path means this is an installed copy, not our checkout.
   // Checking only the basename missed `/app/node_modules/humanish`, which is the single most
@@ -135,14 +145,14 @@ export function inHumanishCheckout(startDir: string, readFileSyncFn: (p: string)
 export function isOwnCheckoutRun(
   cwd: string,
   cliDir: string,
-  readFileSyncFn: (p: string) => string
+  readFileSyncFn: (p: string) => string,
 ): boolean {
   return inHumanishCheckout(cwd, readFileSyncFn) || inHumanishCheckout(cliDir, readFileSyncFn);
 }
 
 export async function readTelemetryState(
   env: NodeJS.ProcessEnv = process.env,
-  home = homedir()
+  home = homedir(),
 ): Promise<TelemetryState> {
   try {
     const raw = await readFile(telemetryStatePath(env, home), "utf8");
@@ -150,7 +160,7 @@ export async function readTelemetryState(
     return {
       enabled: parsed.enabled !== false,
       anonymousId: typeof parsed.anonymousId === "string" ? parsed.anonymousId : randomUUID(),
-      noticed: parsed.noticed === true
+      noticed: parsed.noticed === true,
     };
   } catch {
     return { enabled: true, anonymousId: randomUUID(), noticed: false };
@@ -160,7 +170,7 @@ export async function readTelemetryState(
 export async function writeTelemetryState(
   state: TelemetryState,
   env: NodeJS.ProcessEnv = process.env,
-  home = homedir()
+  home = homedir(),
 ): Promise<void> {
   const file = telemetryStatePath(env, home);
   await mkdir(path.dirname(file), { recursive: true });
@@ -225,9 +235,10 @@ export function buildPayload(args: {
     // population we are trying to count, so a busy self-study day reads as an adoption spike.
     // Stamped rather than suppressed, the same shape as `ci`: participant runs stay visible and
     // stay separable, and we keep a genuine measurement of what a cold install does (#546).
-    studyParticipant: env.HUMANISH_STUDY_PARTICIPANT !== undefined
-      && env.HUMANISH_STUDY_PARTICIPANT !== ""
-      && env.HUMANISH_STUDY_PARTICIPANT !== "0"
+    studyParticipant:
+      env.HUMANISH_STUDY_PARTICIPANT !== undefined &&
+      env.HUMANISH_STUDY_PARTICIPANT !== "" &&
+      env.HUMANISH_STUDY_PARTICIPANT !== "0",
   };
   const given = args.properties ?? {};
   if (given.command !== undefined) properties.command = given.command;
@@ -238,8 +249,10 @@ export function buildPayload(args: {
   if (given.brain !== undefined) properties.brain = given.brain;
   if (given.ok !== undefined) properties.ok = given.ok;
   if (given.exitCode !== undefined) properties.exit_code = given.exitCode;
-  if (given.errorCode !== undefined && OWN_ERROR_CODE.test(given.errorCode)) properties.error_code = given.errorCode;
-  if (isCuaDiagnosticCategory(given.diagnosticCategory)) properties.diagnostic_category = given.diagnosticCategory;
+  if (given.errorCode !== undefined && OWN_ERROR_CODE.test(given.errorCode))
+    properties.error_code = given.errorCode;
+  if (isCuaDiagnosticCategory(given.diagnosticCategory))
+    properties.diagnostic_category = given.diagnosticCategory;
   if (isCuaDiagnosticStopCause(given.stopCause)) properties.stop_cause = given.stopCause;
   return { event: args.event, distinct_id: args.anonymousId, properties };
 }
@@ -253,10 +266,18 @@ const OWN_ERROR_CODE = /^HUMANISH_[A-Z0-9_]{1,80}$/;
  * else — a provider's reason string, a scorer's verdict text — is dropped, never forwarded.
  */
 const OUTCOMES = new Set([
-  "passed", "abandoned", "incomplete", "blocked", "timed_out", "failed",
+  "passed",
+  "abandoned",
+  "incomplete",
+  "blocked",
+  "timed_out",
+  "failed",
   "contract_proof_only",
-  "all_passed", "some_passed", "none_passed",
-  "ok", "error"
+  "all_passed",
+  "some_passed",
+  "none_passed",
+  "ok",
+  "error",
 ]);
 
 const BRAINS_BY_ACTOR: Record<string, NonNullable<TelemetryProperties["brain"]>> = {
@@ -265,11 +286,13 @@ const BRAINS_BY_ACTOR: Record<string, NonNullable<TelemetryProperties["brain"]>>
   "codex-exec": "provider-key",
   "codex-tui": "provider-key",
   "codex-app-server": "provider-key",
-  "scripted-browser": "none"
+  "scripted-browser": "none",
 };
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 /**
@@ -292,19 +315,25 @@ export function deriveStudyFacts(result: unknown): TelemetryProperties {
   else if (r.mode === "dry-run" || r.mode === "live") facts.mode = r.mode;
 
   const labRecord = asRecord(r.lab);
-  const labId = typeof r.labId === "string" ? r.labId
-    : typeof labRecord?.id === "string" ? labRecord.id
-    : typeof r.lab === "string" ? r.lab
-    : undefined;
+  const labId =
+    typeof r.labId === "string"
+      ? r.labId
+      : typeof labRecord?.id === "string"
+        ? labRecord.id
+        : typeof r.lab === "string"
+          ? r.lab
+          : undefined;
   const lab = safeLabId(labId);
   if (lab !== undefined) facts.lab = lab;
 
   const error = asRecord(r.error);
-  if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code)) facts.errorCode = error.code;
+  if (typeof error?.code === "string" && OWN_ERROR_CODE.test(error.code))
+    facts.errorCode = error.code;
 
   const cuaResult = r.schema === "humanish.cua-lab-result.v2";
   const diagnostics = cuaResult ? asRecord(r.diagnostics) : undefined;
-  if (isCuaDiagnosticCategory(diagnostics?.category)) facts.diagnosticCategory = diagnostics.category;
+  if (isCuaDiagnosticCategory(diagnostics?.category))
+    facts.diagnosticCategory = diagnostics.category;
   if (isCuaDiagnosticStopCause(diagnostics?.stopCause)) facts.stopCause = diagnostics.stopCause;
 
   const session = asRecord(r.session);
@@ -312,10 +341,18 @@ export function deriveStudyFacts(result: unknown): TelemetryProperties {
   let outcome: string | undefined;
   if (cuaResult && facts.mode === "dry-run") {
     outcome = r.ok === true ? "contract_proof_only" : "error";
-  } else if (laneSummary && typeof laneSummary.total === "number" && typeof laneSummary.passed === "number" && laneSummary.total > 1) {
-    outcome = laneSummary.passed === laneSummary.total ? "all_passed"
-      : laneSummary.passed === 0 ? "none_passed"
-      : "some_passed";
+  } else if (
+    laneSummary &&
+    typeof laneSummary.total === "number" &&
+    typeof laneSummary.passed === "number" &&
+    laneSummary.total > 1
+  ) {
+    outcome =
+      laneSummary.passed === laneSummary.total
+        ? "all_passed"
+        : laneSummary.passed === 0
+          ? "none_passed"
+          : "some_passed";
   } else if (typeof session?.status === "string") {
     outcome = session.status;
   } else if (typeof r.status === "string") {
@@ -340,7 +377,7 @@ export const TELEMETRY_NOTICE = [
   "humanish collects anonymous usage data (which command ran, whether it worked, how long it took).",
   "It never sends your labs, subjects, personas, paths, or evidence. Opt out any time:",
   "  humanish telemetry disable        (or set DO_NOT_TRACK=1)",
-  "  humanish telemetry status         shows exactly what is collected"
+  "  humanish telemetry status         shows exactly what is collected",
 ].join("\n");
 
 export interface SendDeps {
@@ -365,9 +402,9 @@ export async function sendTelemetry(payload: TelemetryPayload, deps: SendDeps = 
         api_key: INGEST_KEY,
         event: payload.event,
         distinct_id: payload.distinct_id,
-        properties: payload.properties
+        properties: payload.properties,
       }),
-      signal: controller.signal
+      signal: controller.signal,
     });
   } catch {
     // Never surfaces. Metrics are our problem, not the operator's.

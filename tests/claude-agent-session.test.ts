@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   claudeSessionToActorTrace,
   runClaudeAgentSession,
-  type ClaudeQueryFn
+  type ClaudeQueryFn,
 } from "../src/claude-agent-sdk.js";
 import { getActor } from "../src/actor-registry.js";
 import { type ActorPersonaRef } from "../src/actor-contract.js";
@@ -15,10 +15,13 @@ import { buildClaudeSession } from "./actor-fixtures.js";
 const persona: ActorPersonaRef = {
   id: "synthetic-new-user",
   traitsApplied: ["patience:low", "skill:high"],
-  promptDigest: "shimproof01"
+  promptDigest: "shimproof01",
 };
 
-function fakeQuery(messages: unknown[], capture?: (options: Record<string, unknown>) => void): ClaudeQueryFn {
+function fakeQuery(
+  messages: unknown[],
+  capture?: (options: Record<string, unknown>) => void,
+): ClaudeQueryFn {
   return ({ options }) => {
     capture?.(options);
     return (async function* () {
@@ -48,7 +51,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         prompt: "inspect the project",
         persona,
         timeoutMs: 5000,
-        queryFn: fakeQuery(messages)
+        queryFn: fakeQuery(messages),
       });
       expect(result.trace.schema).toBe("humanish.actor-trace.v1");
       expect(result.trace.provider).toBe("claude-agent-sdk");
@@ -57,7 +60,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
       // The shim must delegate mapping to the pure function: items match exactly.
       const expected = claudeSessionToActorTrace(
         { messages, startedAt: result.session.startedAt, completedAt: result.session.completedAt },
-        persona
+        persona,
       );
       expect(result.trace.items).toEqual(expected.items);
       expect(result.trace.ids.model).toBe("synthetic-model");
@@ -73,13 +76,15 @@ describe("runClaudeAgentSession (DI seam)", () => {
         prompt: "go",
         persona,
         timeoutMs: 5000,
-        queryFn: fakeQuery(messages)
+        queryFn: fakeQuery(messages),
       });
       const summary = JSON.parse(await readFile(path.join(runRoot, result.tracePath), "utf8"));
       expect(summary.schema).toBe("humanish.actor-trace.v1");
       expect(summary.provider).toBe("claude-agent-sdk");
 
-      const events = (await readFile(path.join(runRoot, result.eventsPath), "utf8")).trim().split("\n");
+      const events = (await readFile(path.join(runRoot, result.eventsPath), "utf8"))
+        .trim()
+        .split("\n");
       expect(events).toHaveLength(messages.length);
       for (const line of events) {
         expect(() => JSON.parse(line)).not.toThrow();
@@ -99,14 +104,18 @@ describe("runClaudeAgentSession (DI seam)", () => {
       await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
       await symlink(outside, path.join(selected, "claude-agent-sdk"), "dir");
       let queryCalls = 0;
-      await expect(runClaudeAgentSession({
-        cwd: runRoot,
-        runRoot: selected,
-        prompt: "go",
-        persona,
-        timeoutMs: 5000,
-        queryFn: fakeQuery(buildClaudeSession().messages, () => { queryCalls += 1; })
-      })).rejects.toThrow(/symbolic links/i);
+      await expect(
+        runClaudeAgentSession({
+          cwd: runRoot,
+          runRoot: selected,
+          prompt: "go",
+          persona,
+          timeoutMs: 5000,
+          queryFn: fakeQuery(buildClaudeSession().messages, () => {
+            queryCalls += 1;
+          }),
+        }),
+      ).rejects.toThrow(/symbolic links/i);
       expect(queryCalls).toBe(0);
       expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
     });
@@ -121,21 +130,30 @@ describe("runClaudeAgentSession (DI seam)", () => {
       await mkdir(second);
       await writeFile(path.join(second, "sentinel.txt"), "unchanged\n", "utf8");
       await symlink(first, alias, "dir");
-      const queryFn: ClaudeQueryFn = () => (async function* () {
-        yield { type: "system", subtype: "init", session_id: "s", model: "m" };
-        await rm(alias);
-        await symlink(second, alias, "dir");
-        yield { type: "result", subtype: "success", duration_ms: 1, session_id: "s", result: "done" };
-      })();
+      const queryFn: ClaudeQueryFn = () =>
+        (async function* () {
+          yield { type: "system", subtype: "init", session_id: "s", model: "m" };
+          await rm(alias);
+          await symlink(second, alias, "dir");
+          yield {
+            type: "result",
+            subtype: "success",
+            duration_ms: 1,
+            session_id: "s",
+            result: "done",
+          };
+        })();
 
-      await expect(runClaudeAgentSession({
-        cwd: runRoot,
-        runRoot: alias,
-        prompt: "go",
-        persona,
-        timeoutMs: 5000,
-        queryFn
-      })).rejects.toThrow(/changed physical destination/i);
+      await expect(
+        runClaudeAgentSession({
+          cwd: runRoot,
+          runRoot: alias,
+          prompt: "go",
+          persona,
+          timeoutMs: 5000,
+          queryFn,
+        }),
+      ).rejects.toThrow(/changed physical destination/i);
       expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
       await expect(access(path.join(second, "claude-agent-sdk", "summary.json"))).rejects.toThrow();
     });
@@ -152,7 +170,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         timeoutMs: 5000,
         queryFn: fakeQuery(buildClaudeSession().messages, (options) => {
           captured = options;
-        })
+        }),
       });
       expect(typeof captured?.systemPrompt).toBe("string");
       expect(captured?.systemPrompt as string).toContain(persona.id);
@@ -177,7 +195,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         systemPrompt: "CUSTOM_PERSONA_PREAMBLE",
         queryFn: fakeQuery(buildClaudeSession().messages, (options) => {
           captured = options;
-        })
+        }),
       });
       expect(captured?.systemPrompt).toBe("CUSTOM_PERSONA_PREAMBLE");
     });
@@ -189,7 +207,13 @@ describe("runClaudeAgentSession (DI seam)", () => {
       const messages = [
         { type: "system", subtype: "init", session_id: "s", model: "m" },
         { type: "assistant", message: { content: [{ type: "text", text: `saw ${leaky}` }] } },
-        { type: "result", subtype: "success", duration_ms: 1, session_id: "s", result: `done at ${leaky}` }
+        {
+          type: "result",
+          subtype: "success",
+          duration_ms: 1,
+          session_id: "s",
+          result: `done at ${leaky}`,
+        },
       ];
       const result = await runClaudeAgentSession({
         cwd: runRoot,
@@ -197,7 +221,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         prompt: "go",
         persona,
         timeoutMs: 5000,
-        queryFn: fakeQuery(messages)
+        queryFn: fakeQuery(messages),
       });
       for (const rel of [result.eventsPath, result.tracePath, result.transcriptPath]) {
         const text = await readFile(path.join(runRoot, rel), "utf8");
@@ -221,7 +245,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         prompt: "go",
         persona,
         timeoutMs: 100,
-        queryFn: hanging
+        queryFn: hanging,
       });
       expect(result.status).toBe("timed_out");
       expect(result.trace.completionReason).toBe("timed_out");
@@ -234,7 +258,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
     await withRunRoot(async (runRoot) => {
       const messages = [
         { type: "system", subtype: "init", session_id: "s", model: "m" },
-        { type: "assistant", message: { content: [{ type: "text", text: "did some work" }] } }
+        { type: "assistant", message: { content: [{ type: "text", text: "did some work" }] } },
       ];
       const result = await runClaudeAgentSession({
         cwd: runRoot,
@@ -242,7 +266,7 @@ describe("runClaudeAgentSession (DI seam)", () => {
         prompt: "go",
         persona,
         timeoutMs: 5000,
-        queryFn: fakeQuery(messages)
+        queryFn: fakeQuery(messages),
       });
       expect(result.status).toBe("failed");
       expect(result.trace.completionReason).toBe("actor_error");
@@ -260,8 +284,10 @@ describe("runClaudeAgentSession (DI seam)", () => {
         persona,
         timeoutMs: 5000,
         loadQueryFn: async () => {
-          throw new Error("Live Claude Agent SDK runs require the optional peer dependency @anthropic-ai/claude-agent-sdk.");
-        }
+          throw new Error(
+            "Live Claude Agent SDK runs require the optional peer dependency @anthropic-ai/claude-agent-sdk.",
+          );
+        },
       });
       expect(result.status).toBe("failed");
       const summary = JSON.parse(await readFile(path.join(runRoot, result.tracePath), "utf8"));

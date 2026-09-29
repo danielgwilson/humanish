@@ -98,33 +98,33 @@ const secretPatterns: Array<{
   {
     name: "openai-token",
     pattern: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g,
-    replacement: "[redacted-openai-key]"
+    replacement: "[redacted-openai-key]",
   },
   {
     name: "github-token",
     pattern: /\b(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})\b/g,
-    replacement: "[redacted-github-token]"
+    replacement: "[redacted-github-token]",
   },
   {
     name: "e2b-token",
     pattern: /\be2b_[A-Za-z0-9_-]{12,}\b/g,
-    replacement: "[redacted-e2b-key]"
+    replacement: "[redacted-e2b-key]",
   },
   {
     name: "bearer-token",
     pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}\b/gi,
-    replacement: "Bearer [redacted-token]"
+    replacement: "Bearer [redacted-token]",
   },
   {
     name: "remote-home-path",
     pattern: /\/home\/(?:user|runner)\/[^\s"']+/gi,
-    replacement: "[redacted-remote-path]"
+    replacement: "[redacted-remote-path]",
   },
   {
     name: "remote-tmp-path",
     pattern: /\/tmp\/[^\s"']+/gi,
-    replacement: "[redacted-remote-path]"
-  }
+    replacement: "[redacted-remote-path]",
+  },
 ];
 
 export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemoteTelemetry {
@@ -148,14 +148,14 @@ export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemo
   const fallbackLogTail = sanitizeField("logTail", input.logTail ?? "");
   const completion = parseOssRemoteCompletion(input.completionJson ?? null, {
     checkedAt,
-    fallbackLogTail
+    fallbackLogTail,
   });
 
   const processText = sanitizeField("processStateText", input.processStateText ?? "");
   const process = {
     state: classifyOssRemoteProcessState(processText),
     summary: summarizeProcessState(processText),
-    text: processText
+    text: processText,
   };
 
   const appStatusText = sanitizeField("appStatusText", input.appStatusText ?? "");
@@ -164,17 +164,17 @@ export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemo
   const app = {
     status: classifyOssRemoteAppStatus({
       statusText: appStatusText,
-      ...(sanitizedAppUrl ? { url: sanitizedAppUrl } : {})
+      ...(sanitizedAppUrl ? { url: sanitizedAppUrl } : {}),
     }),
     statusText: appStatusText,
-    ...(sanitizedAppUrl ? { url: sanitizedAppUrl } : {})
+    ...(sanitizedAppUrl ? { url: sanitizedAppUrl } : {}),
   };
 
   const streamUrl = normalizeOptionalText(input.streamUrl);
   const sanitizedStreamUrl = streamUrl ? sanitizeUrlField("streamUrl", streamUrl) : undefined;
   const stream = {
     present: Boolean(sanitizedStreamUrl),
-    ...(sanitizedStreamUrl ? { url: sanitizedStreamUrl } : {})
+    ...(sanitizedStreamUrl ? { url: sanitizedStreamUrl } : {}),
   };
 
   const nestedObserverPath = normalizeOptionalText(input.nestedObserverPath);
@@ -183,10 +183,13 @@ export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemo
     : undefined;
   const nestedObserverPresent = input.nestedObserverPresent ?? completion.nestedObserverPresent;
   const nestedObserver = {
-    presence: nestedObserverPresent === true
-      ? "present" as const
-      : nestedObserverPresent === false ? "missing" as const : "unknown" as const,
-    ...(sanitizedNestedObserverPath ? { path: sanitizedNestedObserverPath } : {})
+    presence:
+      nestedObserverPresent === true
+        ? ("present" as const)
+        : nestedObserverPresent === false
+          ? ("missing" as const)
+          : ("unknown" as const),
+    ...(sanitizedNestedObserverPath ? { path: sanitizedNestedObserverPath } : {}),
   };
 
   const actorText = sanitizeField("actorStateText", input.actorStateText ?? "");
@@ -194,7 +197,7 @@ export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemo
   const actor = {
     state: actorState,
     summary: summarizeActorState(actorState, actorText),
-    text: actorText
+    text: actorText,
   };
 
   const status = resolveLaneStatus(completion.status, process.state, app.status, actor.state);
@@ -213,16 +216,17 @@ export function buildOssRemoteTelemetry(input: OssRemoteTelemetryInput): OssRemo
       status: "passed",
       redacted: redactedFields.size > 0,
       fields: [...redactedFields].sort(),
-      notes: redactedFields.size > 0
-        ? "Remote bootstrap evidence was sanitized before telemetry modeling."
-        : "Remote bootstrap evidence contained no recognized token or auth URL patterns."
-    }
+      notes:
+        redactedFields.size > 0
+          ? "Remote bootstrap evidence was sanitized before telemetry modeling."
+          : "Remote bootstrap evidence contained no recognized token or auth URL patterns.",
+    },
   };
 }
 
 export function parseOssRemoteCompletion(
   payload: Record<string, unknown> | string | null | undefined,
-  options: { checkedAt?: string; fallbackLogTail?: string } = {}
+  options: { checkedAt?: string; fallbackLogTail?: string } = {},
 ): OssRemoteCompletionTelemetry {
   const checkedAt = options.checkedAt ?? DEFAULT_COMPLETION_CHECKED_AT;
   const parsed = parseCompletionPayload(payload);
@@ -232,7 +236,7 @@ export function parseOssRemoteCompletion(
       present: false,
       ...(options.fallbackLogTail ? { logTail: tailLines(options.fallbackLogTail, 80) } : {}),
       reason: "Remote bootstrap completion marker is missing.",
-      status: "missing"
+      status: "missing",
     };
   }
 
@@ -243,35 +247,45 @@ export function parseOssRemoteCompletion(
       present: false,
       ...(options.fallbackLogTail ? { logTail: tailLines(options.fallbackLogTail, 80) } : {}),
       reason: "Remote bootstrap completion marker is missing a recognized status.",
-      status: "missing"
+      status: "missing",
     };
   }
 
   const nestedVerifyPassed = normalizeNestedVerifyPassed(parsed);
-  const logTail = typeof parsed.logTail === "string"
-    ? tailLines(redactOssRemoteTelemetryText(parsed.logTail), 80)
-    : options.fallbackLogTail ? tailLines(options.fallbackLogTail, 80) : undefined;
+  const logTail =
+    typeof parsed.logTail === "string"
+      ? tailLines(redactOssRemoteTelemetryText(parsed.logTail), 80)
+      : options.fallbackLogTail
+        ? tailLines(options.fallbackLogTail, 80)
+        : undefined;
 
   return {
-    checkedAt: typeof parsed.completedAt === "string" && parsed.completedAt.trim()
-      ? redactOssRemoteTelemetryText(parsed.completedAt).trim()
-      : checkedAt,
+    checkedAt:
+      typeof parsed.completedAt === "string" && parsed.completedAt.trim()
+        ? redactOssRemoteTelemetryText(parsed.completedAt).trim()
+        : checkedAt,
     present: true,
     reason: completionReason(parsed.reason, status),
     status,
-    ...(typeof parsed.exitCode === "number" && Number.isFinite(parsed.exitCode) ? { exitCode: parsed.exitCode } : {}),
+    ...(typeof parsed.exitCode === "number" && Number.isFinite(parsed.exitCode)
+      ? { exitCode: parsed.exitCode }
+      : {}),
     ...(logTail ? { logTail } : {}),
-    ...(typeof parsed.nestedObserverPresent === "boolean" ? { nestedObserverPresent: parsed.nestedObserverPresent } : {}),
-    ...(nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed })
+    ...(typeof parsed.nestedObserverPresent === "boolean"
+      ? { nestedObserverPresent: parsed.nestedObserverPresent }
+      : {}),
+    ...(nestedVerifyPassed === undefined ? {} : { nestedVerifyPassed }),
   };
 }
 
-export function normalizeOssRemoteCompletionStatus(value: unknown): Exclude<OssRemoteCompletionStatus, "missing"> | null {
-  return value === "running"
-    || value === "passed"
-    || value === "failed"
-    || value === "blocked"
-    || value === "timed_out"
+export function normalizeOssRemoteCompletionStatus(
+  value: unknown,
+): Exclude<OssRemoteCompletionStatus, "missing"> | null {
+  return value === "running" ||
+    value === "passed" ||
+    value === "failed" ||
+    value === "blocked" ||
+    value === "timed_out"
     ? value
     : null;
 }
@@ -282,38 +296,57 @@ export function classifyOssRemoteProcessState(text: string): OssRemoteProcessSta
     return "unknown";
   }
 
-  if (/\bsuspended\b|\bstopped\b|\bsigtstp\b|\bsigstop\b/i.test(normalized)
-    || /\bstate\s*[:=]\s*t\b/i.test(normalized)
-    || /\bstat(?:e)?\s*[:=]?\s*[^\n]*\bT\+?\b/.test(normalized)
-    || /(?:^|\n)\s*\d+\s+T\+?\s+\S+/.test(normalized)
-    || /\bT\+?\s+(?:\d|pts\/|tty)/.test(normalized)) {
+  if (
+    /\bsuspended\b|\bstopped\b|\bsigtstp\b|\bsigstop\b/i.test(normalized) ||
+    /\bstate\s*[:=]\s*t\b/i.test(normalized) ||
+    /\bstat(?:e)?\s*[:=]?\s*[^\n]*\bT\+?\b/.test(normalized) ||
+    /(?:^|\n)\s*\d+\s+T\+?\s+\S+/.test(normalized) ||
+    /\bT\+?\s+(?:\d|pts\/|tty)/.test(normalized)
+  ) {
     return "suspended";
   }
 
-  if (/\b(?:exited|exit code|terminated|defunct|zombie|not running|no process|dead)\b/i.test(normalized)) {
+  if (
+    /\b(?:exited|exit code|terminated|defunct|zombie|not running|no process|dead)\b/i.test(
+      normalized,
+    )
+  ) {
     return "exited";
   }
 
-  if (/\b(?:running|listening|ready|started|pid\s*[=:]?\s*\d+)\b/i.test(normalized)
-    || /\bstate\s*[:=]\s*[rs]\b/i.test(normalized)
-    || /\bstat(?:e)?\s*[:=]?\s*[^\n]*\b[RS]\+?\b/.test(normalized)) {
+  if (
+    /\b(?:running|listening|ready|started|pid\s*[=:]?\s*\d+)\b/i.test(normalized) ||
+    /\bstate\s*[:=]\s*[rs]\b/i.test(normalized) ||
+    /\bstat(?:e)?\s*[:=]?\s*[^\n]*\b[RS]\+?\b/.test(normalized)
+  ) {
     return "running";
   }
 
   return "unknown";
 }
 
-export function classifyOssRemoteAppStatus(input: { statusText?: string; url?: string }): OssRemoteAppStatus {
+export function classifyOssRemoteAppStatus(input: {
+  statusText?: string;
+  url?: string;
+}): OssRemoteAppStatus {
   const statusText = input.statusText?.trim() ?? "";
   if (!statusText && !input.url) {
     return "missing";
   }
 
-  if (/\b(?:200|204|ok|healthy|ready|running|listening|started|serving|vite ready|compiled successfully)\b/i.test(statusText)) {
+  if (
+    /\b(?:200|204|ok|healthy|ready|running|listening|started|serving|vite ready|compiled successfully)\b/i.test(
+      statusText,
+    )
+  ) {
     return "running";
   }
 
-  if (/\b(?:connection refused|eaddrinuse|failed|stopped|not running|timeout|timed out|cannot connect|no server)\b/i.test(statusText)) {
+  if (
+    /\b(?:connection refused|eaddrinuse|failed|stopped|not running|timeout|timed out|cannot connect|no server)\b/i.test(
+      statusText,
+    )
+  ) {
     return "stopped";
   }
 
@@ -323,10 +356,13 @@ export function classifyOssRemoteAppStatus(input: { statusText?: string; url?: s
 export function classifyOssRemoteActorState(
   actorStateText: string,
   processState: OssRemoteProcessState = "unknown",
-  completionStatus: OssRemoteCompletionStatus = "missing"
+  completionStatus: OssRemoteCompletionStatus = "missing",
 ): OssRemoteActorState {
   const normalized = actorStateText.trim();
-  if (/\bsuspended\b|\bstopped\b|\bsigtstp\b|\bsigstop\b/i.test(normalized) || processState === "suspended") {
+  if (
+    /\bsuspended\b|\bstopped\b|\bsigtstp\b|\bsigstop\b/i.test(normalized) ||
+    processState === "suspended"
+  ) {
     return "suspended";
   }
 
@@ -338,17 +374,25 @@ export function classifyOssRemoteActorState(
     return "blocked";
   }
 
-  if (/\b(?:failed|failure|exit code [1-9]\d*)\b/i.test(normalized) || completionStatus === "failed") {
+  if (
+    /\b(?:failed|failure|exit code [1-9]\d*)\b/i.test(normalized) ||
+    completionStatus === "failed"
+  ) {
     return "failed";
   }
 
-  if (/\b(?:passed|success|complete|completed)\b/i.test(normalized) || completionStatus === "passed") {
+  if (
+    /\b(?:passed|success|complete|completed)\b/i.test(normalized) ||
+    completionStatus === "passed"
+  ) {
     return "passed";
   }
 
-  if (/\b(?:running|watching|active|spawned|pid\s*[=:]?\s*\d+)\b/i.test(normalized)
-    || processState === "running"
-    || completionStatus === "running") {
+  if (
+    /\b(?:running|watching|active|spawned|pid\s*[=:]?\s*\d+)\b/i.test(normalized) ||
+    processState === "running" ||
+    completionStatus === "running"
+  ) {
     return "running";
   }
 
@@ -364,7 +408,9 @@ export function sanitizeOssRemoteTelemetryUrl(value: string): string {
   return redactAuthQueryParams(applySecretPatterns(value));
 }
 
-function parseCompletionPayload(payload: Record<string, unknown> | string | null | undefined): Record<string, unknown> | null {
+function parseCompletionPayload(
+  payload: Record<string, unknown> | string | null | undefined,
+): Record<string, unknown> | null {
   if (!payload) {
     return null;
   }
@@ -401,7 +447,10 @@ function normalizeNestedVerifyPassed(parsed: Record<string, unknown>): boolean |
   return undefined;
 }
 
-function completionReason(reason: unknown, status: Exclude<OssRemoteCompletionStatus, "missing">): string {
+function completionReason(
+  reason: unknown,
+  status: Exclude<OssRemoteCompletionStatus, "missing">,
+): string {
   if (typeof reason === "string" && reason.trim()) {
     return compactReason(redactOssRemoteTelemetryText(reason));
   }
@@ -424,17 +473,24 @@ function resolveLaneStatus(
   completionStatus: OssRemoteCompletionStatus,
   processState: OssRemoteProcessState,
   appStatus: OssRemoteAppStatus,
-  actorState: OssRemoteActorState
+  actorState: OssRemoteActorState,
 ): OssRemoteLaneStatus {
-  if (completionStatus === "passed"
-    || completionStatus === "failed"
-    || completionStatus === "blocked"
-    || completionStatus === "timed_out"
-    || completionStatus === "running") {
+  if (
+    completionStatus === "passed" ||
+    completionStatus === "failed" ||
+    completionStatus === "blocked" ||
+    completionStatus === "timed_out" ||
+    completionStatus === "running"
+  ) {
     return completionStatus;
   }
 
-  if (actorState === "failed" || actorState === "blocked" || actorState === "timed_out" || actorState === "passed") {
+  if (
+    actorState === "failed" ||
+    actorState === "blocked" ||
+    actorState === "timed_out" ||
+    actorState === "passed"
+  ) {
     return actorState;
   }
 
@@ -502,7 +558,7 @@ function normalizeOptionalText(value: string | null | undefined): string | undef
 function applySecretPatterns(value: string): string {
   return secretPatterns.reduce(
     (current, entry) => current.replace(entry.pattern, entry.replacement),
-    value
+    value,
   );
 }
 
@@ -523,38 +579,45 @@ function redactAuthQueryParams(value: string): string {
   const hashStart = value.indexOf("#", queryStart);
   const queryEnd = hashStart === -1 ? value.length : hashStart;
   const query = value.slice(queryStart + 1, queryEnd);
-  const sanitizedQuery = query.split("&").map((part) => {
-    if (!part) {
-      return part;
-    }
+  const sanitizedQuery = query
+    .split("&")
+    .map((part) => {
+      if (!part) {
+        return part;
+      }
 
-    const equalsIndex = part.indexOf("=");
-    const key = equalsIndex === -1 ? part : part.slice(0, equalsIndex);
-    if (!isAuthLikeQueryKey(key)) {
-      return part;
-    }
+      const equalsIndex = part.indexOf("=");
+      const key = equalsIndex === -1 ? part : part.slice(0, equalsIndex);
+      if (!isAuthLikeQueryKey(key)) {
+        return part;
+      }
 
-    return equalsIndex === -1 ? key : `${key}=${REDACTED_URL_PARAM}`;
-  }).join("&");
+      return equalsIndex === -1 ? key : `${key}=${REDACTED_URL_PARAM}`;
+    })
+    .join("&");
 
   return `${value.slice(0, queryStart + 1)}${sanitizedQuery}${value.slice(queryEnd)}`;
 }
 
 function isAuthLikeQueryKey(value: string): boolean {
-  const normalized = safeDecodeURIComponent(value).replace(/[^a-z0-9]/gi, "").toLowerCase();
-  return normalized.includes("token")
-    || normalized.includes("secret")
-    || normalized.includes("password")
-    || normalized.includes("credential")
-    || normalized.includes("auth")
-    || normalized.includes("apikey")
-    || normalized.includes("signature")
-    || normalized.includes("bearer")
-    || normalized.includes("jwt")
-    || normalized.includes("session")
-    || normalized === "key"
-    || normalized.endsWith("key")
-    || normalized === "sig";
+  const normalized = safeDecodeURIComponent(value)
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
+  return (
+    normalized.includes("token") ||
+    normalized.includes("secret") ||
+    normalized.includes("password") ||
+    normalized.includes("credential") ||
+    normalized.includes("auth") ||
+    normalized.includes("apikey") ||
+    normalized.includes("signature") ||
+    normalized.includes("bearer") ||
+    normalized.includes("jwt") ||
+    normalized.includes("session") ||
+    normalized === "key" ||
+    normalized.endsWith("key") ||
+    normalized === "sig"
+  );
 }
 
 function safeDecodeURIComponent(value: string): string {

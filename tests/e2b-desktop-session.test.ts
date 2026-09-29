@@ -8,7 +8,9 @@ function fixture(result: boolean = true) {
   const desktop = { sandboxId: "owned-desktop" } as E2BDesktopSandbox;
   const create = vi.fn(async () => desktop);
   const kill = vi.fn(async (_id: string, _options?: { requestTimeoutMs?: number }) => result);
-  const list = vi.fn(() => { throw new Error("must not enumerate"); });
+  const list = vi.fn(() => {
+    throw new Error("must not enumerate");
+  });
   const module: E2BDesktopModule = { Sandbox: { create, kill, list } };
   return { desktop, module, create, kill, list };
 }
@@ -16,7 +18,11 @@ function fixture(result: boolean = true) {
 describe("hosted desktop session adapter", () => {
   it("preserves default and template creation arguments", async () => {
     const f = fixture();
-    const options = { apiKey: "synthetic", timeoutMs: 1000, lifecycle: { onTimeout: "kill" as const } };
+    const options = {
+      apiKey: "synthetic",
+      timeoutMs: 1000,
+      lifecycle: { onTimeout: "kill" as const },
+    };
     const first = await allocateE2BDesktopSession(f.module, options);
     expect(f.create).toHaveBeenLastCalledWith(options);
     await first.allocation.close();
@@ -48,28 +54,44 @@ describe("hosted desktop session adapter", () => {
   it("does not claim release for absent methods, malformed results or exceptions", async () => {
     const missing = fixture();
     delete missing.module.Sandbox.kill;
-    expect(await (await allocateE2BDesktopSession(missing.module, { apiKey: "synthetic" })).allocation.close())
-      .toEqual({ status: "unconfirmed", reason: "release_unavailable" });
+    expect(
+      await (
+        await allocateE2BDesktopSession(missing.module, { apiKey: "synthetic" })
+      ).allocation.close(),
+    ).toEqual({ status: "unconfirmed", reason: "release_unavailable" });
     const malformed = fixture();
-    malformed.module.Sandbox.kill = "unsupported" as unknown as NonNullable<E2BDesktopModule["Sandbox"]["kill"]>;
+    malformed.module.Sandbox.kill = "unsupported" as unknown as NonNullable<
+      E2BDesktopModule["Sandbox"]["kill"]
+    >;
     const acquired = await allocateE2BDesktopSession(malformed.module, { apiKey: "synthetic" });
     expect(acquired.allocation.resourceId).toBe("owned-desktop");
-    expect(await acquired.allocation.close()).toEqual({ status: "unconfirmed", reason: "release_unavailable" });
+    expect(await acquired.allocation.close()).toEqual({
+      status: "unconfirmed",
+      reason: "release_unavailable",
+    });
     const invalid = fixture();
     invalid.kill.mockResolvedValue(undefined as unknown as boolean);
-    expect(await (await allocateE2BDesktopSession(invalid.module, { apiKey: "synthetic" })).allocation.close())
-      .toEqual({ status: "unconfirmed", reason: "invalid_result" });
+    expect(
+      await (
+        await allocateE2BDesktopSession(invalid.module, { apiKey: "synthetic" })
+      ).allocation.close(),
+    ).toEqual({ status: "unconfirmed", reason: "invalid_result" });
     const failed = fixture();
     failed.kill.mockRejectedValue(new Error("unreachable"));
-    expect(await (await allocateE2BDesktopSession(failed.module, { apiKey: "synthetic" })).allocation.close())
-      .toMatchObject({ status: "unconfirmed", reason: "release_failed" });
+    expect(
+      await (
+        await allocateE2BDesktopSession(failed.module, { apiKey: "synthetic" })
+      ).allocation.close(),
+    ).toMatchObject({ status: "unconfirmed", reason: "release_failed" });
     expect(failed.list).not.toHaveBeenCalled();
   });
 
   it("does not invent cleanup authority when creation never returns a handle", async () => {
     const f = fixture();
     f.create.mockRejectedValue(new Error("unauthorized"));
-    await expect(allocateE2BDesktopSession(f.module, { apiKey: "synthetic" })).rejects.toThrow("unauthorized");
+    await expect(allocateE2BDesktopSession(f.module, { apiKey: "synthetic" })).rejects.toThrow(
+      "unauthorized",
+    );
     expect(f.kill).not.toHaveBeenCalled();
     expect(f.list).not.toHaveBeenCalled();
   });

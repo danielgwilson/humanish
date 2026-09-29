@@ -5,7 +5,11 @@ import { CuaExecutorError } from "./cua-executor-error.js";
 export type DesktopReleaseResult =
   | { status: "released"; reason: "terminated" | "already_gone" }
   | { status: "retained"; reason: "debug" }
-  | { status: "unconfirmed"; reason: "release_unavailable" | "invalid_result" | "release_failed"; error?: unknown };
+  | {
+      status: "unconfirmed";
+      reason: "release_unavailable" | "invalid_result" | "release_failed";
+      error?: unknown;
+    };
 
 export interface DesktopSession {
   readonly resourceId: string;
@@ -40,11 +44,16 @@ export function ownDesktopAllocation(options: {
   };
   const close: OwnedDesktopAllocation["close"] = (policy = {}) => {
     // Install the promise before invoking release: concurrent/reentrant callers share it.
-    closing ??= policy.retainForDebug === true
-      ? Promise.resolve({ status: "retained", reason: "debug" })
-      : Promise.resolve().then(release).catch((error: unknown): DesktopReleaseResult => ({
-          status: "unconfirmed", reason: "release_failed", error
-        }));
+    closing ??=
+      policy.retainForDebug === true
+        ? Promise.resolve({ status: "retained", reason: "debug" })
+        : Promise.resolve()
+            .then(release)
+            .catch((error: unknown): DesktopReleaseResult => ({
+              status: "unconfirmed",
+              reason: "release_failed",
+              error,
+            }));
     return closing;
   };
   return Object.freeze({
@@ -58,12 +67,20 @@ export function ownDesktopAllocation(options: {
         resourceId,
         close,
         executor: {
-          ...(executor.stallRecovery === "fail_closed" ? { stallRecovery: "fail_closed" as const } : {}),
+          ...(executor.stallRecovery === "fail_closed"
+            ? { stallRecovery: "fail_closed" as const }
+            : {}),
           ...(executor.speechEnabled === true ? { speechEnabled: true as const } : {}),
-          observe: async () => { assertOpen(); return executor.observe(); },
-          execute: async (action: CuaAction, signal?: AbortSignal) => { assertOpen(); return executor.execute(action, signal); }
-        }
+          observe: async () => {
+            assertOpen();
+            return executor.observe();
+          },
+          execute: async (action: CuaAction, signal?: AbortSignal) => {
+            assertOpen();
+            return executor.execute(action, signal);
+          },
+        },
       });
-    }
+    },
   });
 }

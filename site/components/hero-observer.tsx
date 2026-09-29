@@ -20,7 +20,21 @@ const STAGE_H = 900;
  * link: a scaled eight-participant grid is unreadable there and the replay streams
  * captures for as long as it plays.
  */
-export default function HeroObserver({ slug, participants, title, facts, runId, speed = 6 }: { slug: string; participants: number; title: string; facts?: string; runId?: string; speed?: number }) {
+export default function HeroObserver({
+  slug,
+  participants,
+  title,
+  facts,
+  runId,
+  speed = 6,
+}: {
+  slug: string;
+  participants: number;
+  title: string;
+  facts?: string;
+  runId?: string;
+  speed?: number;
+}) {
   const frameRef = useRef<HTMLDivElement>(null);
   const catchRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -39,7 +53,9 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
     setPlay(!reducedMotion());
     setPhone(window.matchMedia("(max-width: 900px)").matches);
   }, []);
-  useEffect(() => { if (inView && phone === false) setArmed(true); }, [inView, phone]);
+  useEffect(() => {
+    if (inView && phone === false) setArmed(true);
+  }, [inView, phone]);
 
   // Collapsed: the stage scales to the column width. Expanded: it scales to fit the
   // frame's width and height and sits centered.
@@ -47,25 +63,43 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
     const frame = frameRef.current;
     if (!frame) return;
     const measure = () => {
-      const w = frame.clientWidth, h = frame.clientHeight;
-      if (!expanded) { setFit({ scale: Math.min(1, w / STAGE_W), left: 0, top: 0 }); return; }
+      const w = frame.clientWidth,
+        h = frame.clientHeight;
+      if (!expanded) {
+        setFit({ scale: Math.min(1, w / STAGE_W), left: 0, top: 0 });
+        return;
+      }
       const scale = Math.min(1, w / STAGE_W, h / STAGE_H);
-      setFit({ scale, left: Math.max(0, (w - STAGE_W * scale) / 2), top: Math.max(0, (h - STAGE_H * scale) / 2) });
+      setFit({
+        scale,
+        left: Math.max(0, (w - STAGE_W * scale) / 2),
+        top: Math.max(0, (h - STAGE_H * scale) / 2),
+      });
     };
     measure();
     const ro = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
     ro?.observe(frame);
     window.addEventListener("resize", measure);
-    return () => { ro?.disconnect(); window.removeEventListener("resize", measure); };
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [expanded]);
 
-  const open = useCallback(() => { setExpanded(true); setRevealed(true); }, []);
-  const close = useCallback(() => { setExpanded(false); }, []);
+  const open = useCallback(() => {
+    setExpanded(true);
+    setRevealed(true);
+  }, []);
+  const close = useCallback(() => {
+    setExpanded(false);
+  }, []);
   useEffect(() => {
     if (!expanded) return;
     const previous = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
     window.addEventListener("keydown", onKey);
     closeRef.current?.focus();
     return () => {
@@ -82,16 +116,41 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
   const full = `/runs/${slug}/observer/index.html?v=${v}`;
   const showPoster = !(ready && phone === false);
   return (
-    <figure className={expanded ? "hero-observer expanded" : revealed ? "hero-observer rev in" : "hero-observer rev"} ref={ref} style={{ "--d": ".3s" } as React.CSSProperties}
-      role={expanded ? "dialog" : undefined} aria-modal={expanded ? true : undefined} aria-label={expanded ? `${title}, Observer replay` : undefined}>
+    <figure
+      className={
+        expanded
+          ? "hero-observer expanded"
+          : revealed
+            ? "hero-observer rev in"
+            : "hero-observer rev"
+      }
+      ref={ref}
+      style={{ "--d": ".3s" } as React.CSSProperties}
+      role={expanded ? "dialog" : undefined}
+      aria-modal={expanded ? true : undefined}
+      aria-label={expanded ? `${title}, Observer replay` : undefined}
+    >
       <div className="ho-bar">
-        <span className="lane-id"><b>Example ·</b> {participants} synthetic players in one game lobby</span>
+        <span className="lane-id">
+          <b>Example ·</b> {participants} synthetic players in one game lobby
+        </span>
         <span className="ho-bar-end">
           <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>
-          {expanded ? <><span className="ho-esc">Esc closes</span><button type="button" className="ho-close" ref={closeRef} onClick={close}>Close ✕</button></> : null}
+          {expanded ? (
+            <>
+              <span className="ho-esc">Esc closes</span>
+              <button type="button" className="ho-close" ref={closeRef} onClick={close}>
+                Close ✕
+              </button>
+            </>
+          ) : null}
         </span>
       </div>
-      <div className="ho-frame" ref={frameRef} style={expanded ? undefined : { height: Math.round(STAGE_H * fit.scale) }}>
+      <div
+        className="ho-frame"
+        ref={frameRef}
+        style={expanded ? undefined : { height: Math.round(STAGE_H * fit.scale) }}
+      >
         {armed ? (
           <iframe
             className="ho-iframe"
@@ -100,13 +159,35 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
             // In the hero the frame is a picture: inert keeps Tab and the arrow keys on the page
             // (a keyboard-first participant lost document scrolling to the embed). The lightbox lifts it.
             inert={!expanded}
-            style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${fit.scale})`, left: fit.left, top: fit.top }}
+            style={{
+              width: STAGE_W,
+              height: STAGE_H,
+              transform: `scale(${fit.scale})`,
+              left: fit.left,
+              top: fit.top,
+            }}
             onLoad={() => setReady(true)}
           />
         ) : null}
-        <Image className="ho-poster" src={`/runs/${slug}/poster.jpg`} alt={`${title}: the Observer grid of the saved run`} width={1440} height={950} sizes="(max-width: 900px) 100vw, 720px" quality={70} loading="eager" hidden={!showPoster} />
+        <Image
+          className="ho-poster"
+          src={`/runs/${slug}/poster.jpg`}
+          alt={`${title}: the Observer grid of the saved run`}
+          width={1440}
+          height={950}
+          sizes="(max-width: 900px) 100vw, 720px"
+          quality={70}
+          loading="eager"
+          hidden={!showPoster}
+        />
         {!expanded && phone === false ? (
-          <button type="button" className="ho-catch" ref={catchRef} onClick={open} aria-label="Expand the Observer replay">
+          <button
+            type="button"
+            className="ho-catch"
+            ref={catchRef}
+            onClick={open}
+            aria-label="Expand the Observer replay"
+          >
             <span className="ho-hint">Click to expand</span>
           </button>
         ) : null}
@@ -121,7 +202,9 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
             </Fragment>
           ))}
         </span>
-        <a className="ho-open" href={full} target="_blank" rel="noopener">Open the Observer ↗</a>
+        <a className="ho-open" href={full} target="_blank" rel="noopener">
+          Open the Observer ↗
+        </a>
         {runId ? <code className="ho-run">run {runId}</code> : null}
       </figcaption>
     </figure>

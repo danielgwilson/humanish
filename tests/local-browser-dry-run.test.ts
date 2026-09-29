@@ -5,13 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({ prepare: vi.fn(), account: vi.fn() }));
 
-vi.mock("../src/local-runtime.js", async importOriginal => ({
-  ...await importOriginal<typeof import("../src/local-runtime.js")>(),
-  prepareLocalRuntime: calls.prepare
+vi.mock("../src/local-runtime.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/local-runtime.js")>()),
+  prepareLocalRuntime: calls.prepare,
 }));
-vi.mock("../src/restricted-codex-analysis.js", async importOriginal => ({
-  ...await importOriginal<typeof import("../src/restricted-codex-analysis.js")>(),
-  checkRestrictedCodexAnalysisReadiness: calls.account
+vi.mock("../src/restricted-codex-analysis.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/restricted-codex-analysis.js")>()),
+  checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 
 import type { LabConfig } from "../src/lab-config.js";
@@ -34,7 +34,7 @@ describe("local browser dry-run", () => {
       subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
       actors: [{ type: "local-agent", localAgent: "codex", mission: "Complete a synthetic task." }],
       execution: { target: "local", timeoutMs: 120_000 },
-      scenario: { mode: "live" }
+      scenario: { mode: "live" },
     };
 
     const outcome = await runLab(config, { cwd, dryRun: true, open: false });

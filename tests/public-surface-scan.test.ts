@@ -10,7 +10,7 @@ async function createGitHistory(commitEmails: string[]): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "humanish-public-surface-scan-"));
   await writeFile(
     join(root, "package.json"),
-    `${JSON.stringify({ name: "public-surface-scan-fixture", version: "1.0.0" }, null, 2)}\n`
+    `${JSON.stringify({ name: "public-surface-scan-fixture", version: "1.0.0" }, null, 2)}\n`,
   );
   spawnSync("git", ["init", "--quiet"], { cwd: root });
 
@@ -21,11 +21,16 @@ async function createGitHistory(commitEmails: string[]): Promise<string> {
     const commit = spawnSync(
       "git",
       [
-        "-c", "user.name=Public Surface Test",
-        "-c", `user.email=${email}`,
-        "commit", "--quiet", "-m", `fixture ${index}`
+        "-c",
+        "user.name=Public Surface Test",
+        "-c",
+        `user.email=${email}`,
+        "commit",
+        "--quiet",
+        "-m",
+        `fixture ${index}`,
       ],
-      { cwd: root, encoding: "utf8" }
+      { cwd: root, encoding: "utf8" },
     );
     expect(commit.status, commit.stderr).toBe(0);
   }
@@ -41,9 +46,9 @@ function runScan(root: string, denylistPattern = "", githubRef = "") {
       ...process.env,
       GITHUB_REF: githubRef,
       HUMANISH_PUBLIC_COMMIT_EMAIL_ALLOWLIST: "",
-      HUMANISH_PUBLIC_DENYLIST_PATTERN: denylistPattern
+      HUMANISH_PUBLIC_DENYLIST_PATTERN: denylistPattern,
     },
-    timeout: 30_000
+    timeout: 30_000,
   });
 }
 
@@ -52,13 +57,21 @@ describe("public-surface commit email policy", () => {
     const root = await createGitHistory(["noreply@github.com"]);
     const guestHome = ["", "home", "humanish"].join("/");
     try {
-      for (const file of ["src/guest-runtime-desktop.ts", "dist/guest-runtime-desktop.js", "dist/guest-runtime-desktop.d.ts", "runtime/browser-guest/control/root/opt/humanish/control/vsock.py"]) {
+      for (const file of [
+        "src/guest-runtime-desktop.ts",
+        "dist/guest-runtime-desktop.js",
+        "dist/guest-runtime-desktop.d.ts",
+        "runtime/browser-guest/control/root/opt/humanish/control/vsock.py",
+      ]) {
         await mkdir(dirname(join(root, file)), { recursive: true });
         await writeFile(join(root, file), `"${guestHome}/.cache" '${guestHome}/.config'\n`);
       }
       expect(runScan(root).status).toBe(0);
       // Neither an arbitrary guest path nor a private username is exempted.
-      await writeFile(join(root, "src/guest-runtime-desktop.ts"), `"${guestHome}/.config/private" "${["", "home", "maintainer", ".cache"].join("/")}"\n`);
+      await writeFile(
+        join(root, "src/guest-runtime-desktop.ts"),
+        `"${guestHome}/.config/private" "${["", "home", "maintainer", ".cache"].join("/")}"\n`,
+      );
       const denied = runScan(root);
       expect(denied.status).toBe(1);
       expect(denied.stderr).toContain("absolute_linux_home_path");
@@ -75,7 +88,7 @@ describe("public-surface commit email policy", () => {
       "0xContributor@users.noreply.github.com",
       "123456+modern-contributor@users.noreply.github.com",
       "github-actions[bot]@users.noreply.github.com",
-      "noreply@github.com"
+      "noreply@github.com",
     ]);
     try {
       const scan = runScan(root);
@@ -93,23 +106,34 @@ describe("public-surface commit email policy", () => {
     // welcome. Their commits are judged when the PR is proposed, which is when it matters to us.
     const root = await createGitHistory(["noreply@github.com"]);
     try {
-      const branched = spawnSync("git", ["checkout", "--quiet", "-b", "fork-work"], { cwd: root, encoding: "utf8" });
+      const branched = spawnSync("git", ["checkout", "--quiet", "-b", "fork-work"], {
+        cwd: root,
+        encoding: "utf8",
+      });
       expect(branched.status, branched.stderr).toBe(0);
       await writeFile(join(root, "contribution.txt"), "a welcome contribution\n");
       spawnSync("git", ["add", "."], { cwd: root });
       const authored = spawnSync(
         "git",
         [
-          "-c", "user.name=External Contributor",
-          "-c", "user.email=contributor@example.test",
-          "commit", "--quiet", "-m", "their contribution"
+          "-c",
+          "user.name=External Contributor",
+          "-c",
+          "user.email=contributor@example.test",
+          "commit",
+          "--quiet",
+          "-m",
+          "their contribution",
         ],
-        { cwd: root, encoding: "utf8" }
+        { cwd: root, encoding: "utf8" },
       );
       expect(authored.status, authored.stderr).toBe(0);
 
       // Park it exactly where a fetched pull ref lives, then take the branch away.
-      const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+      const sha = spawnSync("git", ["rev-parse", "HEAD"], {
+        cwd: root,
+        encoding: "utf8",
+      }).stdout.trim();
       spawnSync("git", ["checkout", "--quiet", "-"], { cwd: root });
       spawnSync("git", ["update-ref", "refs/remotes/origin-all/pull/7/head", sha], { cwd: root });
       spawnSync("git", ["branch", "--quiet", "-D", "fork-work"], { cwd: root });
@@ -130,14 +154,26 @@ describe("public-surface commit email policy", () => {
     const root = await createGitHistory(["noreply@github.com"]);
     try {
       // A side branch carrying an unapproved author, never merged.
-      const branch = spawnSync("git", ["checkout", "--quiet", "-b", "someone-elses-work"], { cwd: root, encoding: "utf8" });
+      const branch = spawnSync("git", ["checkout", "--quiet", "-b", "someone-elses-work"], {
+        cwd: root,
+        encoding: "utf8",
+      });
       expect(branch.status, branch.stderr).toBe(0);
       await writeFile(join(root, "their-file.txt"), "their work\n");
       spawnSync("git", ["add", "."], { cwd: root });
       const theirs = spawnSync(
         "git",
-        ["-c", "user.name=Someone Else", "-c", "user.email=nope@example.test", "commit", "--quiet", "-m", "their commit"],
-        { cwd: root, encoding: "utf8" }
+        [
+          "-c",
+          "user.name=Someone Else",
+          "-c",
+          "user.email=nope@example.test",
+          "commit",
+          "--quiet",
+          "-m",
+          "their commit",
+        ],
+        { cwd: root, encoding: "utf8" },
       );
       expect(theirs.status, theirs.stderr).toBe(0);
       spawnSync("git", ["checkout", "--quiet", "-"], { cwd: root });
@@ -175,7 +211,7 @@ describe("public-surface commit email policy", () => {
       "-@users.noreply.github.com",
       "bad-@users.noreply.github.com",
       "a--b@users.noreply.github.com",
-      `${"a".repeat(40)}@users.noreply.github.com`
+      `${"a".repeat(40)}@users.noreply.github.com`,
     ];
     const root = await createGitHistory(rejectedEmails);
     try {

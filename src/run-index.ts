@@ -24,7 +24,7 @@ import {
   isRunStatusRecord,
   type RunLabProvenance,
   type RunLiveness,
-  type RunStatusRecord
+  type RunStatusRecord,
 } from "./run-status.js";
 
 export const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
@@ -143,9 +143,13 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
     updatedAt: record.updatedAt,
     ...(record.completedAt === undefined ? {} : { completedAt: record.completedAt }),
     ...(record.outcome?.verdict === undefined ? {} : { verdict: record.outcome.verdict }),
-    ...(record.outcome?.participants === undefined ? {} : { participants: record.outcome.participants }),
-    ...(record.outcome?.estimatedCostUsd === undefined ? {} : { estimatedCostUsd: record.outcome.estimatedCostUsd }),
-    ...(Number.isFinite(started) && Number.isFinite(ended) ? { durationMs: ended - started } : {})
+    ...(record.outcome?.participants === undefined
+      ? {}
+      : { participants: record.outcome.participants }),
+    ...(record.outcome?.estimatedCostUsd === undefined
+      ? {}
+      : { estimatedCostUsd: record.outcome.estimatedCostUsd }),
+    ...(Number.isFinite(started) && Number.isFinite(ended) ? { durationMs: ended - started } : {}),
   };
 }
 
@@ -171,18 +175,28 @@ function entryFromBundle(runId: string, bundle: BundleFacts): RunIndexEntry {
   // read), and that bundle marks its simulations `running`. Reaching this branch at all means there
   // was no status record to classify from, so there is no freshness to judge — and the honest
   // reading of "it started, and nothing here says it finished" is interrupted, not finished.
-  const inProgress = (bundle.simulations ?? []).some((simulation) => simulation?.status === "running");
+  const inProgress = (bundle.simulations ?? []).some(
+    (simulation) => simulation?.status === "running",
+  );
   const legacyLabId = bundle.lab === undefined ? inferLegacyLabId(bundle) : undefined;
   return {
     runId,
     derivedFrom: "bundle",
     liveness: inProgress ? "interrupted" : "finished",
     ...(bundle.mode === "dry-run" || bundle.mode === "live" ? { mode: bundle.mode } : {}),
-    ...(bundle.lab !== undefined ? { lab: bundle.lab } : legacyLabId === undefined ? {} : { lab: { id: legacyLabId } }),
+    ...(bundle.lab !== undefined
+      ? { lab: bundle.lab }
+      : legacyLabId === undefined
+        ? {}
+        : { lab: { id: legacyLabId } }),
     ...(bundle.createdAt === undefined ? {} : { startedAt: bundle.createdAt }),
     ...(bundle.review?.verdict === undefined ? {} : { verdict: bundle.review.verdict }),
-    ...(bundle.review?.participants === undefined ? {} : { participants: bundle.review.participants }),
-    ...(bundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: bundle.cost.estimatedTotalUsd })
+    ...(bundle.review?.participants === undefined
+      ? {}
+      : { participants: bundle.review.participants }),
+    ...(bundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: bundle.cost.estimatedTotalUsd }),
   };
 }
 
@@ -200,7 +214,10 @@ export interface ReadRunIndexOptions {
  * Read every run in `.humanish/runs`, cheapest source first. Never throws for a bad run directory;
  * an unreadable one is named in `unreadable`.
  */
-export async function readRunIndex(cwdInput: string, options: ReadRunIndexOptions = {}): Promise<RunIndexResult> {
+export async function readRunIndex(
+  cwdInput: string,
+  options: ReadRunIndexOptions = {},
+): Promise<RunIndexResult> {
   const cwd = path.resolve(cwdInput);
   const runsRoot = path.join(cwd, ".humanish", "runs");
   const nowMs = options.nowMs ?? Date.now();
@@ -233,8 +250,17 @@ export async function readRunIndex(cwdInput: string, options: ReadRunIndexOption
         // not changed can still have gone stale since the last read.
         runs.push(
           cached.derivedFrom === "status" && cached.updatedAt !== undefined
-            ? { ...cached, liveness: classifyRunStatus({ state: cached.completedAt === undefined ? "running" : "finished", updatedAt: cached.updatedAt }, nowMs) }
-            : cached
+            ? {
+                ...cached,
+                liveness: classifyRunStatus(
+                  {
+                    state: cached.completedAt === undefined ? "running" : "finished",
+                    updatedAt: cached.updatedAt,
+                  },
+                  nowMs,
+                ),
+              }
+            : cached,
         );
         continue;
       }
@@ -278,7 +304,7 @@ export async function readRunIndex(cwdInput: string, options: ReadRunIndexOption
     schema: RUN_INDEX_SCHEMA,
     cwd,
     runs: options.limit === undefined ? runs : runs.slice(0, Math.max(0, options.limit)),
-    unreadable
+    unreadable,
   };
 }
 

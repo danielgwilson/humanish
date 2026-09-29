@@ -72,11 +72,11 @@ worth not rediscovering:
   Both crashes faulted at a byte-identical address, and it reproduces on an
   isolated socket in three commands — a deterministic bug, not a flake.
 - `-g` is what made it catastrophic rather than local. `tmux set-option -t SESS
-  -g window-size manual` sets the option SERVER-WIDE; the `-t` does not scope
+-g window-size manual` sets the option SERVER-WIDE; the `-t` does not scope
   it. One server means every session on the machine dies together.
 - The obvious replacement does NOT work on a shared server. `new-session -x 36
-  -y 14` alone yielded a 59-column pane here, because the default `window-size
-  latest` sizes the window to the most recently active client and overrides
+-y 14` alone yielded a 59-column pane here, because the default `window-size
+latest` sizes the window to the most recently active client and overrides
   `-x`/`-y`. Measure `#{pane_width}` before trusting a width.
 
 So, if a real terminal is genuinely needed:
@@ -95,6 +95,7 @@ So, if a real terminal is genuinely needed:
   `@xterm/headless` if output ever needs parsing for colour, cursor or
   alt-screen assertions — that pairing is what the terminal-testing tools
   (xterm.js/VS Code, termless) converge on.
+
 - If tmux is still the right tool, put it on its OWN socket
   (`tmux -L humanish-tui …`) so a tmux bug can only kill that server, and size
   windows with `resize-window -t <session> -x W -y H`, which is scoped to the
@@ -105,6 +106,9 @@ So, if a real terminal is genuinely needed:
 - Ink's `<Text>` props are not optional-with-undefined and this repo compiles
   with `exactOptionalPropertyTypes`, so pass colour through `src/text-props.ts`
   (`{...color(maybe)}`) rather than `color={maybe}`.
+- Put spaces that matter in terminal output inside a string literal:
+  `<Text>{"  none yet"}</Text>`. oxfmt, like Prettier, collapses runs of spaces in
+  JSX text, which is harmless in a browser and changes an Ink layout.
 - Measure terminal size from Ink's own `useStdout`, never from a prop. Two
   different stdout objects means laying out to one width and drawing into
   another — silently, and only visibly at narrow widths.

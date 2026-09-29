@@ -9,7 +9,7 @@ import {
   resolveExistingHumanishStorageDirectory,
   type PreparedRunArtifactPaths,
   validatePreparedRunArtifactPaths,
-  validatePreparedRunRootIdentity
+  validatePreparedRunRootIdentity,
 } from "./run-paths.js";
 
 interface FileIdentity {
@@ -45,7 +45,7 @@ export type PreparedOutputRoot = PreparedOutputDirectory;
  */
 export async function prepareSelectedOutputDirectory(
   baseDir: string,
-  selectedPath: string
+  selectedPath: string,
 ): Promise<PreparedSelectedOutputDirectory> {
   assertPathText(selectedPath, "Output directory");
   const requestedPath = path.resolve(baseDir, selectedPath);
@@ -80,7 +80,7 @@ export async function bindExistingManagedHumanishOutputDirectory(
 /** Prepare an arbitrary caller-selected output file whose parent is independent. */
 export async function prepareSelectedOutputFile(
   baseDir: string,
-  selectedPath: string
+  selectedPath: string,
 ): Promise<PreparedSelectedOutputFile> {
   assertPathText(selectedPath, "Output file");
   const requestedPath = path.resolve(baseDir, selectedPath);
@@ -98,14 +98,14 @@ export async function prepareSelectedOutputFile(
     parentIdentity,
     physicalParent,
     physicalPath,
-    requestedPath
+    requestedPath,
   });
   await assertPreparedSelectedOutputFile(prepared);
   return prepared;
 }
 
 export async function assertPreparedSelectedOutputDirectory(
-  prepared: PreparedSelectedOutputDirectory
+  prepared: PreparedSelectedOutputDirectory,
 ): Promise<void> {
   if (prepared.parentRun) {
     await validatePreparedRunRootIdentity(prepared.parentRun);
@@ -118,27 +118,27 @@ export async function assertPreparedSelectedOutputDirectory(
 }
 
 export async function assertPreparedSelectedOutputFile(
-  prepared: PreparedSelectedOutputFile
+  prepared: PreparedSelectedOutputFile,
 ): Promise<void> {
   const requestedPhysicalParent = await realpath(path.dirname(prepared.requestedPath));
   if (requestedPhysicalParent !== prepared.physicalParent) {
     throw new Error("Selected output parent changed physical destination.");
   }
-  await assertDirectoryIdentity(prepared.physicalParent, prepared.parentIdentity, "Selected output parent");
+  await assertDirectoryIdentity(
+    prepared.physicalParent,
+    prepared.parentIdentity,
+    "Selected output parent",
+  );
   await assertRegularFileOrMissing(prepared.physicalPath);
 }
 
 export async function writePreparedSelectedOutputFile(
   prepared: PreparedSelectedOutputFile,
   data: string | Uint8Array,
-  encoding?: BufferEncoding
+  encoding?: BufferEncoding,
 ): Promise<void> {
-  await atomicWriteOutputFile(
-    prepared.physicalParent,
-    prepared.physicalPath,
-    data,
-    encoding,
-    () => assertPreparedSelectedOutputFile(prepared)
+  await atomicWriteOutputFile(prepared.physicalParent, prepared.physicalPath, data, encoding, () =>
+    assertPreparedSelectedOutputFile(prepared),
   );
 }
 
@@ -146,7 +146,7 @@ export async function writePreparedSelectedOutputFile(
 export async function writePreparedRunLatestPointer(
   prepared: PreparedRunArtifactPaths,
   data: string | Uint8Array,
-  encoding?: BufferEncoding
+  encoding?: BufferEncoding,
 ): Promise<void> {
   await atomicWriteOutputFile(
     prepared.physicalRunsRoot,
@@ -155,13 +155,13 @@ export async function writePreparedRunLatestPointer(
     encoding,
     async () => {
       await validatePreparedRunArtifactPaths(prepared);
-    }
+    },
   );
 }
 
 export async function prepareContainedOutputDirectory(
   rootInput: PreparedOutputRoot,
-  relativePath: string
+  relativePath: string,
 ): Promise<string> {
   assertSafeRelativeOutputPath(relativePath, true);
   const root = await resolveOutputRoot(rootInput);
@@ -171,7 +171,7 @@ export async function prepareContainedOutputDirectory(
 /** Prepare and identity-bind a generated child directory under a prepared root. */
 export async function prepareContainedOutputDirectoryRoot(
   rootInput: PreparedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<PreparedSelectedOutputDirectory> {
   const root = await resolveOutputRoot(rootInput);
   const physicalPath = await prepareContainedOutputDirectory(rootInput, relativePath);
@@ -185,7 +185,7 @@ export async function prepareContainedOutputDirectoryRoot(
 
 export async function prepareContainedOutputFile(
   rootInput: PreparedOutputRoot,
-  relativePath: string
+  relativePath: string,
 ): Promise<string> {
   assertSafeRelativeOutputPath(relativePath, false);
   const root = await resolveOutputRoot(rootInput);
@@ -193,7 +193,10 @@ export async function prepareContainedOutputFile(
   if (!isPathInside(root, absolute) || absolute === root) {
     throw new Error("Output file must stay inside its selected root.");
   }
-  const parent = await prepareDirectoryWithinRoot(root, path.relative(root, path.dirname(absolute)));
+  const parent = await prepareDirectoryWithinRoot(
+    root,
+    path.relative(root, path.dirname(absolute)),
+  );
   const filePath = path.join(parent, path.basename(absolute));
   await assertRegularFileOrMissing(filePath);
   return filePath;
@@ -203,42 +206,40 @@ export async function writeContainedOutputFile(
   rootInput: PreparedOutputRoot,
   relativePath: string,
   data: string | Uint8Array,
-  encoding?: BufferEncoding
+  encoding?: BufferEncoding,
 ): Promise<void> {
   const filePath = await prepareContainedOutputFile(rootInput, relativePath);
   const root = await resolveOutputRoot(rootInput);
-  await atomicWriteOutputFile(
-    path.dirname(filePath),
-    filePath,
-    data,
-    encoding,
-    async () => {
-      const validatedRoot = await resolveOutputRoot(rootInput);
-      if (validatedRoot !== root) {
-        throw new Error("Output root changed after it was prepared.");
-      }
-      await assertContainedDirectoryChain(root, path.dirname(filePath));
-      await assertRegularFileOrMissing(filePath);
+  await atomicWriteOutputFile(path.dirname(filePath), filePath, data, encoding, async () => {
+    const validatedRoot = await resolveOutputRoot(rootInput);
+    if (validatedRoot !== root) {
+      throw new Error("Output root changed after it was prepared.");
     }
-  );
+    await assertContainedDirectoryChain(root, path.dirname(filePath));
+    await assertRegularFileOrMissing(filePath);
+  });
 }
 
 /** Read one regular file only when both lexical and physical paths stay in root. */
 export async function readContainedRegularFile(
   rootInput: PreparedOutputRoot,
-  relativePath: string
+  relativePath: string,
 ): Promise<Buffer | null> {
   const handle = await openContainedRegularFile(rootInput, relativePath);
   if (!handle) return null;
-  try { return await handle.readFile(); }
-  catch { return null; }
-  finally { await handle.close().catch(() => {}); }
+  try {
+    return await handle.readFile();
+  } catch {
+    return null;
+  } finally {
+    await handle.close().catch(() => {});
+  }
 }
 
 /** The caller owns this checked descriptor and must close it after reading/streaming. */
 export async function openContainedRegularFile(
   rootInput: PreparedOutputRoot,
-  relativePath: string
+  relativePath: string,
 ): Promise<FileHandle | null> {
   let handle: FileHandle | undefined;
   try {
@@ -260,10 +261,10 @@ export async function openContainedRegularFile(
     handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
     const after = await handle.stat({ bigint: true });
     if (
-      !after.isFile()
-      || after.nlink > 1n
-      || after.dev !== before.dev
-      || after.ino !== before.ino
+      !after.isFile() ||
+      after.nlink > 1n ||
+      after.dev !== before.dev ||
+      after.ino !== before.ino
     ) {
       throw new Error("Artifact identity changed.");
     }
@@ -281,12 +282,12 @@ export async function openContainedRegularFile(
 
 export function assertSafeOutputPathSegment(value: string, label = "Output path segment"): void {
   if (
-    value.length === 0
-    || value === "."
-    || value === ".."
-    || value.includes("/")
-    || value.includes("\\")
-    || value.includes("\0")
+    value.length === 0 ||
+    value === "." ||
+    value === ".." ||
+    value.includes("/") ||
+    value.includes("\\") ||
+    value.includes("\0")
   ) {
     throw new Error(`${label} must be one non-empty path segment.`);
   }
@@ -313,9 +314,8 @@ function normalizeRelativeOutputPath(value: string): string {
 }
 
 async function prepareDirectoryWithinRoot(root: string, relativePath: string): Promise<string> {
-  const segments = relativePath === ""
-    ? []
-    : relativePath.replace(/[\\/]+/g, path.sep).split(path.sep);
+  const segments =
+    relativePath === "" ? [] : relativePath.replace(/[\\/]+/g, path.sep).split(path.sep);
   let current = root;
   for (const segment of segments) {
     assertSafeOutputPathSegment(segment);
@@ -332,13 +332,13 @@ async function prepareDirectoryWithinRoot(root: string, relativePath: string): P
 async function captureSelectedOutputDirectory(
   requestedPath: string,
   physicalPath: string,
-  parentRun?: PreparedRunArtifactPaths
+  parentRun?: PreparedRunArtifactPaths,
 ): Promise<PreparedSelectedOutputDirectory> {
   const prepared = Object.freeze({
     identity: await captureDirectoryIdentity(physicalPath),
     ...(parentRun === undefined ? {} : { parentRun }),
     physicalPath,
-    requestedPath
+    requestedPath,
   });
   await assertPreparedSelectedOutputDirectory(prepared);
   return prepared;
@@ -363,7 +363,10 @@ async function prepareAbsoluteSelectedDirectory(absolutePath: string): Promise<s
     }
   }
   await mkdir(path.dirname(resolved), { recursive: true });
-  const physicalParent = await resolveBaseDirectory(path.dirname(resolved), "Selected output parent");
+  const physicalParent = await resolveBaseDirectory(
+    path.dirname(resolved),
+    "Selected output parent",
+  );
   const selectedLeaf = path.join(physicalParent, path.basename(resolved));
   await mkdirDirectoryLeaf(selectedLeaf);
   return realpath(selectedLeaf);
@@ -405,7 +408,9 @@ async function assertRegularFileOrMissing(filePath: string): Promise<void> {
   try {
     const stats = await lstat(filePath);
     if (stats.isSymbolicLink() || !stats.isFile() || stats.nlink > 1) {
-      throw new Error("Selected output files must be single-link regular files, not symbolic links or hardlinks.");
+      throw new Error(
+        "Selected output files must be single-link regular files, not symbolic links or hardlinks.",
+      );
     }
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
@@ -417,7 +422,7 @@ async function assertRegularFileOrMissing(filePath: string): Promise<void> {
 
 async function captureDirectoryIdentity(directory: string): Promise<FileIdentity> {
   const stats = await lstat(directory, { bigint: true });
-  if (stats.isSymbolicLink() || !stats.isDirectory() || await realpath(directory) !== directory) {
+  if (stats.isSymbolicLink() || !stats.isDirectory() || (await realpath(directory)) !== directory) {
     throw new Error("Prepared output root must use a physical directory.");
   }
   return Object.freeze({ birthtimeNs: stats.birthtimeNs, dev: stats.dev, ino: stats.ino });
@@ -426,16 +431,16 @@ async function captureDirectoryIdentity(directory: string): Promise<FileIdentity
 async function assertDirectoryIdentity(
   directory: string,
   identity: FileIdentity,
-  label: string
+  label: string,
 ): Promise<void> {
   const stats = await lstat(directory, { bigint: true });
   if (
-    stats.isSymbolicLink()
-    || !stats.isDirectory()
-    || stats.birthtimeNs !== identity.birthtimeNs
-    || stats.dev !== identity.dev
-    || stats.ino !== identity.ino
-    || await realpath(directory) !== directory
+    stats.isSymbolicLink() ||
+    !stats.isDirectory() ||
+    stats.birthtimeNs !== identity.birthtimeNs ||
+    stats.dev !== identity.dev ||
+    stats.ino !== identity.ino ||
+    (await realpath(directory)) !== directory
   ) {
     throw new Error(`${label} identity changed after it was prepared.`);
   }
@@ -461,7 +466,7 @@ async function atomicWriteOutputFile(
   target: string,
   data: string | Uint8Array,
   encoding: BufferEncoding | undefined,
-  revalidate: () => Promise<void>
+  revalidate: () => Promise<void>,
 ): Promise<void> {
   await revalidate();
   const temporary = path.join(parent, `.humanish-write-${process.pid}-${randomUUID()}.tmp`);

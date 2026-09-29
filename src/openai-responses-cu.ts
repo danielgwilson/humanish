@@ -1,7 +1,13 @@
 import { validClosingReport } from "./computer-use.js";
 import type { ActorCapabilities } from "./actor-contract.js";
 import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./cua-admission-limit.js";
-import type { CuaAction, CuaProvider, CuaSafetyCheck, CuaTurn, CuaTurnRequest } from "./computer-use.js";
+import type {
+  CuaAction,
+  CuaProvider,
+  CuaSafetyCheck,
+  CuaTurn,
+  CuaTurnRequest,
+} from "./computer-use.js";
 import { redactText } from "./redaction.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 import { isMaxOutputTokens } from "./output-token-limit.js";
@@ -9,7 +15,7 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
-  writeContainedOutputFile
+  writeContainedOutputFile,
 } from "./selected-output-paths.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
@@ -60,7 +66,7 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
   byoModel: false,
   preGrantableApprovals: false,
   inProcessTools: false,
-  license: "proprietary"
+  license: "proprietary",
 };
 
 // The flagship 5.6-generation tier ("gpt-5.6" is OpenAI's alias for this exact id; the
@@ -125,7 +131,7 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
         kind: "click",
         x: asNumber(record.x),
         y: asNumber(record.y),
-        button: button === "right" || button === "middle" ? button : "left"
+        button: button === "right" || button === "middle" ? button : "left",
       };
     }
     case "double_click":
@@ -138,12 +144,15 @@ export function openAiActionToCua(action: unknown): CuaAction | null {
         x: asNumber(record.x),
         y: asNumber(record.y),
         dx: asNumber(record.scroll_x),
-        dy: asNumber(record.scroll_y)
+        dy: asNumber(record.scroll_y),
       };
     case "type":
       return { kind: "type", text: asString(record.text) };
     case "keypress":
-      return { kind: "keypress", keys: asArray(record.keys).filter((key): key is string => typeof key === "string") };
+      return {
+        kind: "keypress",
+        keys: asArray(record.keys).filter((key): key is string => typeof key === "string"),
+      };
     case "drag":
       return { kind: "drag", path: asArray(record.path).map(asPoint) };
     case "wait":
@@ -214,7 +223,10 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     const item = asRecord(rawItem);
     switch (asString(item.type)) {
       case "reasoning":
-        reasoningParts.push(...collectTextEntries(item.summary), ...collectTextEntries(item.content));
+        reasoningParts.push(
+          ...collectTextEntries(item.summary),
+          ...collectTextEntries(item.content),
+        );
         break;
       case "message":
         messageParts.push(...collectMessageText(item.content));
@@ -250,7 +262,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
           safetyChecks.push({
             id: id || code || "safety_check",
             code: code || id || "safety_check",
-            message: asString(check.message) || code || id || "safety_check"
+            message: asString(check.message) || code || id || "safety_check",
           });
         }
         break;
@@ -275,7 +287,9 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
   // cost line materially overstate the bill (#391).
   const usageCachedInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cached_tokens);
   // GPT-5.6+ bills cache WRITES (1.25x input) and reports them here; older models omit the field.
-  const usageCacheWriteInput = optionalNumber(asRecord(usageRecord.input_tokens_details).cache_write_tokens);
+  const usageCacheWriteInput = optionalNumber(
+    asRecord(usageRecord.input_tokens_details).cache_write_tokens,
+  );
   const usage =
     usageInput === undefined && usageOutput === undefined
       ? undefined
@@ -283,14 +297,19 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
           ...(usageInput === undefined ? {} : { input: usageInput }),
           ...(usageOutput === undefined ? {} : { output: usageOutput }),
           ...(usageCachedInput === undefined ? {} : { cachedInput: usageCachedInput }),
-          ...(usageCacheWriteInput === undefined ? {} : { cacheWriteInput: usageCacheWriteInput })
+          ...(usageCacheWriteInput === undefined ? {} : { cacheWriteInput: usageCacheWriteInput }),
         };
 
   // Responses can exhaust output/context tokens before producing any visible answer. Empty
   // actions on that wire status are an interrupted generation, never a natural endpoint.
-  const interruption = root.status === "incomplete"
-    ? (asRecord(root.incomplete_details).reason === "max_output_tokens" ? "output_limit" : "incomplete")
-    : root.status !== undefined && root.status !== "completed" ? "unexpected_status" : undefined;
+  const interruption =
+    root.status === "incomplete"
+      ? asRecord(root.incomplete_details).reason === "max_output_tokens"
+        ? "output_limit"
+        : "incomplete"
+      : root.status !== undefined && root.status !== "completed"
+        ? "unexpected_status"
+        : undefined;
 
   const turn: CuaTurn = {
     actions,
@@ -300,7 +319,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     ...(responseId === undefined ? {} : { responseId }),
     ...(reasoning.length > 0 ? { reasoning } : {}),
     ...(message.length > 0 ? { message } : {}),
-    ...(usage === undefined ? {} : { usage })
+    ...(usage === undefined ? {} : { usage }),
   };
 
   return { turn, callIds, outputItems: output };
@@ -345,9 +364,9 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
     // `kind: "reasoning"` trace items.
     reasoning: {
       effort: ctx.reasoningEffort,
-      ...(ctx.reasoningSummary === undefined ? {} : { summary: ctx.reasoningSummary })
+      ...(ctx.reasoningSummary === undefined ? {} : { summary: ctx.reasoningSummary }),
     },
-    ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier })
+    ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier }),
   };
 }
 
@@ -355,7 +374,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
 export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknown> {
   return {
     ...sharedRequestFields(ctx),
-    input: [{ role: "user", content: [{ type: "input_text", text: ctx.instructions }] }]
+    input: [{ role: "user", content: [{ type: "input_text", text: ctx.instructions }] }],
   };
 }
 
@@ -370,20 +389,32 @@ export function buildInitialRequest(ctx: OpenAiCuContext): Record<string, unknow
  * per-turn requiresFrame guard already fails closed before this is reached, but throwing keeps
  * the mapper self-validating and isolable.
  */
-export function buildCallOutput(callId: string, screenshot: Buffer | undefined, acknowledged?: CuaSafetyCheck[]): Record<string, unknown> {
+export function buildCallOutput(
+  callId: string,
+  screenshot: Buffer | undefined,
+  acknowledged?: CuaSafetyCheck[],
+): Record<string, unknown> {
   if (screenshot === undefined) {
-    throw new Error("openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)");
+    throw new Error(
+      "openai-responses-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
+    );
   }
   return {
     type: "computer_call_output",
     call_id: callId,
     output: {
       type: "computer_screenshot",
-      image_url: `data:image/png;base64,${screenshot.toString("base64")}`
+      image_url: `data:image/png;base64,${screenshot.toString("base64")}`,
     },
     ...(acknowledged && acknowledged.length > 0
-      ? { acknowledged_safety_checks: acknowledged.map(({ id, code, message }) => ({ id, code, message })) }
-      : {})
+      ? {
+          acknowledged_safety_checks: acknowledged.map(({ id, code, message }) => ({
+            id,
+            code,
+            message,
+          })),
+        }
+      : {}),
   };
 }
 
@@ -397,7 +428,9 @@ export interface ContinuationRequestArgs {
 
 // Turn an optional context-hint string into an input item array (or empty).
 function hintItems(contextHint: string | undefined): unknown[] {
-  return contextHint ? [{ role: "user", content: [{ type: "input_text", text: contextHint }] }] : [];
+  return contextHint
+    ? [{ role: "user", content: [{ type: "input_text", text: contextHint }] }]
+    : [];
 }
 
 /**
@@ -414,12 +447,12 @@ export function buildContinuationRequest(args: ContinuationRequestArgs): Record<
     return {
       ...sharedRequestFields(ctx),
       previous_response_id: previousResponseId,
-      input: [...callOutputs, ...hintItems(contextHint)]
+      input: [...callOutputs, ...hintItems(contextHint)],
     };
   }
   return {
     ...sharedRequestFields(ctx),
-    input: [...explicitContextItems, ...callOutputs, ...hintItems(contextHint)]
+    input: [...explicitContextItems, ...callOutputs, ...hintItems(contextHint)],
   };
 }
 
@@ -440,7 +473,10 @@ export function redactWireJson(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactWireJson);
   if (typeof value === "object" && value !== null) {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [redactText(key), redactWireJson(entry)])
+      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+        redactText(key),
+        redactWireJson(entry),
+      ]),
     );
   }
   return value;
@@ -462,7 +498,7 @@ export function wireCaptureFileName(callNumber: number): string {
  */
 export type FetchLike = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }
+  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal },
 ) => Promise<{
   ok: boolean;
   status: number;
@@ -502,13 +538,15 @@ const NAMED_PROVIDER_ERROR_CODES = [
   "rate_limit_exceeded",
   "insufficient_quota",
   "model_not_found",
-  "context_length_exceeded"
+  "context_length_exceeded",
 ] as const;
 
 export function namedProviderErrorCode(bodyText: string): string | undefined {
   const match = /"code"\s*:\s*"([a-z_]+)"/.exec(bodyText);
   const code = match?.[1];
-  return code !== undefined && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(code) ? code : undefined;
+  return code !== undefined && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(code)
+    ? code
+    : undefined;
 }
 
 export interface OpenAiResponsesProviderOptions {
@@ -595,7 +633,7 @@ function defaultFetch(): FetchLike {
       ok: res.ok,
       status: res.status,
       text: () => res.text(),
-      json: () => res.json() as Promise<unknown>
+      json: () => res.json() as Promise<unknown>,
     };
   };
 }
@@ -621,7 +659,9 @@ function isAbortError(error: unknown): boolean {
  * sensitive (the key, the request body, the screenshot, the raw response body)
  * is ever returned or logged.
  */
-export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOptions): CuaProvider {
+export function createOpenAiResponsesProvider(
+  options: OpenAiResponsesProviderOptions,
+): CuaProvider {
   if (options.maxOutputTokens !== undefined && !isMaxOutputTokens(options.maxOutputTokens)) {
     throw new Error("maxOutputTokens must be a positive safe integer.");
   }
@@ -629,7 +669,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
   const endpoint = options.endpoint ?? DEFAULT_ENDPOINT;
   const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
-  const maxRetries = options.singleDispatch === true ? 0 : options.maxRetries ?? 3;
+  const maxRetries = options.singleDispatch === true ? 0 : (options.maxRetries ?? 3);
   const fetchFn = options.fetchFn ?? defaultFetch();
   const delayFn = options.delayFn ?? defaultDelay;
   // Opt-in response wire capture (see module header): unset/empty means OFF and
@@ -658,7 +698,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
       captureRoot,
       wireCaptureFileName(captureCount),
       `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
-      "utf8"
+      "utf8",
     );
   };
 
@@ -666,7 +706,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
   let interactionUsageIncomplete = false;
   let pendingCallIds: string[] = [];
   let lastOutputItems: unknown[] = [];
-  let mode: "previous_response_id" | "explicit_context" = options.zeroDataRetention ? "explicit_context" : "previous_response_id";
+  let mode: "previous_response_id" | "explicit_context" = options.zeroDataRetention
+    ? "explicit_context"
+    : "previous_response_id";
   // Latches to undefined (stop asking) for the rest of the session when the
   // account/model rejects the summary request — see OpenAiResponsesProviderOptions.
   let reasoningSummary: OpenAiReasoningSummary | undefined =
@@ -678,20 +720,27 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     reasoningEffort,
     ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
     ...(reasoningSummary === undefined ? {} : { reasoningSummary }),
-    ...(options.safetyIdentifier === undefined ? {} : { safetyIdentifier: options.safetyIdentifier })
+    ...(options.safetyIdentifier === undefined
+      ? {}
+      : { safetyIdentifier: options.safetyIdentifier }),
   });
 
   // POST the JSON body and return the parsed JSON on success. Retries on
   // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
   // ZdrError; any other non-ok status throws with the STATUS ONLY (never the
   // body, which can echo the input/screenshot).
-  const post = async (body: Record<string, unknown>, signal: AbortSignal | undefined, retries = maxRetries, interaction = true): Promise<unknown> => {
+  const post = async (
+    body: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    retries = maxRetries,
+    interaction = true,
+  ): Promise<unknown> => {
     // Preflight the deterministic next capture leaf before any network side
     // effect. A hostile generated path must fail with zero provider calls.
     await prepareNextCapture();
     const headers: Record<string, string> = {
       Authorization: `Bearer ${options.apiKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     };
     const payload = JSON.stringify(body);
     let lastStatus = 0;
@@ -704,7 +753,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           method: "POST",
           headers,
           body: payload,
-          ...(signal === undefined ? {} : { signal })
+          ...(signal === undefined ? {} : { signal }),
         });
       } catch (error) {
         // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
@@ -747,16 +796,21 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         // actions may already have executed. Named, terminal, never retried.
         const bodyText = await res.text().catch(() => "");
         if (namedProviderErrorCode(bodyText) === "misalignment_policy_violation") {
-          throw new Error("OpenAI Responses 403 misalignment_policy_violation: the provider stopped this conversation and it cannot be resumed");
+          throw new Error(
+            "OpenAI Responses 403 misalignment_policy_violation: the provider stopped this conversation and it cannot be resumed",
+          );
         }
         throw new Error("OpenAI Responses 403");
       }
-      const retryable = res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
+      const retryable =
+        res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
       if (retryable && attempt < retries) {
         // The provider's own hint wins over the fixed backoff, up to the cap.
         const backoff = 2 ** attempt * 200;
         const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
-        await delayFn(hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS));
+        await delayFn(
+          hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS),
+        );
         continue;
       }
       const code = namedProviderErrorCode(await res.text().catch(() => ""));
@@ -768,7 +822,11 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     throw new Error(`OpenAI Responses ${lastStatus}`);
   };
 
-  const requestTurn = async (req: CuaTurnRequest, signal: AbortSignal, closing = false): Promise<CuaTurn> => {
+  const requestTurn = async (
+    req: CuaTurnRequest,
+    signal: AbortSignal,
+    closing = false,
+  ): Promise<CuaTurn> => {
     await prepareNextCapture();
     const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
 
@@ -776,17 +834,40 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     // explicit-context mode; a reasoning-summary rejection latches summaries off.
     // Each latch can flip only once, so the loop is bounded; anything else
     // rethrows. The body is rebuilt per attempt so a flipped latch is reflected.
-    const attempt = async (build: (ctx: OpenAiCuContext) => Record<string, unknown>): Promise<unknown> => {
+    const attempt = async (
+      build: (ctx: OpenAiCuContext) => Record<string, unknown>,
+    ): Promise<unknown> => {
       // A closing report makes exactly one request: no HTTP or policy-latch retries.
       if (closing) {
-        return post({ ...build(buildContext(req.instructions)), tool_choice: "none", max_output_tokens: Math.min(maxOutputTokens ?? 1024, 1024),
-          text: { format: { type: "json_schema", name: "participant_closing_report", strict: true,
-            schema: { type: "object", additionalProperties: false, required: ["summary", "frictionReports"],
-              properties: { summary: { type: "string" }, frictionReports: { type: "array", items: { type: "string" } } } }
-          } }
-        }, signal, 0, false);
+        return post(
+          {
+            ...build(buildContext(req.instructions)),
+            tool_choice: "none",
+            max_output_tokens: Math.min(maxOutputTokens ?? 1024, 1024),
+            text: {
+              format: {
+                type: "json_schema",
+                name: "participant_closing_report",
+                strict: true,
+                schema: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["summary", "frictionReports"],
+                  properties: {
+                    summary: { type: "string" },
+                    frictionReports: { type: "array", items: { type: "string" } },
+                  },
+                },
+              },
+            },
+          },
+          signal,
+          0,
+          false,
+        );
       }
-      if (options.singleDispatch === true) return post(build(buildContext(req.instructions)), signal, 0);
+      if (options.singleDispatch === true)
+        return post(build(buildContext(req.instructions)), signal, 0);
       for (;;) {
         try {
           return await post(build(buildContext(req.instructions)), signal);
@@ -809,7 +890,7 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
       raw = await attempt((ctx) => buildInitialRequest(ctx));
     } else {
       const callOutputs = pendingCallIds.map((id) =>
-        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks)
+        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),
       );
       raw = await attempt((ctx) =>
         buildContinuationRequest({
@@ -817,8 +898,8 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
           previousResponseId: lastResponseId,
           callOutputs,
           ...(req.contextHint === undefined ? {} : { contextHint: req.contextHint }),
-          ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {})
-        })
+          ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {}),
+        }),
       );
     }
 
@@ -834,7 +915,9 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
         if (asRecord(raw).status === "completed" && validClosingReport(report)) {
           return { ...parsed.turn, closingReport: report };
         }
-      } catch { /* A failed optional closing account keeps its usage and no report. */ }
+      } catch {
+        /* A failed optional closing account keeps its usage and no report. */
+      }
     }
     return parsed.turn;
   };
@@ -844,18 +927,25 @@ export function createOpenAiResponsesProvider(options: OpenAiResponsesProviderOp
     version: model,
     // The effort the wire actually carries, not the one the lab asked for — the provider defaults
     // an absent request to "medium", and the trace has to say what produced it (#497).
-    modelSettings: { reasoningEffort, ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }) },
+    modelSettings: {
+      reasoningEffort,
+      ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+    },
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
     // This is a VISION provider: nextTurn sends the screenshot as the computer_call_output, so
     // it cannot reason over a screenshot-less observation. The loop reads this to fail closed
     // (harness_error) when a state-only executor is paired with it (provider-authoring contract).
     requiresFrame: true,
-    get interactionUsageIncomplete() { return interactionUsageIncomplete; },
+    get interactionUsageIncomplete() {
+      return interactionUsageIncomplete;
+    },
     nextTurn: (req, signal) => requestTurn(req, signal),
     // Stateless mode retains only the latest output packet, not the whole session needed for
     // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.
     get debrief() {
-      return mode === "explicit_context" || lastResponseId === undefined ? undefined : (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, true);
-    }
+      return mode === "explicit_context" || lastResponseId === undefined
+        ? undefined
+        : (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, true);
+    },
   };
 }

@@ -19,7 +19,11 @@ afterEach(async () => {
 
 async function emptyProject(): Promise<string> {
   const created = await mkdtemp(path.join(tmpdir(), "humanish-orient-"));
-  await writeFile(path.join(created, "package.json"), JSON.stringify({ name: "demo", version: "1.0.0" }), "utf8");
+  await writeFile(
+    path.join(created, "package.json"),
+    JSON.stringify({ name: "demo", version: "1.0.0" }),
+    "utf8",
+  );
   return created;
 }
 
@@ -51,9 +55,9 @@ describe("readOrientation", () => {
         "subject:",
         "  source: this-repo",
         "actors:",
-        "  - type: synthetic-persona"
+        "  - type: synthetic-persona",
       ].join("\n"),
-      "utf8"
+      "utf8",
     );
 
     const state = await readOrientation(dir);
@@ -73,7 +77,9 @@ describe("readOrientation", () => {
   });
 
   it("survives a directory it cannot read, because orientation must never be the thing that fails", async () => {
-    const state = await readOrientation(path.join(tmpdir(), "humanish-does-not-exist-", String(Date.now())));
+    const state = await readOrientation(
+      path.join(tmpdir(), "humanish-does-not-exist-", String(Date.now())),
+    );
     expect(state.schema).toBe(ORIENTATION_SCHEMA);
     expect(state.initialized).toBe(false);
     expect(state.nextCommands.length).toBeGreaterThan(0);
@@ -99,7 +105,7 @@ describe("formatOrientationHuman", () => {
       labIds: ["only-lab"],
       runCount: 1,
       latestRunId: "cua-123",
-      nextCommands: [{ command: "humanish watch only-lab", why: "run it" }]
+      nextCommands: [{ command: "humanish watch only-lab", why: "run it" }],
     });
     expect(text).toContain("1 lab and 1 run");
     expect(text).toContain("cua-123");

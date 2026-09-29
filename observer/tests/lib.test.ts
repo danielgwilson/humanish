@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDuration, runArtifactHref, screenshotHref, keyframeHref } from "../lib/artifact-href";
+import {
+  formatDuration,
+  runArtifactHref,
+  screenshotHref,
+  keyframeHref,
+} from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-model";
@@ -24,12 +29,17 @@ describe("runArtifactHref containment", () => {
 });
 
 describe("exported screenshot rendering", () => {
-  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=";
+  const png =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=";
   it("retains exported frames in the player and grid keyframe", () => {
-    const stream = { actor: { items: [
-      { id: "f1", kind: "screenshot", title: "first", screenshotRef: { path: png } },
-      { id: "f2", kind: "screenshot", title: "last", screenshotRef: { path: png } }
-    ] } } as unknown as ObserverStream;
+    const stream = {
+      actor: {
+        items: [
+          { id: "f1", kind: "screenshot", title: "first", screenshotRef: { path: png } },
+          { id: "f2", kind: "screenshot", title: "last", screenshotRef: { path: png } },
+        ],
+      },
+    } as unknown as ObserverStream;
     expect(buildPlayerModel(stream)?.frames.map((frame) => frame.href)).toEqual([png, png]);
     expect(keyframeHref(stream)).toBe(png);
     expect(runArtifactHref(png)).toBeNull();
@@ -37,10 +47,15 @@ describe("exported screenshot rendering", () => {
   it("keeps ordinary relative screenshots and refuses unsafe inline content", () => {
     expect(screenshotHref("screenshots/frame.png")).toBe("../screenshots/frame.png");
     for (const ref of [
-      "data:image/svg+xml;base64,PHN2Zz4=", "data:text/html;base64,AAAA",
-      "data:image/png,raw", "data:image/png;base64,AAAA<script>",
-      "javascript:alert(1)", "https://example.com/frame.png", "../outside.png"
-    ]) expect(screenshotHref(ref)).toBeNull();
+      "data:image/svg+xml;base64,PHN2Zz4=",
+      "data:text/html;base64,AAAA",
+      "data:image/png,raw",
+      "data:image/png;base64,AAAA<script>",
+      "javascript:alert(1)",
+      "https://example.com/frame.png",
+      "../outside.png",
+    ])
+      expect(screenshotHref(ref)).toBeNull();
   });
 });
 
@@ -53,7 +68,7 @@ describe("notable completions", () => {
       "gave_up",
       "harness_error",
       "step_failed",
-      "timed_out"
+      "timed_out",
     ]);
     expect(NOTABLE_COMPLETION["goal_satisfied"]).toBeUndefined();
     expect(NOTABLE_COMPLETION["turn_completed"]).toBeUndefined();
@@ -62,7 +77,10 @@ describe("notable completions", () => {
 
 describe("hash routes (#441 deep links)", () => {
   it("round-trips lane and frame addresses, 1-based in the hash", () => {
-    expect(parseHash(formatHash("stream-001", null))).toEqual({ laneId: "stream-001", frame: null });
+    expect(parseHash(formatHash("stream-001", null))).toEqual({
+      laneId: "stream-001",
+      frame: null,
+    });
     expect(parseHash(formatHash("stream-001", 0))).toEqual({ laneId: "stream-001", frame: 0 });
     expect(formatHash("stream-001", 2)).toBe("#/lane/stream-001/f/3");
     expect(parseHash("#/lane/stream-001/f/3")).toEqual({ laneId: "stream-001", frame: 2 });
@@ -100,10 +118,22 @@ describe("player model", () => {
     const model = buildPlayerModel(
       streamWith([
         { id: "a0", kind: "ui_action", lifecycle: "completed", title: "wait" },
-        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
+        {
+          id: "s0",
+          kind: "screenshot",
+          lifecycle: "completed",
+          title: "turn-00",
+          screenshotRef: { path: "shots/t0.png", redaction: "none" },
+        },
         { id: "a1", kind: "ui_action", lifecycle: "completed", title: "click (5, 6)" },
-        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "turn-01", screenshotRef: { path: "shots/t1.png", redaction: "none" } }
-      ])
+        {
+          id: "s1",
+          kind: "screenshot",
+          lifecycle: "completed",
+          title: "turn-01",
+          screenshotRef: { path: "shots/t1.png", redaction: "none" },
+        },
+      ]),
     );
     expect(model).not.toBeNull();
     expect(model?.frames.map((f) => f.href)).toEqual(["../shots/t0.png", "../shots/t1.png"]);
@@ -118,10 +148,22 @@ describe("player model", () => {
         schema: "humanish.live-actor.v1",
         updatedAt: "2026-08-17T00:00:00.000Z",
         items: [
-          { id: "s0", kind: "screenshot", lifecycle: "completed", title: "turn-00", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
-          { id: "a1", kind: "ui_action", lifecycle: "completed", title: "click (5, 6)", coord: { x: 5, y: 6 } }
-        ]
-      }
+          {
+            id: "s0",
+            kind: "screenshot",
+            lifecycle: "completed",
+            title: "turn-00",
+            screenshotRef: { path: "shots/t0.png", redaction: "none" },
+          },
+          {
+            id: "a1",
+            kind: "ui_action",
+            lifecycle: "completed",
+            title: "click (5, 6)",
+            coord: { x: 5, y: 6 },
+          },
+        ],
+      },
     } as unknown as ObserverStream;
     const model = buildPlayerModel(stream);
     expect(model).not.toBeNull();
@@ -132,49 +174,129 @@ describe("player model", () => {
   it("recorded pacing (#441): stamped frames play at real intervals, unstamped fall back to avg", () => {
     const stamped = buildPlayerModel(
       streamWith([
-        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "t0", at: "2026-08-17T00:00:00.000Z", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
-        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "t1", at: "2026-08-17T00:00:03.500Z", screenshotRef: { path: "shots/t1.png", redaction: "none" } },
-        { id: "s2", kind: "screenshot", lifecycle: "completed", title: "t2", at: "2026-08-17T00:00:04.000Z", screenshotRef: { path: "shots/t2.png", redaction: "none" } }
-      ])
+        {
+          id: "s0",
+          kind: "screenshot",
+          lifecycle: "completed",
+          title: "t0",
+          at: "2026-08-17T00:00:00.000Z",
+          screenshotRef: { path: "shots/t0.png", redaction: "none" },
+        },
+        {
+          id: "s1",
+          kind: "screenshot",
+          lifecycle: "completed",
+          title: "t1",
+          at: "2026-08-17T00:00:03.500Z",
+          screenshotRef: { path: "shots/t1.png", redaction: "none" },
+        },
+        {
+          id: "s2",
+          kind: "screenshot",
+          lifecycle: "completed",
+          title: "t2",
+          at: "2026-08-17T00:00:04.000Z",
+          screenshotRef: { path: "shots/t2.png", redaction: "none" },
+        },
+      ]),
     );
     expect(stamped?.paced).toBe("recorded");
     expect(frameHoldMs(stamped!, 0)).toBe(3500);
     expect(frameHoldMs(stamped!, 1)).toBe(500);
 
     const unstamped = buildPlayerModel(
-      streamWith([
-        { id: "s0", kind: "screenshot", lifecycle: "completed", title: "t0", screenshotRef: { path: "shots/t0.png", redaction: "none" } },
-        { id: "s1", kind: "screenshot", lifecycle: "completed", title: "t1", at: "2026-08-17T00:00:01.000Z", screenshotRef: { path: "shots/t1.png", redaction: "none" } }
-      ], 10_000)
+      streamWith(
+        [
+          {
+            id: "s0",
+            kind: "screenshot",
+            lifecycle: "completed",
+            title: "t0",
+            screenshotRef: { path: "shots/t0.png", redaction: "none" },
+          },
+          {
+            id: "s1",
+            kind: "screenshot",
+            lifecycle: "completed",
+            title: "t1",
+            at: "2026-08-17T00:00:01.000Z",
+            screenshotRef: { path: "shots/t1.png", redaction: "none" },
+          },
+        ],
+        10_000,
+      ),
     );
     expect(unstamped?.paced).toBe("avg");
     expect(frameHoldMs(unstamped!, 0)).toBe(5000);
   });
 
   it("returns null for a lane with no frames", () => {
-    expect(buildPlayerModel(streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]))).toBeNull();
+    expect(
+      buildPlayerModel(
+        streamWith([{ id: "a", kind: "ui_action", lifecycle: "completed", title: "wait" }]),
+      ),
+    ).toBeNull();
     expect(buildPlayerModel({} as unknown as ObserverStream)).toBeNull();
   });
 
   it("keeps scripted action captures as frames and their original action rows", () => {
-    const model = buildPlayerModel(streamWith(Array.from({ length: 4 }, (_, i) => ({
-      id: `step-${i}`, kind: "ui_action", lifecycle: "completed", status: "passed", title: `Step ${i}`,
-      text: "Original assertion result.", screenshotRef: { path: `shots/step-${i}.png`, redaction: "none" }
-    }))))!;
-    expect(model.frames.map((frame) => [frame.itemId, frame.href, frame.atMs]))
-      .toEqual(Array.from({ length: 4 }, (_, i) => [`step-${i}`, `../shots/step-${i}.png`, undefined]));
-    expect(model.rows.map((row) => [row.id, row.kind, row.frameIndex, row.isFrame, row.text, row.status]))
-      .toEqual(Array.from({ length: 4 }, (_, i) => [`step-${i}`, "ui_action", i, false, "Original assertion result.", "passed"]));
+    const model = buildPlayerModel(
+      streamWith(
+        Array.from({ length: 4 }, (_, i) => ({
+          id: `step-${i}`,
+          kind: "ui_action",
+          lifecycle: "completed",
+          status: "passed",
+          title: `Step ${i}`,
+          text: "Original assertion result.",
+          screenshotRef: { path: `shots/step-${i}.png`, redaction: "none" },
+        })),
+      ),
+    )!;
+    expect(model.frames.map((frame) => [frame.itemId, frame.href, frame.atMs])).toEqual(
+      Array.from({ length: 4 }, (_, i) => [`step-${i}`, `../shots/step-${i}.png`, undefined]),
+    );
+    expect(
+      model.rows.map((row) => [
+        row.id,
+        row.kind,
+        row.frameIndex,
+        row.isFrame,
+        row.text,
+        row.status,
+      ]),
+    ).toEqual(
+      Array.from({ length: 4 }, (_, i) => [
+        `step-${i}`,
+        "ui_action",
+        i,
+        false,
+        "Original assertion result.",
+        "passed",
+      ]),
+    );
     expect(model.paced).toBe("avg");
   });
   it("preserves a CUA notice's inherited capture without creating a new frame", () => {
     const ref = { path: "shots/last.png", redaction: "none" };
-    const model = buildPlayerModel(streamWith([
-      { id: "last", kind: "screenshot", title: "Last capture", screenshotRef: ref },
-      { id: "backstop", kind: "notice", title: "computer-use backstop gave up", screenshotRef: ref }
-    ]))!;
+    const model = buildPlayerModel(
+      streamWith([
+        { id: "last", kind: "screenshot", title: "Last capture", screenshotRef: ref },
+        {
+          id: "backstop",
+          kind: "notice",
+          title: "computer-use backstop gave up",
+          screenshotRef: ref,
+        },
+      ]),
+    )!;
     expect(model.frames.map((frame) => frame.itemId)).toEqual(["last"]);
-    expect(model.rows[1]).toMatchObject({ id: "backstop", kind: "notice", frameIndex: 0, isFrame: false });
+    expect(model.rows[1]).toMatchObject({
+      id: "backstop",
+      kind: "notice",
+      frameIndex: 0,
+      isFrame: false,
+    });
   });
 });
 
@@ -189,8 +311,14 @@ describe("live helpers", () => {
   });
 
   it("liveEmbedUrl honors the injected URL and the #357 ended flag", () => {
-    expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" } }))).toBe("https://live.example/d");
-    expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" }, liveEnded: true }))).toBeNull();
+    expect(liveEmbedUrl(stream({ embed: { kind: "iframe", url: "https://live.example/d" } }))).toBe(
+      "https://live.example/d",
+    );
+    expect(
+      liveEmbedUrl(
+        stream({ embed: { kind: "iframe", url: "https://live.example/d" }, liveEnded: true }),
+      ),
+    ).toBeNull();
     expect(liveEmbedUrl(stream({ embed: { kind: "screenshot", url: "shot.png" } }))).toBeNull();
     expect(liveEmbedUrl(stream({}))).toBeNull();
   });
@@ -198,13 +326,17 @@ describe("live helpers", () => {
   it("fetchObserverData rejects incomplete snapshots even with a matching schema", async () => {
     const ok = (body: unknown) =>
       (async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch;
-    expect(await fetchObserverData(ok({ schema: "humanish.observer-data.v1", streams: [] }))).toBeNull();
+    expect(
+      await fetchObserverData(ok({ schema: "humanish.observer-data.v1", streams: [] })),
+    ).toBeNull();
     expect(await fetchObserverData(ok({ schema: "something.else" }))).toBeNull();
-    expect(await fetchObserverData((async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
+    expect(
+      await fetchObserverData((async () => ({ ok: false })) as unknown as typeof fetch),
+    ).toBeNull();
     expect(
       await fetchObserverData((async () => {
         throw new Error("network");
-      }) as unknown as typeof fetch)
+      }) as unknown as typeof fetch),
     ).toBeNull();
   });
 
@@ -214,17 +346,25 @@ describe("live helpers", () => {
       json: async () => ({
         latestRunId: "a",
         runs: [
-          { runId: "a", href: "/_humanish/runs/a/observer/index.html", status: "pass", mode: "live", streamCount: 2 },
+          {
+            runId: "a",
+            href: "/_humanish/runs/a/observer/index.html",
+            status: "pass",
+            mode: "live",
+            streamCount: 2,
+          },
           { nope: true },
-          { runId: "b", href: "/_humanish/runs/b/observer/index.html" }
-        ]
-      })
+          { runId: "b", href: "/_humanish/runs/b/observer/index.html" },
+        ],
+      }),
     })) as unknown as typeof fetch;
     const index = await fetchHistoryIndex(impl);
     expect(index?.latestRunId).toBe("a");
     expect(index?.runs.map((run) => run.runId)).toEqual(["a", "b"]);
     expect(index?.runs[1]?.status).toBe("unknown");
-    expect(await fetchHistoryIndex((async () => ({ ok: false })) as unknown as typeof fetch)).toBeNull();
+    expect(
+      await fetchHistoryIndex((async () => ({ ok: false })) as unknown as typeof fetch),
+    ).toBeNull();
   });
 });
 
@@ -239,23 +379,39 @@ describe("formatDuration", () => {
 describe("buildTally cost line", () => {
   const base = {
     run: { mode: "live" },
-    summary: { streams: 2, active: 0, blocked: 0, warnings: 0 }
+    summary: { streams: 2, active: 0, blocked: 0, warnings: 0 },
   };
 
   it("a declared-null run cost reads 'cost not estimated', never silence (legacy intent, migrated at cutover)", () => {
     const withNull = {
       ...base,
-      cost: { estimatedTotalUsd: null, fullyEstimated: false, ratesAsOf: "2026-08-01", placeholder: true }
+      cost: {
+        estimatedTotalUsd: null,
+        fullyEstimated: false,
+        ratesAsOf: "2026-08-01",
+        placeholder: true,
+      },
     } as unknown as ObserverData;
     expect(buildTally(withNull)).toContain("Participants + desktops: cost not estimated");
   });
 
   it("distinguishes a known subtotal from a fully estimated total while preserving rate provenance", () => {
-    const cost = { estimatedTotalUsd: 0.034, fullyEstimated: false, ratesAsOf: "2026-09-03", placeholder: true };
-    expect(buildTally({ ...base, cost } as unknown as ObserverData))
-      .toContain("Participants + desktops: known cost est. ~$0.03; total unknown (rates as of 2026-09-03, placeholder)");
-    const complete = buildTally({ ...base, cost: { ...cost, fullyEstimated: true } } as unknown as ObserverData);
-    expect(complete).toContain("Participants + desktops: est. ~$0.03 (rates as of 2026-09-03, placeholder)");
+    const cost = {
+      estimatedTotalUsd: 0.034,
+      fullyEstimated: false,
+      ratesAsOf: "2026-09-03",
+      placeholder: true,
+    };
+    expect(buildTally({ ...base, cost } as unknown as ObserverData)).toContain(
+      "Participants + desktops: known cost est. ~$0.03; total unknown (rates as of 2026-09-03, placeholder)",
+    );
+    const complete = buildTally({
+      ...base,
+      cost: { ...cost, fullyEstimated: true },
+    } as unknown as ObserverData);
+    expect(complete).toContain(
+      "Participants + desktops: est. ~$0.03 (rates as of 2026-09-03, placeholder)",
+    );
     expect(complete).not.toContain("known cost");
     expect(complete).not.toContain("total unknown");
   });

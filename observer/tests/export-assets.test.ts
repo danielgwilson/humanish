@@ -5,9 +5,13 @@ import { screenshotHref, runArtifactHref } from "../lib/artifact-href";
 
 const hash = "a".repeat(64);
 const reference = `humanish-asset:${hash}`;
-const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=";
+const png =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jq1sAAAAASUVORK5CYII=";
 function doc(mime = "image/png", base64 = png, tag = "script", type = "application/octet-stream") {
-  return new DOMParser().parseFromString(`<${tag} id="humanish-image-${hash}" type="${type}" data-mime="${mime}">${base64}</${tag}>`, "text/html");
+  return new DOMParser().parseFromString(
+    `<${tag} id="humanish-image-${hash}" type="${type}" data-mime="${mime}">${base64}</${tag}>`,
+    "text/html",
+  );
 }
 afterEach(() => vi.unstubAllGlobals());
 
@@ -30,7 +34,7 @@ it.each([
   ["image/png", "AAAA<script>", "script", "application/octet-stream"],
   ["image/png", "a", "script", "application/octet-stream"],
   ["image/png", png, "div", "application/octet-stream"],
-  ["image/png", png, "script", "application/json"]
+  ["image/png", png, "script", "application/json"],
 ])("refuses an unregistered/unsafe raster %s", (mime, base64, tag, type) => {
   const createObjectURL = vi.fn();
   vi.stubGlobal("URL", { createObjectURL });
@@ -42,7 +46,12 @@ it("scopes cached references to their document and never accepts arbitrary Blob 
   vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:synthetic-owned-raster") });
   expect(exportScreenshotHref(reference, doc())).toBe("blob:synthetic-owned-raster");
   expect(exportScreenshotHref(reference, doc().implementation.createHTMLDocument())).toBeNull();
-  for (const value of ["blob:unregistered", "humanish-asset:../anything", "humanish-asset:__proto__", reference]) {
+  for (const value of [
+    "blob:unregistered",
+    "humanish-asset:../anything",
+    "humanish-asset:__proto__",
+    reference,
+  ]) {
     expect(screenshotHref(value)).toBeNull();
     expect(runArtifactHref(value)).toBeNull();
   }

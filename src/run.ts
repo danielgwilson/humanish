@@ -1,7 +1,10 @@
 import { contradictsAccountBilling } from "./pricing.js";
 import type { CommsReceivingEvidence } from "./comms-receiving-types.js";
 import { isCommsReceivingEvidence } from "./comms-receiving-evidence.js";
-import { desktopRecordingMetadataSchema, type RunDesktopRecording } from "./desktop-recording-types.js";
+import {
+  desktopRecordingMetadataSchema,
+  type RunDesktopRecording,
+} from "./desktop-recording-types.js";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
@@ -22,18 +25,30 @@ import {
   parseBrowserPersonaJourneyFromScenario,
   resolveBrowserCommand,
   type BrowserPersonaJourney,
-  type BrowserSurfaceCapture
+  type BrowserSurfaceCapture,
 } from "./scripted-browser-actor.js";
 import {
   CODEX_APP_SERVER_TRACE_SCHEMA,
   runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunResult,
-  type CodexAppServerTrace
+  type CodexAppServerTrace,
 } from "./codex-app-server.js";
 import { getActor } from "./actor-registry.js";
 import { artifactReferenceIfWritten, hasWrittenScreenshot } from "./artifact-reference.js";
-import { ACTOR_TRACE_SCHEMA, validActorExecutionProfile, validActorProviderRequests, type ActorStatus, type ActorTrace, type ActorTraceItem } from "./actor-contract.js";
-import { cuaGoalSource, isCuaTrace, CUA_COMPLETION_NOTE, type CuaGoalSource } from "./actor-goal-source.js";
+import {
+  ACTOR_TRACE_SCHEMA,
+  validActorExecutionProfile,
+  validActorProviderRequests,
+  type ActorStatus,
+  type ActorTrace,
+  type ActorTraceItem,
+} from "./actor-contract.js";
+import {
+  cuaGoalSource,
+  isCuaTrace,
+  CUA_COMPLETION_NOTE,
+  type CuaGoalSource,
+} from "./actor-goal-source.js";
 import { actorEnding } from "./actor-stop-cause.js";
 import type { TaskFunnel } from "./tasks.js";
 import { captureGitState, GIT_STATE_SCHEMA, type CapturedGitState } from "./core/git-state.js";
@@ -41,11 +56,26 @@ import { inspectVerifiedGitWorkspace } from "./core/git-workspace.js";
 import { mapWithConcurrency } from "./concurrency.js";
 import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
-import { personaBrief, parseResolvedPersona, personaToDirectives, renderPersonaPromptSection, type ResolvedPersona } from "./persona.js";
+import {
+  personaBrief,
+  parseResolvedPersona,
+  personaToDirectives,
+  renderPersonaPromptSection,
+  type ResolvedPersona,
+} from "./persona.js";
 import { round6 } from "./pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./study-analysis-store.js";
-import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
-import { containsSensitive, digestText, redactText, redactToSecretLabel, tailText } from "./redaction.js";
+import {
+  isStudyAnalysisRecordPath,
+  studyAnalysisSharingProblems,
+} from "./study-analysis-sharing.js";
+import {
+  containsSensitive,
+  digestText,
+  redactText,
+  redactToSecretLabel,
+  tailText,
+} from "./redaction.js";
 import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
 import {
   bindExistingRunArtifactPaths,
@@ -56,12 +86,21 @@ import {
   resolveLatestRunDirectory,
   resolveRunsRoot,
   validatePreparedRunArtifactPaths,
-  type PreparedRunArtifactPaths
+  type PreparedRunArtifactPaths,
 } from "./run-paths.js";
 import { probeKeySources } from "./key-resolution.js";
-import { beginRunStatus, withRunStatusScope, type RunLabProvenance, type RunStatusHandle } from "./run-status.js";
+import {
+  beginRunStatus,
+  withRunStatusScope,
+  type RunLabProvenance,
+  type RunStatusHandle,
+} from "./run-status.js";
 import { nodeSupportsTui, terminalSurfaceMessage, tuiBundleUrl } from "./tui-contract.js";
-import { detectLocalAgents, localAgentDoctorMessage, type DetectLocalAgentsOptions } from "./local-agent-cli.js";
+import {
+  detectLocalAgents,
+  localAgentDoctorMessage,
+  type DetectLocalAgentsOptions,
+} from "./local-agent-cli.js";
 import { labSetupChecks } from "./doctor-lab.js";
 import {
   assertPreparedSelectedOutputDirectory,
@@ -75,7 +114,7 @@ import {
   openContainedRegularFile,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-  writePreparedRunLatestPointer
+  writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
 
 export const RUN_BUNDLE_SCHEMA = "humanish.run-bundle.v1";
@@ -103,7 +142,7 @@ const SAFE_GIT_NOTES = new Set([
   "Git work tree was clean; branch names, remotes, paths, and file names were not captured.",
   "No git work tree was detected.",
   "public-safe synthetic fixture",
-  "public-safe synthetic OSS meta-lab fixture"
+  "public-safe synthetic OSS meta-lab fixture",
 ]);
 
 export interface RunOptions {
@@ -119,7 +158,14 @@ export interface RunOptions {
   timeoutMs?: number;
 }
 
-export type RunStreamKind = "ui" | "browser" | "terminal" | "tui" | "codex-ui" | "artifact" | "summary";
+export type RunStreamKind =
+  | "ui"
+  | "browser"
+  | "terminal"
+  | "tui"
+  | "codex-ui"
+  | "artifact"
+  | "summary";
 
 export type RunSimulationStatus =
   | "queued"
@@ -140,7 +186,15 @@ export interface RunStreamCompletion {
   actorLogTail?: string;
   actorLastMessageTail?: string;
   actorPid?: number;
-  actorStatus?: "not_started" | "running" | "passed" | "failed" | "blocked" | "timed_out" | "suspended" | "unknown";
+  actorStatus?:
+    | "not_started"
+    | "running"
+    | "passed"
+    | "failed"
+    | "blocked"
+    | "timed_out"
+    | "suspended"
+    | "unknown";
   appLogPath?: string;
   appPid?: number;
   appReason?: string;
@@ -276,9 +330,21 @@ export interface RunFeedbackCandidate {
   adapter_id: string;
   scenario_id: string;
   persona_id: string;
-  actor: "codex-tui" | "codex-exec" | "codex-app-server" | "computer-use" | "synthetic-dry-run" | "unknown";
+  actor:
+    | "codex-tui"
+    | "codex-exec"
+    | "codex-app-server"
+    | "computer-use"
+    | "synthetic-dry-run"
+    | "unknown";
   // `e2b-terminal`: the in-sandbox command-scoped terminal-agent substrate (issue #154 / SLICE 4).
-  substrate: "e2b-desktop" | "local-desktop" | "e2b-terminal" | "local-filesystem" | "codex-app-server" | "unknown";
+  substrate:
+    | "e2b-desktop"
+    | "local-desktop"
+    | "e2b-terminal"
+    | "local-filesystem"
+    | "codex-app-server"
+    | "unknown";
   failure_owner: "harness" | "target-app" | "actor" | "environment" | "unknown";
   summary: string;
   expected: string;
@@ -293,7 +359,13 @@ export interface RunFeedbackCandidate {
     notes: string;
   };
   idempotency_key: string;
-  proposed_next_state: "watch" | "adapter-hardening" | "target-app-setup" | "actor-auth" | "setup-quality-review" | "study-quality-review";
+  proposed_next_state:
+    | "watch"
+    | "adapter-hardening"
+    | "target-app-setup"
+    | "actor-auth"
+    | "setup-quality-review"
+    | "study-quality-review";
   acceptance_proof: string[];
   /**
    * OPTIONAL, ADAPTER-NAMESPACED product-noun block (the layer-6 extension seam, issue #154
@@ -408,7 +480,13 @@ export interface RunDesktopGeometry {
    */
   fidelity?: {
     tier: "mobile-emulated";
-    requested: { width: number; height: number; deviceScaleFactor: number; touch: boolean; userAgent: string };
+    requested: {
+      width: number;
+      height: number;
+      deviceScaleFactor: number;
+      touch: boolean;
+      userAgent: string;
+    };
     applied: string[];
     resolved?: {
       userAgent: string;
@@ -425,7 +503,12 @@ export interface RunDesktopGeometry {
      * participant never left the launch tab; a later tab that did NOT report the width is a lane
      * warning instead.
      */
-    laterTargets?: { targetId: string; innerWidth: number; devicePixelRatio: number; maxTouchPoints: number }[];
+    laterTargets?: {
+      targetId: string;
+      innerWidth: number;
+      devicePixelRatio: number;
+      maxTouchPoints: number;
+    }[];
     /**
      * The emulation holder's log after its announce, one JSON line per later target it attached
      * to (`attached`, `sent`) and per reply that came back as an error (`replyError`), at most 50
@@ -511,7 +594,15 @@ export interface RunStream {
     experimentalApi?: boolean;
     model?: string;
     sessionId?: string;
-    state: "not_connected" | "connecting" | "watching" | "running" | "completed" | "failed" | "blocked" | "timed_out";
+    state:
+      | "not_connected"
+      | "connecting"
+      | "watching"
+      | "running"
+      | "completed"
+      | "failed"
+      | "blocked"
+      | "timed_out";
     contract: string;
     threadId?: string;
     trace?: CodexAppServerTrace;
@@ -546,7 +637,16 @@ export interface RunStream {
   artifacts: Array<{
     label: string;
     path: string;
-    kind: "bundle" | "review" | "observer" | "events" | "screenshot" | "trace" | "log" | "filesystem" | "recording";
+    kind:
+      | "bundle"
+      | "review"
+      | "observer"
+      | "events"
+      | "screenshot"
+      | "trace"
+      | "log"
+      | "filesystem"
+      | "recording";
   }>;
 }
 
@@ -983,7 +1083,16 @@ export interface RunCostLine {
   modelId?: string;
   /** null = NOT MEASURED / no rate; never coerced to 0. */
   estimatedCostUsd: number | null;
-  reason?: "no_rate_for_model" | "no_rate_for_desktop" | "no_token_usage" | "no_duration" | "closing_usage_unreported" | "interaction_usage_unreported" | "no_desktop_resources" | "desktop_lifetime_incomplete" | "account_billing_unknown";
+  reason?:
+    | "no_rate_for_model"
+    | "no_rate_for_desktop"
+    | "no_token_usage"
+    | "no_duration"
+    | "closing_usage_unreported"
+    | "interaction_usage_unreported"
+    | "no_desktop_resources"
+    | "desktop_lifetime_incomplete"
+    | "account_billing_unknown";
   /** Pricing provenance date; non-null iff estimatedCostUsd is non-null. */
   ratesAsOf: string | null;
   source?: string;
@@ -1120,7 +1229,7 @@ export interface ReviewSummary {
 export function tallyParticipantOutcomes(
   statuses: readonly ActorStatus[],
   /** Per-participant: did this one report friction or a defect? Same order as `statuses`. */
-  reportedFriction: readonly boolean[] = []
+  reportedFriction: readonly boolean[] = [],
 ): ParticipantOutcomes {
   const tally: ParticipantOutcomes = {
     total: statuses.length,
@@ -1129,7 +1238,7 @@ export function tallyParticipantOutcomes(
     ranOut: 0,
     blocked: 0,
     harnessFailed: 0,
-    reportedFriction: reportedFriction.filter(Boolean).length
+    reportedFriction: reportedFriction.filter(Boolean).length,
   };
   for (const status of statuses) {
     if (status === "passed") tally.reachedGoal += 1;
@@ -1199,9 +1308,9 @@ export function aggregateTaskFunnels(funnels: readonly TaskFunnel[]): StudyTaskF
         completed: entry.completed,
         sessions: entry.sessions,
         observable: entry.observable,
-        unmeasured: entry.unmeasured
+        unmeasured: entry.unmeasured,
       };
-    })
+    }),
   };
 }
 
@@ -1224,33 +1333,43 @@ export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
 
 type ParticipantOutcomeDetail = { status: ActorStatus; label?: string; goalSource?: CuaGoalSource };
 
-function participantCompletionLine(outcomes: ParticipantOutcomes, terminalCauses: readonly ParticipantOutcomeDetail[]): string {
+function participantCompletionLine(
+  outcomes: ParticipantOutcomes,
+  terminalCauses: readonly ParticipantOutcomeDetail[],
+): string {
   const completions = terminalCauses.filter((entry) => entry.status === "passed");
   const reported = completions.filter((entry) => entry.goalSource === "participant_report").length;
   const matched = completions.filter((entry) => entry.goalSource === "condition_matched").length;
-  let goalLine = outcomes.reachedGoal === 0
-    ? `0/${outcomes.total} recorded completions`
-    : `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
+  let goalLine =
+    outcomes.reachedGoal === 0
+      ? `0/${outcomes.total} recorded completions`
+      : `${outcomes.reachedGoal}/${outcomes.total} reached the goal`;
   if (outcomes.reachedGoal > 0 && terminalCauses.some((entry) => entry.goalSource !== undefined)) {
     const count = `${outcomes.reachedGoal}/${outcomes.total}`;
-    goalLine = completions.length !== outcomes.reachedGoal
-      ? `${count} recorded completions (completion source unavailable)`
-      : reported === outcomes.reachedGoal
-        ? `${count} reported reaching the goal`
-        : matched === outcomes.reachedGoal
-          ? `${count} met a recorded completion condition`
-          : `${count} recorded completions (${[
-              reported > 0 ? `${reported} participant-reported` : undefined,
-              matched > 0 ? `${matched} condition-matched` : undefined,
-              outcomes.reachedGoal - reported - matched > 0 ? `${outcomes.reachedGoal - reported - matched} other or unavailable source` : undefined
-            ].filter(Boolean).join(", ")})`;
+    goalLine =
+      completions.length !== outcomes.reachedGoal
+        ? `${count} recorded completions (completion source unavailable)`
+        : reported === outcomes.reachedGoal
+          ? `${count} reported reaching the goal`
+          : matched === outcomes.reachedGoal
+            ? `${count} met a recorded completion condition`
+            : `${count} recorded completions (${[
+                reported > 0 ? `${reported} participant-reported` : undefined,
+                matched > 0 ? `${matched} condition-matched` : undefined,
+                outcomes.reachedGoal - reported - matched > 0
+                  ? `${outcomes.reachedGoal - reported - matched} other or unavailable source`
+                  : undefined,
+              ]
+                .filter(Boolean)
+                .join(", ")})`;
   }
   return goalLine;
 }
 
 /** One line a stakeholder can read, with the denominator attached to every number. */
-export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
-  terminalCauses: readonly ParticipantOutcomeDetail[] = []
+export function formatParticipantOutcomes(
+  outcomes: ParticipantOutcomes,
+  terminalCauses: readonly ParticipantOutcomeDetail[] = [],
 ): string {
   if (outcomes.total === 0) return "no participants reached a terminal state";
   const parts: string[] = [participantCompletionLine(outcomes, terminalCauses)];
@@ -1259,7 +1378,10 @@ export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
   const append = (count: number, statuses: readonly ActorStatus[], fallback: string) => {
     if (count === 0) return;
     const matching = terminalCauses.filter((entry) => statuses.includes(entry.status));
-    if (matching.length !== count) { parts.push(`${count} ${fallback}`); return; }
+    if (matching.length !== count) {
+      parts.push(`${count} ${fallback}`);
+      return;
+    }
     const counts = new Map<string, number>();
     for (const entry of matching) {
       const description = entry.label === undefined ? fallback : `interrupted (${entry.label})`;
@@ -1281,42 +1403,77 @@ export function formatParticipantOutcomes(outcomes: ParticipantOutcomes,
 }
 
 /** Presentation details tolerate optional legacy actor payloads without changing their tallies. */
-export function participantOutcomeDetails(streams: readonly { actor?: unknown; status?: unknown }[]): ParticipantOutcomeDetail[] {
+export function participantOutcomeDetails(
+  streams: readonly { actor?: unknown; status?: unknown }[],
+): ParticipantOutcomeDetail[] {
   return streams.flatMap((stream) => {
     if (!isRecord(stream.actor)) return [];
     const actor = stream.actor;
     const goalSource = cuaGoalSource(actor, stream.status);
-    if (!["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"].includes(String(actor.status))) {
+    if (
+      !["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"].includes(
+        String(actor.status),
+      )
+    ) {
       return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
     }
-    const ending = Array.isArray(actor.items) && actor.items.every(isRecord) ? actorEnding(actor as unknown as ActorTrace) : undefined;
-    return [{ status: actor.status as ActorStatus,
-      ...(ending === undefined ? {} : { label: ending.label }),
-      ...(goalSource === undefined ? {} : { goalSource }) }];
+    const ending =
+      Array.isArray(actor.items) && actor.items.every(isRecord)
+        ? actorEnding(actor as unknown as ActorTrace)
+        : undefined;
+    return [
+      {
+        status: actor.status as ActorStatus,
+        ...(ending === undefined ? {} : { label: ending.label }),
+        ...(goalSource === undefined ? {} : { goalSource }),
+      },
+    ];
   });
 }
 
 /** Refresh a CUA completion claim from recorded traces, leaving original evidence and enums intact. */
-export function withCuaReviewProvenance(review: ReviewSummary, streams: readonly { actor?: unknown; status?: unknown }[]): ReviewSummary {
+export function withCuaReviewProvenance(
+  review: ReviewSummary,
+  streams: readonly { actor?: unknown; status?: unknown }[],
+): ReviewSummary {
   const details = participantOutcomeDetails(streams);
-  if (!isRecord(review.participants)
-    || !["total", "reachedGoal", "abandoned", "ranOut", "blocked", "harnessFailed", "reportedFriction"].every((key) => isNonNegativeSafeInteger((review.participants as unknown as Record<string, unknown>)[key]))
-    || (review.participants.reachedGoal === 0
+  if (
+    !isRecord(review.participants) ||
+    ![
+      "total",
+      "reachedGoal",
+      "abandoned",
+      "ranOut",
+      "blocked",
+      "harnessFailed",
+      "reportedFriction",
+    ].every((key) =>
+      isNonNegativeSafeInteger((review.participants as unknown as Record<string, unknown>)[key]),
+    ) ||
+    (review.participants.reachedGoal === 0
       ? !streams.some((stream) => isCuaTrace(stream.actor))
-      : !details.some((entry) => entry.goalSource !== undefined))) return review;
+      : !details.some((entry) => entry.goalSource !== undefined))
+  )
+    return review;
   const outcomes = formatParticipantOutcomes(review.participants, details);
   // Preserve rerun context, participant narration and adapter-specific findings. Refreshing a
   // historical summary qualifies its old tally instead of silently discarding that context.
   const header = `Run gate: ${review.verdict}. Participants: ${outcomes}.${review.tasks ? ` Tasks: ${formatStudyTaskFunnel(review.tasks)}.` : ""}`;
   const prefix = `${header} Recorded summary: `;
-  const recorded = review.summary.startsWith(prefix) ? review.summary.slice(prefix.length) : review.summary;
+  const recorded = review.summary.startsWith(prefix)
+    ? review.summary.slice(prefix.length)
+    : review.summary;
   const oldGoal = `${review.participants.reachedGoal}/${review.participants.total} reached the goal`;
-  const qualified = recorded.split(oldGoal).join(participantCompletionLine(review.participants, details));
+  const qualified = recorded
+    .split(oldGoal)
+    .join(participantCompletionLine(review.participants, details));
   return {
     ...review,
     summary: `${prefix}${qualified}`,
-    gaps: review.participants.reachedGoal === 0 ? review.gaps
-      : [...review.gaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE]
+    gaps:
+      review.participants.reachedGoal === 0
+        ? review.gaps
+        : [...review.gaps.filter((gap) => gap !== CUA_COMPLETION_NOTE), CUA_COMPLETION_NOTE],
   };
 }
 
@@ -1330,7 +1487,7 @@ export async function buildRunSource(args: {
   return {
     packageName: args.packageName,
     humanishSource: args.humanishSource,
-    git: await captureGitState(args.cwd, gitOptions)
+    git: await captureGitState(args.cwd, gitOptions),
   };
 }
 
@@ -1488,7 +1645,7 @@ export interface DoctorResult {
     name: string;
     ok: boolean;
     message: string;
-      /**
+    /**
      * ADDITIVE + OPTIONAL. `false` means the check never ran — the directory could not be read, so
      * there is nothing to report about it either way. Absent means it ran and `ok` is its verdict.
      *
@@ -1497,7 +1654,7 @@ export interface DoctorResult {
      * present and safe to read` off a real screen (labs/tui-self-study.yaml).
      */
     checked?: boolean;
-}>;
+  }>;
 }
 
 interface RunPointer {
@@ -1523,7 +1680,7 @@ const builtinPersona = {
   id: "builtin-synthetic-new-user",
   name: "Built-in Synthetic New User",
   source: "builtin:synthetic-new-user",
-  sourceDigest: "builtin"
+  sourceDigest: "builtin",
 };
 
 const builtinScenario = {
@@ -1531,7 +1688,7 @@ const builtinScenario = {
   title: "Built-in First-Run Smoke",
   goal: "Create a public-safe dry-run contract bundle from built-in defaults.",
   source: "builtin:first-run-smoke",
-  sourceDigest: "builtin"
+  sourceDigest: "builtin",
 };
 
 /**
@@ -1554,7 +1711,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       ok: false,
       cwd,
       warnings,
-      error: cwdError
+      error: cwdError,
     };
   }
 
@@ -1566,12 +1723,12 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "HUMANISH_UNSUPPORTED_ACTOR",
-        message: `Unsupported actor: ${options.actor}`
-      }
+        message: `Unsupported actor: ${options.actor}`,
+      },
     };
   }
 
-  const simCount = normalizeSimCount(options.appUrl ? options.simCount ?? 2 : options.simCount);
+  const simCount = normalizeSimCount(options.appUrl ? (options.simCount ?? 2) : options.simCount);
   if (simCount === null) {
     return {
       schema: "humanish.run-result.v1",
@@ -1580,8 +1737,8 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "HUMANISH_INVALID_SIM_COUNT",
-        message: "--sims must be a positive integer."
-      }
+        message: "--sims must be a positive integer.",
+      },
     };
   }
 
@@ -1596,8 +1753,8 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
         warnings,
         error: {
           code: "HUMANISH_APP_URL_OPTION_CONFLICT",
-          message: "Use --app-url for a live browser app proof; remove --dry-run."
-        }
+          message: "Use --app-url for a live browser app proof; remove --dry-run.",
+        },
       };
     }
 
@@ -1609,8 +1766,8 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
         warnings,
         error: {
           code: "HUMANISH_INVALID_SIM_COUNT",
-          message: "--sims must be 1 or 2 when --app-url is used."
-        }
+          message: "--sims must be 1 or 2 when --app-url is used.",
+        },
       };
     }
 
@@ -1636,16 +1793,20 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-        message: "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, --actor codex-app-server, or the matching HUMANISH_ENABLE_LOCAL_CODEX_* env var is set."
-      }
+        message:
+          "Only run --dry-run is implemented unless --actor codex-tui, --actor codex-exec, --actor codex-app-server, or the matching HUMANISH_ENABLE_LOCAL_CODEX_* env var is set.",
+      },
     };
   }
 
   const now = new Date();
   const createdAt = now.toISOString();
-  const runId = options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const runId =
+    options.runId ?? `dryrun-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const packageName = await readPackageName(projectRoot);
-  const humanishSource = await implicitProjectDirectoryExists(projectRoot, "humanish") ? "present" : "missing";
+  const humanishSource = (await implicitProjectDirectoryExists(projectRoot, "humanish"))
+    ? "present"
+    : "missing";
   const source = await buildRunSource({ cwd, capturedAt: createdAt, humanishSource, packageName });
   const selection = await loadDryRunSelection(projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(projectRoot);
@@ -1655,12 +1816,14 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.relativeRunRoot;
 
   if (humanishSource === "missing") {
-    warnings.push("Committed humanish/ source was not found; using built-in synthetic dry-run defaults.");
+    warnings.push(
+      "Committed humanish/ source was not found; using built-in synthetic dry-run defaults.",
+    );
   }
   warnings.push(...selection.warnings);
 
@@ -1668,7 +1831,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
     createdAt,
     personaId: selection.persona.id,
     scenarioId: selection.scenario.id,
-    simCount
+    simCount,
   });
 
   const bundle: RunBundle = {
@@ -1687,52 +1850,56 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       {
         at: createdAt,
         event: "run.created",
-        message: `Synthetic dry-run contract bundle created with ${simCount} sim${simCount === 1 ? "" : "s"}.`
+        message: `Synthetic dry-run contract bundle created with ${simCount} sim${simCount === 1 ? "" : "s"}.`,
       },
       {
         at: createdAt,
         event: "persona.selected",
-        message: "Selected public-safe synthetic persona."
+        message: "Selected public-safe synthetic persona.",
       },
       {
         at: createdAt,
         event: "scenario.selected",
-        message: "Selected public-safe first-run scenario."
+        message: "Selected public-safe first-run scenario.",
       },
       {
         at: createdAt,
         event: "review.skeleton.created",
-        message: "Created review skeleton without claiming product proof."
-      }
+        message: "Created review skeleton without claiming product proof.",
+      },
     ],
     simulations: observerFixtures.simulations,
     streams: observerFixtures.streams,
     events: observerFixtures.events,
     redaction: {
       status: "passed",
-      notes: "Dry-run bundle contains synthetic contract proof only."
+      notes: "Dry-run bundle contains synthetic contract proof only.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review: createReviewSummary(),
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 
   await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: createdAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: createdAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   return {
@@ -1746,16 +1913,18 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
     bundlePath: path.join(artifactRoot, "run.json"),
     reviewPath: path.join(artifactRoot, "review.md"),
     latestPath: runPaths.relativeLatestPointer,
-    warnings
+    warnings,
   };
 }
 
-async function runBrowserAppProof(options: RunOptions & {
-  appUrl: string;
-  cwd: string;
-  projectRoot: PreparedSelectedOutputDirectory;
-  simCount: number;
-}): Promise<RunResult> {
+async function runBrowserAppProof(
+  options: RunOptions & {
+    appUrl: string;
+    cwd: string;
+    projectRoot: PreparedSelectedOutputDirectory;
+    simCount: number;
+  },
+): Promise<RunResult> {
   const warnings: string[] = [];
   const appUrl = normalizeLocalAppUrl(options.appUrl);
   if (!appUrl) {
@@ -1766,8 +1935,8 @@ async function runBrowserAppProof(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_INVALID_APP_URL",
-        message: "--app-url must be an http(s) loopback URL such as http://127.0.0.1:5173."
-      }
+        message: "--app-url must be an http(s) loopback URL such as http://127.0.0.1:5173.",
+      },
     };
   }
 
@@ -1780,17 +1949,26 @@ async function runBrowserAppProof(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED",
-        message: "No Chrome/Chromium browser command was found. Set HUMANISH_BROWSER_COMMAND to a browser binary that supports --headless and --screenshot."
-      }
+        message:
+          "No Chrome/Chromium browser command was found. Set HUMANISH_BROWSER_COMMAND to a browser binary that supports --headless and --screenshot.",
+      },
     };
   }
 
   const now = new Date();
   const createdAt = now.toISOString();
-  const runId = options.runId ?? `browser-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const runId =
+    options.runId ?? `browser-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const packageName = await readPackageName(options.projectRoot);
-  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const humanishSource = (await implicitProjectDirectoryExists(options.projectRoot, "humanish"))
+    ? "present"
+    : "missing";
+  const source = await buildRunSource({
+    cwd: options.cwd,
+    capturedAt: createdAt,
+    humanishSource,
+    packageName,
+  });
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
@@ -1799,7 +1977,7 @@ async function runBrowserAppProof(options: RunOptions & {
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.relativeRunRoot;
   if (selection.browserJourneyFailure) {
@@ -1810,17 +1988,21 @@ async function runBrowserAppProof(options: RunOptions & {
       warnings: [...warnings, ...selection.warnings],
       error: {
         code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED",
-        message: selection.browserJourneyFailure
-      }
+        message: selection.browserJourneyFailure,
+      },
     };
   }
 
   const browserJourney = selection.browserJourney ?? builtinBrowserPersonaJourney();
   if (humanishSource === "missing") {
-    warnings.push("Committed humanish/ source was not found; using built-in synthetic browser-app defaults.");
+    warnings.push(
+      "Committed humanish/ source was not found; using built-in synthetic browser-app defaults.",
+    );
   }
   if (!selection.browserJourney) {
-    warnings.push("No executable browser scenario manifest was found; using built-in browser persona two-step journey.");
+    warnings.push(
+      "No executable browser scenario manifest was found; using built-in browser persona two-step journey.",
+    );
   }
   warnings.push(...selection.warnings);
 
@@ -1828,14 +2010,18 @@ async function runBrowserAppProof(options: RunOptions & {
   await prepareContainedOutputDirectory(runPaths, "traces");
 
   const surfaces = browserSurfaces.slice(0, options.simCount);
-  const captures = await Promise.all(surfaces.map((surface) => captureBrowserSurface({
-    absoluteArtifactRoot: runPaths,
-    appUrl,
-    browserCommand,
-    browserJourney,
-    surface,
-    timeoutMs: options.timeoutMs ?? BROWSER_APP_DEFAULT_TIMEOUT_MS
-  })));
+  const captures = await Promise.all(
+    surfaces.map((surface) =>
+      captureBrowserSurface({
+        absoluteArtifactRoot: runPaths,
+        appUrl,
+        browserCommand,
+        browserJourney,
+        surface,
+        timeoutMs: options.timeoutMs ?? BROWSER_APP_DEFAULT_TIMEOUT_MS,
+      }),
+    ),
+  );
   await validatePreparedRunArtifactPaths(runPaths);
   const completedAt = new Date().toISOString();
   const events = buildBrowserAppEvents({ appUrl, captures, createdAt });
@@ -1855,33 +2041,33 @@ async function runBrowserAppProof(options: RunOptions & {
       id: selection.persona.id,
       name: selection.persona.name,
       source: selection.persona.source,
-      sourceDigest: selection.persona.sourceDigest
+      sourceDigest: selection.persona.sourceDigest,
     },
     scenario: {
       id: browserJourney.scenarioId,
       title: browserJourney.scenarioTitle,
       goal: browserJourney.goal,
       source: browserJourney.source,
-      sourceDigest: browserJourney.sourceDigest
+      sourceDigest: browserJourney.sourceDigest,
     },
     lifecycle: [
       {
         at: createdAt,
         event: "run.created",
-        message: `Live browser persona proof created for ${appUrl}.`
+        message: `Live browser persona proof created for ${appUrl}.`,
       },
       {
         at: createdAt,
         event: "app.url.accepted",
-        message: "Accepted public-safe loopback app URL for browser persona journey."
+        message: "Accepted public-safe loopback app URL for browser persona journey.",
       },
       {
         at: completedAt,
         event: "review.created",
         message: allPassed
           ? "Created review from desktop/mobile browser persona step evidence."
-          : "Created review with missing or blocked browser persona step evidence."
-      }
+          : "Created review with missing or blocked browser persona step evidence.",
+      },
     ],
     simulations: captures.map((capture, index) => {
       const simId = `browser-${capture.surface.id}`;
@@ -1901,7 +2087,7 @@ async function runBrowserAppProof(options: RunOptions & {
         summary: capture.reason,
         streamIds: [streamId],
         startedAt: createdAt,
-        updatedAt: capture.capturedAt
+        updatedAt: capture.capturedAt,
       };
     }),
     streams: captures.map((capture) => {
@@ -1925,7 +2111,10 @@ async function runBrowserAppProof(options: RunOptions & {
         updatedAt: capture.capturedAt,
         embed: screenshotUrl
           ? { kind: "screenshot", url: screenshotUrl, title: capture.surface.label }
-          : { kind: "placeholder", title: `${capture.surface.label} (blocked — no screenshot captured)` },
+          : {
+              kind: "placeholder",
+              title: `${capture.surface.label} (blocked — no screenshot captured)`,
+            },
         viewport: capture.surface.viewport,
         ui: {
           appStatus: capture.ok ? "running" : "blocked",
@@ -1934,13 +2123,13 @@ async function runBrowserAppProof(options: RunOptions & {
           intent: browserJourney.goal,
           ...(screenshotUrl ? { screenshotUrl } : {}),
           state: capture.reason,
-          visualStatus: capture.ok ? "visible" : "blocked"
+          visualStatus: capture.ok ? "visible" : "blocked",
         },
         completion: {
           checkedAt: capture.capturedAt,
           exitCode: capture.ok ? 0 : 1,
           reason: capture.reason,
-          status: capture.ok ? "passed" : "blocked"
+          status: capture.ok ? "passed" : "blocked",
         },
         artifacts: [
           { label: "run bundle", path: "run.json", kind: "bundle" },
@@ -1950,40 +2139,54 @@ async function runBrowserAppProof(options: RunOptions & {
           // Per-step screenshot artifacts only for steps whose screenshot was actually
           // written; blocked-not-executed steps recorded no path and claim nothing.
           ...capture.steps.flatMap((step) => {
-            const stepScreenshot = artifactReferenceIfWritten(step.screenshotPath, hasWrittenScreenshot(step));
+            const stepScreenshot = artifactReferenceIfWritten(
+              step.screenshotPath,
+              hasWrittenScreenshot(step),
+            );
             return stepScreenshot
-              ? [{ label: `${capture.surface.id} ${step.id} screenshot`, path: stepScreenshot, kind: "screenshot" as const }]
+              ? [
+                  {
+                    label: `${capture.surface.id} ${step.id} screenshot`,
+                    path: stepScreenshot,
+                    kind: "screenshot" as const,
+                  },
+                ]
               : [];
-          })
-        ]
+          }),
+        ],
       } satisfies RunStream;
     }),
     events,
     redaction: {
       status: "passed",
-      notes: "Browser persona proof stores loopback app URLs, screenshots, and generated traces only; secret-like text is rejected by verify."
+      notes:
+        "Browser persona proof stores loopback app URLs, screenshots, and generated traces only; secret-like text is rejected by verify.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 
   await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: completedAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: completedAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   return {
@@ -2003,9 +2206,9 @@ async function runBrowserAppProof(options: RunOptions & {
       : {
           error: {
             code: "HUMANISH_BROWSER_APP_CAPTURE_FAILED" as const,
-            message: review.summary
-          }
-      })
+            message: review.summary,
+          },
+        }),
   };
 }
 
@@ -2020,8 +2223,8 @@ function buildBrowserAppEvents(args: {
       at: args.createdAt,
       level: "info",
       type: "browser-persona.run.created",
-      message: "Created live browser persona proof run against a loopback URL."
-    }
+      message: "Created live browser persona proof run against a loopback URL.",
+    },
   ];
 
   args.captures.forEach((capture) => {
@@ -2032,17 +2235,18 @@ function buildBrowserAppEvents(args: {
       type: capture.ok ? "browser-persona.journey.passed" : "browser-persona.journey.blocked",
       message: `${capture.surface.id}: ${capture.reason}`,
       simId: `browser-${capture.surface.id}`,
-      streamId: `browser-${capture.surface.id}-stream`
+      streamId: `browser-${capture.surface.id}-stream`,
     });
     for (const step of capture.steps) {
       events.push({
         id: `event-${String(events.length + 1).padStart(3, "0")}`,
         at: step.completedAt,
         level: step.status === "passed" ? "info" : "warn",
-        type: step.status === "passed" ? "browser-persona.step.passed" : "browser-persona.step.blocked",
+        type:
+          step.status === "passed" ? "browser-persona.step.passed" : "browser-persona.step.blocked",
         message: `${capture.surface.id} ${step.id}: ${step.reason}`,
         simId: `browser-${capture.surface.id}`,
-        streamId: `browser-${capture.surface.id}-stream`
+        streamId: `browser-${capture.surface.id}-stream`,
       });
     }
   });
@@ -2071,8 +2275,8 @@ function createBrowserAppReviewSummary(args: {
       "Only loopback app URLs are accepted so generated bundles do not preserve private external targets.",
       ...args.captures
         .filter((capture) => !capture.ok)
-        .map((capture) => `${capture.surface.id}: ${capture.reason}`)
-    ]
+        .map((capture) => `${capture.surface.id}: ${capture.reason}`),
+    ],
   };
 }
 
@@ -2100,12 +2304,14 @@ function resolveRequestedLocalCodexActor(actor: string | undefined): LocalCodexA
   return undefined;
 }
 
-async function runLocalCodexTui(options: RunOptions & {
-  actor: "codex-tui";
-  cwd: string;
-  projectRoot: PreparedSelectedOutputDirectory;
-  simCount: number;
-}): Promise<RunResult> {
+async function runLocalCodexTui(
+  options: RunOptions & {
+    actor: "codex-tui";
+    cwd: string;
+    projectRoot: PreparedSelectedOutputDirectory;
+    simCount: number;
+  },
+): Promise<RunResult> {
   const warnings: string[] = [];
 
   if (options.simCount !== 1) {
@@ -2116,12 +2322,17 @@ async function runLocalCodexTui(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_ACTOR_FANOUT_UNIMPLEMENTED",
-        message: "Local Codex TUI actor support is currently single-lane because it owns one PTY/UI session. Use codex-exec for bounded-concurrency fanout."
-      }
+        message:
+          "Local Codex TUI actor support is currently single-lane because it owns one PTY/UI session. Use codex-exec for bounded-concurrency fanout.",
+      },
     };
   }
 
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(
+    options.timeoutMs ??
+      readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ??
+      LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS,
+  );
   if (timeoutMs === null) {
     return {
       schema: "humanish.run-result.v1",
@@ -2130,32 +2341,44 @@ async function runLocalCodexTui(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_INVALID_TIMEOUT",
-        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
-      }
+        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`,
+      },
     };
   }
 
   const now = new Date();
   const createdAt = now.toISOString();
-  const runId = options.runId ?? `codex-tui-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
-  const usesDefaultCodexCommand = options.actorCommand === undefined && process.env.HUMANISH_CODEX_ACTOR_COMMAND === undefined;
-  const trustPreflight = usesDefaultCodexCommand ? await checkCodexWorkspaceTrust(options.cwd) : { ok: true as const };
+  const runId =
+    options.runId ?? `codex-tui-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const usesDefaultCodexCommand =
+    options.actorCommand === undefined && process.env.HUMANISH_CODEX_ACTOR_COMMAND === undefined;
+  const trustPreflight = usesDefaultCodexCommand
+    ? await checkCodexWorkspaceTrust(options.cwd)
+    : { ok: true as const };
   const packageName = await readPackageName(options.projectRoot);
-  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
-  const source: RunBundle["source"] = !trustPreflight.ok && trustPreflight.unsafeMetadata
-    ? {
-        packageName,
-        humanishSource,
-        git: {
-          schema: GIT_STATE_SCHEMA,
-          status: "unavailable",
-          capturedAt: createdAt,
-          head: { shortSha: null, refState: "unknown" },
-          changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
-          note: "Git metadata failed containment validation."
+  const humanishSource = (await implicitProjectDirectoryExists(options.projectRoot, "humanish"))
+    ? "present"
+    : "missing";
+  const source: RunBundle["source"] =
+    !trustPreflight.ok && trustPreflight.unsafeMetadata
+      ? {
+          packageName,
+          humanishSource,
+          git: {
+            schema: GIT_STATE_SCHEMA,
+            status: "unavailable",
+            capturedAt: createdAt,
+            head: { shortSha: null, refState: "unknown" },
+            changes: { staged: 0, unstaged: 0, untracked: 0, total: 0 },
+            note: "Git metadata failed containment validation.",
+          },
         }
-      }
-    : await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+      : await buildRunSource({
+          cwd: options.cwd,
+          capturedAt: createdAt,
+          humanishSource,
+          packageName,
+        });
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
@@ -2164,11 +2387,13 @@ async function runLocalCodexTui(options: RunOptions & {
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
-    warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
+    warnings.push(
+      "Committed humanish/ source was not found; using built-in synthetic local actor defaults.",
+    );
   }
   warnings.push(...selection.warnings);
   const verdictNonce = randomUUID().slice(0, 12);
@@ -2181,7 +2406,7 @@ async function runLocalCodexTui(options: RunOptions & {
   const appendEvent = async (
     type: string,
     message: string,
-    level: RunEvent["level"] = "info"
+    level: RunEvent["level"] = "info",
   ): Promise<void> => {
     events.push({
       id: `event-${String(events.length + 1).padStart(3, "0")}`,
@@ -2190,9 +2415,14 @@ async function runLocalCodexTui(options: RunOptions & {
       type,
       message,
       simId,
-      streamId
+      streamId,
     });
-    await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+    await writeContainedOutputFile(
+      runPaths,
+      "events.ndjson",
+      `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+      "utf8",
+    );
   };
 
   let actor: LocalActorCommandResult;
@@ -2202,21 +2432,25 @@ async function runLocalCodexTui(options: RunOptions & {
       reason: trustPreflight.message,
       status: "blocked",
       transcript: `${trustPreflight.message}\nRecovery: ${trustPreflight.recoveryCommand}\n`,
-      transcriptBytes: Buffer.byteLength(trustPreflight.message)
+      transcriptBytes: Buffer.byteLength(trustPreflight.message),
     };
-    await appendEvent("actor.preflight.blocked", redactSensitiveText(trustPreflight.message), "warn");
+    await appendEvent(
+      "actor.preflight.blocked",
+      redactSensitiveText(trustPreflight.message),
+      "warn",
+    );
   } else {
     await appendEvent(
       "actor.spawned",
-      `Spawned local Codex TUI actor command ${command.name} in explicit opt-in mode.`
+      `Spawned local Codex TUI actor command ${command.name} in explicit opt-in mode.`,
     );
     await appendEvent(
       "actor.prompt.submitted",
-      `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`
+      `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`,
     );
     await appendEvent(
       "actor.running",
-      "Published local Codex TUI running snapshot for Observer polling."
+      "Published local Codex TUI running snapshot for Observer polling.",
     );
 
     const runningAt = new Date().toISOString();
@@ -2228,7 +2462,7 @@ async function runLocalCodexTui(options: RunOptions & {
       createdAt,
       cwd: options.cwd,
       artifactRoot,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+      ...(options.lab === undefined ? {} : { lab: options.lab }),
       source,
       persona: selection.persona,
       scenario: selection.scenario,
@@ -2236,18 +2470,19 @@ async function runLocalCodexTui(options: RunOptions & {
         {
           at: createdAt,
           event: "run.created",
-          message: "Live local Codex TUI run created with one explicit opt-in actor."
+          message: "Live local Codex TUI run created with one explicit opt-in actor.",
         },
         {
           at: createdAt,
           event: "actor.selected",
-          message: "Selected local codex-tui actor."
+          message: "Selected local codex-tui actor.",
         },
         {
           at: runningAt,
           event: "actor.running",
-          message: "Local Codex TUI actor is running; Observer data will refresh with sanitized evidence after completion."
-        }
+          message:
+            "Local Codex TUI actor is running; Observer data will refresh with sanitized evidence after completion.",
+        },
       ],
       simulations: [
         {
@@ -2263,8 +2498,8 @@ async function runLocalCodexTui(options: RunOptions & {
           summary: "Local Codex TUI actor is running.",
           streamIds: [streamId],
           startedAt: createdAt,
-          updatedAt: runningAt
-        }
+          updatedAt: runningAt,
+        },
       ],
       streams: [
         {
@@ -2277,57 +2512,62 @@ async function runLocalCodexTui(options: RunOptions & {
           updatedAt: runningAt,
           embed: {
             kind: "terminal",
-            title: "Local Codex TUI actor"
+            title: "Local Codex TUI actor",
           },
           terminal: {
             title: "Local Codex TUI actor",
             format: "ansi",
             stdin: "sent",
-            tail: "Codex TUI actor is running; sanitized transcript evidence will be linked after completion."
+            tail: "Codex TUI actor is running; sanitized transcript evidence will be linked after completion.",
           },
           completion: {
             checkedAt: runningAt,
             reason: "actor process is still running",
-            status: "running"
+            status: "running",
           },
           artifacts: [
             { label: "run bundle", path: "run.json", kind: "bundle" },
             { label: "review", path: "review.md", kind: "review" },
-            { label: "event log", path: "events.ndjson", kind: "events" }
-          ]
-        }
+            { label: "event log", path: "events.ndjson", kind: "events" },
+          ],
+        },
       ],
       events,
       redaction: {
         status: "passed",
-        notes: "Running TUI bundle contains no raw transcript yet; final actor output will be redacted before persistence."
+        notes:
+          "Running TUI bundle contains no raw transcript yet; final actor output will be redacted before persistence.",
       },
       artifacts: {
         run: "run.json",
         reviewJson: "review.json",
         reviewMarkdown: "review.md",
         observerData: "observer/observer-data.json",
-        events: "events.ndjson"
+        events: "events.ndjson",
       },
       review: createLocalActorRunningReviewSummary("Codex TUI"),
-      feedbackCandidates: []
+      feedbackCandidates: [],
     };
     await writeRunBundleArtifacts(runPaths, runningBundle);
     await writePreparedRunLatestPointer(
       runPaths,
-      `${JSON.stringify({
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: artifactRoot,
-        updatedAt: runningAt
-      } satisfies RunPointer, null, 2)}\n`,
-      "utf8"
+      `${JSON.stringify(
+        {
+          schema: "humanish.latest-run.v1",
+          runId,
+          path: artifactRoot,
+          updatedAt: runningAt,
+        } satisfies RunPointer,
+        null,
+        2,
+      )}\n`,
+      "utf8",
     );
 
     actor = await executeLocalActorCommand(command, {
       cwd: options.cwd,
       timeoutMs,
-      verdictNonce
+      verdictNonce,
     });
   }
   await validatePreparedRunArtifactPaths(runPaths);
@@ -2345,47 +2585,60 @@ async function runLocalCodexTui(options: RunOptions & {
     runPaths,
     "transcripts/codex-tui-sanitized.txt",
     redactedTranscript.length > 0 ? redactedTranscript : "No transcript output captured.\n",
-    "utf8"
+    "utf8",
   );
-  await writeContainedOutputFile(runPaths, "actor.json", `${JSON.stringify({
-    schema: "humanish.local-codex-tui-actor.v1",
-    actor: "codex-tui",
-    commandName: command.name,
-    promptDigest,
-    verdictNonce,
-    startedAt: createdAt,
-    completedAt,
-    durationMs: actor.durationMs,
-    exitCode: actor.exitCode,
-    signal: actor.signal,
-    status,
-    timeoutMs,
-    transcriptBytes: actor.transcriptBytes,
-    transcriptPath: "transcripts/codex-tui-sanitized.txt",
-    redaction: "passed"
-  }, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "actor.json",
+    `${JSON.stringify(
+      {
+        schema: "humanish.local-codex-tui-actor.v1",
+        actor: "codex-tui",
+        commandName: command.name,
+        promptDigest,
+        verdictNonce,
+        startedAt: createdAt,
+        completedAt,
+        durationMs: actor.durationMs,
+        exitCode: actor.exitCode,
+        signal: actor.signal,
+        status,
+        timeoutMs,
+        transcriptBytes: actor.transcriptBytes,
+        transcriptPath: "transcripts/codex-tui-sanitized.txt",
+        redaction: "passed",
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 
   await appendEvent(
     "actor.observation",
-    `Captured ${actor.transcriptBytes} output byte${actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`
+    `Captured ${actor.transcriptBytes} output byte${actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`,
   );
   await appendEvent(
     "actor.artifact",
-    "Wrote sanitized Codex TUI transcript and actor trace artifacts under the ignored run directory."
+    "Wrote sanitized Codex TUI transcript and actor trace artifacts under the ignored run directory.",
   );
   await appendEvent(
     "actor.verdict",
     `Local Codex TUI actor verdict ${status}: ${verdictReason}`,
-    status === "passed" ? "info" : status === "timed_out" ? "warn" : "error"
+    status === "passed" ? "info" : status === "timed_out" ? "warn" : "error",
   );
   await appendEvent(
-    status === "timed_out" ? "actor.timeout" : status === "blocked" && !trustPreflight.ok ? "actor.blocked" : "actor.exited",
+    status === "timed_out"
+      ? "actor.timeout"
+      : status === "blocked" && !trustPreflight.ok
+        ? "actor.blocked"
+        : "actor.exited",
     status === "timed_out"
       ? `Actor timed out after ${timeoutMs}ms; last safe observation retained.`
       : status === "blocked" && !trustPreflight.ok
         ? "Actor launch was blocked by preflight before spawn."
         : `Actor exited with code ${actor.exitCode ?? "null"}${actor.signal ? ` and signal ${actor.signal}` : ""}.`,
-    status === "passed" ? "info" : "warn"
+    status === "passed" ? "info" : "warn",
   );
 
   const bundle: RunBundle = {
@@ -2404,18 +2657,18 @@ async function runLocalCodexTui(options: RunOptions & {
       {
         at: createdAt,
         event: "run.created",
-        message: "Live local Codex TUI run created with one explicit opt-in actor."
+        message: "Live local Codex TUI run created with one explicit opt-in actor.",
       },
       {
         at: createdAt,
         event: "actor.selected",
-        message: "Selected local codex-tui actor."
+        message: "Selected local codex-tui actor.",
       },
       {
         at: completedAt,
         event: "review.skeleton.created",
-        message: "Created review skeleton from sanitized actor lifecycle evidence."
-      }
+        message: "Created review skeleton from sanitized actor lifecycle evidence.",
+      },
     ],
     simulations: [
       {
@@ -2427,12 +2680,15 @@ async function runLocalCodexTui(options: RunOptions & {
         streamKind: "tui",
         mode: "tui-sim",
         progress: 100,
-        currentStep: status === "passed" ? "Local Codex TUI actor completed" : "Local Codex TUI actor needs review",
+        currentStep:
+          status === "passed"
+            ? "Local Codex TUI actor completed"
+            : "Local Codex TUI actor needs review",
         summary: `Local Codex TUI actor ${status}: ${verdictReason}`,
         streamIds: [streamId],
         startedAt: createdAt,
-        updatedAt: completedAt
-      }
+        updatedAt: completedAt,
+      },
     ],
     streams: [
       {
@@ -2445,56 +2701,65 @@ async function runLocalCodexTui(options: RunOptions & {
         updatedAt: completedAt,
         embed: {
           kind: "terminal",
-          title: "Local Codex TUI actor"
+          title: "Local Codex TUI actor",
         },
         terminal: {
           title: "Local Codex TUI actor",
           format: "ansi",
           stdin: "sent",
-          tail
+          tail,
         },
         completion: {
           checkedAt: completedAt,
           ...(actor.exitCode === undefined ? {} : { exitCode: actor.exitCode }),
           logTail: tail,
           reason: verdictReason,
-          status
+          status,
         },
         artifacts: [
           { label: "run bundle", path: "run.json", kind: "bundle" },
           { label: "review", path: "review.md", kind: "review" },
           { label: "event log", path: "events.ndjson", kind: "events" },
-          { label: "sanitized transcript", path: "transcripts/codex-tui-sanitized.txt", kind: "log" },
-          { label: "actor trace", path: "actor.json", kind: "trace" }
-        ]
-      }
+          {
+            label: "sanitized transcript",
+            path: "transcripts/codex-tui-sanitized.txt",
+            kind: "log",
+          },
+          { label: "actor trace", path: "actor.json", kind: "trace" },
+        ],
+      },
     ],
     events,
     redaction: {
       status: "passed",
-      notes: "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log."
+      notes:
+        "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review: createLocalActorReviewSummary("Codex TUI", status, verdictReason),
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 
   await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: completedAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: completedAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   return {
@@ -2514,9 +2779,9 @@ async function runLocalCodexTui(options: RunOptions & {
       : {
           error: {
             code: "HUMANISH_LOCAL_CODEX_TUI_FAILED" as const,
-            message: `Local Codex TUI actor ${status}: ${verdictReason}`
-          }
-      })
+            message: `Local Codex TUI actor ${status}: ${verdictReason}`,
+          },
+        }),
   };
 }
 
@@ -2576,15 +2841,19 @@ function buildLocalCodexExecBundle(args: {
       summary: lane.summary,
       streamIds: [lane.streamId],
       startedAt: args.createdAt,
-      updatedAt: lane.updatedAt
+      updatedAt: lane.updatedAt,
     })),
     streams: args.lanes.map((lane): RunStream => {
       const artifacts: RunStream["artifacts"] = [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
         { label: "event log", path: "events.ndjson", kind: "events" },
-        ...(lane.transcriptPath ? [{ label: "sanitized transcript", path: lane.transcriptPath, kind: "log" as const }] : []),
-        ...(lane.tracePath ? [{ label: "actor trace", path: lane.tracePath, kind: "trace" as const }] : [])
+        ...(lane.transcriptPath
+          ? [{ label: "sanitized transcript", path: lane.transcriptPath, kind: "log" as const }]
+          : []),
+        ...(lane.tracePath
+          ? [{ label: "actor trace", path: lane.tracePath, kind: "trace" as const }]
+          : []),
       ];
 
       return {
@@ -2597,44 +2866,51 @@ function buildLocalCodexExecBundle(args: {
         updatedAt: lane.updatedAt,
         embed: {
           kind: "terminal",
-          title: `Local Codex exec - ${lane.focus.label}`
+          title: `Local Codex exec - ${lane.focus.label}`,
         },
         terminal: {
           title: `Local Codex exec - ${lane.focus.label}`,
           format: "plain",
           stdin: "sent",
-          tail: lane.terminalTail
+          tail: lane.terminalTail,
         },
         ...(lane.completion ? { completion: lane.completion } : {}),
-        artifacts
+        artifacts,
       };
     }),
     events: args.events,
     redaction: {
       status: "passed",
-      notes: "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log."
+      notes:
+        "Actor output was redacted before transcript and bundle persistence; raw prompt is omitted from event log.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review: args.review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 }
 
-async function runLocalCodexExec(options: RunOptions & {
-  actor: "codex-exec";
-  cwd: string;
-  projectRoot: PreparedSelectedOutputDirectory;
-  simCount: number;
-}): Promise<RunResult> {
+async function runLocalCodexExec(
+  options: RunOptions & {
+    actor: "codex-exec";
+    cwd: string;
+    projectRoot: PreparedSelectedOutputDirectory;
+    simCount: number;
+  },
+): Promise<RunResult> {
   const warnings: string[] = [];
 
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(
+    options.timeoutMs ??
+      readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ??
+      LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS,
+  );
   if (timeoutMs === null) {
     return {
       schema: "humanish.run-result.v1",
@@ -2643,12 +2919,13 @@ async function runLocalCodexExec(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_INVALID_TIMEOUT",
-        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
-      }
+        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`,
+      },
     };
   }
   const maxConcurrency = normalizePositiveInteger(
-    readEnvInteger("HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY") ?? LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY
+    readEnvInteger("HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY") ??
+      LOCAL_CODEX_EXEC_DEFAULT_MAX_CONCURRENCY,
   );
   if (maxConcurrency === null) {
     return {
@@ -2658,17 +2935,25 @@ async function runLocalCodexExec(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_INVALID_ACTOR_CONCURRENCY",
-        message: "HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY must be a positive integer."
-      }
+        message: "HUMANISH_LOCAL_CODEX_EXEC_MAX_CONCURRENCY must be a positive integer.",
+      },
     };
   }
 
   const now = new Date();
   const createdAt = now.toISOString();
-  const runId = options.runId ?? `codex-exec-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const runId =
+    options.runId ?? `codex-exec-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const packageName = await readPackageName(options.projectRoot);
-  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const humanishSource = (await implicitProjectDirectoryExists(options.projectRoot, "humanish"))
+    ? "present"
+    : "missing";
+  const source = await buildRunSource({
+    cwd: options.cwd,
+    capturedAt: createdAt,
+    humanishSource,
+    packageName,
+  });
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
@@ -2677,11 +2962,13 @@ async function runLocalCodexExec(options: RunOptions & {
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
-    warnings.push("Committed humanish/ source was not found; using built-in synthetic local actor defaults.");
+    warnings.push(
+      "Committed humanish/ source was not found; using built-in synthetic local actor defaults.",
+    );
   }
   warnings.push(...selection.warnings);
   const verdictNonce = randomUUID().slice(0, 12);
@@ -2691,7 +2978,7 @@ async function runLocalCodexExec(options: RunOptions & {
     message: string,
     level: RunEvent["level"] = "info",
     simId?: string,
-    streamId?: string
+    streamId?: string,
   ): void => {
     events.push({
       id: `event-${String(events.length + 1).padStart(3, "0")}`,
@@ -2700,19 +2987,23 @@ async function runLocalCodexExec(options: RunOptions & {
       type,
       message,
       ...(simId === undefined ? {} : { simId }),
-      ...(streamId === undefined ? {} : { streamId })
+      ...(streamId === undefined ? {} : { streamId }),
     });
   };
 
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: createdAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: createdAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   interface ExecLaneResult {
@@ -2735,7 +3026,7 @@ async function runLocalCodexExec(options: RunOptions & {
     const prompt = buildLocalCodexExecPrompt(selection, verdictNonce, {
       focus,
       index: index + 1,
-      total: options.simCount
+      total: options.simCount,
     });
     const promptDigest = digestText(prompt);
     const command = resolveLocalCodexExecCommand(options.cwd, prompt, options.actorCommand);
@@ -2744,14 +3035,14 @@ async function runLocalCodexExec(options: RunOptions & {
       `Spawned local Codex exec actor lane ${index + 1}/${options.simCount} (${focus.label}) command ${command.name} in explicit opt-in mode.`,
       "info",
       simId,
-      streamId
+      streamId,
     );
     pushEvent(
       "actor.prompt.submitted",
       `Submitted bounded public-safe dogfood prompt digest ${promptDigest}; raw prompt omitted from event log.`,
       "info",
       simId,
-      streamId
+      streamId,
     );
 
     return { command, focus, promptDigest, simId, streamId };
@@ -2763,22 +3054,27 @@ async function runLocalCodexExec(options: RunOptions & {
       "Published local Codex exec running snapshot for Observer polling.",
       "info",
       lane.simId,
-      lane.streamId
+      lane.streamId,
     );
   }
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 
   const baseLifecycle: RunBundle["lifecycle"] = [
     {
       at: createdAt,
       event: "run.created",
-      message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"} and max concurrency ${maxConcurrency}.`
+      message: `Live local Codex exec run created with ${options.simCount} explicit opt-in actor${options.simCount === 1 ? "" : "s"} and max concurrency ${maxConcurrency}.`,
     },
     {
       at: createdAt,
       event: "actor.selected",
-      message: "Selected local codex-exec actor."
-    }
+      message: "Selected local codex-exec actor.",
+    },
   ];
   const runningAt = new Date().toISOString();
   const runningBundle = buildLocalCodexExecBundle({
@@ -2794,11 +3090,11 @@ async function runLocalCodexExec(options: RunOptions & {
     scenario: selection.scenario,
     lifecycle: [
       ...baseLifecycle,
-    {
-      at: runningAt,
-      event: "actor.running",
-      message: `Local Codex exec actor lanes are running with max concurrency ${maxConcurrency}; Observer data will refresh as sanitized evidence arrives.`
-    }
+      {
+        at: runningAt,
+        event: "actor.running",
+        message: `Local Codex exec actor lanes are running with max concurrency ${maxConcurrency}; Observer data will refresh as sanitized evidence arrives.`,
+      },
     ],
     lanes: lanes.map((lane): LocalCodexExecLaneBundleInput => ({
       focus: lane.focus,
@@ -2808,44 +3104,52 @@ async function runLocalCodexExec(options: RunOptions & {
       progress: 35,
       currentStep: "Local Codex exec actor running",
       summary: `Local Codex exec actor ${lane.focus.label} is running.`,
-      terminalTail: "Codex exec actor is running; sanitized transcript evidence will be linked after completion.",
+      terminalTail:
+        "Codex exec actor is running; sanitized transcript evidence will be linked after completion.",
       updatedAt: runningAt,
       completion: {
         checkedAt: runningAt,
         reason: "actor process is still running",
-        status: "running"
-      }
+        status: "running",
+      },
     })),
     events,
-    review: createLocalActorRunningReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout")
+    review: createLocalActorRunningReviewSummary(
+      options.simCount === 1 ? "Codex exec" : "Codex exec fanout",
+    ),
   });
   await writeRunBundleArtifacts(runPaths, runningBundle);
 
-  const laneResults = await mapWithConcurrency(lanes, maxConcurrency, async (lane): Promise<ExecLaneResult> => {
-    const actor = await executeLocalActorCommand(lane.command, {
-      cwd: options.cwd,
-      timeoutMs,
-      verdictNonce
-    });
-    const redactedTranscript = redactSensitiveText(actor.transcript);
-    const tail = tailText(redactedTranscript, 6_000);
-    const transcriptPath = options.simCount === 1
-      ? "transcripts/codex-exec-sanitized.jsonl"
-      : `transcripts/${lane.streamId}-sanitized.jsonl`;
-    const tracePath = options.simCount === 1 ? "actor.json" : `actors/${lane.streamId}.json`;
-    return {
-      actor,
-      command: lane.command,
-      focus: lane.focus,
-      promptDigest: lane.promptDigest,
-      redactedTranscript,
-      simId: lane.simId,
-      streamId: lane.streamId,
-      tail,
-      tracePath,
-      transcriptPath
-    };
-  });
+  const laneResults = await mapWithConcurrency(
+    lanes,
+    maxConcurrency,
+    async (lane): Promise<ExecLaneResult> => {
+      const actor = await executeLocalActorCommand(lane.command, {
+        cwd: options.cwd,
+        timeoutMs,
+        verdictNonce,
+      });
+      const redactedTranscript = redactSensitiveText(actor.transcript);
+      const tail = tailText(redactedTranscript, 6_000);
+      const transcriptPath =
+        options.simCount === 1
+          ? "transcripts/codex-exec-sanitized.jsonl"
+          : `transcripts/${lane.streamId}-sanitized.jsonl`;
+      const tracePath = options.simCount === 1 ? "actor.json" : `actors/${lane.streamId}.json`;
+      return {
+        actor,
+        command: lane.command,
+        focus: lane.focus,
+        promptDigest: lane.promptDigest,
+        redactedTranscript,
+        simId: lane.simId,
+        streamId: lane.streamId,
+        tail,
+        tracePath,
+        transcriptPath,
+      };
+    },
+  );
 
   const completedAt = new Date().toISOString();
   await validatePreparedRunArtifactPaths(runPaths);
@@ -2853,54 +3157,70 @@ async function runLocalCodexExec(options: RunOptions & {
     await writeContainedOutputFile(
       runPaths,
       result.transcriptPath,
-      result.redactedTranscript.length > 0 ? result.redactedTranscript : "No transcript output captured.\n",
-      "utf8"
+      result.redactedTranscript.length > 0
+        ? result.redactedTranscript
+        : "No transcript output captured.\n",
+      "utf8",
     );
-    await writeContainedOutputFile(runPaths, result.tracePath, `${JSON.stringify({
-      schema: "humanish.local-codex-exec-actor.v1",
-      actor: "codex-exec",
-      commandName: result.command.name,
-      focusId: result.focus.id,
-      promptDigest: result.promptDigest,
-      verdictNonce,
-      startedAt: createdAt,
-      completedAt,
-      durationMs: result.actor.durationMs,
-      exitCode: result.actor.exitCode,
-      signal: result.actor.signal,
-      status: result.actor.status,
-      timeoutMs,
-      transcriptBytes: result.actor.transcriptBytes,
-      transcriptPath: result.transcriptPath,
-      redaction: "passed"
-    }, null, 2)}\n`, "utf8");
+    await writeContainedOutputFile(
+      runPaths,
+      result.tracePath,
+      `${JSON.stringify(
+        {
+          schema: "humanish.local-codex-exec-actor.v1",
+          actor: "codex-exec",
+          commandName: result.command.name,
+          focusId: result.focus.id,
+          promptDigest: result.promptDigest,
+          verdictNonce,
+          startedAt: createdAt,
+          completedAt,
+          durationMs: result.actor.durationMs,
+          exitCode: result.actor.exitCode,
+          signal: result.actor.signal,
+          status: result.actor.status,
+          timeoutMs,
+          transcriptBytes: result.actor.transcriptBytes,
+          transcriptPath: result.transcriptPath,
+          redaction: "passed",
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
   }
   const laneStatuses = laneResults.map((result) => result.actor.status);
   const status = aggregateActorStatus(laneStatuses);
-  const verdictReason = options.simCount === 1
-    ? laneResults[0]?.actor.reason ?? "actor did not return a result"
-    : summarizeExecFanout(laneStatuses);
+  const verdictReason =
+    options.simCount === 1
+      ? (laneResults[0]?.actor.reason ?? "actor did not return a result")
+      : summarizeExecFanout(laneStatuses);
   for (const result of laneResults) {
     pushEvent(
       "actor.observation",
       `Captured ${result.actor.transcriptBytes} output byte${result.actor.transcriptBytes === 1 ? "" : "s"}; sanitized transcript tail recorded with redaction=passed.`,
       "info",
       result.simId,
-      result.streamId
+      result.streamId,
     );
     pushEvent(
       "actor.artifact",
       "Wrote sanitized Codex exec transcript and actor trace artifacts under the ignored run directory.",
       "info",
       result.simId,
-      result.streamId
+      result.streamId,
     );
     pushEvent(
       "actor.verdict",
       `Local Codex exec actor lane ${result.focus.label} verdict ${result.actor.status}: ${result.actor.reason}`,
-      result.actor.status === "passed" ? "info" : result.actor.status === "timed_out" ? "warn" : "error",
+      result.actor.status === "passed"
+        ? "info"
+        : result.actor.status === "timed_out"
+          ? "warn"
+          : "error",
       result.simId,
-      result.streamId
+      result.streamId,
     );
     pushEvent(
       result.actor.status === "timed_out" ? "actor.timeout" : "actor.exited",
@@ -2909,10 +3229,15 @@ async function runLocalCodexExec(options: RunOptions & {
         : `Actor exited with code ${result.actor.exitCode ?? "null"}${result.actor.signal ? ` and signal ${result.actor.signal}` : ""}.`,
       result.actor.status === "passed" ? "info" : "warn",
       result.simId,
-      result.streamId
+      result.streamId,
     );
   }
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 
   const bundle = buildLocalCodexExecBundle({
     runId,
@@ -2930,8 +3255,8 @@ async function runLocalCodexExec(options: RunOptions & {
       {
         at: completedAt,
         event: "review.skeleton.created",
-        message: "Created review skeleton from sanitized actor lifecycle evidence."
-      }
+        message: "Created review skeleton from sanitized actor lifecycle evidence.",
+      },
     ],
     lanes: laneResults.map((result): LocalCodexExecLaneBundleInput => ({
       focus: result.focus,
@@ -2939,7 +3264,10 @@ async function runLocalCodexExec(options: RunOptions & {
       streamId: result.streamId,
       status: result.actor.status,
       progress: 100,
-      currentStep: result.actor.status === "passed" ? "Local Codex exec actor completed" : "Local Codex exec actor needs review",
+      currentStep:
+        result.actor.status === "passed"
+          ? "Local Codex exec actor completed"
+          : "Local Codex exec actor needs review",
       summary: `Local Codex exec actor ${result.focus.label} ${result.actor.status}: ${result.actor.reason}`,
       terminalTail: result.tail,
       updatedAt: completedAt,
@@ -2950,23 +3278,31 @@ async function runLocalCodexExec(options: RunOptions & {
         ...(result.actor.exitCode === undefined ? {} : { exitCode: result.actor.exitCode }),
         logTail: result.tail,
         reason: result.actor.reason,
-        status: result.actor.status
-      }
+        status: result.actor.status,
+      },
     })),
     events,
-    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex exec" : "Codex exec fanout", status, verdictReason)
+    review: createLocalActorReviewSummary(
+      options.simCount === 1 ? "Codex exec" : "Codex exec fanout",
+      status,
+      verdictReason,
+    ),
   });
 
   await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: completedAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: completedAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   return {
@@ -2986,9 +3322,9 @@ async function runLocalCodexExec(options: RunOptions & {
       : {
           error: {
             code: "HUMANISH_LOCAL_CODEX_EXEC_FAILED" as const,
-            message: `Local Codex exec actor ${status}: ${verdictReason}`
-          }
-        })
+            message: `Local Codex exec actor ${status}: ${verdictReason}`,
+          },
+        }),
   };
 }
 
@@ -3057,7 +3393,7 @@ function buildLocalCodexAppServerBundle(args: {
       summary: lane.summary,
       streamIds: [lane.streamId],
       startedAt: args.createdAt,
-      updatedAt: lane.updatedAt
+      updatedAt: lane.updatedAt,
     })),
     streams: args.lanes.map((lane): RunStream => {
       const result = lane.result;
@@ -3068,18 +3404,28 @@ function buildLocalCodexAppServerBundle(args: {
             id: args.persona.id,
             traitsApplied: personaToDirectives(args.resolvedPersona).traitsApplied,
             brief: personaBrief(args.resolvedPersona),
-            promptDigest: result.trace.promptDigest
+            promptDigest: result.trace.promptDigest,
           })
         : undefined;
       const artifacts: RunStream["artifacts"] = [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
         { label: "event log", path: "events.ndjson", kind: "events" },
-        ...(result ? [
-          { label: "codex app-server trace", path: result.tracePath, kind: "trace" as const },
-          { label: "codex app-server events", path: result.eventsPath, kind: "events" as const },
-          { label: "codex app-server transcript", path: result.transcriptPath, kind: "log" as const }
-        ] : [])
+        ...(result
+          ? [
+              { label: "codex app-server trace", path: result.tracePath, kind: "trace" as const },
+              {
+                label: "codex app-server events",
+                path: result.eventsPath,
+                kind: "events" as const,
+              },
+              {
+                label: "codex app-server transcript",
+                path: result.transcriptPath,
+                kind: "log" as const,
+              },
+            ]
+          : []),
       ];
 
       return {
@@ -3092,57 +3438,67 @@ function buildLocalCodexAppServerBundle(args: {
         updatedAt: lane.updatedAt,
         embed: {
           kind: "placeholder",
-          title: `Codex app-server - ${lane.focus.label}`
+          title: `Codex app-server - ${lane.focus.label}`,
         },
         terminal: {
           title: `Codex app-server - ${lane.focus.label}`,
           format: "plain",
           stdin: "sent",
-          tail: lane.terminalTail
+          tail: lane.terminalTail,
         },
         codex: {
           provider: "codex-app-server",
-          contract: "Humanish captures Codex app-server Thread, Turn, Item, approval, command, file, tool, message, and reasoning evidence as redacted local artifacts.",
+          contract:
+            "Humanish captures Codex app-server Thread, Turn, Item, approval, command, file, tool, message, and reasoning evidence as redacted local artifacts.",
           state: codexStateForStream(lane.status),
-          ...(result?.experimentalApi === undefined ? {} : { experimentalApi: result.experimentalApi }),
+          ...(result?.experimentalApi === undefined
+            ? {}
+            : { experimentalApi: result.experimentalApi }),
           ...(result?.counts === undefined ? {} : { eventCount: result.counts.envelopes }),
           ...(result?.model === undefined ? {} : { model: result.model }),
           ...(result?.sessionId === undefined ? {} : { sessionId: result.sessionId }),
           ...(result?.threadId === undefined ? {} : { threadId: result.threadId }),
           ...(result?.trace === undefined ? {} : { trace: result.trace }),
           ...(result?.tracePath === undefined ? {} : { tracePath: result.tracePath }),
-          ...(result?.turnId === undefined ? {} : { turnId: result.turnId })
+          ...(result?.turnId === undefined ? {} : { turnId: result.turnId }),
         },
         ...(actor === undefined ? {} : { actor }),
         ...(lane.completion ? { completion: lane.completion } : {}),
-        artifacts
+        artifacts,
       };
     }),
     events: args.events,
     redaction: {
       status: "passed",
-      notes: "Codex app-server envelopes and transcript summaries were redacted before persistence; raw prompts and secret-bearing fields are not stored in run events."
+      notes:
+        "Codex app-server envelopes and transcript summaries were redacted before persistence; raw prompts and secret-bearing fields are not stored in run events.",
     },
     artifacts: {
       run: "run.json",
       reviewJson: "review.json",
       reviewMarkdown: "review.md",
       observerData: "observer/observer-data.json",
-      events: "events.ndjson"
+      events: "events.ndjson",
     },
     review: args.review,
-    feedbackCandidates: []
+    feedbackCandidates: [],
   };
 }
 
-async function runLocalCodexAppServer(options: RunOptions & {
-  actor: "codex-app-server";
-  cwd: string;
-  projectRoot: PreparedSelectedOutputDirectory;
-  simCount: number;
-}): Promise<RunResult> {
+async function runLocalCodexAppServer(
+  options: RunOptions & {
+    actor: "codex-app-server";
+    cwd: string;
+    projectRoot: PreparedSelectedOutputDirectory;
+    simCount: number;
+  },
+): Promise<RunResult> {
   const warnings: string[] = [];
-  const timeoutMs = normalizeActorTimeout(options.timeoutMs ?? readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ?? LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = normalizeActorTimeout(
+    options.timeoutMs ??
+      readEnvInteger("HUMANISH_CODEX_ACTOR_TIMEOUT_MS") ??
+      LOCAL_CODEX_TUI_DEFAULT_TIMEOUT_MS,
+  );
   if (timeoutMs === null) {
     return {
       schema: "humanish.run-result.v1",
@@ -3151,17 +3507,26 @@ async function runLocalCodexAppServer(options: RunOptions & {
       warnings,
       error: {
         code: "HUMANISH_INVALID_TIMEOUT",
-        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`
-      }
+        message: `--timeout-ms must be an integer between 1 and ${LOCAL_CODEX_TUI_MAX_TIMEOUT_MS}.`,
+      },
     };
   }
 
   const now = new Date();
   const createdAt = now.toISOString();
-  const runId = options.runId ?? `codex-app-server-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
+  const runId =
+    options.runId ??
+    `codex-app-server-${createdAt.replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}`;
   const packageName = await readPackageName(options.projectRoot);
-  const humanishSource = await implicitProjectDirectoryExists(options.projectRoot, "humanish") ? "present" : "missing";
-  const source = await buildRunSource({ cwd: options.cwd, capturedAt: createdAt, humanishSource, packageName });
+  const humanishSource = (await implicitProjectDirectoryExists(options.projectRoot, "humanish"))
+    ? "present"
+    : "missing";
+  const source = await buildRunSource({
+    cwd: options.cwd,
+    capturedAt: createdAt,
+    humanishSource,
+    packageName,
+  });
   const selection = await loadDryRunSelection(options.projectRoot, humanishSource);
   await assertPreparedSelectedOutputDirectory(options.projectRoot);
   const runPaths = await prepareRunArtifactPaths(options.cwd, runId);
@@ -3170,11 +3535,13 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
     runId,
     mode: options.dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab })
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
   });
   const artifactRoot = runPaths.relativeRunRoot;
   if (humanishSource === "missing") {
-    warnings.push("Committed humanish/ source was not found; using built-in synthetic Codex app-server actor defaults.");
+    warnings.push(
+      "Committed humanish/ source was not found; using built-in synthetic Codex app-server actor defaults.",
+    );
   }
   warnings.push(...selection.warnings);
 
@@ -3184,7 +3551,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     message: string,
     level: RunEvent["level"] = "info",
     simId?: string,
-    streamId?: string
+    streamId?: string,
   ): void => {
     events.push({
       id: `event-${String(events.length + 1).padStart(3, "0")}`,
@@ -3193,19 +3560,23 @@ async function runLocalCodexAppServer(options: RunOptions & {
       type,
       message,
       ...(simId === undefined ? {} : { simId }),
-      ...(streamId === undefined ? {} : { streamId })
+      ...(streamId === undefined ? {} : { streamId }),
     });
   };
 
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: createdAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: createdAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   const lanes: LocalCodexAppServerLane[] = Array.from({ length: options.simCount }, (_, index) => {
@@ -3215,7 +3586,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
     const prompt = buildLocalCodexAppServerPrompt(selection, {
       focus,
       index: index + 1,
-      total: options.simCount
+      total: options.simCount,
     });
     const promptDigest = digestText(prompt);
     pushEvent(
@@ -3223,14 +3594,14 @@ async function runLocalCodexAppServer(options: RunOptions & {
       `Spawned Codex app-server lane ${index + 1}/${options.simCount} (${focus.label}) in explicit opt-in mode.`,
       "info",
       simId,
-      streamId
+      streamId,
     );
     pushEvent(
       "codex-app-server.prompt.submitted",
       `Submitted bounded public-safe app-server prompt digest ${promptDigest}; raw prompt omitted from event log.`,
       "info",
       simId,
-      streamId
+      streamId,
     );
     return {
       focus,
@@ -3238,7 +3609,7 @@ async function runLocalCodexAppServer(options: RunOptions & {
       prompt,
       promptDigest,
       simId,
-      streamId
+      streamId,
     };
   });
 
@@ -3248,22 +3619,27 @@ async function runLocalCodexAppServer(options: RunOptions & {
       "Published Codex app-server running snapshot for Observer polling.",
       "info",
       lane.simId,
-      lane.streamId
+      lane.streamId,
     );
   }
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 
   const baseLifecycle: RunBundle["lifecycle"] = [
     {
       at: createdAt,
       event: "run.created",
-      message: `Live Codex app-server run created with ${options.simCount} explicit opt-in lane${options.simCount === 1 ? "" : "s"}.`
+      message: `Live Codex app-server run created with ${options.simCount} explicit opt-in lane${options.simCount === 1 ? "" : "s"}.`,
     },
     {
       at: createdAt,
       event: "actor.selected",
-      message: "Selected local codex-app-server actor."
-    }
+      message: "Selected local codex-app-server actor.",
+    },
   ];
   const runningAt = new Date().toISOString();
   const runningBundle = buildLocalCodexAppServerBundle({
@@ -3283,8 +3659,9 @@ async function runLocalCodexAppServer(options: RunOptions & {
       {
         at: runningAt,
         event: "codex-app-server.running",
-        message: "Codex app-server lanes are running; Observer data will refresh as redacted app-server evidence arrives."
-      }
+        message:
+          "Codex app-server lanes are running; Observer data will refresh as redacted app-server evidence arrives.",
+      },
     ],
     lanes: lanes.map((lane): LocalCodexAppServerLaneBundleInput => ({
       focus: lane.focus,
@@ -3294,16 +3671,17 @@ async function runLocalCodexAppServer(options: RunOptions & {
       progress: 35,
       currentStep: "Codex app-server actor running",
       summary: `Codex app-server actor ${lane.focus.label} is running.`,
-      terminalTail: "Codex app-server actor is running; redacted Thread/Turn/Item trace evidence will be linked after completion.",
+      terminalTail:
+        "Codex app-server actor is running; redacted Thread/Turn/Item trace evidence will be linked after completion.",
       updatedAt: runningAt,
       completion: {
         checkedAt: runningAt,
         reason: "Codex app-server turn is still running",
-        status: "running"
-      }
+        status: "running",
+      },
     })),
     events,
-    review: createLocalActorRunningReviewSummary("Codex app-server")
+    review: createLocalActorRunningReviewSummary("Codex app-server"),
   });
   await writeRunBundleArtifacts(runPaths, runningBundle);
 
@@ -3314,19 +3692,22 @@ async function runLocalCodexAppServer(options: RunOptions & {
     const sessionOptions: import("./codex-app-server.js").CodexAppServerRunOptions = {
       cwd: options.cwd,
       prompt: lane.prompt,
-      runRoot: "physicalRunRoot" in laneRunRoot ? laneRunRoot.physicalRunRoot : laneRunRoot.physicalPath,
+      runRoot:
+        "physicalRunRoot" in laneRunRoot ? laneRunRoot.physicalRunRoot : laneRunRoot.physicalPath,
       timeoutMs,
       ...(options.actorCommand === undefined ? {} : { actorCommand: options.actorCommand }),
       approvalPolicy: "never",
       experimentalApi: process.env.HUMANISH_CODEX_APP_SERVER_EXPERIMENTAL === "1",
-      ...(process.env.HUMANISH_CODEX_APP_SERVER_MODEL ? { model: process.env.HUMANISH_CODEX_APP_SERVER_MODEL } : {}),
+      ...(process.env.HUMANISH_CODEX_APP_SERVER_MODEL
+        ? { model: process.env.HUMANISH_CODEX_APP_SERVER_MODEL }
+        : {}),
       sandbox: readCodexAppServerSandboxFromEnv(),
-      serviceName: "humanish"
+      serviceName: "humanish",
     };
     const result = await runCodexAppServerSessionInPreparedRoot(sessionOptions, laneRunRoot);
     return {
       lane,
-      result: prefixCodexAppServerResultPaths(result, lane.prefix)
+      result: prefixCodexAppServerResultPaths(result, lane.prefix),
     };
   });
 
@@ -3334,26 +3715,36 @@ async function runLocalCodexAppServer(options: RunOptions & {
   const completedAt = new Date().toISOString();
   const statuses = laneResults.map((entry) => entry.result.status);
   const status = aggregateActorStatus(statuses);
-  const verdictReason = options.simCount === 1
-    ? laneResults[0]?.result.reason ?? "Codex app-server actor did not return a result"
-    : summarizeExecFanout(statuses);
+  const verdictReason =
+    options.simCount === 1
+      ? (laneResults[0]?.result.reason ?? "Codex app-server actor did not return a result")
+      : summarizeExecFanout(statuses);
   for (const entry of laneResults) {
     pushEvent(
       "codex-app-server.artifact",
       `Captured ${entry.result.counts.envelopes} app-server envelope${entry.result.counts.envelopes === 1 ? "" : "s"}; trace summary and transcript were redacted before persistence.`,
       "info",
       entry.lane.simId,
-      entry.lane.streamId
+      entry.lane.streamId,
     );
     pushEvent(
       "codex-app-server.verdict",
       `Codex app-server actor lane ${entry.lane.focus.label} verdict ${entry.result.status}: ${entry.result.reason}`,
-      entry.result.status === "passed" ? "info" : entry.result.status === "timed_out" ? "warn" : "error",
+      entry.result.status === "passed"
+        ? "info"
+        : entry.result.status === "timed_out"
+          ? "warn"
+          : "error",
       entry.lane.simId,
-      entry.lane.streamId
+      entry.lane.streamId,
     );
   }
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
 
   const bundle = buildLocalCodexAppServerBundle({
     runId,
@@ -3372,8 +3763,8 @@ async function runLocalCodexAppServer(options: RunOptions & {
       {
         at: completedAt,
         event: "review.skeleton.created",
-        message: "Created review skeleton from redacted Codex app-server lifecycle evidence."
-      }
+        message: "Created review skeleton from redacted Codex app-server lifecycle evidence.",
+      },
     ],
     lanes: laneResults.map((entry): LocalCodexAppServerLaneBundleInput => ({
       focus: entry.lane.focus,
@@ -3381,7 +3772,10 @@ async function runLocalCodexAppServer(options: RunOptions & {
       streamId: entry.lane.streamId,
       status: entry.result.status,
       progress: 100,
-      currentStep: entry.result.status === "passed" ? "Codex app-server actor completed" : "Codex app-server actor needs review",
+      currentStep:
+        entry.result.status === "passed"
+          ? "Codex app-server actor completed"
+          : "Codex app-server actor needs review",
       summary: `Codex app-server actor ${entry.lane.focus.label} ${entry.result.status}: ${entry.result.reason}`,
       terminalTail: entry.result.tail,
       updatedAt: completedAt,
@@ -3391,23 +3785,31 @@ async function runLocalCodexAppServer(options: RunOptions & {
         ...(entry.result.exitCode === undefined ? {} : { exitCode: entry.result.exitCode }),
         logTail: entry.result.tail,
         reason: entry.result.reason,
-        status: entry.result.status
-      }
+        status: entry.result.status,
+      },
     })),
     events,
-    review: createLocalActorReviewSummary(options.simCount === 1 ? "Codex app-server" : "Codex app-server fanout", status, verdictReason)
+    review: createLocalActorReviewSummary(
+      options.simCount === 1 ? "Codex app-server" : "Codex app-server fanout",
+      status,
+      verdictReason,
+    ),
   });
 
   await writeRunBundleArtifacts(runPaths, bundle, runStatus);
   await writePreparedRunLatestPointer(
     runPaths,
-    `${JSON.stringify({
-      schema: "humanish.latest-run.v1",
-      runId,
-      path: artifactRoot,
-      updatedAt: completedAt
-    } satisfies RunPointer, null, 2)}\n`,
-    "utf8"
+    `${JSON.stringify(
+      {
+        schema: "humanish.latest-run.v1",
+        runId,
+        path: artifactRoot,
+        updatedAt: completedAt,
+      } satisfies RunPointer,
+      null,
+      2,
+    )}\n`,
+    "utf8",
   );
 
   return {
@@ -3427,9 +3829,9 @@ async function runLocalCodexAppServer(options: RunOptions & {
       : {
           error: {
             code: "HUMANISH_CODEX_APP_SERVER_FAILED" as const,
-            message: `Codex app-server actor ${status}: ${verdictReason}`
-          }
-        })
+            message: `Codex app-server actor ${status}: ${verdictReason}`,
+          },
+        }),
   };
 }
 
@@ -3449,41 +3851,45 @@ function buildSyntheticObserverFixtures(args: {
       mode: "browser-sim" as const,
       label: "UI journey",
       currentStep: "Route and viewport contract captured",
-      summary: "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
+      summary:
+        "Browser lane reserved for VNC playback, screenshots, route state, and interaction trace.",
       tail: "open target app\nresolve first-run route\ncapture viewport state\nrecord interaction trace",
-      viewport: { width: 1440, height: 960, deviceScaleFactor: 1 }
+      viewport: { width: 1440, height: 960, deviceScaleFactor: 1 },
     },
     {
       kind: "terminal" as const,
       mode: "cli-sim" as const,
       label: "CLI actor",
       currentStep: "Command transcript contract captured",
-      summary: "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
+      summary:
+        "CLI lane reserved for command-by-command persona runs with stdout/stderr and artifact links.",
       // Every command in a shipped sample tail must be one the CLI actually accepts. This one
       // advertised a `--scenario` flag on `run` for months. That flag has never existed, and a
       // computer-use participant hit it in the first Observer it ever saw (#516).
       // tests/shipped-command-strings.test.ts now checks this against the real command table.
       tail: "$ humanish doctor\nok target cwd\nok humanish source\n$ humanish run first-run\ncontract proof emitted",
-      viewport: undefined
+      viewport: undefined,
     },
     {
       kind: "tui" as const,
       mode: "tui-sim" as const,
       label: "TUI actor",
       currentStep: "Terminal UI frame contract captured",
-      summary: "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
+      summary:
+        "TUI lane reserved for PTY bytes, ANSI rendering, focus replay, and optional assisted attach.",
       tail: "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
-      viewport: undefined
+      viewport: undefined,
     },
     {
       kind: "codex-ui" as const,
       mode: "codex-app-sim" as const,
       label: "Codex UI",
       currentStep: "App-server embed contract captured",
-      summary: "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
+      summary:
+        "Codex UI lane reserved for app-server sessions that can be watched beside terminal evidence.",
       tail: "codex-app-server session contract\nstate: not_connected\nembed: pending provider URL\nreceipts: planned",
-      viewport: { width: 1280, height: 900, deviceScaleFactor: 1 }
-    }
+      viewport: { width: 1280, height: 900, deviceScaleFactor: 1 },
+    },
   ];
 
   const simulations: RunSimulation[] = [];
@@ -3494,8 +3900,8 @@ function buildSyntheticObserverFixtures(args: {
       at: args.createdAt,
       level: "info",
       type: "observer.contract.created",
-      message: "Created public-safe observer stream contract."
-    }
+      message: "Created public-safe observer stream contract.",
+    },
   ];
 
   for (let index = 0; index < args.simCount; index += 1) {
@@ -3520,7 +3926,7 @@ function buildSyntheticObserverFixtures(args: {
       summary: template.summary,
       streamIds: [streamId],
       startedAt: args.createdAt,
-      updatedAt: args.createdAt
+      updatedAt: args.createdAt,
     });
 
     streams.push({
@@ -3533,22 +3939,22 @@ function buildSyntheticObserverFixtures(args: {
       updatedAt: args.createdAt,
       embed: {
         kind: template.kind === "terminal" || template.kind === "tui" ? "terminal" : "placeholder",
-        title: template.label
+        title: template.label,
       },
       ...(template.viewport ? { viewport: template.viewport } : {}),
       terminal: {
         title: template.label,
         format: template.kind === "tui" ? "ansi" : "plain",
         stdin: "disabled",
-        tail: template.tail
+        tail: template.tail,
       },
       ...(template.kind === "ui" || template.kind === "codex-ui"
         ? {
             ui: {
               route: template.kind === "ui" ? "/first-run" : "/codex/session",
               intent: template.summary,
-              state: "contract-only"
-            }
+              state: "contract-only",
+            },
           }
         : {}),
       ...(template.kind === "codex-ui"
@@ -3556,15 +3962,16 @@ function buildSyntheticObserverFixtures(args: {
             codex: {
               provider: "codex-app-server" as const,
               state: "not_connected" as const,
-              contract: "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links."
-            }
+              contract:
+                "Observer accepts an app-server embed URL, session id, status feed, terminal receipt feed, and artifact links.",
+            },
           }
         : {}),
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" },
         { label: "review", path: "review.md", kind: "review" },
-        { label: "event log", path: "events.ndjson", kind: "events" }
-      ]
+        { label: "event log", path: "events.ndjson", kind: "events" },
+      ],
     });
 
     events.push(
@@ -3575,17 +3982,18 @@ function buildSyntheticObserverFixtures(args: {
         type: "sim.contract.ready",
         message: `${template.label} stream contract ready.`,
         simId,
-        streamId
+        streamId,
       },
       {
         id: `event-${String(index + 1).padStart(3, "0")}-b`,
         at: args.createdAt,
         level: "warn",
         type: "sim.live-substrate.missing",
-        message: "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+        message:
+          "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
         simId,
-        streamId
-      }
+        streamId,
+      },
     );
   }
 
@@ -3615,7 +4023,10 @@ interface LocalActorCommandResult {
   transcriptBytes: number;
 }
 
-type LocalActorTerminalStatus = Extract<RunSimulationStatus, "passed" | "failed" | "blocked" | "timed_out">;
+type LocalActorTerminalStatus = Extract<
+  RunSimulationStatus,
+  "passed" | "failed" | "blocked" | "timed_out"
+>;
 
 interface LocalCodexExecFocus {
   id: string;
@@ -3637,14 +4048,15 @@ type CodexTrustPreflight =
 function resolveLocalCodexTuiCommand(
   cwd: string,
   prompt: string,
-  overrideCommand: string[] | undefined
+  overrideCommand: string[] | undefined,
 ): LocalActorCommand {
   const envCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
-  const commandParts = overrideCommand && overrideCommand.length > 0
-    ? overrideCommand
-    : envCommand
-      ? parseCommandLine(envCommand)
-      : defaultLocalCodexTuiCommand(cwd, prompt);
+  const commandParts =
+    overrideCommand && overrideCommand.length > 0
+      ? overrideCommand
+      : envCommand
+        ? parseCommandLine(envCommand)
+        : defaultLocalCodexTuiCommand(cwd, prompt);
   const [command, ...args] = commandParts;
 
   if (!command) {
@@ -3652,14 +4064,14 @@ function resolveLocalCodexTuiCommand(
     return {
       command: fallbackCommand ?? "codex",
       args: fallbackArgs,
-      name: fallbackCommand ? path.basename(fallbackCommand) : "codex"
+      name: fallbackCommand ? path.basename(fallbackCommand) : "codex",
     };
   }
 
   return {
     command,
     args,
-    name: path.basename(command)
+    name: path.basename(command),
   };
 }
 
@@ -3673,7 +4085,7 @@ function defaultLocalCodexTuiCommand(cwd: string, prompt: string): string[] {
     "read-only",
     "--ask-for-approval",
     "never",
-    prompt
+    prompt,
   ];
 
   if (process.platform === "linux") {
@@ -3686,14 +4098,15 @@ function defaultLocalCodexTuiCommand(cwd: string, prompt: string): string[] {
 function resolveLocalCodexExecCommand(
   cwd: string,
   prompt: string,
-  overrideCommand: string[] | undefined
+  overrideCommand: string[] | undefined,
 ): LocalActorCommand {
   const envCommand = process.env.HUMANISH_CODEX_ACTOR_COMMAND;
-  const commandParts = overrideCommand && overrideCommand.length > 0
-    ? overrideCommand
-    : envCommand
-      ? parseCommandLine(envCommand)
-      : defaultLocalCodexExecCommand(cwd, prompt);
+  const commandParts =
+    overrideCommand && overrideCommand.length > 0
+      ? overrideCommand
+      : envCommand
+        ? parseCommandLine(envCommand)
+        : defaultLocalCodexExecCommand(cwd, prompt);
   const [command, ...args] = commandParts;
 
   if (!command) {
@@ -3701,14 +4114,14 @@ function resolveLocalCodexExecCommand(
     return {
       command: fallbackCommand ?? "codex",
       args: fallbackArgs,
-      name: fallbackCommand ? path.basename(fallbackCommand) : "codex"
+      name: fallbackCommand ? path.basename(fallbackCommand) : "codex",
     };
   }
 
   return {
     command,
     args,
-    name: path.basename(command)
+    name: path.basename(command),
   };
 }
 
@@ -3724,7 +4137,7 @@ function defaultLocalCodexExecCommand(cwd: string, prompt: string): string[] {
     "--sandbox",
     "read-only",
     "--json",
-    prompt
+    prompt,
   ];
 }
 
@@ -3734,7 +4147,7 @@ function executeLocalActorCommand(
     cwd: string;
     timeoutMs: number;
     verdictNonce: string;
-  }
+  },
 ): Promise<LocalActorCommandResult> {
   const startedAt = Date.now();
   let transcript = "";
@@ -3748,7 +4161,9 @@ function executeLocalActorCommand(
   let markerKillTimer: NodeJS.Timeout | undefined;
 
   return new Promise((resolve) => {
-    const finish = (result: Omit<LocalActorCommandResult, "durationMs" | "transcript" | "transcriptBytes">): void => {
+    const finish = (
+      result: Omit<LocalActorCommandResult, "durationMs" | "transcript" | "transcriptBytes">,
+    ): void => {
       if (settled) {
         return;
       }
@@ -3760,7 +4175,7 @@ function executeLocalActorCommand(
         ...result,
         durationMs: Date.now() - startedAt,
         transcript: redactSensitiveText(normalizedTranscript),
-        transcriptBytes
+        transcriptBytes,
       });
     };
 
@@ -3771,9 +4186,9 @@ function executeLocalActorCommand(
         TERM: process.env.TERM ?? "xterm-256color",
         COLUMNS: process.env.COLUMNS ?? "120",
         LINES: process.env.LINES ?? "40",
-        HUMANISH_ACTOR_VERDICT_NONCE: options.verdictNonce
+        HUMANISH_ACTOR_VERDICT_NONCE: options.verdictNonce,
       },
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
     });
 
     timer = setTimeout(() => {
@@ -3791,10 +4206,9 @@ function executeLocalActorCommand(
       transcriptBytes += chunk.byteLength;
       transcript = limitTranscript(transcript + chunk.toString("utf8"));
       terminalQueryBuffer = respondToTerminalQueries(terminalQueryBuffer, chunk, child.stdin);
-      const markerStatus = observedMarkerStatus ?? extractLocalActorVerdict(
-        normalizeLocalActorTranscript(transcript),
-        options.verdictNonce
-      );
+      const markerStatus =
+        observedMarkerStatus ??
+        extractLocalActorVerdict(normalizeLocalActorTranscript(transcript), options.verdictNonce);
       if (markerStatus && !observedMarkerStatus) {
         observedMarkerStatus = markerStatus;
         stoppingAfterMarker = true;
@@ -3811,7 +4225,7 @@ function executeLocalActorCommand(
     child.once("error", (error) => {
       finish({
         status: "blocked",
-        reason: `actor command could not start: ${error.message}`
+        reason: `actor command could not start: ${error.message}`,
       });
     });
     child.once("close", (code, signal) => {
@@ -3820,19 +4234,20 @@ function executeLocalActorCommand(
         finish({
           status: "timed_out",
           reason: `actor exceeded ${options.timeoutMs}ms timeout`,
-          ...(signal === null ? {} : { signal })
+          ...(signal === null ? {} : { signal }),
         });
         return;
       }
 
-      const markerStatus = observedMarkerStatus ?? extractLocalActorVerdict(
-        normalizeLocalActorTranscript(transcript),
-        options.verdictNonce
-      );
+      const markerStatus =
+        observedMarkerStatus ??
+        extractLocalActorVerdict(normalizeLocalActorTranscript(transcript), options.verdictNonce);
       const processFailed = code !== 0 && !(stoppingAfterMarker && markerStatus);
       const status = processFailed
-        ? markerStatus === "blocked" ? "blocked" : "failed"
-        : markerStatus ?? "passed";
+        ? markerStatus === "blocked"
+          ? "blocked"
+          : "failed"
+        : (markerStatus ?? "passed");
       finish({
         status,
         reason: processFailed
@@ -3843,7 +4258,7 @@ function executeLocalActorCommand(
             ? `actor reported ${markerStatus} verdict marker`
             : "actor process exited successfully",
         ...(code === null ? {} : { exitCode: code }),
-        ...(signal === null ? {} : { signal })
+        ...(signal === null ? {} : { signal }),
       });
     });
   });
@@ -3852,7 +4267,7 @@ function executeLocalActorCommand(
 function respondToTerminalQueries(
   currentBuffer: string,
   chunk: Buffer,
-  stdin: NodeJS.WritableStream | null
+  stdin: NodeJS.WritableStream | null,
 ): string {
   if (!stdin || !stdin.writable) {
     return "";
@@ -3914,14 +4329,17 @@ export function normalizeLocalActorTranscript(transcript: string): string {
  * Exported so the terminal-product lane scores its in-sandbox `codex exec` run by the SAME marker
  * — divergent verdict logic would let the two lanes disagree about what "passed" means.
  */
-export function extractLocalActorVerdict(transcript: string, verdictNonce: string): LocalActorTerminalStatus | null {
+export function extractLocalActorVerdict(
+  transcript: string,
+  verdictNonce: string,
+): LocalActorTerminalStatus | null {
   const compactTranscript = transcript.replace(/\s+/g, "");
   // The per-run nonce is mandatory: a bare HUMANISH_ACTOR_VERDICT=<status>
   // marker echoed by an actor (or replayed from untrusted text) must never
   // satisfy verdict extraction.
   const match = new RegExp(
     `HUMANISH_ACTOR_VERDICT=(passed|blocked|failed)HUMANISH_ACTOR_NONCE=${escapeRegExp(verdictNonce)}`,
-    "i"
+    "i",
   ).exec(compactTranscript);
   if (!match) {
     return null;
@@ -3945,15 +4363,18 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
       trustRoot: detected.worktreeRoot,
       unsafeMetadata: true,
       message: `Codex workspace trust preflight blocked local TUI launch; Git worktree metadata failed containment validation: ${detected.worktreeRoot}`,
-      recoveryCommand: `codex --no-alt-screen -C ${shellQuote(detected.worktreeRoot)}`
+      recoveryCommand: `codex --no-alt-screen -C ${shellQuote(detected.worktreeRoot)}`,
     };
   }
   const trustRoot = detected.trustRoot;
 
-  const configPath = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"), "config.toml");
+  const configPath = path.join(
+    process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"),
+    "config.toml",
+  );
   const configText = await readTextIfExists(configPath);
 
-  if (configText && await codexConfigTrustsProject(configText, trustRoot)) {
+  if (configText && (await codexConfigTrustsProject(configText, trustRoot))) {
     return { ok: true };
   }
 
@@ -3961,15 +4382,13 @@ async function checkCodexWorkspaceTrust(cwd: string): Promise<CodexTrustPrefligh
     ok: false,
     trustRoot,
     message: `Codex workspace trust preflight blocked local TUI launch; trust root is not explicitly trusted as an exact Codex project root: ${trustRoot}`,
-    recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`
+    recoveryCommand: `codex --no-alt-screen -C ${shellQuote(trustRoot)}`,
   };
 }
 
-async function detectCodexTrustRoot(cwd: string): Promise<
-  | { unsafe: false; trustRoot: string }
-  | { unsafe: true; worktreeRoot: string }
-  | null
-> {
+async function detectCodexTrustRoot(
+  cwd: string,
+): Promise<{ unsafe: false; trustRoot: string } | { unsafe: true; worktreeRoot: string } | null> {
   const inspection = await inspectVerifiedGitWorkspace(cwd);
   if (inspection.status === "missing") {
     return null;
@@ -3988,9 +4407,13 @@ async function codexConfigTrustsProject(configText: string, trustRoot: string): 
     const projectPath = unescapeTomlString(sectionMatch[1] ?? "");
     const afterSection = configText.slice(sectionMatch.index + sectionMatch[0].length);
     const nextSectionIndex = afterSection.search(/^\[/m);
-    const sectionBody = nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
+    const sectionBody =
+      nextSectionIndex === -1 ? afterSection : afterSection.slice(0, nextSectionIndex);
 
-    if (/^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) && await isSamePhysicalPath(projectPath, trustRoot)) {
+    if (
+      /^trust_level\s*=\s*"trusted"\s*$/m.test(sectionBody) &&
+      (await isSamePhysicalPath(projectPath, trustRoot))
+    ) {
       return true;
     }
   }
@@ -4006,7 +4429,7 @@ async function isSamePhysicalPath(candidatePath: string, targetPath: string): Pr
   try {
     const [candidate, target] = await Promise.all([
       realpath(path.resolve(candidatePath)),
-      realpath(path.resolve(targetPath))
+      realpath(path.resolve(targetPath)),
     ]);
     return candidate === target;
   } catch {
@@ -4015,7 +4438,11 @@ async function isSamePhysicalPath(candidatePath: string, targetPath: string): Pr
 }
 
 function normalizeActorTimeout(value: number | undefined): number | null {
-  if (normalizePositiveInteger(value) === null || value === undefined || value > LOCAL_CODEX_TUI_MAX_TIMEOUT_MS) {
+  if (
+    normalizePositiveInteger(value) === null ||
+    value === undefined ||
+    value > LOCAL_CODEX_TUI_MAX_TIMEOUT_MS
+  ) {
     return null;
   }
 
@@ -4043,11 +4470,14 @@ function personaPromptLine(selection: { resolvedPersona: ResolvedPersona }): str
   return renderPersonaPromptSection(selection.resolvedPersona);
 }
 
-function buildLocalCodexTuiPrompt(selection: {
-  persona: RunBundle["persona"];
-  resolvedPersona: ResolvedPersona;
-  scenario: RunBundle["scenario"];
-}, verdictNonce: string): string {
+function buildLocalCodexTuiPrompt(
+  selection: {
+    persona: RunBundle["persona"];
+    resolvedPersona: ResolvedPersona;
+    scenario: RunBundle["scenario"];
+  },
+  verdictNonce: string,
+): string {
   return [
     "You are a Humanish local Codex TUI dogfood actor.",
     personaPromptLine(selection),
@@ -4060,7 +4490,7 @@ function buildLocalCodexTuiPrompt(selection: {
     "Do not print secrets, do not commit, do not push, do not open GitHub issues, and do not use private data.",
     "Finish by summarizing one public-safe harness improvement.",
     `Then print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${verdictNonce}.`,
-    "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
+    "Replace <status> with exactly one lowercase word: passed, blocked, or failed.",
   ].join(" ");
 }
 
@@ -4069,20 +4499,22 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
     {
       id: "install-readability",
       label: "install/readability",
-      instruction: "audit whether a new user can understand the committed Humanish dogfood setup quickly",
+      instruction:
+        "audit whether a new user can understand the committed Humanish dogfood setup quickly",
       suggestedCommands: [
         "test -r humanish/README.md && sed -n '1,40p' humanish/README.md",
-        "test -r humanish/config.ts && wc -l humanish/config.ts"
-      ]
+        "test -r humanish/config.ts && wc -l humanish/config.ts",
+      ],
     },
     {
       id: "public-safety-trust",
       label: "public-safety/trust",
-      instruction: "check the local actor boundaries, public-safety claims, and trust-bootstrap language",
+      instruction:
+        "check the local actor boundaries, public-safety claims, and trust-bootstrap language",
       suggestedCommands: [
         "test -r humanish/coverage-map.md && sed -n '1,80p' humanish/coverage-map.md",
-        "test -r docs/architecture/local-codex-tui-actor.md && sed -n '1,80p' docs/architecture/local-codex-tui-actor.md"
-      ]
+        "test -r docs/architecture/local-codex-tui-actor.md && sed -n '1,80p' docs/architecture/local-codex-tui-actor.md",
+      ],
     },
     {
       id: "observer-evidence",
@@ -4090,18 +4522,19 @@ function localCodexExecFocus(index: number): LocalCodexExecFocus {
       instruction: "inspect whether run evidence and Observer expectations are easy to verify",
       suggestedCommands: [
         "test -r humanish/coverage-matrix.md && sed -n '1,80p' humanish/coverage-matrix.md",
-        "test -r humanish/scenarios/onboarding-regression.yaml && sed -n '1,120p' humanish/scenarios/onboarding-regression.yaml"
-      ]
+        "test -r humanish/scenarios/onboarding-regression.yaml && sed -n '1,120p' humanish/scenarios/onboarding-regression.yaml",
+      ],
     },
     {
       id: "verification-release",
       label: "verification/release",
-      instruction: "inspect the verification and release-gate promises exposed to local dogfood actors",
+      instruction:
+        "inspect the verification and release-gate promises exposed to local dogfood actors",
       suggestedCommands: [
         "test -r package.json && node -e \"const p=require('./package.json'); console.log(p.scripts.check); console.log(p.scripts['public-surface:scan']);\"",
-        "test -r humanish/README.md && sed -n '1,80p' humanish/README.md"
-      ]
-    }
+        "test -r humanish/README.md && sed -n '1,80p' humanish/README.md",
+      ],
+    },
   ] satisfies [LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus, LocalCodexExecFocus];
 
   return focuses[index % focuses.length] ?? focuses[0];
@@ -4111,17 +4544,21 @@ function aggregateActorStatus(statuses: LocalActorTerminalStatus[]): LocalActorT
   if (statuses.includes("failed")) return "failed";
   if (statuses.includes("timed_out")) return "timed_out";
   if (statuses.includes("blocked")) return "blocked";
-  return statuses.length > 0 && statuses.every((status) => status === "passed") ? "passed" : "failed";
+  return statuses.length > 0 && statuses.every((status) => status === "passed")
+    ? "passed"
+    : "failed";
 }
 
 function summarizeExecFanout(statuses: LocalActorTerminalStatus[]): string {
   if (statuses.length === 1) {
-    return statuses[0] === "passed" ? "actor process exited successfully" : `actor lane ${statuses[0]}`;
+    return statuses[0] === "passed"
+      ? "actor process exited successfully"
+      : `actor lane ${statuses[0]}`;
   }
 
   const counts = statuses.reduce<Record<LocalActorTerminalStatus, number>>(
     (current, status) => ({ ...current, [status]: current[status] + 1 }),
-    { passed: 0, failed: 0, blocked: 0, timed_out: 0 }
+    { passed: 0, failed: 0, blocked: 0, timed_out: 0 },
   );
   const summary = (Object.keys(counts) as LocalActorTerminalStatus[])
     .filter((status) => counts[status] > 0)
@@ -4133,18 +4570,22 @@ function summarizeExecFanout(statuses: LocalActorTerminalStatus[]): string {
     : `${statuses.length} Codex exec lanes completed with ${summary}`;
 }
 
-function buildLocalCodexExecPrompt(selection: {
-  persona: RunBundle["persona"];
-  resolvedPersona: ResolvedPersona;
-  scenario: RunBundle["scenario"];
-}, verdictNonce: string, lane?: {
-  focus: LocalCodexExecFocus;
-  index: number;
-  total: number;
-}): string {
+function buildLocalCodexExecPrompt(
+  selection: {
+    persona: RunBundle["persona"];
+    resolvedPersona: ResolvedPersona;
+    scenario: RunBundle["scenario"];
+  },
+  verdictNonce: string,
+  lane?: {
+    focus: LocalCodexExecFocus;
+    index: number;
+    total: number;
+  },
+): string {
   const suggestedCommands: [string, string] = lane?.focus.suggestedCommands ?? [
     "test -r humanish/config.ts && wc -l humanish/config.ts",
-    "test -r humanish/README.md && sed -n '1,40p' humanish/README.md"
+    "test -r humanish/README.md && sed -n '1,40p' humanish/README.md",
   ];
 
   return [
@@ -4158,7 +4599,7 @@ function buildLocalCodexExecPrompt(selection: {
     "Do not inspect additional files unless one suggested command fails.",
     "Finish within three public-safe sentences.",
     `Then print exactly one final machine-readable line in this format: HUMANISH_ACTOR_VERDICT=<status> HUMANISH_ACTOR_NONCE=${verdictNonce}.`,
-    "Replace <status> with exactly one lowercase word: passed, blocked, or failed."
+    "Replace <status> with exactly one lowercase word: passed, blocked, or failed.",
   ].join(" ");
 }
 
@@ -4166,15 +4607,18 @@ function buildLocalCodexExecPrompt(selection: {
 // comes from the structured turn/completed status on the app-server JSON-RPC
 // channel (see codex-app-server.ts), never from HUMANISH_ACTOR_VERDICT marker
 // extraction, so transcript text cannot set the run verdict on that lane.
-function buildLocalCodexAppServerPrompt(selection: {
-  persona: RunBundle["persona"];
-  resolvedPersona: ResolvedPersona;
-  scenario: RunBundle["scenario"];
-}, lane: {
-  focus: LocalCodexExecFocus;
-  index: number;
-  total: number;
-}): string {
+function buildLocalCodexAppServerPrompt(
+  selection: {
+    persona: RunBundle["persona"];
+    resolvedPersona: ResolvedPersona;
+    scenario: RunBundle["scenario"];
+  },
+  lane: {
+    focus: LocalCodexExecFocus;
+    index: number;
+    total: number;
+  },
+): string {
   return [
     "You are a Humanish Codex app-server dogfood actor running through the official Codex app-server protocol.",
     personaPromptLine(selection),
@@ -4186,11 +4630,14 @@ function buildLocalCodexAppServerPrompt(selection: {
     `Suggested commands: \`${lane.focus.suggestedCommands[0]}\` and \`${lane.focus.suggestedCommands[1]}\`.`,
     "Do not print secrets, keys, raw private transcripts, private screenshots, or private source snippets.",
     "Do not commit, push, open GitHub issues, mutate remote systems, or run provider-spend-heavy commands.",
-    "End with one concise public-safe recommendation for improving Humanish as a closed-loop user-study harness."
+    "End with one concise public-safe recommendation for improving Humanish as a closed-loop user-study harness.",
   ].join(" ");
 }
 
-function readCodexAppServerSandboxFromEnv(): "read-only" | "workspace-write" | "danger-full-access" {
+function readCodexAppServerSandboxFromEnv():
+  | "read-only"
+  | "workspace-write"
+  | "danger-full-access" {
   const value = process.env.HUMANISH_CODEX_APP_SERVER_SANDBOX;
   if (value === "workspace-write" || value === "danger-full-access") {
     return value;
@@ -4198,7 +4645,9 @@ function readCodexAppServerSandboxFromEnv(): "read-only" | "workspace-write" | "
   return "read-only";
 }
 
-function codexStateForStream(status: RunSimulationStatus): NonNullable<RunStream["codex"]>["state"] {
+function codexStateForStream(
+  status: RunSimulationStatus,
+): NonNullable<RunStream["codex"]>["state"] {
   if (status === "running" || status === "preparing" || status === "queued") {
     return "running";
   }
@@ -4217,7 +4666,10 @@ function codexStateForStream(status: RunSimulationStatus): NonNullable<RunStream
   return "watching";
 }
 
-function prefixCodexAppServerResultPaths(result: CodexAppServerRunResult, prefix: string): CodexAppServerRunResult {
+function prefixCodexAppServerResultPaths(
+  result: CodexAppServerRunResult,
+  prefix: string,
+): CodexAppServerRunResult {
   if (!prefix) {
     return result;
   }
@@ -4226,14 +4678,14 @@ function prefixCodexAppServerResultPaths(result: CodexAppServerRunResult, prefix
     ...result,
     eventsPath: `${prefix}${result.eventsPath}`,
     tracePath: `${prefix}${result.tracePath}`,
-    transcriptPath: `${prefix}${result.transcriptPath}`
+    transcriptPath: `${prefix}${result.transcriptPath}`,
   };
 }
 
 function parseCommandLine(input: string): string[] {
   const tokens: string[] = [];
   let current = "";
-  let quote: "\"" | "'" | null = null;
+  let quote: '"' | "'" | null = null;
   let escaping = false;
 
   for (const char of input.trim()) {
@@ -4257,7 +4709,7 @@ function parseCommandLine(input: string): string[] {
       continue;
     }
 
-    if (char === "\"" || char === "'") {
+    if (char === '"' || char === "'") {
       quote = char;
       continue;
     }
@@ -4329,27 +4781,30 @@ function invalidRunStorageVerifyResult(cwd: string, runInput: string): VerifyRes
     ok: false,
     cwd,
     run: runInput,
-    checks: [{
-      name: "run storage containment",
-      ok: false,
-      message: "run storage must contain only identity-bound directories and single-link regular files"
-    }],
+    checks: [
+      {
+        name: "run storage containment",
+        ok: false,
+        message:
+          "run storage must contain only identity-bound directories and single-link regular files",
+      },
+    ],
     shareSafety: {
       status: "blocked",
-      reasons: [{ code: "VERIFY_FAILED", message: "Run storage failed containment validation." }]
+      reasons: [{ code: "VERIFY_FAILED", message: "Run storage failed containment validation." }],
     },
     warnings: [],
     error: {
       code: "HUMANISH_INVALID_RUN_BUNDLE",
-      message: "Run storage failed containment validation."
-    }
+      message: "Run storage failed containment validation.",
+    },
   };
 }
 
 async function verifyPreparedRun(
   cwd: string,
   runInput: string,
-  runPaths: PreparedRunArtifactPaths | null
+  runPaths: PreparedRunArtifactPaths | null,
 ): Promise<VerifyResult> {
   const checks: VerifyResult["checks"] = [];
 
@@ -4365,15 +4820,15 @@ async function verifyPreparedRun(
         reasons: [
           {
             code: "VERIFY_FAILED",
-            message: `Run not found: ${runInput}`
-          }
-        ]
+            message: `Run not found: ${runInput}`,
+          },
+        ],
       },
       warnings: [],
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`
-      }
+        message: `Run not found: ${runInput}`,
+      },
     };
   }
 
@@ -4386,56 +4841,69 @@ async function verifyPreparedRun(
   checks.push({
     name: "run.json exists",
     ok: bundle !== null,
-    message: bundle === null ? "run.json missing" : "run.json present"
+    message: bundle === null ? "run.json missing" : "run.json present",
   });
   checks.push({
     name: "run schema",
     ok: isRecord(bundle) && bundle.schema === RUN_BUNDLE_SCHEMA,
-    message: "run bundle schema is humanish.run-bundle.v1"
+    message: "run bundle schema is humanish.run-bundle.v1",
   });
   checks.push({
     name: "run bundle shape",
     ok: isRunBundle(bundle),
-    message: "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates"
+    message:
+      "run bundle must include source, persona, scenario, lifecycle, simulations, streams, events, artifacts, review, and feedback candidates",
   });
   checks.push({
     name: "redaction passed",
     ok: isRecord(bundle) && isRecord(bundle.redaction) && bundle.redaction.status === "passed",
-    message: "redaction status must be passed"
+    message: "redaction status must be passed",
   });
   checks.push({
     name: "review artifacts exist",
     ok: reviewJson !== null && reviewMarkdown !== null,
-    message: "review.json and review.md must exist"
+    message: "review.json and review.md must exist",
   });
   const derivedPublicSafetyFindings: string[] = [];
-  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(runPaths, derivedPublicSafetyFindings, new Set(isRunBundle(bundle) ? bundle.streams.flatMap(stream => stream.recording ? [stream.recording.path] : []) : []));
+  const publicSafetyFindings = await scanRunPublicSafetyArtifacts(
+    runPaths,
+    derivedPublicSafetyFindings,
+    new Set(
+      isRunBundle(bundle)
+        ? bundle.streams.flatMap((stream) => (stream.recording ? [stream.recording.path] : []))
+        : [],
+    ),
+  );
   // JSON escapes can hide a sensitive value from the byte scan while the
   // decoded recording exposes it to Observer, feedback, or analysis input.
-  if (publicSafetyFindings.length < 50 && bundle !== null && containsSensitivePattern(JSON.stringify(bundle))) {
+  if (
+    publicSafetyFindings.length < 50 &&
+    bundle !== null &&
+    containsSensitivePattern(JSON.stringify(bundle))
+  ) {
     publicSafetyFindings.push("sensitive decoded run.json");
   }
   checks.push({
     name: "public-safety scan",
     ok: publicSafetyFindings.length === 0,
-    message: publicSafetyFindings.length === 0
-      ? "run text artifacts and public-proof paths must not match known secret or browser-profile patterns"
-      : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`
+    message:
+      publicSafetyFindings.length === 0
+        ? "run text artifacts and public-proof paths must not match known secret or browser-profile patterns"
+        : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
   const missingEvidenceArtifacts = isRunBundle(bundle)
     ? await missingLocalEvidenceArtifacts(runPaths, bundle)
     : [];
-  const invalidEvidenceReferences = isRunBundle(bundle)
-    ? invalidRunEvidenceReferences(bundle)
-    : [];
+  const invalidEvidenceReferences = isRunBundle(bundle) ? invalidRunEvidenceReferences(bundle) : [];
   checks.push({
     name: "local evidence artifacts exist",
     ok: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0,
-    message: missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0
-      ? "referenced local screenshot/trace/log/filesystem artifacts are present"
-      : invalidEvidenceReferences.length > 0
-      ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
-      : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`
+    message:
+      missingEvidenceArtifacts.length === 0 && invalidEvidenceReferences.length === 0
+        ? "referenced local screenshot/trace/log/filesystem artifacts are present"
+        : invalidEvidenceReferences.length > 0
+          ? `invalid evidence artifact references: ${invalidEvidenceReferences.join(", ")}`
+          : `missing local evidence artifacts: ${missingEvidenceArtifacts.join(", ")}`,
   });
   const terminalProductFindings = isRunBundle(bundle)
     ? await validateTerminalProductEvidence(runPaths, bundle)
@@ -4443,9 +4911,10 @@ async function verifyPreparedRun(
   checks.push({
     name: "terminal-product evidence",
     ok: terminalProductFindings.length === 0,
-    message: terminalProductFindings.length === 0
-      ? "live terminal-product streams either are absent or carry the substrate/cleanup/interventions/cost ledgers + a ledger-derived no-spend proof + redacted terminal evidence, with proven teardown and known spend within the declared cap"
-      : `terminal-product findings: ${terminalProductFindings.join(", ")}`
+    message:
+      terminalProductFindings.length === 0
+        ? "live terminal-product streams either are absent or carry the substrate/cleanup/interventions/cost ledgers + a ledger-derived no-spend proof + redacted terminal evidence, with proven teardown and known spend within the declared cap"
+        : `terminal-product findings: ${terminalProductFindings.join(", ")}`,
   });
   const codexAppServerFindings = isRunBundle(bundle)
     ? await validateCodexAppServerEvidence(runPaths, bundle)
@@ -4453,58 +4922,65 @@ async function verifyPreparedRun(
   checks.push({
     name: "codex app-server evidence",
     ok: codexAppServerFindings.length === 0,
-    message: codexAppServerFindings.length === 0
-      ? "live Codex app-server streams either are absent or include valid redacted trace evidence"
-      : `codex app-server findings: ${codexAppServerFindings.join(", ")}`
+    message:
+      codexAppServerFindings.length === 0
+        ? "live Codex app-server streams either are absent or include valid redacted trace evidence"
+        : `codex app-server findings: ${codexAppServerFindings.join(", ")}`,
   });
   const noEngagementFindings = isRunBundle(bundle) ? noEngagementActorFindings(bundle) : [];
   checks.push({
     name: "actor engagement",
     ok: noEngagementFindings.length === 0,
-    message: noEngagementFindings.length === 0
-      ? "live actor traces that claim goal_satisfied carry at least one action or message"
-      : `no-engagement findings: ${noEngagementFindings.join(", ")} — a hollow run is not credible evidence`
+    message:
+      noEngagementFindings.length === 0
+        ? "live actor traces that claim goal_satisfied carry at least one action or message"
+        : `no-engagement findings: ${noEngagementFindings.join(", ")} — a hollow run is not credible evidence`,
   });
   const actorVerdictFindings = isRunBundle(bundle) ? actorVerdictConsistencyFindings(bundle) : [];
   checks.push({
     name: "actor verdict consistency",
     ok: actorVerdictFindings.length === 0,
-    message: actorVerdictFindings.length === 0
-      ? "live pass verdicts do not hide failed, blocked, or timed-out actor traces"
-      : `actor verdict findings: ${actorVerdictFindings.join(", ")}`
+    message:
+      actorVerdictFindings.length === 0
+        ? "live pass verdicts do not hide failed, blocked, or timed-out actor traces"
+        : `actor verdict findings: ${actorVerdictFindings.join(", ")}`,
   });
   const stateFindings = isRunBundle(bundle) ? subjectStateFindings(bundle) : [];
   checks.push({
     name: "subject state provenance",
     ok: stateFindings.length === 0,
-    message: stateFindings.length === 0
-      ? "subject state claims match the recorded seed/external evidence (or the subject block is honestly absent)"
-      : `subject state findings: ${stateFindings.join(", ")}`
+    message:
+      stateFindings.length === 0
+        ? "subject state claims match the recorded seed/external evidence (or the subject block is honestly absent)"
+        : `subject state findings: ${stateFindings.join(", ")}`,
   });
   const sharedWorldFindings = isRunBundle(bundle) ? sharedWorldEvidenceFindings(bundle) : [];
   checks.push({
     name: "shared-world evidence",
     ok: sharedWorldFindings.length === 0,
-    message: sharedWorldFindings.length === 0
-      ? "live shared-world runs either are absent or carry a well-formed alternating timeline (cp-baseline → turn → cp), single-plane provenance, digest-only checkpoints, the mandatory attributionLimits, and a checkpoint delta on a passed run"
-      : `shared-world findings: ${sharedWorldFindings.join(", ")}`
+    message:
+      sharedWorldFindings.length === 0
+        ? "live shared-world runs either are absent or carry a well-formed alternating timeline (cp-baseline → turn → cp), single-plane provenance, digest-only checkpoints, the mandatory attributionLimits, and a checkpoint delta on a passed run"
+        : `shared-world findings: ${sharedWorldFindings.join(", ")}`,
   });
   checks.push({
     name: "cleanup receipt",
     ok: cleanupJson === null || (isCleanupResult(cleanupJson) && cleanupJson.ok),
-    message: cleanupJson === null
-      ? "cleanup receipt not present; cleanup was not requested"
-      : isCleanupResult(cleanupJson) && cleanupJson.ok
-        ? "cleanup receipt is present and successful"
-        : "cleanup receipt is present but malformed or failed"
+    message:
+      cleanupJson === null
+        ? "cleanup receipt not present; cleanup was not requested"
+        : isCleanupResult(cleanupJson) && cleanupJson.ok
+          ? "cleanup receipt is present and successful"
+          : "cleanup receipt is present but malformed or failed",
   });
   const rerunFindings = isRunBundle(bundle) ? rerunLineageFindings(bundle) : [];
   checks.push({
     name: "rerun lineage",
     ok: rerunFindings.length === 0,
-    message: rerunFindings.length === 0
-      ? "rerun bundles either are absent or link selected lanes to prior lane status and a fan-out rerun event"
-      : `rerun lineage findings: ${rerunFindings.join(", ")}`
+    message:
+      rerunFindings.length === 0
+        ? "rerun bundles either are absent or link selected lanes to prior lane status and a fan-out rerun event"
+        : `rerun lineage findings: ${rerunFindings.join(", ")}`,
   });
   // Cost is ADVISORY on magnitude, FAIL-CLOSED on labeling/provenance (claims match mechanism).
   // Absence PASSES (fail-open on display); a claimed dollar figure without its ratesAsOf date +
@@ -4514,17 +4990,27 @@ async function verifyPreparedRun(
   checks.push({
     name: "cost estimate labeling",
     ok: costFindings.length === 0,
-    message: costFindings.length === 0
-      ? "cost figures are absent, or every claimed estimate carries its ratesAsOf date + source and the total matches its known lines (estimates never presented as exact)"
-      : `cost labeling findings: ${costFindings.join(", ")}`
+    message:
+      costFindings.length === 0
+        ? "cost figures are absent, or every claimed estimate carries its ratesAsOf date + source and the total matches its known lines (estimates never presented as exact)"
+        : `cost labeling findings: ${costFindings.join(", ")}`,
   });
 
   const recordingOk = checks.every((check) => check.ok);
-  if (derivedPublicSafetyFindings.length > 0) checks.push({ name: "derived analysis public-safety scan", ok: false,
-    message: "Derived analysis contains sensitive text or unsafe artifact paths; sharing is blocked, original recording remains independently verifiable." });
+  if (derivedPublicSafetyFindings.length > 0)
+    checks.push({
+      name: "derived analysis public-safety scan",
+      ok: false,
+      message:
+        "Derived analysis contains sensitive text or unsafe artifact paths; sharing is blocked, original recording remains independently verifiable.",
+    });
   const ok = checks.every((check) => check.ok);
   const warnings = isRunBundle(bundle)
-    ? [...rawScreenshotPostureWarnings(bundle), ...undeclaredSubjectStateWarnings(bundle), ...desktopGeometryWarnings(bundle)]
+    ? [
+        ...rawScreenshotPostureWarnings(bundle),
+        ...undeclaredSubjectStateWarnings(bundle),
+        ...desktopGeometryWarnings(bundle),
+      ]
     : [];
   const shareSafety = isRunBundle(bundle)
     ? buildShareSafety({ ok, bundle, publicSafetyFindings })
@@ -4533,9 +5019,9 @@ async function verifyPreparedRun(
         reasons: [
           {
             code: "VERIFY_FAILED" as const,
-            message: "Run bundle failed verification."
-          }
-        ]
+            message: "Run bundle failed verification.",
+          },
+        ],
       };
 
   // Interpretation validity is independent of run validity. Keep recordings usable,
@@ -4543,9 +5029,19 @@ async function verifyPreparedRun(
   const analysis = await loadStudyAnalysis(runPaths);
   const analysisSharing = studyAnalysisSharingProblems(analysis);
   const executionHistory = await listStudyAnalysisExecutions(runPaths);
-  if (analysisSharing.unverified || analysisSharing.sensitive || executionHistory.warnings.length > 0) {
-    warnings.push("Some study analysis or correction records could not be validated against current evidence.");
-    shareSafety.reasons.push({ code: "ANALYSIS_UNVERIFIED", message: "Derived analysis or corrections need review against the current evidence before sharing." });
+  if (
+    analysisSharing.unverified ||
+    analysisSharing.sensitive ||
+    executionHistory.warnings.length > 0
+  ) {
+    warnings.push(
+      "Some study analysis or correction records could not be validated against current evidence.",
+    );
+    shareSafety.reasons.push({
+      code: "ANALYSIS_UNVERIFIED",
+      message:
+        "Derived analysis or corrections need review against the current evidence before sharing.",
+    });
     if (analysisSharing.sensitive) shareSafety.status = "blocked";
     else if (shareSafety.status === "share_ready") shareSafety.status = "local_only";
   }
@@ -4565,13 +5061,17 @@ async function verifyPreparedRun(
       : {
           error: {
             code: "HUMANISH_INVALID_RUN_BUNDLE" as const,
-            message: "Run bundle failed verification."
-          }
-        })
+            message: "Run bundle failed verification.",
+          },
+        }),
   };
 }
 
-export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunCleanupHooks = {}): Promise<CleanupResult> {
+export async function cleanupRun(
+  cwdInput: string,
+  runInput: string,
+  hooks: RunCleanupHooks = {},
+): Promise<CleanupResult> {
   const cwd = path.resolve(cwdInput);
   const checkedAt = (hooks.now ?? (() => new Date()))().toISOString();
   let resolved: PreparedRunArtifactPaths | null;
@@ -4590,8 +5090,8 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       warnings: [],
       error: {
         code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: "Run storage failed containment validation."
-      }
+        message: "Run storage failed containment validation.",
+      },
     };
   }
 
@@ -4608,8 +5108,8 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       warnings: [],
       error: {
         code: "HUMANISH_RUN_NOT_FOUND",
-        message: `Run not found: ${runInput}`
-      }
+        message: `Run not found: ${runInput}`,
+      },
     };
   }
 
@@ -4641,8 +5141,8 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       warnings: [],
       error: {
         code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: "Run bundle failed cleanup shape validation."
-      }
+        message: "Run bundle failed cleanup shape validation.",
+      },
     };
   }
 
@@ -4657,7 +5157,7 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
         kind: resource.kind,
         id: resource.id,
         status: "skipped",
-        message: "cleanup only supports e2b-desktop sandbox resources"
+        message: "cleanup only supports e2b-desktop sandbox resources",
       });
       continue;
     }
@@ -4668,7 +5168,7 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
         kind: resource.kind,
         id: resource.id,
         status: "already_clean",
-        message: "resource was already recorded as killed"
+        message: "resource was already recorded as killed",
       });
       continue;
     }
@@ -4678,7 +5178,7 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       kind: resource.kind,
       id: resource.id,
       status: "failed",
-      message: "automatic provider cleanup requires a verified resource lease"
+      message: "automatic provider cleanup requires a verified resource lease",
     });
   }
 
@@ -4688,14 +5188,16 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
       adapterResults = await hooks.cleanupAdapterResources({
         cwd,
         runDir: runPaths.physicalRunRoot,
-        bundle
+        bundle,
       });
     } catch (error) {
-      adapterResults = [{
-        id: "adapter-cleanup",
-        ok: false,
-        message: error instanceof Error ? error.message : String(error)
-      }];
+      adapterResults = [
+        {
+          id: "adapter-cleanup",
+          ok: false,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      ];
     }
     await validatePreparedRunArtifactPaths(runPaths);
   }
@@ -4708,8 +5210,10 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
     resources: resources.length,
     killed: resources.filter((resource) => resource.status === "killed").length,
     alreadyClean: resources.filter((resource) => resource.status === "already_clean").length,
-    failed: resources.filter((resource) => resource.status === "failed").length + adapterResults.filter((result) => !result.ok).length,
-    skipped: resources.filter((resource) => resource.status === "skipped").length
+    failed:
+      resources.filter((resource) => resource.status === "failed").length +
+      adapterResults.filter((result) => !result.ok).length,
+    skipped: resources.filter((resource) => resource.status === "skipped").length,
   };
   const ok = summary.failed === 0;
   const result: CleanupResult = {
@@ -4724,16 +5228,21 @@ export async function cleanupRun(cwdInput: string, runInput: string, hooks: RunC
     summary,
     resources,
     adapterResults,
-    warnings
+    warnings,
   };
   await validatePreparedRunArtifactPaths(runPaths);
-  await writeContainedOutputFile(runPaths, "cleanup.json", `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "cleanup.json",
+    `${JSON.stringify(result, null, 2)}\n`,
+    "utf8",
+  );
   return result;
 }
 
 export async function loadRunBundle(
   cwdInput: string,
-  runInput: string
+  runInput: string,
 ): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
   const cwd = path.resolve(cwdInput);
   const runPaths = await resolveRunPath(cwd, runInput).catch(() => null);
@@ -4748,7 +5257,7 @@ export async function loadRunBundle(
 /** Internal continuity seam for callers that already bound one run identity. */
 export async function loadRunBundlePrepared(
   cwdInput: string,
-  runPaths: PreparedRunArtifactPaths
+  runPaths: PreparedRunArtifactPaths,
 ): Promise<{ bundle: RunBundle; bundlePath: string; runDir: string } | null> {
   const cwd = path.resolve(cwdInput);
   await validatePreparedRunArtifactPaths(runPaths);
@@ -4762,7 +5271,7 @@ export async function loadRunBundlePrepared(
   return {
     bundle,
     bundlePath: path.relative(cwd, bundlePath),
-    runDir: runPaths.absoluteRunRoot
+    runDir: runPaths.absoluteRunRoot,
   };
 }
 
@@ -4770,7 +5279,7 @@ export async function loadRunBundlePrepared(
 export async function verifyRunPrepared(
   cwdInput: string,
   runInput: string,
-  runPaths: PreparedRunArtifactPaths
+  runPaths: PreparedRunArtifactPaths,
 ): Promise<VerifyResult> {
   const cwd = path.resolve(cwdInput);
   try {
@@ -4821,7 +5330,11 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
     if (!entryStats) {
       continue;
     }
-    if (entryStats.isSymbolicLink() || (!entryStats.isDirectory() && !entryStats.isFile()) || (entryStats.isFile() && entryStats.nlink > 1n)) {
+    if (
+      entryStats.isSymbolicLink() ||
+      (!entryStats.isDirectory() && !entryStats.isFile()) ||
+      (entryStats.isFile() && entryStats.nlink > 1n)
+    ) {
       return runsUnavailableResult(cwd, new Error(`Unsafe Humanish runs entry: ${entryName}`));
     }
     if (!entryStats.isDirectory()) {
@@ -4834,14 +5347,17 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
       return runsUnavailableResult(cwd, error);
     }
     if (runsRoot && entryRunPaths.physicalRunsRoot !== runsRoot.physicalPath) {
-      return runsUnavailableResult(cwd, new Error("Humanish runs root changed physical destination."));
+      return runsUnavailableResult(
+        cwd,
+        new Error("Humanish runs root changed physical destination."),
+      );
     }
     const bundle = await readRunJsonIfExists(entryRunPaths, "run.json");
     runs.push({
       runId: entryName,
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
       mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
-      path: path.join(RUNS_RELATIVE_ROOT, entryName)
+      path: path.join(RUNS_RELATIVE_ROOT, entryName),
     });
   }
 
@@ -4858,7 +5374,7 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
     ok: true,
     cwd,
     runs: runs.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
-    latest: latest?.runId ?? null
+    latest: latest?.runId ?? null,
   };
 }
 
@@ -4871,12 +5387,15 @@ function runsUnavailableResult(cwd: string, error: unknown): RunsResult {
     latest: null,
     error: {
       code: "HUMANISH_RUNS_UNAVAILABLE",
-      message: redactText(error instanceof Error ? error.message : String(error))
-    }
+      message: redactText(error instanceof Error ? error.message : String(error)),
+    },
   };
 }
 
-export async function readReview(cwdInput: string, runInput: string): Promise<VerifyResult | (ReviewSummary & { path: string; runId: string })> {
+export async function readReview(
+  cwdInput: string,
+  runInput: string,
+): Promise<VerifyResult | (ReviewSummary & { path: string; runId: string })> {
   const cwd = path.resolve(cwdInput);
   let runPaths: PreparedRunArtifactPaths | null;
   try {
@@ -4898,18 +5417,20 @@ export async function readReview(cwdInput: string, runInput: string): Promise<Ve
       ok: false,
       error: {
         code: "HUMANISH_INVALID_RUN_BUNDLE",
-        message: "review.json is missing or invalid."
-      }
+        message: "review.json is missing or invalid.",
+      },
     };
   }
 
   const bundle = runPaths ? await readRunJsonIfExists(runPaths, "run.json") : null;
-  const projected = isRecord(bundle) && Array.isArray(bundle.streams)
-    ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord)) : review;
+  const projected =
+    isRecord(bundle) && Array.isArray(bundle.streams)
+      ? withCuaReviewProvenance(review, bundle.streams.filter(isRecord))
+      : review;
   return {
     ...projected,
     path: path.relative(cwd, path.join(runPaths!.absoluteRunRoot, "review.json")),
-    runId: path.basename(runPaths!.absoluteRunRoot)
+    runId: path.basename(runPaths!.absoluteRunRoot),
   };
 }
 
@@ -4924,12 +5445,18 @@ export const DESKTOP_SDK_FLOOR = "2.3.2";
 /** The advisory `doctor` attaches to an installed desktop SDK older than the floor, else undefined. */
 export function desktopSdkAdvisory(version: string | undefined): string | undefined {
   if (version === undefined) return undefined;
-  const parse = (value: string): number[] => value.split(".").slice(0, 3).map((part) => Number.parseInt(part, 10));
+  const parse = (value: string): number[] =>
+    value
+      .split(".")
+      .slice(0, 3)
+      .map((part) => Number.parseInt(part, 10));
   const have = parse(version);
   const floor = parse(DESKTOP_SDK_FLOOR);
   if (have.length < 3 || have.some((part) => !Number.isFinite(part))) return undefined;
-  const older = have[0]! < floor[0]!
-    || (have[0] === floor[0] && (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
+  const older =
+    have[0]! < floor[0]! ||
+    (have[0] === floor[0] &&
+      (have[1]! < floor[1]! || (have[1] === floor[1] && have[2]! < floor[2]!)));
   return older
     ? `@e2b/desktop ${version} is older than ${DESKTOP_SDK_FLOOR}, the supported floor for background command cleanup and stdin handles (older releases could keep the CLI alive minutes past its result, #581). Update with \`npm i -D @e2b/desktop@latest\`.`
     : undefined;
@@ -4947,15 +5474,39 @@ async function installedDesktopSdkVersion(): Promise<string | undefined> {
   }
 }
 
-export async function doctor(cwdInput: string, options: { lab?: string; env?: NodeJS.ProcessEnv; localAgents?: DetectLocalAgentsOptions } = {}): Promise<DoctorResult> {
+export async function doctor(
+  cwdInput: string,
+  options: { lab?: string; env?: NodeJS.ProcessEnv; localAgents?: DetectLocalAgentsOptions } = {},
+): Promise<DoctorResult> {
   const cwd = path.resolve(cwdInput);
-  const cwdOk = await validateCwd(cwd).then((error) => error === null).catch(() => false);
+  const cwdOk = await validateCwd(cwd)
+    .then((error) => error === null)
+    .catch(() => false);
   if (!cwdOk) {
     const checks = [
-      { name: "target cwd", ok: false, message: "this directory does not exist, or humanish cannot read it" },
-      { name: "package.json", ok: false, checked: false, message: "not checked — the target directory could not be read" },
-      { name: "humanish source", ok: false, checked: false, message: "not checked — the target directory could not be read" },
-      { name: "runtime ignore", ok: false, checked: false, message: "not checked — the target directory could not be read" }
+      {
+        name: "target cwd",
+        ok: false,
+        message: "this directory does not exist, or humanish cannot read it",
+      },
+      {
+        name: "package.json",
+        ok: false,
+        checked: false,
+        message: "not checked — the target directory could not be read",
+      },
+      {
+        name: "humanish source",
+        ok: false,
+        checked: false,
+        message: "not checked — the target directory could not be read",
+      },
+      {
+        name: "runtime ignore",
+        ok: false,
+        checked: false,
+        message: "not checked — the target directory could not be read",
+      },
     ];
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }
@@ -4966,9 +5517,24 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
   } catch {
     const checks = [
       { name: "target cwd", ok: false, message: "target directory failed containment validation" },
-      { name: "package.json", ok: false, checked: false, message: "not checked — containment validation failed first" },
-      { name: "humanish source", ok: false, checked: false, message: "not checked — containment validation failed first" },
-      { name: "runtime ignore", ok: false, checked: false, message: "not checked — containment validation failed first" }
+      {
+        name: "package.json",
+        ok: false,
+        checked: false,
+        message: "not checked — containment validation failed first",
+      },
+      {
+        name: "humanish source",
+        ok: false,
+        checked: false,
+        message: "not checked — containment validation failed first",
+      },
+      {
+        name: "runtime ignore",
+        ok: false,
+        checked: false,
+        message: "not checked — containment validation failed first",
+      },
     ];
     return { schema: DOCTOR_SCHEMA, ok: false, cwd, checks };
   }
@@ -4994,13 +5560,20 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
     }
   }
   const probes = await probeKeySources([...keyNames], { cwd, env });
-  const setup = options.lab ? await labSetupChecks({ cwd, lab: options.lab, env, agents,
-    keyPresent: name => probes.some(probe => probe.name === name && probe.source !== null) }) : undefined;
+  const setup = options.lab
+    ? await labSetupChecks({
+        cwd,
+        lab: options.lab,
+        env,
+        agents,
+        keyPresent: (name) => probes.some((probe) => probe.name === name && probe.source !== null),
+      })
+    : undefined;
   const checks: DoctorResult["checks"] = [
     {
       name: "target cwd",
       ok: true,
-      message: "target directory exists"
+      message: "target directory exists",
     },
     await (async () => {
       try {
@@ -5008,23 +5581,32 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
         return {
           name: "package.json",
           ok: true,
-          message: contents === null
-            ? "package.json is absent; it is optional for Humanish, so npm-script integration is skipped"
-            : "package.json is present and safe to read"
+          message:
+            contents === null
+              ? "package.json is absent; it is optional for Humanish, so npm-script integration is skipped"
+              : "package.json is present and safe to read",
         };
       } catch {
-        return { name: "package.json", ok: false, message: "package.json could not be safely read" };
+        return {
+          name: "package.json",
+          ok: false,
+          message: "package.json could not be safely read",
+        };
       }
     })(),
     {
       name: "humanish source",
       ok: await safeCheck(() => implicitProjectDirectoryExists(projectRoot, "humanish")),
-      message: "committed humanish/ source directory is present and safe to read"
+      message: "committed humanish/ source directory is present and safe to read",
     },
     {
       name: "runtime ignore",
-      ok: await safeCheck(async () => (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false),
-      message: ".gitignore safely contains .humanish/"
+      ok: await safeCheck(
+        async () =>
+          (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ??
+          false,
+      ),
+      message: ".gitignore safely contains .humanish/",
     },
     // The optional peer dep every live browser and terminal lane needs (#346). `npx -y humanish`
     // does not pull optional peers, so an adopter's FIRST live run used to fail on it — safely and
@@ -5046,8 +5628,9 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
         ok: present || setup?.desktop === false,
         message: present
           ? `optional peer @e2b/desktop ${version ?? "(version unread)"} is installed; provider access is not tested${advisory === undefined ? "" : `. ${advisory}`}`
-          : setup?.desktop === false ? "optional peer @e2b/desktop is absent; not required by the selected route"
-          : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`."
+          : setup?.desktop === false
+            ? "optional peer @e2b/desktop is absent; not required by the selected route"
+            : "optional peer @e2b/desktop is NOT installed — dry runs work, but any live desktop lane will fail closed. Install it with `npm i -D @e2b/desktop`.",
       };
     })(),
     // The stakeholder surface (#455). Reported as capability, never as a gate: the TUI is optional,
@@ -5071,29 +5654,33 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
           supported,
           bundlePresent,
           interactive: process.stdout.isTTY === true,
-          nodeVersion: process.version
-        })
+          nodeVersion: process.version,
+        }),
       };
     })(),
     // The operator's own signed-in coding agent, reported as a CAPABILITY and never a gate: a
     // machine with none is not broken, it just needs a provider key. This row exists because
     // "go make an API key" is where most people trying humanish stop, and a developer very often
     // already has one of these signed in.
-    ...await (async () => {
+    ...(await (async () => {
       return [{ name: "local agents", ok: true, message: localAgentDoctorMessage(agents) }];
-    })(),
+    })()),
     // Provider-key discovery (#436): which source supplies each live-run key, through the same
     // chain a live command resolves (env/--env-file, project overlay, vendor stores, the
     // humanish user store). Values never appear; sources and fill commands do.
-    ...await (async () => {
+    ...(await (async () => {
       return probes.map((probe) => {
         const present = probe.source !== null;
-        const hint = probe.name === receivingKey
-          ? `provide ${probe.name} through process env or --env-file`
-          : probe.hint;
+        const hint =
+          probe.name === receivingKey
+            ? `provide ${probe.name} through process env or --env-file`
+            : probe.hint;
         // GH_TOKEN is needed only for private clone subjects, so its absence is informational.
-        const required = setup ? setup.keys.includes(probe.name) : probe.name === "E2B_API_KEY"
-          || probe.name === "OPENAI_API_KEY" && !agents.some(agent => agent.authStatus === "authenticated");
+        const required = setup
+          ? setup.keys.includes(probe.name)
+          : probe.name === "E2B_API_KEY" ||
+            (probe.name === "OPENAI_API_KEY" &&
+              !agents.some((agent) => agent.authStatus === "authenticated"));
         return {
           name: `key ${probe.name}`,
           ok: present || !required,
@@ -5101,18 +5688,25 @@ export async function doctor(cwdInput: string, options: { lab?: string; env?: No
             ? `supplied by ${probe.source}; presence only, validity not tested`
             : required
               ? `missing from every source — ${hint}`
-              : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`
+              : `not required for ${setup ? "the selected participant route" : "every route"}; ${hint}`,
         };
       });
-    })(),
-    ...(setup?.checks ?? [{ name: "setup route", ok: true, message: "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness." }])
+    })()),
+    ...(setup?.checks ?? [
+      {
+        name: "setup route",
+        ok: true,
+        message:
+          "General capabilities only. Use humanish doctor --lab <lab> for the selected participant's requirements and separate analysis readiness.",
+      },
+    ]),
   ];
 
   return {
     schema: DOCTOR_SCHEMA,
     ok: checks.every((check) => check.ok),
     cwd,
-    checks
+    checks,
   };
 }
 
@@ -5120,12 +5714,13 @@ function createReviewSummary(): ReviewSummary {
   return {
     schema: REVIEW_SCHEMA,
     verdict: "contract_proof_only",
-    summary: "Synthetic dry-run bundle was generated. This proves Humanish artifact plumbing, not product behavior.",
+    summary:
+      "Synthetic dry-run bundle was generated. This proves Humanish artifact plumbing, not product behavior.",
     gaps: [
       "No browser was launched.",
       "No product state was verified.",
-      "No model, provider, or E2B substrate was used."
-    ]
+      "No model, provider, or E2B substrate was used.",
+    ],
   };
 }
 
@@ -5137,19 +5732,24 @@ function createLocalActorRunningReviewSummary(actorLabel: string): ReviewSummary
     gaps: [
       "Final actor verdict and transcript artifacts are not available until the run completes.",
       "Live Observer follow depends on polling observer/observer-data.json while this run is active.",
-      "No GitHub mutation, target OSS mutation, E2B substrate, or production data is used by this local actor contract."
-    ]
+      "No GitHub mutation, target OSS mutation, E2B substrate, or production data is used by this local actor contract.",
+    ],
   };
 }
 
-function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTerminalStatus, reason: string): ReviewSummary {
-  const verdict = status === "passed"
-    ? "pass"
-    : status === "timed_out"
-      ? "timed_out"
-      : status === "blocked"
-        ? "blocked"
-        : "fail";
+function createLocalActorReviewSummary(
+  actorLabel: string,
+  status: LocalActorTerminalStatus,
+  reason: string,
+): ReviewSummary {
+  const verdict =
+    status === "passed"
+      ? "pass"
+      : status === "timed_out"
+        ? "timed_out"
+        : status === "blocked"
+          ? "blocked"
+          : "fail";
   const isTui = actorLabel.toLowerCase().includes("tui");
   const isFanout = actorLabel.toLowerCase().includes("fanout");
 
@@ -5162,14 +5762,14 @@ function createLocalActorReviewSummary(actorLabel: string, status: LocalActorTer
         ? "Only one local Codex TUI actor is supported in this slice."
         : "Codex TUI trust bootstrap, PTY rendering, and keyboard-focus proof remain separate from the noninteractive exec actor.",
       "Live follow uses polling Observer snapshots; raw interactive terminal streaming remains a follow-up hardening step.",
-      "No GitHub mutation, target OSS mutation, E2B substrate, or production data was used by this local actor contract."
-    ]
+      "No GitHub mutation, target OSS mutation, E2B substrate, or production data was used by this local actor contract.",
+    ],
   };
 }
 
 async function inspectImplicitProjectPath(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ) {
   const segments = relativePath.replace(/\\/g, "/").split("/");
   if (segments.length === 0 || segments.some((segment) => segment.length === 0)) {
@@ -5193,7 +5793,9 @@ async function inspectImplicitProjectPath(
       throw new Error(`Implicit project path must not contain symbolic links: ${relativePath}`);
     }
     if (!stats.isDirectory() && !stats.isFile()) {
-      throw new Error(`Implicit project path must contain only regular files and directories: ${relativePath}`);
+      throw new Error(
+        `Implicit project path must contain only regular files and directories: ${relativePath}`,
+      );
     }
     if (stats.isFile() && stats.nlink > 1n) {
       throw new Error(`Implicit project files must be single-link regular files: ${relativePath}`);
@@ -5211,7 +5813,7 @@ async function inspectImplicitProjectPath(
 
 async function implicitProjectDirectoryExists(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<boolean> {
   const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
   if (!stats) {
@@ -5225,7 +5827,7 @@ async function implicitProjectDirectoryExists(
 
 async function readImplicitProjectFile(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<string | null> {
   const stats = await inspectImplicitProjectPath(projectRoot, relativePath);
   if (!stats) {
@@ -5243,12 +5845,15 @@ async function readImplicitProjectFile(
 
 async function listImplicitProjectDirectory(
   projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string
+  relativePath: string,
 ): Promise<string[]> {
-  if (!await implicitProjectDirectoryExists(projectRoot, relativePath)) {
+  if (!(await implicitProjectDirectoryExists(projectRoot, relativePath))) {
     return [];
   }
-  const directory = path.join(projectRoot.physicalPath, ...relativePath.replace(/\\/g, "/").split("/"));
+  const directory = path.join(
+    projectRoot.physicalPath,
+    ...relativePath.replace(/\\/g, "/").split("/"),
+  );
   const names = await readdir(directory);
   await assertPreparedSelectedOutputDirectory(projectRoot);
   for (const name of names) {
@@ -5260,7 +5865,7 @@ async function listImplicitProjectDirectory(
 
 async function loadDryRunSelection(
   projectRoot: PreparedSelectedOutputDirectory,
-  humanishSource: "present" | "missing"
+  humanishSource: "present" | "missing",
 ): Promise<{
   browserJourney?: BrowserPersonaJourney;
   browserJourneyFailure?: string;
@@ -5274,9 +5879,12 @@ async function loadDryRunSelection(
   if (humanishSource === "missing") {
     return {
       persona: builtinPersona,
-      resolvedPersona: parseResolvedPersona({}, { id: builtinPersona.id, name: builtinPersona.name }),
+      resolvedPersona: parseResolvedPersona(
+        {},
+        { id: builtinPersona.id, name: builtinPersona.name },
+      ),
       scenario: builtinScenario,
-      warnings
+      warnings,
     };
   }
 
@@ -5296,45 +5904,61 @@ async function loadDryRunSelection(
 
   let resolvedPersona: ResolvedPersona;
   if (personaText === null) {
-    resolvedPersona = parseResolvedPersona({}, { id: builtinPersona.id, name: builtinPersona.name });
+    resolvedPersona = parseResolvedPersona(
+      {},
+      { id: builtinPersona.id, name: builtinPersona.name },
+    );
   } else {
     const parsedPersona = parsePersonaYaml(personaText);
     if (parsedPersona.failed) {
-      warnings.push(`${personaPath} could not be parsed as YAML; using built-in persona trait defaults.`);
+      warnings.push(
+        `${personaPath} could not be parsed as YAML; using built-in persona trait defaults.`,
+      );
     }
-    resolvedPersona = parseResolvedPersona(parsedPersona.value, {
-      id: "synthetic-new-user",
-      name: "Synthetic New User"
-    }, warnings);
+    resolvedPersona = parseResolvedPersona(
+      parsedPersona.value,
+      {
+        id: "synthetic-new-user",
+        name: "Synthetic New User",
+      },
+      warnings,
+    );
     resolvedPersona.sourceDigest = digestText(personaText ?? "");
   }
 
   return {
     ...(browserJourneySelection.journey ? { browserJourney: browserJourneySelection.journey } : {}),
-    ...(browserJourneySelection.failure ? { browserJourneyFailure: browserJourneySelection.failure } : {}),
-    persona: personaText === null
-      ? builtinPersona
-      : {
-          id: readYamlScalar(personaText, "id") ?? "synthetic-new-user",
-          name: readYamlScalar(personaText, "name") ?? "Synthetic New User",
-          source: personaPath,
-          sourceDigest: digestText(personaText)
-        },
+    ...(browserJourneySelection.failure
+      ? { browserJourneyFailure: browserJourneySelection.failure }
+      : {}),
+    persona:
+      personaText === null
+        ? builtinPersona
+        : {
+            id: readYamlScalar(personaText, "id") ?? "synthetic-new-user",
+            name: readYamlScalar(personaText, "name") ?? "Synthetic New User",
+            source: personaPath,
+            sourceDigest: digestText(personaText),
+          },
     resolvedPersona,
-    scenario: scenarioText === null
-      ? builtinScenario
-      : {
-          id: readYamlScalar(scenarioText, "id") ?? "first-run-smoke",
-          title: readYamlScalar(scenarioText, "title") ?? "First-run smoke",
-          goal: readYamlScalar(scenarioText, "goal") ?? "Run a public-safe first-run smoke scenario.",
-          source: scenarioPath,
-          sourceDigest: digestText(scenarioText)
-        },
-    warnings: [...warnings, ...browserJourneySelection.warnings]
+    scenario:
+      scenarioText === null
+        ? builtinScenario
+        : {
+            id: readYamlScalar(scenarioText, "id") ?? "first-run-smoke",
+            title: readYamlScalar(scenarioText, "title") ?? "First-run smoke",
+            goal:
+              readYamlScalar(scenarioText, "goal") ?? "Run a public-safe first-run smoke scenario.",
+            source: scenarioPath,
+            sourceDigest: digestText(scenarioText),
+          },
+    warnings: [...warnings, ...browserJourneySelection.warnings],
   };
 }
 
-async function loadBrowserPersonaJourneySelection(projectRoot: PreparedSelectedOutputDirectory): Promise<{
+async function loadBrowserPersonaJourneySelection(
+  projectRoot: PreparedSelectedOutputDirectory,
+): Promise<{
   failure?: string;
   journey?: BrowserPersonaJourney;
   warnings: string[];
@@ -5361,25 +5985,25 @@ async function loadBrowserPersonaJourneySelection(projectRoot: PreparedSelectedO
     } catch (error) {
       return {
         failure: `${relativePath} could not be parsed as YAML; browser persona journey failed closed.`,
-        warnings
+        warnings,
       };
     }
 
     const parsed = parseBrowserPersonaJourneyFromScenario({
       raw,
       relativePath,
-      sourceDigest: digestText(text)
+      sourceDigest: digestText(text),
     });
     if (parsed.failure) {
       return {
         failure: parsed.failure,
-        warnings
+        warnings,
       };
     }
     if (parsed.journey) {
       return {
         journey: parsed.journey,
-        warnings
+        warnings,
       };
     }
   }
@@ -5432,7 +6056,10 @@ function escapeRegExp(value: string): string {
 
 /** Resolve "latest" or an explicit run id to its prepared artifact paths. Exported for the
  *  reclaim command (#358), which must locate a run WITHOUT trusting anything but the managed dir. */
-export async function resolveRunPath(cwd: string, runInput: string): Promise<PreparedRunArtifactPaths | null> {
+export async function resolveRunPath(
+  cwd: string,
+  runInput: string,
+): Promise<PreparedRunArtifactPaths | null> {
   if (runInput === "latest") {
     const runsRoot = await bindExistingManagedHumanishOutputDirectory(cwd, "runs");
     if (!runsRoot) {
@@ -5445,8 +6072,8 @@ export async function resolveRunPath(cwd: string, runInput: string): Promise<Pre
     }
     const runPaths = await bindExistingRunArtifactPaths(cwd, latest.runId);
     if (
-      runPaths.absoluteRunRoot !== expected
-      || runPaths.physicalRunsRoot !== runsRoot.physicalPath
+      runPaths.absoluteRunRoot !== expected ||
+      runPaths.physicalRunsRoot !== runsRoot.physicalPath
     ) {
       throw new Error("Latest run pointer changed physical runs root.");
     }
@@ -5454,13 +6081,15 @@ export async function resolveRunPath(cwd: string, runInput: string): Promise<Pre
     return runPaths;
   }
 
-  if (!isSafeRunIdSegment(runInput) || !await resolveExistingRunDirectory(cwd, runInput)) {
+  if (!isSafeRunIdSegment(runInput) || !(await resolveExistingRunDirectory(cwd, runInput))) {
     return null;
   }
   return bindExistingRunArtifactPaths(cwd, runInput);
 }
 
-async function readLatest(runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory): Promise<RunPointer | null> {
+async function readLatest(
+  runsRoot: import("./selected-output-paths.js").PreparedSelectedOutputDirectory,
+): Promise<RunPointer | null> {
   const latestPath = path.join(runsRoot.physicalPath, "latest.json");
   let latestStats;
   try {
@@ -5488,7 +6117,9 @@ async function readLatest(runsRoot: import("./selected-output-paths.js").Prepare
   return isRunPointer(latest) ? latest : null;
 }
 
-async function readPackageName(projectRoot: PreparedSelectedOutputDirectory): Promise<string | null> {
+async function readPackageName(
+  projectRoot: PreparedSelectedOutputDirectory,
+): Promise<string | null> {
   const text = await readImplicitProjectFile(projectRoot, "package.json");
   if (text === null) {
     return null;
@@ -5501,7 +6132,10 @@ async function readPackageName(projectRoot: PreparedSelectedOutputDirectory): Pr
   }
 }
 
-async function readRunJsonIfExists(runPaths: PreparedRunArtifactPaths, ...segments: string[]): Promise<unknown | null> {
+async function readRunJsonIfExists(
+  runPaths: PreparedRunArtifactPaths,
+  ...segments: string[]
+): Promise<unknown | null> {
   const text = await readRunTextIfExists(runPaths, ...segments);
   if (text === null) {
     return null;
@@ -5513,22 +6147,25 @@ async function readRunJsonIfExists(runPaths: PreparedRunArtifactPaths, ...segmen
   }
 }
 
-async function readRunTextIfExists(runPaths: PreparedRunArtifactPaths, ...segments: string[]): Promise<string | null> {
+async function readRunTextIfExists(
+  runPaths: PreparedRunArtifactPaths,
+  ...segments: string[]
+): Promise<string | null> {
   const bytes = await readContainedRegularFile(runPaths, segments.join("/"));
   return bytes?.toString("utf8") ?? null;
 }
 
 async function readSafeRunArtifactBytes(
   runPaths: PreparedRunArtifactPaths,
-  relativePath: string
+  relativePath: string,
 ): Promise<Buffer | null> {
   const normalized = relativePath.replace(/\\/g, "/");
   const segments = normalized.split("/");
   if (
-    path.isAbsolute(relativePath)
-    || path.win32.isAbsolute(relativePath)
-    || segments.length === 0
-    || segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
+    path.isAbsolute(relativePath) ||
+    path.win32.isAbsolute(relativePath) ||
+    segments.length === 0 ||
+    segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
   ) {
     return null;
   }
@@ -5537,7 +6174,7 @@ async function readSafeRunArtifactBytes(
 
 async function readSafeRunArtifactJson(
   runPaths: PreparedRunArtifactPaths,
-  relativePath: string
+  relativePath: string,
 ): Promise<unknown | null> {
   const bytes = await readSafeRunArtifactBytes(runPaths, relativePath);
   if (!bytes) {
@@ -5567,13 +6204,18 @@ async function writeRunBundleArtifacts(
   bundle: RunBundle,
   /** Pass ONLY when this write is the run's final one: the shared writer is also used for
    *  mid-run in-progress snapshots, and finalizing there would declare a live run finished (#455). */
-  finalizeStatus?: RunStatusHandle
+  finalizeStatus?: RunStatusHandle,
 ): Promise<void> {
   const publicBundle: RunBundle = {
     ...bundle,
-    cwd: PUBLIC_TARGET_CWD
+    cwd: PUBLIC_TARGET_CWD,
   };
-  await writeContainedOutputFile(runPaths, "run.json", `${JSON.stringify(publicBundle, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "run.json",
+    `${JSON.stringify(publicBundle, null, 2)}\n`,
+    "utf8",
+  );
   await finalizeStatus?.finish({
     ...(publicBundle.review?.verdict === undefined ? {} : { verdict: publicBundle.review.verdict }),
     ...(publicBundle.review?.participants === undefined
@@ -5584,46 +6226,83 @@ async function writeRunBundleArtifacts(
             reachedGoal: publicBundle.review.participants.reachedGoal,
             ...(publicBundle.review.participants.reportedFriction === undefined
               ? {}
-              : { reportedFriction: publicBundle.review.participants.reportedFriction })
-          }
+              : { reportedFriction: publicBundle.review.participants.reportedFriction }),
+          },
         }),
-    ...(publicBundle.cost?.estimatedTotalUsd === undefined ? {} : { estimatedCostUsd: publicBundle.cost.estimatedTotalUsd })
+    ...(publicBundle.cost?.estimatedTotalUsd === undefined
+      ? {}
+      : { estimatedCostUsd: publicBundle.cost.estimatedTotalUsd }),
   });
-  await writeContainedOutputFile(runPaths, "review.json", `${JSON.stringify(publicBundle.review, null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "review.json",
+    `${JSON.stringify(publicBundle.review, null, 2)}\n`,
+    "utf8",
+  );
   await writeContainedOutputFile(runPaths, "review.md", renderReviewMarkdown(publicBundle), "utf8");
-  await writeContainedOutputFile(runPaths, "events.ndjson", `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`, "utf8");
-  await writeContainedOutputFile(runPaths, "observer/observer-data.json", `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`, "utf8");
+  await writeContainedOutputFile(
+    runPaths,
+    "events.ndjson",
+    `${publicBundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+    "utf8",
+  );
+  await writeContainedOutputFile(
+    runPaths,
+    "observer/observer-data.json",
+    `${JSON.stringify(buildObserverData(publicBundle), null, 2)}\n`,
+    "utf8",
+  );
 }
 
-async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
-  const recordings = new Map(bundle.streams.flatMap(stream => stream.recording ? [[stream.recording.path, stream.recording] as const] : []));
+async function missingLocalEvidenceArtifacts(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<string[]> {
+  const recordings = new Map(
+    bundle.streams.flatMap((stream) =>
+      stream.recording ? [[stream.recording.path, stream.recording] as const] : [],
+    ),
+  );
   const requiredPaths = new Map<string, { screenshot: boolean; allowEmpty: boolean }>();
-  const addRequiredPath = (artifactPath: string, options: { screenshot?: boolean; allowEmpty?: boolean } = {}): void => {
+  const addRequiredPath = (
+    artifactPath: string,
+    options: { screenshot?: boolean; allowEmpty?: boolean } = {},
+  ): void => {
     const existing = requiredPaths.get(artifactPath);
     requiredPaths.set(artifactPath, {
       screenshot: Boolean(existing?.screenshot || options.screenshot),
       // Every consumer must permit emptiness: a terminal log cannot exempt the same path when
       // another stream, screenshot, or adapter also requires it as nonempty evidence.
-      allowEmpty: options.allowEmpty === true && (existing?.allowEmpty ?? true)
+      allowEmpty: options.allowEmpty === true && (existing?.allowEmpty ?? true),
     });
   };
 
   for (const stream of bundle.streams) {
     // A session that failed before output (or a silent terminal process) has a real zero-record
     // NDJSON stream. Both the embedded trace and its retained artifact must declare that fact.
-    const emptyTerminalEvents = isZeroEventTerminalTrace(stream.actor)
-      && isZeroEventTerminalTrace(await readSafeRunArtifactJson(runPaths,
-        stream.artifacts.find((artifact) => artifact.kind === "trace")?.path ?? "actor.json"));
+    const emptyTerminalEvents =
+      isZeroEventTerminalTrace(stream.actor) &&
+      isZeroEventTerminalTrace(
+        await readSafeRunArtifactJson(
+          runPaths,
+          stream.artifacts.find((artifact) => artifact.kind === "trace")?.path ?? "actor.json",
+        ),
+      );
     for (const artifact of stream.artifacts) {
       if (isLocalEvidenceArtifactPath(artifact.path)) {
         addRequiredPath(artifact.path, {
           screenshot: artifact.kind === "screenshot",
-          allowEmpty: artifact.kind === "log" && artifact.path === TERMINAL_EVENTS_FILE && emptyTerminalEvents
+          allowEmpty:
+            artifact.kind === "log" &&
+            artifact.path === TERMINAL_EVENTS_FILE &&
+            emptyTerminalEvents,
         });
       }
     }
 
-    const embedPath = normalizeLocalEvidenceReference(stream.embed?.kind === "screenshot" ? stream.embed.url : undefined);
+    const embedPath = normalizeLocalEvidenceReference(
+      stream.embed?.kind === "screenshot" ? stream.embed.url : undefined,
+    );
     if (embedPath) {
       addRequiredPath(embedPath, { screenshot: true });
     }
@@ -5633,7 +6312,10 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
       addRequiredPath(uiScreenshotPath, { screenshot: true });
     }
 
-    if (stream.ui?.nestedObserverPath && isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
+    if (
+      stream.ui?.nestedObserverPath &&
+      isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)
+    ) {
       addRequiredPath(stream.ui.nestedObserverPath);
     }
     for (const reference of declaredActorScreenshotReferences(stream)) {
@@ -5656,7 +6338,7 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
           screenshot: evidence.kind === "screenshot",
           // Feedback accepts an existing empty nonimage file. The conjunctive merge above
           // keeps any stricter stream, actor, or adapter requirement in force.
-          allowEmpty: evidence.kind !== "screenshot"
+          allowEmpty: evidence.kind !== "screenshot",
         });
       }
     }
@@ -5672,9 +6354,12 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
         else {
           const header = Buffer.alloc(12);
           const read = await handle.read(header, 0, header.length, 0);
-          if (read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp") missing.push(`${artifactPath} (invalid MP4 header)`);
+          if (read.bytesRead !== header.length || header.toString("ascii", 4, 8) !== "ftyp")
+            missing.push(`${artifactPath} (invalid MP4 header)`);
         }
-      } finally { await handle?.close(); }
+      } finally {
+        await handle?.close();
+      }
       continue;
     }
     const bytes = await readSafeRunArtifactBytes(runPaths, artifactPath);
@@ -5695,12 +6380,19 @@ async function missingLocalEvidenceArtifacts(runPaths: PreparedRunArtifactPaths,
 }
 
 function isZeroEventTerminalTrace(value: unknown): boolean {
-  return isRecord(value) && value.schema === ACTOR_TRACE_SCHEMA
-    && value.protocol === "terminal-exec" && value.lane === "terminal"
-    && isRecord(value.counts) && value.counts.terminalEvents === 0;
+  return (
+    isRecord(value) &&
+    value.schema === ACTOR_TRACE_SCHEMA &&
+    value.protocol === "terminal-exec" &&
+    value.lane === "terminal" &&
+    isRecord(value.counts) &&
+    value.counts.terminalEvents === 0
+  );
 }
 
-function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: string; path: unknown; redaction: unknown }> {
+function declaredActorScreenshotReferences(
+  stream: RunStream,
+): Array<{ label: string; path: unknown; redaction: unknown }> {
   const references: Array<{ label: string; path: unknown; redaction: unknown }> = [];
   for (const field of ["actor", "liveActor"] as const) {
     const trace: unknown = stream[field];
@@ -5710,7 +6402,7 @@ function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: st
       references.push({
         label: `${stream.id} ${field}.items[${index}].screenshotRef`,
         path: isRecord(item.screenshotRef) ? item.screenshotRef.path : undefined,
-        redaction: isRecord(item.screenshotRef) ? item.screenshotRef.redaction : undefined
+        redaction: isRecord(item.screenshotRef) ? item.screenshotRef.redaction : undefined,
       });
     });
   }
@@ -5718,9 +6410,13 @@ function declaredActorScreenshotReferences(stream: RunStream): Array<{ label: st
 }
 
 function isRunRootEvidenceReference(value: unknown): value is string {
-  return typeof value === "string" && isLocalEvidenceArtifactPath(value)
-    && !path.win32.isAbsolute(value) && !value.includes("\0")
-    && !/^[a-z][a-z\d+.-]*:/i.test(value);
+  return (
+    typeof value === "string" &&
+    isLocalEvidenceArtifactPath(value) &&
+    !path.win32.isAbsolute(value) &&
+    !value.includes("\0") &&
+    !/^[a-z][a-z\d+.-]*:/i.test(value)
+  );
 }
 
 function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
@@ -5732,11 +6428,15 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
   for (const artifact of bundle.adapterArtifacts ?? []) {
     const key = `${artifact.namespace}:${artifact.kind}:${artifact.path}`;
     if (adapterArtifactKeys.has(key)) {
-      findings.push(`adapter artifact duplicate ${artifact.namespace}:${artifact.kind}:${artifact.path}`);
+      findings.push(
+        `adapter artifact duplicate ${artifact.namespace}:${artifact.kind}:${artifact.path}`,
+      );
     }
     adapterArtifactKeys.add(key);
     if (!isLocalEvidenceArtifactPath(artifact.path)) {
-      findings.push(`adapter artifact ${artifact.namespace}:${artifact.kind} nonlocal artifact ${artifact.path}`);
+      findings.push(
+        `adapter artifact ${artifact.namespace}:${artifact.kind} nonlocal artifact ${artifact.path}`,
+      );
     }
   }
   for (const candidate of bundle.feedbackCandidates ?? []) {
@@ -5759,10 +6459,19 @@ function invalidRunEvidenceReferences(bundle: RunBundle): string[] {
       }
     }
 
-    if (stream.ui?.nestedObserverPath && !isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)) {
-      findings.push(`${stream.id} nonlocal nested observer reference ${stream.ui.nestedObserverPath}`);
+    if (
+      stream.ui?.nestedObserverPath &&
+      !isLocalEvidenceArtifactPath(stream.ui.nestedObserverPath)
+    ) {
+      findings.push(
+        `${stream.id} nonlocal nested observer reference ${stream.ui.nestedObserverPath}`,
+      );
     }
-    if (stream.embed?.kind === "screenshot" && stream.embed.url && !normalizeLocalEvidenceReference(stream.embed.url)) {
+    if (
+      stream.embed?.kind === "screenshot" &&
+      stream.embed.url &&
+      !normalizeLocalEvidenceReference(stream.embed.url)
+    ) {
       findings.push(`${stream.id} nonlocal screenshot embed ${stream.embed.url}`);
     }
     if (stream.ui?.screenshotUrl && !normalizeLocalEvidenceReference(stream.ui.screenshotUrl)) {
@@ -5792,7 +6501,10 @@ const TERMINAL_TRANSCRIPT_FILE = "terminal-transcript.txt";
  * file is already caught by scanRunPublicSafetyArtifacts; this check enforces the STRUCTURAL
  * evidence + the proven-teardown invariant. Dry-run/contract bundles are exempt (mode !== live).
  */
-async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
+async function validateTerminalProductEvidence(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<string[]> {
   if (bundle.mode !== "live") {
     return [];
   }
@@ -5801,7 +6513,8 @@ async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPath
   // the broad stream.kind "terminal" — the existing local codex-exec/TUI lanes also use terminal
   // streams (with a different protocol) and must not be held to this lane's ledger contract.
   const terminalStreams = bundle.streams.filter(
-    (stream) => stream.actor?.protocol === "terminal-exec" && stream.status !== "contract_proof_only"
+    (stream) =>
+      stream.actor?.protocol === "terminal-exec" && stream.status !== "contract_proof_only",
   );
   if (terminalStreams.length === 0) {
     return findings;
@@ -5817,7 +6530,9 @@ async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPath
   // Substrate lifecycle ledger: must record at least sandbox creation AND teardown.
   const lifecycle = Array.isArray(ledgers.lifecycle) ? ledgers.lifecycle : [];
   if (lifecycle.length === 0) {
-    findings.push("substrate lifecycle ledger is empty (expected create -> ready -> exec -> cleanup events)");
+    findings.push(
+      "substrate lifecycle ledger is empty (expected create -> ready -> exec -> cleanup events)",
+    );
   }
 
   // Command log: present (an array; empty is allowed only if the session never reached exec, which
@@ -5830,7 +6545,9 @@ async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPath
   // no assisted-input path) — but absent fails, so an assisted run can never masquerade as one
   // without an interventions record.
   if (!Array.isArray(ledgers.interventions)) {
-    findings.push("interventions ledger is missing (an empty array is required-present, not optional)");
+    findings.push(
+      "interventions ledger is missing (an empty array is required-present, not optional)",
+    );
   }
 
   // Cleanup proof: the sandbox must be killed and proven reclaimed BY EXACT ID (remaining===0).
@@ -5842,7 +6559,7 @@ async function validateTerminalProductEvidence(runPaths: PreparedRunArtifactPath
     findings.push("cleanup proof is missing");
   } else if (cleanup.killed !== true || cleanup.remaining !== 0) {
     findings.push(
-      `cleanup not proven by id (killed=${String(cleanup.killed)}, remaining=${String(cleanup.remaining)}); a run that cannot prove sandbox teardown fails closed`
+      `cleanup not proven by id (killed=${String(cleanup.killed)}, remaining=${String(cleanup.remaining)}); a run that cannot prove sandbox teardown fails closed`,
     );
   }
 
@@ -5894,7 +6611,9 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
 
   const cost = isRecord(ledgers.cost) ? ledgers.cost : undefined;
   if (!cost || cost.schema !== "humanish.terminal-cost-ledger.v1") {
-    findings.push("missing or malformed cost ledger (humanish.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger");
+    findings.push(
+      "missing or malformed cost ledger (humanish.terminal-cost-ledger.v1) — a live terminal-product run must derive a cost ledger",
+    );
     return findings;
   }
   const lines = isRecord(cost.lines) ? cost.lines : undefined;
@@ -5908,22 +6627,30 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   // distinction. Track which categories the ledger marks null so the no-spend proof cannot lie about them.
   const nullCategories = new Set<string>();
   for (const category of TERMINAL_COST_CATEGORIES) {
-    const line = isRecord(lines[category]) ? (lines[category] as Record<string, unknown>) : undefined;
+    const line = isRecord(lines[category])
+      ? (lines[category] as Record<string, unknown>)
+      : undefined;
     if (!line || !("usd" in line)) {
-      findings.push(`cost ledger line "${category}" is missing its usd field (unknowns must be explicit null, never omitted)`);
+      findings.push(
+        `cost ledger line "${category}" is missing its usd field (unknowns must be explicit null, never omitted)`,
+      );
       continue;
     }
     const usd = line.usd;
     if (usd === null) {
       nullCategories.add(category);
     } else if (typeof usd !== "number") {
-      findings.push(`cost ledger line "${category}" usd must be a number or null (got ${typeof usd})`);
+      findings.push(
+        `cost ledger line "${category}" usd must be a number or null (got ${typeof usd})`,
+      );
     }
   }
 
   const proof = isRecord(ledgers.noSpendProof) ? ledgers.noSpendProof : undefined;
   if (!proof || proof.schema !== "humanish.terminal-no-spend-proof.v1") {
-    findings.push("missing or malformed no-spend proof (humanish.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger");
+    findings.push(
+      "missing or malformed no-spend proof (humanish.terminal-no-spend-proof.v1) — the no-spend proof must be derived from the ledger",
+    );
     return findings;
   }
 
@@ -5933,7 +6660,9 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const knownZeroLines = Array.isArray(proof.knownZeroLines) ? proof.knownZeroLines : [];
   for (const category of knownZeroLines) {
     if (nullCategories.has(String(category))) {
-      findings.push(`no-spend proof claims zero on line "${String(category)}" but the cost ledger marks it null (UNMEASURED); a proof may not claim zero on a line it did not measure`);
+      findings.push(
+        `no-spend proof claims zero on line "${String(category)}" but the cost ledger marks it null (UNMEASURED); a proof may not claim zero on a line it did not measure`,
+      );
     }
   }
 
@@ -5943,50 +6672,57 @@ function validateTerminalCostEvidence(ledgers: Record<string, unknown>): string[
   const knownTotalUsd = typeof cost.knownTotalUsd === "number" ? cost.knownTotalUsd : Number.NaN;
   const maxUsd = typeof proof.maxUsd === "number" ? proof.maxUsd : null;
   if (maxUsd !== null && Number.isFinite(knownTotalUsd) && knownTotalUsd > maxUsd) {
-    findings.push(`observed KNOWN spend ${knownTotalUsd} USD exceeds the declared cap maxUsd=${maxUsd}; the run must fail closed, not verify green`);
+    findings.push(
+      `observed KNOWN spend ${knownTotalUsd} USD exceeds the declared cap maxUsd=${maxUsd}; the run must fail closed, not verify green`,
+    );
   }
   // A proof that asserts `satisfied:true` while a known line is non-zero (knownNonZeroLines) is
   // self-contradictory — reject it (the proof's own derived state must be internally consistent).
   const knownNonZeroLines = Array.isArray(proof.knownNonZeroLines) ? proof.knownNonZeroLines : [];
   if (proof.satisfied === true && knownNonZeroLines.length > 0) {
-    findings.push(`no-spend proof claims satisfied:true but reports known non-zero spend lines (${knownNonZeroLines.map(String).join(", ")})`);
+    findings.push(
+      `no-spend proof claims satisfied:true but reports known non-zero spend lines (${knownNonZeroLines.map(String).join(", ")})`,
+    );
   }
 
   return findings;
 }
 
-async function validateCodexAppServerEvidence(runPaths: PreparedRunArtifactPaths, bundle: RunBundle): Promise<string[]> {
+async function validateCodexAppServerEvidence(
+  runPaths: PreparedRunArtifactPaths,
+  bundle: RunBundle,
+): Promise<string[]> {
   if (bundle.mode !== "live") {
     return [];
   }
 
   const findings: string[] = [];
-  const appServerStreams = bundle.streams.filter((stream) =>
-    stream.status !== "contract_proof_only"
-    && (
-      stream.codex?.provider === "codex-app-server"
-      || stream.artifacts.some((artifact) => artifact.path.includes("codex-app-server"))
-    )
+  const appServerStreams = bundle.streams.filter(
+    (stream) =>
+      stream.status !== "contract_proof_only" &&
+      (stream.codex?.provider === "codex-app-server" ||
+        stream.artifacts.some((artifact) => artifact.path.includes("codex-app-server"))),
   );
 
   for (const stream of appServerStreams) {
     if (stream.codex?.provider !== "codex-app-server") {
       findings.push(`${stream.id} missing first-class codex app-server metadata`);
     }
-    if (stream.status === "running" || stream.codex?.state === "connecting" || stream.codex?.state === "running") {
+    if (
+      stream.status === "running" ||
+      stream.codex?.state === "connecting" ||
+      stream.codex?.state === "running"
+    ) {
       continue;
     }
-    const traceArtifact = stream.artifacts.find((artifact) =>
-      artifact.kind === "trace"
-      && artifact.path.includes("codex-app-server")
+    const traceArtifact = stream.artifacts.find(
+      (artifact) => artifact.kind === "trace" && artifact.path.includes("codex-app-server"),
     );
-    const eventsArtifact = stream.artifacts.find((artifact) =>
-      artifact.kind === "events"
-      && artifact.path.includes("codex-app-server")
+    const eventsArtifact = stream.artifacts.find(
+      (artifact) => artifact.kind === "events" && artifact.path.includes("codex-app-server"),
     );
-    const logArtifact = stream.artifacts.find((artifact) =>
-      artifact.kind === "log"
-      && artifact.path.includes("codex-app-server")
+    const logArtifact = stream.artifacts.find(
+      (artifact) => artifact.kind === "log" && artifact.path.includes("codex-app-server"),
     );
 
     if (!traceArtifact) {
@@ -5995,8 +6731,15 @@ async function validateCodexAppServerEvidence(runPaths: PreparedRunArtifactPaths
     }
 
     const trace = await readSafeRunArtifactJson(runPaths, traceArtifact.path);
-    if (!isRecord(trace) || ![CODEX_APP_SERVER_TRACE_SCHEMA, CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA].includes(String(trace.schema))) {
-      findings.push(`${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA} or ${CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA}`);
+    if (
+      !isRecord(trace) ||
+      ![CODEX_APP_SERVER_TRACE_SCHEMA, CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA].includes(
+        String(trace.schema),
+      )
+    ) {
+      findings.push(
+        `${stream.id} trace artifact must use ${CODEX_APP_SERVER_TRACE_SCHEMA} or ${CODEX_APP_SERVER_PROJECTED_TRACE_SCHEMA}`,
+      );
     }
     if (!isRecord(trace) || !isRecord(trace.redaction) || trace.redaction.status !== "passed") {
       findings.push(`${stream.id} trace redaction status must be passed`);
@@ -6014,7 +6757,12 @@ async function validateCodexAppServerEvidence(runPaths: PreparedRunArtifactPaths
 
 // Trace item kinds that show the actor DID something (drove UI, ran a command, called a tool,
 // changed a file). reasoning/screenshot/plan/notice items are observation, not engagement.
-const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set(["ui_action", "command", "tool_call", "file_change"]);
+const ACTION_BEARING_ACTOR_ITEM_KINDS = new Set([
+  "ui_action",
+  "command",
+  "tool_call",
+  "file_change",
+]);
 
 /**
  * Independent mirror of the producer-side no-engagement guard (cua-actor-lab.ts): a LIVE actor
@@ -6036,7 +6784,11 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
   const findings: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    if (!isRecord(trace) || trace.schema !== ACTOR_TRACE_SCHEMA || trace.completionReason !== "goal_satisfied") {
+    if (
+      !isRecord(trace) ||
+      trace.schema !== ACTOR_TRACE_SCHEMA ||
+      trace.completionReason !== "goal_satisfied"
+    ) {
       continue;
     }
     const items = Array.isArray(trace.items) ? trace.items : [];
@@ -6045,16 +6797,21 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
       const value = counts[key];
       return typeof value === "number" && Number.isFinite(value) ? value : 0;
     };
-    const engaged = countOf("actions") > 0
-      || countOf("messages") > 0
-      || hasStopWhenObservationEvidence(items, countOf("screenshots"))
-      || items.some((item) =>
-        isRecord(item)
-        && typeof item.kind === "string"
-        && (item.kind === "message" || ACTION_BEARING_ACTOR_ITEM_KINDS.has(item.kind)));
+    const engaged =
+      countOf("actions") > 0 ||
+      countOf("messages") > 0 ||
+      hasStopWhenObservationEvidence(items, countOf("screenshots")) ||
+      items.some(
+        (item) =>
+          isRecord(item) &&
+          typeof item.kind === "string" &&
+          (item.kind === "message" || ACTION_BEARING_ACTOR_ITEM_KINDS.has(item.kind)),
+      );
     if (!engaged) {
       const provider = typeof trace.provider === "string" ? trace.provider : "unknown provider";
-      findings.push(`${stream.id} live actor trace (${provider}) claims goal_satisfied with zero actions and zero messages`);
+      findings.push(
+        `${stream.id} live actor trace (${provider}) claims goal_satisfied with zero actions and zero messages`,
+      );
     }
   }
 
@@ -6062,21 +6819,27 @@ function noEngagementActorFindings(bundle: RunBundle): string[] {
 }
 
 function hasStopWhenObservationEvidence(items: unknown[], screenshotCount: number): boolean {
-  const hasScreenshot = screenshotCount > 0 || items.some((item) =>
-    isRecord(item)
-      && item.kind === "screenshot"
-      && isRecord(item.screenshotRef)
-      && typeof item.screenshotRef.path === "string"
-      && item.screenshotRef.path.length > 0);
+  const hasScreenshot =
+    screenshotCount > 0 ||
+    items.some(
+      (item) =>
+        isRecord(item) &&
+        item.kind === "screenshot" &&
+        isRecord(item.screenshotRef) &&
+        typeof item.screenshotRef.path === "string" &&
+        item.screenshotRef.path.length > 0,
+    );
   if (!hasScreenshot) return false;
   // A matched stopWhen, or a declared dwell window that ended the session (#510): both are
   // structured, harness-owned completion, with frames behind them.
-  return items.some((item) =>
-    isRecord(item)
-      && item.kind === "notice"
-      && item.status === "matched"
-      && typeof item.title === "string"
-      && (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"));
+  return items.some(
+    (item) =>
+      isRecord(item) &&
+      item.kind === "notice" &&
+      item.status === "matched" &&
+      typeof item.title === "string" &&
+      (item.title.startsWith("stopWhen matched") || item.title === "dwell window complete"),
+  );
 }
 
 function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {
@@ -6093,7 +6856,9 @@ function actorVerdictConsistencyFindings(bundle: RunBundle): string[] {
     if (trace.status !== "passed") {
       const provider = typeof trace.provider === "string" ? trace.provider : "unknown provider";
       const reason = typeof trace.reason === "string" ? trace.reason : "no actor reason";
-      findings.push(`${stream.id} live actor trace (${provider}) has status ${String(trace.status)} under a pass review verdict: ${reason}`);
+      findings.push(
+        `${stream.id} live actor trace (${provider}) has status ${String(trace.status)} under a pass review verdict: ${reason}`,
+      );
     }
   }
 
@@ -6114,7 +6879,7 @@ function rawScreenshotPostureWarnings(bundle: RunBundle): string[] {
   }
 
   return [
-    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`
+    `Screenshots are FULL-FIDELITY (raw) on ${rawStreamIds.join(", ")} — supported for local use, NOT publish-safe as-is. Verify ok does not mean share-ready; set policies.redactScreenshots: true to blur a share-as-is bundle.`,
   ];
 }
 
@@ -6122,10 +6887,13 @@ function rawScreenshotStreamIds(bundle: RunBundle): string[] {
   const rawStreamIds: string[] = [];
   for (const stream of bundle.streams) {
     const trace: unknown = stream.actor;
-    const aggregateRaw = isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
+    const aggregateRaw =
+      isRecord(trace) && isRecord(trace.redaction) && trace.redaction.screenshots === "raw";
     // Partial live traces have no final actor summary. An explicit raw frame must also
     // retain local-only posture, including when it contradicts an aggregate blur claim.
-    const frameRaw = declaredActorScreenshotReferences(stream).some((reference) => reference.redaction === "none");
+    const frameRaw = declaredActorScreenshotReferences(stream).some(
+      (reference) => reference.redaction === "none",
+    );
     if (aggregateRaw || frameRaw) {
       rawStreamIds.push(stream.id);
     }
@@ -6148,32 +6916,45 @@ function buildShareSafety(args: {
   if (!args.ok) {
     reasons.push({
       code: "VERIFY_FAILED",
-      message: "The run bundle is not valid enough to promote into public feedback."
+      message: "The run bundle is not valid enough to promote into public feedback.",
     });
   }
 
   if (args.publicSafetyFindings.length > 0) {
     reasons.push({
       code: "PUBLIC_SAFETY_FINDINGS",
-      message: "Text artifacts or public-proof paths matched known secret, token, local-path, browser-profile, or hosted-substrate URL patterns."
+      message:
+        "Text artifacts or public-proof paths matched known secret, token, local-path, browser-profile, or hosted-substrate URL patterns.",
     });
   }
 
   if (args.bundle.publication !== undefined || args.bundle.commsReceiving !== undefined) {
-    reasons.push({ code: "REAL_COMMUNICATIONS", message: "This study used real email. Message content may appear in recordings, narration or analysis. Local review is supported; screenshot blurring does not make it public-safe." });
+    reasons.push({
+      code: "REAL_COMMUNICATIONS",
+      message:
+        "This study used real email. Message content may appear in recordings, narration or analysis. Local review is supported; screenshot blurring does not make it public-safe.",
+    });
   }
-  if (args.bundle.streams.some(stream => stream.recording !== undefined)) {
-    reasons.push({ code: "CONTINUOUS_MEDIA", message: "Continuous screen/audio recordings are retained for local review. Screenshot redaction does not redact this media." });
+  if (args.bundle.streams.some((stream) => stream.recording !== undefined)) {
+    reasons.push({
+      code: "CONTINUOUS_MEDIA",
+      message:
+        "Continuous screen/audio recordings are retained for local review. Screenshot redaction does not redact this media.",
+    });
   }
   const rawStreamIds = rawScreenshotStreamIds(args.bundle);
   if (rawStreamIds.length > 0) {
     reasons.push({
       code: "RAW_SCREENSHOTS",
-      message: `Full-fidelity screenshots are present on ${rawStreamIds.join(", ")}. This is valid local evidence, but not share-ready as-is.`
+      message: `Full-fidelity screenshots are present on ${rawStreamIds.join(", ")}. This is valid local evidence, but not share-ready as-is.`,
     });
   }
 
-  if (reasons.some((reason) => reason.code === "VERIFY_FAILED" || reason.code === "PUBLIC_SAFETY_FINDINGS")) {
+  if (
+    reasons.some(
+      (reason) => reason.code === "VERIFY_FAILED" || reason.code === "PUBLIC_SAFETY_FINDINGS",
+    )
+  ) {
     return { status: "blocked", reasons };
   }
 
@@ -6221,7 +7002,9 @@ function subjectStateFindings(bundle: RunBundle): string[] {
     // that bypass the schema gate.
     const pin = (subject as { archiveSha256?: unknown }).archiveSha256;
     if (typeof pin !== "string" || !ARCHIVE_SHA256_PATTERN.test(pin)) {
-      findings.push("subject.source is local-tree on a live run but archiveSha256 is missing or malformed (a local-tree subject must carry a well-formed 64-hex archive digest)");
+      findings.push(
+        "subject.source is local-tree on a live run but archiveSha256 is missing or malformed (a local-tree subject must carry a well-formed 64-hex archive digest)",
+      );
     }
   }
 
@@ -6229,13 +7012,17 @@ function subjectStateFindings(bundle: RunBundle): string[] {
   // complete ok (closes the hollow-seeded × unpinned hole — an unpinned bundle still carries
   // its seed records, and a failed migration must not hide behind the external marker).
   if (live && bundle.review.verdict === "pass" && seed.some((record) => record.ok !== true)) {
-    findings.push("review verdict is pass but a recorded seed step did not complete ok — a passed live run cannot carry failed or unexecuted state steps");
+    findings.push(
+      "review verdict is pass but a recorded seed step did not complete ok — a passed live run cannot carry failed or unexecuted state steps",
+    );
   }
 
   switch (state.provenance) {
     case "seeded": {
       if (!live) {
-        findings.push('state marker "seeded" on a dry-run bundle — a contract bundle cannot claim executed state');
+        findings.push(
+          'state marker "seeded" on a dry-run bundle — a contract bundle cannot claim executed state',
+        );
       }
       if (seed.length === 0) {
         findings.push('state marker "seeded" with zero seed step records is a hollow state claim');
@@ -6253,19 +7040,25 @@ function subjectStateFindings(bundle: RunBundle): string[] {
     case "unpinned": {
       const externalEnvNames = state.externalEnvNames ?? [];
       if (externalEnvNames.length === 0) {
-        findings.push('state marker "unpinned" requires non-empty externalEnvNames (the declaration must name the external channel)');
+        findings.push(
+          'state marker "unpinned" requires non-empty externalEnvNames (the declaration must name the external channel)',
+        );
       }
       for (const name of externalEnvNames) {
         if (!SUBJECT_ENV_NAME_PATTERN.test(name)) {
           // Deliberately does NOT echo the entry: a malformed entry may BE a value.
-          findings.push("externalEnvNames carries an entry that is not an env var NAME shape (values must never appear in evidence)");
+          findings.push(
+            "externalEnvNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
+          );
         }
       }
       break;
     }
     case "declared-not-run": {
       if (live && bundle.review.verdict === "pass") {
-        findings.push("a passed live run cannot claim its declared seed steps did not run (state marker \"declared-not-run\")");
+        findings.push(
+          'a passed live run cannot claim its declared seed steps did not run (state marker "declared-not-run")',
+        );
       }
       break;
     }
@@ -6276,13 +7069,19 @@ function subjectStateFindings(bundle: RunBundle): string[] {
       // provisioned nor seeded. There is no in-sandbox state story — a seed record or an external
       // channel here would contradict the "no subject sandbox" invariant of this plane class.
       if (subject.source !== "app-url") {
-        findings.push('state marker "external-public" requires subject.source "app-url" — the external-public plane is a real public deployment, not a clone/local-tree subject');
+        findings.push(
+          'state marker "external-public" requires subject.source "app-url" — the external-public plane is a real public deployment, not a clone/local-tree subject',
+        );
       }
       if (seed.length > 0) {
-        findings.push('state marker "external-public" cannot carry seed step records — the external-public plane is neither provisioned nor seeded by the harness');
+        findings.push(
+          'state marker "external-public" cannot carry seed step records — the external-public plane is neither provisioned nor seeded by the harness',
+        );
       }
       if ((state.externalEnvNames ?? []).length > 0) {
-        findings.push('state marker "external-public" cannot carry externalEnvNames — the plane is operator-owned, not an uncontrolled external channel');
+        findings.push(
+          'state marker "external-public" cannot carry externalEnvNames — the plane is operator-owned, not an uncontrolled external channel',
+        );
       }
       break;
     }
@@ -6305,8 +7104,8 @@ function rerunLineageFindings(bundle: RunBundle): string[] {
   const previousLaneIds = rerun.previous.map((entry) => entry.laneId);
   const previousSet = new Set(previousLaneIds);
   const currentLaneIds = bundle.streams.map((stream) => stream.laneId);
-  const currentConcreteLaneIds = currentLaneIds.filter((laneId): laneId is string =>
-    typeof laneId === "string" && laneId.trim().length > 0
+  const currentConcreteLaneIds = currentLaneIds.filter(
+    (laneId): laneId is string => typeof laneId === "string" && laneId.trim().length > 0,
   );
   const currentSet = new Set(currentConcreteLaneIds);
 
@@ -6355,12 +7154,15 @@ function rerunLineageFindings(bundle: RunBundle): string[] {
  */
 function costLabelingFindings(bundle: RunBundle): string[] {
   const findings: string[] = [];
-  if (contradictsAccountBilling(bundle.streams, bundle.cost)) findings.push("Run cost lines contradict account billing identity");
+  if (contradictsAccountBilling(bundle.streams, bundle.cost))
+    findings.push("Run cost lines contradict account billing identity");
 
   const cost = bundle.cost;
   if (cost) {
     if (cost.schema !== "humanish.run-cost-summary.v1") {
-      findings.push(`run cost summary schema is ${String(cost.schema)}, expected humanish.run-cost-summary.v1`);
+      findings.push(
+        `run cost summary schema is ${String(cost.schema)}, expected humanish.run-cost-summary.v1`,
+      );
     }
     let knownSum = 0;
     let anyKnown = false;
@@ -6371,32 +7173,53 @@ function costLabelingFindings(bundle: RunBundle): string[] {
       anyKnown = true;
       knownSum += line.estimatedCostUsd;
       if (typeof line.ratesAsOf !== "string" || line.ratesAsOf.length === 0) {
-        findings.push(`cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a ratesAsOf date`);
+        findings.push(
+          `cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a ratesAsOf date`,
+        );
       }
       if (typeof line.source !== "string" || line.source.length === 0) {
-        findings.push(`cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a pricing source`);
+        findings.push(
+          `cost breakdown line ${index} (${line.kind}) claims $${line.estimatedCostUsd} without a pricing source`,
+        );
       }
     }
     if (cost.estimatedTotalUsd !== null) {
       if (typeof cost.ratesAsOf !== "string" || cost.ratesAsOf.length === 0) {
-        findings.push("run cost summary claims a number estimatedTotalUsd without a ratesAsOf date");
+        findings.push(
+          "run cost summary claims a number estimatedTotalUsd without a ratesAsOf date",
+        );
       }
       if (round6(cost.estimatedTotalUsd) !== round6(knownSum)) {
-        findings.push(`run cost estimatedTotalUsd ${cost.estimatedTotalUsd} does not equal the sum of its known breakdown lines (${round6(knownSum)})`);
+        findings.push(
+          `run cost estimatedTotalUsd ${cost.estimatedTotalUsd} does not equal the sum of its known breakdown lines (${round6(knownSum)})`,
+        );
       }
     } else if (anyKnown) {
       // Every-line-null is the only honest null total; a null total beside a known line hides spend.
-      findings.push("run cost estimatedTotalUsd is null but a breakdown line carries a known (non-null) cost");
+      findings.push(
+        "run cost estimatedTotalUsd is null but a breakdown line carries a known (non-null) cost",
+      );
     }
   }
 
   for (const stream of bundle.streams) {
     for (const actor of [stream.actor, stream.liveActor]) {
       if (actor?.executionProfile !== undefined) {
-        if (!validActorExecutionProfile(actor.executionProfile)) findings.push("Invalid actor execution profile");
-        if (!validActorProviderRequests(actor.providerRequests)) findings.push("Invalid account participant request receipts");
-        if (actor.historyTurnsOmitted !== undefined && (!Number.isSafeInteger(actor.historyTurnsOmitted) || actor.historyTurnsOmitted < 0)) findings.push("Invalid participant history omission count");
-        if (actor.executionProfile?.billing === "account-unknown" && (typeof actor.estimatedCost?.estimatedCostUsd === "number" || actor.tokenUsage?.costUsd !== undefined)) findings.push("Account participant dollars must remain unknown");
+        if (!validActorExecutionProfile(actor.executionProfile))
+          findings.push("Invalid actor execution profile");
+        if (!validActorProviderRequests(actor.providerRequests))
+          findings.push("Invalid account participant request receipts");
+        if (
+          actor.historyTurnsOmitted !== undefined &&
+          (!Number.isSafeInteger(actor.historyTurnsOmitted) || actor.historyTurnsOmitted < 0)
+        )
+          findings.push("Invalid participant history omission count");
+        if (
+          actor.executionProfile?.billing === "account-unknown" &&
+          (typeof actor.estimatedCost?.estimatedCostUsd === "number" ||
+            actor.tokenUsage?.costUsd !== undefined)
+        )
+          findings.push("Account participant dollars must remain unknown");
       }
     }
     const estimate = stream.actor?.estimatedCost;
@@ -6405,14 +7228,20 @@ function costLabelingFindings(bundle: RunBundle): string[] {
     }
     const laneLabel = stream.laneId ?? stream.id;
     if (estimate.schema !== "humanish.actor-estimated-cost.v1") {
-      findings.push(`lane ${laneLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`);
+      findings.push(
+        `lane ${laneLabel} actor estimatedCost schema is ${String(estimate.schema)}, expected humanish.actor-estimated-cost.v1`,
+      );
     }
     if (estimate.estimatedCostUsd !== null) {
       if (typeof estimate.ratesAsOf !== "string" || estimate.ratesAsOf.length === 0) {
-        findings.push(`lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`);
+        findings.push(
+          `lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a ratesAsOf date`,
+        );
       }
       if (typeof estimate.source !== "string" || estimate.source.length === 0) {
-        findings.push(`lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`);
+        findings.push(
+          `lane ${laneLabel} claims a model-token cost $${estimate.estimatedCostUsd} without a pricing source`,
+        );
       }
     } else {
       // Declared-absent honesty (invariant 5): a null estimate must say WHY and carry null ratesAsOf.
@@ -6420,7 +7249,9 @@ function costLabelingFindings(bundle: RunBundle): string[] {
         findings.push(`lane ${laneLabel} records a null cost estimate without a reason`);
       }
       if (estimate.ratesAsOf !== null) {
-        findings.push(`lane ${laneLabel} records a null cost estimate but carries a non-null ratesAsOf`);
+        findings.push(
+          `lane ${laneLabel} records a null cost estimate but carries a non-null ratesAsOf`,
+        );
       }
     }
   }
@@ -6434,7 +7265,7 @@ function costLabelingFindings(bundle: RunBundle): string[] {
 const MANDATORY_ATTRIBUTION_LIMITS = [
   "sequential-only",
   "no-concurrent-races",
-  "delta-attributed-to-turn-not-action"
+  "delta-attributed-to-turn-not-action",
 ] as const;
 
 // CONCURRENT (#164 phase 2, FIX-5): the REQUIRED set (all must be present) AND a FORBIDDEN set (any
@@ -6446,7 +7277,7 @@ const CONCURRENT_REQUIRED_LIMITS = [
   "non-deterministic-shared-state",
   "window-and-snapshot-granularity",
   "contention-observed-not-proven-safe",
-  "state-change-not-isolated-to-actors"
+  "state-change-not-isolated-to-actors",
 ] as const;
 const CONCURRENT_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races"] as const;
 
@@ -6461,11 +7292,16 @@ const EXTERNAL_PUBLIC_EXTRA_LIMITS = [
   "operator-attested-target-not-harness-controlled",
   "no-synthetic-attestation",
   "no-authoritative-shared-state-proof",
-  "concurrency-by-temporal-co-occupancy-only"
+  "concurrency-by-temporal-co-occupancy-only",
 ] as const;
 // Any seeded/synthetic limit on this class is a getHost claim leaking onto a real public site — forbid
 // it alongside the sequential family. (A synthetic attestation on a plane the harness did not seed is a lie.)
-const EXTERNAL_PUBLIC_FORBIDDEN_LIMITS = ["sequential-only", "no-concurrent-races", "seeded", "synthetic"] as const;
+const EXTERNAL_PUBLIC_FORBIDDEN_LIMITS = [
+  "sequential-only",
+  "no-concurrent-races",
+  "seeded",
+  "synthetic",
+] as const;
 
 // A shared-world checkpoint record persists DIGEST-ONLY: exactly these keys, nothing value-shaped.
 const SHARED_WORLD_CHECKPOINT_KEYS = new Set(["kind", "name", "digest", "deltaFromPrev"]);
@@ -6481,7 +7317,9 @@ const SHARED_WORLD_STATESERIES_KEYS = new Set(["timestamp", "digest"]);
  */
 function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   if (bundle.mode !== "live") {
-    return bundle.sharedWorld?.skippedTail === undefined ? [] : ["skippedTail requires a live executed interruption"];
+    return bundle.sharedWorld?.skippedTail === undefined
+      ? []
+      : ["skippedTail requires a live executed interruption"];
   }
   const sw = bundle.sharedWorld;
   if (!sw) {
@@ -6502,7 +7340,9 @@ function sharedWorldEvidenceFindings(bundle: RunBundle): string[] {
   if (topologyMode === "concurrent") {
     return concurrentSharedWorldFindings(bundle, sw);
   }
-  return ['sharedWorld.topologyMode must be "sequential" or "concurrent" (missing/unknown → fail closed)'];
+  return [
+    'sharedWorld.topologyMode must be "sequential" or "concurrent" (missing/unknown → fail closed)',
+  ];
 }
 
 /** Common shape findings shared by both topologyMode branches. */
@@ -6515,14 +7355,20 @@ function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): 
     findings.push("a sharedWorld evidence block requires attributionClass: shared-world");
   }
   const plane = sw.plane;
-  if (!isRecord(plane) || typeof plane.seedDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.seedDigest)) {
+  if (
+    !isRecord(plane) ||
+    typeof plane.seedDigest !== "string" ||
+    !COMMAND_DIGEST_PATTERN.test(plane.seedDigest)
+  ) {
     findings.push("sharedWorld.plane.seedDigest must be a sha256-16 value");
   }
   if (isRecord(plane) && Array.isArray(plane.envNames)) {
     for (const name of plane.envNames) {
       if (typeof name !== "string" || !SUBJECT_ENV_NAME_PATTERN.test(name)) {
         // Does NOT echo the entry: a malformed entry may BE a value.
-        findings.push("sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)");
+        findings.push(
+          "sharedWorld.plane.envNames carries an entry that is not an env var NAME shape (values must never appear in evidence)",
+        );
       }
     }
   }
@@ -6531,53 +7377,101 @@ function sharedWorldCommonFindings(bundle: RunBundle, sw: SharedWorldEvidence): 
 
 /** Validate the declared suffix against the executed prefix and existing participant evidence. */
 function sequentialSkippedTailFindings(
-  bundle: RunBundle, sw: SharedWorldEvidence, sequence: string[], turns: Record<string, unknown>[]
+  bundle: RunBundle,
+  sw: SharedWorldEvidence,
+  sequence: string[],
+  turns: Record<string, unknown>[],
 ): string[] {
   const failures: string[] = [];
-  const reject = (message: string): void => { failures.push(`skippedTail: ${message}`); };
+  const reject = (message: string): void => {
+    failures.push(`skippedTail: ${message}`);
+  };
   const tail: unknown = sw.skippedTail;
-  if (!isRecord(tail) || !Array.isArray(tail.roles) || tail.roles.length === 0 || !tail.roles.every(isRecord)) {
+  if (
+    !isRecord(tail) ||
+    !Array.isArray(tail.roles) ||
+    tail.roles.length === 0 ||
+    !tail.roles.every(isRecord)
+  ) {
     return ["skippedTail: a nonempty declared role suffix is required"];
   }
   const roster = [...turns, ...tail.roles];
-  if (!Number.isSafeInteger(sw.roleCount) || sw.roleCount < 1
-    || roster.length !== sw.roleCount || bundle.simCount !== sw.roleCount
-    || bundle.simulations.length !== sw.roleCount || bundle.streams.length !== sw.roleCount
-    || sequence.length !== turns.length || turns.length === 0) {
-    reject("executed prefix and blocked suffix must account for every declared simulation and stream");
+  if (
+    !Number.isSafeInteger(sw.roleCount) ||
+    sw.roleCount < 1 ||
+    roster.length !== sw.roleCount ||
+    bundle.simCount !== sw.roleCount ||
+    bundle.simulations.length !== sw.roleCount ||
+    bundle.streams.length !== sw.roleCount ||
+    sequence.length !== turns.length ||
+    turns.length === 0
+  ) {
+    reject(
+      "executed prefix and blocked suffix must account for every declared simulation and stream",
+    );
   }
   for (const key of ["roleId", "simId", "streamId"] as const) {
-    const ids = roster.map(role => role[key]);
-    if (ids.some(id => typeof id !== "string" || id.length === 0) || new Set(ids).size !== ids.length) {
+    const ids = roster.map((role) => role[key]);
+    if (
+      ids.some((id) => typeof id !== "string" || id.length === 0) ||
+      new Set(ids).size !== ids.length
+    ) {
       reject(`declared ${key} values must be nonempty and unique`);
     }
   }
   if (tail.afterRoleId !== sequence.at(-1) || tail.afterRoleId !== turns.at(-1)?.roleId) {
     reject("blocker must be the immediately preceding executed role");
   }
-  if (bundle.review.verdict === "pass") reject("blocked participants cannot accompany a passed run review");
+  if (bundle.review.verdict === "pass")
+    reject("blocked participants cannot accompany a passed run review");
   roster.forEach((role, index) => {
-    const sim = bundle.simulations[index], stream = bundle.streams[index];
-    if (!sim || !stream || sim.index !== index + 1 || role.simId !== sim.id || role.streamId !== stream.id
-      || stream.simId !== sim.id || sim.streamIds.length !== 1 || sim.streamIds[0] !== stream.id) {
+    const sim = bundle.simulations[index],
+      stream = bundle.streams[index];
+    if (
+      !sim ||
+      !stream ||
+      sim.index !== index + 1 ||
+      role.simId !== sim.id ||
+      role.streamId !== stream.id ||
+      stream.simId !== sim.id ||
+      sim.streamIds.length !== 1 ||
+      sim.streamIds[0] !== stream.id
+    ) {
       reject("ordered role, simulation and stream identities must agree");
       return;
     }
-    const roleEvents = bundle.events.filter(event => event.simId === sim.id && event.streamId === stream.id);
+    const roleEvents = bundle.events.filter(
+      (event) => event.simId === sim.id && event.streamId === stream.id,
+    );
     if (index < turns.length) {
-      if (!stream.actor && !roleEvents.some(event => event.type === "shared-world.session.error")) {
+      if (
+        !stream.actor &&
+        !roleEvents.some((event) => event.type === "shared-world.session.error")
+      ) {
         reject("an executed role needs an actor or an explicit attempted-session error");
       }
       return;
     }
-    if (sim.status !== "blocked" || stream.status !== "blocked"
-      || stream.actor !== undefined || stream.liveActor !== undefined || stream.embed?.kind !== "placeholder"
-      || stream.ui?.actorStatus !== undefined || stream.ui?.screenshotUrl !== undefined
-      || stream.artifacts.some(artifact => artifact.kind === "trace" || artifact.kind === "screenshot")
-      || typeof sim.currentStep !== "string" || sim.currentStep.length === 0 || stream.ui?.state !== sim.currentStep) {
+    if (
+      sim.status !== "blocked" ||
+      stream.status !== "blocked" ||
+      stream.actor !== undefined ||
+      stream.liveActor !== undefined ||
+      stream.embed?.kind !== "placeholder" ||
+      stream.ui?.actorStatus !== undefined ||
+      stream.ui?.screenshotUrl !== undefined ||
+      stream.artifacts.some(
+        (artifact) => artifact.kind === "trace" || artifact.kind === "screenshot",
+      ) ||
+      typeof sim.currentStep !== "string" ||
+      sim.currentStep.length === 0 ||
+      stream.ui?.state !== sim.currentStep
+    ) {
       reject("an unstarted role must be blocked with a reason and no actor, trace or screenshot");
     }
-    const sessionEvents = roleEvents.filter(event => event.type.startsWith("shared-world.session."));
+    const sessionEvents = roleEvents.filter((event) =>
+      event.type.startsWith("shared-world.session."),
+    );
     if (sessionEvents.length !== 1 || sessionEvents[0]?.type !== "shared-world.session.blocked") {
       reject("each unstarted role needs exactly one blocked session event");
     }
@@ -6585,30 +7479,67 @@ function sequentialSkippedTailFindings(
   const predecessor = bundle.streams[turns.length - 1];
   const actor = predecessor?.actor;
   if (tail.cause === "session_error") {
-    if (!predecessor || !bundle.events.some(event => event.type === "shared-world.session.error"
-      && event.simId === predecessor.simId && event.streamId === predecessor.id)) {
+    if (
+      !predecessor ||
+      !bundle.events.some(
+        (event) =>
+          event.type === "shared-world.session.error" &&
+          event.simId === predecessor.simId &&
+          event.streamId === predecessor.id,
+      )
+    ) {
       reject("session_error requires the predecessor's explicit orchestration error");
     }
   } else if (tail.cause === "harness_error") {
-    if (actor?.completionReason !== "harness_error") reject("harness_error must match the predecessor actor");
+    if (actor?.completionReason !== "harness_error")
+      reject("harness_error must match the predecessor actor");
   } else if (tail.cause === "usage_unreported") {
-    if (!actor || !(actor.interactionUsageIncomplete === true || actor.debrief?.usageReported === false
-      || actor.estimatedCost?.estimatedCostUsd === null)) reject("usage_unreported requires recorded unavailable usage");
+    if (
+      !actor ||
+      !(
+        actor.interactionUsageIncomplete === true ||
+        actor.debrief?.usageReported === false ||
+        actor.estimatedCost?.estimatedCostUsd === null
+      )
+    )
+      reject("usage_unreported requires recorded unavailable usage");
   } else if (tail.cause === "study_spend_limit") {
-    const estimates = bundle.streams.slice(0, turns.length).map(stream => stream.actor?.estimatedCost?.estimatedCostUsd);
-    const allKnown = estimates.every(value => typeof value === "number" && Number.isFinite(value) && value >= 0)
-      && bundle.streams.slice(0, turns.length).every(stream => stream.actor?.interactionUsageIncomplete !== true
-        && stream.actor?.debrief?.usageReported !== false);
+    const estimates = bundle.streams
+      .slice(0, turns.length)
+      .map((stream) => stream.actor?.estimatedCost?.estimatedCostUsd);
+    const allKnown =
+      estimates.every(
+        (value) => typeof value === "number" && Number.isFinite(value) && value >= 0,
+      ) &&
+      bundle.streams
+        .slice(0, turns.length)
+        .every(
+          (stream) =>
+            stream.actor?.interactionUsageIncomplete !== true &&
+            stream.actor?.debrief?.usageReported !== false,
+        );
     const sum = estimates.reduce<number>((total, value) => total + (value ?? 0), 0);
-    if (!allKnown || typeof tail.maxTotalUsd !== "number" || !Number.isFinite(tail.maxTotalUsd) || tail.maxTotalUsd < 0
-      || typeof tail.estimatedTotalUsd !== "number" || !Number.isFinite(tail.estimatedTotalUsd)
-      || tail.estimatedTotalUsd !== sum || !(sum > tail.maxTotalUsd)) {
-      reject("study_spend_limit requires known prefix estimates exceeding the recorded finite threshold");
+    if (
+      !allKnown ||
+      typeof tail.maxTotalUsd !== "number" ||
+      !Number.isFinite(tail.maxTotalUsd) ||
+      tail.maxTotalUsd < 0 ||
+      typeof tail.estimatedTotalUsd !== "number" ||
+      !Number.isFinite(tail.estimatedTotalUsd) ||
+      tail.estimatedTotalUsd !== sum ||
+      !(sum > tail.maxTotalUsd)
+    ) {
+      reject(
+        "study_spend_limit requires known prefix estimates exceeding the recorded finite threshold",
+      );
     }
   } else {
     reject("a supported typed interruption cause is required");
   }
-  if (tail.cause !== "study_spend_limit" && (tail.maxTotalUsd !== undefined || tail.estimatedTotalUsd !== undefined)) {
+  if (
+    tail.cause !== "study_spend_limit" &&
+    (tail.maxTotalUsd !== undefined || tail.estimatedTotalUsd !== undefined)
+  ) {
     reject("budget figures require a measured study_spend_limit cause");
   }
   return failures;
@@ -6624,13 +7555,15 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   // Read the raw record so an injected value-shaped field on a checkpoint is visible (the typed
   // view would hide unexpected keys).
   const rawTimeline: unknown[] = Array.isArray((sw as { timeline?: unknown }).timeline)
-    ? ((sw as { timeline: unknown[] }).timeline)
+    ? (sw as { timeline: unknown[] }).timeline
     : [];
   if (!Array.isArray((sw as { timeline?: unknown }).timeline)) {
     findings.push("a sequential shared-world bundle must carry a timeline");
   }
   if (Array.isArray((sw as { laneWindows?: unknown }).laneWindows)) {
-    findings.push("a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)");
+    findings.push(
+      "a sequential shared-world bundle must NOT carry concurrent laneWindows (topologyMode mismatch)",
+    );
   }
   const sequence = Array.isArray(sw.sequence) ? sw.sequence : [];
 
@@ -6638,19 +7571,27 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
   for (const required of MANDATORY_ATTRIBUTION_LIMITS) {
     if (!limits.includes(required)) {
-      findings.push(`attributionLimits is missing the mandatory disclosure "${required}" — an absent ceiling overclaims`);
+      findings.push(
+        `attributionLimits is missing the mandatory disclosure "${required}" — an absent ceiling overclaims`,
+      );
     }
   }
 
-  const checkpoints = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "checkpoint");
-  const turns = rawTimeline.filter((entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "turn");
+  const checkpoints = rawTimeline.filter(
+    (entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "checkpoint",
+  );
+  const turns = rawTimeline.filter(
+    (entry): entry is Record<string, unknown> => isRecord(entry) && entry.kind === "turn",
+  );
 
   // Historical full-execution bundles keep the original equality rule. A shorter executed
   // prefix requires explicit blocked-tail evidence, never an inference from absent actors.
   if (sw.skippedTail !== undefined) {
     findings.push(...sequentialSkippedTailFindings(bundle, sw, sequence, turns));
   } else if (!(sequence.length === sw.roleCount && turns.length === sw.roleCount)) {
-    findings.push(`phantom/dropped role: sequence length (${sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`);
+    findings.push(
+      `phantom/dropped role: sequence length (${sequence.length}), roleCount (${sw.roleCount}), and timeline turn count (${turns.length}) must all match`,
+    );
   }
 
   // Timeline well-formed: starts with cp-baseline, strictly alternates checkpoint → turn →
@@ -6669,21 +7610,29 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
     rawTimeline.forEach((entry, index) => {
       const expected = index % 2 === 0 ? "checkpoint" : "turn";
       if (!isRecord(entry) || entry.kind !== expected) {
-        findings.push(`timeline must strictly alternate checkpoint → turn → checkpoint (index ${index} is not a ${expected})`);
+        findings.push(
+          `timeline must strictly alternate checkpoint → turn → checkpoint (index ${index} is not a ${expected})`,
+        );
       }
     });
     if (rawTimeline.length !== 1 + 2 * turns.length) {
-      findings.push("timeline length must be 1 baseline checkpoint + 2 entries (turn + checkpoint) per role");
+      findings.push(
+        "timeline length must be 1 baseline checkpoint + 2 entries (turn + checkpoint) per role",
+      );
     }
   }
   turns.forEach((turn, index) => {
     if (turn.roleId !== sequence[index]) {
-      findings.push(`turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sequence[index])}")`);
+      findings.push(
+        `turn order does not match the declared sequence at position ${index} (turn "${String(turn.roleId)}" vs sequence "${String(sequence[index])}")`,
+      );
     }
     if (sw.skippedTail !== undefined) {
       const checkpoint = rawTimeline[index * 2 + 2];
       if (!isRecord(checkpoint) || checkpoint.name !== `cp-after-${String(turn.roleId)}`) {
-        findings.push("skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat");
+        findings.push(
+          "skippedTail: each after-checkpoint must belong to its executed role, never an unstarted seat",
+        );
       }
     }
   });
@@ -6692,11 +7641,15 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   for (const checkpoint of checkpoints) {
     const name = typeof checkpoint.name === "string" ? checkpoint.name : "(unnamed)";
     if (typeof checkpoint.digest !== "string" || !COMMAND_DIGEST_PATTERN.test(checkpoint.digest)) {
-      findings.push(`checkpoint "${name}" digest is not a sha256-16 value (a value-shaped checkpoint field is rejected)`);
+      findings.push(
+        `checkpoint "${name}" digest is not a sha256-16 value (a value-shaped checkpoint field is rejected)`,
+      );
     }
     for (const key of Object.keys(checkpoint)) {
       if (!SHARED_WORLD_CHECKPOINT_KEYS.has(key)) {
-        findings.push(`checkpoint "${name}" carries an unexpected field "${key}" — checkpoints persist digest-only`);
+        findings.push(
+          `checkpoint "${name}" carries an unexpected field "${key}" — checkpoints persist digest-only`,
+        );
       }
     }
   }
@@ -6715,14 +7668,20 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   // Single-plane provenance: every turn shares ONE (commit, seedDigest), matching sharedWorld.plane.
   // (plane.seedDigest + plane.envNames shape are checked in sharedWorldCommonFindings.)
   const plane = sw.plane;
-  const planeKeys = new Set(turns.map((turn) => `${String(turn.commit ?? "")}::${String(turn.seedDigest ?? "")}`));
+  const planeKeys = new Set(
+    turns.map((turn) => `${String(turn.commit ?? "")}::${String(turn.seedDigest ?? "")}`),
+  );
   if (planeKeys.size > 1) {
-    findings.push("turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane");
+    findings.push(
+      "turns reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane",
+    );
   }
   if (isRecord(plane)) {
     for (const turn of turns) {
-      if (String(turn.seedDigest ?? "") !== String(plane.seedDigest ?? "")
-        || String(turn.commit ?? "") !== String(plane.commit ?? "")) {
+      if (
+        String(turn.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
+        String(turn.commit ?? "") !== String(plane.commit ?? "")
+      ) {
         const roleId = typeof turn.roleId === "string" ? turn.roleId : "(unnamed)";
         findings.push(`turn "${roleId}" plane provenance diverges from sharedWorld.plane`);
         break;
@@ -6732,8 +7691,13 @@ function sequentialSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
 
   // The delta-on-pass gate: a PASSED shared-world run MUST show at least one checkpoint delta —
   // otherwise the roles never interacted through shared state and the claim is hollow.
-  if (bundle.review.verdict === "pass" && !checkpoints.some((checkpoint) => checkpoint.deltaFromPrev === true)) {
-    findings.push("review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)");
+  if (
+    bundle.review.verdict === "pass" &&
+    !checkpoints.some((checkpoint) => checkpoint.deltaFromPrev === true)
+  ) {
+    findings.push(
+      "review verdict is pass but no checkpoint shows deltaFromPrev — the interaction is hollow (no observed shared-state change)",
+    );
   }
 
   return findings;
@@ -6759,7 +7723,7 @@ function concurrentSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
   if (planeClass !== undefined && planeClass !== "provisioned-getHost") {
     return [
       ...sharedWorldCommonFindings(bundle, sw),
-      `sharedWorld.planeClass must be "provisioned-getHost" or "external-public" (got "${String(planeClass)}")`
+      `sharedWorld.planeClass must be "provisioned-getHost" or "external-public" (got "${String(planeClass)}")`,
     ];
   }
   return provisionedGetHostConcurrentFindings(bundle, sw);
@@ -6771,18 +7735,29 @@ function concurrentSharedWorldFindings(bundle: RunBundle, sw: SharedWorldEvidenc
  * synthetic-seeded attestation, the harness-minted host identity, and an authoritative in-sandbox
  * checkpoint state-delta on pass. UNCHANGED from the pre-external-public verify (byte-stable).
  */
-function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvidence): string[] {
+function provisionedGetHostConcurrentFindings(
+  bundle: RunBundle,
+  sw: SharedWorldEvidence,
+): string[] {
   const findings: string[] = sharedWorldCommonFindings(bundle, sw);
 
   // FIX-8: shape coherence — concurrent carries laneWindows/stateSeries/outcomes, NOT a timeline.
   if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
-    findings.push("a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)");
+    findings.push(
+      "a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)",
+    );
   }
-  const laneWindows = Array.isArray(sw.laneWindows) ? (sw.laneWindows as unknown[]).filter(isRecord) : null;
-  const stateSeries = Array.isArray(sw.stateSeries) ? (sw.stateSeries as unknown[]).filter(isRecord) : null;
+  const laneWindows = Array.isArray(sw.laneWindows)
+    ? (sw.laneWindows as unknown[]).filter(isRecord)
+    : null;
+  const stateSeries = Array.isArray(sw.stateSeries)
+    ? (sw.stateSeries as unknown[]).filter(isRecord)
+    : null;
   const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
-  if (laneWindows === null) findings.push("a concurrent shared-world bundle must carry laneWindows");
-  if (stateSeries === null) findings.push("a concurrent shared-world bundle must carry stateSeries");
+  if (laneWindows === null)
+    findings.push("a concurrent shared-world bundle must carry laneWindows");
+  if (stateSeries === null)
+    findings.push("a concurrent shared-world bundle must carry stateSeries");
   if (outcomes === null) findings.push("a concurrent shared-world bundle must carry outcomes");
   if (laneWindows === null || stateSeries === null || outcomes === null) {
     return findings; // can't reason further without the core series
@@ -6792,22 +7767,30 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
   for (const required of CONCURRENT_REQUIRED_LIMITS) {
     if (!limits.includes(required)) {
-      findings.push(`attributionLimits is missing the mandatory concurrent disclosure "${required}" — an absent ceiling overclaims`);
+      findings.push(
+        `attributionLimits is missing the mandatory concurrent disclosure "${required}" — an absent ceiling overclaims`,
+      );
     }
   }
   for (const forbidden of CONCURRENT_FORBIDDEN_LIMITS) {
     if (limits.includes(forbidden)) {
-      findings.push(`attributionLimits carries the forbidden disclosure "${forbidden}" — a concurrent run cannot claim a sequential guarantee`);
+      findings.push(
+        `attributionLimits carries the forbidden disclosure "${forbidden}" — a concurrent run cannot claim a sequential guarantee`,
+      );
     }
   }
 
   // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount (actors are
   // INDEPENDENT — none are blocked by another, so all N produce a window + outcome).
   if (laneWindows.length !== sw.roleCount) {
-    findings.push(`phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`);
+    findings.push(
+      `phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`,
+    );
   }
   if (outcomes.length !== sw.roleCount) {
-    findings.push(`phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`);
+    findings.push(
+      `phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`,
+    );
   }
 
   // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
@@ -6818,14 +7801,21 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
     if (typeof startedAt !== "number" || typeof endedAt !== "number" || !(startedAt <= endedAt)) {
       findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
     }
-    if (typeof window.routeHostDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)) {
-      findings.push(`laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the host it drove`);
+    if (
+      typeof window.routeHostDigest !== "string" ||
+      !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)
+    ) {
+      findings.push(
+        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the host it drove`,
+      );
     }
     if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
       findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
     }
     if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
-      findings.push(`laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`);
+      findings.push(
+        `laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`,
+      );
     }
   }
 
@@ -6834,12 +7824,16 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
   const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
   const hostDigest = typeof plane.hostDigest === "string" ? plane.hostDigest : undefined;
   if (!hostDigest || !COMMAND_DIGEST_PATTERN.test(hostDigest)) {
-    findings.push("sharedWorld.plane.hostDigest (sha256-16 of the harness-minted getHost origin) is required on the concurrent route");
+    findings.push(
+      "sharedWorld.plane.hostDigest (sha256-16 of the harness-minted getHost origin) is required on the concurrent route",
+    );
   } else {
     for (const window of laneWindows) {
       const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
       if (typeof window.routeHostDigest === "string" && window.routeHostDigest !== hostDigest) {
-        findings.push(`laneWindow "${roleId}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`);
+        findings.push(
+          `laneWindow "${roleId}" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)`,
+        );
       }
     }
   }
@@ -6847,20 +7841,32 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
   // FIX-3: synthetic-subject provenance gate (a getHost URL is internet-reachable; real/external
   // data behind it is the hazard). Author attestation + a seeded provenance check.
   if (plane.exposure !== "synthetic") {
-    findings.push('sharedWorld.plane.exposure must be "synthetic" — the getHost route requires the author attestation that the subject is synthetic seeded data (author-trust + provenance gate, not a no-real-data guarantee)');
+    findings.push(
+      'sharedWorld.plane.exposure must be "synthetic" — the getHost route requires the author attestation that the subject is synthetic seeded data (author-trust + provenance gate, not a no-real-data guarantee)',
+    );
   }
   if (bundle.subject?.state.provenance !== "seeded") {
-    findings.push(`the concurrent getHost route requires subject.state.provenance == "seeded" (got "${bundle.subject?.state.provenance ?? "absent"}") — external/unpinned/undeclared data behind an internet-reachable URL is rejected`);
+    findings.push(
+      `the concurrent getHost route requires subject.state.provenance == "seeded" (got "${bundle.subject?.state.provenance ?? "absent"}") — external/unpinned/undeclared data behind an internet-reachable URL is rejected`,
+    );
   }
 
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane.
-  const planeKeys = new Set(laneWindows.map((window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`));
+  const planeKeys = new Set(
+    laneWindows.map(
+      (window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`,
+    ),
+  );
   if (planeKeys.size > 1) {
-    findings.push("laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane");
+    findings.push(
+      "laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane",
+    );
   }
   for (const window of laneWindows) {
-    if (String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "")
-      || String(window.commit ?? "") !== String(plane.commit ?? "")) {
+    if (
+      String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
+      String(window.commit ?? "") !== String(plane.commit ?? "")
+    ) {
       const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
       findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
       break;
@@ -6873,11 +7879,15 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
       findings.push("a stateSeries snapshot must carry a numeric timestamp");
     }
     if (typeof snapshot.digest !== "string" || !COMMAND_DIGEST_PATTERN.test(snapshot.digest)) {
-      findings.push("a stateSeries snapshot digest is not a sha256-16 value (a value-shaped field is rejected)");
+      findings.push(
+        "a stateSeries snapshot digest is not a sha256-16 value (a value-shaped field is rejected)",
+      );
     }
     for (const key of Object.keys(snapshot)) {
       if (!SHARED_WORLD_STATESERIES_KEYS.has(key)) {
-        findings.push(`a stateSeries snapshot carries an unexpected field "${key}" — the series is digest-only (no per-delta attribution)`);
+        findings.push(
+          `a stateSeries snapshot carries an unexpected field "${key}" — the series is digest-only (no per-delta attribution)`,
+        );
       }
     }
   }
@@ -6896,29 +7906,45 @@ function provisionedGetHostConcurrentFindings(bundle: RunBundle, sw: SharedWorld
         const aEnd = a.endedAt as number;
         const bStart = b.startedAt as number;
         const bEnd = b.endedAt as number;
-        if (typeof aStart === "number" && typeof aEnd === "number" && typeof bStart === "number" && typeof bEnd === "number"
-          && aStart < bEnd && bStart < aEnd) {
+        if (
+          typeof aStart === "number" &&
+          typeof aEnd === "number" &&
+          typeof bStart === "number" &&
+          typeof bEnd === "number" &&
+          aStart < bEnd &&
+          bStart < aEnd
+        ) {
           overlapStarts.push(Math.max(aStart, bStart));
         }
       }
     }
     if (overlapStarts.length === 0) {
-      findings.push("review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent");
+      findings.push(
+        "review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent",
+      );
     } else {
       const earliestOverlapStart = Math.min(...overlapStarts);
       const sorted = [...stateSeries]
-        .map((snapshot) => ({ timestamp: snapshot.timestamp as number, digest: String(snapshot.digest) }))
+        .map((snapshot) => ({
+          timestamp: snapshot.timestamp as number,
+          digest: String(snapshot.digest),
+        }))
         .filter((snapshot) => typeof snapshot.timestamp === "number")
         .sort((x, y) => x.timestamp - y.timestamp);
       let deltaInWindow = false;
       for (let i = 1; i < sorted.length; i += 1) {
-        if (sorted[i]!.digest !== sorted[i - 1]!.digest && sorted[i]!.timestamp >= earliestOverlapStart) {
+        if (
+          sorted[i]!.digest !== sorted[i - 1]!.digest &&
+          sorted[i]!.timestamp >= earliestOverlapStart
+        ) {
           deltaInWindow = true;
           break;
         }
       }
       if (!deltaInWindow) {
-        findings.push("review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)");
+        findings.push(
+          "review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)",
+        );
       }
     }
   }
@@ -6943,17 +7969,24 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   // Shape coherence: concurrent carries laneWindows + outcomes, NOT a timeline. stateSeries is
   // deliberately OMITTED on this class (no in-sandbox filesystem to authoritatively digest).
   if (Array.isArray((sw as { timeline?: unknown }).timeline)) {
-    findings.push("an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)");
+    findings.push(
+      "an external-public concurrent bundle must NOT carry a sequential timeline (topologyMode mismatch)",
+    );
   }
-  const laneWindows = Array.isArray(sw.laneWindows) ? (sw.laneWindows as unknown[]).filter(isRecord) : null;
+  const laneWindows = Array.isArray(sw.laneWindows)
+    ? (sw.laneWindows as unknown[]).filter(isRecord)
+    : null;
   const outcomes = Array.isArray(sw.outcomes) ? (sw.outcomes as unknown[]).filter(isRecord) : null;
-  if (laneWindows === null) findings.push("an external-public concurrent bundle must carry laneWindows");
+  if (laneWindows === null)
+    findings.push("an external-public concurrent bundle must carry laneWindows");
   if (outcomes === null) findings.push("an external-public concurrent bundle must carry outcomes");
   // Option A: NO authoritative shared-state proof — a non-empty stateSeries would falsely imply the
   // harness digested the plane's backend state (it cannot; there is no in-sandbox filesystem).
   const stateSeries = (sw as { stateSeries?: unknown }).stateSeries;
   if (Array.isArray(stateSeries) && stateSeries.length > 0) {
-    findings.push("an external-public concurrent bundle must NOT carry a stateSeries — the harness cannot authoritatively digest a real public plane's backend state (no in-sandbox filesystem); concurrency is proven by temporal co-occupancy, not a state series");
+    findings.push(
+      "an external-public concurrent bundle must NOT carry a stateSeries — the harness cannot authoritatively digest a real public plane's backend state (no in-sandbox filesystem); concurrency is proven by temporal co-occupancy, not a state series",
+    );
   }
   if (laneWindows === null || outcomes === null) {
     return findings; // can't reason further without the core series
@@ -6964,37 +7997,56 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   const limits = Array.isArray(sw.attributionLimits) ? sw.attributionLimits : [];
   for (const required of [...CONCURRENT_REQUIRED_LIMITS, ...EXTERNAL_PUBLIC_EXTRA_LIMITS]) {
     if (!limits.includes(required)) {
-      findings.push(`attributionLimits is missing the mandatory external-public disclosure "${required}" — an absent honest-downgrade ceiling overclaims`);
+      findings.push(
+        `attributionLimits is missing the mandatory external-public disclosure "${required}" — an absent honest-downgrade ceiling overclaims`,
+      );
     }
   }
   for (const forbidden of EXTERNAL_PUBLIC_FORBIDDEN_LIMITS) {
     if (limits.includes(forbidden)) {
-      findings.push(`attributionLimits carries the forbidden disclosure "${forbidden}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`);
+      findings.push(
+        `attributionLimits carries the forbidden disclosure "${forbidden}" — the external-public plane cannot claim a sequential guarantee or a seeded/synthetic attestation on a real site`,
+      );
     }
   }
 
   // Phantom/dropped role: laneWindows + outcomes each cover exactly roleCount.
   if (laneWindows.length !== sw.roleCount) {
-    findings.push(`phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`);
+    findings.push(
+      `phantom/dropped role: laneWindows count (${laneWindows.length}) must equal roleCount (${sw.roleCount})`,
+    );
   }
   if (outcomes.length !== sw.roleCount) {
-    findings.push(`phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`);
+    findings.push(
+      `phantom/dropped role: outcomes count (${outcomes.length}) must equal roleCount (${sw.roleCount})`,
+    );
   }
 
   // laneWindows: numeric well-ordered windows; sim/stream resolve; route-host digest present.
   for (const window of laneWindows) {
     const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
-    if (typeof window.startedAt !== "number" || typeof window.endedAt !== "number" || !((window.startedAt as number) <= (window.endedAt as number))) {
+    if (
+      typeof window.startedAt !== "number" ||
+      typeof window.endedAt !== "number" ||
+      !((window.startedAt as number) <= (window.endedAt as number))
+    ) {
       findings.push(`laneWindow "${roleId}" must carry numeric startedAt <= endedAt on one clock`);
     }
-    if (typeof window.routeHostDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)) {
-      findings.push(`laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the origin it reached`);
+    if (
+      typeof window.routeHostDigest !== "string" ||
+      !COMMAND_DIGEST_PATTERN.test(window.routeHostDigest)
+    ) {
+      findings.push(
+        `laneWindow "${roleId}" must record a sha256-16 routeHostDigest of the origin it reached`,
+      );
     }
     if (!bundle.simulations.some((sim) => sim.id === window.simId)) {
       findings.push(`laneWindow "${roleId}" references unknown simId "${String(window.simId)}"`);
     }
     if (!bundle.streams.some((stream) => stream.id === window.streamId)) {
-      findings.push(`laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`);
+      findings.push(
+        `laneWindow "${roleId}" references unknown streamId "${String(window.streamId)}"`,
+      );
     }
   }
 
@@ -7007,52 +8059,86 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
   // normal cross-origin redirect (apex->www, http->https) makes the observed origin differ from the
   // DECLARED one, which is expected and must NEVER fail verify (declaredOriginDigest is evidence-only).
   const plane: Record<string, unknown> = isRecord(sw.plane) ? sw.plane : {};
-  const publicOriginDigest = typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
+  const publicOriginDigest =
+    typeof plane.publicOriginDigest === "string" ? plane.publicOriginDigest : undefined;
   if (!publicOriginDigest || !COMMAND_DIGEST_PATTERN.test(publicOriginDigest)) {
-    findings.push("sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class");
+    findings.push(
+      "sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class",
+    );
   }
   // The observed origins across seats must agree on exactly ONE (that agreement IS the convergence).
   const observedOrigins = laneWindows
-    .map((window) => (typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined))
+    .map((window) =>
+      typeof window.routeHostDigest === "string" ? window.routeHostDigest : undefined,
+    )
     .filter((digest): digest is string => digest !== undefined);
   const distinctObserved = [...new Set(observedOrigins)];
   if (distinctObserved.length > 1) {
-    findings.push(`the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: ${distinctObserved.join(", ")}`);
-  } else if (publicOriginDigest && distinctObserved.length === 1 && distinctObserved[0] !== publicOriginDigest) {
-    findings.push(`sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the seats converged on (${distinctObserved[0]})`);
+    findings.push(
+      `the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: ${distinctObserved.join(", ")}`,
+    );
+  } else if (
+    publicOriginDigest &&
+    distinctObserved.length === 1 &&
+    distinctObserved[0] !== publicOriginDigest
+  ) {
+    findings.push(
+      `sharedWorld.plane.publicOriginDigest (${publicOriginDigest}) must equal the single OBSERVED origin the seats converged on (${distinctObserved[0]})`,
+    );
   }
   // declaredOriginDigest is recorded for evidence ONLY. Validate its shape when present, but NEVER
   // assert it equals the observed origin — a cross-origin redirect is normal and expected.
-  if (plane.declaredOriginDigest !== undefined
-    && (typeof plane.declaredOriginDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(plane.declaredOriginDigest))) {
-    findings.push("sharedWorld.plane.declaredOriginDigest, when present, must be a sha256-16 digest of the operator-declared origin (evidence-only; not asserted equal to the observed origin)");
+  if (
+    plane.declaredOriginDigest !== undefined &&
+    (typeof plane.declaredOriginDigest !== "string" ||
+      !COMMAND_DIGEST_PATTERN.test(plane.declaredOriginDigest))
+  ) {
+    findings.push(
+      "sharedWorld.plane.declaredOriginDigest, when present, must be a sha256-16 digest of the operator-declared origin (evidence-only; not asserted equal to the observed origin)",
+    );
   }
 
   // INVERT the getHost gate: exposure MUST be absent (claiming synthetic on a real site is a lie) and
   // the harness-minted hostDigest MUST be absent (the harness minted no host here).
   if (plane.exposure !== undefined) {
-    findings.push('sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest "synthetic" on a real site');
+    findings.push(
+      'sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest "synthetic" on a real site',
+    );
   }
   if (plane.hostDigest !== undefined) {
-    findings.push("sharedWorld.plane.hostDigest must be ABSENT on the external-public plane class — a harness-minted host identity is a getHost claim; this plane is operator-attested, not harness-minted");
+    findings.push(
+      "sharedWorld.plane.hostDigest must be ABSENT on the external-public plane class — a harness-minted host identity is a getHost claim; this plane is operator-attested, not harness-minted",
+    );
   }
   // Provenance is the NEW external-public marker — NOT seeded (nothing was seeded), NOT unpinned.
   if (bundle.subject?.state.provenance !== "external-public") {
-    findings.push(`the external-public plane class requires subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest`);
+    findings.push(
+      `the external-public plane class requires subject.state.provenance == "external-public" (got "${bundle.subject?.state.provenance ?? "absent"}") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest`,
+    );
   }
   if (bundle.subject?.source !== "app-url") {
-    findings.push('the external-public plane class requires subject.source == "app-url" — the plane is a real public deployment, not a provisioned subject');
+    findings.push(
+      'the external-public plane class requires subject.source == "app-url" — the plane is a real public deployment, not a provisioned subject',
+    );
   }
 
   // Single-plane provenance: every laneWindow shares ONE (commit, seedDigest) matching plane. commit
   // is absent on this class (nothing cloned); seedDigest is the constant empty-recipe digest.
-  const planeKeys = new Set(laneWindows.map((window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`));
+  const planeKeys = new Set(
+    laneWindows.map(
+      (window) => `${String(window.commit ?? "")}::${String(window.seedDigest ?? "")}`,
+    ),
+  );
   if (planeKeys.size > 1) {
-    findings.push("laneWindows reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane");
+    findings.push(
+      "laneWindows reference divergent plane provenance (commit/seedDigest) — a shared-world run drives ONE plane",
+    );
   }
   for (const window of laneWindows) {
-    if (String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "")
-      || String(window.commit ?? "") !== String(plane.commit ?? "")) {
+    if (
+      String(window.seedDigest ?? "") !== String(plane.seedDigest ?? "") ||
+      String(window.commit ?? "") !== String(plane.commit ?? "")
+    ) {
       const roleId = typeof window.roleId === "string" ? window.roleId : "(unnamed)";
       findings.push(`laneWindow "${roleId}" plane provenance diverges from sharedWorld.plane`);
       break;
@@ -7061,10 +8147,16 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
 
   // The lobby-convergence proof (optional-but-strong): if present it must be a sha256-16 digest of the
   // shared /lobby/CODE path all seats converged on (digest-only; the raw CODE never lands).
-  const lobbyConvergenceDigest = (sw as { lobbyConvergenceDigest?: unknown }).lobbyConvergenceDigest;
-  if (lobbyConvergenceDigest !== undefined
-    && (typeof lobbyConvergenceDigest !== "string" || !COMMAND_DIGEST_PATTERN.test(lobbyConvergenceDigest))) {
-    findings.push("sharedWorld.lobbyConvergenceDigest must be a sha256-16 digest (digest-only; the raw lobby code never lands)");
+  const lobbyConvergenceDigest = (sw as { lobbyConvergenceDigest?: unknown })
+    .lobbyConvergenceDigest;
+  if (
+    lobbyConvergenceDigest !== undefined &&
+    (typeof lobbyConvergenceDigest !== "string" ||
+      !COMMAND_DIGEST_PATTERN.test(lobbyConvergenceDigest))
+  ) {
+    findings.push(
+      "sharedWorld.lobbyConvergenceDigest must be a sha256-16 digest (digest-only; the raw lobby code never lands)",
+    );
   }
 
   // The RELAXED concurrency-on-pass gate: a PASSED external-public run MUST show genuine temporal
@@ -7081,15 +8173,23 @@ function externalPublicConcurrentFindings(bundle: RunBundle, sw: SharedWorldEvid
         const aEnd = a.endedAt as number;
         const bStart = b.startedAt as number;
         const bEnd = b.endedAt as number;
-        if (typeof aStart === "number" && typeof aEnd === "number" && typeof bStart === "number" && typeof bEnd === "number"
-          && aStart < bEnd && bStart < aEnd) {
+        if (
+          typeof aStart === "number" &&
+          typeof aEnd === "number" &&
+          typeof bStart === "number" &&
+          typeof bEnd === "number" &&
+          aStart < bEnd &&
+          bStart < aEnd
+        ) {
           overlap = true;
           break;
         }
       }
     }
     if (!overlap) {
-      findings.push("review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)");
+      findings.push(
+        "review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)",
+      );
     }
   }
 
@@ -7116,7 +8216,7 @@ function undeclaredSubjectStateWarnings(bundle: RunBundle): string[] {
     return [];
   }
   return [
-    `Subject env is provisioned (${stateRelevantEnvNames.join(", ")}) but no state story is declared; if any name points at external state, declare subject.state.external (recorded UNPINNED) or seed in-sandbox state with subject.state.seed.`
+    `Subject env is provisioned (${stateRelevantEnvNames.join(", ")}) but no state story is declared; if any name points at external state, declare subject.state.external (recorded UNPINNED) or seed in-sandbox state with subject.state.seed.`,
   ];
 }
 
@@ -7127,10 +8227,14 @@ const riskyPublicArtifactPathSegments = new Set([
   "Local Storage",
   "Preferences",
   "Secure Preferences",
-  "profiles"
+  "profiles",
 ]);
 
-async function scanRunPublicSafetyArtifacts(runPaths: PreparedRunArtifactPaths, derivedFindings: string[], recordingPaths: Set<string>): Promise<string[]> {
+async function scanRunPublicSafetyArtifacts(
+  runPaths: PreparedRunArtifactPaths,
+  derivedFindings: string[],
+  recordingPaths: Set<string>,
+): Promise<string[]> {
   const findings: string[] = [];
   await validatePreparedRunArtifactPaths(runPaths);
   await scanRunPublicSafetyDirectory(runPaths, "", findings, derivedFindings, recordingPaths);
@@ -7143,7 +8247,7 @@ async function scanRunPublicSafetyDirectory(
   relativeDirectory: string,
   findings: string[],
   derivedFindings: string[],
-  recordingPaths: Set<string>
+  recordingPaths: Set<string>,
 ): Promise<void> {
   // Each authority has its own finding budget. Derived files must never consume
   // the source scan's budget and make an unscanned recording appear verified.
@@ -7158,21 +8262,37 @@ async function scanRunPublicSafetyDirectory(
   for (const entryName of entries) {
     const relativePath = relativeDirectory ? `${relativeDirectory}/${entryName}` : entryName;
     const stats = await lstat(path.join(current, entryName), { bigint: true }).catch(() => null);
-    const selectedFindings = !stats?.isDirectory()
-      && (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath)) ? derivedFindings : findings;
+    const selectedFindings =
+      !stats?.isDirectory() &&
+      (relativePath === "observer/study-analysis.json" || isStudyAnalysisRecordPath(relativePath))
+        ? derivedFindings
+        : findings;
     if (isRiskyPublicArtifactPath(relativePath) || containsSensitivePattern(relativePath)) {
-      if (selectedFindings.length < 50) selectedFindings.push(`risky artifact path ${relativePath}`);
+      if (selectedFindings.length < 50)
+        selectedFindings.push(`risky artifact path ${relativePath}`);
     }
 
-    if (!stats || stats.isSymbolicLink() || (!stats.isDirectory() && !stats.isFile()) || (stats.isFile() && stats.nlink > 1n)) {
-      if (selectedFindings.length < 50) selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
+    if (
+      !stats ||
+      stats.isSymbolicLink() ||
+      (!stats.isDirectory() && !stats.isFile()) ||
+      (stats.isFile() && stats.nlink > 1n)
+    ) {
+      if (selectedFindings.length < 50)
+        selectedFindings.push(`unsafe artifact leaf ${relativePath}`);
       continue;
     }
 
     if (stats.isDirectory()) {
       // A directory named analysis.json is not an owned record. Its children
       // can contain source evidence even after derived findings are saturated.
-      await scanRunPublicSafetyDirectory(runPaths, relativePath, findings, derivedFindings, recordingPaths);
+      await scanRunPublicSafetyDirectory(
+        runPaths,
+        relativePath,
+        findings,
+        derivedFindings,
+        recordingPaths,
+      );
       continue;
     }
 
@@ -7194,23 +8314,29 @@ async function scanRunPublicSafetyDirectory(
 }
 
 function isRiskyPublicArtifactPath(relativePath: string): boolean {
-  return relativePath.split(/[\\/]/).some((segment) => riskyPublicArtifactPathSegments.has(segment));
+  return relativePath
+    .split(/[\\/]/)
+    .some((segment) => riskyPublicArtifactPathSegments.has(segment));
 }
 
 function shouldScanTextArtifact(relativePath: string): boolean {
   const extension = path.extname(relativePath).toLowerCase();
-  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".tgz", ".gz", ".zip"].includes(extension);
+  return ![".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".tgz", ".gz", ".zip"].includes(
+    extension,
+  );
 }
 
 function isLocalEvidenceArtifactPath(value: string): boolean {
   const normalized = value.replace(/\\/g, "/");
-  return value.length > 0
-    && !/^\[[a-z0-9._-]+\]$/i.test(normalized)
-    && !path.isAbsolute(normalized)
-    && !normalized.includes("://")
-    && !normalized.startsWith("..")
-    && !normalized.split("/").includes("..")
-    && !isRiskyPublicArtifactPath(normalized);
+  return (
+    value.length > 0 &&
+    !/^\[[a-z0-9._-]+\]$/i.test(normalized) &&
+    !path.isAbsolute(normalized) &&
+    !normalized.includes("://") &&
+    !normalized.startsWith("..") &&
+    !normalized.split("/").includes("..") &&
+    !isRiskyPublicArtifactPath(normalized)
+  );
 }
 
 function normalizeLocalEvidenceReference(value: string | undefined): string | null {
@@ -7233,7 +8359,7 @@ async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
     if (!stats.isDirectory()) {
       return {
         code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd is not a directory: ${cwd}`
+        message: `Target cwd is not a directory: ${cwd}`,
       };
     }
 
@@ -7242,7 +8368,7 @@ async function validateCwd(cwd: string): Promise<RunResult["error"] | null> {
     if (isNodeError(error) && error.code === "ENOENT") {
       return {
         code: "HUMANISH_INVALID_CWD",
-        message: `Target cwd does not exist: ${cwd}`
+        message: `Target cwd does not exist: ${cwd}`,
       };
     }
 
@@ -7259,144 +8385,175 @@ function redactSensitiveText(text: string): string {
 }
 
 function isRunBundle(value: unknown): value is RunBundle {
-  return isRecord(value)
-    && value.schema === RUN_BUNDLE_SCHEMA
-    && (value.commsReceiving === undefined || isCommsReceivingEvidence(value.commsReceiving))
-    && (value.publication === undefined || (isRecord(value.publication) && Array.isArray(value.publication.restrictions)
-      && value.publication.restrictions.length === 1 && value.publication.restrictions[0] === "real-communications"))
-    && typeof value.runId === "string"
-    && (value.mode === "dry-run" || value.mode === "live")
-    && isPositiveSafeInteger(value.simCount)
-    && typeof value.createdAt === "string"
-    && value.cwd === PUBLIC_TARGET_CWD
-    && typeof value.artifactRoot === "string"
-    && isRunSource(value.source)
-    && isPersonaSummary(value.persona)
-    && isScenarioSummary(value.scenario)
-    && Array.isArray(value.lifecycle)
-    && value.lifecycle.every(isLifecycleEvent)
-    && Array.isArray(value.simulations)
-    && value.simulations.length === value.simCount
-    && value.simulations.every(isRunSimulation)
-    && Array.isArray(value.streams)
-    && value.streams.every(isRunStream)
-    && hasConsistentSimulationStreams(value.simulations, value.streams)
-    && Array.isArray(value.events)
-    && value.events.every(isRunEvent)
-    && isRunArtifactIndex(value.artifacts)
-    && isRecord(value.review)
-    && isReviewSummary(value.review)
-    && isRecord(value.redaction)
-    && value.redaction.status === "passed"
-    && Array.isArray(value.feedbackCandidates)
-    && value.feedbackCandidates.every(isRunFeedbackCandidate)
+  return (
+    isRecord(value) &&
+    value.schema === RUN_BUNDLE_SCHEMA &&
+    (value.commsReceiving === undefined || isCommsReceivingEvidence(value.commsReceiving)) &&
+    (value.publication === undefined ||
+      (isRecord(value.publication) &&
+        Array.isArray(value.publication.restrictions) &&
+        value.publication.restrictions.length === 1 &&
+        value.publication.restrictions[0] === "real-communications")) &&
+    typeof value.runId === "string" &&
+    (value.mode === "dry-run" || value.mode === "live") &&
+    isPositiveSafeInteger(value.simCount) &&
+    typeof value.createdAt === "string" &&
+    value.cwd === PUBLIC_TARGET_CWD &&
+    typeof value.artifactRoot === "string" &&
+    isRunSource(value.source) &&
+    isPersonaSummary(value.persona) &&
+    isScenarioSummary(value.scenario) &&
+    Array.isArray(value.lifecycle) &&
+    value.lifecycle.every(isLifecycleEvent) &&
+    Array.isArray(value.simulations) &&
+    value.simulations.length === value.simCount &&
+    value.simulations.every(isRunSimulation) &&
+    Array.isArray(value.streams) &&
+    value.streams.every(isRunStream) &&
+    hasConsistentSimulationStreams(value.simulations, value.streams) &&
+    Array.isArray(value.events) &&
+    value.events.every(isRunEvent) &&
+    isRunArtifactIndex(value.artifacts) &&
+    isRecord(value.review) &&
+    isReviewSummary(value.review) &&
+    isRecord(value.redaction) &&
+    value.redaction.status === "passed" &&
+    Array.isArray(value.feedbackCandidates) &&
+    value.feedbackCandidates.every(isRunFeedbackCandidate) &&
     // Optional and additive: pre-existing bundles (and non-cua backends) carry no subject
     // block; when present it must be well-shaped (semantics are the verify check's job).
-    && (value.subject === undefined || isRunSubjectProvenance(value.subject))
-    && (value.desktopBrowser === undefined || isDesktopBrowserEvidence(value.desktopBrowser))
-    && (value.rerun === undefined || isRunRerunLineage(value.rerun))
+    (value.subject === undefined || isRunSubjectProvenance(value.subject)) &&
+    (value.desktopBrowser === undefined || isDesktopBrowserEvidence(value.desktopBrowser)) &&
+    (value.rerun === undefined || isRunRerunLineage(value.rerun)) &&
     // Optional + additive shared-world fields (#164). Tolerant SHAPE guard only — the interaction
     // semantics (timeline well-formedness, single-plane, delta-on-pass) are the verify check's job.
-    && (value.attributionClass === undefined || value.attributionClass === "isolated" || value.attributionClass === "shared-world")
-    && (value.sharedWorld === undefined || isSharedWorldEvidence(value.sharedWorld))
+    (value.attributionClass === undefined ||
+      value.attributionClass === "isolated" ||
+      value.attributionClass === "shared-world") &&
+    (value.sharedWorld === undefined || isSharedWorldEvidence(value.sharedWorld)) &&
     // Optional, adapter-namespaced product score (the extension seam). When present, validate only
     // its SHAPE; core never reads the adapter's `data` payload.
-    && (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore))
+    (value.adapterScore === undefined || isRunAdapterScore(value.adapterScore)) &&
     // Optional + additive scorer provenance (#316). Tolerated-absent so pre-#316 and library-caller
     // bundles still verify; when present it must be well-shaped.
-    && (value.scorerProvenance === undefined || isRunScorerProvenance(value.scorerProvenance))
-    && (value.adapterArtifacts === undefined
-      || (Array.isArray(value.adapterArtifacts) && value.adapterArtifacts.every(isRunAdapterArtifact)))
-    && (value.providerResources === undefined
-      || (Array.isArray(value.providerResources) && value.providerResources.every(isRunProviderResource)));
+    (value.scorerProvenance === undefined || isRunScorerProvenance(value.scorerProvenance)) &&
+    (value.adapterArtifacts === undefined ||
+      (Array.isArray(value.adapterArtifacts) &&
+        value.adapterArtifacts.every(isRunAdapterArtifact))) &&
+    (value.providerResources === undefined ||
+      (Array.isArray(value.providerResources) &&
+        value.providerResources.every(isRunProviderResource)))
+  );
 }
 
 function isRunProviderResource(value: unknown): value is RunProviderResource {
-  return isRecord(value)
-    && value.schema === "humanish.provider-resource.v1"
-    && value.provider === "e2b-desktop"
-    && value.kind === "sandbox"
-    && typeof value.id === "string"
-    && value.id.trim().length > 0
-    && value.owner === "humanish"
-    && (value.status === "running" || value.status === "killed" || value.status === "unknown")
-    && (value.simId === undefined || typeof value.simId === "string")
-    && (value.streamId === undefined || typeof value.streamId === "string")
-    && (value.laneId === undefined || typeof value.laneId === "string")
-    && (value.createdAt === undefined || typeof value.createdAt === "string")
-    && (value.cleanup === undefined
-      || (isRecord(value.cleanup)
-        && typeof value.cleanup.killed === "boolean"
-        && typeof value.cleanup.reason === "string"));
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.provider-resource.v1" &&
+    value.provider === "e2b-desktop" &&
+    value.kind === "sandbox" &&
+    typeof value.id === "string" &&
+    value.id.trim().length > 0 &&
+    value.owner === "humanish" &&
+    (value.status === "running" || value.status === "killed" || value.status === "unknown") &&
+    (value.simId === undefined || typeof value.simId === "string") &&
+    (value.streamId === undefined || typeof value.streamId === "string") &&
+    (value.laneId === undefined || typeof value.laneId === "string") &&
+    (value.createdAt === undefined || typeof value.createdAt === "string") &&
+    (value.cleanup === undefined ||
+      (isRecord(value.cleanup) &&
+        typeof value.cleanup.killed === "boolean" &&
+        typeof value.cleanup.reason === "string"))
+  );
 }
 
 function isCleanupResult(value: unknown): value is CleanupResult {
-  return isRecord(value)
-    && value.schema === CLEANUP_SCHEMA
-    && typeof value.ok === "boolean"
-    && typeof value.cwd === "string"
-    && typeof value.run === "string"
-    && typeof value.checkedAt === "string"
-    && (value.runId === undefined || typeof value.runId === "string")
-    && (value.bundlePath === undefined || typeof value.bundlePath === "string")
-    && (value.cleanupPath === undefined || typeof value.cleanupPath === "string")
-    && isRecord(value.summary)
-    && isNonNegativeSafeInteger(value.summary.resources)
-    && isNonNegativeSafeInteger(value.summary.killed)
-    && isNonNegativeSafeInteger(value.summary.alreadyClean)
-    && isNonNegativeSafeInteger(value.summary.failed)
-    && isNonNegativeSafeInteger(value.summary.skipped)
-    && Array.isArray(value.resources)
-    && value.resources.every(isCleanupResourceResult)
-    && Array.isArray(value.adapterResults)
-    && value.adapterResults.every(isCleanupAdapterResult)
-    && Array.isArray(value.warnings)
-    && value.warnings.every((warning) => typeof warning === "string");
+  return (
+    isRecord(value) &&
+    value.schema === CLEANUP_SCHEMA &&
+    typeof value.ok === "boolean" &&
+    typeof value.cwd === "string" &&
+    typeof value.run === "string" &&
+    typeof value.checkedAt === "string" &&
+    (value.runId === undefined || typeof value.runId === "string") &&
+    (value.bundlePath === undefined || typeof value.bundlePath === "string") &&
+    (value.cleanupPath === undefined || typeof value.cleanupPath === "string") &&
+    isRecord(value.summary) &&
+    isNonNegativeSafeInteger(value.summary.resources) &&
+    isNonNegativeSafeInteger(value.summary.killed) &&
+    isNonNegativeSafeInteger(value.summary.alreadyClean) &&
+    isNonNegativeSafeInteger(value.summary.failed) &&
+    isNonNegativeSafeInteger(value.summary.skipped) &&
+    Array.isArray(value.resources) &&
+    value.resources.every(isCleanupResourceResult) &&
+    Array.isArray(value.adapterResults) &&
+    value.adapterResults.every(isCleanupAdapterResult) &&
+    Array.isArray(value.warnings) &&
+    value.warnings.every((warning) => typeof warning === "string")
+  );
 }
 
 function isCleanupResourceResult(value: unknown): value is CleanupResourceResult {
-  return isRecord(value)
-    && value.provider === "e2b-desktop"
-    && value.kind === "sandbox"
-    && typeof value.id === "string"
-    && value.id.trim().length > 0
-    && (value.status === "killed" || value.status === "already_clean" || value.status === "failed" || value.status === "skipped")
-    && typeof value.message === "string";
+  return (
+    isRecord(value) &&
+    value.provider === "e2b-desktop" &&
+    value.kind === "sandbox" &&
+    typeof value.id === "string" &&
+    value.id.trim().length > 0 &&
+    (value.status === "killed" ||
+      value.status === "already_clean" ||
+      value.status === "failed" ||
+      value.status === "skipped") &&
+    typeof value.message === "string"
+  );
 }
 
 function isCleanupAdapterResult(value: unknown): value is CleanupAdapterResult {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && value.id.trim().length > 0
-    && typeof value.ok === "boolean"
-    && typeof value.message === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.trim().length > 0 &&
+    typeof value.ok === "boolean" &&
+    typeof value.message === "string"
+  );
 }
 
 function isRunRerunLineage(value: unknown): value is RunRerunLineage {
-  return isRecord(value)
-    && typeof value.sourceRunId === "string"
-    && value.sourceRunId.trim().length > 0
-    && Array.isArray(value.selectedLaneIds)
-    && value.selectedLaneIds.length > 0
-    && value.selectedLaneIds.every((laneId) => typeof laneId === "string" && laneId.trim().length > 0)
-    && Array.isArray(value.previous)
-    && value.previous.length > 0
-    && value.previous.every((entry) =>
-      isRecord(entry)
-      && typeof entry.laneId === "string"
-      && entry.laneId.trim().length > 0
-      && (entry.streamId === undefined || typeof entry.streamId === "string")
-      && typeof entry.status === "string"
-      && entry.status.trim().length > 0
-      && (entry.reason === undefined || typeof entry.reason === "string")
-      && (entry.actorStatus === undefined || typeof entry.actorStatus === "string")
-      && (entry.completionReason === undefined || typeof entry.completionReason === "string"));
+  return (
+    isRecord(value) &&
+    typeof value.sourceRunId === "string" &&
+    value.sourceRunId.trim().length > 0 &&
+    Array.isArray(value.selectedLaneIds) &&
+    value.selectedLaneIds.length > 0 &&
+    value.selectedLaneIds.every(
+      (laneId) => typeof laneId === "string" && laneId.trim().length > 0,
+    ) &&
+    Array.isArray(value.previous) &&
+    value.previous.length > 0 &&
+    value.previous.every(
+      (entry) =>
+        isRecord(entry) &&
+        typeof entry.laneId === "string" &&
+        entry.laneId.trim().length > 0 &&
+        (entry.streamId === undefined || typeof entry.streamId === "string") &&
+        typeof entry.status === "string" &&
+        entry.status.trim().length > 0 &&
+        (entry.reason === undefined || typeof entry.reason === "string") &&
+        (entry.actorStatus === undefined || typeof entry.actorStatus === "string") &&
+        (entry.completionReason === undefined || typeof entry.completionReason === "string"),
+    )
+  );
 }
 
 function isDesktopBrowserEvidence(value: unknown): value is RunBundle["desktopBrowser"] {
-  return isRecord(value)
-    && (value.requested === "default" || value.requested === "chrome" || value.requested === "chromium" || value.requested === "firefox")
-    && (value.resolved === undefined || typeof value.resolved === "string");
+  return (
+    isRecord(value) &&
+    (value.requested === "default" ||
+      value.requested === "chrome" ||
+      value.requested === "chromium" ||
+      value.requested === "firefox") &&
+    (value.resolved === undefined || typeof value.resolved === "string")
+  );
 }
 
 /** Short lowercase-hex content digest (digestText default is 12 chars; tolerate longer future digests). */
@@ -7406,28 +8563,34 @@ const SCORER_DIGEST_PATTERN = /^[a-f0-9]{12,64}$/;
  *  isRunBundle, well-shaped when present. Semantics (does the digest still match the file) are not a
  *  verify concern — the block is core-stamped evidence of what was loaded, not a re-execution proof. */
 function isRunScorerProvenance(value: unknown): value is RunScorerProvenance {
-  return isRecord(value)
-    && value.schema === "humanish.scorer-provenance.v1"
-    && typeof value.ref === "string"
-    && value.ref.trim().length > 0
-    && typeof value.digest === "string"
-    && SCORER_DIGEST_PATTERN.test(value.digest)
-    && (value.source === "manifest" || value.source === "cli-flag")
-    && Array.isArray(value.exports)
-    && value.exports.length > 0
-    && value.exports.every((name) => name === "score" || name === "deriveFeedback" || name === "deriveArtifacts");
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.scorer-provenance.v1" &&
+    typeof value.ref === "string" &&
+    value.ref.trim().length > 0 &&
+    typeof value.digest === "string" &&
+    SCORER_DIGEST_PATTERN.test(value.digest) &&
+    (value.source === "manifest" || value.source === "cli-flag") &&
+    Array.isArray(value.exports) &&
+    value.exports.length > 0 &&
+    value.exports.every(
+      (name) => name === "score" || name === "deriveFeedback" || name === "deriveArtifacts",
+    )
+  );
 }
 
 function isRunAdapterScore(value: unknown): value is RunAdapterScore {
-  return isRecord(value)
-    && value.schema === "humanish.adapter-score.v1"
-    && typeof value.namespace === "string"
-    && value.namespace.trim().length > 0
-    && (value.status === "pass" || value.status === "partial" || value.status === "fail")
-    && typeof value.score === "number"
-    && Number.isFinite(value.score)
-    && typeof value.summary === "string"
-    && (value.data === undefined || isRecord(value.data));
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.adapter-score.v1" &&
+    typeof value.namespace === "string" &&
+    value.namespace.trim().length > 0 &&
+    (value.status === "pass" || value.status === "partial" || value.status === "fail") &&
+    typeof value.score === "number" &&
+    Number.isFinite(value.score) &&
+    typeof value.summary === "string" &&
+    (value.data === undefined || isRecord(value.data))
+  );
 }
 
 /**
@@ -7445,22 +8608,55 @@ function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
   if (!isRecord(plane)) return false;
   if (plane.commit !== undefined && typeof plane.commit !== "string") return false;
   if (typeof plane.seedDigest !== "string") return false;
-  if (!(Array.isArray(plane.envNames) && plane.envNames.every((name) => typeof name === "string"))) return false;
+  if (!(Array.isArray(plane.envNames) && plane.envNames.every((name) => typeof name === "string")))
+    return false;
   if (plane.hostDigest !== undefined && typeof plane.hostDigest !== "string") return false;
   if (plane.exposure !== undefined && typeof plane.exposure !== "string") return false;
-  if (plane.publicOriginDigest !== undefined && typeof plane.publicOriginDigest !== "string") return false;
-  if (plane.declaredOriginDigest !== undefined && typeof plane.declaredOriginDigest !== "string") return false;
+  if (plane.publicOriginDigest !== undefined && typeof plane.publicOriginDigest !== "string")
+    return false;
+  if (plane.declaredOriginDigest !== undefined && typeof plane.declaredOriginDigest !== "string")
+    return false;
   if (value.planeClass !== undefined && typeof value.planeClass !== "string") return false;
-  if (value.lobbyConvergenceDigest !== undefined && typeof value.lobbyConvergenceDigest !== "string") return false;
-  if (!(Array.isArray(value.attributionLimits) && value.attributionLimits.every((limit) => typeof limit === "string"))) return false;
+  if (
+    value.lobbyConvergenceDigest !== undefined &&
+    typeof value.lobbyConvergenceDigest !== "string"
+  )
+    return false;
+  if (
+    !(
+      Array.isArray(value.attributionLimits) &&
+      value.attributionLimits.every((limit) => typeof limit === "string")
+    )
+  )
+    return false;
   // Tolerant: validate the TYPE of each present field only (the coherence + topologyMode dispatch
   // are validateSharedWorldEvidence's job — an injected value-shaped field must pass this guard so
   // verify catches it fail-closed). A bundle must carry at least one of the two shapes.
-  if (value.sequence !== undefined && !(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))) return false;
-  if (value.timeline !== undefined && !(Array.isArray(value.timeline) && value.timeline.every(isSharedWorldTimelineEntry))) return false;
-  if (value.laneWindows !== undefined && !(Array.isArray(value.laneWindows) && value.laneWindows.every(isSharedWorldLaneWindow))) return false;
-  if (value.stateSeries !== undefined && !(Array.isArray(value.stateSeries) && value.stateSeries.every(isSharedWorldStateSnapshot))) return false;
-  if (value.outcomes !== undefined && !(Array.isArray(value.outcomes) && value.outcomes.every(isSharedWorldOutcome))) return false;
+  if (
+    value.sequence !== undefined &&
+    !(Array.isArray(value.sequence) && value.sequence.every((id) => typeof id === "string"))
+  )
+    return false;
+  if (
+    value.timeline !== undefined &&
+    !(Array.isArray(value.timeline) && value.timeline.every(isSharedWorldTimelineEntry))
+  )
+    return false;
+  if (
+    value.laneWindows !== undefined &&
+    !(Array.isArray(value.laneWindows) && value.laneWindows.every(isSharedWorldLaneWindow))
+  )
+    return false;
+  if (
+    value.stateSeries !== undefined &&
+    !(Array.isArray(value.stateSeries) && value.stateSeries.every(isSharedWorldStateSnapshot))
+  )
+    return false;
+  if (
+    value.outcomes !== undefined &&
+    !(Array.isArray(value.outcomes) && value.outcomes.every(isSharedWorldOutcome))
+  )
+    return false;
   if (value.timeline === undefined && value.laneWindows === undefined) return false;
   return true;
 }
@@ -7468,16 +8664,20 @@ function isSharedWorldEvidence(value: unknown): value is SharedWorldEvidence {
 function isSharedWorldTimelineEntry(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (value.kind === "checkpoint") {
-    return typeof value.name === "string"
-      && typeof value.digest === "string"
-      && typeof value.deltaFromPrev === "boolean";
+    return (
+      typeof value.name === "string" &&
+      typeof value.digest === "string" &&
+      typeof value.deltaFromPrev === "boolean"
+    );
   }
   if (value.kind === "turn") {
-    return typeof value.roleId === "string"
-      && typeof value.simId === "string"
-      && typeof value.streamId === "string"
-      && typeof value.seedDigest === "string"
-      && (value.commit === undefined || typeof value.commit === "string");
+    return (
+      typeof value.roleId === "string" &&
+      typeof value.simId === "string" &&
+      typeof value.streamId === "string" &&
+      typeof value.seedDigest === "string" &&
+      (value.commit === undefined || typeof value.commit === "string")
+    );
   }
   return false;
 }
@@ -7485,19 +8685,21 @@ function isSharedWorldTimelineEntry(value: unknown): boolean {
 // Tolerant shape guards for the CONCURRENT series (extra keys tolerated — the digest-only /
 // allowed-keys tripwires are validateSharedWorldEvidence's strict job).
 function isSharedWorldLaneWindow(value: unknown): boolean {
-  return isRecord(value)
-    && typeof value.roleId === "string"
-    && (value.actorType === undefined || typeof value.actorType === "string")
-    && (value.surface === undefined || typeof value.surface === "string")
-    && (value.caseGroup === undefined || typeof value.caseGroup === "string")
-    && typeof value.simId === "string"
-    && typeof value.streamId === "string"
-    && typeof value.startedAt === "number"
-    && typeof value.endedAt === "number"
-    && typeof value.verdict === "string"
-    && typeof value.routeHostDigest === "string"
-    && typeof value.seedDigest === "string"
-    && (value.commit === undefined || typeof value.commit === "string");
+  return (
+    isRecord(value) &&
+    typeof value.roleId === "string" &&
+    (value.actorType === undefined || typeof value.actorType === "string") &&
+    (value.surface === undefined || typeof value.surface === "string") &&
+    (value.caseGroup === undefined || typeof value.caseGroup === "string") &&
+    typeof value.simId === "string" &&
+    typeof value.streamId === "string" &&
+    typeof value.startedAt === "number" &&
+    typeof value.endedAt === "number" &&
+    typeof value.verdict === "string" &&
+    typeof value.routeHostDigest === "string" &&
+    typeof value.seedDigest === "string" &&
+    (value.commit === undefined || typeof value.commit === "string")
+  );
 }
 
 function isSharedWorldStateSnapshot(value: unknown): boolean {
@@ -7505,15 +8707,17 @@ function isSharedWorldStateSnapshot(value: unknown): boolean {
 }
 
 function isSharedWorldOutcome(value: unknown): boolean {
-  return isRecord(value)
-    && typeof value.roleId === "string"
-    && (value.actorType === undefined || typeof value.actorType === "string")
-    && (value.surface === undefined || typeof value.surface === "string")
-    && (value.caseGroup === undefined || typeof value.caseGroup === "string")
-    && typeof value.simId === "string"
-    && typeof value.streamId === "string"
-    && typeof value.status === "string"
-    && typeof value.ok === "boolean";
+  return (
+    isRecord(value) &&
+    typeof value.roleId === "string" &&
+    (value.actorType === undefined || typeof value.actorType === "string") &&
+    (value.surface === undefined || typeof value.surface === "string") &&
+    (value.caseGroup === undefined || typeof value.caseGroup === "string") &&
+    typeof value.simId === "string" &&
+    typeof value.streamId === "string" &&
+    typeof value.status === "string" &&
+    typeof value.ok === "boolean"
+  );
 }
 
 // The local-tree archive content pin: sha256 hex, full 64 chars (NOT the repo's 16-char
@@ -7522,162 +8726,226 @@ const ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 function isRunSubjectProvenance(value: unknown): value is RunSubjectProvenance {
   if (!isRecord(value)) return false;
-  if (value.source !== "clone" && value.source !== "app-url" && value.source !== "local-tree") return false;
+  if (value.source !== "clone" && value.source !== "app-url" && value.source !== "local-tree")
+    return false;
   if (value.repo !== undefined && typeof value.repo !== "string") return false;
   if (value.commit !== undefined && typeof value.commit !== "string") return false;
-  if (value.archiveSha256 !== undefined
-    && (typeof value.archiveSha256 !== "string" || !ARCHIVE_SHA256_PATTERN.test(value.archiveSha256))) {
+  if (
+    value.archiveSha256 !== undefined &&
+    (typeof value.archiveSha256 !== "string" || !ARCHIVE_SHA256_PATTERN.test(value.archiveSha256))
+  ) {
     return false;
   }
   if (value.dirty !== undefined && typeof value.dirty !== "boolean") return false;
-  if (value.envNames !== undefined
-    && !(Array.isArray(value.envNames) && value.envNames.every((name) => typeof name === "string"))) {
+  if (
+    value.envNames !== undefined &&
+    !(Array.isArray(value.envNames) && value.envNames.every((name) => typeof name === "string"))
+  ) {
     return false;
   }
   const state = value.state;
   if (!isRecord(state)) return false;
-  if (state.provenance !== "seeded" && state.provenance !== "unpinned"
-    && state.provenance !== "declared-not-run" && state.provenance !== "undeclared"
-    && state.provenance !== "external-public") {
+  if (
+    state.provenance !== "seeded" &&
+    state.provenance !== "unpinned" &&
+    state.provenance !== "declared-not-run" &&
+    state.provenance !== "undeclared" &&
+    state.provenance !== "external-public"
+  ) {
     return false;
   }
-  if (state.seed !== undefined
-    && !(Array.isArray(state.seed) && state.seed.every(isRunSubjectStateStepRecord))) {
+  if (
+    state.seed !== undefined &&
+    !(Array.isArray(state.seed) && state.seed.every(isRunSubjectStateStepRecord))
+  ) {
     return false;
   }
-  if (state.externalEnvNames !== undefined
-    && !(Array.isArray(state.externalEnvNames) && state.externalEnvNames.every((name) => typeof name === "string"))) {
+  if (
+    state.externalEnvNames !== undefined &&
+    !(
+      Array.isArray(state.externalEnvNames) &&
+      state.externalEnvNames.every((name) => typeof name === "string")
+    )
+  ) {
     return false;
   }
   return true;
 }
 
 function isRunSubjectStateStepRecord(value: unknown): value is RunSubjectStateStepRecord {
-  return isRecord(value)
-    && typeof value.name === "string"
-    && (value.when === "before-build" || value.when === "before-start" || value.when === "after-ready")
-    && typeof value.commandDigest === "string"
-    && (value.ok === undefined || typeof value.ok === "boolean")
-    && (value.exitCode === undefined || typeof value.exitCode === "number")
-    && (value.timedOut === undefined || typeof value.timedOut === "boolean")
-    && (value.durationMs === undefined || typeof value.durationMs === "number");
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    (value.when === "before-build" ||
+      value.when === "before-start" ||
+      value.when === "after-ready") &&
+    typeof value.commandDigest === "string" &&
+    (value.ok === undefined || typeof value.ok === "boolean") &&
+    (value.exitCode === undefined || typeof value.exitCode === "number") &&
+    (value.timedOut === undefined || typeof value.timedOut === "boolean") &&
+    (value.durationMs === undefined || typeof value.durationMs === "number")
+  );
 }
 
 function isRunSource(value: unknown): value is RunBundle["source"] {
-  return isRecord(value)
-    && (typeof value.packageName === "string" || value.packageName === null)
-    && (value.humanishSource === "present" || value.humanishSource === "missing")
-    && isCapturedGitState(value.git);
+  return (
+    isRecord(value) &&
+    (typeof value.packageName === "string" || value.packageName === null) &&
+    (value.humanishSource === "present" || value.humanishSource === "missing") &&
+    isCapturedGitState(value.git)
+  );
 }
 
 function isCapturedGitState(value: unknown): value is CapturedGitState {
-  return isRecord(value)
-    && value.schema === GIT_STATE_SCHEMA
-    && (value.status === "clean" || value.status === "dirty" || value.status === "missing" || value.status === "unavailable")
-    && typeof value.capturedAt === "string"
-    && isRecord(value.head)
-    && (isSafeGitShortSha(value.head.shortSha) || value.head.shortSha === null)
-    && (value.head.refState === "attached" || value.head.refState === "detached" || value.head.refState === "unborn" || value.head.refState === "unknown")
-    && isRecord(value.changes)
-    && isNonNegativeSafeInteger(value.changes.staged)
-    && isNonNegativeSafeInteger(value.changes.unstaged)
-    && isNonNegativeSafeInteger(value.changes.untracked)
-    && isNonNegativeSafeInteger(value.changes.total)
-    && typeof value.note === "string"
-    && SAFE_GIT_NOTES.has(value.note);
+  return (
+    isRecord(value) &&
+    value.schema === GIT_STATE_SCHEMA &&
+    (value.status === "clean" ||
+      value.status === "dirty" ||
+      value.status === "missing" ||
+      value.status === "unavailable") &&
+    typeof value.capturedAt === "string" &&
+    isRecord(value.head) &&
+    (isSafeGitShortSha(value.head.shortSha) || value.head.shortSha === null) &&
+    (value.head.refState === "attached" ||
+      value.head.refState === "detached" ||
+      value.head.refState === "unborn" ||
+      value.head.refState === "unknown") &&
+    isRecord(value.changes) &&
+    isNonNegativeSafeInteger(value.changes.staged) &&
+    isNonNegativeSafeInteger(value.changes.unstaged) &&
+    isNonNegativeSafeInteger(value.changes.untracked) &&
+    isNonNegativeSafeInteger(value.changes.total) &&
+    typeof value.note === "string" &&
+    SAFE_GIT_NOTES.has(value.note)
+  );
 }
 
 function isPersonaSummary(value: unknown): value is RunBundle["persona"] {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && typeof value.name === "string"
-    && typeof value.source === "string"
-    && typeof value.sourceDigest === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.source === "string" &&
+    typeof value.sourceDigest === "string"
+  );
 }
 
 function isScenarioSummary(value: unknown): value is RunBundle["scenario"] {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && typeof value.title === "string"
-    && typeof value.goal === "string"
-    && typeof value.source === "string"
-    && typeof value.sourceDigest === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.goal === "string" &&
+    typeof value.source === "string" &&
+    typeof value.sourceDigest === "string"
+  );
 }
 
 function isLifecycleEvent(value: unknown): value is RunBundle["lifecycle"][number] {
-  return isRecord(value)
-    && typeof value.at === "string"
-    && typeof value.event === "string"
-    && typeof value.message === "string";
+  return (
+    isRecord(value) &&
+    typeof value.at === "string" &&
+    typeof value.event === "string" &&
+    typeof value.message === "string"
+  );
 }
 
 function isRunSimulation(value: unknown): value is RunSimulation {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && isPositiveSafeInteger(value.index)
-    && typeof value.personaId === "string"
-    && typeof value.scenarioId === "string"
-    && isRunSimulationStatus(value.status)
-    && isRunStreamKind(value.streamKind)
-    && (value.mode === "browser-sim" || value.mode === "cli-sim" || value.mode === "tui-sim" || value.mode === "codex-app-sim")
-    && typeof value.progress === "number"
-    && typeof value.currentStep === "string"
-    && typeof value.summary === "string"
-    && Array.isArray(value.streamIds)
-    && value.streamIds.every((streamId) => typeof streamId === "string")
-    && typeof value.startedAt === "string"
-    && typeof value.updatedAt === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    isPositiveSafeInteger(value.index) &&
+    typeof value.personaId === "string" &&
+    typeof value.scenarioId === "string" &&
+    isRunSimulationStatus(value.status) &&
+    isRunStreamKind(value.streamKind) &&
+    (value.mode === "browser-sim" ||
+      value.mode === "cli-sim" ||
+      value.mode === "tui-sim" ||
+      value.mode === "codex-app-sim") &&
+    typeof value.progress === "number" &&
+    typeof value.currentStep === "string" &&
+    typeof value.summary === "string" &&
+    Array.isArray(value.streamIds) &&
+    value.streamIds.every((streamId) => typeof streamId === "string") &&
+    typeof value.startedAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
 }
 
 function isRunStream(value: unknown): value is RunStream {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && typeof value.simId === "string"
-    && isRunStreamKind(value.kind)
-    && typeof value.label === "string"
-    && isRunSimulationStatus(value.status)
-    && (value.transport === "snapshot" || value.transport === "polling" || value.transport === "sse" || value.transport === "pty" || value.transport === "app-server")
-    && typeof value.updatedAt === "string"
-    && (value.assignment === undefined || isRunParticipantAssignment(value.assignment))
-    && (value.viewport === undefined || isRunViewport(value.viewport))
-    && (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry))
-    && (value.recording === undefined || isRunDesktopRecording(value.recording))
-    && hasConsistentStreamGeometry(value)
-    && Array.isArray(value.artifacts)
-    && value.artifacts.every(isRunStreamArtifact)
-    && hasConsistentRecordingArtifact(value.recording, value.artifacts);
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.simId === "string" &&
+    isRunStreamKind(value.kind) &&
+    typeof value.label === "string" &&
+    isRunSimulationStatus(value.status) &&
+    (value.transport === "snapshot" ||
+      value.transport === "polling" ||
+      value.transport === "sse" ||
+      value.transport === "pty" ||
+      value.transport === "app-server") &&
+    typeof value.updatedAt === "string" &&
+    (value.assignment === undefined || isRunParticipantAssignment(value.assignment)) &&
+    (value.viewport === undefined || isRunViewport(value.viewport)) &&
+    (value.desktopGeometry === undefined || isRunDesktopGeometry(value.desktopGeometry)) &&
+    (value.recording === undefined || isRunDesktopRecording(value.recording)) &&
+    hasConsistentStreamGeometry(value) &&
+    Array.isArray(value.artifacts) &&
+    value.artifacts.every(isRunStreamArtifact) &&
+    hasConsistentRecordingArtifact(value.recording, value.artifacts)
+  );
 }
 
-function hasConsistentRecordingArtifact(recording: RunDesktopRecording | undefined, artifacts: RunStream["artifacts"]): boolean {
-  const files = artifacts.filter(artifact => artifact.kind === "recording");
+function hasConsistentRecordingArtifact(
+  recording: RunDesktopRecording | undefined,
+  artifacts: RunStream["artifacts"],
+): boolean {
+  const files = artifacts.filter((artifact) => artifact.kind === "recording");
   return recording ? files.length === 1 && files[0]!.path === recording.path : files.length === 0;
 }
 
 function isRunDesktopRecording(value: unknown): value is RunDesktopRecording {
-  if (!isRecord(value) || value.schema !== "humanish.desktop-recording.v1" || typeof value.path !== "string"
-    || !isLocalEvidenceArtifactPath(value.path) || !/^recordings\/[-A-Za-z0-9_.]+\/desktop\.mp4$/.test(value.path)) return false;
+  if (
+    !isRecord(value) ||
+    value.schema !== "humanish.desktop-recording.v1" ||
+    typeof value.path !== "string" ||
+    !isLocalEvidenceArtifactPath(value.path) ||
+    !/^recordings\/[-A-Za-z0-9_.]+\/desktop\.mp4$/.test(value.path)
+  )
+    return false;
   const { schema: _schema, path: _path, ...metadata } = value;
   return desktopRecordingMetadataSchema.safeParse(metadata).success;
 }
 
 function isRunParticipantAssignment(value: unknown): value is RunParticipantAssignment {
-  return isRecord(value)
-    && Object.keys(value).every((key) => key === "mission" || key === "focus" || key === "tasks")
-    && typeof value.mission === "string"
-    && (value.focus === undefined || typeof value.focus === "string")
-    && (value.tasks === undefined || (Array.isArray(value.tasks) && value.tasks.every((task) =>
-      isRecord(task)
-      && Object.keys(task).every((key) => key === "id" || key === "goal")
-      && typeof task.id === "string"
-      && typeof task.goal === "string")));
+  return (
+    isRecord(value) &&
+    Object.keys(value).every((key) => key === "mission" || key === "focus" || key === "tasks") &&
+    typeof value.mission === "string" &&
+    (value.focus === undefined || typeof value.focus === "string") &&
+    (value.tasks === undefined ||
+      (Array.isArray(value.tasks) &&
+        value.tasks.every(
+          (task) =>
+            isRecord(task) &&
+            Object.keys(task).every((key) => key === "id" || key === "goal") &&
+            typeof task.id === "string" &&
+            typeof task.goal === "string",
+        )))
+  );
 }
 
 function isRunViewport(value: unknown): value is NonNullable<RunStream["viewport"]> {
-  return isRecord(value)
-    && isPositiveFiniteNumber(value.width)
-    && isPositiveFiniteNumber(value.height)
-    && (value.deviceScaleFactor === undefined || isPositiveFiniteNumber(value.deviceScaleFactor))
-    && (value.isMobile === undefined || typeof value.isMobile === "boolean");
+  return (
+    isRecord(value) &&
+    isPositiveFiniteNumber(value.width) &&
+    isPositiveFiniteNumber(value.height) &&
+    (value.deviceScaleFactor === undefined || isPositiveFiniteNumber(value.deviceScaleFactor)) &&
+    (value.isMobile === undefined || typeof value.isMobile === "boolean")
+  );
 }
 
 function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
@@ -7698,27 +8966,35 @@ function isRunDesktopGeometry(value: unknown): value is RunDesktopGeometry {
     if (!isMeasuredSize(declared) || typeof preset !== "string") return false;
   }
   const browserWindow = value.browserWindow;
-  if (browserWindow !== undefined && (
-    !isRecord(browserWindow)
-    || !isFiniteNumber(browserWindow.x)
-    || !isFiniteNumber(browserWindow.y)
-    || !isPositiveFiniteNumber(browserWindow.width)
-    || !isPositiveFiniteNumber(browserWindow.height)
-    || (browserWindow.source !== "cdp" && browserWindow.source !== "xdotool" && browserWindow.source !== "xwininfo")
-  )) {
+  if (
+    browserWindow !== undefined &&
+    (!isRecord(browserWindow) ||
+      !isFiniteNumber(browserWindow.x) ||
+      !isFiniteNumber(browserWindow.y) ||
+      !isPositiveFiniteNumber(browserWindow.width) ||
+      !isPositiveFiniteNumber(browserWindow.height) ||
+      (browserWindow.source !== "cdp" &&
+        browserWindow.source !== "xdotool" &&
+        browserWindow.source !== "xwininfo"))
+  ) {
     return false;
   }
   const viewport = value.viewport;
-  if (!(viewport === undefined || (
-    isRecord(viewport)
-    && isPositiveFiniteNumber(viewport.width)
-    && isPositiveFiniteNumber(viewport.height)
-    && isPositiveFiniteNumber(viewport.deviceScaleFactor)
-    && viewport.source === "cdp"
-  ))) return false;
-  return value.warnings === undefined || (
-    Array.isArray(value.warnings)
-    && value.warnings.every((warning) => typeof warning === "string" && warning.length > 0)
+  if (
+    !(
+      viewport === undefined ||
+      (isRecord(viewport) &&
+        isPositiveFiniteNumber(viewport.width) &&
+        isPositiveFiniteNumber(viewport.height) &&
+        isPositiveFiniteNumber(viewport.deviceScaleFactor) &&
+        viewport.source === "cdp")
+    )
+  )
+    return false;
+  return (
+    value.warnings === undefined ||
+    (Array.isArray(value.warnings) &&
+      value.warnings.every((warning) => typeof warning === "string" && warning.length > 0))
   );
 }
 
@@ -7728,15 +9004,17 @@ function hasConsistentStreamGeometry(value: Record<string, unknown>): boolean {
   const measured = value.desktopGeometry.viewport;
   if (measured === undefined) return value.viewport === undefined;
   if (!isRunViewport(value.viewport)) return false;
-  return value.viewport.width === measured.width
-    && value.viewport.height === measured.height
-    && value.viewport.deviceScaleFactor === measured.deviceScaleFactor;
+  return (
+    value.viewport.width === measured.width &&
+    value.viewport.height === measured.height &&
+    value.viewport.deviceScaleFactor === measured.deviceScaleFactor
+  );
 }
 
 function isMeasuredSize(value: unknown): value is { width: number; height: number } {
-  return isRecord(value)
-    && isPositiveFiniteNumber(value.width)
-    && isPositiveFiniteNumber(value.height);
+  return (
+    isRecord(value) && isPositiveFiniteNumber(value.width) && isPositiveFiniteNumber(value.height)
+  );
 }
 
 function isPositiveFiniteNumber(value: unknown): value is number {
@@ -7748,121 +9026,128 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isRunStreamArtifact(value: unknown): value is RunStream["artifacts"][number] {
-  return isRecord(value)
-    && typeof value.label === "string"
-    && typeof value.path === "string"
-    && (
-      value.kind === "bundle"
-      || value.kind === "review"
-      || value.kind === "observer"
-      || value.kind === "events"
-      || value.kind === "screenshot"
-      || value.kind === "trace"
-      || value.kind === "log"
-      || value.kind === "filesystem"
-      || value.kind === "recording"
-    );
+  return (
+    isRecord(value) &&
+    typeof value.label === "string" &&
+    typeof value.path === "string" &&
+    (value.kind === "bundle" ||
+      value.kind === "review" ||
+      value.kind === "observer" ||
+      value.kind === "events" ||
+      value.kind === "screenshot" ||
+      value.kind === "trace" ||
+      value.kind === "log" ||
+      value.kind === "filesystem" ||
+      value.kind === "recording")
+  );
 }
 
 function isRunAdapterArtifact(value: unknown): value is RunAdapterArtifact {
-  return isRecord(value)
-    && value.schema === "humanish.adapter-artifact.v1"
-    && typeof value.namespace === "string"
-    && value.namespace.trim().length > 0
-    && typeof value.label === "string"
-    && value.label.trim().length > 0
-    && typeof value.path === "string"
-    && value.path.trim().length > 0
-    && isLocalEvidenceArtifactPath(value.path)
-    && (
-      value.kind === "state"
-      || value.kind === "review"
-      || value.kind === "log"
-      || value.kind === "trace"
-      || value.kind === "screenshot"
-      || value.kind === "filesystem"
-      || value.kind === "summary"
-    )
-    && typeof value.note === "string"
-    && value.note.trim().length > 0;
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.adapter-artifact.v1" &&
+    typeof value.namespace === "string" &&
+    value.namespace.trim().length > 0 &&
+    typeof value.label === "string" &&
+    value.label.trim().length > 0 &&
+    typeof value.path === "string" &&
+    value.path.trim().length > 0 &&
+    isLocalEvidenceArtifactPath(value.path) &&
+    (value.kind === "state" ||
+      value.kind === "review" ||
+      value.kind === "log" ||
+      value.kind === "trace" ||
+      value.kind === "screenshot" ||
+      value.kind === "filesystem" ||
+      value.kind === "summary") &&
+    typeof value.note === "string" &&
+    value.note.trim().length > 0
+  );
 }
 
 function isRunEvent(value: unknown): value is RunEvent {
-  return isRecord(value)
-    && typeof value.id === "string"
-    && typeof value.at === "string"
-    && (value.level === "info" || value.level === "warn" || value.level === "error")
-    && typeof value.type === "string"
-    && typeof value.message === "string";
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.at === "string" &&
+    (value.level === "info" || value.level === "warn" || value.level === "error") &&
+    typeof value.type === "string" &&
+    typeof value.message === "string"
+  );
 }
 
 function isRunArtifactIndex(value: unknown): value is RunBundle["artifacts"] {
-  return isRecord(value)
-    && typeof value.run === "string"
-    && typeof value.reviewJson === "string"
-    && typeof value.reviewMarkdown === "string"
-    && typeof value.observerData === "string"
-    && typeof value.events === "string";
+  return (
+    isRecord(value) &&
+    typeof value.run === "string" &&
+    typeof value.reviewJson === "string" &&
+    typeof value.reviewMarkdown === "string" &&
+    typeof value.observerData === "string" &&
+    typeof value.events === "string"
+  );
 }
 
 function isRunFeedbackCandidate(value: unknown): value is RunFeedbackCandidate {
-  return isRecord(value)
-    && value.schema === "humanish.feedback-candidate.v1"
-    && typeof value.id === "string"
-    && typeof value.run_id === "string"
-    && (typeof value.stream_id === "string" || value.stream_id === undefined)
-    && typeof value.adapter_id === "string"
-    && typeof value.scenario_id === "string"
-    && typeof value.persona_id === "string"
-    && isFeedbackActor(value.actor)
-    && isFeedbackSubstrate(value.substrate)
-    && isFeedbackFailureOwner(value.failure_owner)
-    && typeof value.summary === "string"
-    && typeof value.expected === "string"
-    && typeof value.actual === "string"
-    && Array.isArray(value.evidence)
-    && value.evidence.every(isRunFeedbackEvidence)
-    && isRecord(value.redaction)
-    && value.redaction.status === "passed"
-    && typeof value.redaction.notes === "string"
-    && typeof value.idempotency_key === "string"
-    && isFeedbackNextState(value.proposed_next_state)
-    && Array.isArray(value.acceptance_proof)
-    && value.acceptance_proof.every((item) => typeof item === "string")
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.feedback-candidate.v1" &&
+    typeof value.id === "string" &&
+    typeof value.run_id === "string" &&
+    (typeof value.stream_id === "string" || value.stream_id === undefined) &&
+    typeof value.adapter_id === "string" &&
+    typeof value.scenario_id === "string" &&
+    typeof value.persona_id === "string" &&
+    isFeedbackActor(value.actor) &&
+    isFeedbackSubstrate(value.substrate) &&
+    isFeedbackFailureOwner(value.failure_owner) &&
+    typeof value.summary === "string" &&
+    typeof value.expected === "string" &&
+    typeof value.actual === "string" &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every(isRunFeedbackEvidence) &&
+    isRecord(value.redaction) &&
+    value.redaction.status === "passed" &&
+    typeof value.redaction.notes === "string" &&
+    typeof value.idempotency_key === "string" &&
+    isFeedbackNextState(value.proposed_next_state) &&
+    Array.isArray(value.acceptance_proof) &&
+    value.acceptance_proof.every((item) => typeof item === "string") &&
     // Optional, adapter-namespaced product-noun block: when present, validate only its SHAPE
     // (a non-empty namespace + a data record). Core never inspects the keys inside `data`.
-    && (value.adapter === undefined || isFeedbackAdapterBlock(value.adapter));
+    (value.adapter === undefined || isFeedbackAdapterBlock(value.adapter))
+  );
 }
 
-function isFeedbackAdapterBlock(value: unknown): value is NonNullable<RunFeedbackCandidate["adapter"]> {
-  return isRecord(value)
-    && typeof value.namespace === "string"
-    && value.namespace.trim().length > 0
-    && isRecord(value.data);
+function isFeedbackAdapterBlock(
+  value: unknown,
+): value is NonNullable<RunFeedbackCandidate["adapter"]> {
+  return (
+    isRecord(value) &&
+    typeof value.namespace === "string" &&
+    value.namespace.trim().length > 0 &&
+    isRecord(value.data)
+  );
 }
 
 function isRunFeedbackEvidence(value: unknown): value is RunFeedbackCandidate["evidence"][number] {
-  return isRecord(value)
-    && typeof value.path === "string"
-    && value.path.length > 0
-    && !path.isAbsolute(value.path)
-    && !value.path.includes("://")
-    && !value.path.includes("..")
-    && (
-      value.kind === "review"
-      || value.kind === "state"
-      || value.kind === "log"
-      || value.kind === "trace"
-      || value.kind === "screenshot"
-      || value.kind === "filesystem"
-    )
-    && typeof value.note === "string";
+  return (
+    isRecord(value) &&
+    typeof value.path === "string" &&
+    value.path.length > 0 &&
+    !path.isAbsolute(value.path) &&
+    !value.path.includes("://") &&
+    !value.path.includes("..") &&
+    (value.kind === "review" ||
+      value.kind === "state" ||
+      value.kind === "log" ||
+      value.kind === "trace" ||
+      value.kind === "screenshot" ||
+      value.kind === "filesystem") &&
+    typeof value.note === "string"
+  );
 }
 
-function hasConsistentSimulationStreams(
-  simulations: unknown[],
-  streams: unknown[]
-): boolean {
+function hasConsistentSimulationStreams(simulations: unknown[], streams: unknown[]): boolean {
   const simIds = new Set<string>();
   const expectedStreamSimIds = new Map<string, string>();
   const streamById = new Map<string, RunStream>();
@@ -7899,29 +9184,33 @@ function hasConsistentSimulationStreams(
 }
 
 function isRunSimulationStatus(value: unknown): value is RunSimulationStatus {
-  return value === "queued"
-    || value === "preparing"
-    || value === "running"
-    || value === "passed"
+  return (
+    value === "queued" ||
+    value === "preparing" ||
+    value === "running" ||
+    value === "passed" ||
     // Participant outcomes (docs/principles/three-roles.md). This runtime allowlist is the actual
     // gate — the TS union alone does not validate a bundle read back from disk.
-    || value === "abandoned"
-    || value === "incomplete"
-    || value === "complete"
-    || value === "blocked"
-    || value === "timed_out"
-    || value === "failed"
-    || value === "contract_proof_only";
+    value === "abandoned" ||
+    value === "incomplete" ||
+    value === "complete" ||
+    value === "blocked" ||
+    value === "timed_out" ||
+    value === "failed" ||
+    value === "contract_proof_only"
+  );
 }
 
 function isRunStreamKind(value: unknown): value is RunStreamKind {
-  return value === "ui"
-    || value === "browser"
-    || value === "terminal"
-    || value === "tui"
-    || value === "codex-ui"
-    || value === "artifact"
-    || value === "summary";
+  return (
+    value === "ui" ||
+    value === "browser" ||
+    value === "terminal" ||
+    value === "tui" ||
+    value === "codex-ui" ||
+    value === "artifact" ||
+    value === "summary"
+  );
 }
 
 function isSafeGitShortSha(value: unknown): value is string {
@@ -7929,38 +9218,46 @@ function isSafeGitShortSha(value: unknown): value is string {
 }
 
 function isFeedbackActor(value: unknown): value is RunFeedbackCandidate["actor"] {
-  return value === "codex-tui"
-    || value === "codex-exec"
-    || value === "codex-app-server"
-    || value === "computer-use"
-    || value === "synthetic-dry-run"
-    || value === "unknown";
+  return (
+    value === "codex-tui" ||
+    value === "codex-exec" ||
+    value === "codex-app-server" ||
+    value === "computer-use" ||
+    value === "synthetic-dry-run" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackSubstrate(value: unknown): value is RunFeedbackCandidate["substrate"] {
-  return value === "e2b-desktop"
-    || value === "local-desktop"
-    || value === "e2b-terminal"
-    || value === "local-filesystem"
-    || value === "codex-app-server"
-    || value === "unknown";
+  return (
+    value === "e2b-desktop" ||
+    value === "local-desktop" ||
+    value === "e2b-terminal" ||
+    value === "local-filesystem" ||
+    value === "codex-app-server" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackFailureOwner(value: unknown): value is RunFeedbackCandidate["failure_owner"] {
-  return value === "harness"
-    || value === "target-app"
-    || value === "actor"
-    || value === "environment"
-    || value === "unknown";
+  return (
+    value === "harness" ||
+    value === "target-app" ||
+    value === "actor" ||
+    value === "environment" ||
+    value === "unknown"
+  );
 }
 
 function isFeedbackNextState(value: unknown): value is RunFeedbackCandidate["proposed_next_state"] {
-  return value === "watch"
-    || value === "adapter-hardening"
-    || value === "target-app-setup"
-    || value === "actor-auth"
-    || value === "setup-quality-review"
-    || value === "study-quality-review";
+  return (
+    value === "watch" ||
+    value === "adapter-hardening" ||
+    value === "target-app-setup" ||
+    value === "actor-auth" ||
+    value === "setup-quality-review" ||
+    value === "study-quality-review"
+  );
 }
 
 function isPositiveSafeInteger(value: unknown): value is number {
@@ -7972,26 +9269,28 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
 }
 
 function isReviewSummary(value: unknown): value is ReviewSummary {
-  return isRecord(value)
-    && value.schema === REVIEW_SCHEMA
-    && (
-      value.verdict === "contract_proof_only"
-      || value.verdict === "pass"
-      || value.verdict === "fail"
-      || value.verdict === "blocked"
-      || value.verdict === "timed_out"
-    )
-    && typeof value.summary === "string"
-    && Array.isArray(value.gaps)
-    && value.gaps.every((gap) => typeof gap === "string");
+  return (
+    isRecord(value) &&
+    value.schema === REVIEW_SCHEMA &&
+    (value.verdict === "contract_proof_only" ||
+      value.verdict === "pass" ||
+      value.verdict === "fail" ||
+      value.verdict === "blocked" ||
+      value.verdict === "timed_out") &&
+    typeof value.summary === "string" &&
+    Array.isArray(value.gaps) &&
+    value.gaps.every((gap) => typeof gap === "string")
+  );
 }
 
 function isRunPointer(value: unknown): value is RunPointer {
-  return isRecord(value)
-    && value.schema === "humanish.latest-run.v1"
-    && typeof value.runId === "string"
-    && typeof value.path === "string"
-    && typeof value.updatedAt === "string";
+  return (
+    isRecord(value) &&
+    value.schema === "humanish.latest-run.v1" &&
+    typeof value.runId === "string" &&
+    typeof value.path === "string" &&
+    typeof value.updatedAt === "string"
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

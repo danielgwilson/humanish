@@ -70,7 +70,7 @@ async function captureRejection(promise: Promise<unknown>): Promise<ServeTunnelE
     () => {
       throw new Error("expected the tunnel promise to reject");
     },
-    (error: unknown) => error
+    (error: unknown) => error,
   );
   expect(outcome).toBeInstanceOf(ServeTunnelError);
   return outcome as ServeTunnelError;
@@ -80,7 +80,11 @@ describe("startNgrokTunnel", () => {
   // Spec item 30: started-tunnel line resolves the url; --url iff domain; close() kills.
   it("resolves the tunnel url from a started-tunnel log line and kills the child on close", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
     const child = onlyChild(harness);
 
     child.stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
@@ -105,7 +109,7 @@ describe("startNgrokTunnel", () => {
       domain: "observer.example.com",
       port: 8732,
       spawnImpl: harness.spawnImpl,
-      timeoutMs: 1_000
+      timeoutMs: 1_000,
     });
     onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
     await tunnelPromise;
@@ -124,7 +128,7 @@ describe("startNgrokTunnel", () => {
       oauthAllowEmails: ["a@example.com", "b@example.com"],
       oauthAllowDomains: ["example.com"],
       spawnImpl: harness.spawnImpl,
-      timeoutMs: 1_000
+      timeoutMs: 1_000,
     });
     onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
     await tunnelPromise;
@@ -136,8 +140,13 @@ describe("startNgrokTunnel", () => {
     // One flag emitted per repeated allow value, each preceding its value.
     expect(args.filter((arg) => arg === "--oauth-allow-email")).toHaveLength(2);
     expect(args.filter((arg) => arg === "--oauth-allow-domain")).toHaveLength(1);
-    const emailIndexes = args.flatMap((arg, index) => (arg === "--oauth-allow-email" ? [index] : []));
-    expect(emailIndexes.map((index) => args[index + 1])).toEqual(["a@example.com", "b@example.com"]);
+    const emailIndexes = args.flatMap((arg, index) =>
+      arg === "--oauth-allow-email" ? [index] : [],
+    );
+    expect(emailIndexes.map((index) => args[index + 1])).toEqual([
+      "a@example.com",
+      "b@example.com",
+    ]);
     const domainIndex = args.indexOf("--oauth-allow-domain");
     expect(args[domainIndex + 1]).toBe("example.com");
     // The port is still the trailing positional arg.
@@ -150,7 +159,7 @@ describe("startNgrokTunnel", () => {
       port: 8732,
       oauthProvider: "google",
       spawnImpl: harness.spawnImpl,
-      timeoutMs: 1_000
+      timeoutMs: 1_000,
     });
     onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
     await tunnelPromise;
@@ -163,7 +172,11 @@ describe("startNgrokTunnel", () => {
 
   it("emits no oauth flags when oauth is absent", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
     onlyChild(harness).stdout.emit("data", `${STARTED_TUNNEL_LINE}\n`);
     await tunnelPromise;
 
@@ -176,7 +189,11 @@ describe("startNgrokTunnel", () => {
   // Spec item 31: ENOENT spawn error maps to the not-found code with actionable guidance.
   it("rejects with HUMANISH_SERVE_TUNNEL_NOT_FOUND when the ngrok binary is missing", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
 
     const spawnError: NodeJS.ErrnoException = new Error("spawn ngrok ENOENT");
     spawnError.code = "ENOENT";
@@ -191,7 +208,11 @@ describe("startNgrokTunnel", () => {
   // Spec item 32: startup timeout maps to start-failed and reclaims the child.
   it("rejects with HUMANISH_SERVE_TUNNEL_START_FAILED and kills the child when no url arrives in time", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 50 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 50,
+    });
 
     const error = await captureRejection(tunnelPromise);
     expect(error.code).toBe("HUMANISH_SERVE_TUNNEL_START_FAILED");
@@ -201,7 +222,11 @@ describe("startNgrokTunnel", () => {
   // Spec item 33: child exit before a url maps to start-failed.
   it("rejects with HUMANISH_SERVE_TUNNEL_START_FAILED when the child exits before reporting a url", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
 
     onlyChild(harness).exitWithCode(1);
 
@@ -213,7 +238,11 @@ describe("startNgrokTunnel", () => {
   // Spec item 34: log noise is skipped, and lines split across chunks reassemble.
   it("skips non-JSON and unrelated JSON lines before resolving on the started-tunnel line", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
     const child = onlyChild(harness);
 
     child.stdout.emit("data", "t=2026-08-01 lvl=info msg=plain-text-noise\n");
@@ -226,7 +255,11 @@ describe("startNgrokTunnel", () => {
 
   it("resolves when the started-tunnel line is split across two data chunks", async () => {
     const harness = createSpawnHarness();
-    const tunnelPromise = startNgrokTunnel({ port: 8732, spawnImpl: harness.spawnImpl, timeoutMs: 1_000 });
+    const tunnelPromise = startNgrokTunnel({
+      port: 8732,
+      spawnImpl: harness.spawnImpl,
+      timeoutMs: 1_000,
+    });
     const child = onlyChild(harness);
 
     const splitAt = 40;

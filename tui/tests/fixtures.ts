@@ -21,16 +21,33 @@ export const LABS: LabListEntry[] = [
     title: "Signup flow",
     // Two sentences on purpose: the list shows the FIRST one, because a paragraph in a status bar
     // is a paragraph nobody reads.
-    description: "Can a first-time visitor finish signing up unaided? Committed as dry-run."
+    description: "Can a first-time visitor finish signing up unaided? Committed as dry-run.",
   },
-  { id: "diagram-editor", source: "app-url", origin: "committed", path: "humanish/labs/diagram-editor.yaml", title: "Is the diagram axis load-bearing?" },
-  { id: "never-run-lab", source: "app-url", origin: "ignored", path: ".humanish/labs/never-run-lab.yaml" },
+  {
+    id: "diagram-editor",
+    source: "app-url",
+    origin: "committed",
+    path: "humanish/labs/diagram-editor.yaml",
+    title: "Is the diagram axis load-bearing?",
+  },
+  {
+    id: "never-run-lab",
+    source: "app-url",
+    origin: "ignored",
+    path: ".humanish/labs/never-run-lab.yaml",
+  },
   // Two manifests declaring ONE id. Not hypothetical: this repo's own project has exactly this
   // pair, and it is what proved that keying rows by lab id renders indistinguishable duplicates.
   // The FILENAMES differ, which is what lab resolution actually addresses.
   // ...and it shares the TITLE too, which is what the real pair does. A fixture where only the id
   // collided passed happily while the real project still rendered two identical rows.
-  { id: "diagram-editor", source: "app-url", origin: "ignored", path: ".humanish/labs/diagram-editor-live.yaml", title: "Is the diagram axis load-bearing?" }
+  {
+    id: "diagram-editor",
+    source: "app-url",
+    origin: "ignored",
+    path: ".humanish/labs/diagram-editor-live.yaml",
+    title: "Is the diagram axis load-bearing?",
+  },
 ];
 
 export const RUNS: RunIndexEntry[] = [
@@ -41,7 +58,7 @@ export const RUNS: RunIndexEntry[] = [
     mode: "live",
     lab: { id: "signup-flow" },
     startedAt: at(30),
-    updatedAt: at(0)
+    updatedAt: at(0),
   },
   {
     runId: "cua-2026-08-19T10-00-00-000Z-cc33dd44",
@@ -54,7 +71,7 @@ export const RUNS: RunIndexEntry[] = [
     verdict: "pass",
     participants: { total: 2, reachedGoal: 2, reportedFriction: 1 },
     estimatedCostUsd: 1.2,
-    durationMs: 120_000
+    durationMs: 120_000,
   },
   {
     runId: "cua-2026-08-18T09-00-00-000Z-ee55ff66",
@@ -68,14 +85,14 @@ export const RUNS: RunIndexEntry[] = [
     participants: { total: 1, reachedGoal: 0 },
     // A declared-absent cost: excluded from the median AND counted, never rendered as $0.00.
     estimatedCostUsd: null,
-    durationMs: 240_000
+    durationMs: 240_000,
   },
   {
     runId: "cua-2026-08-18T08-00-00-000Z-99887766",
     derivedFrom: "directory",
     liveness: "interrupted",
     lab: { id: "diagram-editor" },
-    startedAt: at(1_600)
+    startedAt: at(1_600),
   },
   {
     // No lab attribution at all: a library caller or a pre-contract run.
@@ -84,6 +101,6 @@ export const RUNS: RunIndexEntry[] = [
     liveness: "finished",
     startedAt: at(3_000),
     completedAt: at(2_990),
-    verdict: "pass"
-  }
+    verdict: "pass",
+  },
 ];

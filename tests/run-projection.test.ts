@@ -8,21 +8,26 @@ import {
   groupRunsByLab,
   listWindow,
   livenessLabel,
-  normalizeThought
+  normalizeThought,
 } from "../src/run-projection.js";
 
 const run = (over: Partial<RunIndexEntry> & { runId: string }): RunIndexEntry => ({
   derivedFrom: "status",
   liveness: "finished",
-  ...over
+  ...over,
 });
 
 describe("grouping runs by lab", () => {
   it("puts labs someone is working in first, then most recently used", () => {
     const { labs } = groupRunsByLab([
       run({ runId: "a1", lab: { id: "alpha" }, completedAt: "2026-08-19T10:00:00.000Z" }),
-      run({ runId: "b1", lab: { id: "beta" }, liveness: "running", updatedAt: "2026-08-19T09:00:00.000Z" }),
-      run({ runId: "a2", lab: { id: "alpha" }, completedAt: "2026-08-18T10:00:00.000Z" })
+      run({
+        runId: "b1",
+        lab: { id: "beta" },
+        liveness: "running",
+        updatedAt: "2026-08-19T09:00:00.000Z",
+      }),
+      run({ runId: "a2", lab: { id: "alpha" }, completedAt: "2026-08-18T10:00:00.000Z" }),
     ]);
     expect(labs.map((lab) => lab.labId)).toEqual(["beta", "alpha"]);
     expect(labs[0]?.live).toBe(1);
@@ -34,7 +39,7 @@ describe("grouping runs by lab", () => {
   it("keeps unattributed runs separate rather than inventing a lab for them", () => {
     const { labs, unattributed } = groupRunsByLab([
       run({ runId: "x" }),
-      run({ runId: "y", lab: { id: "alpha" } })
+      run({ runId: "y", lab: { id: "alpha" } }),
     ]);
     expect(labs.map((lab) => lab.labId)).toEqual(["alpha"]);
     expect(unattributed.map((entry) => entry.runId)).toEqual(["x"]);
@@ -49,7 +54,7 @@ describe("what a lab may claim about itself", () => {
       run({ runId: "3", durationMs: 240_000, estimatedCostUsd: 3 }),
       // An interrupted run's duration is the length of an accident, not of a study.
       run({ runId: "4", liveness: "interrupted", durationMs: 5_000, estimatedCostUsd: 9 }),
-      run({ runId: "5", liveness: "running", durationMs: 1_000 })
+      run({ runId: "5", liveness: "running", durationMs: 1_000 }),
     ]);
     expect(expectation.sample).toBe(3);
     expect(expectation.medianDurationMs).toBe(120_000);
@@ -61,7 +66,7 @@ describe("what a lab may claim about itself", () => {
   it("a declared-absent cost is excluded from the median AND counted, so the sample stays honest", () => {
     const expectation = expectationFor([
       run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
-      run({ runId: "2", durationMs: 60_000, estimatedCostUsd: null })
+      run({ runId: "2", durationMs: 60_000, estimatedCostUsd: null }),
     ]);
     expect(expectation.medianCostUsd).toBe(1);
     expect(expectation.costUnknown).toBe(1);
@@ -76,7 +81,9 @@ describe("what a lab may claim about itself", () => {
   });
 
   it("a single run says one run, not a fake range", () => {
-    const line = expectationLine(expectationFor([run({ runId: "1", durationMs: 90_000, estimatedCostUsd: 0.5 })]));
+    const line = expectationLine(
+      expectationFor([run({ runId: "1", durationMs: 90_000, estimatedCostUsd: 0.5 })]),
+    );
     expect(line).toBe("1m 30s · ~$0.50 median · 1 run");
   });
 
@@ -91,13 +98,16 @@ describe("what a lab may claim about itself", () => {
     const some = expectationLine(
       expectationFor([
         run({ runId: "1", durationMs: 60_000, estimatedCostUsd: 1 }),
-        run({ runId: "2", durationMs: 60_000 })
-      ])
+        run({ runId: "2", durationMs: 60_000 }),
+      ]),
     );
     expect(some).toBe("1m · ~$1.00 median · 2 runs, 1 unpriced");
 
     const none = expectationLine(
-      expectationFor([run({ runId: "1", durationMs: 60_000 }), run({ runId: "2", durationMs: 60_000 })])
+      expectationFor([
+        run({ runId: "1", durationMs: 60_000 }),
+        run({ runId: "2", durationMs: 60_000 }),
+      ]),
     );
     // A duration is known, so it is claimed; no cost is, so none is implied.
     expect(none).toBe("1m · 2 runs, none priced");
@@ -119,7 +129,7 @@ describe("normalizing a participant's recorded thinking", () => {
     expect(truncated).toBe(false);
     // Every word survives: wrapping is the only transformation, never summarizing.
     expect(lines.join(" ").replace(/\s+/g, " ")).toBe(
-      "Figuring out table creation I've created a table but I'm considering if I should rename it and create additional columns."
+      "Figuring out table creation I've created a table but I'm considering if I should rename it and create additional columns.",
     );
   });
 
@@ -137,14 +147,20 @@ describe("normalizing a participant's recorded thinking", () => {
   });
 
   it("has a defined empty case — no thought is no lines, never a placeholder", () => {
-    expect(normalizeThought("", { width: 40, maxLines: 2 })).toEqual({ lines: [], truncated: false });
-    expect(normalizeThought("   \n  ", { width: 40, maxLines: 2 })).toEqual({ lines: [], truncated: false });
+    expect(normalizeThought("", { width: 40, maxLines: 2 })).toEqual({
+      lines: [],
+      truncated: false,
+    });
+    expect(normalizeThought("   \n  ", { width: 40, maxLines: 2 })).toEqual({
+      lines: [],
+      truncated: false,
+    });
   });
 
   it("cuts an unbreakable token rather than letting it overflow the pane", () => {
     const { lines } = normalizeThought("https://example.test/a-very-long-path-that-never-breaks", {
       width: 20,
-      maxLines: 2
+      maxLines: 2,
     });
     expect(lines.every((line) => line.length <= 20)).toBe(true);
   });

@@ -19,6 +19,7 @@ mutates state → actor on app B sees it → actor on app C observes" — cross-
 
 **The shared plane is the BACKEND/DB, not the app origin.** The origins are front-doors onto one
 shared world. Everything that makes shared-world evidence honest today is about that shared backend:
+
 - `stateSeries` = digest checkpoints over the ONE shared backend (the delta signal).
 - `attributionClass: shared-world` + the verify-enforced `attributionLimits` + the
   concurrency-on-pass gate (real overlap + a backend delta).
@@ -44,14 +45,14 @@ subject:
     appB: { serve: { start: "...:4102", url: http://127.0.0.1:4102/ } }
     appC: { serve: { start: "...:4103", url: http://127.0.0.1:4103/ } }
   state:
-    seed: [ ... ]        # the ONE shared backend is migrated + seeded ONCE
-    checkpoint: [ ... ]  # digests the ONE shared backend (unchanged)
+    seed: [...] # the ONE shared backend is migrated + seeded ONCE
+    checkpoint: [...] # digests the ONE shared backend (unchanged)
 actors:
   - type: openai-computer-use
     lanes:
-      - { id: lane-a, app: appA, entry: /portal,    persona: ... }
+      - { id: lane-a, app: appA, entry: /portal, persona: ... }
       - { id: lane-b, app: appB, entry: /dashboard, persona: ... }
-      - { id: lane-c, app: appC, entry: /work,      persona: ... }
+      - { id: lane-c, app: appC, entry: /work, persona: ... }
 ```
 
 - `subject.apps` (new, optional) XOR `subject.serve` (existing). When `serve` is used, it's the
@@ -72,6 +73,7 @@ origin — there is **no cross-origin-in-one-browser** requirement; the sharing 
 ## Evidence / provenance changes (small, additive)
 
 The `humanish.shared-world.v1` block gains:
+
 - `apps`: a name → `hostDigest` map (sha256-16 of each app's getHost origin; raw host never persisted,
   exactly as the single-origin `plane.hostDigest` works today).
 - each `laneWindow` carries its `app` name; `routeHostDigest` must match that app's recorded host
@@ -80,8 +82,8 @@ The `humanish.shared-world.v1` block gains:
 - one new honest `attributionLimit`: `cross-origin-shared-backend` — declares that what is shared is
   the BACKEND, not sessions/origins (so the bundle never implies a shared browser/session). The rest
   of the limit set is unchanged.
-`stateSeries`, `attributionClass`, the concurrency-on-pass gate, the single-plane-backend-provenance
-check: all unchanged (they're about the ONE backend).
+  `stateSeries`, `attributionClass`, the concurrency-on-pass gate, the single-plane-backend-provenance
+  check: all unchanged (they're about the ONE backend).
 
 ## Observer
 
@@ -91,17 +93,18 @@ surfacing the `app` already on each `laneWindow`.
 ## Backward compatibility (the corner check)
 
 Multi-origin = the single-origin case with `apps` having one entry and `lanes[].app` defaulting. So:
+
 - existing single-origin shared-world labs are byte-stable (no `apps`, no `lanes[].app`).
 - a single-origin live proof done now needs **zero** changes when multi-origin lands.
-**Therefore single-origin-first does NOT paint us into a corner** — the contract is a
-strict additive superset. This is the answer to "are we cornering ourselves": no.
+  **Therefore single-origin-first does NOT paint us into a corner** — the contract is a
+  strict additive superset. This is the answer to "are we cornering ourselves": no.
 
 ## The fork: downstream facade vs core multi-origin
 
-| Path | Shape | Pro | Con |
-|---|---|---|---|
-| Downstream facade | one exposed origin, reverse-proxy `/appA`,`/appB`,`/appC` to each app | no humanish core change; rides single-origin + `lanes[].entry` today | fights each Next app's per-origin assumptions (basePath, auth callback URLs, cookie scoping); distorts real deployment topology |
-| Core multi-origin | humanish supports N subject origins per shared world | faithful to real topology; native auth/cookies (each app on its real origin); each lane single-origin so no browser gymnastics; reusable for any multi-app adopter | a (small) core schema + provenance change |
+| Path              | Shape                                                                 | Pro                                                                                                                                                                | Con                                                                                                                             |
+| ----------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Downstream facade | one exposed origin, reverse-proxy `/appA`,`/appB`,`/appC` to each app | no humanish core change; rides single-origin + `lanes[].entry` today                                                                                               | fights each Next app's per-origin assumptions (basePath, auth callback URLs, cookie scoping); distorts real deployment topology |
+| Core multi-origin | humanish supports N subject origins per shared world                  | faithful to real topology; native auth/cookies (each app on its real origin); each lane single-origin so no browser gymnastics; reusable for any multi-app adopter | a (small) core schema + provenance change                                                                                       |
 
 **Lean: core multi-origin.** Because each lane is single-origin (sharing is at the backend), the
 facade solves a problem the sim doesn't have while introducing real auth/cookie fragility. Core

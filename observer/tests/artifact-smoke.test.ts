@@ -23,7 +23,9 @@ async function readArtifact(): Promise<string> {
   try {
     return await readFile(path.join(DIST, "index.html"), "utf8");
   } catch {
-    throw new Error("dist/index.html missing — run `pnpm --filter humanish-observer build` before tests (CI builds first).");
+    throw new Error(
+      "dist/index.html missing — run `pnpm --filter humanish-observer build` before tests (CI builds first).",
+    );
   }
 }
 
@@ -57,7 +59,10 @@ describe("observer artifact", () => {
   it("round-trips a frozen golden through the injection helper", async () => {
     const html = await readArtifact();
     const golden: unknown = JSON.parse(
-      await readFile(path.join(ROOT, "..", "tests", "golden", "observer-data", "first-run.json"), "utf8")
+      await readFile(
+        path.join(ROOT, "..", "tests", "golden", "observer-data", "first-run.json"),
+        "utf8",
+      ),
     );
     const injected = injectObserverData(html, golden);
     expect(occurrences(injected, OBSERVER_DATA_PLACEHOLDER)).toBe(0);

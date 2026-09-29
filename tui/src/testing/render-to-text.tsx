@@ -34,7 +34,7 @@ export const KEY = {
   enter: "\r",
   escape: "\u001B",
   right: "\u001B[C",
-  left: "\u001B[D"
+  left: "\u001B[D",
 } as const;
 
 /**
@@ -92,7 +92,7 @@ export interface RenderOptions {
  */
 export async function renderToText(
   node: React.ReactElement,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
 ): Promise<RenderedFrames> {
   const columns = options.columns ?? 80;
   const rows = options.rows ?? 24;
@@ -110,7 +110,7 @@ export async function renderToText(
     // between them, so under CI every render test would wait forever for a frame that never comes.
     // The environment variable describes the machine, not this stream: we built a TTY above, so we
     // say so rather than letting an unrelated env var decide.
-    interactive: true
+    interactive: true,
   });
 
   const wanted = options.until ?? ((frame: string) => frame.trim().length > 0);
@@ -125,14 +125,20 @@ export async function renderToText(
       // which tells you nothing about why the predicate never matched.
       throw new Error(
         `renderToText: no frame matched within the timeout. Frames were:\n${
-          frames.length === 0 ? "(nothing rendered)" : frames.map((frame, index) => `--- ${index} ---\n${frame}`).join("\n")
-        }`
+          frames.length === 0
+            ? "(nothing rendered)"
+            : frames.map((frame, index) => `--- ${index} ---\n${frame}`).join("\n")
+        }`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, 5));
   }
 
-  const waitForFrame = async (predicate: (frame: string) => boolean, from: number, timeoutMs?: number): Promise<string> => {
+  const waitForFrame = async (
+    predicate: (frame: string) => boolean,
+    from: number,
+    timeoutMs?: number,
+  ): Promise<string> => {
     const limit = Date.now() + (timeoutMs ?? options.timeoutMs ?? 2_000);
     for (;;) {
       const found = frames.slice(from).reverse().find(predicate);
@@ -142,7 +148,7 @@ export async function renderToText(
           `renderToText: no frame after the keypress matched. Frames since:\n${frames
             .slice(from)
             .map((frame, index) => `--- ${index} ---\n${frame}`)
-            .join("\n")}`
+            .join("\n")}`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -159,7 +165,7 @@ export async function renderToText(
       // default waits for any non-blank frame written after the key — Ink re-renders on input.
       return waitForFrame(until ?? ((frame) => frame.trim().length > 0), from, timeoutMs);
     },
-    unmount: () => instance.unmount()
+    unmount: () => instance.unmount(),
   };
 }
 

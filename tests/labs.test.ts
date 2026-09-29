@@ -5,43 +5,47 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
-import {
-  inspectLabManifest,
-  listLabManifests,
-  resolveLabManifest
-} from "../src/labs.js";
+import { inspectLabManifest, listLabManifests, resolveLabManifest } from "../src/labs.js";
 
 const execFileAsync = promisify(execFile);
 
 describe("lab manifest resolution", () => {
   it("resolves committed, ignored, and explicit .yaml lab manifests", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-labs-"));
-    await writeLab(cwd, "humanish/labs/first-run.yaml", [
-      "schema: humanish.lab.v2",
-      "id: first-run",
-      "title: First run",
-      "subject:",
-      "  source: this-repo",
-      "actors:",
-      "  - type: synthetic-persona",
-      "    count: 3"
-    ].join("\n"));
-    await writeLab(cwd, ".humanish/local/labs/private.yaml", [
-      "schema: humanish.lab.v2",
-      "id: private",
-      "subject:",
-      "  source: clone",
-      "  repos:",
-      "    - example/app",
-      "execution:",
-      "  target: e2b-desktop",
-      "actors:",
-      "  - type: codex-app-server",
-      "policies:",
-      "  redactRepos: true",
-      "scenario:",
-      "  mode: dry-run"
-    ].join("\n"));
+    await writeLab(
+      cwd,
+      "humanish/labs/first-run.yaml",
+      [
+        "schema: humanish.lab.v2",
+        "id: first-run",
+        "title: First run",
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona",
+        "    count: 3",
+      ].join("\n"),
+    );
+    await writeLab(
+      cwd,
+      ".humanish/local/labs/private.yaml",
+      [
+        "schema: humanish.lab.v2",
+        "id: private",
+        "subject:",
+        "  source: clone",
+        "  repos:",
+        "    - example/app",
+        "execution:",
+        "  target: e2b-desktop",
+        "actors:",
+        "  - type: codex-app-server",
+        "policies:",
+        "  redactRepos: true",
+        "scenario:",
+        "  mode: dry-run",
+      ].join("\n"),
+    );
 
     const committed = await resolveLabManifest(cwd, "first-run");
     const ignored = await resolveLabManifest(cwd, "private");
@@ -55,26 +59,29 @@ describe("lab manifest resolution", () => {
     expect(explicit.ok && explicit.origin).toBe("explicit");
     expect(list.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual([
       "committed:first-run",
-      "ignored:private"
+      "ignored:private",
     ]);
   });
 
   it("warns on .yml and fails invalid schemas", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-labs-invalid-"));
-    await writeLab(cwd, "humanish/labs/compat.yml", [
-      "schema: humanish.lab.v2",
-      "id: compat",
-      "subject:",
-      "  source: this-repo",
-      "actors:",
-      "  - type: synthetic-persona"
-    ].join("\n"));
-    await writeLab(cwd, "humanish/labs/bad.yaml", [
-      "schema: nope",
-      "id: bad",
-      "subject:",
-      "  source: this-repo"
-    ].join("\n"));
+    await writeLab(
+      cwd,
+      "humanish/labs/compat.yml",
+      [
+        "schema: humanish.lab.v2",
+        "id: compat",
+        "subject:",
+        "  source: this-repo",
+        "actors:",
+        "  - type: synthetic-persona",
+      ].join("\n"),
+    );
+    await writeLab(
+      cwd,
+      "humanish/labs/bad.yaml",
+      ["schema: nope", "id: bad", "subject:", "  source: this-repo"].join("\n"),
+    );
 
     const compat = await inspectLabManifest(cwd, "compat");
     const bad = await inspectLabManifest(cwd, "bad");
@@ -112,20 +119,22 @@ describe("lab manifest resolution", () => {
 
       const resolved = await withinOneSecond(
         resolveLabManifest(cwd, "priority"),
-        `named resolution hung on a managed ${kind} manifest`
+        `named resolution hung on a managed ${kind} manifest`,
       );
       const listed = await withinOneSecond(
         listLabManifests(cwd),
-        `lab listing hung on a managed ${kind} manifest`
+        `lab listing hung on a managed ${kind} manifest`,
       );
 
       expect(resolved.ok).toBe(false);
       expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
-      expect(!resolved.ok && resolved.error.message).toMatch(/managed lab|single-link|containment/i);
+      expect(!resolved.ok && resolved.error.message).toMatch(
+        /managed lab|single-link|containment/i,
+      );
       expect(listed.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:fallback"]);
       expect(listed.warnings.join("\n")).toContain("humanish/labs/priority.yaml");
       expect(await readFile(outside, "utf8")).toBe(labYaml("outside"));
-    }
+    },
   );
 
   it.each(["symlink", "fifo"] as const)(
@@ -148,18 +157,18 @@ describe("lab manifest resolution", () => {
 
       const resolved = await withinOneSecond(
         resolveLabManifest(cwd, "priority"),
-        `named resolution hung on a managed ${kind} directory`
+        `named resolution hung on a managed ${kind} directory`,
       );
       const listed = await withinOneSecond(
         listLabManifests(cwd),
-        `lab listing hung on a managed ${kind} directory`
+        `lab listing hung on a managed ${kind} directory`,
       );
 
       expect(resolved.ok).toBe(false);
       expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
       expect(listed.labs.map((lab) => `${lab.origin}:${lab.id}`)).toEqual(["ignored:safe-local"]);
       expect(listed.warnings.join("\n")).toMatch(/humanish[/\\]labs.*unsafe|symbolic links/i);
-    }
+    },
   );
 
   it("keeps explicit symlink aliases as caller-selected input authority", async () => {
@@ -203,13 +212,13 @@ describe("lab manifest resolution", () => {
 
       const resolved = await withinOneSecond(
         resolveLabManifest(cwd, path.basename(selected)),
-        `explicit resolution hung on a ${kind} manifest`
+        `explicit resolution hung on a ${kind} manifest`,
       );
 
       expect(resolved.ok).toBe(false);
       expect(!resolved.ok && resolved.error.code).toBe("HUMANISH_LAB_INVALID");
       expect(!resolved.ok && resolved.error.message).toMatch(/single-link|containment/i);
-    }
+    },
   );
 
   it("resolves managed manifests from a caller-selected symlink cwd alias", async () => {
@@ -242,7 +251,7 @@ function labYaml(id: string): string {
     "  source: this-repo",
     "actors:",
     "  - type: synthetic-persona",
-    ""
+    "",
   ].join("\n");
 }
 
@@ -251,6 +260,6 @@ async function withinOneSecond<T>(promise: Promise<T>, message: string): Promise
     promise,
     new Promise<never>((_resolve, reject) => {
       setTimeout(() => reject(new Error(message)), 1_000);
-    })
+    }),
   ]);
 }

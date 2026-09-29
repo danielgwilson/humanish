@@ -114,7 +114,7 @@ function latestThought(trace: ActorTraceFacts): RunThought | undefined {
     return {
       text,
       ...(typeof item.title === "string" && item.title !== "" ? { title: item.title } : {}),
-      ...(typeof item.at === "string" ? { at: item.at } : {})
+      ...(typeof item.at === "string" ? { at: item.at } : {}),
     };
   }
   return undefined;
@@ -141,7 +141,7 @@ function participantFrom(stream: StreamFacts, index: number): RunParticipant {
     ...(typeof trace.counts?.turns === "number" ? { turns: trace.counts.turns } : {}),
     ...(typeof trace.counts?.actions === "number" ? { actions: trace.counts.actions } : {}),
     ...(thoughts > 0 ? { thoughts } : {}),
-    ...costOf(trace)
+    ...costOf(trace),
   };
 }
 
@@ -163,7 +163,9 @@ function costOf(trace: ActorTraceFacts): { estimatedCostUsd?: number | null } {
   try {
     const estimated = estimateActorCostForExecution(usage as never, model, trace.executionProfile);
     // A model `src/pricing.ts` cannot price yields no figure rather than a wrong one.
-    return typeof estimated?.estimatedCostUsd === "number" ? { estimatedCostUsd: estimated.estimatedCostUsd } : {};
+    return typeof estimated?.estimatedCostUsd === "number"
+      ? { estimatedCostUsd: estimated.estimatedCostUsd }
+      : {};
   } catch {
     return {};
   }
@@ -206,6 +208,6 @@ export async function readRunDetail(cwdInput: string, runId: string): Promise<Ru
     participants: streams.map(participantFrom),
     ...(observerAbsolute.startsWith(cwd)
       ? { observerPath: path.relative(cwd, observerAbsolute) }
-      : { observerPath: observerAbsolute })
+      : { observerPath: observerAbsolute }),
   };
 }
