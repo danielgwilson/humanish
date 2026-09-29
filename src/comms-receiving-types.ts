@@ -69,7 +69,7 @@ export interface ReceivingSurface {
 }
 
 export const COMMS_RECEIVING_SCHEMA = "humanish.comms-receiving.v2";
-export interface ReceivingMessageEvidence {
+interface ReceivingMessageEvidence {
   id: string;
   firstObservedAt: string;
   providerTimestamp?: string;

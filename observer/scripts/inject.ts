@@ -12,7 +12,7 @@ const SLOT = `<script id="observer-data" type="application/json">${OBSERVER_DATA
 
 /** Same escaping policy as src/observer.ts escapeJsonScript: keep the JSON inert
  *  inside a script element (no </script> breakout, no HTML entity surprises). */
-export function escapeJsonScript(value: unknown): string {
+function escapeJsonScript(value: unknown): string {
   return JSON.stringify(value)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")

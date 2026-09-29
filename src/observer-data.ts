@@ -18,7 +18,7 @@ import type {
 
 export const OBSERVER_DATA_SCHEMA = "humanish.observer-data.v1";
 
-export interface ObserverArtifactLink {
+interface ObserverArtifactLink {
   label: string;
   href: string;
   kind: string;
@@ -126,7 +126,7 @@ export function recordedStreamEmbed(
   return recorded;
 }
 
-export interface ObserverLaneGroup {
+interface ObserverLaneGroup {
   roleId: string;
   simId: string;
   streamId: string;

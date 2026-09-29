@@ -33,7 +33,7 @@ export type NavEvent =
   | { type: "quit" };
 
 /** A stable key per screen instance, so selection is remembered per lab and per run. */
-export function screenKey(screen: Screen): string {
+function screenKey(screen: Screen): string {
   switch (screen.name) {
     case "labs":
       return "labs";

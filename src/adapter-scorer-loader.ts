@@ -56,7 +56,7 @@ export interface AdapterScorerModule {
   // NOTE: costProbe is deliberately NOT loadable via config/flag — see the trust model above.
 }
 
-export type AdapterScorerLoadErrorCode =
+type AdapterScorerLoadErrorCode =
   | "HUMANISH_LAB_SCORER_BAD_REF"
   | "HUMANISH_LAB_SCORER_NOT_FOUND"
   | "HUMANISH_LAB_SCORER_LOAD_FAILED"

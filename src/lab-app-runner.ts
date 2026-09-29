@@ -1,11 +1,11 @@
 export const LAB_APP_RUNNER_PLAN_SCHEMA = "humanish.lab-app-runner-plan.v1";
 
-export type LabAppFramework = "next" | "vite" | "generic" | "none";
-export type LabPackageManager = "npm" | "pnpm" | "yarn" | "bun";
-export type LabInstallMode = "run" | "skip" | "when-missing";
-export type LabSurfaceKind = "desktop" | "mobile";
+type LabAppFramework = "next" | "vite" | "generic" | "none";
+type LabPackageManager = "npm" | "pnpm" | "yarn" | "bun";
+type LabInstallMode = "run" | "skip" | "when-missing";
+type LabSurfaceKind = "desktop" | "mobile";
 
-export interface LabPackageJsonMetadata {
+interface LabPackageJsonMetadata {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   packageManager?: string;
@@ -25,13 +25,13 @@ export interface LabAppRunnerMetadata {
   scripts?: Record<string, string>;
 }
 
-export interface LabAppRunnerInstallPlan {
+interface LabAppRunnerInstallPlan {
   command: string;
   mode: LabInstallMode;
   reason: string;
 }
 
-export interface LabAppRunnerDevServerPlan {
+interface LabAppRunnerDevServerPlan {
   command: string;
   framework: Exclude<LabAppFramework, "none">;
   port: number;
@@ -40,14 +40,14 @@ export interface LabAppRunnerDevServerPlan {
   url: string;
 }
 
-export interface LabAppRunnerReadinessPlan {
+interface LabAppRunnerReadinessPlan {
   command: string;
   intervalMs: number;
   timeoutMs: number;
   url: string;
 }
 
-export interface LabAppSurface {
+interface LabAppSurface {
   command: string;
   id: LabSurfaceKind;
   label: string;
@@ -60,7 +60,7 @@ export interface LabAppSurface {
   };
 }
 
-export interface LabAppRunnerShellPlan {
+interface LabAppRunnerShellPlan {
   commands: string[];
   script: string;
 }
@@ -169,7 +169,7 @@ export function buildLabAppRunnerPlan(metadata: LabAppRunnerMetadata): LabAppRun
   };
 }
 
-export function renderLabAppRunnerShell(args: {
+function renderLabAppRunnerShell(args: {
   devServer?: LabAppRunnerDevServerPlan;
   install: LabAppRunnerInstallPlan;
   packageManager: LabPackageManager;

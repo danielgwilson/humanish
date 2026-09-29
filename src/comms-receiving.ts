@@ -56,7 +56,7 @@ const SAFE_PROVIDER_CODES = new Set([
   "agentmail_page_limit",
 ]);
 
-export class CommsReceivingError extends Error {
+class CommsReceivingError extends Error {
   constructor(readonly code: string) {
     super(
       "Real email receiving could not complete. Inspect communications coverage and private cleanup status.",

@@ -1,6 +1,6 @@
 import { registerTransientCommsSecrets } from "./run-narration-secrets.js";
 import type { LabConfig } from "./lab-config.js";
-import { readCommsConnections } from "./comms-connections.js";
+import { readCommsConnections, type CommsConnection } from "./comms-connections.js";
 import { discoverProviderKeys } from "./key-resolution.js";
 import { createAgentMailReceiver } from "./comms-agentmail.js";
 import { startCommsReceiving } from "./comms-receiving.js";
@@ -13,7 +13,11 @@ export async function resolveReceivingConnection(
   cwd: string,
   name: string,
   env: NodeJS.ProcessEnv,
-) {
+): Promise<{
+  connection: CommsConnection;
+  apiKey: string;
+  adapter: ReturnType<typeof createAgentMailReceiver>;
+}> {
   const connection = (await readCommsConnections(cwd)).connections[name];
   if (!connection)
     throw new Error(

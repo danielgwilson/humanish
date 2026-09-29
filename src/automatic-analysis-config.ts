@@ -4,7 +4,7 @@ import { containsSensitive } from "./redaction.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
-export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
+const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
 
 /** An explicit provider selection for a separate review after a live participant study. */
 interface LabAnalysisSettings {

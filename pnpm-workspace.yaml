@@ -12,12 +12,10 @@ catalog:
   "@types/node": ^22.20.4 # tracks the engines.node floor (22), so code cannot use newer Node APIs
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
-  clsx: ^2.1.1
   oxc-parser: 0.151.0 # 0.152.0 is under pnpm's one-day minimumReleaseAge
   react: ^19.3.0
   react-dom: ^19.3.0
   shadcn: ^4.21.0
-  tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
   typescript: ^7.0.2
   vitest: ^5.0.2

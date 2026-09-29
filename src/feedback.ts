@@ -92,7 +92,7 @@ export interface FeedbackResult {
 }
 
 /** One row of `feedback list`: enough to choose a candidate, never the evidence itself. */
-export interface FeedbackCandidateSummary {
+interface FeedbackCandidateSummary {
   id: string;
   stream_id?: string;
   persona_id: string;

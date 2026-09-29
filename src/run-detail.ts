@@ -21,10 +21,10 @@ import { estimateActorCostForExecution } from "./pricing.js";
 
 import { resolveRunPath } from "./run.js";
 
-export const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
+const RUN_DETAIL_SCHEMA = "humanish.run-detail.v1";
 
 /** A participant's most recent recorded thinking. Quoted, never summarized. */
-export interface RunThought {
+interface RunThought {
   /** The provider's reasoning summary, verbatim. */
   text: string;
   /** Its own heading, when the provider gave one ("reasoning turn 25"). */

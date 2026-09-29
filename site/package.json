@@ -16,7 +16,6 @@
     "@flags-sdk/posthog": "^1.1.0",
     "@types/mdx": "^2.0.14",
     "@vercel/analytics": "^2.0.1",
-    "clsx": "catalog:",
     "flags": "^4.3.1",
     "fumadocs-core": "16.15.15",
     "fumadocs-mdx": "15.4.5",
@@ -25,7 +24,6 @@
     "posthog-js": "^1.434.17",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

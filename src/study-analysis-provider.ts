@@ -12,7 +12,7 @@ export interface StudyAnalysisProviderRequest {
   signal?: AbortSignal;
 }
 
-export interface StudyAnalysisTokenUsage {
+interface StudyAnalysisTokenUsage {
   input: number;
   output: number;
   cachedInput?: number;

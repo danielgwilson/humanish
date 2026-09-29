@@ -4,12 +4,7 @@ import type { CuaLiveMetadata } from "./computer-use.js";
 export { inboxRecipientFor, laneHasInboxRecipient } from "./cua-desktop-lane.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
-  DEFAULT_MOBILE_USER_AGENT,
-  SANDBOX_CAMERA_PATH,
-  SANDBOX_MEDIA_DIR,
   SUBJECT_DIR,
-  SYNTHETIC_CAMERA_COMMAND,
-  applyMobileEmulation,
   buildFillDesktopWindowCommand,
   captureDesktopBrowserGeometry,
   commandDigestOf,
@@ -19,15 +14,12 @@ export {
   makeChromeBrowserStateObserver,
   makeChromeDesktopGeometryObserver,
   parseXwininfoGeometry,
-  prepareDesktopMedia,
   provisionCloneSubject,
   provisionLocalTreeSubject,
-  type ChromeCdpEndpoint,
   type DesktopBrowserEvidence,
   type DesktopBrowserFamily,
   type DesktopBrowserLaunchIdentity,
   type DesktopBrowserLaunchResult,
-  type DesktopMediaEvidence,
   type SubjectPhaseEvent,
 } from "./e2b-cua-provisioning.js";
 import { prepareReceivingRun, receivingPublication } from "./comms-receiving-runtime.js";

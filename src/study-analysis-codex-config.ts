@@ -5,10 +5,10 @@ import {
 import type { CodexAnalysisIdentity, StudyAnalysisConfig } from "./study-analysis.js";
 
 /** This account route is qualified against one CLI, model and enforced tool policy. */
-export const CODEX_ANALYSIS_CLI_VERSION = RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion;
-export const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy;
+const CODEX_ANALYSIS_CLI_VERSION = RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion;
+const CODEX_ANALYSIS_TOOL_POLICY = RESTRICTED_CODEX_ANALYSIS_IDENTITY.toolPolicy;
 export const CODEX_ANALYSIS_MODEL = RESTRICTED_CODEX_ANALYSIS_MODELS[0];
-export const CODEX_ANALYSIS_EFFORT = RESTRICTED_CODEX_ANALYSIS_IDENTITY.reasoningEffort;
+const CODEX_ANALYSIS_EFFORT = RESTRICTED_CODEX_ANALYSIS_IDENTITY.reasoningEffort;
 
 export function codexAnalysisIdentity(model: string): CodexAnalysisIdentity {
   return {

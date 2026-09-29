@@ -89,7 +89,7 @@ export interface CuaActorDescriptor extends ActorDescriptorBase {
 // The same lane and the same session entry as CuaActorDescriptor — a separate descriptor only
 // because the ActorId is the slot a lab names, and "which brain" is the thing a lab is choosing
 // here. The provider is built from the operator's local CLI instead of a keyed API client.
-export interface LocalAgentActorDescriptor extends ActorDescriptorBase {
+interface LocalAgentActorDescriptor extends ActorDescriptorBase {
   id: "local-agent";
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }

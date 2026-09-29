@@ -1,18 +1,18 @@
 /** Shape of lib/tour/<slug>.json, written by landing/site-redesign-0916/extract-tour.py from a run bundle. */
-export interface TourAction {
+interface TourAction {
   id: string;
   title: string;
   coord: { x: number; y: number } | null;
   at: string | null;
   text?: string | null;
 }
-export interface TourReasoning {
+interface TourReasoning {
   id: string;
   text: string;
   at: string | null;
   message?: boolean;
 }
-export interface TourFrame {
+interface TourFrame {
   id: string;
   title: string;
   at: string | null;
@@ -34,13 +34,13 @@ export interface TourLane {
   trailingActions: TourAction[];
   trailingReasoning: TourReasoning[];
 }
-export interface TourFinding {
+interface TourFinding {
   title: string;
   summary: string;
   impact: string;
   evidence: Array<{ id: string | null; label: string | null }>;
 }
-export interface TourVerify {
+interface TourVerify {
   status: string | null;
   reasons: Array<{ code: string; message: string }> | null;
   checks: Array<{ name: string; ok: boolean; detail: string }>;

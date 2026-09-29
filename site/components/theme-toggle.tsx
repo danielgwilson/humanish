@@ -2,7 +2,7 @@
 
 import { curTheme, syncTheme } from "@/lib/theme";
 
-export const THEME_STORAGE_KEY = "humanish-theme";
+const THEME_STORAGE_KEY = "humanish-theme";
 
 /**
  * The nav theme toggle. Writes data-theme on <html> (the token system keys

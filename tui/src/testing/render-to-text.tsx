@@ -42,7 +42,7 @@ export const KEY = {
  * Written with explicit \\u001B escapes: a literal ESC byte in source is invisible in review and
  * silently lost by any tool that normalizes control characters.
  */
-export function stripAnsi(value: string): string {
+function stripAnsi(value: string): string {
   return value.replace(/\u001B\[[0-9;?]*[A-Za-z]/g, "").replace(/\u001B[()][A-Za-z0-9]/g, "");
 }
 

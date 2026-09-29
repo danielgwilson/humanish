@@ -330,7 +330,7 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
 // POST body. They never carry the apiKey (that lives only in the header).
 // ---------------------------------------------------------------------------
 
-export type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
+type OpenAiReasoningSummary = "auto" | "concise" | "detailed";
 
 export interface OpenAiCuContext {
   model: string;

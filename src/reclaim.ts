@@ -14,10 +14,10 @@ import path from "node:path";
 import { toErrorMessage } from "./command-failure.js";
 import { redactText } from "./redaction.js";
 
-export const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
+const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
 
-export interface ReclaimOutcome {
+interface ReclaimOutcome {
   sandboxId: string;
   laneId: string;
   /** killed = kill(id) confirmed; already-gone = the server no longer knows the id (TTL or a

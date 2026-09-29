@@ -97,7 +97,7 @@ export interface LabPreflightResult {
   };
 }
 
-export interface LabPreflightHooks {
+interface LabPreflightHooks {
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;

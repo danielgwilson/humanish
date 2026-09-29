@@ -16,12 +16,12 @@ import { startDesktopMedia } from "./guest-desktop-media.js";
 import type { DesktopRecordingConfig } from "./desktop-recording-types.js";
 import { startDesktopRecorder, type DesktopRecorderHandle } from "./desktop-recorder.js";
 
-export const GUEST_RUNTIME_PATHS = Object.freeze({
+const GUEST_RUNTIME_PATHS = Object.freeze({
   root: "/opt/humanish/control",
   run: "/run/humanish",
   home: "/home/humanish",
 });
-export const GUEST_RUNTIME_ENV = Object.freeze({
+const GUEST_RUNTIME_ENV = Object.freeze({
   PATH: "/usr/bin:/bin",
   HOME: "/home/humanish",
   USER: "humanish",

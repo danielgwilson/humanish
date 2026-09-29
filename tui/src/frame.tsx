@@ -20,7 +20,7 @@ import { terminalRendersUnicode } from "../../src/terminal-encoding.js";
  *    right the thing a stakeholder actually wants at a glance — the project, and whether anyone is
  *    working in it right now.
  */
-export const CONTENT_MAX_COLUMNS = 96;
+const CONTENT_MAX_COLUMNS = 96;
 
 /** How wide the content may actually be, given the terminal. */
 export function contentWidth(columns: number): number {
@@ -105,7 +105,7 @@ export function verdictGlyph(args: { liveness: string; verdict?: string; tick?: 
   return unicode ? "✓" : "+";
 }
 
-export function verdictColor(args: { liveness: string; verdict?: string }): string | undefined {
+function verdictColor(args: { liveness: string; verdict?: string }): string | undefined {
   if (args.liveness === "running") return PALETTE.ok;
   if (args.liveness === "interrupted") return PALETTE.warn;
   if (args.verdict === "fail") return PALETTE.bad;

@@ -10,9 +10,9 @@ import type { AutomaticStudyAnalysisView } from "./study-analysis-job.js";
 /** Independent interpretation of retained evidence; never a participant or harness verdict. */
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1" as const;
 export const STUDY_ANALYSIS_CORRECTION_SCHEMA = "humanish.study-analysis-correction.v1" as const;
-export type AnalysisStatus = "complete" | "partial" | "failed" | "cancelled";
-export type AnalysisOutcome = "completed" | "blocked" | "abandoned" | "interrupted" | "unknown";
-export type AnalysisBasis = "visual" | "action" | "participant_statement" | "inference";
+type AnalysisStatus = "complete" | "partial" | "failed" | "cancelled";
+type AnalysisOutcome = "completed" | "blocked" | "abandoned" | "interrupted" | "unknown";
+type AnalysisBasis = "visual" | "action" | "participant_statement" | "inference";
 
 export interface AnalysisEvidence {
   /** Opaque packet-local key; model output never supplies a filesystem path. */
@@ -33,7 +33,7 @@ export interface AnalysisEvidence {
     mimeType: "image/png" | "image/jpeg" | "image/webp";
   } | null;
 }
-export interface AnalysisCoverage {
+interface AnalysisCoverage {
   includedStreamIds: string[];
   omittedStreamIds: string[];
   evidenceCount: number;
@@ -74,11 +74,11 @@ export interface StudyAnalysisInput {
   /** Ephemeral input only: never persisted in the analysis artifact. */
   images: { evidenceId: string; dataUrl: string }[];
 }
-export interface AnalysisQuote {
+interface AnalysisQuote {
   evidenceId: string;
   text: string;
 }
-export interface AnalysisParticipantReview {
+interface AnalysisParticipantReview {
   streamId: string;
   summary: string;
   intent: string;
@@ -94,7 +94,7 @@ export interface AnalysisObservation {
   evidenceIds: string[];
   limitation: string;
 }
-export interface AnalysisFinding {
+interface AnalysisFinding {
   id: string;
   title: string;
   summary: string;

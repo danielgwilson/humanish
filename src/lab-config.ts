@@ -107,7 +107,7 @@ export type LabSubjectSource =
  */
 export type LabSubjectTopology = "per-lane-worlds" | "shared-world";
 
-export interface LabSubjectClone {
+interface LabSubjectClone {
   /** git clone depth; 1 (shallow) by default. Consumed on the computer-use clone route. */
   depth?: number;
   /** how many independent clone lanes to fan out (one sandbox/desktop each). */
@@ -120,7 +120,7 @@ export interface LabSubjectClone {
  * `local-tree`: how the operator's own working tree is packed and provisioned in-sandbox in
  * place of a clone. Internal shape (not re-exported from src/index.ts, same as LabSubjectClone).
  */
-export interface LabSubjectLocalTree {
+interface LabSubjectLocalTree {
   /** extra archive excludes (path prefixes/basenames) added on top of the always-on denylist. */
   exclude?: string[];
   /** keep the disposable sandbox on failure for debugging (mirrors subject.clone.keep). */
@@ -360,7 +360,7 @@ export interface LabSubject {
   localTree?: LabSubjectLocalTree;
 }
 
-export interface LabActorLaneFocus {
+interface LabActorLaneFocus {
   id?: string;
   label?: string;
   /** Per-lane steer appended to the actor's mission. Consumed on the app-url route. */
@@ -436,7 +436,7 @@ export interface LabActorLane {
  * `lanes[]` with deterministic ids (`<group.id>-01`, `<group.id>-02`, ...). The runtime never
  * consumes this shape directly; it always sees ordinary `LabActorLane` entries.
  */
-export interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
+interface LabActorRosterGroup extends Omit<LabActorLane, "id"> {
   /** Public-safe group id; prefixes generated lane ids. */
   id: string;
   /** Number of lanes to generate for this group. */
@@ -519,7 +519,7 @@ export interface LabActor {
   dwell?: DwellWindow;
 }
 
-export type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
+type LabExecutionTarget = "local" | "e2b-desktop" | "e2b-terminal";
 
 /** Terminal transport: the captured non-interactive exec stream (stdin disabled). NOT an
  *  interactive duplex PTY — labeling captured exec output "pty" would be a claim/mechanism
@@ -549,7 +549,7 @@ export type LabRuntimeAuth = "openai-env" | "openai-egress";
 
 export type LabDesktopBrowser = "default" | "chrome" | "chromium" | "firefox";
 
-export interface LabExecutionDesktop {
+interface LabExecutionDesktop {
   /**
    * Named device preset (mobile / small-mobile / narrow-mobile / tablet / desktop / wide) the
    * run renders at. Consumed on the computer-use route; default `desktop` (1440x950). On that
@@ -611,7 +611,7 @@ export interface LabDesktopMedia {
   microphone?: { source: string };
 }
 
-export interface LabDesktopFidelity {
+interface LabDesktopFidelity {
   mobileEmulation: boolean;
   /** Emulated devicePixelRatio; default: the device preset's. */
   deviceScaleFactor?: number;
@@ -621,7 +621,7 @@ export interface LabDesktopFidelity {
   userAgent?: string;
 }
 
-export interface LabExecution {
+interface LabExecution {
   target?: LabExecutionTarget;
   /** Actor session wall-clock budget. Consumed on the app-url route. */
   timeoutMs?: number;
@@ -666,7 +666,7 @@ export interface LabExecution {
   egressAllow?: string[];
 }
 
-export type LabScenarioMode = "dry-run" | "live";
+type LabScenarioMode = "dry-run" | "live";
 
 /**
  * The blast-radius budget for a route that passes a live key to an in-sandbox command.
@@ -696,7 +696,7 @@ export interface LabScenarioCaps {
   maxMinutes?: number;
 }
 
-export interface LabScenario {
+interface LabScenario {
   /** Reference a committed scenario by id (humanish/scenarios/<ref>.yaml) or path. CONSUMED
    *  (and REQUIRED) on the scripted-browser route; FORWARD-DECLARED elsewhere. */
   ref?: string;
@@ -709,7 +709,7 @@ export interface LabScenario {
   caps?: LabScenarioCaps;
 }
 
-export interface LabPolicies {
+interface LabPolicies {
   /**
    * Redact target repo labels in durable artifacts. Consumed on the meta route and on the
    * computer-use clone route (provenance), where it DEFAULTS to true when the clone
@@ -755,7 +755,7 @@ export interface LabPolicies {
   allowGitHubMutation?: boolean;
 }
 
-export interface LabReview {
+interface LabReview {
   /** Analysis defaults on for eligible live recordings; false disables the separate request. */
   analysis?: LabAnalysis | false;
   /** FORWARD-DECLARED (PR #2). */
@@ -773,16 +773,16 @@ export interface LabReview {
   scorer?: { ref: string };
 }
 
-export interface LabDefaults {
+interface LabDefaults {
   open?: boolean;
 }
 
 /** Off-app comms (email/SMS the persona lives in) the harness provides for the run (#297). */
-export interface LabComms {
+interface LabComms {
   email?: LabCommsEmail;
 }
 
-export interface LabCommsSmtp {
+interface LabCommsSmtp {
   /** Fixed in-sandbox loopback SMTP port (default 2525). Known before sandbox create, like `port`. */
   port?: number;
   /** The subject-env var carrying the SMTP host. The harness sets it to 127.0.0.1. */
@@ -800,7 +800,7 @@ export interface LabCommsSmtp {
 
 export type LabCommsEmail = LabCommsCaptureEmail | LabCommsReceivingEmail;
 
-export interface LabCommsReceivingEmail {
+interface LabCommsReceivingEmail {
   kind: "real";
   connection: string;
   /** Additional exact first-hop destinations; automatic remote email assets remain blocked. */
@@ -813,7 +813,7 @@ export interface LabCommsReceivingEmail {
   external?: never;
 }
 
-export interface LabCommsCaptureEmail {
+interface LabCommsCaptureEmail {
   connection?: never;
   allowedOrigins?: never;
   /** Which implementation backs the inbox (a backend discriminator, distinct from `scenario.mode`):
@@ -868,7 +868,7 @@ export interface LabCommsCaptureEmail {
   external?: LabCommsExternal;
 }
 
-export interface LabCommsExternal {
+interface LabCommsExternal {
   /** Where the adopter's app POSTs its email sends, and where humanish reads GET /deliveries. */
   catchBaseUrl: string;
   /** Where the persona opens its inbox. Defaults to catchBaseUrl (one server serves both). */
@@ -902,13 +902,13 @@ export interface LabConfig {
   comms?: LabComms;
 }
 
-export interface LabConfigParseSuccess {
+interface LabConfigParseSuccess {
   ok: true;
   config: LabConfig;
   warnings: string[];
 }
 
-export interface LabConfigParseFailure {
+interface LabConfigParseFailure {
   ok: false;
   error: { code: "HUMANISH_LAB_INVALID"; message: string };
 }
@@ -1539,7 +1539,7 @@ export function cuaLaneValidationReason(config: LabConfig): string | null {
  * Engine-level path-token validation for configs supplied directly through the
  * public TypeScript/JavaScript API instead of parseLabConfig.
  */
-export function laneRosterStructuralValidationReason(config: LabConfig): string | null {
+function laneRosterStructuralValidationReason(config: LabConfig): string | null {
   const lanes = config.actors[0]?.lanes;
   const seenIds = new Set<string>();
   if (lanes !== undefined) {
@@ -1952,7 +1952,7 @@ export function routesToScriptedBrowser(config: LabConfig): boolean {
   return routesToLocalScriptedBrowser(config) || routesToProvisionedScriptedBrowser(config);
 }
 
-export function routesToLocalScriptedBrowser(config: LabConfig): boolean {
+function routesToLocalScriptedBrowser(config: LabConfig): boolean {
   return (
     config.subject.source === "app-url" && actorResolvesToScriptedBrowser(config.actors[0]?.type)
   );
@@ -3325,9 +3325,9 @@ function parseTasks(
 }
 
 /** The bounds a dwell window (#510) must sit inside: at least one frame, at most an hour. */
-export const DWELL_MIN_MS = 1_000;
-export const DWELL_MAX_MS = 3_600_000;
-export const DWELL_DEFAULT_EVERY_MS = 10_000;
+const DWELL_MIN_MS = 1_000;
+const DWELL_MAX_MS = 3_600_000;
+const DWELL_DEFAULT_EVERY_MS = 10_000;
 
 function parseDwell(
   raw: unknown,

@@ -1,7 +1,7 @@
 import type { ActorRuntimeProvenance } from "./actor-contract.js";
 import type { ReasoningEffort } from "./reasoning-effort.js";
 
-export const TERMINAL_RUNTIME_PACKAGE = "@openai/codex";
+const TERMINAL_RUNTIME_PACKAGE = "@openai/codex";
 export const TERMINAL_RUNTIME_VERSION_TIMEOUT_MS = 60_000;
 
 /** Exact semver only: no registry tags, ranges, URLs, or shell syntax. */
@@ -26,7 +26,7 @@ export function parseTerminalRuntimeVersion(stdout: string): string | undefined 
   return match && isExactRuntimeVersion(match[1]) ? match[1] : undefined;
 }
 
-export function shellQuote(value: string): string {
+function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 

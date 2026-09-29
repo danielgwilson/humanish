@@ -109,7 +109,7 @@ export interface CodexAppServerTrace {
   tokenUsage?: JsonObject;
 }
 
-export interface CodexTraceItem {
+interface CodexTraceItem {
   id: string;
   type: string;
   status?: string;
@@ -117,17 +117,17 @@ export interface CodexTraceItem {
   title: string;
 }
 
-export interface CodexTraceText {
+interface CodexTraceText {
   itemId: string;
   text: string;
 }
 
-export interface CodexTracePlan {
+interface CodexTracePlan {
   explanation?: string;
   steps: string[];
 }
 
-export interface CodexTraceCommand {
+interface CodexTraceCommand {
   itemId: string;
   command?: string;
   cwd?: string;
@@ -136,14 +136,14 @@ export interface CodexTraceCommand {
   outputTail?: string;
 }
 
-export interface CodexTraceFileChange {
+interface CodexTraceFileChange {
   itemId: string;
   status?: string;
   changeCount?: number;
   outputTail?: string;
 }
 
-export interface CodexTraceToolCall {
+interface CodexTraceToolCall {
   itemId: string;
   kind: "mcp" | "dynamic" | "unknown";
   server?: string;
@@ -151,7 +151,7 @@ export interface CodexTraceToolCall {
   status?: string;
 }
 
-export interface CodexTraceApproval {
+interface CodexTraceApproval {
   id: JsonRpcId;
   method: string;
   itemId?: string;
@@ -159,7 +159,7 @@ export interface CodexTraceApproval {
   reason: string;
 }
 
-export interface CodexTraceNotice {
+interface CodexTraceNotice {
   method: string;
   message: string;
 }

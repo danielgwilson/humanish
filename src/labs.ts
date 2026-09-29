@@ -16,15 +16,12 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "./selected-output-paths.js";
 
-export { LAB_CONFIG_SCHEMA } from "./lab-config.js";
-export type { LabConfig } from "./lab-config.js";
+const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
+const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";
 
-export const LAB_LIST_SCHEMA = "humanish.lab-list.v1";
-export const LAB_INSPECT_SCHEMA = "humanish.lab-inspect.v1";
+type LabOrigin = "committed" | "ignored" | "explicit";
 
-export type LabOrigin = "committed" | "ignored" | "explicit";
-
-export interface ResolvedLabConfig {
+interface ResolvedLabConfig {
   config: LabConfig;
   origin: LabOrigin;
   path: string;

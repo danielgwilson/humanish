@@ -10,7 +10,7 @@ import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./scree
 // (src/run.ts) use these so the denylist cannot drift between producers and the
 // verify gate. See docs/contracts/policy.md for the enforcement-scope policy.
 
-export const SECRET_PATTERNS: RegExp[] = [
+const SECRET_PATTERNS: RegExp[] = [
   /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/g,
   /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g,
   /\be2b_[A-Za-z0-9]{16,}\b/g,
@@ -30,7 +30,7 @@ export const SECRET_PATTERNS: RegExp[] = [
   /BEGIN (RSA|OPENSSH|PRIVATE) KEY/gi,
 ];
 
-export const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
+const LOCAL_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/\/private\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/var\/folders\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
   [/\/private\/tmp\/[^\s"'`<>)]*/g, "[REDACTED_LOCAL_PATH]"],
@@ -354,7 +354,7 @@ export function promptForLog(raw: string): { placeholder: string; digest: string
 // synchronous fail-closed thumbnailer above.
 // ---------------------------------------------------------------------------
 
-export interface ScreenshotMeta {
+interface ScreenshotMeta {
   /** Optional smaller-only thumbnail width (clamped to the safe ceiling). */
   maxWidth?: number;
   /** Free-form label for logs (e.g. "turn-03-call-01"). Never enters the pixels. */

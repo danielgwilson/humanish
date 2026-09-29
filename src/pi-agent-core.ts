@@ -26,7 +26,7 @@ export type PiStopReason = "stop" | "toolUse" | "length" | "error" | "aborted";
 // Locally-declared mirror of pi's documented event stream. NOT imported from any
 // pi package, so it cannot drift-break the build; the shim PR re-validates it
 // against the installed .d.ts.
-export type PiAgentEvent =
+type PiAgentEvent =
   | { type: "agent_start" }
   | { type: "agent_end" }
   | { type: "turn_start" }
@@ -43,7 +43,7 @@ export type PiAgentEvent =
   | { type: "auto_retry_end" }
   | { type: "notice"; method?: string; message?: string };
 
-export interface PiSessionStats {
+interface PiSessionStats {
   tokens?: {
     input?: number;
     output?: number;

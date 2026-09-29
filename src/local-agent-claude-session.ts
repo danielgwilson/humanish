@@ -46,7 +46,7 @@ export interface ClaudeStreamTransport {
 }
 
 /** NDJSON over the child's stdio. Everything that is not a `result` is a progress line and is ignored. */
-export function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStreamTransport {
+function stdioClaudeTransport(child: ChildProcessWithoutNullStreams): ClaudeStreamTransport {
   const rl = readline.createInterface({ input: child.stdout });
   let waiter: { resolve: (value: JsonObject) => void; reject: (error: Error) => void } | undefined;
   let stderrTail = "";
@@ -129,7 +129,7 @@ export interface ClaudeSessionOptions {
   spawnFn?: typeof spawn;
 }
 
-export const CLAUDE_SESSION_CAPABILITIES: ActorCapabilities = LOCAL_AGENT_CAPABILITIES;
+const CLAUDE_SESSION_CAPABILITIES: ActorCapabilities = LOCAL_AGENT_CAPABILITIES;
 
 export interface ClaudeSession {
   provider: CuaProvider;

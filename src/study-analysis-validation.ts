@@ -38,7 +38,7 @@ const observationSchema = z
   })
   .strict();
 
-export const studyAnalysisResultSchema = z
+const studyAnalysisResultSchema = z
   .object({
     summary: text(4000).min(1),
     participants: z
@@ -108,7 +108,7 @@ const normalizedResult = ({
   ...(concernReviews === undefined ? {} : { concernReviews }),
 });
 
-export const studyAnalysisCoverageSchema = z
+const studyAnalysisCoverageSchema = z
   .object({
     includedStreamIds: sourceIds,
     omittedStreamIds: sourceIds,
@@ -131,7 +131,7 @@ const artifactPath = z
     "Invalid evidence path.",
   );
 
-export const studyAnalysisEvidenceSchema = z
+const studyAnalysisEvidenceSchema = z
   .object({
     id,
     streamId: sourceId,
@@ -154,7 +154,7 @@ export const studyAnalysisEvidenceSchema = z
   })
   .strict();
 
-export const studyAnalysisParticipantProvenanceSchema = z
+const studyAnalysisParticipantProvenanceSchema = z
   .object({
     actorStatus: z
       .enum(["passed", "abandoned", "incomplete", "blocked", "timed_out", "failed"])
@@ -208,7 +208,7 @@ export const studyAnalysisParticipantProvenanceSchema = z
   })
   .strict();
 
-export const studyAnalysisArtifactSchema = z
+const studyAnalysisArtifactSchema = z
   .object({
     schema: z.literal(STUDY_ANALYSIS_SCHEMA),
     captureVersion: z.literal(2).optional(),
@@ -296,7 +296,7 @@ export const studyAnalysisArtifactSchema = z
   })
   .strict();
 
-export const studyAnalysisCorrectionSchema = z
+const studyAnalysisCorrectionSchema = z
   .object({
     schema: z.literal(STUDY_ANALYSIS_CORRECTION_SCHEMA),
     id,
@@ -551,7 +551,7 @@ export function validateStudyAnalysisCorrection(value: unknown): StudyAnalysisCo
 }
 
 /** Accounting survives a stale source without retaining generated or participant text. */
-export const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema
+const studyAnalysisExecutionReceiptSchema = studyAnalysisArtifactSchema
   .pick({
     id: true,
     runId: true,

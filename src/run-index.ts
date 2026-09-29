@@ -27,7 +27,7 @@ import {
   type RunStatusRecord,
 } from "./run-status.js";
 
-export const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
+const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
 
 export interface RunIndexEntry {
   runId: string;

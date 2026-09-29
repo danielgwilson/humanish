@@ -27,8 +27,6 @@ export const SERVE_SCHEMA = "humanish.serve-result.v1";
 
 // Re-exported for compat: these hardening primitives now live in serve-http.js so the live Observer
 // server can share them without a module cycle.
-export { buildServeSecurityHeaders, hostAllowed, parsePublicOrigin };
-export type { ServeMode };
 
 export type ServeErrorCode =
   | "HUMANISH_INVALID_PORT"
@@ -65,7 +63,7 @@ export interface ServeResult {
 // v2 seam: declared, never implemented in v1. When provided, the reserved
 // /_humanish/api/* namespace would dispatch into it; v1 always passes undefined
 // and the namespace answers 501.
-export interface ServeControlPlane {
+interface ServeControlPlane {
   startRun?(request: {
     labId: string;
     dryRun: boolean;

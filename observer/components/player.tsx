@@ -74,7 +74,7 @@ function readPreferences(): Preferences {
 }
 
 // Text-only rendering of the participant's reported narration, never HTML/markdown links.
-export function renderThoughtText(text: string): (string | { bold: string })[] {
+function renderThoughtText(text: string): (string | { bold: string })[] {
   const parts: (string | { bold: string })[] = [];
   const pattern = /\*\*([^*]+)\*\*/g;
   let last = 0;

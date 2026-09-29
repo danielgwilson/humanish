@@ -292,7 +292,7 @@ const PAGE_CSS =
  *  `javascript:` URLs, and any injected <script>; `object-src`/`frame-src 'none'` block plugins/frames;
  *  `base-uri 'none'` blocks <base> reroot. Images/styles stay permissive so the real email still renders.
  *  Set BOTH as a page() meta (covers direct render use) and as a catch response header (covers serving). */
-export const INBOX_SURFACE_CSP =
+const INBOX_SURFACE_CSP =
   "default-src 'self'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; img-src * data:; style-src 'unsafe-inline'; font-src * data:";
 
 function page(title: string, inner: string): string {

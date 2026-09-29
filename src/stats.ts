@@ -16,15 +16,15 @@ import {
   type StudyCostRow,
 } from "./study-costs.js";
 
-export const STATS_SCHEMA = "humanish.stats.v1";
+const STATS_SCHEMA = "humanish.stats.v1";
 
-export interface StatsParticipants {
+interface StatsParticipants {
   total: number;
   reachedGoal: number;
   reportedFriction: number;
 }
 
-export interface StatsLabRow {
+interface StatsLabRow {
   lab: string;
   runs: number;
   live: number;
@@ -46,7 +46,7 @@ export interface StatsLabRow {
   costs: StudyCosts;
 }
 
-export interface StatsDayRow {
+interface StatsDayRow {
   day: string;
   runs: number;
   live: number;
@@ -83,7 +83,7 @@ export interface StatsResult {
   note: string;
 }
 
-export const STATS_NOTE =
+const STATS_NOTE =
   "Every dollar figure is a retained rate-table estimate, never a provider charge. " +
   "Known spend includes participant/desktop estimates and all distinct recorded analysis attempts; reuse is counted once. " +
   "Unknown amounts are excluded, not $0. Missing historical attempts cannot be reconstructed. " +

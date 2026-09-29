@@ -9,7 +9,7 @@ const SPEAK_TIMEOUT_MS = 30_000;
 const HEARD_QUEUE = 8;
 const HEARD_PER_OBSERVATION = CUA_SPEECH_LIMITS.utterances;
 
-export interface GuestDesktopMediaDeclaration {
+interface GuestDesktopMediaDeclaration {
   camera?: { source: string };
   microphone?: { source: string };
 }

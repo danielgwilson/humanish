@@ -12,8 +12,8 @@ export interface AutoplayIntent {
   sidebarClosed: boolean;
 }
 
-export const AUTOPLAY_DEFAULT_SPEED = 8;
-export const AUTOPLAY_MAX_SPEED = 64;
+const AUTOPLAY_DEFAULT_SPEED = 8;
+const AUTOPLAY_MAX_SPEED = 64;
 /** Pause between the last capture and the restart, so the end state is readable. */
 export const AUTOPLAY_LOOP_DELAY_MS = 2000;
 

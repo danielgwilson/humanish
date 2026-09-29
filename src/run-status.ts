@@ -21,7 +21,6 @@
 // that an operator may share, so it must carry nothing a share-safety gate would have to strip.
 
 import { AsyncLocalStorage } from "node:async_hooks";
-import { hrtime } from "node:process";
 
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
 
@@ -50,10 +49,10 @@ export interface RunLabProvenance {
   origin?: "committed" | "ignored" | "explicit";
 }
 
-export type RunStatusState = "running" | "finished";
+type RunStatusState = "running" | "finished";
 
 /** The outcome summary a finalized record carries. Derived from the bundle; never authoritative. */
-export interface RunStatusOutcome {
+interface RunStatusOutcome {
   /** `review.verdict` verbatim. */
   verdict?: string;
   /** True when the run's own envelope reported success. */
@@ -314,9 +313,4 @@ export function inferLegacyLabId(bundle: {
     if (id !== "") return id;
   }
   return undefined;
-}
-
-/** A monotonic elapsed-ms helper for callers that need a duration without trusting wall clocks. */
-export function elapsedMsSince(startNs: bigint): number {
-  return Number((hrtime.bigint() - startNs) / 1_000_000n);
 }
