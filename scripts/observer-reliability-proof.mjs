@@ -238,9 +238,13 @@ try {
         await pin.evaluate((button) => {
           window.__pinMovement = (async () => {
             const grid = document.querySelector(".gallery"),
-              scroll = document.querySelector(".content").scrollTop;
+              scroller = document.querySelector(".content");
             const cards = [...grid.querySelectorAll(".card")];
             const values = [];
+            // Read the baseline when the click arrives. Playwright's press() focuses the button
+            // first, and focus() may scroll a partly hidden button into view; that scroll is the
+            // harness's, not the pin's. This listener runs before React's root handler.
+            let scroll = scroller.scrollTop;
             await new Promise((resolve, reject) => {
               const timeout = setTimeout(
                 () => reject(new Error("Pin did not activate from the keyboard")),
@@ -249,6 +253,7 @@ try {
               button.addEventListener(
                 "click",
                 () => {
+                  scroll = scroller.scrollTop;
                   clearTimeout(timeout);
                   resolve();
                 },

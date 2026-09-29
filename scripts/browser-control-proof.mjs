@@ -162,17 +162,19 @@ async function runCase(mode) {
       });
   });
   try {
-    // Allow the child's 30s browser launch + 30s navigation, with 10s for process/IPC setup.
+    // Allow the child's 60s browser launch + 30s navigation, with 10s for process/IPC setup.
     // Control and cleanup keep their independent, shorter deadlines.
     const [transport] = await bounded(
       Promise.race([
         connected,
         exit.then(([code, signal]) => {
-          throw new Error(`Fixture exited during startup: code=${code}, signal=${signal}`);
+          throw new Error(
+            `Fixture exited during startup: code=${code}, signal=${signal}\n${childStderr.slice(-4000)}`,
+          );
         }),
       ]),
       "browser startup / child connection",
-      70000,
+      100000,
     );
     client = createBrowserControlClient({ transport, identity, requestTimeoutMs: 5000 });
     const ready = await next("ready");
