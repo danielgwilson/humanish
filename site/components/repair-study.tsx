@@ -2,13 +2,13 @@ export default function RepairStudy() {
   return (
     <section className="repair-study" aria-labelledby="repair-study-title">
       <div>
-        <p className="repair-kicker">The fix · TodoMVC · September 5, 2026 · 12 synthetic attempts · humanish 0.81.0</p>
-        <h2 id="repair-study-title">Fix a blocker, rerun the same task, <em>compare</em></h2>
+        <p className="repair-kicker">Example 3 of 3 · TodoMVC · September 5, 2026 · 12 runs · humanish 0.81.0</p>
+        <h2 id="repair-study-title">Fix it, run the same task again, <em>compare</em></h2>
         <blockquote className="repair-quote">
           <p>“I stopped without using the pointer; Draft proposal remains saved instead of Send proposal.”</p>
           <footer>Original app · keyboard-only participant</footer>
         </blockquote>
-        <p className="repair-copy">The original TodoMVC needed a double-click to rename a todo, and keyboard-only participants stopped there. We added a visible Edit button with keyboard focus handling and ran the same task again.</p>
+        <p className="repair-copy">A finding is only worth something if you can check the fix. TodoMVC hid rename behind a double-click, and every keyboard-only participant stopped there. We added a visible Edit button that takes keyboard focus, then ran the exact same task on both versions.</p>
       </div>
 
       <div className="repair-results">

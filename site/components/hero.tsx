@@ -11,12 +11,12 @@ export default function Hero() {
         {/* Mirror obligation: this lede is the site description. Any edit here
             moves layout.tsx DESCRIPTION (meta + OG + Twitter + JSON-LD) and the
             llms.txt description block in the same commit. */}
-        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>Synthetic personas use your app in a real browser on a hosted desktop. What they did lands in your repo: captures, actions, findings, and what it cost.</p>
+        <p className="lede rev" style={{ "--d": ".06s" } as React.CSSProperties}>You can&rsquo;t run a user study on an app that has no users yet. humanish runs one anyway. One command puts a synthetic participant with a persona and a task in front of your app in a real browser; what comes back is what they did, where they got stuck, and what it cost.</p>
         <div className="cta-row rev" style={{ "--d": ".12s" } as React.CSSProperties}>
           <a className="btn btn-primary" href="/docs">Get started</a>
-          <a className="cta-link" href="/docs/todomvc-edit-study">Read the TodoMVC study →</a>
+          <a className="cta-link" href="/docs/todomvc-edit-study">Read an example study →</a>
         </div>
-        <p className="hero-limits rev" style={{ "--d": ".15s" } as React.CSSProperties}>Synthetic participants give you directional evidence, not a human panel. <a href="/failure-modes">What it cannot tell you</a></p>
+        <p className="hero-limits rev" style={{ "--d": ".15s" } as React.CSSProperties}>It shows you where one participant got stuck, not how many of your users would. <a href="/failure-modes">What it cannot tell you</a></p>
         <div className="console rev" id="install" style={{ "--d": ".18s" } as React.CSSProperties}>
           <div className="c-run">
             <code><span className="ps">$</span>npx humanish<span className="caret" aria-hidden="true"></span></code>

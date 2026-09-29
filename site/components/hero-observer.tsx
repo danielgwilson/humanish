@@ -85,7 +85,7 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
     <figure className={expanded ? "hero-observer expanded" : revealed ? "hero-observer rev in" : "hero-observer rev"} ref={ref} style={{ "--d": ".3s" } as React.CSSProperties}
       role={expanded ? "dialog" : undefined} aria-modal={expanded ? true : undefined} aria-label={expanded ? `${title}, Observer replay` : undefined}>
       <div className="ho-bar">
-        <span className="lane-id"><b>Observer ·</b> {participants} participants · one lobby</span>
+        <span className="lane-id"><b>Example ·</b> {participants} synthetic players in one game lobby</span>
         <span className="ho-bar-end">
           <span className="chip chip-dot">{play ? `Replay ${speed}×` : "Replay"}</span>
           {expanded ? <><span className="ho-esc">Esc closes</span><button type="button" className="ho-close" ref={closeRef} onClick={close}>Close ✕</button></> : null}
@@ -112,7 +112,7 @@ export default function HeroObserver({ slug, participants, title, facts, runId, 
         ) : null}
       </div>
       <figcaption className="ho-foot">
-        <span className="fl">Saved run</span>
+        <span className="fl">Result</span>
         <span className="fq">
           {(facts ?? title).split(" \u00b7 ").map((fact, i) => (
             <Fragment key={fact}>
