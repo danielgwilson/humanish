@@ -142,8 +142,7 @@ The [local browser runtime](../architecture/local-browser-runtime.md)
 runs isolated Linux browser participants through the same scheduler, recordings
 and automatic analysis as hosted studies. It uses Docker-owned resources and
 ordinary TAP/NAT networking. Continue managed-local work from this complete study
-path; the earlier offline owner/service qualification experiments are historical
-fixtures, not an installation architecture or a prerequisite queue. Explicit
+path. Explicit
 Linux local labs now use the installed CLI/TUI, with a verified runtime download
 before the first live run. Mac browser support is also shipped. Captured inbox integration reuses the existing
 catch and evidence contracts; local provider-backed receiving remains unsupported.
