@@ -359,10 +359,10 @@ pnpm pack:dry-run
 Local dogfood:
 
 ```bash
-pnpm humanish:watch
-pnpm humanish:verify
-pnpm humanish:feedback
-pnpm humanish:lab:list
+pnpm humanish watch
+pnpm humanish verify
+pnpm humanish feedback issue --repo danielgwilson/humanish
+pnpm humanish lab list
 ```
 
 ## Docs

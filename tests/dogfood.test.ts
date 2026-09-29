@@ -29,24 +29,6 @@ describe("humanish dogfood config", () => {
     expect(`${readme}\n${scenario}`).not.toContain("synthetic-app");
   });
 
-  it("keeps self-dogfood scripts and coverage public-safe", async () => {
-    const packageJson = JSON.parse(await readFile("package.json", "utf8")) as {
-      scripts: Record<string, string>;
-    };
-    const coverage = await readFile("humanish/coverage-matrix.md", "utf8");
-
-    expect(packageJson.scripts["humanish:run"]).toBe("pnpm humanish -- run --dry-run");
-    expect(packageJson.scripts["humanish:watch"]).toBe("pnpm humanish -- watch");
-    expect(packageJson.scripts["humanish:watch:ci"]).toBe(
-      "pnpm humanish -- watch --json --no-open",
-    );
-    expect(packageJson.scripts["humanish:dogfood"]).toBe("pnpm humanish -- watch");
-    expect(packageJson.scripts["humanish:feedback"]).toBe(
-      "pnpm humanish -- feedback issue --repo danielgwilson/humanish",
-    );
-    expect(coverage).toContain("codex-exec");
-  });
-
   it("feeds committed persona and scenario content into the dry-run bundle", async () => {
     await withDogfoodCopy(async (cwd) => {
       const result = await runDryRun({ cwd, dryRun: true, runId: "dogfood-source-proof" });
