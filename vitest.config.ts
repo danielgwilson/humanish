@@ -22,5 +22,8 @@ export default defineConfig({
       "**/*.scratch.test.ts",
     ],
     restoreMocks: true,
+    // Many tests spawn git, python3 or tsx, which can exceed vitest's 5 s default on a loaded
+    // CI runner.
+    testTimeout: 20_000,
   },
 });

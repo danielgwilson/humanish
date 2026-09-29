@@ -694,7 +694,6 @@ describe("automatic analysis admission and producer boundary", () => {
         if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
       }
     },
-    20000,
   );
   it("installs cancellation handlers only for the analysis phase and removes them afterward", () => {
     const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;

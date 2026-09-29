@@ -1198,7 +1198,7 @@ describe("humanish serve command", () => {
       expect(cli.stderr().split("observe stopped").length - 1).toBe(1);
       expect(cli.stderr()).not.toContain("cleanup failed");
     });
-  }, 20_000);
+  });
 
   it("rejects conflicting or unsafe serve option combinations with exit 2 and exact error codes (fail-closed matrix)", async () => {
     await withTempApp(
@@ -1249,7 +1249,7 @@ describe("humanish serve command", () => {
         }
       },
     );
-  }, 20_000);
+  });
 
   it("rejects the removed --auth and --ttl flags as unknown options (capability-link machinery deleted)", async () => {
     await withTempApp(
@@ -1268,7 +1268,7 @@ describe("humanish serve command", () => {
         }
       },
     );
-  }, 20_000);
+  });
 
   it("fails HUMANISH_RUN_NOT_FOUND for an unknown --run before printing any serving banner", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1283,7 +1283,7 @@ describe("humanish serve command", () => {
       expect(result.stdout).not.toContain("serving:");
       expect(result.stderr).not.toContain("serving:");
     });
-  }, 20_000);
+  });
 
   it("refuses to serve a blocked run under --safe, naming the shareSafety status and reason code", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1312,7 +1312,7 @@ describe("humanish serve command", () => {
       expect(envelope.error?.message).toContain("blocked");
       expect(envelope.error?.message).toContain("PUBLIC_SAFETY_FINDINGS");
     });
-  }, 20_000);
+  });
 
   it("exposes the library under --expose --public-url (operator-secured edge; no in-process token)", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1343,7 +1343,7 @@ describe("humanish serve command", () => {
       await cli.finished;
       expect(cli.exitCode()).toBe(143);
     });
-  }, 20_000);
+  });
 
   it("serves share_ready runs openly under --safe --expose --tunnel (no edge auth), naming the public origin", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1395,7 +1395,7 @@ describe("humanish serve command", () => {
         await rm(stubDir, { force: true, recursive: true });
       }
     });
-  }, 20_000);
+  });
 
   it("starts the ngrok tunnel with edge OAuth args against the loopback port and tears both down on SIGTERM", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1475,7 +1475,7 @@ describe("humanish serve command", () => {
         await rm(stubDir, { force: true, recursive: true });
       }
     });
-  }, 20_000);
+  });
 
   it("fails HUMANISH_SERVE_TUNNEL_NOT_FOUND when ngrok is absent and tears the bound server down", async () => {
     await withTempApp(
@@ -1517,7 +1517,7 @@ describe("humanish serve command", () => {
         }
       },
     );
-  }, 20_000);
+  });
 });
 
 // A live-mode CUA lab so runCuaBackend runs the exposure validator. Every case below is a REFUSAL
@@ -1567,7 +1567,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(result.stdout).not.toContain("watching:");
       expect(result.stderr).not.toContain("watching:");
     });
-  }, 20_000);
+  });
 
   it("refuses a live watch --expose --safe with SAFE_NOT_APPLICABLE (--safe is a `serve` filter, not a watch gate)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
@@ -1583,7 +1583,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
     });
-  }, 20_000);
+  });
 
   it("refuses watch --expose --json (no attached follow) with EXPOSE_REQUIRES_LIVE_FOLLOW", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
@@ -1605,7 +1605,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(envelope.ok).toBe(false);
       expect(envelope.error?.code).toBe("HUMANISH_WATCH_EXPOSE_REQUIRES_LIVE_FOLLOW");
     });
-  }, 20_000);
+  });
 
   it("refuses watch --expose --dry-run and --detach (no live desktop / no attached follow)", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
@@ -1629,7 +1629,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
         );
       }
     });
-  }, 20_000);
+  });
 
   it("refuses --oauth without --tunnel and --allow-email without --oauth", async () => {
     await withTempApp(CUA_LAB_FIXTURE, async (cwd) => {
@@ -1659,7 +1659,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(noOauth.exitCode).toBe(2);
       expect(noOauth.stdout).toContain("HUMANISH_WATCH_ALLOW_REQUIRES_OAUTH");
     });
-  }, 20_000);
+  });
 
   it("refuses exposure on a non-CUA (synthetic) lab: no live desktop to stream", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1678,7 +1678,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
-  }, 20_000);
+  });
 
   it("refuses exposure on the non-lab watch path (existing evidence)", async () => {
     await withTempApp(SERVE_LAB_FIXTURE, async (cwd) => {
@@ -1699,7 +1699,7 @@ describe("humanish watch --expose (live CUA) fail-closed matrix", () => {
       expect(result.exitCode).toBe(2);
       expect(result.stdout).toContain("HUMANISH_WATCH_OPTION_CONFLICT");
     });
-  }, 20_000);
+  });
 });
 
 describe("provider-key discovery at the CLI seam (#436)", () => {
