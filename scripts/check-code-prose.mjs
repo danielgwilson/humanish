@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+// Counts three kinds of prose in src/ comments that belong in issues and commit messages:
+// issue references (#123, except in TODO(#123)), red-team tags (FIX-5) and all-caps emphasis
+// (NOT, ONLY, NEVER). Each count is capped by a flag in package.json's prose:check script. The
+// caps only go down: lower one in the same PR that removes the prose.
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
+import { parseSync } from "oxc-parser";
+
+const { values } = parseArgs({
+  options: {
+    "max-issue-refs": { type: "string" },
+    "max-fix-tags": { type: "string" },
+    "max-caps": { type: "string" },
+    list: { type: "boolean", default: false },
+  },
+});
+
+// All-caps words that are names or comment tags, not emphasis.
+const ACRONYMS = new Set(
+  (
+    "TODO NOTE API CDP CI CLI CPU CSP CSS CUA DB DI DNS DOM DPR ESM GPU HTML HTTP HTTPS ID ISO JSON JWT " +
+    "KVM LLM MB KB GB MIME NDJSON OIDC OTP PID PNG POSIX PR PTY SDK SHA SMTP SSH TCP TLS TTL " +
+    "TTY TUI UI URL USD UTC UTF UUID VM VNC XDG XOR YAML ZDR E2B AX UX GET POST PUT HEAD RFC " +
+    "OS PDF JPEG JS TS ASCII EOF IP IO MCP OAUTH OK EXIF DOCTYPE RGB RGBA WSL PCM WAV PII IHDR " +
+    "ENOENT EEXIST ENOTEMPTY ENOTDIR EISDIR EACCES EPERM EPIPE EBUSY ELOOP EXDEV SIGTERM SIGKILL SIGINT"
+  ).split(" "),
+);
+
+const files = readdirSync("src", { recursive: true, encoding: "utf8" })
+  .filter((file) => file.endsWith(".ts"))
+  .map((file) => join("src", file))
+  .sort();
+
+const hits = { "issue-refs": [], "fix-tags": [], caps: [] };
+for (const file of files) {
+  const text = readFileSync(file, "utf8");
+  for (const comment of parseSync(file, text).comments) {
+    // comment.value starts after the opening `//` or `/*`.
+    const at = (match) => {
+      const line = text.slice(0, comment.start + 2 + match.index).split("\n").length;
+      return `${file}:${line} ${match[0]}`;
+    };
+    for (const match of comment.value.matchAll(/(?<!TODO\()#\d{2,5}\b/g)) {
+      hits["issue-refs"].push(at(match));
+    }
+    for (const match of comment.value.matchAll(/\bFIX-\d+\b/g)) hits["fix-tags"].push(at(match));
+    // Code spans and path segments (`/lobby/CODE`) hold placeholders, not emphasis.
+    const prose = comment.value.replace(/`[^`\n]*`/g, (span) => " ".repeat(span.length));
+    for (const match of prose.matchAll(/(?<![\w/<-])[A-Z]{2,}(?![\w/>-])/g)) {
+      if (!ACRONYMS.has(match[0])) hits.caps.push(at(match));
+    }
+  }
+}
+
+let failed = false;
+for (const [kind, list] of Object.entries(hits)) {
+  const max = values[`max-${kind}`];
+  const cap = max === undefined ? undefined : Number(max);
+  const over = cap !== undefined && list.length > cap;
+  failed ||= over;
+  const status =
+    cap === undefined ? "" : over ? ` (cap ${cap}, over by ${list.length - cap})` : ` (cap ${cap})`;
+  process.stdout.write(`${kind}: ${list.length}${status}\n`);
+  if (values.list) process.stdout.write(list.map((hit) => `  ${hit}\n`).join(""));
+}
+if (failed) {
+  process.stdout.write(
+    "A count rose. `node scripts/check-code-prose.mjs --list` prints every hit with its line. Move\n" +
+      "history into the commit message or issue, and keep the comment to what the code does.\n",
+  );
+  process.exitCode = 1;
+}

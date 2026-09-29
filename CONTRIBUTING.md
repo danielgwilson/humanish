@@ -26,6 +26,9 @@ pnpm public-surface:scan
 ```
 
 `pnpm format` rewrites files with oxfmt. `pnpm check` fails on unformatted files.
+It also caps two counts in package.json: oxlint warnings (`lint`) and prose in `src/`
+comments (`prose:check`: issue references, `FIX-N` tags, all-caps emphasis). The caps only
+go down; lower one in the PR that reduces its count.
 
 ## Useful Commands
 
