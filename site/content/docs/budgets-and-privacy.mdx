@@ -150,6 +150,17 @@ For a study intended to produce share-as-is screenshots, `policies.redactScreens
 
 To keep readable local evidence and share a copy afterward, use `humanish export --run YOUR_RUN_ID --format bundle --redact-screenshots --out ./shared-study`. This creates a separately verified workspace with blurred PNG screenshots and a derivation receipt. It preserves the original, refuses unsupported or invalid evidence, and makes no provider calls. Review the copied text and findings before sharing; blur is not a personal-information detector. [Complete workflow](/docs/read-results#draft-an-issue).
 
+## Try it without spending
+
+Four steps cost nothing and need no keys:
+
+1. `npx humanish watch` opens the Observer on a bundled sample run. It does not open your app and sends no participant anywhere.
+2. `npx humanish run <lab> --dry-run` generates the contract proof for your lab without a browser, keys or provider spend, so a manifest mistake surfaces before a desktop exists.
+3. `npx humanish telemetry disable` (or `DO_NOT_TRACK=1`) stops usage telemetry.
+4. `review.analysis: false` in the lab keeps the analyst call out of the first live run.
+
+The first paid step is one participant: `npx humanish run try-live` with `execution.caps.maxUsd` set, a synthetic account on the target, and the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
+
 ## Recover after an interruption
 
 After a crash, inspect the interrupted run and its resource receipt:

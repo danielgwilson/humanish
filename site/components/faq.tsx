@@ -13,6 +13,11 @@ const ITEMS = [
     link: { href: "/docs", label: "What each route needs" }
   },
   {
+    q: "What do lab, bundle and Observer mean?",
+    a: <>A lab is the YAML file that names the app, the persona and the task. A bundle is the folder a run writes under <code>.humanish/runs/</code>: captures, actions, reasoning, findings and cost. The Observer is the local viewer that replays a bundle; <code>npx humanish watch</code> opens it.</>,
+    link: { href: "/docs/lab-manifests", label: "Lab manifests" }
+  },
+  {
     q: "Where does the evidence go, and who sees it?",
     a: <>Into your repo under <code>.humanish/runs/</code>. humanish uploads nothing; the model provider you chose sees what the participant sees, and <code>humanish analyze</code> sends selected text and captures to the analyst you name. Telemetry is anonymous command usage and <code>npx humanish telemetry disable</code> turns it off.</>,
     link: { href: "/docs/trust-boundaries", label: "Who sees what, and the threat model" }

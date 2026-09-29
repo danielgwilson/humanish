@@ -2,7 +2,7 @@ export default function Commands() {
   return (
     <section id="commands" className="band">
       <h2 className="rev">Run a study in <em>five commands</em></h2>
-      <p className="sec-sub rev" style={{ "--d": ".06s" } as React.CSSProperties}>Subagents critique your code. Personas use your app. These five commands take a lab from a blank repo to a filed issue. They need Node 20 or newer; a live run reads <code>OPENAI_API_KEY</code> and <code>E2B_API_KEY</code> from your environment, or drives your signed-in Codex or Claude Code instead.</p>
+      <p className="sec-sub rev" style={{ "--d": ".06s" } as React.CSSProperties}>Subagents critique your code. Personas use your app. These five commands take a lab from a blank repo to a filed issue. They need Node 20 or newer (the optional interactive <code>tui</code> needs 22); a live run reads <code>OPENAI_API_KEY</code> and <code>E2B_API_KEY</code> from your environment, or drives your signed-in Codex or Claude Code instead.</p>
 
       <div className="cmd-ledger rev" style={{ "--d": ".12s" } as React.CSSProperties}>
         <div className="cmd-row">

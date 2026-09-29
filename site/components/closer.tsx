@@ -12,7 +12,7 @@ export default function Closer() {
       <pre className="cmdline rev" style={{ "--d": ".14s" } as React.CSSProperties}><code>npm i -D humanish @e2b/desktop</code>
 <code>npx humanish init --yes</code>
 <code>npx humanish run try-live</code></pre>
-      <p className="closer-note rev" style={{ "--d": ".2s" } as React.CSSProperties}>One participant, a real app, about two minutes, capped at $2 of estimated model spend. MIT.</p>
+      <p className="closer-note rev" style={{ "--d": ".2s" } as React.CSSProperties}>Unlike the no-key preview above, this opens your app: one participant, about two minutes, capped at $2 of estimated model spend. MIT.</p>
     </section>
   );
 }
