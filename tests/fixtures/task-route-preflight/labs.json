@@ -384,55 +384,6 @@
     "backend": "synthetic"
   },
   {
-    "name": "smoke",
-    "config": {
-      "schema": "humanish.lab.v2",
-      "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
-      "subject": {
-        "source": "clone",
-        "repos": [
-          "example-org/collab-app"
-        ]
-      },
-      "actors": [
-        {
-          "type": "synthetic-persona"
-        }
-      ]
-    },
-    "supported": false,
-    "backend": "smoke"
-  },
-  {
-    "name": "meta",
-    "config": {
-      "schema": "humanish.lab.v2",
-      "id": "task-route-preflight",
-      "scenario": {
-        "mode": "live"
-      },
-      "subject": {
-        "source": "clone",
-        "repos": [
-          "example-org/collab-app"
-        ]
-      },
-      "actors": [
-        {
-          "type": "humanish-setup"
-        }
-      ],
-      "execution": {
-        "target": "e2b-desktop"
-      }
-    },
-    "supported": false,
-    "backend": "meta"
-  },
-  {
     "name": "cua-openai-computer-use-app-url",
     "config": {
       "schema": "humanish.lab.v2",

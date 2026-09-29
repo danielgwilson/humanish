@@ -5,8 +5,7 @@ Status: public-safe contributor and agent ramp.
 Package/source version in this tree: `0.105.0` (2026-09-28). The Observer is phone-usable as a stated requirement (observer/AGENTS.md); interactive primitives start from Base UI. The Observer renderer is the observer/ workspace artifact only; the legacy string-concat renderer was deleted at cutover (#426), and rollback is a version pin to `0.42.0`. The containment boundary introduced in
 `0.15.1` remains in force: managed run and output paths bind to validated
 physical filesystem identities, and stored provider IDs are evidence, not
-cleanup authority. The bundled OSS meta-lab is dry-run only until
-repository-derived instructions have an isolated credential boundary.
+cleanup authority.
 
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
@@ -254,8 +253,6 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   the persisted `terminal-transcript.txt`), not only the ~2KB tail projection;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
-- an OSS meta-lab dry-run contract and a separate disposable public-repo OSS
-  smoke harness;
 - cleanup inspection receipts that do not treat mutable run-bundle IDs as
   provider-mutation authority.
 
@@ -275,9 +272,6 @@ without changing its success standard.
   instead of one `RunStore` and `ResourceLease` boundary;
 - multi-origin shared-world is a ratified design direction, but remains
   unimplemented and gated on a real adopter proving the need;
-- live OSS meta-lab execution remains disabled until repository-derived
-  instructions have an isolated credential boundary; historical headed-lane
-  evidence does not make the current entrypoint available;
 - the README hero is the drawDB real-application study — a legible capture of a
   studied public subject, not a Humanish adopter; coverage beyond that single
   studied subject (the stratified breadth panel) remains open.
@@ -299,13 +293,6 @@ For local product feel:
 
 ```bash
 pnpm humanish -- watch
-```
-
-For public OSS dogfood without credentials:
-
-```bash
-pnpm humanish -- lab run oss --dry-run --json --no-open
-pnpm humanish -- lab run oss-smoke --limit 1 --json
 ```
 
 For private/local dogfood, author an ignored lab manifest under

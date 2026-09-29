@@ -7,8 +7,6 @@ import { describe, expect, it } from "vitest";
 
 import { runInit } from "../src/init.js";
 import { renderObserver, serveObserver } from "../src/observer.js";
-import { preflightOssMetaRepoAccess } from "../src/oss-meta-lab.js";
-import { runOssLab } from "../src/oss-lab.js";
 import { createProgram } from "../src/program.js";
 import { doctor, listRuns, runDryRun, verifyRun } from "../src/run.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../src/run-paths.js";
@@ -409,22 +407,6 @@ describe("run path containment", () => {
     });
   });
 
-  it("fails closed on symlinked OSS auxiliary storage before any network call", async () => {
-    await withTempProject(async (cwd, root) => {
-      const outside = path.join(root, "outside");
-      await mkdir(outside);
-      await writeFile(path.join(outside, "sentinel.txt"), "unchanged\n", "utf8");
-      await symlink(outside, path.join(cwd, ".humanish"));
-      await expect(
-        runOssLab({ cwd, repos: ["owner/repo"], limit: 1, runId: "oss-safe" }),
-      ).rejects.toThrow(/symbolic link/i);
-      await expect(preflightOssMetaRepoAccess({ assignments: [], cwd, env: {} })).rejects.toThrow(
-        /symbolic link/i,
-      );
-      expect(await readFile(path.join(outside, "sentinel.txt"), "utf8")).toBe("unchanged\n");
-    });
-  });
-
   it("wires every direct run producer through the shared path guard", async () => {
     const producers = [
       "run.ts",
@@ -438,8 +420,6 @@ describe("run path containment", () => {
       const source = await readFile(path.resolve("src", producer), "utf8");
       expect(source, producer).toContain("prepareRunArtifactPaths");
     }
-    const metaSource = await readFile(path.resolve("src", "oss-meta-lab.ts"), "utf8");
-    expect(metaSource).toContain("bindExistingRunArtifactPaths");
   });
 });
 

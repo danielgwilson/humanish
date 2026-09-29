@@ -14,20 +14,12 @@ const root = process.cwd();
 const outDir = path.join(root, "tests", "golden", "labs");
 mkdirSync(outDir, { recursive: true });
 
-// Only the two deterministic, no-network built-ins are golden-captured. oss-smoke performs a
-// real shallow clone even under --dry-run, so its backend (runOssLab) is covered directly by
-// tests/oss-lab.test.ts; a network-dependent golden would be flaky and add no faithfulness.
+// Only deterministic, no-network built-in labs are golden-captured.
 const LABS = [
   {
     id: "first-run",
     runId: "golden-first-run",
     extra: [],
-    artifact: (rid) => `.humanish/runs/${rid}/run.json`,
-  },
-  {
-    id: "oss",
-    runId: "golden-oss",
-    extra: ["--dry-run"],
     artifact: (rid) => `.humanish/runs/${rid}/run.json`,
   },
 ];

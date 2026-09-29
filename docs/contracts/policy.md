@@ -8,10 +8,7 @@ parser, route validation, and verifier determine whether a declared field is
 consumed, rejected, or reported as a warning.
 
 Safety amendment (2026-07-14): beginning with `0.15.1`, stored provider IDs are
-evidence and never authorize core provider mutation. The bundled OSS meta-lab
-is dry-run only; a live request fails before side effects until
-repository-derived instructions have an isolated credential boundary. Any
-historical live-OSS examples below do not override that fail-closed behavior.
+evidence and never authorize core provider mutation.
 
 ## Purpose
 
@@ -129,7 +126,7 @@ providerClasses:
   - model
   - desktop_substrate
 operatorIntent:
-  command: humanish lab run oss --json --no-open
+  command: humanish lab run my-lab --json --no-open
   explicit: true
 budget:
   limit: unspecified

@@ -10,9 +10,7 @@ import { resolveLabManifest } from "../src/labs.js";
 // only timestamps vary; normalizeTimestamps removes those. The bundle already redacts cwd to a
 // stable placeholder, so the comparison is environment-independent.
 //
-// first-run (synthetic) and oss (meta) are deterministic in dry-run. oss-smoke performs a real
-// network clone even in dry-run, so its live-clone faithfulness is a rung-4/5 concern, not this
-// deterministic gate.
+// first-run (synthetic) is deterministic in dry-run.
 
 const ROOT = process.cwd();
 
@@ -44,10 +42,7 @@ function normalizeBundle(value: unknown, inGitState = false): unknown {
   return value;
 }
 
-const GOLDENS = [
-  { id: "first-run", runId: "golden-first-run" },
-  { id: "oss", runId: "golden-oss" },
-] as const;
+const GOLDENS = [{ id: "first-run", runId: "golden-first-run" }] as const;
 
 describe("lab golden equivalence (rung 2: faithfulness)", () => {
   for (const golden of GOLDENS) {

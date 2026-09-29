@@ -17,8 +17,6 @@ import { createProgram } from "../src/program.js";
 const INTENTIONALLY_OMITTED = new Map<string, string>([
   ["help", "commander's built-in, not ours"],
   ["humanish", "the root command is the binary name, not an entry"],
-  ["lab oss", "maintainer-only meta-lab alias"],
-  ["lab oss-smoke", "maintainer-only smoke harness"],
 ]);
 
 function walk(command: Command, trail: string[] = []): string[] {

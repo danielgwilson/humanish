@@ -476,7 +476,7 @@ describe("loadAdapterScorer — route guards (declared gate that cannot run must
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it.each(["scripted", "synthetic", "meta", "smoke"] as const)(
+  it.each(["scripted", "synthetic"] as const)(
     "fails closed on the %s backend (UNSUPPORTED_BACKEND)",
     async (backend) => {
       await writeScorer(cwd, "scorer.mjs", PASS_SCORER);

@@ -154,9 +154,6 @@ retain their behavior.
 
 ## Gates And Deferred Work
 
-- Live OSS meta-lab execution remains disabled until repository-derived
-  instructions have an isolated credential boundary. Its dry-run and separate
-  disposable smoke harness do not open that gate.
 - [Multi-origin shared-world work](https://github.com/danielgwilson/humanish/issues/239)
   needs a real adopter's cross-origin requirement and a reviewed implementation
   packet. It has a ratified core-design direction, but the implementation gate is still closed.

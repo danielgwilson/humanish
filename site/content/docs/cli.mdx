@@ -618,15 +618,8 @@ humanish watch [options] [lab]
 | `--lab <id-or-path>` | Explicit lab id or .yaml path. |
 | `--run <id>` | Watch an existing run id or latest pointer. |
 | `--dry-run` | Lab only: render contract evidence without live provider spend. |
-| `--codex-app-server` | Lab only: use Codex app-server client mode for OSS headed desktops. |
 | `--sims <count>` | Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted. |
 | `--count <count>` | Lab only: override headed desktop lane count. |
-| `--limit <count>` | Lab only: override smoke lab repo limit. |
-| `--repo <owner/repo>` | Lab only: GitHub repo slug. Repeatable. (default: []) |
-| `--repos <owner/repo,...>` | Lab only: comma-separated GitHub repo slugs. |
-| `--redact-repos` | Lab only: redact repo labels in durable artifacts. |
-| `--no-redact-repos` | Lab only: persist repo labels. Use only for public-safe runs. |
-| `--keep` | Lab only: keep disposable clone sandbox for debugging. |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests. |
 | `--cwd <path>` | Target project directory. (default: ".") |
@@ -791,23 +784,6 @@ humanish lab preflight [options] <lab>
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
-### humanish lab cleanup
-
-Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.
-
-```text
-humanish lab cleanup [options] [lab]
-```
-
-| Argument | Description |
-| --- | --- |
-| `lab` | Provider-backed lab to clean up. (default: "oss") |
-
-| Option | Description |
-| --- | --- |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
 ### humanish lab run
 
 Run a Humanish lab manifest. Same as `humanish run &lt;lab&gt;`, grouped under `lab`.
@@ -823,74 +799,18 @@ humanish lab run [options] <lab>
 | Option | Description |
 | --- | --- |
 | `--env-file <path>` | Load a local env file for this lab without persisting values. |
-| `--dry-run` | Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode. |
-| `--codex-app-server` | Meta only: use Codex app-server client mode for headed desktop actor surfaces. |
+| `--dry-run` | Render contract evidence without live provider spend. |
 | `--open` | Open the observer in the default browser. |
 | `--no-open` | Render without opening a browser. |
 | `--detach` | Render/open once and exit without attached watch server. |
 | `--port <port>` | Local observer server port when following. (default: "0") |
 | `--sims <count>` | Override synthetic sims or headed desktop lanes. |
-| `--count <count>` | CUA/meta only: override headed desktop lane count. |
+| `--count <count>` | Computer-use only: override headed desktop lane count. |
 | `--rerun-failed-from <run>` | CUA fan-out only: create a new run for failed lanes from a prior run. |
 | `--lanes <lane-ids>` | CUA rerun only: comma-separated lane ids to rerun from the source run. |
-| `--limit <count>` | Smoke labs only: override repo limit. |
 | `--run-id <id>` | Explicit lab run id. |
 | `--cwd <path>` | Target project directory. (default: ".") |
-| `--repo <owner/repo>` | Smoke/meta only: GitHub repo slug. Repeatable. (default: []) |
-| `--repos <owner/repo,...>` | Smoke/meta only: comma-separated GitHub repo slugs. |
-| `--redact-repos` | Meta only: redact repo labels in durable lab artifacts. |
-| `--no-redact-repos` | Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs. |
-| `--keep` | Smoke labs only: keep disposable clone sandbox for debugging. |
 | `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish lab oss
-
-Alias: run the bundled OSS meta-lab dry-run contract.
-
-```text
-humanish lab oss [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--env-file <path>` | Load a local env file for this lab without persisting values. |
-| `--repos <owner/repo,...>` | Comma-separated GitHub repo slugs. |
-| `--repo <owner/repo>` | GitHub repo slug. Repeatable. (default: []) |
-| `--count <count>` | Number of contract lanes to assign. (default: "4") |
-| `--sims <count>` | Alias for --count. |
-| `--run-id <id>` | Explicit lab run id. |
-| `--cwd <path>` | Host directory for ignored .humanish lab report. (default: ".") |
-| `--dry-run` | Render the Observer-of-Observers contract without provider spend or live E2B launch (default). |
-| `--open` | Open the observer in the default browser. |
-| `--no-open` | Render without opening a browser. |
-| `--detach` | Render/open once and exit without attached watch server. |
-| `--redact-repos` | Redact repo labels in durable lab artifacts. |
-| `--no-redact-repos` | Persist repo labels in durable lab artifacts. Defaults to redacted when a GitHub token is present. |
-| `--port <port>` | Local observer server port when following. (default: "0") |
-| `--smoke` | Run the disposable local clone smoke harness instead of headed meta-sims. |
-| `--limit <count>` | Smoke mode only: number of selected repos to trial. (default: "4") |
-| `--keep` | Smoke mode only: keep disposable clone sandbox for debugging. |
-| `--json` | Print a machine-readable JSON response. |
-| `-h, --help` | display help for command |
-
-### humanish lab oss-smoke
-
-Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.
-
-```text
-humanish lab oss-smoke [options]
-```
-
-| Option | Description |
-| --- | --- |
-| `--repos <owner/repo,...>` | Comma-separated public GitHub repo slugs. |
-| `--repo <owner/repo>` | Public GitHub repo slug. Repeatable. (default: []) |
-| `--limit <count>` | Number of selected repos to trial. (default: "4") |
-| `--run-id <id>` | Explicit lab run id. |
-| `--cwd <path>` | Host directory for ignored .humanish lab report. (default: ".") |
-| `--keep` | Keep disposable clone sandbox for debugging. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 

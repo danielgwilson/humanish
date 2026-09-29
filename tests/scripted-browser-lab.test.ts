@@ -299,8 +299,8 @@ describe("lab routing (app-url × scripted-browser → scripted)", () => {
       throw new Error("fixture configs must parse");
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(smoke.config)).toBe("smoke");
-    expect(selectLabBackend(meta.config)).toBe("meta");
+    expect(selectLabBackend(smoke.config)).toBe("cua");
+    expect(selectLabBackend(meta.config)).toBe("cua");
   });
 
   it("library-API fallback: app-url with an UNREGISTERED actor type still routes to cua's fail-closed gate", async () => {

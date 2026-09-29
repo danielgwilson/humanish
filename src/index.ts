@@ -206,14 +206,6 @@ export type {
   ObserverStaticServer,
 } from "./observer-static.js";
 export {
-  DEFAULT_OSS_REPOS,
-  OSS_LAB_SCHEMA,
-  normalizeOssRepoSlugs,
-  runOssLab,
-  validateOssRepoSlug,
-} from "./oss-lab.js";
-export type { OssLabOptions, OssLabRepoResult, OssLabResult, OssLabStep } from "./oss-lab.js";
-export {
   CLEANUP_SCHEMA,
   DOCTOR_SCHEMA,
   REVIEW_SCHEMA,
