@@ -6,9 +6,7 @@ packages:
 # One version for every dependency shared across workspaces. Keep each at its latest release; a
 # comment beside an entry gives the reason when it is not.
 catalog:
-  # @base-ui/react 1.8.0 (the renamed package) fails 11 Observer browser-proof cases on phone overlays,
-  # rich controls and review checkboxes (bisected 2026-09-29). Migrate in its own PR, gated on those proofs.
-  "@base-ui-components/react": 1.0.0-rc.0
+  "@base-ui/react": ^1.8.0
   "@types/node": ^22.20.4 # tracks the engines.node floor (22), so code cannot use newer Node APIs
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0

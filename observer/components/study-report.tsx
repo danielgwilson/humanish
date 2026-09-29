@@ -1,4 +1,4 @@
-import { Accordion } from "@base-ui-components/react/accordion";
+import { Accordion } from "@base-ui/react/accordion";
 import { ArrowRight, ChevronDown, Info } from "lucide-react";
 import type { ObserverData } from "@/lib/observer-data";
 import { participantLabels } from "@/lib/participant-label";

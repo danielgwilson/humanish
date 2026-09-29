@@ -1,4 +1,4 @@
-import { Tooltip } from "@base-ui-components/react/tooltip";
+import { Tooltip } from "@base-ui/react/tooltip";
 import { useId, useState, type ComponentPropsWithRef, type ReactNode } from "react";
 
 export function IconButton({

@@ -1228,6 +1228,11 @@ button.arow:hover {
 @media (max-width: 880px) {
   /* the same popup presents as a bottom sheet: fixed to the viewport bottom with a
      grabber, per the Frame.io iOS grammar for secondary controls */
+  /* Base UI places the positioner with transform: translate(), which makes it the containing
+     block for a fixed child. Without the transform the sheet is fixed to the viewport. */
+  .observer-popover-positioner {
+    transform: none !important;
+  }
   .pop-panel {
     position: fixed !important;
     inset: auto 0 0 0 !important;

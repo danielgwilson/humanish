@@ -59,7 +59,7 @@ From the repo root (pnpm workspace):
   and wide content scrolls inside its own container — the page never scrolls
   sideways. Verify changes at 390px with real bundle data, not just desktop.
 - Interactive primitives start from Base UI (D6): anything needing focus
-  management, dismissal, or overlay behavior wraps a `@base-ui-components/react`
+  management, dismissal, or overlay behavior wraps a `@base-ui/react`
   primitive (vendored under `components/ui/`, styled only by humanish tokens),
   never a hand-rolled portal. Static idioms (cards, chips, labels) stay
   token-styled CSS. Wrapped primitives are registry-promotion candidates once a
