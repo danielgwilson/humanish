@@ -77,9 +77,9 @@ repo-owned `humanish/` files and package-owned docs.
 
 New projects should get a boring, legible format stack:
 
-- `.yaml` for human-authored Humanish source such as personas, scenarios,
-  policies, labs, and review vocabulary;
-- `.ts` for executable integration such as `humanish/config.ts` and adapters;
+- `.yaml` for human-authored Humanish source such as labs, personas and
+  scenarios;
+- `.mjs` for executable adopter scorers;
 - `.json` and `.ndjson` for generated run artifacts, Observer data, review
   output, event streams, and synthetic fixtures.
 

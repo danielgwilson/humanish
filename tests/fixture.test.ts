@@ -19,7 +19,9 @@ describe("minimal target app fixture", () => {
 
     expect(result.ok).toBe(true);
     expect(result.mode).toBe("dry-run");
-    expect(result.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
+    expect(result.changes.some((change) => change.path === "humanish/labs/first-run.yaml")).toBe(
+      true,
+    );
     await expect(stat(path.join(fixturePath, "humanish"))).rejects.toMatchObject({
       code: "ENOENT",
     });

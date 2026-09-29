@@ -21,7 +21,7 @@ describe("agent skill guidance", () => {
     expect(skill).toContain("npm i -D @e2b/desktop");
     expect(skill).toContain("## Format Stack");
     expect(skill).toContain("use `.yaml` for human-authored Humanish source");
-    expect(skill).toContain("use `.ts` for executable integration");
+    expect(skill).toContain("use `.mjs` for executable adopter scorers");
     expect(skill).toContain("use `.json` or `.ndjson` for generated machine artifacts");
     expect(skill).toContain("Do not create `.yml` files under `humanish/`");
 

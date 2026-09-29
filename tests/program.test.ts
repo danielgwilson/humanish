@@ -311,7 +311,9 @@ describe("humanish CLI scaffold", () => {
         expect(envelope.schema).toBe("humanish.init-result.v1");
         expect(envelope.ok).toBe(true);
         expect(envelope.mode).toBe("dry-run");
-        expect(envelope.changes.some((change) => change.path === "humanish/config.ts")).toBe(true);
+        expect(
+          envelope.changes.some((change) => change.path === "humanish/labs/first-run.yaml"),
+        ).toBe(true);
 
         await expect(stat(path.join(cwd, "humanish"))).rejects.toMatchObject({ code: "ENOENT" });
         const packageJson = (await readJson(path.join(cwd, "package.json"))) as {

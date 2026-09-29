@@ -1,37 +1,19 @@
-# Humanish Dogfood Config
+# humanish/ in this repository
 
-This directory is the committed source plane for dogfooding `humanish` with
-Humanish itself.
+This directory is the committed study source for the humanish repository, which
+studies humanish itself. `humanish init` creates the same layout in other projects.
 
-Current scope:
+- `labs/*.yaml`: lab manifests. Run one with `humanish lab run <lab>` or
+  `humanish watch <lab>`.
+- `personas/*.yaml`: persona definitions that labs reference by id.
+- `scenarios/*.yaml`: scenario definitions, including executable browser steps
+  under `browser.steps`.
+- `fixtures/`: synthetic apps that labs start, such as the shared-world app.
+- `coverage-map.md`, `coverage-matrix.md`: which product surfaces the labs cover.
 
-- public-safe synthetic CLI personas;
-- one-command `watch` contract proof over the package, command tree, observer,
-  and feedback issue path;
-- one explicit 1-4 lane `codex-exec` local actor fanout proof path;
-- active-run Observer data refresh while `codex-exec` actor lanes are running;
-- one explicit 1x Codex TUI actor path with exact workspace-trust preflight,
-  terminal startup responses, and sanitized verdict-marker classification;
-- active-run Observer data refresh while the 1x Codex TUI actor is running;
-- no E2B, GitHub mutation, production data, or private artifacts in local
-  dogfood runs.
+Everything here is public: synthetic personas and fixtures, env var names without
+values. Run bundles, screenshots, transcripts and local overrides go to the
+gitignored `.humanish/`.
 
-Generated run bundles, observer HTML, review packets, logs, and local overrides
-belong in ignored `.humanish/`.
-
-Format standard:
-
-- human-authored Humanish source uses `.yaml`;
-- executable integration uses `.ts`;
-- generated artifacts, synthetic fixtures, and event streams use `.json` or
-  `.ndjson`;
-- `.yml` is reserved for outside ecosystem files such as GitHub Actions, not
-  Humanish source.
-
-Executable browser journeys live in `humanish/scenarios/*.yaml` under
-`browser.steps`. `humanish run --app-url <loopback-url>` uses those steps when
-present and falls back to the built-in two-step browser persona proof when no
-executable browser scenario exists.
-
-This config is the first full local TUI harness target; future slices can decide
-whether TUI-specific fanout is needed beyond the current `codex-exec` fanout.
+Authored source uses `.yaml`. Generated artifacts and fixtures use `.json` or
+`.ndjson`. `.yml` is kept for outside tools such as GitHub Actions.
