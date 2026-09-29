@@ -78,7 +78,7 @@ describe("lab config expressiveness (rung 3)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // Routes to the E2B desktop backend purely from config — no new engine code.
-    expect(selectLabBackend(result.config)).toBe("meta");
+    expect(selectLabBackend(result.config)).toBe("cua");
     // The mission is forward-declared today and surfaced as a warning, never silently consumed.
     expect(result.warnings.join(" ")).toContain("actors[0].mission");
   });

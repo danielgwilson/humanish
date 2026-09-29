@@ -2475,9 +2475,8 @@ function buildCodexExecCommand(args: {
   const quotedPrompt = `'${args.prompt.replace(/'/g, "'\\''")}'`;
   // --dangerously-bypass-approvals-and-sandbox: codex's OWN inner sandbox is
   // redundant here and blocks the network/file access the study mission needs.
-  // The E2B sandbox is the trust boundary (the disposable machine); the sibling
-  // oss-meta-lab lane carries the same flag at both live call sites for the
-  // same reason, and exec mode has no interactive approval channel at all.
+  // The E2B sandbox is the trust boundary (the disposable machine), and exec mode has no
+  // interactive approval channel at all.
   // The egress transform protects only the default OpenAI host. Pin the effective built-in
   // provider/base URL above config-file settings so setup-written custom endpoints cannot make
   // this invocation silently claim protection for another provider. openai-env is unchanged.

@@ -12,9 +12,7 @@
     "tests/fixtures/**",
     "tests/golden/**",
     "**/*.d.ts",
-    "**/*.d.mts",
-    // Scheduled for deletion (cleanup plan D1); its live path has been unreachable since 2026-07-14.
-    "src/oss-meta-lab.ts"
+    "**/*.d.mts"
   ],
   "rules": {
     "typescript/no-floating-promises": "error",

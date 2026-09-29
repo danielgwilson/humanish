@@ -8,8 +8,6 @@ import { runSharedWorldLab } from "../src/shared-world-lab.js";
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
 import * as synthetic from "../src/run.js";
-import * as smoke from "../src/oss-lab.js";
-import * as meta from "../src/oss-meta-lab.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -49,11 +47,7 @@ describe("real receiving admission on non-receiving backends", () => {
       const forbidden = vi.fn(async () => {
         throw new Error("must not invoke runtime");
       });
-      const generic = [
-        vi.spyOn(synthetic, "runDryRun"),
-        vi.spyOn(smoke, "runOssLab"),
-        vi.spyOn(meta, "runOssMetaLab"),
-      ];
+      const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
       const hooks = {
         env: {},
@@ -73,7 +67,7 @@ describe("real receiving admission on non-receiving backends", () => {
         expect(outcome.backend).toBe(backend);
         expect(outcome.result.ok).toBe(false);
         expect(outcome.result.error?.message).toMatch(/Real email receiving is unsupported/);
-        if (["synthetic", "smoke", "meta"].includes(backend)) {
+        if (backend === "synthetic") {
           expect(outcome.result.error?.code).toBe("HUMANISH_LAB_COMMS_UNSUPPORTED");
         }
       }

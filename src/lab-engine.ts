@@ -2,8 +2,8 @@ import { isLocalBrowserLab, localBrowserDefaults } from "./local-runtime-config.
 // The single lab engine. A lab is a config (humanish.lab.v2); runLab routes it to an execution
 // backend by COMPOSITION — subject.source x execution.target — not by a hardcoded `kind`.
 //
-// Eight backends currently ship: synthetic, smoke, meta, computer-use, scripted-browser,
-// terminal-product, sequential shared-world, and concurrent shared-world. runLab is the one entry
+// Six backends ship: synthetic, computer-use, scripted-browser, terminal-product, sequential
+// shared-world, and concurrent shared-world. runLab is the one entry
 // that maps config -> backend options. Core contributors extend the closed first-party actor union
 // and these selectors rather than adding a lab `kind`. On actor-backed routes, subject x execution
 // selects the substrate while actors[0].type selects a registered first-party actor.
@@ -31,8 +31,6 @@ import {
   runConcurrentSharedWorld,
   type ConcurrentSharedWorldLabResult,
 } from "./concurrent-shared-world-lab.js";
-import { DEFAULT_OSS_REPOS, runOssLab, type OssLabResult } from "./oss-lab.js";
-import { runOssMetaLab, type OssMetaLabResult } from "./oss-meta-lab.js";
 import { withRunStatusScope, type RunLabProvenance } from "./run-status.js";
 import type { ObserverResult } from "./observer.js";
 import { runDryRun, type RunResult, type RunScorerProvenance } from "./run.js";
@@ -49,8 +47,6 @@ import {
 
 export type LabBackend =
   | "synthetic"
-  | "smoke"
-  | "meta"
   | "cua"
   | "scripted"
   | "terminal"
@@ -68,19 +64,13 @@ export interface RunLabOptions {
   lab?: RunLabProvenance;
   dryRun?: boolean;
   open?: boolean;
-  /** Lane override: synthetic sims, smoke repo limit, or meta desktop count. */
+  /** Lane override: synthetic sims or computer-use desktop count. */
   count?: number;
   /** CUA fan-out only: create a new run for failed/selected lanes from a prior run. */
   rerun?: {
     sourceRunId: string;
     laneIds?: string[];
   };
-  repos?: string[];
-  keep?: boolean;
-  redactRepos?: boolean;
-  codexAppServer?: boolean;
-  /** Meta watch-follow plumbing. */
-  completionTimeoutMs?: number;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Computer-use route hooks: subject provisioning (library callers) + test DI seams. */
   cuaHooks?: CuaActorLabHooks;
@@ -101,8 +91,6 @@ export interface RunLabOptions {
 
 export type LabOutcome =
   | { backend: "synthetic"; result: RunResult }
-  | { backend: "smoke"; result: OssLabResult }
-  | { backend: "meta"; result: OssMetaLabResult }
   | { backend: "cua"; result: CuaActorLabResult }
   | { backend: "scripted"; result: ScriptedBrowserLabResult }
   | { backend: "terminal"; result: TerminalProductLabResult }
@@ -149,6 +137,7 @@ export function selectLabBackend(config: LabConfig): LabBackend {
   if (
     routesToComputerUse(config) ||
     config.subject.source === "app-url" ||
+    config.subject.source === "clone" ||
     config.subject.source === "local-app" ||
     config.subject.source === "local-tree"
   ) {
@@ -162,9 +151,6 @@ export function selectLabBackend(config: LabConfig): LabBackend {
     // HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR) instead of silently falling through to the synthetic
     // backend below, which would run no real actor at all against a packed tree.
     return "cua";
-  }
-  if (config.subject.source === "clone") {
-    return config.execution?.target === "e2b-desktop" ? "meta" : "smoke";
   }
   // this-repo runs through the synthetic dry-run path (runDryRun).
   return "synthetic";
@@ -214,7 +200,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       : undefined;
   const tasksReason = analysisReason ?? taskProtocolValidationReason(config);
   const admissionReason = receivingReason ?? tasksReason;
-  if (admissionReason && (backend === "synthetic" || backend === "smoke" || backend === "meta")) {
+  if (admissionReason && backend === "synthetic") {
     const cwd = path.resolve(options.cwd);
     const code = receivingReason
       ? "HUMANISH_LAB_COMMS_UNSUPPORTED"
@@ -224,53 +210,17 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
           : "HUMANISH_LAB_ANALYSIS_INVALID"
         : "HUMANISH_LAB_TASKS_UNSUPPORTED";
     const error = { code, message: admissionReason } as const;
-    if (backend === "synthetic")
-      return {
-        backend,
-        result: {
-          schema: "humanish.run-result.v1",
-          ok: false,
-          cwd,
-          warnings: [],
-          error,
-        },
-      };
-    if (backend === "meta")
-      return {
-        backend,
-        result: {
-          schema: "humanish.oss-meta-lab-result.v1",
-          ok: false,
-          cwd,
-          warnings: [],
-          error,
-          dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
-          liveRequested: resolveLabDryRun(config, options.dryRun, true) === false,
-          assignments: [],
-          repos: [],
-          sandboxes: [],
-        },
-      };
-    const at = new Date().toISOString();
     return {
       backend,
       result: {
-        schema: "humanish.oss-lab-result.v1",
+        schema: "humanish.run-result.v1",
         ok: false,
         cwd,
         warnings: [],
         error,
-        runId: options.runId ?? "not-created",
-        startedAt: at,
-        completedAt: at,
-        sandboxPath: "",
-        repos: [],
-        cleanup: { kept: false, sandboxRemoved: false },
       },
     };
   }
-  const fanout =
-    config.subject.clone?.fanout ?? config.subject.repos?.length ?? DEFAULT_OSS_REPOS.length;
 
   switch (backend) {
     case "synthetic": {
@@ -279,43 +229,6 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
         cwd: options.cwd,
         dryRun: resolveLabDryRun(config, options.dryRun, true) ?? true,
         simCount: options.count ?? actorLaneCount(config) ?? 4,
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-      });
-      return { backend, result };
-    }
-    case "smoke": {
-      const keep = options.keep ?? config.subject.clone?.keep;
-      const repos = options.repos ?? config.subject.repos;
-      const result = await runOssLab({
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        limit: options.count ?? fanout,
-        ...(repos === undefined ? {} : { repos }),
-        ...(keep === undefined ? {} : { keep }),
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-      });
-      return { backend, result };
-    }
-    case "meta": {
-      const dryRun = resolveLabDryRun(config, options.dryRun, undefined);
-      const redactRepoNames = options.redactRepos ?? config.policies?.redactRepos;
-      const codexAppServer = options.codexAppServer ?? config.execution?.desktop?.codexAppServer;
-      const metaRepos = options.repos ?? config.subject.repos;
-      const result = await runOssMetaLab({
-        ...(options.lab === undefined ? {} : { lab: options.lab }),
-        cwd: options.cwd,
-        count: options.count ?? fanout,
-        ...(metaRepos === undefined ? {} : { repos: metaRepos }),
-        ...(dryRun === undefined ? {} : { dryRun }),
-        ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-        ...(codexAppServer === undefined ? {} : { codexAppServer }),
-        ...(options.open === undefined ? {} : { open: options.open }),
-        ...(options.completionTimeoutMs === undefined
-          ? {}
-          : { completionTimeoutMs: options.completionTimeoutMs }),
-        ...(options.onObserverReady === undefined
-          ? {}
-          : { onObserverReady: options.onObserverReady }),
         ...(options.runId === undefined ? {} : { runId: options.runId }),
       });
       return { backend, result };

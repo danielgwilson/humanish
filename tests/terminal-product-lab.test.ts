@@ -359,7 +359,7 @@ describe("REGRESSION: cua/scripted/local-app/synthetic/meta routing + warnings u
     expect(selectLabBackend(cua.config)).toBe("cua");
     expect(selectLabBackend(scripted.config)).toBe("scripted");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(meta.config)).toBe("meta");
+    expect(selectLabBackend(meta.config)).toBe("cua");
     // Terminal predicate is false for every non-terminal config; cua/scripted predicates false for terminal.
     expect(routesToTerminalProduct(cua.config)).toBe(false);
     expect(routesToTerminalProduct(scripted.config)).toBe(false);

@@ -2647,8 +2647,8 @@ describe("shared-world topology routing + cross-validation (#164)", () => {
       if (result.ok) expect(routesToSharedWorld(result.config)).toBe(false);
     }
     if (synthetic.ok) expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    if (smoke.ok) expect(selectLabBackend(smoke.config)).toBe("smoke");
-    if (meta.ok) expect(selectLabBackend(meta.config)).toBe("meta");
+    if (smoke.ok) expect(selectLabBackend(smoke.config)).toBe("cua");
+    if (meta.ok) expect(selectLabBackend(meta.config)).toBe("cua");
     if (scripted.ok) expect(selectLabBackend(scripted.config)).toBe("scripted");
     if (terminal.ok) expect(selectLabBackend(terminal.config)).toBe("terminal");
   });

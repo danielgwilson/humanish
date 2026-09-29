@@ -90,15 +90,6 @@ import { startExposedObserver, validateExposure } from "./serve-exposure.js";
 import type { ExposureRequest } from "./serve-exposure.js";
 import { ServeTunnelError } from "./serve-tunnel.js";
 import type { ServeTunnel } from "./serve-tunnel.js";
-import { DEFAULT_OSS_REPOS, runOssLab } from "./oss-lab.js";
-import type { OssLabResult } from "./oss-lab.js";
-import {
-  cleanupOssMetaLabSandboxes,
-  cleanupStaleOssMetaLabSandboxes,
-  runOssMetaLab,
-  startOssMetaLabLiveRefresh,
-} from "./oss-meta-lab.js";
-import type { OssMetaLabResult } from "./oss-meta-lab.js";
 import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "./run.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "./reclaim.js";
 import { RunIndexCache, readRunIndex } from "./run-index.js";
@@ -160,21 +151,15 @@ export interface UnexpectedErrorEnvelope {
 const JSON_OPTION_DESCRIPTION = "Print a machine-readable JSON response.";
 
 interface LabCommandOptions {
-  codexAppServer?: boolean | undefined;
   count?: string | undefined;
   cwd: string;
   detach?: boolean | undefined;
   dryRun?: boolean | undefined;
   envFile?: string | undefined;
   json?: boolean | undefined;
-  keep?: boolean | undefined;
   lanes?: string | undefined;
-  limit?: string | undefined;
   open?: boolean | undefined;
   port?: string | undefined;
-  redactRepos?: boolean | undefined;
-  repo?: string[] | undefined;
-  repos?: string | undefined;
   rerunFailedFrom?: string | undefined;
   runId?: string | undefined;
   /** #316: repo-relative path to an adopter scorer module; overrides review.scorer.ref when set. */
@@ -2393,20 +2378,10 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--run <id>", "Watch an existing run id or latest pointer.")
     .option("--dry-run", "Lab only: render contract evidence without live provider spend.")
     .option(
-      "--codex-app-server",
-      "Lab only: use Codex app-server client mode for OSS headed desktops.",
-    )
-    .option(
       "--sims <count>",
       "Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted.",
     )
     .option("--count <count>", "Lab only: override headed desktop lane count.")
-    .option("--limit <count>", "Lab only: override smoke lab repo limit.")
-    .option("--repo <owner/repo>", "Lab only: GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option("--repos <owner/repo,...>", "Lab only: comma-separated GitHub repo slugs.")
-    .option("--redact-repos", "Lab only: redact repo labels in durable artifacts.")
-    .option("--no-redact-repos", "Lab only: persist repo labels. Use only for public-safe runs.")
-    .option("--keep", "Lab only: keep disposable clone sandbox for debugging.")
     .option(
       "--scorer <path>",
       "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
@@ -2484,20 +2459,14 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
         options: {
           cwd: string;
           count?: string;
-          codexAppServer?: boolean;
           detach?: boolean;
           dryRun?: boolean;
           envFile?: string;
           follow?: boolean;
           json?: boolean;
-          keep?: boolean;
           lab?: string;
-          limit?: string;
           open?: boolean;
           port: string;
-          redactRepos?: boolean;
-          repo: string[];
-          repos?: string;
           run?: string;
           runId?: string;
           scorer?: string;
@@ -2567,18 +2536,10 @@ function registerWatchCommand(parent: Command, io: CliIo): void {
             options: {
               cwd: options.cwd,
               ...(options.count === undefined ? {} : { count: options.count }),
-              ...(options.codexAppServer === undefined
-                ? {}
-                : { codexAppServer: options.codexAppServer }),
               ...(options.detach === undefined ? {} : { detach: options.detach }),
               ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-              ...(options.keep === undefined ? {} : { keep: options.keep }),
-              ...(options.limit === undefined ? {} : { limit: options.limit }),
               ...(options.open === undefined ? {} : { open: options.open }),
               port: options.port,
-              ...(options.redactRepos === undefined ? {} : { redactRepos: options.redactRepos }),
-              repo: options.repo,
-              ...(options.repos === undefined ? {} : { repos: options.repos }),
               ...(options.runId === undefined ? {} : { runId: options.runId }),
               ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
               ...(options.sims === undefined ? {} : { sims: options.sims }),
@@ -3477,55 +3438,17 @@ function registerLabCommands(parent: Command, io: CliIo): void {
     );
 
   lab
-    .command("cleanup")
-    .argument("[lab]", "Provider-backed lab to clean up.", "oss")
-    .description(
-      "Sweep stale provider resources from a crashed prior process, by provider metadata, without printing provider ids. humanish never enumerates an account by default: set HUMANISH_OSS_META_ALLOW_PROVIDER_LIST=1 to opt in for this maintainer-only sweep.",
-    )
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (labName: string, _options: { json?: boolean }, command) => {
-      if (labName !== "oss") {
-        const result = {
-          schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
-          ok: false,
-          lab: labName,
-          cleanup: { killed: 0, skipped: 0, errors: [`Unsupported cleanup lab '${labName}'.`] },
-        };
-        writeResult(command, io, result, formatOssMetaLabCleanupHuman);
-        io.setExitCode(2);
-        return;
-      }
-
-      const cleanup = await cleanupStaleOssMetaLabSandboxes();
-      const result = {
-        schema: "humanish.oss-meta-lab-cleanup-result.v1" as const,
-        ok: cleanup.errors.length === 0,
-        lab: "oss",
-        cleanup,
-      };
-      writeResult(command, io, result, formatOssMetaLabCleanupHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
-
-  lab
     .command("run")
     .argument("<lab>", "Lab id or .yaml path.")
     .description("Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.")
     .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
-    .option(
-      "--dry-run",
-      "Render contract evidence without live provider spend. The bundled OSS lab defaults to this mode.",
-    )
-    .option(
-      "--codex-app-server",
-      "Meta only: use Codex app-server client mode for headed desktop actor surfaces.",
-    )
+    .option("--dry-run", "Render contract evidence without live provider spend.")
     .option("--open", "Open the observer in the default browser.")
     .option("--no-open", "Render without opening a browser.")
     .option("--detach", "Render/open once and exit without attached watch server.")
     .option("--port <port>", "Local observer server port when following.", "0")
     .option("--sims <count>", "Override synthetic sims or headed desktop lanes.")
-    .option("--count <count>", "CUA/meta only: override headed desktop lane count.")
+    .option("--count <count>", "Computer-use only: override headed desktop lane count.")
     .option(
       "--rerun-failed-from <run>",
       "CUA fan-out only: create a new run for failed lanes from a prior run.",
@@ -3534,22 +3457,8 @@ function registerLabCommands(parent: Command, io: CliIo): void {
       "--lanes <lane-ids>",
       "CUA rerun only: comma-separated lane ids to rerun from the source run.",
     )
-    .option("--limit <count>", "Smoke labs only: override repo limit.")
     .option("--run-id <id>", "Explicit lab run id.")
     .option("--cwd <path>", "Target project directory.", ".")
-    .option(
-      "--repo <owner/repo>",
-      "Smoke/meta only: GitHub repo slug. Repeatable.",
-      collectRepeated,
-      [],
-    )
-    .option("--repos <owner/repo,...>", "Smoke/meta only: comma-separated GitHub repo slugs.")
-    .option("--redact-repos", "Meta only: redact repo labels in durable lab artifacts.")
-    .option(
-      "--no-redact-repos",
-      "Meta only: persist repo labels in durable lab artifacts. Use only for public-safe runs.",
-    )
-    .option("--keep", "Smoke labs only: keep disposable clone sandbox for debugging.")
     .option(
       "--scorer <path>",
       "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
@@ -3562,16 +3471,12 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         "Examples:",
         "  humanish lab run first-run",
         "  humanish lab run fanout-demo --rerun-failed-from latest --lanes lane-02,lane-04",
-        "  humanish lab run oss --dry-run --json --no-open",
         "  humanish lab run my-terminal-lab --scorer scorers/product.mjs",
         "  humanish lab run .humanish/labs/private-dogfood.yaml --env-file .humanish/local/provider.env",
         "",
         "Human watch path:",
         "  humanish watch first-run",
         "  humanish watch --lab .humanish/labs/local.yaml",
-        "",
-        "OSS safety:",
-        "  Live OSS meta-lab manifests fail closed pending credential isolation.",
       ].join("\n"),
     )
     .action(async (labName: string, options: LabCommandOptions, command) => {
@@ -3594,307 +3499,6 @@ function registerLabCommands(parent: Command, io: CliIo): void {
         options,
       });
     });
-
-  lab
-    .command("oss", { hidden: true })
-    .description("Alias: run the bundled OSS meta-lab dry-run contract.")
-    .option("--env-file <path>", "Load a local env file for this lab without persisting values.")
-    .option("--repos <owner/repo,...>", "Comma-separated GitHub repo slugs.")
-    .option("--repo <owner/repo>", "GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option(
-      "--count <count>",
-      "Number of contract lanes to assign.",
-      String(DEFAULT_OSS_REPOS.length),
-    )
-    .option("--sims <count>", "Alias for --count.")
-    .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
-    .option(
-      "--dry-run",
-      "Render the Observer-of-Observers contract without provider spend or live E2B launch (default).",
-    )
-    .option("--open", "Open the observer in the default browser.")
-    .option("--no-open", "Render without opening a browser.")
-    .option("--detach", "Render/open once and exit without attached watch server.")
-    .option("--redact-repos", "Redact repo labels in durable lab artifacts.")
-    .option(
-      "--no-redact-repos",
-      "Persist repo labels in durable lab artifacts. Defaults to redacted when a GitHub token is present.",
-    )
-    .option("--port <port>", "Local observer server port when following.", "0")
-    .option("--smoke", "Run the disposable local clone smoke harness instead of headed meta-sims.")
-    .option(
-      "--limit <count>",
-      "Smoke mode only: number of selected repos to trial.",
-      String(DEFAULT_OSS_REPOS.length),
-    )
-    .option("--keep", "Smoke mode only: keep disposable clone sandbox for debugging.")
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .addHelpText(
-      "after",
-      [
-        "",
-        "Preferred paths:",
-        "  humanish watch oss",
-        "  humanish lab run oss --dry-run",
-        "",
-        "Repo selection:",
-        "  humanish watch --lab .humanish/labs/local-oss.yaml",
-        "  humanish lab run oss --repos CorentinTh/it-tools,drawdb-io/drawdb,maciekt07/TodoApp,lissy93/dashy",
-        "  humanish lab run oss --repo CorentinTh/it-tools --repo drawdb-io/drawdb --count 4",
-        "",
-        "Agent/CI path:",
-        "  humanish lab run oss --dry-run --json --no-open",
-        "",
-        "Disposable clone smoke:",
-        "  humanish lab run oss-smoke --limit 1 --keep",
-        "  humanish lab oss-smoke --limit 1 --keep",
-        "",
-        "Shape:",
-        "  The top-level Observer shows contract-only lanes for the selected repo labels.",
-        "  No repo clone, provider sandbox, credential forwarding, or Codex actor runs.",
-        "",
-        "Safety:",
-        "  Only GitHub owner/repo slugs are accepted. Live OSS meta-lab execution",
-        "  fails closed pending credential isolation. Repo labels are redacted by",
-        "  default when overridden; use --no-redact-repos only for public-safe repos.",
-      ].join("\n"),
-    )
-    .action(
-      async (
-        options: {
-          count: string;
-          codexAppServer?: boolean;
-          cwd: string;
-          detach?: boolean;
-          dryRun?: boolean;
-          envFile?: string;
-          json?: boolean;
-          keep?: boolean;
-          limit: string;
-          open?: boolean;
-          port: string;
-          redactRepos?: boolean;
-          repo: string[];
-          repos?: string;
-          runId?: string;
-          sims?: string;
-          smoke?: boolean;
-        },
-        command,
-      ) => {
-        if (
-          !(await applyEnvFileOption({
-            command,
-            cwd: options.cwd,
-            envFile: options.envFile,
-            io,
-          }))
-        ) {
-          return;
-        }
-
-        if (options.smoke) {
-          await runOssSmokeAction({ command, io, options });
-          return;
-        }
-
-        const countInput = options.sims ?? options.count;
-        const count = parsePositiveInteger(countInput);
-        const dryRun = options.dryRun ?? true;
-        const port = parseObserverPort(options.port);
-        if (port === null) {
-          const result: OssMetaLabResult = {
-            schema: "humanish.oss-meta-lab-result.v1",
-            ok: false,
-            assignments: [],
-            cwd: options.cwd,
-            dryRun,
-            error: {
-              code: "HUMANISH_META_RUN_FAILED",
-              message: "--port must be an integer between 0 and 65535.",
-            },
-            liveRequested: !dryRun,
-            repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
-            sandboxes: [],
-            warnings: [],
-          };
-          writeResult(command, io, result, formatOssMetaLabHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        const wantsMachine = wantsJson(command);
-        const shouldOpen =
-          options.open === false
-            ? false
-            : options.open === true
-              ? true
-              : !wantsMachine && process.stdout.isTTY === true;
-        const wantsFollow = !wantsMachine && options.detach !== true && !dryRun;
-        const repoOverrideRequested = options.repo.length > 0 || options.repos !== undefined;
-        const redactRepoNames = options.redactRepos ?? (repoOverrideRequested ? true : undefined);
-        let server: ObserverServer | null = null;
-        let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
-        let result: OssMetaLabResult;
-        try {
-          result = await runOssMetaLab({
-            ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
-            ...(options.codexAppServer === undefined
-              ? {}
-              : { codexAppServer: options.codexAppServer }),
-            cwd: options.cwd,
-            ...(wantsFollow
-              ? {
-                  onObserverReady: async (observer) => {
-                    if (!server) {
-                      server = await serveObserver(observer, { open: shouldOpen, port });
-                    }
-                  },
-                }
-              : {}),
-            open: wantsFollow ? false : shouldOpen,
-            ...(redactRepoNames === undefined ? {} : { redactRepoNames }),
-            repos: [...options.repo, ...(options.repos ? [options.repos] : [])],
-            ...(count === null ? { count: Number.NaN } : { count }),
-            dryRun,
-            ...(options.runId === undefined ? {} : { runId: options.runId }),
-          });
-        } catch (error) {
-          const earlyServer = server as ObserverServer | null;
-          await earlyServer?.close().catch((cleanupError: unknown) => {
-            io.writeErr(
-              `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
-            );
-          });
-          server = null;
-          throw error;
-        }
-
-        let output = result;
-        if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
-          liveRefresh = startOssMetaLabLiveRefresh(result);
-          output = withOssMetaLabServer(result, server);
-        } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
-          server = await serveObserver(result.observer, { open: shouldOpen, port });
-          liveRefresh = startOssMetaLabLiveRefresh(result);
-          output = withOssMetaLabServer(result, server);
-        } else {
-          const earlyServer = server as ObserverServer | null;
-          await earlyServer?.close().catch((error: unknown) => {
-            io.writeErr(
-              `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
-            );
-          });
-          server = null;
-        }
-
-        const exitCode = exitCodeForOssMetaLab(output);
-        writeResult(command, io, output, formatOssMetaLabHuman);
-        io.setExitCode(exitCode);
-
-        if (
-          shouldForceExitAfterOssMetaLab(output, { detach: options.detach === true, wantsMachine })
-        ) {
-          // The E2B SDK keeps local handles open after stream URL creation. Detach should
-          // return the user's shell, and JSON mode should exit after printing the result.
-          setTimeout(() => process.exit(exitCode), 50);
-        }
-
-        if (server && output.observer?.ok) {
-          await followObserver(
-            io,
-            output.observer,
-            server,
-            output.liveRequested
-              ? {
-                  onStop: async () => {
-                    const cleanup = liveRefresh
-                      ? await liveRefresh.cleanup()
-                      : await cleanupOssMetaLabSandboxes(output);
-                    return [
-                      `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-                      ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`),
-                    ];
-                  },
-                }
-              : {},
-          );
-        }
-      },
-    );
-
-  lab
-    .command("oss-smoke", { hidden: true })
-    .description(
-      "Clone lightweight public OSS repos, try Humanish setup/proof, then discard clones.",
-    )
-    .option("--repos <owner/repo,...>", "Comma-separated public GitHub repo slugs.")
-    .option("--repo <owner/repo>", "Public GitHub repo slug. Repeatable.", collectRepeated, [])
-    .option(
-      "--limit <count>",
-      "Number of selected repos to trial.",
-      String(DEFAULT_OSS_REPOS.length),
-    )
-    .option("--run-id <id>", "Explicit lab run id.")
-    .option("--cwd <path>", "Host directory for ignored .humanish lab report.", ".")
-    .option("--keep", "Keep disposable clone sandbox for debugging.")
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .addHelpText(
-      "after",
-      [
-        "",
-        "Examples:",
-        "  humanish lab oss-smoke",
-        "  humanish lab oss-smoke --repos CorentinTh/it-tools,drawdb-io/drawdb",
-        "  humanish lab oss-smoke --limit 1 --keep --json",
-        "",
-        "Safety:",
-        "  Only public GitHub owner/repo slugs are accepted. Clones live under ignored .humanish/",
-        "  runtime state and are removed by default.",
-      ].join("\n"),
-    )
-    .action(
-      async (
-        options: {
-          cwd: string;
-          json?: boolean;
-          keep?: boolean;
-          limit: string;
-          repo: string[];
-          repos?: string;
-          runId?: string;
-        },
-        command,
-      ) => {
-        await runOssSmokeAction({ command, io, options });
-      },
-    );
-}
-
-async function runOssSmokeAction(args: {
-  command: Command;
-  io: CliIo;
-  options: {
-    cwd: string;
-    keep?: boolean;
-    limit: string;
-    repo: string[];
-    repos?: string;
-    runId?: string;
-  };
-}): Promise<void> {
-  const limit = parsePositiveInteger(args.options.limit);
-  const labOptions = {
-    cwd: args.options.cwd,
-    limit: limit ?? Number.NaN,
-    repos: [...args.options.repo, ...(args.options.repos ? [args.options.repos] : [])],
-    ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-  };
-  const result = await runOssLab(labOptions);
-  writeResult(args.command, args.io, result, formatOssLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
 }
 
 /** A CONFIG-DECLARED scorer that resolved + loaded fail-closed, ready to thread into a backend. */
@@ -4035,12 +3639,6 @@ async function runLabCommand(args: {
   switch (backend) {
     case "synthetic":
       await runSyntheticBackend({ ...args, config, labProvenance: lab });
-      return;
-    case "meta":
-      await runMetaBackend({ ...args, config, labProvenance: lab });
-      return;
-    case "smoke":
-      await runSmokeBackend({ ...args, config, labProvenance: lab });
       return;
     case "cua":
       await runCuaBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
@@ -4834,201 +4432,6 @@ export function formatCuaLabHuman(result: CuaActorLabResult): string {
   );
 }
 
-async function runSmokeBackend(args: {
-  command: Command;
-  io: CliIo;
-  config: LabConfig;
-  labProvenance?: RunLabProvenance;
-  mode: "run" | "watch";
-  options: LabCommandOptions;
-}): Promise<void> {
-  const fanout =
-    args.config.subject.clone?.fanout ??
-    args.config.subject.repos?.length ??
-    DEFAULT_OSS_REPOS.length;
-  const limit = parseLabCount(args.options.limit ?? args.options.sims, fanout);
-  if (limit === null) {
-    const result: OssLabResult = {
-      schema: "humanish.oss-lab-result.v1",
-      ok: false,
-      cleanup: { kept: Boolean(args.options.keep), sandboxRemoved: false },
-      completedAt: new Date().toISOString(),
-      cwd: args.options.cwd,
-      error: {
-        code: "HUMANISH_INVALID_OSS_LIMIT",
-        message: "--limit must be a positive integer.",
-      },
-      repos: [],
-      runId: args.options.runId ?? "not-created",
-      sandboxPath: ".humanish/tmp/oss-lab/not-created",
-      startedAt: new Date().toISOString(),
-      warnings: [],
-    };
-    writeResult(args.command, args.io, result, formatOssLabHuman);
-    args.io.setExitCode(2);
-    return;
-  }
-
-  const repos = labReposOverride(args.options);
-  const outcome = await runLab(args.config, {
-    cwd: args.options.cwd,
-    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-    count: limit,
-    ...(repos === undefined ? {} : { repos }),
-    ...(args.options.keep === undefined ? {} : { keep: args.options.keep }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-  });
-  if (outcome.backend !== "smoke") {
-    throw new Error(`Expected smoke backend, got ${outcome.backend}.`);
-  }
-  const result = outcome.result;
-  writeResult(args.command, args.io, result, formatOssLabHuman);
-  args.io.setExitCode(result.ok ? 0 : 2);
-}
-
-async function runMetaBackend(args: {
-  command: Command;
-  io: CliIo;
-  config: LabConfig;
-  labProvenance?: RunLabProvenance;
-  mode: "run" | "watch";
-  options: LabCommandOptions;
-}): Promise<void> {
-  const metaCountDefault =
-    args.config.subject.clone?.fanout ??
-    args.config.subject.repos?.length ??
-    DEFAULT_OSS_REPOS.length;
-  const count = parseLabCount(args.options.count ?? args.options.sims, metaCountDefault);
-  const repos = labReposOverride(args.options);
-  const port = parseObserverPort(args.options.port ?? "0");
-  if (port === null) {
-    const result: OssMetaLabResult = {
-      schema: "humanish.oss-meta-lab-result.v1",
-      ok: false,
-      assignments: [],
-      cwd: args.options.cwd,
-      dryRun: args.options.dryRun === true,
-      error: {
-        code: "HUMANISH_META_RUN_FAILED",
-        message: "--port must be an integer between 0 and 65535.",
-      },
-      liveRequested: args.options.dryRun !== true,
-      repos: repos ?? args.config.subject.repos ?? [],
-      sandboxes: [],
-      warnings: [],
-    };
-    writeResult(args.command, args.io, result, formatOssMetaLabHuman);
-    args.io.setExitCode(2);
-    return;
-  }
-
-  const wantsMachine = wantsJson(args.command);
-  const dryRun = resolveLabDryRun(args.config, args.options.dryRun, undefined);
-  const shouldOpen = resolveBackendShouldOpen({
-    optionOpen: args.options.open,
-    defaultsOpen: args.config.defaults?.open,
-    mode: args.mode,
-    wantsMachine,
-  });
-  const wantsFollow =
-    args.mode === "watch" && !wantsMachine && args.options.detach !== true && dryRun !== true;
-  const codexAppServer =
-    args.options.codexAppServer ?? args.config.execution?.desktop?.codexAppServer;
-  const repoOverrideRequested =
-    (args.options.repo?.length ?? 0) > 0 || args.options.repos !== undefined;
-  const defaultRedactRepos = repoOverrideRequested ? true : args.config.policies?.redactRepos;
-  const redactRepoNames = args.options.redactRepos ?? defaultRedactRepos;
-  let server: ObserverServer | null = null;
-  let liveRefresh = null as ReturnType<typeof startOssMetaLabLiveRefresh>;
-  let result: OssMetaLabResult;
-  try {
-    const outcome = await runLab(args.config, {
-      cwd: args.options.cwd,
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      ...(wantsFollow ? { completionTimeoutMs: 0 } : {}),
-      ...(codexAppServer === undefined ? {} : { codexAppServer }),
-      ...(wantsFollow
-        ? {
-            onObserverReady: async (observer) => {
-              if (!server) {
-                server = await serveObserver(observer, { open: shouldOpen, port });
-              }
-            },
-          }
-        : {}),
-      open: wantsFollow ? false : shouldOpen,
-      ...(dryRun === undefined ? {} : { dryRun }),
-      ...(redactRepoNames === undefined ? {} : { redactRepos: redactRepoNames }),
-      ...(repos === undefined ? {} : { repos }),
-      count: count === null ? Number.NaN : count,
-      ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    });
-    if (outcome.backend !== "meta") {
-      throw new Error(`Expected meta backend, got ${outcome.backend}.`);
-    }
-    result = outcome.result;
-  } catch (error) {
-    const earlyServer = server as ObserverServer | null;
-    await earlyServer?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(
-        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
-      );
-    });
-    server = null;
-    throw error;
-  }
-
-  let output = result;
-  if (server && shouldServeOssMetaLabObserver(result, { wantsFollow: true })) {
-    liveRefresh = startOssMetaLabLiveRefresh(result);
-    output = withOssMetaLabServer(result, server);
-  } else if (shouldServeOssMetaLabObserver(result, { wantsFollow })) {
-    server = await serveObserver(result.observer, { open: shouldOpen, port });
-    liveRefresh = startOssMetaLabLiveRefresh(result);
-    output = withOssMetaLabServer(result, server);
-  } else {
-    const earlyServer = server as ObserverServer | null;
-    await earlyServer?.close().catch((error: unknown) => {
-      args.io.writeErr(
-        `watch cleanup failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-    });
-    server = null;
-  }
-
-  const exitCode = exitCodeForOssMetaLab(output);
-  writeResult(args.command, args.io, output, formatOssMetaLabHuman);
-  args.io.setExitCode(exitCode);
-
-  if (
-    shouldForceExitAfterOssMetaLab(output, { detach: args.options.detach === true, wantsMachine })
-  ) {
-    setTimeout(() => process.exit(exitCode), 50);
-  }
-
-  if (server && output.observer?.ok) {
-    await followObserver(
-      args.io,
-      output.observer,
-      server,
-      output.liveRequested
-        ? {
-            onStop: async () => {
-              const cleanup = liveRefresh
-                ? await liveRefresh.cleanup()
-                : await cleanupOssMetaLabSandboxes(output);
-              return [
-                `E2B sandbox cleanup killed ${cleanup.killed}, skipped ${cleanup.skipped}.`,
-                ...cleanup.errors.map((error) => `E2B sandbox cleanup error: ${error}`),
-              ];
-            },
-          }
-        : {},
-    );
-  }
-}
-
 async function renderAndMaybeFollowObserver(args: {
   command: Command;
   cwd: string;
@@ -5117,11 +4520,6 @@ async function applyEnvFileOption(args: {
   return true;
 }
 
-function labReposOverride(options: LabCommandOptions): string[] | undefined {
-  const override = [...(options.repo ?? []), ...(options.repos ? [options.repos] : [])];
-  return override.length > 0 ? override : undefined;
-}
-
 function parseLabCount(value: string | undefined, fallback: number): number | null {
   return value === undefined ? fallback : parsePositiveInteger(value);
 }
@@ -5151,32 +4549,6 @@ function withObserverServer(rendered: ObserverResult, server: ObserverServer): O
     warnings: [
       ...rendered.warnings,
       "Live observer server is polling observer-data.json with no-store caching.",
-      ...(server.warning ? [server.warning] : []),
-    ],
-  };
-}
-
-function withOssMetaLabServer(
-  result: OssMetaLabResult & { observer: ObserverResult & { ok: true } },
-  server: ObserverServer,
-): OssMetaLabResult {
-  return {
-    ...result,
-    observer: {
-      ...result.observer,
-      observerUrl: server.url,
-      serverUrl: server.url,
-      opened: server.opened,
-      ...(server.openCommand ? { openCommand: server.openCommand } : {}),
-      warnings: [
-        ...result.observer.warnings,
-        "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
-        ...(server.warning ? [server.warning] : []),
-      ],
-    },
-    warnings: [
-      ...result.warnings,
-      "Live OSS meta-lab server is polling observer-data.json with no-store caching.",
       ...(server.warning ? [server.warning] : []),
     ],
   };
@@ -5645,84 +5017,6 @@ function formatFeedbackHuman(result: FeedbackResult): string {
   );
 }
 
-function formatOssLabHuman(result: OssLabResult): string {
-  if (!result.ok && result.error) {
-    return `${result.error.code}: ${result.error.message}\n`;
-  }
-
-  return (
-    [
-      `humanish lab oss-smoke ${result.ok ? "passed" : "failed"}`,
-      `run: ${result.runId}`,
-      ...(result.reportMarkdownPath ? [`report: ${result.reportMarkdownPath}`] : []),
-      `sandbox: ${result.cleanup.kept ? result.sandboxPath : "removed"}`,
-      ...result.repos.map((repo) => {
-        const passed = repo.steps.filter((step) => step.ok).length;
-        return `- ${repo.ok ? "ok" : "fail"} ${repo.repo}: ${passed}/${repo.steps.length} steps, ${repo.changedFiles.length} changed files in disposable clone`;
-      }),
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
-}
-
-function formatOssMetaLabHuman(result: OssMetaLabResult): string {
-  return (
-    [
-      `humanish lab oss ${result.ok ? (result.dryRun ? "dry-run" : "watch") : "failed"}`,
-      ...(result.error ? [`${result.error.code}: ${result.error.message}`] : []),
-      `run: ${result.runId ?? "not-created"}`,
-      `repos: ${result.repos.join(", ")}`,
-      ...(result.count === undefined ? [] : [`desktops: ${result.count}`]),
-      ...(result.observer?.observerPath ? [`observer: ${result.observer.observerPath}`] : []),
-      ...(result.observer?.observerUrl ? [`url: ${result.observer.observerUrl}`] : []),
-      ...(result.observer?.opened === undefined
-        ? []
-        : [`opened: ${result.observer.opened ? "yes" : "no"}`]),
-      ...(result.observer?.bundlePath ? [`bundle: ${result.observer.bundlePath}`] : []),
-      ...result.assignments.map(
-        (assignment) =>
-          `- ${String(assignment.index).padStart(2, "0")} ${assignment.repo}: top-level desktop lane -> nested Humanish Observer`,
-      ),
-      ...result.sandboxes.map((sandbox) => {
-        const sandboxLabel = sandbox.sandboxId ? ` sandbox=${sandbox.sandboxId}` : "";
-        const bootstrapLabel = sandbox.bootstrapStatus
-          ? ` bootstrap=${sandbox.bootstrapStatus}`
-          : "";
-        const completionLabel = sandbox.completionStatus
-          ? ` completion=${sandbox.completionStatus}`
-          : "";
-        const screenshotLabel = sandbox.screenshotPresent ? " screenshot=yes" : "";
-        return `sandbox ${sandbox.streamId}: ${sandbox.repo} stream=${sandbox.urlPresent ? "connected" : "missing"}${bootstrapLabel}${completionLabel}${screenshotLabel}${sandboxLabel}`;
-      }),
-      ...result.warnings.map((warning) => `warning: ${warning}`),
-    ].join("\n") + "\n"
-  );
-}
-
-function formatOssMetaLabCleanupHuman(result: {
-  cleanup: {
-    errors: string[];
-    killed: number;
-    matched?: number;
-    remaining?: number;
-    skipped: number;
-  };
-  lab: string;
-  ok: boolean;
-  schema: string;
-}): string {
-  return (
-    [
-      `humanish lab cleanup ${result.lab} ${result.ok ? "passed" : "failed"}`,
-      ...(result.cleanup.matched === undefined ? [] : [`matched: ${result.cleanup.matched}`]),
-      `killed: ${result.cleanup.killed}`,
-      `skipped: ${result.cleanup.skipped}`,
-      ...(result.cleanup.remaining === undefined ? [] : [`remaining: ${result.cleanup.remaining}`]),
-      ...result.cleanup.errors.map((error) => `error: ${error}`),
-    ].join("\n") + "\n"
-  );
-}
-
 function collectRepeated(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
@@ -5810,28 +5104,6 @@ function formatInitHuman(result: InitResult): string {
 
 function formatInitChange(change: InitChange): string {
   return `- ${change.action.padEnd(6)} ${change.path} (${change.target}: ${change.reason})`;
-}
-
-export function shouldForceExitAfterOssMetaLab(
-  output: OssMetaLabResult,
-  options: { detach: boolean; wantsMachine: boolean },
-): boolean {
-  return (
-    output.liveRequested === true &&
-    (options.detach || options.wantsMachine) &&
-    output.sandboxes.some((sandbox) => sandbox.urlPresent)
-  );
-}
-
-export function shouldServeOssMetaLabObserver(
-  output: OssMetaLabResult,
-  options: { wantsFollow: boolean },
-): output is OssMetaLabResult & { observer: ObserverResult & { ok: true } } {
-  return options.wantsFollow && output.observer?.ok === true;
-}
-
-export function exitCodeForOssMetaLab(output: OssMetaLabResult): number {
-  return output.ok ? 0 : 2;
 }
 
 function wantsJson(command: Command): boolean {

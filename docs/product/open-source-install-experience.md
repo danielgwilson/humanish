@@ -6,9 +6,7 @@ Status: product target for the first world-class `humanish` implementation.
 
 Safety amendment (2026-07-14): the `0.15.1` package binds managed run and
 output storage to validated physical paths, treats provider IDs persisted in a
-run bundle as evidence rather than cleanup authority, and disables live OSS
-meta-lab execution until repository-derived instructions have an isolated
-credential boundary. The historical product target below remains useful for
+run bundle as evidence rather than cleanup authority. The historical product target below remains useful for
 intent and sequencing, but current behavior is defined by the README and
 [`docs/goals/current.md`](../goals/current.md).
 
@@ -165,23 +163,21 @@ Suggested scripts:
 
 ## Command Ladder
 
-| Command                           | Purpose                                 | First version should                                                                                                               |
-| --------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `humanish init`                   | Set up project-owned harness files      | Scaffold committed `humanish/`, ignored `.humanish/`, package scripts                                                              |
-| `humanish doctor`                 | Explain readiness                       | Check config, gitignore, app target, browser, env var names, redaction policy                                                      |
-| `humanish run --dry-run`          | Prove contract without app/browser/keys | Write synthetic run bundle                                                                                                         |
-| `humanish verify`                 | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors                                                                                    |
-| `humanish review`                 | Build review packet from evidence       | Summarize verdicts without inventing product proof                                                                                 |
-| `humanish watch`                  | Run sims and watch the observer         | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached                                             |
-| `humanish watch [lab]`            | Run a named lab and watch it            | Resolve committed or ignored `.yaml` lab manifests, then open/follow Observer                                                      |
-| `humanish watch --json --no-open` | Agent/CI proof path                     | Create the same bundle and Observer artifacts without browser open or attached watch server                                        |
-| `humanish lab list`               | Discover available labs                 | List committed labs and ignored local labs with origin labels                                                                      |
-| `humanish lab inspect <lab>`      | Read a lab manifest                     | Print the parsed lab config, origin, path, and warnings without executing                                                          |
-| `humanish lab preflight <lab>`    | Check lab readiness before spend        | Validate routing and optionally probe declared targets from a hosted desktop without launching actors                              |
-| `humanish lab run <lab>`          | Run a lab manifest                      | Human or JSON execution path for synthetic, OSS meta, and smoke labs                                                               |
-| `humanish lab run oss`            | Maintainer contract example             | Render a dry-run Observer-of-Observers contract for selected repo labels; live execution fails closed pending credential isolation |
-| `humanish lab run oss-smoke`      | Maintainer smoke example                | Shallow clone lightweight GitHub repos, run setup/proof/verify, report, and remove clones                                          |
-| `humanish feedback issue`         | Produce public-safe issue draft         | Print Markdown or prefilled issue URL, no GitHub API mutation                                                                      |
+| Command                           | Purpose                                 | First version should                                                                                  |
+| --------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `humanish init`                   | Set up project-owned harness files      | Scaffold committed `humanish/`, ignored `.humanish/`, package scripts                                 |
+| `humanish doctor`                 | Explain readiness                       | Check config, gitignore, app target, browser, env var names, redaction policy                         |
+| `humanish run --dry-run`          | Prove contract without app/browser/keys | Write synthetic run bundle                                                                            |
+| `humanish verify`                 | Validate bundle and public-safety gates | Fail closed on schema/evidence/redaction errors                                                       |
+| `humanish review`                 | Build review packet from evidence       | Summarize verdicts without inventing product proof                                                    |
+| `humanish watch`                  | Run sims and watch the observer         | Create a fresh four-lane bundle, render Observer, open it, and keep the shell attached                |
+| `humanish watch [lab]`            | Run a named lab and watch it            | Resolve committed or ignored `.yaml` lab manifests, then open/follow Observer                         |
+| `humanish watch --json --no-open` | Agent/CI proof path                     | Create the same bundle and Observer artifacts without browser open or attached watch server           |
+| `humanish lab list`               | Discover available labs                 | List committed labs and ignored local labs with origin labels                                         |
+| `humanish lab inspect <lab>`      | Read a lab manifest                     | Print the parsed lab config, origin, path, and warnings without executing                             |
+| `humanish lab preflight <lab>`    | Check lab readiness before spend        | Validate routing and optionally probe declared targets from a hosted desktop without launching actors |
+| `humanish lab run <lab>`          | Run a lab manifest                      | Human or JSON execution path for every lab route                                                      |
+| `humanish feedback issue`         | Produce public-safe issue draft         | Print Markdown or prefilled issue URL, no GitHub API mutation                                         |
 
 ## Live Capability Ladder
 

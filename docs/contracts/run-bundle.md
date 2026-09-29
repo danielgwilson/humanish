@@ -336,9 +336,9 @@ to judge the lane. Completion state is deliberately compact and public-safe:
 it records actor/app/nested-Observer status, terminal tails that have already
 passed redaction, and optional setup-quality evidence.
 
-`completion.meaningfulUse` is the first-class scored verdict for meta-lab
-lanes where a coding agent is asked to set up Humanish inside another project.
-It is a rubric over already-redacted evidence, not a raw transcript dump.
+`completion.meaningfulUse` appears in bundles written by the OSS meta-lab, which
+scored a coding agent setting up Humanish inside another project. The lab was
+removed; readers still accept the field in older bundles.
 
 ```yaml
 completion:
@@ -364,7 +364,7 @@ completion:
         detail: "<public-safe detail>"
 ```
 
-The current OSS meta-lab rubric totals 100 points:
+The meta-lab's rubric totalled 100 points:
 
 - setup correctness: 15;
 - filesystem evidence: 10;

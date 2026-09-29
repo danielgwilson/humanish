@@ -341,12 +341,6 @@ stakeholder reads what happened. [Three roles](docs/principles/three-roles.md)
 explains the design; the [email-gated signup receipts](docs/goals/email-gated-signup/receipts/)
 show a completed two-participant study and a reported keyboard-accessibility finding.
 
-## Maintainer OSS Meta-Lab Example
-
-The bundled `oss` lab is a dry-run contract. Live OSS meta-lab execution is
-unavailable until repository instructions have an isolated credential boundary.
-See the [maintainer reference](https://humanish.dev/docs/lab-manifests#maintainer-oss-meta-lab-example).
-
 ## Telemetry
 
 Humanish collects anonymous command usage by default, excluding labs, subjects,

@@ -126,8 +126,8 @@ before-start | after-ready, timeoutMs }`) executed in-sandbox around the
   sha256-16 digests only, never as text;
 - `actors`: who drives it. On computer-use (including shared-world),
   scripted-browser, and terminal-product routes, `actors[0].type` is a real
-  dispatch key resolved against the actor registry. On synthetic and meta-lab
-  routes it remains a descriptive label (e.g. `synthetic-persona`). The
+  dispatch key resolved against the actor registry. On the synthetic route it
+  remains a descriptive label (e.g. `synthetic-persona`). The
   `codex-exec` descriptor's direct `runSession` member is a fail-closed
   compatibility entry, not the live runner; the terminal-product lab route
   owns the live sandbox, auth, cap, evidence, and cleanup lifecycle.
@@ -356,7 +356,6 @@ run local-only regardless of screenshot redaction. See the
 [receiving contract](../architecture/real-email-receiving.md).
 
 Lab backends report results in their own schemas (`humanish.run-result.v1`,
-`humanish.oss-lab-result.v1`, `humanish.oss-meta-lab-result.v1`,
 `humanish.cua-lab-result.v2`, `humanish.scripted-lab-result.v1`,
 `humanish.terminal-lab-result.v1`); the evidence record stays
 `humanish.run-bundle.v1` in every case. The computer-use result bumped to v2 for

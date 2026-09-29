@@ -232,8 +232,6 @@ export function labKeyRequirements(
 function unsupportedCliRoute(config: LabConfig, backend: LabBackend): string | undefined {
   if (config.subject.source === "local-app")
     return "local-app needs a caller-supplied executor and provider through the library API; the plain CLI cannot run it.";
-  if (backend === "meta")
-    return "Live OSS meta-lab execution is disabled pending credential isolation. Use its dry-run or choose a supported actor/subject route.";
   if (backend === "synthetic")
     return "This route only creates synthetic evidence. Use first-run in dry-run mode or a supported live lab.";
   if (backend.includes("shared-world") && config.actors[0]?.type !== "openai-computer-use")

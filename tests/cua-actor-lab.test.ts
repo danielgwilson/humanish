@@ -444,14 +444,14 @@ describe("lab routing (app-url → cua)", () => {
     });
     if (!synthetic.ok || !clone.ok || !meta.ok) throw new Error("fixture configs must parse");
     expect(selectLabBackend(synthetic.config)).toBe("synthetic");
-    expect(selectLabBackend(clone.config)).toBe("smoke");
-    expect(selectLabBackend(meta.config)).toBe("meta");
+    expect(selectLabBackend(clone.config)).toBe("cua");
+    expect(selectLabBackend(meta.config)).toBe("cua");
   });
 
-  it("routes clone × e2b-desktop to cua when the actor lane is computer-use (meta otherwise)", () => {
+  it("routes every clone subject to cua, where a non-computer-use actor fails closed", async () => {
     expect(selectLabBackend(cloneCuaConfig())).toBe("cua");
-    // Same subject × execution with a non-cua actor stays on the meta route — the lane
-    // disambiguates where the two axes collide.
+    // A non-computer-use actor also routes to cua, whose actor gate refuses it before any
+    // sandbox or filesystem work.
     const meta = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "m2",
@@ -460,8 +460,18 @@ describe("lab routing (app-url → cua)", () => {
       execution: { target: "e2b-desktop" },
     });
     if (!meta.ok) throw new Error("fixture must parse");
-    expect(selectLabBackend(meta.config)).toBe("meta");
-    // A cua-typed actor WITHOUT the desktop target routes to smoke (type is inert there).
+    expect(selectLabBackend(meta.config)).toBe("cua");
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
+    try {
+      const outcome = await runLab(meta.config, { cwd, dryRun: true });
+      expect(outcome.backend).toBe("cua");
+      expect(outcome.result.ok).toBe(false);
+      expect(outcome.result.error?.code).toBe("HUMANISH_CUA_LAB_ACTOR_UNSUPPORTED");
+      expect(await readdir(cwd)).toEqual([]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+    // A computer-use actor without the desktop target also routes to cua.
     const smoke = parseLabConfig({
       schema: LAB_CONFIG_SCHEMA,
       id: "s2",
@@ -469,7 +479,7 @@ describe("lab routing (app-url → cua)", () => {
       actors: [{ type: "openai-computer-use" }],
     });
     if (!smoke.ok) throw new Error("fixture must parse");
-    expect(selectLabBackend(smoke.config)).toBe("smoke");
+    expect(selectLabBackend(smoke.config)).toBe("cua");
   });
 });
 

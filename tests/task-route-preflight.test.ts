@@ -10,8 +10,6 @@ import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js"
 import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
 import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
 import * as synthetic from "../src/run.js";
-import * as smoke from "../src/oss-lab.js";
-import * as meta from "../src/oss-meta-lab.js";
 
 const fixtures = JSON.parse(
   await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
@@ -70,11 +68,7 @@ describe("declared task protocol admission", () => {
       const forbidden = vi.fn(async () => {
         throw new Error("provider/user hook forbidden");
       });
-      const generic = [
-        vi.spyOn(synthetic, "runDryRun"),
-        vi.spyOn(smoke, "runOssLab"),
-        vi.spyOn(meta, "runOssMetaLab"),
-      ];
+      const generic = [vi.spyOn(synthetic, "runDryRun")];
       for (const spy of generic) spy.mockImplementation(forbidden);
       const output = path.join(cwd, "must-not-exist");
       const hooks = {
