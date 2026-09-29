@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA, type ActorTrace } from "../src/actor-contract.js";
 import type { CuaLoopResult } from "../src/computer-use.js";
-import { captureGitState } from "../src/core/git-state.js";
+import { captureGitState } from "../src/git-state.js";
 import { buildCuaBundle } from "../src/cua-actor-lab.js";
 import { renderObserver } from "../src/observer.js";
 import { createProgram } from "../src/program.js";
