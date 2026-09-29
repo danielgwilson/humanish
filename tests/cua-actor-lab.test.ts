@@ -1617,7 +1617,7 @@ describe("runCuaActorLab", () => {
     // Cleanup evidence now comes from the guarded SDK error when a handle was acquired.
     expect(retryWarnings[0]).not.toContain("not known to this run");
     expect(phases).toContain("cua-lab.sandbox.create.retry");
-  }, 20_000);
+  });
 
   it("sandbox create is NOT retried on an auth failure: the lane fails closed on the first attempt", async () => {
     const sandbox = makeFakeSandbox();

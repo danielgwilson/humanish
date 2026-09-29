@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -44,7 +45,10 @@ async function spawnCatchOnFreePorts(
 ): Promise<{ child: ReturnType<typeof spawn>; port: number; inboxPort: number }> {
   for (let attempt = 0; attempt < tries; attempt += 1) {
     const port = await freePort();
-    const inboxPort = withInbox ? await freePort() : 0;
+    // The OS can hand back the port it just released. The script treats an inbox port equal to
+    // the capture port as "no inbox listener", so the pair must differ.
+    let inboxPort = withInbox ? await freePort() : 0;
+    while (withInbox && inboxPort === port) inboxPort = await freePort();
     const child = launch(port, inboxPort);
     for (let i = 0; i < 50; i += 1) {
       if ((await catchIsUp(port)) && (!withInbox || (await catchIsUp(inboxPort))))
@@ -182,6 +186,32 @@ describe("comms-sandbox-catch: the in-sandbox capture SCRIPT (run for real, no E
     });
     expect(captured.status).toBe(200);
     expect((await readFile(deliveries, "utf8")).trim().split("\n")).toHaveLength(1);
+  });
+
+  it("exits at startup when the inbox port is already taken", async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "humanish-catch-"));
+    const scriptPath = path.join(dir, "catch.py");
+    const surfaceDir = path.join(dir, "surface");
+    await mkdir(surfaceDir, { recursive: true });
+    await writeFile(scriptPath, SANDBOX_CATCH_SCRIPT, "utf8");
+    const holder = createServer();
+    await new Promise<void>((resolve) => holder.listen(0, "0.0.0.0", resolve));
+    try {
+      const busy = (holder.address() as AddressInfo).port;
+      let port = await freePort();
+      while (port === busy) port = await freePort();
+      child = spawn("python3", [
+        scriptPath,
+        String(port),
+        path.join(dir, "deliveries.ndjson"),
+        surfaceDir,
+        String(busy),
+      ]);
+      const code = await new Promise<number | null>((resolve) => child?.once("exit", resolve));
+      expect(code).not.toBe(0);
+    } finally {
+      await new Promise((resolve) => holder.close(resolve));
+    }
   });
 });
 

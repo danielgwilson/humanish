@@ -221,8 +221,10 @@ class ReadOnlyHandler(BaseHandler):
 # shared-world route). Serves GET /inbox + /api/inbox + /health only; POST capture stays on the
 # 127.0.0.1 listener so nothing on the internet can inject a fake captured send. Started only when a
 # distinct inbox port is provided (the CUA same-sandbox route omits it and stays loopback-only).
+# Bound here, before any listener serves, so a busy inbox port stops startup like a busy SMTP port.
 if INBOX_PORT and INBOX_PORT != PORT:
-    threading.Thread(target=lambda: ThreadingHTTPServer(("0.0.0.0", INBOX_PORT), ReadOnlyHandler).serve_forever(), daemon=True).start()
+    inbox_server = ThreadingHTTPServer(("0.0.0.0", INBOX_PORT), ReadOnlyHandler)
+    threading.Thread(target=inbox_server.serve_forever, daemon=True).start()
 
 
 # Minimal SMTP capture listener. Most self-hostable apps send mail through SMTP, not an HTTP provider

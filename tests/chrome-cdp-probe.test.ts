@@ -668,7 +668,6 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
           await fetch(`http://127.0.0.1:${cdpPort}/json/close/${id}`).catch(() => undefined);
       }
     },
-    20_000,
   );
 });
 

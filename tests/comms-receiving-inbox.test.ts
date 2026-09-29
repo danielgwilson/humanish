@@ -311,7 +311,7 @@ describe("production loopback receiving server", () => {
     await expect(fetch(a.url)).rejects.toThrow();
     await a.stop();
     await expect(a.publish(render([]).files)).rejects.toThrow("stopped");
-  }, 20000);
+  });
 
   it("keeps the prior snapshot when a write fails and rejects unsafe routes before transport", async () => {
     const local = localInboxDesktop();
