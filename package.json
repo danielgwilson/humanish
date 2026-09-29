@@ -17,7 +17,7 @@
   "author": "Daniel G Wilson <daniel@danielgwilson.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danielgwilson/humanish.git"
+    "url": "git+https://github.com/danielgwilson/humanish.git"
   },
   "bin": {
     "humanish": "./dist/cli.js"
@@ -65,14 +65,6 @@
     "skill:check": "DISABLE_TELEMETRY=1 npx skills add . --list",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter humanish-observer typecheck && pnpm --filter humanish-tui typecheck",
-    "humanish:doctor": "pnpm humanish -- doctor",
-    "humanish:run": "pnpm humanish -- run --dry-run",
-    "humanish:watch": "pnpm humanish -- watch",
-    "humanish:watch:ci": "pnpm humanish -- watch --json --no-open",
-    "humanish:dogfood": "pnpm humanish -- watch",
-    "humanish:verify": "pnpm humanish -- verify",
-    "humanish:feedback": "pnpm humanish -- feedback issue --repo danielgwilson/humanish",
-    "humanish:lab:list": "pnpm humanish -- lab list",
     "tui:typecheck": "pnpm --filter humanish-tui typecheck",
     "tui:smoke": "node scripts/tui-smoke.mjs",
     "tui:test": "pnpm --filter humanish-tui test",
