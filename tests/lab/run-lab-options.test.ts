@@ -730,3 +730,48 @@ describe("the in-process check sees the legacy executor too", () => {
     expect(hooks.onRuntimeStreamReady).toBeUndefined();
   });
 });
+
+describe("an onEvent callback that rewrites its event", () => {
+  const plan = { lanes: [] } as unknown as CuaLanePlan;
+  const poison = (event: LabEvent): void => {
+    Object.defineProperty(event, "type", {
+      get() {
+        throw new Error("event.type getter escaped");
+      },
+    });
+  };
+
+  it("cannot make the synchronous report throw", () => {
+    const result = normalize(config("cuAppUrl"), {
+      onEvent: (event) => {
+        poison(event);
+        throw new Error("handler failed");
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    expect(() => result.options.cuaHooks!.onPreflight!(plan)).not.toThrow();
+    expect(result.warnings).toEqual(["RunLabOptions.onEvent failed on plan: handler failed"]);
+  });
+
+  it("cannot make the asynchronous report reject", async () => {
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const result = normalize(config("cuAppUrl"), {
+        onEvent: (event) => {
+          poison(event);
+          return Promise.reject(Object.create(null));
+        },
+      });
+      if (!result.ok) throw new Error(result.message);
+      result.options.cuaHooks!.onPreflight!(plan);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(result.warnings).toEqual([
+        "RunLabOptions.onEvent failed on plan: the thrown value has no message",
+      ]);
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  });
+});

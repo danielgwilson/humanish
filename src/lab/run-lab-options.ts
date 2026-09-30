@@ -295,6 +295,8 @@ export function normalizeRunLabOptions(
     onEvent === undefined
       ? undefined
       : (event: LabEvent): void => {
+          // Read before the callback runs: the callback can redefine anything on the event.
+          const type = event.type;
           // Total: a thrown value can refuse to become a string, and nothing may escape from here.
           const report = (error: unknown): void => {
             let detail: string;
@@ -303,7 +305,7 @@ export function normalizeRunLabOptions(
             } catch {
               detail = "the thrown value has no message";
             }
-            warnings.push(`RunLabOptions.onEvent failed on ${event.type}: ${detail}`);
+            warnings.push(`RunLabOptions.onEvent failed on ${type}: ${detail}`);
           };
           try {
             const returned = onEvent(event);
