@@ -6,12 +6,7 @@
 // costs a paid sandbox and a cryptic exit code.
 import { describe, expect, it } from "vitest";
 
-import {
-  BOOTSTRAP_NODE_MAJOR,
-  corepackCommandFor,
-  needsNodeRuntime,
-  nodeBootstrapCommand,
-} from "../../src/subject/runtime.js";
+import { corepackCommandFor, needsNodeRuntime } from "../../src/subject/runtime.js";
 
 describe("needsNodeRuntime", () => {
   it("detects the package managers and runtimes a Node app's pipeline actually uses", () => {
@@ -39,21 +34,6 @@ describe("needsNodeRuntime", () => {
     expect(needsNodeRuntime(["./my-npm-wrapper.sh"])).toBe(false);
     expect(needsNodeRuntime(["/opt/nodelike/bin/start"])).toBe(false);
     expect(needsNodeRuntime(["echo nodes"])).toBe(false);
-  });
-});
-
-describe("nodeBootstrapCommand", () => {
-  it("probes before installing, so a template that already ships Node pays nothing", () => {
-    const command = nodeBootstrapCommand();
-    expect(command).toContain("command -v node");
-    expect(command).toContain("skipping bootstrap");
-    expect(command).toContain(`setup_${BOOTSTRAP_NODE_MAJOR}.x`);
-  });
-
-  it("never waits on a password prompt nobody can answer", () => {
-    // The desktop user has passwordless sudo; failing fast beats hanging until the step times out.
-    expect(nodeBootstrapCommand()).toContain("sudo -n");
-    expect(nodeBootstrapCommand()).not.toMatch(/sudo\s+(?!-n)/);
   });
 });
 

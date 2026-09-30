@@ -43,7 +43,7 @@ Three receipts say what happened to each desktop, and none of them enumerates yo
 
 The create-time timeout on every sandbox is the backstop when a kill cannot be confirmed: E2B stops the sandbox, and its metering, when that timeout elapses.
 
-A preflight sandbox also stops on its own. A `public-preview` probe gets each target's readiness budget plus five minutes. A `sandbox-loopback` probe gets the longest its clone and serve steps can take with your lab's `serve` and seed-step budgets, including the one retry of the runtime and install steps, plus five minutes, so a preflight does not time out where the run would finish provisioning. A declared `execution.desktop.sandboxTimeoutMs`, or E2B's 60-minute maximum, caps both. Without a declared timeout, a clone probe gets 13 minutes (a clone served as-is) up to 60 minutes (a Node app that installs and builds), where earlier versions gave 10; the receipt is what lets you stop it sooner.
+A preflight sandbox also stops on its own. A `public-preview` probe gets each target's readiness budget plus five minutes. A `sandbox-loopback` probe gets the longest its clone and serve steps can take with your lab's `serve` and seed-step budgets, including the one retry of the runtime and install steps, plus five minutes, so a preflight does not time out where the run would finish provisioning. A declared `execution.desktop.sandboxTimeoutMs`, or E2B's 60-minute maximum, caps both. Without a declared timeout, a clone probe gets 13 minutes (a clone served as-is), 53 minutes for an npm app that installs and builds, and the 60-minute cap once pnpm or yarn adds its step, where earlier versions gave 10; the receipt is what lets you stop it sooner.
 
 ## Reproducibility
 

@@ -242,9 +242,9 @@ describe("lab preflight receipts", () => {
     expect(previewResult.sandbox.timeoutMs).toBe(PROBE_TIMEOUT_MS + LEASE_BUFFER_MS);
     // A clone probe gets the run's provisioning allowance plus its declared seed steps.
     expect(cloneResult.ok).toBe(true);
-    // clone 5 min, Node bootstrap 2 x 10 min, install 2 x 10 min, the seed step's 2 min,
+    // clone 5 min, Node bootstrap 2 x 5 min, install 2 x 10 min, the seed step's 2 min,
     // readiness 3 min, plus the buffer.
-    expect(clone.created[0]?.timeoutMs).toBe((5 + 20 + 20 + 2 + 3) * 60_000 + LEASE_BUFFER_MS);
+    expect(clone.created[0]?.timeoutMs).toBe((5 + 10 + 20 + 2 + 3) * 60_000 + LEASE_BUFFER_MS);
 
     await writeFile(
       path.join(cwd, "humanish/labs/preview.yaml"),

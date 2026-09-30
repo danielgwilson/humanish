@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../subject/node-bootstrap.js";
+import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import {
   buildRuntimeExecPrefix,
@@ -54,7 +54,7 @@ import { buildTerminalActorTrace, scrubSplitKnownValues, tailOf } from "./trace.
 import {
   DEFAULT_REQUEST_TIMEOUT_MS,
   type RunLiveTerminalSessionArgs,
-  RUNTIME_BOOTSTRAP_TIMEOUT_MS,
+  PRODUCT_SETUP_TIMEOUT_MS,
   SANDBOX_TIMEOUT_BUFFER_MS,
   SANDBOX_WORKDIR,
   type TerminalLedgers,
@@ -308,9 +308,9 @@ export async function runLiveTerminalSession(
     const bootstrapStartedAt = now();
     let bootstrapError: string | undefined;
     try {
-      const bootstrap = await sandbox.commands.run(TERMINAL_NODE_BOOTSTRAP_COMMAND, {
+      const bootstrap = await sandbox.commands.run(NODE_BOOTSTRAP_COMMAND, {
         requestTimeoutMs,
-        timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS,
+        timeoutMs: NODE_BOOTSTRAP_TIMEOUT_MS,
       });
       if ((bootstrap.exitCode ?? 1) !== 0) {
         bootstrapError = `runtime bootstrap exited ${bootstrap.exitCode ?? "null"}`;
@@ -441,7 +441,7 @@ export async function runLiveTerminalSession(
               // nine others carried the marker (#546).
               envs: { HUMANISH_STUDY_PARTICIPANT: "1" },
               requestTimeoutMs,
-              timeoutMs: RUNTIME_BOOTSTRAP_TIMEOUT_MS,
+              timeoutMs: PRODUCT_SETUP_TIMEOUT_MS,
             },
           );
           if ((setup.exitCode ?? 1) !== 0) {

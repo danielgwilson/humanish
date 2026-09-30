@@ -2,7 +2,8 @@
 import { failureTail } from "../evidence/redaction.js";
 import type { LabStateStepWhen, LabSubjectServe, LabSubjectState } from "../lab/types.js";
 import type { RunSubjectStateStepRecord } from "../run/bundle.js";
-import { corepackCommandFor, needsNodeRuntime, nodeBootstrapCommand } from "./runtime.js";
+import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "./node-bootstrap.js";
+import { corepackCommandFor, needsNodeRuntime } from "./runtime.js";
 import {
   detachedTimersOf,
   probeUrl,
@@ -103,7 +104,7 @@ export function serveProvisioningBudgetMs(
   const installMs = serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
   const commands = [serve.install, serve.build, serve.start];
   const runtimeMs = needsNodeRuntime(commands)
-    ? 2 * installMs + (corepackCommandFor(commands) === undefined ? 0 : installMs)
+    ? 2 * NODE_BOOTSTRAP_TIMEOUT_MS + (corepackCommandFor(commands) === undefined ? 0 : installMs)
     : 0;
   const seedMs = (state?.seed ?? []).reduce(
     (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
@@ -177,9 +178,9 @@ export async function runSubjectServePipeline(
     );
     const bootstrap = await runProvisioningStepWithOneRetry(shell, {
       name: "subject-runtime-node",
-      command: nodeBootstrapCommand(),
+      command: NODE_BOOTSTRAP_COMMAND,
       cwd: SUBJECT_DIR,
-      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+      timeoutMs: NODE_BOOTSTRAP_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
       timers,
       retryPhase: "runtime-retry",

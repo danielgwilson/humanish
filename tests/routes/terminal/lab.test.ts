@@ -158,7 +158,7 @@ function makeFakeModule(opts: {
                     : { stderr: behavior.returnedStderr }),
                 };
               }
-              if (command.includes("# humanish terminal-node-bootstrap")) {
+              if (command.includes("# humanish node-bootstrap")) {
                 // The UNKEYED runtime-bootstrap command (ensure Node/npm before the keyed exec).
                 const thrown = opts.bootstrapThrow?.(command);
                 if (thrown) {
@@ -1665,9 +1665,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
     });
 
     const readinessIndex = runs.findIndex((r) => r.command.includes("HUMANISH_SHELL_READY"));
-    const bootstrapIndex = runs.findIndex((r) =>
-      r.command.includes("# humanish terminal-node-bootstrap"),
-    );
+    const bootstrapIndex = runs.findIndex((r) => r.command.includes("# humanish node-bootstrap"));
     const codexIndex = runs.findIndex((r) => r.command.includes(" exec "));
     expect(readinessIndex).toBeGreaterThanOrEqual(0);
     expect(bootstrapIndex).toBeGreaterThan(readinessIndex);

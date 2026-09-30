@@ -1,6 +1,6 @@
 import { failureTail } from "../evidence/redaction.js";
 import { needsNodeRuntime } from "./runtime.js";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
+import { NODE_BOOTSTRAP_COMMAND, NODE_BOOTSTRAP_TIMEOUT_MS } from "./node-bootstrap.js";
 import { runDetachedStep } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
 import {
@@ -35,9 +35,9 @@ export async function provisionDesktopCli(
     emitPhaseStarted(args.onPhase, now, "runtime", "providing Node/npm for the desktop CLI study");
     const bootstrap = await runDetachedStep(shell, {
       name: "desktop-cli-runtime-node",
-      command: TERMINAL_NODE_BOOTSTRAP_COMMAND,
+      command: NODE_BOOTSTRAP_COMMAND,
       cwd: "/home/user",
-      timeoutMs: INSTALL_TIMEOUT_MS,
+      timeoutMs: NODE_BOOTSTRAP_TIMEOUT_MS,
       requestTimeoutMs: args.requestTimeoutMs,
     });
     emitPhaseCompleted(
