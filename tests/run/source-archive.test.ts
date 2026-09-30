@@ -17,9 +17,9 @@ import {
 // user.name/user.email.
 const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
-  GIT_AUTHOR_NAME: "Humanish Test",
+  GIT_AUTHOR_NAME: "humanish Test",
   GIT_AUTHOR_EMAIL: "humanish-test@example.com",
-  GIT_COMMITTER_NAME: "Humanish Test",
+  GIT_COMMITTER_NAME: "humanish Test",
   GIT_COMMITTER_EMAIL: "humanish-test@example.com",
 };
 

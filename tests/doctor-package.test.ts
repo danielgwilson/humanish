@@ -46,7 +46,7 @@ describe("doctor's optional project package metadata", () => {
       expect(result.ok).toBe(true);
       expect(result.checks.find((check) => check.name === "package.json")).toMatchObject({
         ok: true,
-        message: expect.stringContaining("optional for Humanish"),
+        message: expect.stringContaining("optional for humanish"),
       });
       await expect(lstat(path.join(cwd, "package.json"))).rejects.toMatchObject({ code: "ENOENT" });
 

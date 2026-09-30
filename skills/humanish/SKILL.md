@@ -1,11 +1,11 @@
 ---
 name: humanish
-description: Install and configure Humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
+description: Install and configure humanish CLI in a JavaScript app as an open-source-safe persona simulation harness. Use when an agent needs to add humanish, run safe first setup, create synthetic personas or scenarios, configure env var names without values, capture the email an app sends so a persona can complete an email-gated flow (e.g. a signup verification link or one-time code), run verification and Observer commands, or draft public-safe feedback issues without GitHub mutation.
 ---
 
-# Humanish CLI
+# humanish CLI
 
-Use this skill to add Humanish to a target app without relying on chat memory or
+Use this skill to add humanish to a target app without relying on chat memory or
 private artifacts. Keep every example synthetic and public-safe.
 
 ## Hard Boundary
@@ -59,7 +59,7 @@ exact returned path, not a basename that could resolve to another manifest.
 
 1. Inspect public target-repo files only: `package.json`, docs, route/app
    structure, test scripts, and `.gitignore`.
-2. Install Humanish with the repo's package manager:
+2. Install humanish with the repo's package manager:
 
    ```bash
    npm i -D humanish
@@ -149,9 +149,9 @@ for runtime requirements and export limits.
 
 ## Format Stack
 
-When creating or editing Humanish files:
+When creating or editing humanish files:
 
-- use `.yaml` for human-authored Humanish source: labs, personas and scenarios;
+- use `.yaml` for human-authored humanish source: labs, personas and scenarios;
 - use `.mjs` for executable adopter scorers named by `review.scorer.ref`;
 - use `.json` or `.ndjson` for generated machine artifacts, Observer data, run
   bundles, event streams, and synthetic fixtures.
@@ -290,7 +290,7 @@ npx humanish lab run first-run --json --no-open
 
 When a flow needs an email from the app — a verification link, one-time code or
 magic link — configure an inbox so the participant can read and use that message.
-Humanish supports local capture and fresh hosted receiving, with different setup
+humanish supports local capture and fresh hosted receiving, with different setup
 and privacy behavior.
 
 Choose the transport to match the app:
@@ -299,7 +299,7 @@ Choose the transport to match the app:
   no external mail service is needed. It tests the email flow without proving
   real delivery.
 - **Real AgentMail receiving**: use `comms.email: { connection: agentmail }`.
-  Humanish acquires one fresh hosted inbox per participant before desktops start.
+  humanish acquires one fresh hosted inbox per participant before desktops start.
   The app sends normally. Requires a configured organization-scoped key and
   app-url/clone/local-tree hosted computer-use participants; shared worlds
   work, local-agent does not. Do not combine
@@ -367,7 +367,7 @@ inbox page. See `docs/contracts/schemas.md` for the full `comms:` shape and
 
 ## First Proof Run
 
-Run the no-credentials path first. This proves Humanish artifact plumbing, not
+Run the no-credentials path first. This proves humanish artifact plumbing, not
 target app behavior:
 
 ```bash

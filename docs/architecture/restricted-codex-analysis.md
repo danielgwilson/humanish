@@ -16,13 +16,13 @@ model turn; it does not guarantee current quota or model access.
 ## Authority and request limits
 
 The host creates a private temporary Codex home and links only the existing
-`auth.json`. Humanish never reads or copies its values. The native CLI owns
+`auth.json`. humanish never reads or copies its values. The native CLI owns
 authentication and provider network traffic. Its environment excludes provider
 keys, target-app variables, alternate endpoints and operator configuration.
 The selected native binary is launched directly; npm wrappers are resolved to
 their native executable before launch.
 
-Before creating a thread, Humanish checks the effective config. Nonempty system
+Before creating a thread, humanish checks the effective config. Nonempty system
 settings, inherited instructions, MCP, plugins, hooks, alternate stores/endpoints
 and unsupported authority are rejected. The thread is ephemeral, has no runtime
 environments or workspace roots, and uses only the supplied text/images and
@@ -31,19 +31,19 @@ closed output schema. No provider/model fallback is allowed.
 This profile is **not advertised as tool-free**. The CLI retains code-mode
 descriptions, but the qualified `features.code_mode_host=false` setting rejects
 their actual dispatch. `agents.enabled=false` removes delegation; the older
-feature toggle alone did not. Humanish also refuses raw tool calls, unexpected
+feature toggle alone did not. humanish also refuses raw tool calls, unexpected
 host RPCs and asynchronous question messages before accepting any report. The
 actual notification/denial captures and provenance are in
 [`tests/fixtures/restricted-codex`](https://github.com/danielgwilson/humanish/blob/46330116726f74080fa18947c36da4fb4b333805/tests/fixtures/restricted-codex/README.md).
 
 Each analyst or readiness request owns a separate child process, temporary home
 and fresh thread. Participants share the native session implementation with a
-separate UI-tool policy: Code Mode can call one Humanish desktop tool, and each
+separate UI-tool policy: Code Mode can call one humanish desktop tool, and each
 result supplies actual input acknowledgments and the current screenshot. Local
 Firecracker and hosted E2B use this same participant implementation. Hosted
 participants preserve operator authentication and model configuration; the
 restricted analyst profile above remains unchanged.
-Codex manages context compaction. Humanish does not replace it with a rolling
+Codex manages context compaction. humanish does not replace it with a rolling
 history window or restart a failed conversation without its memory. Participant
 threads never share conversation state with each other or the analyst.
 
@@ -75,13 +75,13 @@ Cancellation interrupts the turn, then closes the directly owned native child
 and its stdio with bounded termination/kill waits. No stored PID or process group
 is signaled after exit. This proves the direct child's lifecycle, not arbitrary
 descendant-tree reclamation; process-spawning tools are outside this profile.
-If native closure cannot be confirmed, Humanish preserves its private state and
+If native closure cannot be confirmed, humanish preserves its private state and
 blocks another session in the same process until that exact child closes.
 
 After confirmed closure, normal cleanup removes the owned auth symlink and
 temporary directory. It never deletes or overwrites the operator's original
 login. Unexpected replacement of the symlink is different: it might contain
-rotated auth state. Humanish preserves that private file with mode 0600 inside a
+rotated auth state. humanish preserves that private file with mode 0600 inside a
 0700 task home, removes other scratch/evidence, refuses the report, and returns
 `codex_cleanup_failed`. It does not copy the replacement into the original
 login, which could overwrite a newer concurrent login.

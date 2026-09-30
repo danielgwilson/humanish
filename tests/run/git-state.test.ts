@@ -48,7 +48,7 @@ describe("git state", () => {
       await runGit(
         [
           "-c",
-          "user.name=Humanish Test",
+          "user.name=humanish Test",
           "-c",
           "user.email=test@example.test",
           "commit",
@@ -279,7 +279,7 @@ describe("git state", () => {
       await runGit(
         [
           "-c",
-          "user.name=Humanish Test",
+          "user.name=humanish Test",
           "-c",
           "user.email=test@example.test",
           "commit",
@@ -422,7 +422,7 @@ async function initializeCommittedRepo(cwd: string, contents: string): Promise<v
   await runGit(
     [
       "-c",
-      "user.name=Humanish Test",
+      "user.name=humanish Test",
       "-c",
       "user.email=test@example.test",
       "commit",

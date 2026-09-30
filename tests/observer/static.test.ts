@@ -33,7 +33,7 @@ async function withRunDir<T>(callback: (fixture: RunFixture) => Promise<T>): Pro
     // Files inside the run dir — all of these SHOULD be reachable over loopback.
     await writeFile(
       path.join(observerDir, "index.html"),
-      "<!doctype html><title>Humanish Observer</title>",
+      "<!doctype html><title>humanish Observer</title>",
       "utf8",
     );
     await writeFile(
@@ -197,7 +197,7 @@ describe("observer static request handler", () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers["content-type"]).toBe("text/html; charset=utf-8");
       expect(response.headers["cache-control"]).toBe("no-store");
-      expect(response.body).toContain("Humanish Observer");
+      expect(response.body).toContain("humanish Observer");
     });
   });
 
@@ -296,7 +296,7 @@ describe("observer static request handler", () => {
       await symlink(runDir, linkedRoot);
       const response = await callHandler(linkedRoot, `/${ENTRY}`);
       expect(response.statusCode).toBe(200);
-      expect(response.body).toContain("Humanish Observer");
+      expect(response.body).toContain("humanish Observer");
     });
   });
 
@@ -392,13 +392,13 @@ describe("observer static server", () => {
         const entryResponse = await fetch(server.url);
         expect(entryResponse.status).toBe(200);
         expect(entryResponse.headers.get("content-type")).toBe("text/html; charset=utf-8");
-        expect(await entryResponse.text()).toContain("Humanish Observer");
+        expect(await entryResponse.text()).toContain("humanish Observer");
 
         // Hitting the root follows the redirect to the entry page.
         const base = `http://${server.host}:${server.port}/`;
         const rootResponse = await fetch(base);
         expect(rootResponse.status).toBe(200);
-        expect(await rootResponse.text()).toContain("Humanish Observer");
+        expect(await rootResponse.text()).toContain("humanish Observer");
 
         // Artifact link target inside the run dir resolves.
         const runJson = await fetch(new URL("run.json", base));
@@ -441,7 +441,7 @@ describe("observer static server", () => {
         const response = await fetch(server.url);
         expect(response.status).toBe(200);
         const body = await response.text();
-        expect(body).toContain("Humanish Observer");
+        expect(body).toContain("humanish Observer");
         expect(body).not.toContain("RETARGETED-B-SECRET");
       } finally {
         await server.close();

@@ -80,7 +80,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish analyze list`: List immutable analysis versions, including failed attempts.
 - `humanish analyze show`: Read validated analysis and correction history. Defaults to the latest usable version.
 - `humanish analyze correct`: Append a human review note bound to one exact finding version; original claims remain intact.
-- `humanish runs`: List local Humanish runs and latest pointers.
+- `humanish runs`: List local humanish runs and latest pointers.
 - `humanish stats`: Roll up cost, outcomes, and durations across runs.
 - `humanish export`: Export Observer HTML or a redacted bundle workspace.
 - `humanish comms`: Off-app comms surfaces.
@@ -99,13 +99,13 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish watch`: Run sims, open the observer, keep the shell attached.
 - `humanish observe`: Follow a run's saved evidence over loopback http.
 - `humanish serve`: Serve the run library; optional tunnel-edge exposure.
-- `humanish codex`: Run Codex-native Humanish integration surfaces.
+- `humanish codex`: Run Codex-native humanish integration surfaces.
 - `humanish codex app-server`: Run a browser-visible Codex app-server actor surface and write redacted protocol artifacts.
-- `humanish lab`: List, inspect, and run Humanish lab manifests.
-- `humanish lab list`: List committed and ignored Humanish lab manifests.
-- `humanish lab inspect`: Inspect a Humanish lab manifest without running it.
+- `humanish lab`: List, inspect, and run humanish lab manifests.
+- `humanish lab list`: List committed and ignored humanish lab manifests.
+- `humanish lab inspect`: Inspect a humanish lab manifest without running it.
 - `humanish lab preflight`: Check lab metadata or explicitly probe reachability. Metadata mode does not verify setup; use doctor --lab <lab> first.
-- `humanish lab run`: Run a Humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.
+- `humanish lab run`: Run a humanish lab manifest. Same as `humanish run <lab>`, grouped under `lab`.
 - `humanish feedback`: Create public-safe feedback drafts, no GitHub API.
 - `humanish feedback list`: List recorded feedback candidates and any saved draft.
 - `humanish feedback draft`: Generate a public-safe feedback draft from verified evidence.
@@ -164,7 +164,7 @@ Lanes and verbatim outcomes:
 - sketch-shapes — recorded reason (harness; the persona emitted no final message): "gave up: 8 consecutive turns with no change to the UI state"
 - export-drawing — persona final report: "Done"
 
-Excalidraw is the application studied; it is not a Humanish adopter or endorser.
+Excalidraw is the application studied; it is not a humanish adopter or endorser.
 
 ## Credentials and sharing
 

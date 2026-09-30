@@ -340,7 +340,7 @@ export interface LabActorLane {
   /**
    * App-url computer-use ONLY: absolute browser URL this lane opens instead of `subject.appUrl`.
    * This is the generic setup-produced-target handoff for crawler/swarm labs: product adapters may
-   * start any topology they need, then hand Humanish explicit lane targets. Public/non-loopback
+   * start any topology they need, then hand humanish explicit lane targets. Public/non-loopback
    * targets still require `policies.allowPublicTargets: true`. Inert/rejected on clone, local-app,
    * shared-world, scripted-browser, and terminal routes.
    */

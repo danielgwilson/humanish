@@ -36,7 +36,7 @@ Sandbox.create = function (templateOrOptions, options) {
     : Reflect.apply(create, this, [{ ...templateOrOptions, debug: true }]);
 };
 Sandbox.prototype._start = function (...args) {
-  // Base SDK has constructed the instance, and Humanish has captured its kill authority.
+  // Base SDK has constructed the instance, and humanish has captured its kill authority.
   const instance = ++proof.instances;
   instances.set(this, instance);
   this.commands.run = async (command) => {

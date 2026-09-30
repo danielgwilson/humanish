@@ -52,7 +52,7 @@ export function injectObserverData(html: string, data: unknown): string {
   if (typeof runId === "string" && runId !== "") {
     out = out.replace(
       /<title>[^<]*<\/title>/,
-      `<title>Humanish Observer — ${escapeHtml(runId)}</title>`,
+      `<title>humanish Observer — ${escapeHtml(runId)}</title>`,
     );
   }
   return out;

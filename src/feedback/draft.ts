@@ -188,7 +188,7 @@ export function buildDraft(
     failure_owner: "harness",
     summary: "Dry-run contract proof needs product-evidence follow-up",
     expected:
-      "Humanish should produce verified, public-safe evidence before product claims are filed.",
+      "humanish should produce verified, public-safe evidence before product claims are filed.",
     actual:
       "This dry-run produced a contract-proof bundle only; no browser or product behavior was exercised.",
     source_bundle: bundlePath,
@@ -353,7 +353,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function renderMarkdown(draft: FeedbackDraft, repo: string): string {
-  return `This issue was drafted by Humanish from a verified Humanish run bundle.
+  return `This issue was drafted by humanish from a verified humanish run bundle.
 
 It contributes to public-safe simulation harness coverage. The feedback command did not mutate GitHub, commit code, or claim unobserved product behavior.
 

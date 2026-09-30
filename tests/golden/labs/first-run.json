@@ -39,10 +39,10 @@
   },
   "scenario": {
     "id": "first-run-smoke",
-    "title": "Humanish CLI first-run smoke",
-    "goal": "Prove that Humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
+    "title": "humanish CLI first-run smoke",
+    "goal": "Prove that humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
     "source": "humanish/scenarios/first-run-smoke.yaml",
-    "sourceDigest": "e22daa0dc353"
+    "sourceDigest": "df9fc8d3ee8a"
   },
   "lifecycle": [
     {
@@ -235,7 +235,7 @@
         "title": "TUI actor",
         "format": "ansi",
         "stdin": "disabled",
-        "tail": "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
+        "tail": "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
       },
       "artifacts": [
         {
@@ -402,7 +402,7 @@
   "review": {
     "schema": "humanish.review.v1",
     "verdict": "contract_proof_only",
-    "summary": "Synthetic dry-run bundle was generated. This proves Humanish artifact plumbing, not product behavior.",
+    "summary": "Synthetic dry-run bundle was generated. This proves humanish artifact plumbing, not product behavior.",
     "gaps": [
       "No browser was launched.",
       "No product state was verified.",

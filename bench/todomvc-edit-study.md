@@ -4,7 +4,7 @@ The [September 5 receipt](../docs/goals/computer-use-actor/receipts/todomvc-edit
 compares TodoMVC's original double-click editor with a local keyboard-accessible Edit patch.
 The [patch](fixtures/todomvc-visible-edit.patch) is the exact source change studied.
 It modifies public TodoMVC source under its [MIT license](fixtures/todomvc-LICENSE.txt); the upstream notice is preserved beside the patch.
-TodoMVC is a study subject, not a Humanish adopter or endorser.
+TodoMVC is a study subject, not a humanish adopter or endorser.
 
 These commands rebuild the app variants. The later sections describe how to author the
 same-item measurement; they do not provide the study's complete private runner or a
@@ -12,7 +12,7 @@ turnkey replay of its twelve sessions.
 
 ## Rebuild two disposable app versions
 
-From a Humanish checkout, use a separate directory for the subject:
+From a humanish checkout, use a separate directory for the subject:
 
 ```bash
 export HUMANISH_STUDY_ROOT="$PWD"
@@ -108,7 +108,7 @@ tasks:
             equals: true
 ```
 
-The path above is supplied by your observer; Humanish does not create this TodoMVC field.
+The path above is supplied by your observer; humanish does not create this TodoMVC field.
 Capture the final audit before desktop teardown. Check that state fields never enter
 participant requests. Require a final fresh observation in addition to the historical
 task funnel: a task can complete and then be undone. Keyboard success also requires zero
@@ -120,7 +120,7 @@ unmeasured data. Retain these controls separately from actual participant result
 
 ## Bound costs and inspect the result
 
-The recorded study used published Humanish `0.81.0`, `gpt-5.6-sol`, a $1.50 running model
+The recorded study used published humanish `0.81.0`, `gpt-5.6-sol`, a $1.50 running model
 cap, 4,096 maximum output tokens per request through a study-only provider wrapper,
 and a 15-minute sandbox TTL. A running model cap is checked after responses; reserve
 for the final response and desktop lifetime as well. Those wrapper limits are not an

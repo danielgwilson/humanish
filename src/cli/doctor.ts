@@ -190,7 +190,7 @@ export async function doctor(
           ok: true,
           message:
             contents === null
-              ? "package.json is absent; it is optional for Humanish, so npm-script integration is skipped"
+              ? "package.json is absent; it is optional for humanish, so npm-script integration is skipped"
               : "package.json is present and safe to read",
         };
       } catch {

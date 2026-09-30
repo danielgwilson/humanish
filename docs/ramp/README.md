@@ -1,4 +1,4 @@
-# Humanish Ramp
+# humanish Ramp
 
 Use this page when you are starting cold on `humanish`. It is meant to be
 useful without chat history, private notes, local machine paths, or maintainer
@@ -31,14 +31,14 @@ deferred approaches; link evidence rather than repeating its chronology.
 
 ## Mental Model
 
-Humanish is a persona simulation harness for apps, CLIs, and agent-facing product
+humanish is a persona simulation harness for apps, CLIs, and agent-facing product
 flows.
 
 - `humanish/` is committed source: lab manifests, personas, scenarios and
   coverage notes.
 - `.humanish/` is ignored runtime state: runs, Observer output, transcripts,
   reviews, temporary clones, and local evidence.
-- Humanish source uses `.yaml` for human-authored simulation intent and
+- humanish source uses `.yaml` for human-authored simulation intent and
   JSON/NDJSON for generated artifacts.
 - A run bundle is the source of truth.
 - The Observer is the projection that makes that truth reviewable.
@@ -51,7 +51,7 @@ If a change does not improve one of those loops, it probably belongs elsewhere.
 [CHANGELOG.md](../../CHANGELOG.md) lists what each version changed. This section describes
 what the source supports now.
 
-Humanish has a working public package shape and a safe first-run path.
+humanish has a working public package shape and a safe first-run path.
 
 Implemented:
 
@@ -125,7 +125,7 @@ Still not good enough:
 - multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
 - the README hero is the drawDB real-application study, a legible capture of a
-  studied public subject (drawDB is not a Humanish adopter); coverage beyond that single
+  studied public subject (drawDB is not a humanish adopter); coverage beyond that single
   studied subject (the stratified breadth panel) remains open.
 
 ## First Commands
@@ -161,7 +161,7 @@ pnpm humanish watch .humanish/labs/local-dogfood.yaml --env-file .humanish/local
 
 Start from [`docs/goals/current.md`](../goals/current.md).
 
-Prefer work that makes Humanish more believable to a new maintainer:
+Prefer work that makes humanish more believable to a new maintainer:
 
 - a command becomes easier to run;
 - a run bundle becomes more truthful;

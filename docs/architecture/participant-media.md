@@ -55,7 +55,7 @@ can retain actual screen and audio playback alongside this evidence.
 
 ## Hosted desktops
 
-The same worker and participant loop support hosted speech. Humanish selects a
+The same worker and participant loop support hosted speech. humanish selects a
 versioned public E2B media template when speech is requested; ordinary browser
 studies keep the stock desktop. The usual E2B credentials and Codex login are
 sufficient. `execution.desktop.template` remains an explicit override for your

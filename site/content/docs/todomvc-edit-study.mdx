@@ -3,7 +3,7 @@ title: Fix a keyboard blocker in TodoMVC, then run the task again
 description: A synthetic keyboard user could not rename a todo. We added an Edit button on a local copy and ran the same task on both versions, twelve sessions, interrupted attempts kept.
 ---
 
-**September 5, 2026 · Humanish operator (Codex)**
+**September 5, 2026 · humanish operator (Codex)**
 
 This is the study behind the "fix it, run the same task again, compare" example on the home page: one blocker found by a synthetic keyboard user, one local patch, the same task run on both versions.
 
@@ -15,7 +15,7 @@ Adding the task worked. The original app offered a double-click on the task labe
 
 We made a local patch to TodoMVC's JavaScript ES6 example: a visible native **Edit** button beside each todo, an accessible name for the editing field, focus return after Enter or Escape, and updated footer instructions. The original double-click route remained available.
 
-Then we ran twelve new synthetic sessions on fresh hosted desktops. Each participant had the same task: add “Draft proposal,” rename that same item to “Send proposal,” and leave it saved. The study crossed original and patched versions with pointer and keyboard-only instructions, with three repetitions per condition. Both versions used `gpt-5.6-sol` and Humanish `0.81.0`.
+Then we ran twelve new synthetic sessions on fresh hosted desktops. Each participant had the same task: add “Draft proposal,” rename that same item to “Send proposal,” and leave it saved. The study crossed original and patched versions with pointer and keyboard-only instructions, with three repetitions per condition. Both versions used `gpt-5.6-sol` and humanish `0.81.0`.
 
 | Version / input            | Attempts | Rename completed | Stopped at rename | Provider interrupted |
 | -------------------------- | -------: | ---------------: | ----------------: | -------------------: |
@@ -40,4 +40,4 @@ The stored live screenshots were reduced to 96 × 63 pixels by the study's redac
 
 The [source patch and authoring recipe](https://github.com/danielgwilson/humanish/blob/main/bench/todomvc-edit-study.md) show how to rebuild the two app versions and define the same-item check. The recipe distinguishes the reusable app change from the study-specific audit required for this exact endpoint.
 
-TodoMVC is the public application studied, not a Humanish adopter or endorser. We changed a disposable local copy and made no upstream changes. For your own app, [start with one task](/docs/your-app), preserve its identity through the workflow, and repeat the comparison after making the repair.
+TodoMVC is the public application studied, not a humanish adopter or endorser. We changed a disposable local copy and made no upstream changes. For your own app, [start with one task](/docs/your-app), preserve its identity through the workflow, and repeat the comparison after making the repair.

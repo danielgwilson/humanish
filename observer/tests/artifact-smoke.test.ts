@@ -67,7 +67,7 @@ describe("observer artifact", () => {
     const injected = injectObserverData(html, golden);
     expect(occurrences(injected, OBSERVER_DATA_PLACEHOLDER)).toBe(0);
     expect(injected).toContain('"runId":"golden-first-run"');
-    expect(injected).toContain("<title>Humanish Observer — golden-first-run</title>");
+    expect(injected).toContain("<title>humanish Observer — golden-first-run</title>");
     // The slot is single-use: injecting into an already-filled artifact must fail loudly.
     expect(() => injectObserverData(injected, golden)).toThrow(/slot not found/);
   });

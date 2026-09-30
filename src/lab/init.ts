@@ -225,7 +225,7 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
         reason: "existing file would not be overwritten",
       });
       warnings.push(
-        `Skipped existing ${file.path}; Humanish never overwrites user files during init.`,
+        `Skipped existing ${file.path}; humanish never overwrites user files during init.`,
       );
     }
   }
@@ -495,14 +495,14 @@ async function planGitignore(
         path: relativePath,
         action: "skip",
         target: "gitignore",
-        reason: "already ignores Humanish runtime and env files",
+        reason: "already ignores humanish runtime and env files",
       },
     };
   }
 
   const prefix =
     existing && existing.trim().length > 0 ? trimTrailingNewlines(existing) + "\n\n" : "";
-  const contents = `${prefix}# Humanish runtime and local secrets\n${missingLines.join("\n")}\n`;
+  const contents = `${prefix}# humanish runtime and local secrets\n${missingLines.join("\n")}\n`;
 
   return {
     write: {
@@ -610,7 +610,7 @@ async function planPackageJson(
         path: relativePath,
         action: "skip",
         target: "package-json",
-        reason: "Humanish scripts already present",
+        reason: "humanish scripts already present",
       },
       warnings: [],
     };

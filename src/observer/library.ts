@@ -40,7 +40,7 @@ export function renderLibraryHtml(history: LibraryHistory, opts: LibraryRenderOp
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Humanish Library</title>
+<title>humanish Library</title>
 <style>${libraryCss()}</style>
 </head>
 <body>

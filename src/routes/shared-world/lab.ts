@@ -31,7 +31,7 @@
 // Synthetic-subject (FIX-3): a getHost URL is internet-reachable for the run, so this route is
 // synthetic-seeded-subjects ONLY. Verify fail-closes on subject.state.provenance != "seeded" and
 // requires the author attestation subject.exposure: synthetic. This is author-trust + a provenance
-// gate, NOT a no-real-data guarantee (Humanish cannot tell synthetic from real data).
+// gate, NOT a no-real-data guarantee (humanish cannot tell synthetic from real data).
 
 import path from "node:path";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";

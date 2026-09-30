@@ -221,7 +221,7 @@ Not allowed by default:
 - use maintainer tokens from the environment.
 
 Maintainer automation can be built later as a separate, token-explicit,
-dry-run-first tool. It must not be required for ordinary Humanish feedback.
+dry-run-first tool. It must not be required for ordinary humanish feedback.
 
 Synthetic fixture:
 

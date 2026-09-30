@@ -2,7 +2,7 @@ schema: humanish.scenario.v1
 id: onboarding-regression
 title: Dogfood readiness regression
 persona: skeptical-power-user
-goal: Confirm Humanish's self-harness has a one-command watch path, a 1-4 lane local Codex exec actor path, and explicit boundaries for Codex TUI trust, credentials, and release gates.
+goal: Confirm humanish's self-harness has a one-command watch path, a 1-4 lane local Codex exec actor path, and explicit boundaries for Codex TUI trust, credentials, and release gates.
 mode: dry-run
 steps:
   - name: Attempt live run boundary

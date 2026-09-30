@@ -319,7 +319,7 @@ export async function renderIssueUrl(
     return rendered;
   }
 
-  const title = `[Humanish] ${rendered.draft.summary}`;
+  const title = `[humanish] ${rendered.draft.summary}`;
   return {
     ...rendered,
     issueUrl: `https://github.com/${encodeGitHubRepoPath(repo)}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(rendered.issueMarkdown)}`,

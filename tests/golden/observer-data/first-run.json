@@ -6,7 +6,7 @@
     "runId": "golden-first-run",
     "mode": "dry-run",
     "status": "contract_proof_only",
-    "title": "Humanish CLI first-run smoke - First-Time Trial User",
+    "title": "humanish CLI first-run smoke - First-Time Trial User",
     "createdAt": "2026-08-19T07:38:06.016Z",
     "simCount": 4,
     "persona": {
@@ -17,10 +17,10 @@
     },
     "scenario": {
       "id": "first-run-smoke",
-      "title": "Humanish CLI first-run smoke",
-      "goal": "Prove that Humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
+      "title": "humanish CLI first-run smoke",
+      "goal": "Prove that humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.",
       "source": "humanish/scenarios/first-run-smoke.yaml",
-      "sourceDigest": "e22daa0dc353"
+      "sourceDigest": "df9fc8d3ee8a"
     },
     "packageName": "humanish",
     "redaction": {
@@ -250,7 +250,7 @@
         "title": "TUI actor",
         "format": "ansi",
         "stdin": "disabled",
-        "tail": "\u001b[2mHumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
+        "tail": "\u001b[2mhumanish TUI frame\u001b[0m\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport"
       },
       "artifacts": [
         {
@@ -288,7 +288,7 @@
       },
       "kindLabel": "TUI",
       "statusLabel": "Contract proof",
-      "terminalPlain": "Humanish TUI frame\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
+      "terminalPlain": "humanish TUI frame\n> persona: skeptical-power-user\n> scenario: onboarding-regression\nstatus: awaiting live PTY transport",
       "timeline": [
         {
           "id": "event-003-a",

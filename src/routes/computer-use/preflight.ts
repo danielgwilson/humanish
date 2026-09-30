@@ -364,7 +364,7 @@ export async function liveCuaRejection(args: {
     return {
       code: "HUMANISH_CUA_LAB_COMMS_CATCH_UNREACHABLE",
       message:
-        "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
+        "The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with `humanish comms catch` on that host, or drop comms.email to run without the inbox funnel.",
     };
   }
   return undefined;

@@ -1,6 +1,6 @@
 # Observer component ownership and proof
 
-The Observer uses Humanish registry tokens throughout. Registry output is
+The Observer uses humanish registry tokens throughout. Registry output is
 checked for source drift in the site workspace; rendering and interaction are
 checked in the built Observer. Passing one does not imply the other passed.
 
@@ -20,7 +20,7 @@ checked in the built Observer. Passing one does not imply the other passed.
 | Participant statements and analysis | Native disclosures and source links in `participant-feedback.tsx` / `participant-analysis.tsx` | Statement pagination, original evidence navigation, per-speaker attribution, observation basis, stale interpretation and outcome explanation                                                              |
 | Playback scrubber                   | Native range input in `player.tsx`; application-owned CSS and marker overlay                   | Painted thumb/track alignment, endpoints, mouse/touch/keyboard behavior, focus and deliberately broken negative control                                                                                   |
 | Study playback                      | `study-playback.tsx`, shared native scrubber CSS, `grid-recording.ts`                          | One recorded capture clock across the grid; sparse and unavailable coverage, visible capture age, exact frame handoff/return, snapshot replacement, live-preview isolation, desktop/phone thumb alignment |
-| Search fields and scrubbers         | Application-owned native inputs styled with Humanish tokens                                    | Filter persistence, honest empty results, phone containment, painted geometry and keyboard journeys                                                                                                       |
+| Search fields and scrubbers         | Application-owned native inputs styled with humanish tokens                                    | Filter persistence, honest empty results, phone containment, painted geometry and keyboard journeys                                                                                                       |
 | Comparison and saved moments        | Application-level composition over the same evidence and primitives                            | Exact handoff, per-run clock limits, storage contents, re-entry and explicit origin                                                                                                                       |
 
 A focus-managed interaction starts with Base UI. Static composition and native

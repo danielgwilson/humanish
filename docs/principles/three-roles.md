@@ -1,6 +1,6 @@
 # Three roles: researcher, stakeholder, participant
 
-Humanish runs user research. Every design decision should be checked against the
+humanish runs user research. Every design decision should be checked against the
 three people a study actually involves, because they want different things and
 conflating any two of them produces a specific, recurring class of bug.
 

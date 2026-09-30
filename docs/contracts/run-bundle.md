@@ -282,7 +282,7 @@ not corrupt evidence.
 ## Adapter Artifacts
 
 `adapterArtifacts` is optional and namespaced. It lets a downstream adapter
-attach product/state proof outputs to the Humanish bundle without making the
+attach product/state proof outputs to the humanish bundle without making the
 payload shape a core concept. Core validates only:
 
 - `schema: humanish.adapter-artifact.v1`;
@@ -332,7 +332,7 @@ is mutually exclusive with explicit `lanes`, homogeneous `count`, and
 
 These fields are adapter-owned labels, not core enums. They let downstream
 projects express "N actors of M app-defined types across S surfaces" without
-teaching Humanish private product nouns. Values must be public-safe tokens and
+teaching humanish private product nouns. Values must be public-safe tokens and
 are projected into:
 
 - the preflight lane plan;
@@ -341,7 +341,7 @@ are projected into:
 - human-readable Observer stream labels.
 
 `actorType` is deliberately separate from `actors[0].type`. The latter selects
-the Humanish execution actor, such as `openai-computer-use` or `scripted-browser`.
+the humanish execution actor, such as `openai-computer-use` or `scripted-browser`.
 The former is the app-defined simulated user bucket, such as `viewer`,
 `maintainer`, or a downstream adapter's own role label.
 
@@ -354,7 +354,7 @@ was removed. No current route writes the field. `RunStream` in
 In those bundles, `completion` is compact and public-safe. It records
 actor/app/nested-Observer status, terminal tails that have already passed
 redaction, and optional setup-quality evidence. `completion.meaningfulUse` scored
-a coding agent setting up Humanish inside another project.
+a coding agent setting up humanish inside another project.
 
 ```yaml
 completion:
@@ -384,7 +384,7 @@ The meta-lab's rubric totalled 100 points:
 
 - setup correctness: 15;
 - filesystem evidence: 10;
-- nested Humanish evidence: 20;
+- nested humanish evidence: 20;
 - actor activity: 15;
 - product surface: 15;
 - feedback quality: 25.
@@ -392,7 +392,7 @@ The meta-lab's rubric totalled 100 points:
 A score of 80 or higher is `pass` only when no hard failure is present and
 every rubric component passes. Scores from 45 through 79, or scores of 80 or
 higher with any non-passing component, are `partial`. Scores below 45,
-failed/timed-out bootstraps, missing nested Humanish proof, required actor
+failed/timed-out bootstraps, missing nested humanish proof, required actor
 failure, or completed lanes without a running visible product surface are
 `fail`.
 
@@ -415,7 +415,7 @@ URLs are not part of the core layout.
 ## Filesystem Evidence
 
 Filesystem setup evidence is first-class when a lane asks an actor to install
-or configure Humanish inside another project. It is not a repo dump.
+or configure humanish inside another project. It is not a repo dump.
 
 The durable artifact kind is `filesystem`. The current schema is:
 

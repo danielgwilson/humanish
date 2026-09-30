@@ -1,8 +1,8 @@
 schema: humanish.scenario.v1
 id: first-run-smoke
-title: Humanish CLI first-run smoke
+title: humanish CLI first-run smoke
 persona: synthetic-new-user
-goal: Prove that Humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.
+goal: Prove that humanish can explain, initialize, run a one-command 4-sim watch, verify, and draft feedback for itself without private data.
 mode: dry-run
 steps:
   - name: Inspect help

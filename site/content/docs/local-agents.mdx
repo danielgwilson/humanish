@@ -29,7 +29,7 @@ actors:
 
 `localAgent` chooses the installed CLI (`codex` is the default); `model` is a
 separate optional model selection passed to that CLI. When it is omitted, the
-hosted Codex route retains the operator's configured model selection. Humanish
+hosted Codex route retains the operator's configured model selection. humanish
 does not change an `openai-computer-use` lab merely because you have Codex
 installed.
 
@@ -41,31 +41,31 @@ npx humanish doctor --lab .humanish/labs/your-app.yaml
 ```
 
 If signed out, use `codex login` or `claude auth login`. Before launching a
-desktop, Humanish asks the selected CLI for its local authentication status.
+desktop, humanish asks the selected CLI for its local authentication status.
 An unavailable or unrecognized status fails before desktop creation and asks
 you to check or update the CLI; it is not reported as a confirmed sign-out.
 This checks local status, not remote account validity, model access or quota.
 
 [Codex supports ChatGPT sign-in or API-key authentication](https://learn.chatgpt.com/docs/auth).
 Those have separate usage and billing. ChatGPT sign-in does not supply an
-OpenAI API key to Humanish's default participant or analysis. Claude Code uses
+OpenAI API key to humanish's default participant or analysis. Claude Code uses
 its own [authentication commands](https://code.claude.com/docs/en/cli-reference).
 
 ## Where execution happens
 
-Humanish's [local-agent discovery](https://github.com/danielgwilson/humanish/blob/main/src/actors/local-agent/cli.ts)
+humanish's [local-agent discovery](https://github.com/danielgwilson/humanish/blob/main/src/actors/local-agent/cli.ts)
 uses each CLI's status command; a credential-file hint is not treated as proof
 of authentication. This supports Codex's `CODEX_HOME` and keyring-backed login
 without assuming an `auth.json` file must exist. Status output is classified
-in memory; Humanish does not include account identifiers or raw status output
+in memory; humanish does not include account identifiers or raw status output
 in the result. The coding CLI runs on your host and uses its own sign-in state.
 The hosted Codex route keeps the operator's normal Codex home and configuration;
 it does not substitute the isolated file-backed ChatGPT profile used by
 [local browser studies](https://github.com/danielgwilson/humanish/blob/main/docs/architecture/local-browser-runtime.md).
 
-Humanish starts Codex in a scratch directory with its general-purpose tools
-disabled and one Humanish UI tool. Codex calls that tool to propose desktop
-inputs; Humanish executes them, records them and returns acknowledgments with
+humanish starts Codex in a scratch directory with its general-purpose tools
+disabled and one humanish UI tool. Codex calls that tool to propose desktop
+inputs; humanish executes them, records them and returns acknowledgments with
 the next screenshot. The same participant implementation drives local
 Firecracker and hosted E2B desktops. One app-server thread retains the persona
 and conversation through the final feedback.

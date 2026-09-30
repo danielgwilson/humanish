@@ -12,7 +12,7 @@ intent and sequencing, but current behavior is defined by the README and
 
 ## Product Promise
 
-Drop Humanish into an app and let a coding agent set up realistic persona
+Drop humanish into an app and let a coding agent set up realistic persona
 simulations, run them safely, watch them in a polished observer, and turn
 friction into public-safe issue drafts.
 
@@ -77,14 +77,14 @@ repo-owned `humanish/` files and package-owned docs.
 
 New projects should get a boring, legible format stack:
 
-- `.yaml` for human-authored Humanish source such as labs, personas and
+- `.yaml` for human-authored humanish source such as labs, personas and
   scenarios;
 - `.mjs` for executable adopter scorers;
 - `.json` and `.ndjson` for generated run artifacts, Observer data, review
   output, event streams, and synthetic fixtures.
 
 Use `.yml` only where an outside tool's convention already expects it, for
-example GitHub Actions workflows. Do not scaffold `.yml` for Humanish source and
+example GitHub Actions workflows. Do not scaffold `.yml` for humanish source and
 do not use TOML unless a future scalar global-config case clearly needs it.
 
 ## First-Run Principles
@@ -228,7 +228,7 @@ A missing or non-executable scenario fails before any browser starts.
 
 Live E2B desktop labs are an optional advanced path. Target projects that need
 them should install `@e2b/desktop` explicitly instead of receiving that
-substrate as part of the default Humanish package install. When a GitHub token is
+substrate as part of the default humanish package install. When a GitHub token is
 present, repo labels are redacted in durable artifacts by default; live stream
 auth URLs are used only by the attached watch server and are not persisted.
 

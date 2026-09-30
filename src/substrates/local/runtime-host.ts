@@ -140,14 +140,14 @@ export async function limaStatus(
     (instance.name !== LIMA_INSTANCE || instance.vmType !== "vz" || instance.arch !== "aarch64")
   )
     throw new Error(
-      `The existing ${LIMA_INSTANCE} Lima instance is incompatible. Humanish will not replace it.`,
+      `The existing ${LIMA_INSTANCE} Lima instance is incompatible. humanish will not replace it.`,
     );
   return {
     ready: instance?.status === "Running",
     exists: !!instance,
     message: instance
-      ? "The Humanish Lima host is stopped. Run humanish runtime setup to start it."
-      : "Run humanish runtime setup to create the Humanish Lima host and install the browser runtime.",
+      ? "The humanish Lima host is stopped. Run humanish runtime setup to start it."
+      : "Run humanish runtime setup to create the humanish Lima host and install the browser runtime.",
   };
 }
 
@@ -159,8 +159,8 @@ export async function prepareLima(
   if (status.ready) return;
   progress?.(
     status.exists
-      ? "Starting the Humanish Lima host…"
-      : "Preparing the Humanish Lima host (first setup downloads Linux and Docker)…",
+      ? "Starting the humanish Lima host…"
+      : "Preparing the humanish Lima host (first setup downloads Linux and Docker)…",
   );
   if (status.exists) {
     await hostExec("limactl", ["start", "--tty=false", LIMA_INSTANCE], options, 15 * 60_000);

@@ -1,6 +1,6 @@
 # Optional desktop recording
 
-Humanish keeps screenshots, actions, participant feedback and analysis by default.
+humanish keeps screenshots, actions, participant feedback and analysis by default.
 For continuous playback, opt into a desktop video:
 
 ```yaml

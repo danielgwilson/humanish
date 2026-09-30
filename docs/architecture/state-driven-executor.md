@@ -16,7 +16,7 @@ You do not have to drive a screen with a vision model. You can point the loop at
 **an already-running local app** and drive it through that app's **in-process
 JavaScript automation contract** (e.g. `window.app.getState()`,
 `sendChat(text)`, `dispatch(action)`, `navigate(target)`), using `getState()` as
-the progress signal instead of a quantized screenshot. Humanish's composition
+the progress signal instead of a quantized screenshot. humanish's composition
 stays in place (personas, the Observer, the normalized `ActorTrace` evidence
 bundle, redaction, and the friction / no-progress loop).
 

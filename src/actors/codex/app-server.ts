@@ -767,7 +767,7 @@ class CodexTraceRecorder {
             ? "decline"
             : "empty",
       reason:
-        "Humanish records app-server approval requests and declines by default unless a future explicit policy says otherwise.",
+        "humanish records app-server approval requests and declines by default unless a future explicit policy says otherwise.",
     });
   }
 

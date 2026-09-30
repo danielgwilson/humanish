@@ -42,7 +42,7 @@ describe("humanish dogfood config", () => {
       });
       expect(bundle.scenario).toMatchObject({
         id: "first-run-smoke",
-        title: "Humanish CLI first-run smoke",
+        title: "humanish CLI first-run smoke",
         source: "humanish/scenarios/first-run-smoke.yaml",
       });
       expect(bundle.scenario.goal).toContain("run a one-command 4-sim watch");

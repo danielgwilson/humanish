@@ -1,5 +1,5 @@
 name: Product feedback
-description: Evidence-backed feedback from a Humanish run or human review
+description: Evidence-backed feedback from a humanish run or human review
 title: "[feedback] "
 labels:
   - product-feedback

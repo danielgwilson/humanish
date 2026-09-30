@@ -1,7 +1,7 @@
 # Real email receiving
 
 A supported browser study can give each participant a fresh AgentMail inbox. The
-application sends real email to that address; Humanish polls it on the host and
+application sends real email to that address; humanish polls it on the host and
 publishes a private inbox surface on that participant's desktop. The participant
 can read the original email, switch to a plain view and follow an approved link.
 

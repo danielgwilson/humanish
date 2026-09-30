@@ -200,7 +200,7 @@ function renderObserverAppHtml(
     .replace("</body>", () => `${renderExportAssets(assets)}</body>`)
     .replace(
       /<title>[^<]*<\/title>/,
-      () => `<title>Humanish Observer — ${escapeHtml(data.run.runId)}</title>`,
+      () => `<title>humanish Observer — ${escapeHtml(data.run.runId)}</title>`,
     );
 }
 

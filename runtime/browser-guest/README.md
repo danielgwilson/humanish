@@ -3,7 +3,7 @@
 This maintained development recipe builds a Debian 13 root filesystem for a
 headed Chromium desktop. It does not include a guest kernel, controller bundle,
 network gateway, broker, or independent lifetime enforcement. It exposes no
-public Humanish local-runtime selector and is not a qualified VM image.
+public humanish local-runtime selector and is not a qualified VM image.
 
 Inputs are pinned in `inputs.json`: architecture-specific official Debian image
 manifests and existing Debian archive/security snapshot timestamps. The base

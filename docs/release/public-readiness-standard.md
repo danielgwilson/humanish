@@ -165,7 +165,7 @@ Nice-to-have after public launch:
 - release provenance and staged publishing where practical;
 - signed releases when the release process matures.
 
-## Humanish Application
+## humanish Application
 
 For `humanish`, the honest standard is:
 
