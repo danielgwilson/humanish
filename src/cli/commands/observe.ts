@@ -247,186 +247,185 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
         "--safe composes with any exposure for defense in depth.",
       ].join("\n"),
     )
-    .action(
-      async (
-        options: {
-          cwd: string;
-          expose?: boolean;
-          json?: boolean;
-          open?: boolean;
-          port: string;
-          publicUrl?: string;
-          run?: string;
-          safe?: boolean;
-          tunnel?: "ngrok";
-          tunnelDomain?: string;
-          oauth?: "google";
-          allowEmail: string[];
-          allowDomain: string[];
-        },
-        command,
-      ) => {
-        const wantsMachine = wantsJson(command);
-        const fail = (code: ServeErrorCode, message: string): void => {
-          const result: ServeResult = {
-            schema: SERVE_SCHEMA,
-            ok: false,
-            cwd: options.cwd,
-            mode: "loopback",
-            safe: options.safe === true,
-            host: "127.0.0.1",
-            runsListed: 0,
-            warnings: [],
-            error: { code, message },
-          };
-          writeResult(command, io, result, formatServeHuman);
-          io.setExitCode(2);
-        };
+    .action((options, command) => handleServe(io, options, command));
+}
 
-        const port = parseObserverPort(options.port);
-        if (port === null) {
-          fail("HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
-          return;
-        }
+async function handleServe(
+  io: CliIo,
+  options: {
+    cwd: string;
+    expose?: boolean;
+    json?: boolean;
+    open?: boolean;
+    port: string;
+    publicUrl?: string;
+    run?: string;
+    safe?: boolean;
+    tunnel?: "ngrok";
+    tunnelDomain?: string;
+    oauth?: "google";
+    allowEmail: string[];
+    allowDomain: string[];
+  },
+  command: Command,
+): Promise<void> {
+  const wantsMachine = wantsJson(command);
+  const fail = (code: ServeErrorCode, message: string): void => {
+    const result: ServeResult = {
+      schema: SERVE_SCHEMA,
+      ok: false,
+      cwd: options.cwd,
+      mode: "loopback",
+      safe: options.safe === true,
+      host: "127.0.0.1",
+      runsListed: 0,
+      warnings: [],
+      error: { code, message },
+    };
+    writeResult(command, io, result, formatServeHuman);
+    io.setExitCode(2);
+  };
 
-        // Fail-closed exposure matrix (shared validator; tunnel-edge auth only). All guards run before
-        // any bind/spawn.
-        const exposeValidation = validateExposure("serve", {
-          expose: options.expose === true,
-          ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
-          ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
-          ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-          allowEmails: options.allowEmail,
-          allowDomains: options.allowDomain,
-          ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-          safe: options.safe === true,
-        });
-        if (!exposeValidation.ok) {
-          fail(exposeValidation.error.code, exposeValidation.error.message);
-          return;
-        }
-        const plan = exposeValidation.plan;
+  const port = parseObserverPort(options.port);
+  if (port === null) {
+    fail("HUMANISH_INVALID_PORT", "--port must be an integer between 0 and 65535.");
+    return;
+  }
 
-        const started = await serveObserverLibrary(options.cwd, {
-          port,
-          safe: options.safe === true,
-          expose: plan.exposed,
-          edgeAuthed: plan.edgeAuthed,
-          ...(plan.publicOrigin ? { publicOrigin: plan.publicOrigin.origin } : {}),
-          ...(options.run ? { entryRunId: options.run } : {}),
-        });
-        if (!started.ok) {
-          fail(started.error.code, started.error.message);
-          return;
-        }
-        const server = started.server;
+  // Fail-closed exposure matrix (shared validator; tunnel-edge auth only). All guards run before
+  // any bind/spawn.
+  const exposeValidation = validateExposure("serve", {
+    expose: options.expose === true,
+    ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
+    ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
+    ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
+    allowEmails: options.allowEmail,
+    allowDomains: options.allowDomain,
+    ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
+    safe: options.safe === true,
+  });
+  if (!exposeValidation.ok) {
+    fail(exposeValidation.error.code, exposeValidation.error.message);
+    return;
+  }
+  const plan = exposeValidation.plan;
 
-        let tunnel: ServeTunnel | undefined;
-        let publicUrl: string | undefined;
-        const warnings: string[] = [];
-        if (plan.exposed) {
-          try {
-            const exposeResult = await startExposedObserver(server, plan);
-            tunnel = exposeResult.tunnel;
-            publicUrl = exposeResult.publicUrl;
-            warnings.push(...exposeResult.warnings);
-          } catch (error: unknown) {
-            await server.close();
-            if (error instanceof ServeTunnelError) {
-              fail(error.code, error.message);
-            } else {
-              fail(
-                "HUMANISH_SERVE_TUNNEL_START_FAILED",
-                `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`,
-              );
-            }
-            return;
-          }
-        }
+  const started = await serveObserverLibrary(options.cwd, {
+    port,
+    safe: options.safe === true,
+    expose: plan.exposed,
+    edgeAuthed: plan.edgeAuthed,
+    ...(plan.publicOrigin ? { publicOrigin: plan.publicOrigin.origin } : {}),
+    ...(options.run ? { entryRunId: options.run } : {}),
+  });
+  if (!started.ok) {
+    fail(started.error.code, started.error.message);
+    return;
+  }
+  const server = started.server;
 
-        if (server.mode === "exposed" && options.safe !== true) {
-          warnings.push(
-            `edge-authed exposure grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone who clears the edge auth can view them; add --safe to restrict to share_ready`,
-          );
-        }
-        if (server.mode === "exposed" && options.safe === true) {
-          warnings.push(
-            `edge-authed exposure grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even behind the edge`,
-          );
-        }
-        if (server.mode === "share-safe-open") {
-          warnings.push(
-            `serving ${server.shareReadyCount ?? 0} share_ready runs to anyone who can reach ${publicUrl ?? server.url}; non-share_ready runs are absent and their URLs 404`,
-          );
-        }
-        warnings.push(
-          "live desktop stream URLs are never served here; remote viewers see persisted evidence (screenshots, events, terminal tails) only",
+  let tunnel: ServeTunnel | undefined;
+  let publicUrl: string | undefined;
+  const warnings: string[] = [];
+  if (plan.exposed) {
+    try {
+      const exposeResult = await startExposedObserver(server, plan);
+      tunnel = exposeResult.tunnel;
+      publicUrl = exposeResult.publicUrl;
+      warnings.push(...exposeResult.warnings);
+    } catch (error: unknown) {
+      await server.close();
+      if (error instanceof ServeTunnelError) {
+        fail(error.code, error.message);
+      } else {
+        fail(
+          "HUMANISH_SERVE_TUNNEL_START_FAILED",
+          `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`,
         );
+      }
+      return;
+    }
+  }
 
-        // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
-        // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
-        // intent and opens the loopback library.
-        const shouldOpen =
-          options.open === false
-            ? false
-            : options.open === true
-              ? true
-              : !wantsMachine && process.stdout.isTTY === true && plan.exposed !== true;
-        const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
-          ? openTarget(server.url)
-          : { opened: false };
-        if (openResult.warning) {
-          warnings.push(openResult.warning);
-        }
-
-        const result: ServeResult = {
-          schema: SERVE_SCHEMA,
-          ok: true,
-          cwd: options.cwd,
-          mode: server.mode,
-          safe: options.safe === true,
-          host: "127.0.0.1",
-          port: server.port,
-          url: server.url,
-          ...(publicUrl ? { publicUrl } : {}),
-          ...(tunnel ? { tunnel: { provider: "ngrok", url: tunnel.url } } : {}),
-          ...(plan.oauth
-            ? {
-                oauth: {
-                  provider: plan.oauth.provider,
-                  allowEmails: plan.oauth.allowEmails,
-                  allowDomains: plan.oauth.allowDomains,
-                },
-              }
-            : {}),
-          runsListed: server.runsListed,
-          ...(server.shareReadyCount !== undefined
-            ? { shareReadyCount: server.shareReadyCount }
-            : {}),
-          ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
-          opened: openResult.opened,
-          ...(openResult.command ? { openCommand: openResult.command } : {}),
-          warnings,
-        };
-
-        writeResult(command, io, result, formatServeHuman);
-        io.setExitCode(0);
-
-        await serveObserveUntilSignal(
-          io,
-          {
-            url: server.url,
-            close: async () => {
-              if (tunnel) {
-                await tunnel.close();
-              }
-              await server.close();
-            },
-          },
-          { json: wantsMachine },
-        );
-      },
+  if (server.mode === "exposed" && options.safe !== true) {
+    warnings.push(
+      `edge-authed exposure grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone who clears the edge auth can view them; add --safe to restrict to share_ready`,
     );
+  }
+  if (server.mode === "exposed" && options.safe === true) {
+    warnings.push(
+      `edge-authed exposure grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even behind the edge`,
+    );
+  }
+  if (server.mode === "share-safe-open") {
+    warnings.push(
+      `serving ${server.shareReadyCount ?? 0} share_ready runs to anyone who can reach ${publicUrl ?? server.url}; non-share_ready runs are absent and their URLs 404`,
+    );
+  }
+  warnings.push(
+    "live desktop stream URLs are never served here; remote viewers see persisted evidence (screenshots, events, terminal tails) only",
+  );
+
+  // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
+  // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
+  // intent and opens the loopback library.
+  const shouldOpen =
+    options.open === false
+      ? false
+      : options.open === true
+        ? true
+        : !wantsMachine && process.stdout.isTTY === true && plan.exposed !== true;
+  const openResult: { opened: boolean; command?: string; warning?: string } = shouldOpen
+    ? openTarget(server.url)
+    : { opened: false };
+  if (openResult.warning) {
+    warnings.push(openResult.warning);
+  }
+
+  const result: ServeResult = {
+    schema: SERVE_SCHEMA,
+    ok: true,
+    cwd: options.cwd,
+    mode: server.mode,
+    safe: options.safe === true,
+    host: "127.0.0.1",
+    port: server.port,
+    url: server.url,
+    ...(publicUrl ? { publicUrl } : {}),
+    ...(tunnel ? { tunnel: { provider: "ngrok", url: tunnel.url } } : {}),
+    ...(plan.oauth
+      ? {
+          oauth: {
+            provider: plan.oauth.provider,
+            allowEmails: plan.oauth.allowEmails,
+            allowDomains: plan.oauth.allowDomains,
+          },
+        }
+      : {}),
+    runsListed: server.runsListed,
+    ...(server.shareReadyCount !== undefined ? { shareReadyCount: server.shareReadyCount } : {}),
+    ...(server.entryRunId ? { entryRunId: server.entryRunId } : {}),
+    opened: openResult.opened,
+    ...(openResult.command ? { openCommand: openResult.command } : {}),
+    warnings,
+  };
+
+  writeResult(command, io, result, formatServeHuman);
+  io.setExitCode(0);
+
+  await serveObserveUntilSignal(
+    io,
+    {
+      url: server.url,
+      close: async () => {
+        if (tunnel) {
+          await tunnel.close();
+        }
+        await server.close();
+      },
+    },
+    { json: wantsMachine },
+  );
 }
 
 function formatServeHuman(result: ServeResult): string {

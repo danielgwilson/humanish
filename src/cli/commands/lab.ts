@@ -29,11 +29,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .description("List committed and ignored humanish lab manifests.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean }, command) => {
-      const result = await listLabManifests(options.cwd);
-      writeResult(command, io, result, formatLabListHuman);
-      io.setExitCode(0);
-    });
+    .action((options, command) => handleLabList(io, options, command));
 
   lab
     .command("inspect")
@@ -41,11 +37,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
     .description("Inspect a humanish lab manifest without running it.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (labName: string, options: { cwd: string; json?: boolean }, command) => {
-      const result = await inspectLabManifest(options.cwd, labName);
-      writeResult(command, io, result, formatLabInspectHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action((labName, options, command) => handleLabInspect(io, labName, options, command));
 
   lab
     .command("preflight")
@@ -65,64 +57,7 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
       "Load a local env file for this preflight without persisting values.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        labName: string,
-        options: {
-          cwd: string;
-          envFile?: string;
-          json?: boolean;
-          reachability: LabPreflightReachabilityMode;
-          timeoutMs: string;
-        },
-        command,
-      ) => {
-        if (
-          !(await applyEnvFileOption({
-            command,
-            cwd: options.cwd,
-            envFile: options.envFile,
-            io,
-          }))
-        ) {
-          return;
-        }
-
-        const timeoutMs = parsePositiveInteger(options.timeoutMs);
-        if (timeoutMs === null) {
-          const result: LabPreflightResult = {
-            schema: "humanish.lab-preflight-result.v1",
-            ok: false,
-            cwd: resolve(options.cwd),
-            lab: labName,
-            reachability: options.reachability,
-            checks: [
-              { name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." },
-            ],
-            targets: [],
-            sandbox: { created: false },
-            spend: { e2bDesktop: false, model: false },
-            warnings: [],
-            error: {
-              code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
-              message: "--timeout-ms must be a positive integer.",
-            },
-          };
-          writeResult(command, io, result, formatLabPreflightHuman);
-          io.setExitCode(2);
-          return;
-        }
-
-        const result = await runLabPreflight({
-          cwd: options.cwd,
-          lab: labName,
-          reachability: options.reachability,
-          timeoutMs,
-        });
-        writeResult(command, io, result, formatLabPreflightHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((labName, options, command) => handleLabPreflight(io, labName, options, command));
 
   lab
     .command("run")
@@ -166,26 +101,110 @@ export function registerLabCommands(parent: Command, io: CliIo): void {
         "  humanish watch --lab .humanish/labs/local.yaml",
       ].join("\n"),
     )
-    .action(async (labName: string, options: LabCommandOptions, command) => {
-      if (
-        !(await applyEnvFileOption({
-          command,
-          cwd: options.cwd,
-          envFile: options.envFile,
-          io,
-        }))
-      ) {
-        return;
-      }
+    .action((labName, options, command) => handleLabRun(io, labName, options, command));
+}
 
-      await runLabCommand({
-        command,
-        io,
-        lab: labName,
-        mode: "run",
-        options,
-      });
-    });
+async function handleLabList(
+  io: CliIo,
+  options: { cwd: string; json?: boolean },
+  command: Command,
+): Promise<void> {
+  const result = await listLabManifests(options.cwd);
+  writeResult(command, io, result, formatLabListHuman);
+  io.setExitCode(0);
+}
+
+async function handleLabInspect(
+  io: CliIo,
+  labName: string,
+  options: { cwd: string; json?: boolean },
+  command: Command,
+): Promise<void> {
+  const result = await inspectLabManifest(options.cwd, labName);
+  writeResult(command, io, result, formatLabInspectHuman);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleLabPreflight(
+  io: CliIo,
+  labName: string,
+  options: {
+    cwd: string;
+    envFile?: string;
+    json?: boolean;
+    reachability: LabPreflightReachabilityMode;
+    timeoutMs: string;
+  },
+  command: Command,
+): Promise<void> {
+  if (
+    !(await applyEnvFileOption({
+      command,
+      cwd: options.cwd,
+      envFile: options.envFile,
+      io,
+    }))
+  ) {
+    return;
+  }
+
+  const timeoutMs = parsePositiveInteger(options.timeoutMs);
+  if (timeoutMs === null) {
+    const result: LabPreflightResult = {
+      schema: "humanish.lab-preflight-result.v1",
+      ok: false,
+      cwd: resolve(options.cwd),
+      lab: labName,
+      reachability: options.reachability,
+      checks: [{ name: "timeout", ok: false, message: "--timeout-ms must be a positive integer." }],
+      targets: [],
+      sandbox: { created: false },
+      spend: { e2bDesktop: false, model: false },
+      warnings: [],
+      error: {
+        code: "HUMANISH_LAB_PREFLIGHT_INVALID_OPTION",
+        message: "--timeout-ms must be a positive integer.",
+      },
+    };
+    writeResult(command, io, result, formatLabPreflightHuman);
+    io.setExitCode(2);
+    return;
+  }
+
+  const result = await runLabPreflight({
+    cwd: options.cwd,
+    lab: labName,
+    reachability: options.reachability,
+    timeoutMs,
+  });
+  writeResult(command, io, result, formatLabPreflightHuman);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleLabRun(
+  io: CliIo,
+  labName: string,
+  options: LabCommandOptions,
+  command: Command,
+): Promise<void> {
+  if (
+    !(await applyEnvFileOption({
+      command,
+      cwd: options.cwd,
+      envFile: options.envFile,
+      io,
+    }))
+  ) {
+    return;
+  }
+
+  await runLabCommand({
+    command,
+    io,
+    lab: labName,
+    mode: "run",
+    options,
+  });
 }
 
 function formatLabListHuman(result: LabListResult): string {

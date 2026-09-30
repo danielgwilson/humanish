@@ -31,11 +31,7 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
     .option("--run <id>", "Run id or latest pointer.", "latest")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; json?: boolean; run: string }, command) => {
-      const result = await listFeedback(options.cwd, options.run);
-      writeResult(command, io, result, formatFeedbackHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action((options, command) => handleFeedbackList(io, options, command));
 
   feedback
     .command("draft")
@@ -49,23 +45,7 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
       "Which finding to draft (ids from `feedback list`); default: the first.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          candidate?: string;
-          analysis?: string;
-          finding?: string;
-          cwd: string;
-          json?: boolean;
-          run: string;
-        },
-        command,
-      ) => {
-        const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
-        writeResult(command, io, result, formatFeedbackHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((options, command) => handleFeedbackDraft(io, options, command));
 
   feedback
     .command("verify")
@@ -79,23 +59,7 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
       "Which finding to verify (ids from `feedback list`); default: the first.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          candidate?: string;
-          analysis?: string;
-          finding?: string;
-          cwd: string;
-          json?: boolean;
-          run: string;
-        },
-        command,
-      ) => {
-        const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
-        writeResult(command, io, result, formatFeedbackHuman);
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((options, command) => handleFeedbackVerify(io, options, command));
 
   feedback
     .command("issue")
@@ -111,42 +75,7 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
       "Which finding to file (ids from `feedback list`); default: the first.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          candidate?: string;
-          analysis?: string;
-          finding?: string;
-          cwd: string;
-          format: string;
-          json?: boolean;
-          repo: string;
-          run: string;
-        },
-        command,
-      ) => {
-        const result = await renderIssueMarkdown(
-          options.cwd,
-          options.run,
-          options.repo,
-          candidateOption(options),
-        );
-
-        if (wantsJson(command)) {
-          io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-        } else if (options.format !== "markdown") {
-          io.writeErr("Only --format markdown is supported.\n");
-          io.setExitCode(2);
-          return;
-        } else if (result.ok && result.issueMarkdown) {
-          io.writeOut(result.issueMarkdown);
-        } else {
-          io.writeErr(formatFeedbackHuman(result));
-        }
-
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+    .action((options, command) => handleFeedbackIssue(io, options, command));
 
   feedback
     .command("issue-url")
@@ -161,37 +90,118 @@ export function registerFeedbackCommands(parent: Command, io: CliIo): void {
       "Which finding to link (ids from `feedback list`); default: the first.",
     )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(
-      async (
-        options: {
-          candidate?: string;
-          analysis?: string;
-          finding?: string;
-          cwd: string;
-          json?: boolean;
-          repo: string;
-          run: string;
-        },
-        command,
-      ) => {
-        const result = await renderIssueUrl(
-          options.cwd,
-          options.run,
-          options.repo,
-          candidateOption(options),
-        );
+    .action((options, command) => handleFeedbackIssueUrl(io, options, command));
+}
 
-        if (wantsJson(command)) {
-          io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-        } else if (result.ok && result.issueUrl) {
-          io.writeOut(`${result.issueUrl}\n`);
-        } else {
-          io.writeErr(formatFeedbackHuman(result));
-        }
+async function handleFeedbackList(
+  io: CliIo,
+  options: { cwd: string; json?: boolean; run: string },
+  command: Command,
+): Promise<void> {
+  const result = await listFeedback(options.cwd, options.run);
+  writeResult(command, io, result, formatFeedbackHuman);
+  io.setExitCode(result.ok ? 0 : 2);
+}
 
-        io.setExitCode(result.ok ? 0 : 2);
-      },
-    );
+async function handleFeedbackDraft(
+  io: CliIo,
+  options: {
+    candidate?: string;
+    analysis?: string;
+    finding?: string;
+    cwd: string;
+    json?: boolean;
+    run: string;
+  },
+  command: Command,
+): Promise<void> {
+  const result = await draftFeedback(options.cwd, options.run, candidateOption(options));
+  writeResult(command, io, result, formatFeedbackHuman);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleFeedbackVerify(
+  io: CliIo,
+  options: {
+    candidate?: string;
+    analysis?: string;
+    finding?: string;
+    cwd: string;
+    json?: boolean;
+    run: string;
+  },
+  command: Command,
+): Promise<void> {
+  const result = await verifyFeedback(options.cwd, options.run, candidateOption(options));
+  writeResult(command, io, result, formatFeedbackHuman);
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleFeedbackIssue(
+  io: CliIo,
+  options: {
+    candidate?: string;
+    analysis?: string;
+    finding?: string;
+    cwd: string;
+    format: string;
+    json?: boolean;
+    repo: string;
+    run: string;
+  },
+  command: Command,
+): Promise<void> {
+  const result = await renderIssueMarkdown(
+    options.cwd,
+    options.run,
+    options.repo,
+    candidateOption(options),
+  );
+
+  if (wantsJson(command)) {
+    io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (options.format !== "markdown") {
+    io.writeErr("Only --format markdown is supported.\n");
+    io.setExitCode(2);
+    return;
+  } else if (result.ok && result.issueMarkdown) {
+    io.writeOut(result.issueMarkdown);
+  } else {
+    io.writeErr(formatFeedbackHuman(result));
+  }
+
+  io.setExitCode(result.ok ? 0 : 2);
+}
+
+async function handleFeedbackIssueUrl(
+  io: CliIo,
+  options: {
+    candidate?: string;
+    analysis?: string;
+    finding?: string;
+    cwd: string;
+    json?: boolean;
+    repo: string;
+    run: string;
+  },
+  command: Command,
+): Promise<void> {
+  const result = await renderIssueUrl(
+    options.cwd,
+    options.run,
+    options.repo,
+    candidateOption(options),
+  );
+
+  if (wantsJson(command)) {
+    io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+  } else if (result.ok && result.issueUrl) {
+    io.writeOut(`${result.issueUrl}\n`);
+  } else {
+    io.writeErr(formatFeedbackHuman(result));
+  }
+
+  io.setExitCode(result.ok ? 0 : 2);
 }
 
 function formatFeedbackHuman(result: FeedbackResult): string {
