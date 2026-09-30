@@ -235,7 +235,7 @@ stream contracts; local `codex-exec` active-run snapshots followed.
 Subsequent additions through 2026-06-11 included:
 
 - Playwright-backed browser proof with scripted, app-specific
-  `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/run/run.ts`);
+  `browser.steps` authored in `humanish/scenarios/*.yaml` (`src/actors/scripted-browser.ts`);
 - native Codex app-server session adapter (`src/actors/codex/app-server.ts`,
   registered in `src/actors/registry.ts`);
 - E2B desktop substrate lanes on the meta and computer-use routes;

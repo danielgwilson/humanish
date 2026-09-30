@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest";
 import { runInit } from "../../src/lab/init.js";
 import { renderObserver, serveObserver } from "../../src/observer/render.js";
 import { createProgram } from "../../src/cli/program.js";
-import { doctor, listRuns, runDryRun, verifyRun } from "../../src/run/run.js";
+import { doctor } from "../../src/cli/doctor.js";
+import { listRuns } from "../../src/run/manage.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/run/verify.js";
 import { prepareRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../src/run/paths.js";
 import { writePreparedRunLatestPointer } from "../../src/run/selected-output-paths.js";
 
@@ -409,7 +412,8 @@ describe("run path containment", () => {
 
   it("wires every direct run producer through the shared path guard", async () => {
     const producers = [
-      "run/run.ts",
+      "run/dry-run.ts",
+      "run/browser-proof.ts",
       "routes/computer-use/lab.ts",
       "routes/shared-world/sequential.ts",
       "routes/shared-world/concurrent.ts",

@@ -28,7 +28,7 @@ import type {
   RunAdapterScore,
   RunFeedbackCandidate,
   RunScorerProvenance,
-} from "../run/run.js";
+} from "../run/bundle.js";
 import {
   prepareSelectedOutputDirectory,
   readContainedRegularFile,

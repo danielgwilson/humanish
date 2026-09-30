@@ -22,7 +22,7 @@ import {
 import { composeLaneInstructions } from "../../src/routes/computer-use/lab.js";
 import { DEVICE_PRESETS } from "../../src/lab/device-presets.js";
 import { defaultRedactionHooks } from "../../src/evidence/redaction.js";
-import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../../src/run/run.js";
+import { aggregateTaskFunnels, formatStudyTaskFunnel } from "../../src/run/outcomes.js";
 import type { LabTask, TaskFunnel } from "../../src/lab/tasks.js";
 
 const FAKE_CAPS: ActorCapabilities = {

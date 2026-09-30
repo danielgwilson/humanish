@@ -15,7 +15,7 @@ import {
 } from "../../src/routes/terminal/lab.js";
 import { applyBrowserAdapterHooks } from "../../src/lab/adapter-extension.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/desktop-launch.js";
-import { verifyRun } from "../../src/run/run.js";
+import { verifyRun } from "../../src/run/verify.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../src/index.js";
 
 // ---------------------------------------------------------------------------------------------

@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "../../src/feedback/proof.js";
 import { draftFeedback, renderIssueMarkdown } from "../../src/feedback/feedback.js";
-import { runDryRun, type RunBundle, type RunFeedbackCandidate } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { type RunBundle, type RunFeedbackCandidate } from "../../src/run/bundle.js";
 
 const execFileAsync = promisify(execFile);
 const RUN = "portable-proof";

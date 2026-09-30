@@ -1,16 +1,12 @@
 // The deterministic scripted browser driver ("browser-persona") plus its actor-registry
-// session wrapper. The driver code was MOVED here from src/run.ts unchanged (the journey
-// parser, the surface capture engines, and their small private helpers) because the actor
-// registry can never import run.ts: run.ts imports getActor from actor-registry.js, so a
-// registry entry whose runSession lived in run.ts would be a module cycle through a
-// const-initialized registry. This module is a LEAF — it imports only actor-contract.js and
-// redaction.js, so both run.ts (the `run --app-url` path) and actor-registry.ts (the
-// "scripted-browser" actor) can depend on it.
+// session wrapper: the journey parser, the surface capture engines and their small private
+// helpers. run/browser-proof.ts (the `run --app-url` path) and actors/registry.ts (the
+// "scripted-browser" actor) both depend on it, and the registry is const-initialized, so this
+// module must not import either of them.
 //
-// One deliberate structural change from the move (the only one): the step executor's `page`
-// is typed as the narrow structural ScriptedPageLike instead of playwright's Page (precedent:
-// browserPersonaPageState already took { evaluate, url }; E2BDesktopLike is the repo's
-// established seam pattern). playwright's real Page satisfies it; tests inject fakes and run
+// The step executor's `page` is typed as the narrow structural ScriptedPageLike instead of
+// playwright's Page (browserPersonaPageState already took { evaluate, url }; E2BDesktopLike is
+// the same seam pattern). playwright's real Page satisfies it; tests inject fakes and run
 // the REAL step executor at $0 with zero browser dependence. playwright-core stays the lazy
 // production default behind launchPlaywrightChromium.
 //
@@ -114,7 +110,7 @@ async function launchPlaywrightChromium(
 }
 
 // ---------------------------------------------------------------------------
-// Driver types (moved from run.ts).
+// Driver types.
 // ---------------------------------------------------------------------------
 
 export interface BrowserSurface {
@@ -231,7 +227,7 @@ export const browserSurfaces: BrowserSurface[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Surface capture engines (moved from run.ts). The HUMANISH_BROWSER_PERSONA_DRIVER=fixture env
+// Surface capture engines. The HUMANISH_BROWSER_PERSONA_DRIVER=fixture env
 // switch stays a `run --app-url` affordance only; the lab route never consults it (its test
 // seam is the launchBrowser DI hook — an env-switched semi-real driver inside a lab would blur
 // what the evidence claims).
@@ -1172,7 +1168,7 @@ function compactBrowserError(error: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// Journey parser (moved from run.ts).
+// Journey parser.
 // ---------------------------------------------------------------------------
 
 export function parseBrowserPersonaJourneyFromScenario(args: {
@@ -1909,8 +1905,7 @@ async function projectScriptedActorTrace(args: {
 }
 
 // ---------------------------------------------------------------------------
-// Small private helpers (moved with the driver; run.ts keeps its own copies for
-// the code that stayed behind — this module must remain a leaf).
+// Small private helpers.
 // ---------------------------------------------------------------------------
 
 async function assertScriptedOutputRoot(root: PreparedOutputDirectory): Promise<string> {

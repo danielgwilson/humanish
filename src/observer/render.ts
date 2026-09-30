@@ -16,7 +16,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildObserverData, recordedStreamEmbed, withObserverEndings } from "./data.js";
 import type { ObserverData } from "./data.js";
-import { listRuns, loadRunBundlePrepared, verifyRunPrepared } from "../run/run.js";
+import { listRuns } from "../run/manage.js";
+import { loadRunBundlePrepared, verifyRunPrepared } from "../run/verify.js";
 import {
   bindExistingRunArtifactPaths,
   isPathInside,

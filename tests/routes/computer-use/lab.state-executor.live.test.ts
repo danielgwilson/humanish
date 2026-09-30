@@ -17,7 +17,7 @@ import type {
 } from "../../../src/actors/computer-use/loop.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 
 // The single LIVE rung for the STATE-DRIVEN (in-process, no-E2B, no-vision) lab route — the
 // downstream local-app consumer shape from issue #148. It is $0 BY MECHANISM (no provider spend, no

@@ -28,5 +28,5 @@ the evidence. Everything else is a projection rebuilt from them:
 
 ## Enforced by
 
-- `verifyRun` in `src/run/run.ts`, which grades only the bundle and its artifacts.
-- `tests/observer-data-contract.test.ts` for the Observer projection.
+- `verifyRun` in `src/run/verify.ts`, which grades only the bundle and its artifacts.
+- `tests/observer/data-contract.test.ts` for the Observer projection.

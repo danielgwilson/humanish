@@ -8,12 +8,12 @@ import { buildObserverData, withObserverEndings } from "../../src/observer/data.
 import {
   formatParticipantOutcomes,
   participantOutcomeDetails,
-  readReview,
-  runDryRun,
   tallyParticipantOutcomes,
   withCuaReviewProvenance,
-  type RunBundle,
-} from "../../src/run/run.js";
+} from "../../src/run/outcomes.js";
+import { readReview } from "../../src/run/manage.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { type RunBundle } from "../../src/run/bundle.js";
 
 function bundle(): RunBundle {
   return structuredClone(liveBundle) as unknown as RunBundle;

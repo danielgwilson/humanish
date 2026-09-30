@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DESKTOP_SDK_FLOOR, desktopSdkAdvisory, doctor } from "../src/run/run.js";
+import { DESKTOP_SDK_FLOOR, desktopSdkAdvisory, doctor } from "../src/cli/doctor.js";
 
 describe("doctor: the desktop SDK row names the installed version and a floor (#581)", () => {
   it("an SDK older than the floor gets the advisory, with the version and the fix", () => {

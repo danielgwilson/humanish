@@ -3,7 +3,8 @@ import { actorEnding } from "../../src/actors/stop-cause.js";
 import type { ActorStopCause, ActorTrace } from "../../src/actors/contract.js";
 import liveBundle from "../golden/labs/live.json" with { type: "json" };
 import { buildObserverData } from "../../src/observer/data.js";
-import { tallyParticipantOutcomes, type RunBundle } from "../../src/run/run.js";
+import { tallyParticipantOutcomes } from "../../src/run/outcomes.js";
+import { type RunBundle } from "../../src/run/bundle.js";
 
 function actor(overrides: Partial<ActorTrace> = {}): ActorTrace {
   return {

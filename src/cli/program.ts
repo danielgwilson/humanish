@@ -73,7 +73,7 @@ import { runLab, resolveLabDryRun, selectLabBackend } from "../lab/engine.js";
 import type { RunLabProvenance } from "../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../lab/adapter-scorer-loader.js";
 import type { LabBackend } from "../lab/engine.js";
-import type { RunScorerProvenance } from "../run/run.js";
+import type { RunScorerProvenance } from "../run/bundle.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../routes/computer-use/lab.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../routes/computer-use/lab.js";
 import type { ScriptedBrowserLabResult } from "../routes/scripted-browser.js";
@@ -90,7 +90,10 @@ import { startExposedObserver, validateExposure } from "../observer/exposure.js"
 import type { ExposureRequest } from "../observer/exposure.js";
 import { ServeTunnelError } from "../observer/tunnel.js";
 import type { ServeTunnel } from "../observer/tunnel.js";
-import { cleanupRun, doctor, listRuns, readReview, runDryRun, verifyRun } from "../run/run.js";
+import { cleanupRun, listRuns, readReview } from "../run/manage.js";
+import { doctor } from "./doctor.js";
+import { runDryRun } from "../run/dry-run.js";
+import { verifyRun } from "../run/verify.js";
 import { reclaimRunSandboxes, type ReclaimResult } from "../run/reclaim.js";
 import { RunIndexCache, readRunIndex } from "../run/run-index.js";
 import { readLabSummary } from "../lab/summary.js";
@@ -107,17 +110,14 @@ import {
 import { forTerminal } from "../routes/terminal/encoding.js";
 import { analyzeStudy, correctStudyAnalysis, showStudyAnalysis } from "../analysis/service.js";
 import { listStudyAnalyses, listStudyAnalysisExecutions } from "../analysis/store.js";
-import { resolveRunPath } from "../run/run.js";
+import { resolveRunPath } from "../run/locate.js";
 import { detectAgentSession } from "../actors/agent-session.js";
 import { runCommsCatchHost } from "../comms/catch-host.js";
 import { DEFAULT_SANDBOX_CATCH_PORT } from "../comms/sandbox-catch.js";
-import type {
-  DoctorResult,
-  CleanupResult,
-  RunsResult,
-  RunResult,
-  VerifyResult,
-} from "../run/run.js";
+import type { DoctorResult } from "./doctor.js";
+import type { CleanupResult, RunResult } from "../run/bundle.js";
+import type { RunsResult } from "../run/manage.js";
+import type { VerifyResult } from "../run/verify.js";
 
 export const CLI_RESPONSE_SCHEMA = "humanish.cli-response.v1";
 

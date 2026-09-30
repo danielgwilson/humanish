@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // fake @e2b/desktop module, so the containment discipline is exercised, not mocked away.
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../../src/lab/config.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
-import { resolveRunPath } from "../../src/run/run.js";
+import { resolveRunPath } from "../../src/run/locate.js";
 import {
   appendSandboxReceipt,
   parseSandboxReceipts,

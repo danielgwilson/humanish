@@ -64,10 +64,7 @@
   // knip reports cycles as warnings by default, which exit 0.
   "rules": { "cycles": "error" },
   "cycles": {
-    // Known cycles, removed by the run.ts and study-analysis splits. Any new cycle fails `pnpm knip`.
-    "allow": [
-      ["src/observer/data.ts", "src/run/run.ts"],
-      ["src/analysis/store.ts", "src/analysis/job.ts"],
-    ],
+    // Known cycle, removed by the study-analysis split. Any new cycle fails `pnpm knip`.
+    "allow": [["src/analysis/store.ts", "src/analysis/job.ts"]],
   },
 }

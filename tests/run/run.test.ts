@@ -30,16 +30,14 @@ import {
   PUBLIC_TARGET_CWD,
   RUN_BUNDLE_SCHEMA,
   buildRunSource,
-  cleanupRun,
-  listRuns,
-  readReview,
-  runDryRun,
-  verifyRun,
   type RunCostSummary,
   type RunBundle,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
-} from "../../src/run/run.js";
+} from "../../src/run/bundle.js";
+import { cleanupRun, listRuns, readReview } from "../../src/run/manage.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/run/verify.js";
 import { SYNTHETIC_PNG_1X1_BASE64, syntheticPng1x1 } from "../image-fixtures.js";
 
 const execFileAsync = promisify(execFile);

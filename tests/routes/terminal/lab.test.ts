@@ -30,7 +30,7 @@ import {
   OPENAI_EGRESS_PLACEHOLDER,
 } from "../../../src/routes/terminal/runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,

@@ -221,28 +221,17 @@ export type {
   ObserverStaticServeOptions,
   ObserverStaticServer,
 } from "./observer/static.js";
-export {
-  CLEANUP_SCHEMA,
-  DOCTOR_SCHEMA,
-  REVIEW_SCHEMA,
-  RUNS_SCHEMA,
-  RUN_BUNDLE_SCHEMA,
-  VERIFY_SCHEMA,
-  cleanupRun,
-  doctor,
-  extractLocalActorVerdict,
-  listRuns,
-  normalizeLocalActorTranscript,
-  readReview,
-  runDryRun,
-  verifyRun,
-} from "./run/run.js";
-export { SHARED_WORLD_SCHEMA } from "./run/run.js";
+export { CLEANUP_SCHEMA, REVIEW_SCHEMA, RUN_BUNDLE_SCHEMA } from "./run/bundle.js";
+export { DOCTOR_SCHEMA, doctor } from "./cli/doctor.js";
+export { RUNS_SCHEMA, cleanupRun, listRuns, readReview } from "./run/manage.js";
+export { VERIFY_SCHEMA, verifyRun } from "./run/verify.js";
+export { extractLocalActorVerdict, normalizeLocalActorTranscript } from "./run/verify-actor.js";
+export { runDryRun } from "./run/dry-run.js";
+export { SHARED_WORLD_SCHEMA } from "./run/bundle.js";
 export type {
   CleanupAdapterResult,
   CleanupResourceResult,
   CleanupResult,
-  DoctorResult,
   ReviewSummary,
   RunAdapterArtifact,
   RunAdapterScore,
@@ -255,7 +244,6 @@ export type {
   RunFeedbackCandidate,
   RunMeaningfulUseComponentId,
   RunMeaningfulUseScore,
-  RunCleanupHooks,
   RunOptions,
   RunParticipantAssignment,
   RunProviderResource,
@@ -266,7 +254,6 @@ export type {
   RunStreamKind,
   RunSubjectProvenance,
   RunSubjectStateStepRecord,
-  RunsResult,
   SharedWorldCheckpoint,
   SharedWorldEvidence,
   SharedWorldLaneWindow,
@@ -276,8 +263,10 @@ export type {
   SharedWorldStateSnapshot,
   SharedWorldTimelineEntry,
   SharedWorldTurn,
-  VerifyResult,
-} from "./run/run.js";
+} from "./run/bundle.js";
+export type { DoctorResult } from "./cli/doctor.js";
+export type { RunCleanupHooks, RunsResult } from "./run/manage.js";
+export type { VerifyResult } from "./run/verify.js";
 export {
   CUA_ACTOR_LAB_PROVIDER_METADATA,
   CUA_ACTOR_LAB_SCHEMA,

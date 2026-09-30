@@ -63,7 +63,7 @@ import type {
   RunFeedbackCandidate,
 } from "../../../src/index.js";
 import { containsSensitive } from "../../../src/evidence/redaction.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
 import type { LocalTreeArchive } from "../../../src/run/source-archive.js";
 import { freePort } from "../../helpers/free-port.js";

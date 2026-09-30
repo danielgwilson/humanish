@@ -37,7 +37,8 @@ import {
 } from "../routes/shared-world/concurrent.js";
 import { withRunStatusScope, type RunLabProvenance } from "../run/status.js";
 import type { ObserverResult } from "../observer/render.js";
-import { runDryRun, type RunResult, type RunScorerProvenance } from "../run/run.js";
+import { runDryRun } from "../run/dry-run.js";
+import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
 import {
   automaticAnalysisRouteReason,
   taskProtocolValidationReason,

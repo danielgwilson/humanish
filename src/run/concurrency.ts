@@ -1,9 +1,7 @@
 // Bounded-concurrency map: run `mapper` over `items` with at most `concurrency` in flight at a
-// time, preserving input order in the result array. Hoisted out of run.ts so every fan-out
-// caller (run.ts's local-actor lanes AND cua-actor-lab.ts's multi-lane desktops) shares ONE
-// implementation — three call sites across modules. Behaviour is identical to run.ts's original
-// private copy: a worker pool of size min(concurrency, items.length) pulls the next index until
-// the list is drained, and `results[i]` always corresponds to `items[i]`.
+// time, preserving input order in the result array. A worker pool of size
+// min(concurrency, items.length) pulls the next index until the list is drained, and
+// `results[i]` always corresponds to `items[i]`.
 
 export async function mapWithConcurrency<T, R>(
   items: T[],

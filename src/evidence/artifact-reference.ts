@@ -13,7 +13,7 @@
 // this guard never blanket-omits by status, it only lets a producer decline to
 // reference a path it knows it never wrote.
 //
-// The browser lane (src/run/run.ts + src/actors/scripted-browser.ts) imports this; the
+// The browser lane (src/run/browser-proof.ts + src/actors/scripted-browser.ts) imports this; the
 // terminal-product lane (src/routes/terminal/lab.ts) inherits the same
 // discipline so neither path can reintroduce the missing-artifact verify failure.
 

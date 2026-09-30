@@ -42,7 +42,7 @@ import type {
   RunBundle,
   SubjectPhaseEvent,
 } from "../../../src/index.js";
-import { verifyRun } from "../../../src/run/run.js";
+import { verifyRun } from "../../../src/run/verify.js";
 import {
   createOpenAiResponsesProvider,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,

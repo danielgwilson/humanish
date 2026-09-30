@@ -5,7 +5,7 @@ import path from "node:path";
 import { expect, it } from "vitest";
 
 import type { ObserverData } from "../../src/observer/data.js";
-import { runDryRun } from "../../src/run/run.js";
+import { runDryRun } from "../../src/run/dry-run.js";
 import { RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 
 it("observe follows selected-run evidence and lifecycle over protected HTTP, then closes on Ctrl-C", async () => {
