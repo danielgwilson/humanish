@@ -1,6 +1,6 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { LANE_ID_MAX_CHARS, LANE_ID_PATTERN } from "./parse-actors.js";
-import { isHttpUrl, isLoopbackUrl } from "./parse-subject.js";
+import { LANE_ID_MAX_CHARS, LANE_ID_PATTERN } from "./parse/actors.js";
+import { isHttpUrl, isLoopbackUrl } from "./parse/subject.js";
 import {
   actorResolvesToComputerUse,
   cuaLaneCount,

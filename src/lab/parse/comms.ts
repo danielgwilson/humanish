@@ -1,4 +1,4 @@
-import { invalid, isRecord, posInt, str } from "./parse-values.js";
+import { invalid, isRecord, posInt, str } from "./values.js";
 import type {
   LabComms,
   LabCommsEmail,
@@ -7,7 +7,7 @@ import type {
   LabCommsRecipient,
   LabCommsSmtp,
   LabConfigParseFailure,
-} from "./types.js";
+} from "../types.js";
 
 // Fail-loud (never silently swallow a comms setting): a malformed `comms` block returns a parse
 // failure rather than being dropped.

@@ -1,21 +1,21 @@
-import type { LabTask } from "./tasks.js";
-import { DEVICE_PRESET_NAMES, isDevicePresetName } from "./device-presets.js";
+import type { LabTask } from "../tasks.js";
+import { DEVICE_PRESET_NAMES, isDevicePresetName } from "../device-presets.js";
 import type {
   DwellWindow,
   StopConditionPrimitive,
   StopWhen,
   StopWhenRule,
-} from "../actors/stop-conditions.js";
-import { isReasoningEffort, reasoningEffortNames } from "../actors/reasoning-effort.js";
-import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { isHttpUrl } from "./parse-subject.js";
+} from "../../actors/stop-conditions.js";
+import { isReasoningEffort, reasoningEffortNames } from "../../actors/reasoning-effort.js";
+import { isMaxOutputTokens } from "../../actors/output-token-limit.js";
+import { isHttpUrl } from "./subject.js";
 import {
   registeredComputerUseActors,
   registeredScriptedBrowserActors,
   registeredTerminalActors,
-} from "./routing.js";
-import { invalid, isRecord, posInt, str } from "./parse-values.js";
-import type { LabActor, LabActorLane, LabActorLaneFocus, LabConfigParseFailure } from "./types.js";
+} from "../routing.js";
+import { invalid, isRecord, posInt, str } from "./values.js";
+import type { LabActor, LabActorLane, LabActorLaneFocus, LabConfigParseFailure } from "../types.js";
 
 // A lane id interpolates into per-lane evidence paths (screenshots/<id>/, actors/<id>.json), so
 // it must be a public-safe path token, same shape as a lab id.

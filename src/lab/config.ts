@@ -54,8 +54,8 @@ import {
 } from "../substrates/local/runtime-config.js";
 import { compositionReason } from "./composition-rules.js";
 import { findUnknownLabKey } from "./keys.js";
-import { parseActors } from "./parse-actors.js";
-import { parseComms } from "./parse-comms.js";
+import { parseActors } from "./parse/actors.js";
+import { parseComms } from "./parse/comms.js";
 import {
   parseDefaults,
   parseExecution,
@@ -63,9 +63,9 @@ import {
   parsePolicies,
   parseReview,
   parseScenario,
-} from "./parse-execution.js";
-import { parseSubject } from "./parse-subject.js";
-import { invalid, isRecord, optionalStr, str } from "./parse-values.js";
+} from "./parse/execution.js";
+import { parseSubject } from "./parse/subject.js";
+import { invalid, isRecord, optionalStr, str } from "./parse/values.js";
 import {
   effectiveComputerUseLaneIds,
   routesToComputerUse,

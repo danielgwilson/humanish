@@ -3,8 +3,8 @@
 // the parser's order; parseLabConfig calls it after the structural parse, and the planLab design
 // has library callers go through the same function.
 
-import { isLoopbackUrl } from "./parse-subject.js";
-import { REPO_SLUG_PATTERN } from "./parse-values.js";
+import { isLoopbackUrl } from "./parse/subject.js";
+import { REPO_SLUG_PATTERN } from "./parse/values.js";
 import {
   actorResolvesToComputerUse,
   actorResolvesToScriptedBrowser,
