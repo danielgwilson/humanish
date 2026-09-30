@@ -5,7 +5,7 @@ import {
   SHARED_WORLD_STATESERIES_KEYS,
   planeProvenanceFindings,
   sharedWorldCommonFindings,
-} from "../run/guards-shared-world.js";
+} from "../run/shared-world-shape.js";
 import { isRecord } from "../run/type-guards.js";
 
 // CONCURRENT: the REQUIRED set (all must be present) AND a FORBIDDEN set (any present == a
