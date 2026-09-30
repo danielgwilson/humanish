@@ -148,8 +148,18 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 
 The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
 then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before
-the error reaches the caller. The lab preflight probe has no run directory, so it writes no
-receipt and relies on that timeout alone.
+the error reaches the caller. The lab preflight probe has no run directory, so
+`runLabPreflight` (`src/lab/preflight.ts`) journals its receipt in
+`.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
+`humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
+killed or failed probe left. It acts on a journal only when the probe marked it abandoned, its
+lease has elapsed, or its owner ran on this host in this pid namespace and is gone; otherwise it
+says why it left the journal. A public-preview probe's timeout is each target's readiness budget
+plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
+(`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
+or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
+60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
+serve as-is) up to 60 (a Node app that installs and builds), where it used to get 10.
 
 ## Make your first change
 

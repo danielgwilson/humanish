@@ -17,7 +17,7 @@ import {
   type DetachedTimers,
 } from "../substrates/detached.js";
 import type { Shell } from "../substrates/shell.js";
-import { runStateSteps } from "./state.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS, runStateSteps } from "./state.js";
 import {
   emitPhaseCompleted,
   emitPhaseStarted,
@@ -107,6 +107,33 @@ async function runProvisioningStepWithOneRetry(
  * build/start. after-ready steps complete BEFORE the caller opens the browser: the actor never
  * drives a half-seeded subject and seeding never eats the session budget.
  */
+/**
+ * The longest runSubjectServePipeline can take with these budgets: the Node bootstrap and install
+ * with their one retry, the package-manager step, every seed step, the build and the readiness
+ * wait. Detached-step polling adds seconds on top.
+ */
+export function serveProvisioningBudgetMs(
+  serve: LabSubjectServe,
+  state: LabSubjectState | undefined,
+): number {
+  const installMs = serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS;
+  const commands = [serve.install, serve.build, serve.start];
+  const runtimeMs = needsNodeRuntime(commands)
+    ? 2 * installMs + (corepackCommandFor(commands) === undefined ? 0 : installMs)
+    : 0;
+  const seedMs = (state?.seed ?? []).reduce(
+    (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
+    0,
+  );
+  return (
+    runtimeMs +
+    (serve.install === undefined ? 0 : 2 * installMs) +
+    seedMs +
+    (serve.build === undefined ? 0 : (serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS)) +
+    (serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS)
+  );
+}
+
 export async function runSubjectServePipeline(
   shell: Shell,
   args: {
