@@ -163,97 +163,20 @@ export async function runSubjectServePipeline(
       now,
       timers,
     });
+  const step: ServeStep = {
+    shell,
+    serve: args.serve,
+    requestTimeoutMs: args.requestTimeoutMs,
+    scrub: args.scrub,
+    onPhase: args.onPhase,
+    timers,
+    now,
+  };
 
-  // Provide the runtime the pipeline needs before running it (#371). The stock desktop template
-  // ships python3 and curl but no Node. Probe first, so a template that ships its own Node pays
-  // nothing.
-  const serveCommands = [args.serve.install, args.serve.build, args.serve.start];
-  if (needsNodeRuntime(serveCommands)) {
-    const runtimeStartedAt = now();
-    emitPhaseStarted(
-      args.onPhase,
-      now,
-      "runtime",
-      "providing the Node runtime the serve pipeline needs",
-    );
-    const bootstrap = await runProvisioningStepWithOneRetry(shell, {
-      name: "subject-runtime-node",
-      command: NODE_BOOTSTRAP_COMMAND,
-      cwd: SUBJECT_DIR,
-      timeoutMs: NODE_BOOTSTRAP_TIMEOUT_MS,
-      requestTimeoutMs: args.requestTimeoutMs,
-      timers,
-      retryPhase: "runtime-retry",
-      retryMessage: "Node runtime bootstrap",
-      onPhase: args.onPhase,
-      now,
-    });
-    let ok = bootstrap.ok;
-    const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
-    if (corepack) {
-      const pm = await runDetachedStep(shell, {
-        name: "subject-runtime-pm",
-        command: corepack,
-        cwd: SUBJECT_DIR,
-        timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
-        requestTimeoutMs: args.requestTimeoutMs,
-        ...timers,
-      });
-      ok = pm.ok;
-    }
-    emitPhaseCompleted(
-      args.onPhase,
-      now,
-      runtimeStartedAt,
-      "runtime",
-      ok,
-      ok ? "Node runtime ready" : "could not provide a Node runtime",
-    );
-    if (!ok) {
-      throw new Error(
-        `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed${bootstrap.attempts === 2 ? " twice" : ""}: ${failureTail(args.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`,
-      );
-    }
-  }
+  await provideNodeRuntime(step);
 
   if (args.serve.install) {
-    const installStartedAt = now();
-    emitPhaseStarted(args.onPhase, now, "install", "installing subject dependencies");
-    const install = await runProvisioningStepWithOneRetry(shell, {
-      name: "subject-install",
-      command: args.serve.install,
-      cwd: SUBJECT_DIR,
-      timeoutMs: args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
-      requestTimeoutMs: args.requestTimeoutMs,
-      timers,
-      retryPhase: "install-retry",
-      retryMessage: "subject install",
-      onPhase: args.onPhase,
-      now,
-    });
-    emitPhaseCompleted(
-      args.onPhase,
-      now,
-      installStartedAt,
-      "install",
-      install.ok,
-      install.ok
-        ? install.attempts === 2
-          ? "subject dependencies installed (on the second attempt)"
-          : "subject dependencies installed"
-        : install.attempts === 2
-          ? "subject install failed twice"
-          : "subject install failed",
-    );
-    if (!install.ok) {
-      // Lead with the line a person can act on; npm's own trace follows it (#602).
-      const headline = install.timedOut
-        ? `subject install timed out after ${args.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS}ms`
-        : install.attempts === 2
-          ? `subject install failed twice (exit ${install.firstExitCode ?? "null"}, then exit ${install.exitCode ?? "null"}); the sandbox could not complete serve.install`
-          : `subject install failed (exit ${install.exitCode ?? "null"})`;
-      throw new Error(`${headline}: ${failureTail(args.scrub(install.logTail))}`);
-    }
+    await installSubject(step, args.serve.install);
     await refresh();
   }
 
@@ -263,29 +186,7 @@ export async function runSubjectServePipeline(
   await refresh();
 
   if (args.serve.build) {
-    const buildStartedAt = now();
-    emitPhaseStarted(args.onPhase, now, "build", "building subject");
-    const build = await runDetachedStep(shell, {
-      name: "subject-build",
-      command: args.serve.build,
-      cwd: SUBJECT_DIR,
-      timeoutMs: args.serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS,
-      requestTimeoutMs: args.requestTimeoutMs,
-      ...timers,
-    });
-    emitPhaseCompleted(
-      args.onPhase,
-      now,
-      buildStartedAt,
-      "build",
-      build.ok,
-      build.ok ? "subject build complete" : "subject build failed",
-    );
-    if (!build.ok) {
-      throw new Error(
-        `subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${failureTail(args.scrub(build.logTail))}`,
-      );
-    }
+    await buildSubject(step, args.serve.build);
     await refresh();
   }
 
@@ -295,30 +196,183 @@ export async function runSubjectServePipeline(
   await runState("before-start");
   await refresh();
 
-  await startDetachedProcess(shell, {
-    name: "subject-start",
-    command: args.serve.start,
+  await startSubject(step);
+  await waitForSubjectReady(step);
+
+  // after-ready: fixture loading through the RUNNING app (loopback curl from in-sandbox:
+  // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
+  // complete before the caller opens the browser and the session timer starts.
+  await runState("after-ready");
+  await refresh();
+}
+
+/** What every serve step needs: the sandbox shell, the serve block, timers and the phase sink. */
+interface ServeStep {
+  shell: Shell;
+  serve: LabSubjectServe;
+  requestTimeoutMs: number;
+  scrub: (text: string) => string;
+  onPhase: ((event: SubjectPhaseEvent) => void) | undefined;
+  timers: ReturnType<typeof detachedTimersOf>;
+  now: () => number;
+}
+
+/**
+ * Provide the runtime the pipeline needs before running it (#371). The stock desktop template
+ * ships python3 and curl but no Node. Probe first, so a template that ships its own Node pays
+ * nothing.
+ */
+async function provideNodeRuntime(step: ServeStep): Promise<void> {
+  const { shell, now } = step;
+  const serveCommands = [step.serve.install, step.serve.build, step.serve.start];
+  if (!needsNodeRuntime(serveCommands)) return;
+  const runtimeStartedAt = now();
+  emitPhaseStarted(
+    step.onPhase,
+    now,
+    "runtime",
+    "providing the Node runtime the serve pipeline needs",
+  );
+  const bootstrap = await runProvisioningStepWithOneRetry(shell, {
+    name: "subject-runtime-node",
+    command: NODE_BOOTSTRAP_COMMAND,
     cwd: SUBJECT_DIR,
-    requestTimeoutMs: args.requestTimeoutMs,
+    timeoutMs: NODE_BOOTSTRAP_TIMEOUT_MS,
+    requestTimeoutMs: step.requestTimeoutMs,
+    timers: step.timers,
+    retryPhase: "runtime-retry",
+    retryMessage: "Node runtime bootstrap",
+    onPhase: step.onPhase,
+    now,
+  });
+  let ok = bootstrap.ok;
+  const corepack = ok ? corepackCommandFor(serveCommands) : undefined;
+  if (corepack) {
+    const pm = await runDetachedStep(shell, {
+      name: "subject-runtime-pm",
+      command: corepack,
+      cwd: SUBJECT_DIR,
+      timeoutMs: step.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+      requestTimeoutMs: step.requestTimeoutMs,
+      ...step.timers,
+    });
+    ok = pm.ok;
+  }
+  emitPhaseCompleted(
+    step.onPhase,
+    now,
+    runtimeStartedAt,
+    "runtime",
+    ok,
+    ok ? "Node runtime ready" : "could not provide a Node runtime",
+  );
+  if (!ok) {
+    throw new Error(
+      `the subject's serve pipeline needs a Node runtime and this desktop template has none, and bootstrapping one failed${bootstrap.attempts === 2 ? " twice" : ""}: ${failureTail(step.scrub(bootstrap.logTail))}. Use execution.desktop.template with an image that ships Node, or change serve.install to a runtime the template provides.`,
+    );
+  }
+}
+
+/** serve.install, retried once on a non-zero exit. */
+async function installSubject(step: ServeStep, command: string): Promise<void> {
+  const { now } = step;
+  const installStartedAt = now();
+  emitPhaseStarted(step.onPhase, now, "install", "installing subject dependencies");
+  const install = await runProvisioningStepWithOneRetry(step.shell, {
+    name: "subject-install",
+    command,
+    cwd: SUBJECT_DIR,
+    timeoutMs: step.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS,
+    requestTimeoutMs: step.requestTimeoutMs,
+    timers: step.timers,
+    retryPhase: "install-retry",
+    retryMessage: "subject install",
+    onPhase: step.onPhase,
+    now,
+  });
+  emitPhaseCompleted(
+    step.onPhase,
+    now,
+    installStartedAt,
+    "install",
+    install.ok,
+    install.ok
+      ? install.attempts === 2
+        ? "subject dependencies installed (on the second attempt)"
+        : "subject dependencies installed"
+      : install.attempts === 2
+        ? "subject install failed twice"
+        : "subject install failed",
+  );
+  if (!install.ok) {
+    // Lead with the line a person can act on; npm's own trace follows it (#602).
+    const headline = install.timedOut
+      ? `subject install timed out after ${step.serve.installTimeoutMs ?? INSTALL_TIMEOUT_MS}ms`
+      : install.attempts === 2
+        ? `subject install failed twice (exit ${install.firstExitCode ?? "null"}, then exit ${install.exitCode ?? "null"}); the sandbox could not complete serve.install`
+        : `subject install failed (exit ${install.exitCode ?? "null"})`;
+    throw new Error(`${headline}: ${failureTail(step.scrub(install.logTail))}`);
+  }
+}
+
+/** serve.build, once. */
+async function buildSubject(step: ServeStep, command: string): Promise<void> {
+  const { now } = step;
+  const buildStartedAt = now();
+  emitPhaseStarted(step.onPhase, now, "build", "building subject");
+  const build = await runDetachedStep(step.shell, {
+    name: "subject-build",
+    command,
+    cwd: SUBJECT_DIR,
+    timeoutMs: step.serve.buildTimeoutMs ?? BUILD_TIMEOUT_MS,
+    requestTimeoutMs: step.requestTimeoutMs,
+    ...step.timers,
+  });
+  emitPhaseCompleted(
+    step.onPhase,
+    now,
+    buildStartedAt,
+    "build",
+    build.ok,
+    build.ok ? "subject build complete" : "subject build failed",
+  );
+  if (!build.ok) {
+    throw new Error(
+      `subject build ${build.timedOut ? "timed out" : `failed (exit ${build.exitCode})`}: ${failureTail(step.scrub(build.logTail))}`,
+    );
+  }
+}
+
+/** serve.start as a detached process that keeps running. */
+async function startSubject(step: ServeStep): Promise<void> {
+  await startDetachedProcess(step.shell, {
+    name: "subject-start",
+    command: step.serve.start,
+    cwd: SUBJECT_DIR,
+    requestTimeoutMs: step.requestTimeoutMs,
   });
   // Fire-and-forget: startDetachedProcess never waits for the long-lived server to exit, so
   // there is no matching completed event here (no ok/durationMs to report yet); readiness is
   // the next boundary.
-  args.onPhase?.({
-    at: isoNow(now),
+  step.onPhase?.({
+    at: isoNow(step.now),
     type: "cua-lab.subject.serve.started",
     message: "subject server launched (detached)",
   });
+}
 
+/** Probe serve.url until it answers; on timeout, report the start log's tail. */
+async function waitForSubjectReady(step: ServeStep): Promise<void> {
+  const { now } = step;
   const readyStartedAt = now();
-  emitPhaseStarted(args.onPhase, now, "ready", "waiting for subject to become ready");
-  const ready = await probeUrl(shell, args.serve.url, {
-    timeoutMs: args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
-    requestTimeoutMs: args.requestTimeoutMs,
-    ...timers,
+  emitPhaseStarted(step.onPhase, now, "ready", "waiting for subject to become ready");
+  const ready = await probeUrl(step.shell, step.serve.url, {
+    timeoutMs: step.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS,
+    requestTimeoutMs: step.requestTimeoutMs,
+    ...step.timers,
   });
   emitPhaseCompleted(
-    args.onPhase,
+    step.onPhase,
     now,
     readyStartedAt,
     "ready",
@@ -326,17 +380,13 @@ export async function runSubjectServePipeline(
     ready ? "subject is ready" : "subject did not become ready in time",
   );
   if (!ready) {
-    const startLog = await readDetachedLog(shell, "subject-start", args.requestTimeoutMs).catch(
-      () => "",
-    );
+    const startLog = await readDetachedLog(
+      step.shell,
+      "subject-start",
+      step.requestTimeoutMs,
+    ).catch(() => "");
     throw new Error(
-      `subject did not answer at ${args.serve.url} within ${args.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${failureTail(args.scrub(startLog))}`,
+      `subject did not answer at ${step.serve.url} within ${step.serve.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS}ms; server log tail: ${failureTail(step.scrub(startLog))}`,
     );
   }
-
-  // after-ready: fixture loading through the RUNNING app (loopback curl from in-sandbox:
-  // steps are author-trusted provisioning, not actors, so no new URL policy surface). These
-  // complete before the caller opens the browser and the session timer starts.
-  await runState("after-ready");
-  await refresh();
 }

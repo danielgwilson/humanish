@@ -117,3 +117,61 @@ describe("the serve pipeline's Node bootstrap", () => {
     expect(withNode - withoutNode).toBe(2 * NODE_BOOTSTRAP_TIMEOUT_MS);
   });
 });
+
+describe("the serve pipeline's step order", () => {
+  it("runs each step in order and refreshes after each phase", async () => {
+    // One log of what reached the sandbox and when the caller's refresh ran: detached step
+    // launches by step name, readiness probes, and onPhaseComplete calls.
+    const log: string[] = [];
+    const { shell } = fakeShell({});
+    const logging = {
+      ...shell,
+      async run(command: string, options?: ShellCallOptions): Promise<ShellResult> {
+        if (command.includes("curl -sf")) log.push("probe");
+        return shell.run(command, options);
+      },
+      async start(command: string): Promise<ShellResult> {
+        const step = /\/tmp\/humanish-subject\/([\w-]+)/.exec(command)?.[1];
+        if (step !== undefined) log.push(step);
+        return shell.start(command);
+      },
+    };
+    const time = clock();
+    await runSubjectServePipeline(logging, {
+      serve: {
+        install: "pnpm install --frozen-lockfile",
+        build: "pnpm build",
+        start: "pnpm start",
+        url: serve.url,
+      },
+      state: {
+        seed: [
+          { name: "seed-after-ready", command: "true", when: "after-ready" },
+          { name: "seed-before-start", command: "true" },
+          { name: "seed-before-build", command: "true", when: "before-build" },
+        ],
+      },
+      requestTimeoutMs: 1_000,
+      scrub: (text) => text,
+      onPhaseComplete: async () => void log.push("refresh"),
+      now: time.now,
+      sleep: time.sleep,
+    });
+    expect(log).toEqual([
+      NODE_STEP,
+      "subject-runtime-pm",
+      "subject-install",
+      "refresh",
+      "subject-state-seed-before-build",
+      "refresh",
+      "subject-build",
+      "refresh",
+      "subject-state-seed-before-start",
+      "refresh",
+      "subject-start",
+      "probe",
+      "subject-state-seed-after-ready",
+      "refresh",
+    ]);
+  });
+});
