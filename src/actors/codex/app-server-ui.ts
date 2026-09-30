@@ -1,7 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 
+import { digestText } from "../../evidence/redaction.js";
 import {
+  CODEX_APP_SERVER_ARTIFACTS,
+  CODEX_APP_SERVER_DIRECTORY,
   runCodexAppServerSessionInPreparedRoot,
   type CodexAppServerRunOptions,
   type CodexAppServerRunResult,
@@ -78,12 +81,12 @@ export async function startCodexAppServerUi(
   if (!preparedStateFile) {
     await prepareContainedOutputFile(preparedRunRoot, "state.json");
   }
-  await prepareContainedOutputDirectory(preparedRunRoot, "codex-app-server");
-  await Promise.all([
-    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "events.ndjson")),
-    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "summary.json")),
-    prepareContainedOutputFile(preparedRunRoot, path.join("codex-app-server", "transcript.txt")),
-  ]);
+  await prepareContainedOutputDirectory(preparedRunRoot, CODEX_APP_SERVER_DIRECTORY);
+  await Promise.all(
+    Object.values(CODEX_APP_SERVER_ARTIFACTS).map((artifact) =>
+      prepareContainedOutputFile(preparedRunRoot, artifact),
+    ),
+  );
   const publicRunRoot = path.relative(cwd, preparedRunRoot.requestedPath) || ".";
   const publicStateFile = path.relative(cwd, stateFile) || path.basename(stateFile);
 
@@ -176,42 +179,30 @@ export async function startCodexAppServerUi(
     sandbox: options.sandbox ?? "read-only",
     serviceName: options.serviceName ?? "humanish",
   };
-  const completion = runCodexAppServerSessionInPreparedRoot(sessionOptions, preparedRunRoot).then(
-    async (result): Promise<CodexAppServerUiState> => {
-      state = {
-        ...state,
-        reason: result.reason,
-        result,
-        status: result.status,
-        updatedAt: new Date().toISOString(),
-      };
-      try {
-        await persistState();
-      } catch (error) {
-        await closeServer(server);
-        throw error;
-      }
-      if (options.keepOpen !== true) {
-        await closeServer(server);
-      }
-      return state;
-    },
-    async (error: unknown): Promise<CodexAppServerUiState> => {
-      state = {
-        ...state,
-        reason: error instanceof Error ? error.message : String(error),
-        status: "blocked",
-        updatedAt: new Date().toISOString(),
-      };
-      try {
-        await persistState();
-      } catch (persistError) {
-        await closeServer(server);
-        throw persistError;
-      }
+  // Records the final state. The server closes if that write fails, and otherwise afterwards
+  // unless it is kept open.
+  const settle = async (
+    update: Partial<CodexAppServerUiState>,
+    keepOpen: boolean,
+  ): Promise<CodexAppServerUiState> => {
+    state = { ...state, ...update, updatedAt: new Date().toISOString() };
+    try {
+      await persistState();
+    } catch (error) {
       await closeServer(server);
-      return state;
-    },
+      throw error;
+    }
+    if (!keepOpen) await closeServer(server);
+    return state;
+  };
+  const completion = runCodexAppServerSessionInPreparedRoot(sessionOptions, preparedRunRoot).then(
+    (result) =>
+      settle({ reason: result.reason, result, status: result.status }, options.keepOpen === true),
+    (error: unknown) =>
+      settle(
+        { reason: error instanceof Error ? error.message : String(error), status: "blocked" },
+        false,
+      ),
   );
 
   return {
@@ -272,15 +263,6 @@ async function closeServer(server: Server): Promise<void> {
       else resolve();
     });
   });
-}
-
-function digestText(text: string): string {
-  let hash = 0x811c9dc5;
-  for (const char of text) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function renderCodexAppServerUiHtml(): string {
