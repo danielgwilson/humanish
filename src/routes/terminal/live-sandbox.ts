@@ -7,7 +7,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ActorCompletionReason, ActorStatus } from "../../actors/contract.js";
 import { digestText, toErrorMessage } from "../../evidence/redaction.js";
-import type { LabConfig, LabRuntimeAuth } from "../../lab/types.js";
+import type { LabRuntimeAuth } from "../../lab/types.js";
 import { desktopSpanToMinutes, type DesktopUsage } from "../../run/cost-summary.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import type { RunScope } from "../../run/run.js";
@@ -45,6 +45,7 @@ import {
   SANDBOX_TIMEOUT_BUFFER_MS,
   SANDBOX_WORKDIR,
   UPLOAD_MAX_BYTES,
+  type LiveTerminalPlan,
   type TerminalLedgers,
   type TerminalProductLabHooks,
 } from "./types.js";
@@ -53,7 +54,7 @@ type StartedRun = Extract<Awaited<ReturnType<RunScope["startRun"]>>, { ok: true 
 
 /** What the sandbox session reads from the run. */
 export interface LiveSandboxInputs {
-  config: LabConfig;
+  plan: LiveTerminalPlan;
   cwd: string;
   hooks: TerminalProductLabHooks;
   now: () => number;
@@ -104,12 +105,12 @@ export class LiveTerminalSandbox {
   }
 
   async acquire(): Promise<void> {
-    const { config, hooks, now, sanitize, runtimeEnv, e2bApiKey, runPaths, metadata } = this.inputs;
+    const { plan, hooks, now, sanitize, runtimeEnv, e2bApiKey, runPaths, metadata } = this.inputs;
     const { warnings } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs, sandboxTimeoutMs } = this;
     // Declared egress allowlist, or undefined for the historical unrestricted default (#538).
-    const egressAllow = config.execution?.egressAllow;
+    const egressAllow = plan.egressAllow;
     const sandboxModule = await (hooks.loadModule ?? loadE2BDesktopModule)();
     this.module = sandboxModule;
     await validatePreparedRunArtifactPaths(runPaths);
@@ -117,7 +118,9 @@ export class LiveTerminalSandbox {
     // carries the real runtime key; participant commands receive an inert placeholder. The proxy
     // capability is available from sandbox creation, including during bootstrap/product setup.
     const routing =
-      egressAllow === undefined ? undefined : { allowOut: egressAllow, denyOut: ["0.0.0.0/0"] };
+      egressAllow === undefined
+        ? undefined
+        : { allowOut: [...egressAllow], denyOut: ["0.0.0.0/0"] };
     const network =
       runtimeEnv.mode === "openai-egress"
         ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
@@ -247,32 +250,25 @@ export class LiveTerminalSandbox {
 
   /** Returns false when the observed Codex version is missing or not the requested one. */
   async verifyRuntimeVersion(): Promise<boolean> {
-    const { config, sanitize, runtime } = this.inputs;
+    const { plan, sanitize, runtime } = this.inputs;
+    const requested = plan.runtime.version;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs } = this;
     // Observe the executable without command-scoped auth, then use only that exact version.
     // The SDK bounds the request and command; version failures reach the owned cleanup path.
     try {
-      const versionProbe = await this.sandbox!.commands.run(
-        buildRuntimeVersionCommand(config.execution?.runtime?.version),
-        {
-          requestTimeoutMs,
-          timeoutMs: TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
-        },
-      );
+      const versionProbe = await this.sandbox!.commands.run(buildRuntimeVersionCommand(requested), {
+        requestTimeoutMs,
+        timeoutMs: TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
+      });
       const observed = parseTerminalRuntimeVersion(versionProbe.stdout ?? "");
       if (observed !== undefined) runtime.observedVersion = observed;
       if (versionProbe.exitCode !== 0 || observed === undefined)
         throw new Error(
           "Codex version probe did not return a successful `codex-cli <exact-version>` result.",
         );
-      if (
-        config.execution?.runtime?.version !== undefined &&
-        observed !== config.execution.runtime.version
-      ) {
-        throw new Error(
-          `Codex version mismatch: requested ${config.execution.runtime.version}, observed ${observed}.`,
-        );
+      if (requested !== undefined && observed !== requested) {
+        throw new Error(`Codex version mismatch: requested ${requested}, observed ${observed}.`);
       }
       runtime.versionStatus = "verified";
       recordLifecycle(
@@ -293,7 +289,7 @@ export class LiveTerminalSandbox {
 
   /** Returns false when the declared product upload or install could not prepare the world. */
   async prepareProduct(): Promise<boolean> {
-    const { config, cwd, now, sanitize } = this.inputs;
+    const { plan, cwd, now, sanitize } = this.inputs;
     const { recordLifecycle } = this.inputs.recorder;
     const { requestTimeoutMs } = this;
     // --- Optional product setup (no runtime env), before the Codex exec. ---
@@ -302,7 +298,7 @@ export class LiveTerminalSandbox {
     // exists so a study can put the participant IN a prepared project — asking an agent what
     // studies a project contains, in an empty directory, measures the lab and not the product
     // (learned the hard way on the desktop lane, labs/tui-self-study.yaml).
-    const install = config.subject.product?.install;
+    const install = plan.product.install;
     if (install === undefined) return true;
 
     // An optional local file, put on the machine before the install runs, so a study can meet a
@@ -310,7 +306,7 @@ export class LiveTerminalSandbox {
     // manifest: this puts a file from the operator's disk onto a machine an autonomous agent is
     // about to drive, so it stays inside the project, must be a regular file, and is size-capped.
     let uploadAssignment = "";
-    const uploadRel = config.subject.product?.upload;
+    const uploadRel = plan.product.upload;
     if (uploadRel !== undefined) {
       const uploadStartedAt = now();
       try {
@@ -389,7 +385,8 @@ export class LiveTerminalSandbox {
   }
 
   async execCodex(): Promise<void> {
-    const { config, now, nowIso, sanitize, runtimeEnv, runtime } = this.inputs;
+    const { plan, now, nowIso, sanitize, runtimeEnv, runtime } = this.inputs;
+    const { model, reasoningEffort } = plan.runtime;
     const { composedPrompt, verdictNonce, maxMinutes } = this.inputs;
     const { recordLifecycle, recordStreamedTerminalChunk, appendReturnedTerminalOutput } =
       this.inputs.recorder;
@@ -405,10 +402,8 @@ export class LiveTerminalSandbox {
       prompt: composedPrompt,
       runtimeAuth: runtimeEnv.mode,
       version: runtime.observedVersion!,
-      ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-      ...(config.actors[0]?.reasoningEffort === undefined
-        ? {}
-        : { reasoningEffort: config.actors[0].reasoningEffort }),
+      ...(model === undefined ? {} : { model }),
+      ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
     });
     const commandDigest = digestText(codexCommand);
     const startedAt = now();

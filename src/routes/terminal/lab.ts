@@ -58,111 +58,110 @@ import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
+import type { TerminalPlan } from "../../lab/plan-types.js";
 import {
   type RunLiveTerminalSessionArgs,
   type RunTerminalProductLabOptions,
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type TerminalProductLabResult,
+  type TerminalRunInput,
 } from "./types.js";
 
 export { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 
 /**
- * The run scope gives a direct library caller the same run lifetime the CLI gets: whichever of its
- * fail-closed exits the lab takes, the run it started is closed, and only a run that published its
- * final bundle reaches automatic analysis.
+ * The config-taking entry point. It plans, returns a refusal with the same envelope and analysis
+ * record the route has always returned, and otherwise runs the plan.
  */
 export async function runTerminalProductLab(
   options: RunTerminalProductLabOptions,
 ): Promise<TerminalProductLabResult> {
-  const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
+  const { config, dryRun, lab, ...input } = options;
+  const planned = planTerminalLab(config, {
+    dryRun,
+    ...(lab === undefined ? {} : { lab }),
+    ...(input.hooks === undefined ? {} : { hooks: input.hooks }),
+  });
+  if (planned.ok) return runTerminalPlan(planned.plan, input);
+
+  const { refusal } = planned;
+  const refused: TerminalProductLabResult = {
+    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ok: false,
+    cwd: path.resolve(options.cwd),
+    labId: config.id,
+    actor: refusal.actor ?? config.actors[0]?.type ?? "",
+    product: config.subject.product?.name ?? "",
+    dryRun,
+    runId: options.runId ?? "not-created",
+    warnings: [],
+    error: { code: refusal.code, message: refusal.message },
+  };
+  // A refusal starts no run, so a declared or default analysis is recorded as skipped.
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  return completeAutomaticAnalysis(
+    refused,
+    undefined,
+    analysis.ok ? analysis.config : undefined,
+    options.automaticAnalysis,
+    { trigger: config.review?.analysis === undefined ? "default" : "explicit" },
+  );
+}
+
+/**
+ * Run a terminal plan. The run scope gives a direct library caller the same run lifetime the CLI
+ * gets: whichever of its fail-closed exits the lab takes, the run it started is closed, and only a
+ * run that published its final bundle reaches automatic analysis.
+ */
+export async function runTerminalPlan(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
+): Promise<TerminalProductLabResult> {
   const { result, finished } = await runScope((scope) =>
-    runTerminalProductLabInScope(options, scope),
+    runTerminalPlanInScope(plan, input, scope),
   );
   return completeAutomaticAnalysis(
     result,
     finished,
-    analysis.ok ? analysis.config : undefined,
-    options.automaticAnalysis,
+    plan.analysis?.config,
+    input.automaticAnalysis,
     {
-      trigger: options.config.review?.analysis === undefined ? "default" : "explicit",
-      preferLargerOutput: analysis.ok && analysis.preferLargerOutput === true,
+      ...(plan.analysis === undefined ? {} : { trigger: plan.analysis.trigger }),
+      preferLargerOutput: plan.analysis?.preferLargerOutput === true,
     },
   );
 }
 
-async function runTerminalProductLabInScope(
-  options: RunTerminalProductLabOptions,
+async function runTerminalPlanInScope(
+  plan: TerminalPlan,
+  input: TerminalRunInput,
   scope: RunScope,
 ): Promise<TerminalProductLabResult> {
-  const { config, dryRun } = options;
-  const cwd = path.resolve(options.cwd);
+  const cwd = path.resolve(input.cwd);
   const warnings: string[] = [];
-  const actorType = config.actors[0]?.type ?? "";
-
   const failed = (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
     message: string,
-    extras?: { actor?: string; product?: string },
   ): TerminalProductLabResult => ({
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok: false,
     cwd,
-    labId: config.id,
-    actor: extras?.actor ?? actorType,
-    product: extras?.product ?? config.subject.product?.name ?? "",
-    dryRun,
-    runId: options.runId ?? "not-created",
+    labId: plan.labId,
+    actor: plan.actor,
+    product: plan.product.name,
+    dryRun: plan.dryRun,
+    runId: input.runId ?? "not-created",
     warnings,
     error: { code, message },
   });
-
-  // planTerminalLab makes every configuration refusal, in the order this route always has.
-  const planned = planTerminalLab(config, {
-    dryRun,
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
-  });
-  if (!planned.ok) {
-    const { refusal } = planned;
-    return failed(
-      refusal.code,
-      refusal.message,
-      refusal.actor === undefined ? undefined : { actor: refusal.actor },
-    );
-  }
-  const { plan } = planned;
-  const product = plan.product;
 
   // LIVE path: the real in-sandbox agent session. A separate orchestrator owns the
   // create -> inject (command-scoped) -> run -> capture -> teardown lifecycle so the dry-run path
   // below stays a pure contract builder. It enforces the safety contract by construction (the
   // keyPlacement-routed command-scoped key, the deny-by-default allowlist, the fail-closed cap,
   // the proven cleanup) and fails closed before any sandbox/key/spend on any precondition miss.
-  if (!plan.dryRun) {
-    return runLiveTerminalSession({
-      options,
-      cwd,
-      config,
-      descriptorId: plan.actor,
-      product,
-      caps: plan.caps,
-      warnings,
-      failed,
-      scope,
-    });
-  }
-
-  return runDryTerminalLab({
-    options,
-    cwd,
-    config,
-    product,
-    actorId: plan.actor,
-    warnings,
-    failed,
-    scope,
-  });
+  if (!plan.dryRun) return runLiveTerminalSession({ plan, input, cwd, warnings, failed, scope });
+  return runDryTerminalLab({ plan, input, cwd, warnings, failed, scope });
 }
 
 /**
@@ -170,21 +169,18 @@ async function runTerminalProductLabInScope(
  * the run scope with no sandbox, key or spend.
  */
 async function runDryTerminalLab(args: {
-  options: RunTerminalProductLabOptions;
+  plan: Extract<TerminalPlan, { readonly dryRun: true }>;
+  input: TerminalRunInput;
   cwd: string;
-  config: RunTerminalProductLabOptions["config"];
-  product: RunLiveTerminalSessionArgs["product"];
-  actorId: string;
   warnings: string[];
   failed: RunLiveTerminalSessionArgs["failed"];
   scope: RunScope;
 }): Promise<TerminalProductLabResult> {
-  const { options, cwd, config, product, actorId, warnings, failed, scope } = args;
-  const { dryRun } = options;
-  const hooks = options.hooks ?? {};
+  const { plan, input, cwd, warnings, failed, scope } = args;
+  const { product } = plan;
+  const hooks = input.hooks ?? {};
   const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
-    config,
-    product,
+    plan,
     cwd,
     env: hooks.env ?? process.env,
     warnings,
@@ -192,14 +188,14 @@ async function runDryTerminalLab(args: {
 
   const started = await scope.startRun({
     cwd: physicalCwd,
-    runId: options.runId,
+    runId: input.runId,
     mintRunId: makeTerminalRunId,
-    mode: dryRun ? "dry-run" : "live",
-    lab: options.lab,
+    mode: "dry-run",
+    lab: plan.lab,
     renderReview: renderTerminalReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    observer: { open: input.open === true, render: hooks.renderObserverFn },
   });
-  if (!started.ok) return failed(started.code, started.message, { actor: actorId });
+  if (!started.ok) return failed(started.code, started.message);
   const { run } = started;
   const { runId, createdAt } = run;
   const source = await buildRunSource({
@@ -209,30 +205,31 @@ async function runDryTerminalLab(args: {
     packageName: "humanish",
   });
 
+  const policies = plan.residual.policies;
   const bundle = buildTerminalProductBundle({
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    actorId,
+    ...(plan.lab === undefined ? {} : { lab: plan.lab }),
+    actorId: plan.actor,
     createdAt,
-    dryRun,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
+    dryRun: true,
+    labId: plan.labId,
+    ...(plan.title ? { labTitle: plan.title } : {}),
     mission: evidenceMission,
     persona,
     productName: product.name,
     publicSurfaces: product.publicSurfaces,
-    ...(config.scenario?.caps ? { caps: config.scenario.caps } : {}),
-    ...(config.execution?.runtimeAuth ? { runtimeAuth: config.execution.runtimeAuth } : {}),
-    stdin: config.execution?.terminal?.stdin ?? "disabled",
+    ...(plan.caps ? { caps: plan.caps } : {}),
+    ...(plan.runtime.auth ? { runtimeAuth: plan.runtime.auth } : {}),
+    stdin: plan.stdin ?? "disabled",
     policies: {
-      allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
-      allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
-      allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
+      allowPrivateRepoAccess: policies?.allowPrivateRepoAccess ?? false,
+      allowProviderCredentials: policies?.allowProviderCredentials ?? false,
+      allowPaymentCredentials: policies?.allowPaymentCredentials ?? false,
+      allowGitHubMutation: policies?.allowGitHubMutation ?? false,
     },
     runId,
     source,
   });
-  bundle.events.push(runtimeDeclaredEvent(config, createdAt));
+  bundle.events.push(runtimeDeclaredEvent(plan.runtime, createdAt));
 
   const finished = await run.finish(bundle);
   const observer = await finished.renderObserver();
@@ -243,10 +240,10 @@ async function runDryTerminalLab(args: {
     schema: TERMINAL_PRODUCT_LAB_SCHEMA,
     ok,
     cwd,
-    labId: config.id,
-    actor: actorId,
+    labId: plan.labId,
+    actor: plan.actor,
     product: product.name,
-    dryRun,
+    dryRun: true,
     runId,
     observer,
     warnings: [...warnings, ...observer.warnings],
@@ -266,14 +263,14 @@ async function runDryTerminalLab(args: {
  * scrubbed, and the committed persona's traits and brief.
  */
 async function prepareDryPersona(args: {
-  config: RunTerminalProductLabOptions["config"];
-  product: RunLiveTerminalSessionArgs["product"];
+  plan: TerminalPlan;
   cwd: string;
   env: Record<string, string | undefined>;
   warnings: string[];
 }): Promise<{ evidenceMission: string; physicalCwd: string; persona: ActorPersonaRef }> {
-  const { config, product, cwd, env, warnings } = args;
-  const mission = config.actors[0]?.mission ?? defaultMission(product.name);
+  const { plan, cwd, env, warnings } = args;
+  const { product } = plan;
+  const mission = plan.mission ?? defaultMission(product.name);
   const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
     .map((value) => value?.trim() ?? "")
     .filter((value) => value.length >= 4);
@@ -281,7 +278,7 @@ async function prepareDryPersona(args: {
     { mission },
     scrubLiterals(knownSecretValues),
   ).mission;
-  const personaId = config.actors[0]?.persona ?? "autonomous-terminal-agent";
+  const personaId = plan.personaId ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(cwd);
   // Resolve the committed persona so its traits actually shape the agent prompt (#308); fail-safe to
   // the bare persona id (no traits applied) when no persona file is committed.
@@ -318,10 +315,8 @@ async function prepareDryPersona(args: {
 }
 
 /** The declared runtime provenance as a dry-run event; nothing is observed without a sandbox. */
-function runtimeDeclaredEvent(
-  config: RunTerminalProductLabOptions["config"],
-  createdAt: string,
-): RunEvent {
+function runtimeDeclaredEvent(runtime: TerminalPlan["runtime"], createdAt: string): RunEvent {
+  const { version, model, reasoningEffort } = runtime;
   return {
     id: "event-terminal-runtime-declared",
     at: createdAt,
@@ -330,13 +325,9 @@ function runtimeDeclaredEvent(
     message: redactText(
       JSON.stringify(
         declaredRuntimeProvenance({
-          ...(config.execution?.runtime?.version === undefined
-            ? {}
-            : { version: config.execution.runtime.version }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-          ...(config.actors[0]?.reasoningEffort === undefined
-            ? {}
-            : { reasoningEffort: config.actors[0].reasoningEffort }),
+          ...(version === undefined ? {} : { version }),
+          ...(model === undefined ? {} : { model }),
+          ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
         }),
       ),
     ),
@@ -348,7 +339,7 @@ function composePrompt(args: {
   mission: string;
   personaLine: string;
   productName: string;
-  publicSurfaces: string[];
+  publicSurfaces: readonly string[];
 }): string {
   return [
     args.personaLine,
