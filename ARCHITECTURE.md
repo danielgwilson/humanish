@@ -48,10 +48,11 @@ steps 3 to 7 and 9.
    `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
    `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
    The route writes one bundle before the lanes start and the final one after they finish. The
-   terminal route instead starts its run with `runScope` and `startRun` and publishes it with
-   `Run.finish` (`src/run/run.ts`). `Run.finish` writes `run.json`, then the `status.json`
-   outcome, then `review.json`, `review.md`, `events.ndjson` and `observer/observer-data.json`,
-   and the pointer last. The other routes move onto it one at a time.
+   terminal and scripted routes instead start their run with `runScope` and `startRun` and
+   publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes `run.json`, then the
+   `status.json` outcome, then `review.json`, `review.md`, `events.ndjson` and
+   `observer/observer-data.json`, and the pointer last. The computer-use and shared-world routes
+   move onto it next.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
