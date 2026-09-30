@@ -17,7 +17,7 @@ import {
   type ActorCompletionReason,
   type ActorStatus,
 } from "../src/actors/contract.js";
-import { statusForCompletionReason } from "../src/actors/computer-use/loop.js";
+import { statusForCompletionReason } from "../src/actors/computer-use/loop/trace.js";
 
 describe("completion reason -> status", () => {
   const expected: Array<[ActorCompletionReason, ActorStatus]> = [

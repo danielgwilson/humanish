@@ -4,13 +4,20 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 
-import { provisionCloneSubject } from "../subject/clone.js";
+import { cloneProvisioningBudgetMs, provisionCloneSubject } from "../subject/clone.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../substrates/e2b/cua-desktop.js";
 import { probeUrl } from "../substrates/detached.js";
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import { acquireE2BDesktopSandbox } from "../substrates/e2b/sandbox.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import type { Shell } from "../substrates/shell.js";
+import { MAX_SANDBOX_MS } from "../routes/computer-use/types.js";
+import {
+  abandonPreflightJournal,
+  discardPreflightJournal,
+  openPreflightJournal,
+  type PreflightJournal,
+} from "../run/preflight-receipts.js";
 import { isLoopbackUrl } from "./parse-subject.js";
 import { type LabConfig } from "./types.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
@@ -20,8 +27,9 @@ import { digestText, redactText } from "../evidence/redaction.js";
 export const LAB_PREFLIGHT_SCHEMA = "humanish.lab-preflight-result.v1";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
-const DEFAULT_SANDBOX_TIMEOUT_MS = 10 * 60_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+// Room on the probe's lease for desktop boot and teardown around the work it does.
+const PREFLIGHT_LEASE_BUFFER_MS = 5 * 60_000;
 
 export type LabPreflightReachabilityMode =
   | "metadata"
@@ -56,6 +64,8 @@ export interface LabPreflightTarget {
 export interface LabPreflightSandbox {
   created: boolean;
   killed?: boolean;
+  /** The probe's server-side timeout, after which the provider kills it. */
+  timeoutMs?: number;
   sandboxIdDigest?: string;
   template?: string;
 }
@@ -264,7 +274,9 @@ async function runPublicPreviewPreflight(ctx: PreflightContext): Promise<LabPref
     );
   }
 
-  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (shell) => {
+  // Each target gets at most one readiness budget.
+  const leaseMs = publicTargets.length * ctx.timeoutMs + PREFLIGHT_LEASE_BUFFER_MS;
+  const probe = await withPreflightSandbox(ctx, { e2bApiKey, leaseMs }, async (shell) => {
     for (const target of publicTargets) {
       const reachable = await probeUrl(shell, targetUrlFor(ctx.config, target), {
         timeoutMs: ctx.timeoutMs,
@@ -351,7 +363,11 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
   }
 
   let subjectCommitDigest: string | undefined;
-  const probe = await withPreflightSandbox(ctx, { e2bApiKey }, async (shell) => {
+  // The longest the clone and serve steps can take with the lab's own budgets, so the probe is
+  // never cut off where the run's provisioning would still be allowed to finish.
+  const leaseMs =
+    cloneProvisioningBudgetMs(serve, ctx.config.subject.state) + PREFLIGHT_LEASE_BUFFER_MS;
+  const probe = await withPreflightSandbox(ctx, { e2bApiKey, leaseMs }, async (shell) => {
     const subjectEnvNames = ctx.config.subject.env ?? [];
     await provisionCloneSubject(shell, {
       repo,
@@ -388,23 +404,37 @@ async function runSandboxLoopbackPreflight(ctx: PreflightContext): Promise<LabPr
 
 async function withPreflightSandbox(
   ctx: PreflightContext,
-  args: { e2bApiKey: string },
+  args: { e2bApiKey: string; leaseMs: number },
   callback: (shell: Shell) => Promise<void>,
 ): Promise<{ ok: true } | { ok: false; result: LabPreflightResult }> {
   let module: E2BDesktopModule | undefined;
   let sandboxId: string | undefined;
   let failureMessage: string | undefined;
+  // The lease is sized to the probe's work, never longer than a declared sandbox timeout (the run
+  // gets no more than that either) or E2B's maximum.
+  const timeoutMs = Math.min(
+    args.leaseMs,
+    ctx.config.execution?.desktop?.sandboxTimeoutMs ?? MAX_SANDBOX_MS,
+  );
+  // The receipt goes to a journal under .humanish/preflight, so `humanish reclaim --preflight`
+  // can kill the probe if this process dies before the finally block does.
+  let journal: PreflightJournal | undefined;
+  try {
+    journal = await openPreflightJournal(ctx.cwd, timeoutMs);
+  } catch (error: unknown) {
+    ctx.warnings.push(
+      `Preflight receipt journal could not be created (${compactError(error)}); if this process dies, only the probe's ${timeoutMs} ms timeout ends its sandbox.`,
+    );
+  }
+  let acquired = false;
   try {
     module = await (ctx.hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-    // The probe has no run directory, so it writes no receipt. Its lease is the create-time
-    // timeoutMs with kill-on-timeout: if this process dies before the finally block kills the
-    // probe, the provider kills it when that timeout ends.
     const probe = await acquireE2BDesktopSandbox({
       module,
       options: {
         apiKey: args.e2bApiKey,
         requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
-        timeoutMs: ctx.config.execution?.desktop?.sandboxTimeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
+        timeoutMs,
         lifecycle: { onTimeout: "kill" },
         metadata: {
           ...CUA_ACTOR_LAB_PROVIDER_METADATA,
@@ -425,11 +455,13 @@ async function withPreflightSandbox(
         dpi: 96,
       },
       template: ctx.config.execution?.desktop?.template,
-      receipt: null,
+      receipt: journal === undefined ? null : { root: journal.root, laneId: journal.id },
     });
+    acquired = true;
     sandboxId = probe.allocation.resourceId;
     ctx.sandbox = {
       created: true,
+      timeoutMs,
       sandboxIdDigest: digest(sandboxId),
       ...(ctx.config.execution?.desktop?.template
         ? { template: ctx.config.execution.desktop.template }
@@ -460,6 +492,7 @@ async function withPreflightSandbox(
         );
       }
     }
+    await settlePreflightJournal(ctx, journal, !acquired || ctx.sandbox.killed === true);
   }
 
   if (failureMessage) {
@@ -484,6 +517,31 @@ async function withPreflightSandbox(
   }
 
   return { ok: true };
+}
+
+/**
+ * Remove the journal once no sandbox can be left: acquisition failed before a handle came back
+ * (the sandbox module releases what it created), or the kill was confirmed. Otherwise keep it
+ * for `humanish reclaim --preflight`.
+ */
+async function settlePreflightJournal(
+  ctx: PreflightContext,
+  journal: PreflightJournal | undefined,
+  gone: boolean,
+): Promise<void> {
+  if (journal === undefined) return;
+  if (!gone) {
+    await abandonPreflightJournal(journal).catch(() => undefined);
+    ctx.warnings.push(
+      `The preflight sandbox's receipt stays in .humanish/preflight/${journal.id}; run \`humanish reclaim --preflight\` to kill it by id.`,
+    );
+    return;
+  }
+  await discardPreflightJournal(journal).catch((error: unknown) => {
+    ctx.warnings.push(
+      `Preflight receipt journal ${journal.id} could not be removed: ${compactError(error)}`,
+    );
+  });
 }
 
 function finalize(ctx: PreflightContext, args?: { check?: LabPreflightCheck }): LabPreflightResult {

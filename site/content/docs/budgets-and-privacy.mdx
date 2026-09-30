@@ -14,8 +14,6 @@ Four steps cost nothing and need no keys:
 3. `npx humanish telemetry disable` (or `DO_NOT_TRACK=1`) stops usage telemetry.
 4. `review.analysis: false` in the lab keeps the analyst call out of the first live run.
 
-The first paid step is one participant: `npx humanish run try-live` with `execution.caps.maxUsd` set, a synthetic account on the target, and the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
-
 ## Set a study budget
 
 For the computer-use route, declare both the study budget and a per-participant backstop:
@@ -36,6 +34,8 @@ execution:
 - A model without a known rate cannot satisfy a fail-closed computer-use cap, so the run is refused rather than treated as free.
 
 The included `try-live` lab uses one participant and `maxUsd: 2`. It is a starting point for learning the product, not a recommended budget for every task. When `init` finds no OpenAI key and a signed-in Codex or Claude Code, it writes `try-live` with a `local-agent` participant and no dollar cap: account usage has no dollar price humanish can enforce, and the 10-minute `execution.timeoutMs` bounds the run.
+
+The first paid step is this one participant. [Store the keys](#store-credentials) first, then run `npx humanish run try-live` against a synthetic account on the target, with the E2B console open so you can watch the desktop end. Read the bundle's `cost` block and `providerResources` before running a panel.
 
 Supported live runs also request post-run analysis by default. This sends selected
 retained text and captures to OpenAI, using `OPENAI_API_KEY`, with a separate $3
@@ -178,6 +178,10 @@ Once you have identified the interrupted run, reclaim its sandboxes:
 ```bash
 npx humanish reclaim --run YOUR_RUN_ID --json
 ```
+
+A `humanish lab preflight` probe that was interrupted leaves its receipt under `.humanish/preflight/`; `npx humanish reclaim --preflight --json` stops those sandboxes.
+
+A preflight sandbox also stops on its own. A `public-preview` probe gets each target's readiness budget plus five minutes. A `sandbox-loopback` probe gets the longest its clone and serve steps can take with your lab's `serve` and seed-step budgets, including the one retry of the runtime and install steps, plus five minutes, so a preflight does not time out where the run would finish provisioning. A declared `execution.desktop.sandboxTimeoutMs`, or E2B's 60-minute maximum, caps both. Without a declared timeout, a clone probe gets 13 minutes (a clone served as-is) up to 60 minutes (a Node app that installs and builds), where earlier versions gave 10; the receipt is what lets you stop it sooner.
 
 `reclaim` immediately attempts to stop the sandboxes recorded for that run. `reclaim` uses journaled exact IDs and needs `E2B_API_KEY`; it does not sweep unrelated resources in your provider account. See [`reclaim`](/docs/cli#humanish-reclaim) for the full flags.
 

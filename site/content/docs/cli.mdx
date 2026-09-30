@@ -147,7 +147,7 @@ humanish telemetry disable [options]
 
 ## humanish keys
 
-Manage the humanish user-level key store used by provider-key discovery (#436).
+Manage the humanish user-level key store used by provider-key discovery.
 
 ```text
 humanish keys [options] [command]
@@ -366,7 +366,7 @@ humanish runs [options]
 
 ## humanish stats
 
-Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.
+Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
 
 ```text
 humanish stats [options]
@@ -527,7 +527,7 @@ humanish comms recover [options]
 
 ### humanish comms catch
 
-Run the email catch on THIS host so humanish can study an app it does not provision (#328). Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
+Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.
 
 ```text
 humanish comms catch [options]
@@ -585,7 +585,7 @@ humanish runtime setup [options]
 
 ## humanish reclaim
 
-Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.
+Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.
 
 ```text
 humanish reclaim [options]
@@ -595,6 +595,7 @@ humanish reclaim [options]
 | --- | --- |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--run <id>` | Run id, or 'latest'. (default: "latest") |
+| `--preflight` | Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 
@@ -617,7 +618,7 @@ humanish watch [options] [lab]
 | `--dry-run` | Lab only: render contract evidence without live provider spend. |
 | `--sims <count>` | Start a fresh synthetic run with this many sims before rendering. Defaults to 4 when --run is omitted. |
 | `--count <count>` | Lab only: override headed desktop lane count. |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
+| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--run-id <id>` | Explicit run id for deterministic fixture tests; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
 | `--env-file <path>` | Load a local env file for this watch without persisting values. |
@@ -807,7 +808,7 @@ humanish lab run [options] <lab>
 | `--lanes <lane-ids>` | CUA rerun only: comma-separated lane ids to rerun from the source run. |
 | `--run-id <id>` | Explicit lab run id; refused when that run already exists. |
 | `--cwd <path>` | Target project directory. (default: ".") |
-| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code. |
+| `--scorer <path>` | Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code. |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | display help for command |
 

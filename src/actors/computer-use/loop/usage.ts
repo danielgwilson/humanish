@@ -108,8 +108,8 @@ export function accountBillingConflicts(
 export class UsageLedger {
   /** Settled single-dispatch requests, in order: the trace's providerRequests. */
   readonly requests: ActorProviderRequest[] = [];
-  /** A continuing request yielded actions and has not settled yet. */
-  requestPending = false;
+  /** A continuing request returned actions and has not settled yet. */
+  private requestPending = false;
   /** A request did not confirm cleanup; no further request or action is admitted. */
   cleanupUnconfirmed = false;
   /** Some usage was reported; the trace records tokenUsage only then. */
@@ -121,19 +121,22 @@ export class UsageLedger {
   // Per model-inference usage, in order (#334): the recorded fact long-context pricing tiers
   // need. A continuing native tool interaction may contain several inference requests.
   private readonly turns: UsageTurns = [];
-  private incompleteInteraction = false;
-  private unreportedInteraction = false;
+  /** An interaction turn arrived without complete usage, or its receipt said usage is incomplete. */
+  private sawIncompleteUsage = false;
+  /** A request may have been billed without any usage reaching the ledger. */
+  private mayHaveUnreportedUsage = false;
 
   constructor(private readonly provider: CuaProvider) {}
 
-  record(turn: CuaTurn, interaction = true): void {
+  record(turn: CuaTurn, kind: "interaction" | "debrief"): void {
     if (turn.providerRequestPending === true) return;
+    const interaction = kind === "interaction";
     const raw = turn.usage;
     const turns = raw?.turns === undefined ? undefined : normalizedUsageTurns(raw);
     if (interaction && (!isCompleteTurnUsage(raw) || turn.providerRequest?.usageComplete === false))
-      this.incompleteInteraction = true;
+      this.sawIncompleteUsage = true;
     if (interaction && raw?.turns !== undefined && turns === undefined)
-      this.unreportedInteraction = true;
+      this.mayHaveUnreportedUsage = true;
     if (raw === undefined) return;
     const usage = {
       ...(validTokenCount(raw.input) ? { input: raw.input } : {}),
@@ -151,14 +154,19 @@ export class UsageLedger {
     else if (turns !== undefined) this.turns.push(...turns);
   }
 
+  /** A continuing request returned actions; its receipt and usage settle later. */
+  markPending(): void {
+    this.requestPending = true;
+  }
+
   /** A request may have been billed without reporting usage. */
   markUnreported(): void {
-    this.unreportedInteraction = true;
+    this.mayHaveUnreportedUsage = true;
   }
 
   /**
-   * Book one settled single-dispatch request. A request that settles while an earlier yield is
-   * pending belongs to that interaction, whatever kind the caller asked for.
+   * Book one settled single-dispatch request. A request that settles while a continuing request
+   * is open belongs to that interaction, whatever kind the caller asked for.
    */
   settle(
     kind: "interaction" | "debrief",
@@ -166,8 +174,6 @@ export class UsageLedger {
     usage: ActorTokenUsage | undefined,
     error: CuaProviderError | undefined,
   ): "interaction" | "debrief" {
-    // src/actors/codex/restricted-session.ts sets dispatched only after initialize/config/
-    // account/thread/MCP admission, immediately before turn/start; it is not a success claim.
     const settledKind = this.requestPending ? "interaction" : kind;
     this.requests.push({
       ordinal: this.requests.length + 1,
@@ -188,19 +194,16 @@ export class UsageLedger {
       receipt.dispatched !== false &&
       (!receipt.usageComplete || !isCompleteTurnUsage(usage))
     )
-      this.unreportedInteraction = true;
+      this.mayHaveUnreportedUsage = true;
     this.requestPending = false;
     return settledKind;
   }
 
   /**
-   * The running usage both spend guards consume: totals plus the per-request ledger, shaped
-   * exactly like the trace's final tokenUsage so one estimator prices both identically. Unlike the
-   * persisted trace (where absent means "unreported"), this runtime callback arg ALWAYS carries
-   * numeric cache fields: pre-#334 guards received an object whose cachedInput was always a
-   * number (0 included), and arithmetic on a suddenly-undefined field yields NaN, which
-   * comparison operators swallow silently (red-team finding: a stale study-budget guard would run
-   * uncapped without a sound).
+   * The running usage both spend guards price: totals plus the per-inference ledger, shaped like
+   * the trace's final tokenUsage so one estimator prices both. Unlike the persisted trace, where an
+   * absent field means unreported, this always carries numeric cache fields: a guard doing
+   * arithmetic on an undefined field gets NaN, and NaN never trips a cap.
    */
   running(): ActorTokenUsage {
     return this.withPending(
@@ -232,7 +235,7 @@ export class UsageLedger {
     };
   }
 
-  /** Latest known usage of the pending continuing request, when it is complete. */
+  /** Latest known usage of the continuing request, when it is complete. */
   knownPending(): CompleteTurnUsage | undefined {
     const usage = this.requestPending ? this.provider.pendingRequestUsage : undefined;
     if (!isCompleteTurnUsage(usage)) return undefined;
@@ -246,15 +249,15 @@ export class UsageLedger {
     };
   }
 
-  hasUnreported(): boolean {
-    return this.unreportedInteraction || this.provider.interactionUsageIncomplete === true;
+  private hasUnreportedUsage(): boolean {
+    return this.mayHaveUnreportedUsage || this.provider.interactionUsageIncomplete === true;
   }
 
   /** A cap cannot be enforced when some request's usage is unknown. */
   unavailableForCap(): boolean {
     return (
-      this.incompleteInteraction ||
-      this.unreportedInteraction ||
+      this.sawIncompleteUsage ||
+      this.mayHaveUnreportedUsage ||
       (this.requestPending
         ? this.knownPending() === undefined
         : this.provider.interactionUsageIncomplete === true)
@@ -264,7 +267,7 @@ export class UsageLedger {
   /** Whether the trace must say that some interaction usage may be missing. */
   interactionUsageIncomplete(requiresUsage: boolean): boolean {
     return (
-      this.requestPending || this.hasUnreported() || (requiresUsage && this.incompleteInteraction)
+      this.requestPending || this.hasUnreportedUsage() || (requiresUsage && this.sawIncompleteUsage)
     );
   }
 

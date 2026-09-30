@@ -30,8 +30,8 @@ export interface E2BSandboxRequest {
   options: E2BDesktopCreateOptions;
   retry?: TransientRetryHooks;
   /**
-   * Required so every caller decides. `null` is only for a caller with no run directory; that
-   * sandbox is reclaimable by its create-time `timeoutMs` alone.
+   * Required so every caller decides. `null` is only for a caller that could not open a journal;
+   * that sandbox is reclaimable by its create-time `timeoutMs` alone.
    */
   receipt: E2BSandboxReceiptTarget | null;
 }

@@ -236,6 +236,24 @@ export async function readContainedRegularFile(
   }
 }
 
+/**
+ * Whether a contained path is confirmed absent. A present entry that readContainedRegularFile
+ * refuses or fails to read is not absent.
+ */
+export async function containedPathAbsent(
+  rootInput: PreparedOutputRoot,
+  relativePath: string,
+): Promise<boolean> {
+  try {
+    assertSafeRelativeOutputPath(relativePath, false);
+    const root = await resolveOutputRoot(rootInput);
+    await lstat(path.resolve(root, normalizeRelativeOutputPath(relativePath)));
+    return false;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+}
+
 /** The caller owns this checked descriptor and must close it after reading/streaming. */
 export async function openContainedRegularFile(
   rootInput: PreparedOutputRoot,

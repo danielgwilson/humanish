@@ -18,7 +18,7 @@ A study moves your app's screen through several parties. This page names them, s
 | Your target app                         | Real requests from the desktop's network address, real records the participant creates                          | Every live study                                           | Use synthetic accounts and data; public targets need `policies.allowPublicTargets` and an owner attestation                                                                                  |
 | Humanish telemetry                      | Command name, version, OS, outcome category, error code                                                         | Default on                                                 | `npx humanish telemetry disable` or `DO_NOT_TRACK=1`; [every field](https://github.com/danielgwilson/humanish/blob/main/TELEMETRY.md)                                                        |
 
-Humanish itself uploads nothing. No command publishes a bundle; `feedback issue` renders a draft and makes no GitHub API call.
+No command publishes a bundle, and `feedback issue` renders a draft and makes no GitHub API call.
 
 ## Provider terms
 
@@ -39,7 +39,7 @@ Three receipts say what happened to each desktop, and none of them enumerates yo
 
 - `run.json` lists every sandbox the run created under `providerResources`, with `status` `killed`, `running` or `unknown` and a `cleanup.reason`.
 - `humanish cleanup --run <id>` re-checks and writes `cleanup.json` with `killed`, `already_clean`, `failed` or `skipped` per resource.
-- `humanish reclaim --run <id>` kills the sandboxes an interrupted run journaled in `sandbox-receipts.ndjson` and writes `reclaim-receipt.json` with `killed`, `already-gone` or `kill-failed` for each. Each receipt names its provider (`e2b`; older receipts have none and count as `e2b`). A receipt from a provider this version cannot reach is reported as `unsupported-provider` and nothing is attempted for it.
+- `humanish reclaim --run <id>` kills the sandboxes an interrupted run journaled in `sandbox-receipts.ndjson` and writes `reclaim-receipt.json` with `killed`, `already-gone` or `kill-failed` for each. Each receipt names its provider (`e2b`; older receipts have none and count as `e2b`). A receipt from a provider this version cannot reach is reported as `unsupported-provider` and nothing is attempted for it. `humanish reclaim --preflight` does the same for the sandboxes interrupted `humanish lab preflight` probes journaled under `.humanish/preflight/`. It leaves a journal whose probe may still be running, including one opened on another host or in another pid namespace, until the probe marks it abandoned or its lease elapses, and the result's warnings say why.
 
 The create-time timeout on every sandbox is the backstop when a kill cannot be confirmed: E2B stops the sandbox, and its metering, when that timeout elapses.
 
@@ -66,7 +66,7 @@ The CLI requires Node 22.19 or newer (`engines` in `package.json`). The project 
 - **Provider retention and training use.** Screenshots and prompts reach OpenAI, E2B or your agent's provider under their terms. Humanish does not control retention, region or training use; [provider terms](#provider-terms) above lists what each states.
 - **Egress from the hosted desktop.** The desktop has internet access; the participant can reach any site the mission or the page leads it to.
 - **Billing limits.** Caps act on estimates after usage is reported. Your provider dashboard is the only hard limit.
-- **Release provenance.** The npm package is published from CI without provenance attestations today; pin versions and audit the tarball if that matters to you.
+- **The safety of the released code.** Every npm release from 0.15.0 on carries two registry attestations, and `npm audit signatures` verifies them. The npm publish attestation covers the package name, version and registry. The SLSA provenance v1 attestation binds the tarball's sha512 to a run of `.github/workflows/publish.yml` in `danielgwilson/humanish` at the release tag, on a GitHub-hosted runner. Together they show which commit and workflow built the tarball; they say nothing about whether that code is safe.
 
 ## Threats worth planning for
 

@@ -6,8 +6,6 @@ import {
   type ObserverRuntimeStreamUrl,
 } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
-import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { writeCuaRunArtifacts } from "./bundle.js";
 import type { CuaActorLabHooks, CuaLaneSpec } from "./types.js";
 
 export interface LiveTraceFlush {
@@ -18,7 +16,7 @@ export interface LiveTraceFlush {
     usage?: ActorTokenUsage,
     metadata?: CuaLiveMetadata,
   ) => void;
-  /** Stop flushing and wait for an in-flight write; call before the final artifact write. */
+  /** Stop flushing, clear the timer and wait for an in-flight write. Call it on every exit. */
   stop: () => Promise<void>;
 }
 
@@ -26,19 +24,19 @@ export interface LiveTraceFlush {
  * Incremental live flush (#441): as each lane's loop reports its recorded-so-far items,
  * rewrite the in-progress bundle with per-stream `liveActor` partials so the attached
  * Observer's 5s poll sees the timeline grow. Throttled (one write per interval, trailing
- * write guaranteed), serialized (never two writers), and CLOSED before the final artifact
- * write so a stale flush can never resurrect the in-progress bundle. A flush failure is
- * swallowed: mid-run observability must never break the run itself.
+ * write guaranteed). `write` is the run's `writeSnapshot`, which serializes writes and refuses
+ * any snapshot once the final write began, so a late flush cannot resurrect the in-progress
+ * bundle. A flush failure is swallowed: mid-run observability must never break the run itself.
  */
 export function startLiveTraceFlush(args: {
   bundle: RunBundle;
   laneSpecs: readonly CuaLaneSpec[];
   /** The model the running usage prices at. Usage without its model is not a cost. */
   model: string;
-  createdAt: string;
-  runPaths: PreparedRunArtifactPaths;
+  /** Publishes one in-progress bundle: the run's `writeSnapshot`. */
+  write: (bundle: RunBundle) => Promise<void>;
 }): LiveTraceFlush {
-  const { bundle, laneSpecs, model, createdAt, runPaths } = args;
+  const { bundle, laneSpecs, model, write } = args;
   const streamIdByLane = new Map(laneSpecs.map((spec) => [spec.laneId, spec.streamId]));
   // The persona each lane is running, so the live flush can say who is in it.
   const personaByStream = new Map(
@@ -94,7 +92,7 @@ export function startLiveTraceFlush(args: {
         }),
       };
       try {
-        await writeCuaRunArtifacts(patched, createdAt, runPaths);
+        await write(patched);
       } catch {
         // Swallowed by design; the final write is the evidence of record.
       }

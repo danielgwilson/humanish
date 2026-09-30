@@ -48,20 +48,16 @@ export type CuaAction =
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
 export interface CuaObservation {
   /**
-   * Raw PNG bytes of the current desktop. Redacted by the engine before persisting.
-   * OPTIONAL: a non-vision (state-driven) executor omits it, and the loop persists no
-   * screenshot that turn (counts.screenshots stays 0 → redaction.screenshots resolves to
-   * "n/a", no Buffer.alloc(0) ever reaches disk). A VISION provider REQUIRES it — see
-   * CuaProvider.requiresFrame, which trips a per-turn fail-closed harness_error when a frame
-   * is required but absent.
+   * Raw PNG bytes of the current desktop. Optional: a state-driven executor omits it, and the loop
+   * persists no screenshot that turn (counts.screenshots stays 0 and redaction.screenshots reads
+   * "n/a"). A provider with requiresFrame needs it; see CuaProvider.requiresFrame.
    */
   screenshot?: Buffer;
   /**
    * A coarse, quantized signature of the visible UI used for no-progress
    * detection. Two observations with the same signature are "no progress". The
    * executor owns how it is computed (url, title, quantized scroll, focused
-   * element, visible controls, etc.). STILL REQUIRED — the canonical fallback progress key
-   * when appState is absent.
+   * element, visible controls, etc.). Required: it is the progress key when appState is absent.
    */
   stateSignature: string;
   /**
@@ -70,14 +66,12 @@ export interface CuaObservation {
    * (stableProgressKey) as the progress key, so route/turn/modal deltas drive progress more
    * reliably than a quantized screenshot signature can on a pixel-dense UI.
    *
-   * RUNTIME-ONLY in this slice: appState is NEVER copied into any ActorTraceItem, reason, id,
-   * or count, and is NEVER persisted to the trace — only the in-memory progress key is derived
-   * from it and discarded. A structured app blob has no detectable secret "shape" (the
-   * published-evidence scan catches only secret-shaped patterns), so it is treated exactly like
-   * stateSignature, which is itself never written as text. A future "appState in evidence"
-   * slice must route a stringified projection through redaction.redactText (and the lab's
-   * scrubText) AND cap/whitelist fields before persisting — pattern+literal redaction alone
-   * cannot sanitize an arbitrary blob.
+   * Runtime-only: appState is never copied into a trace item, reason, id or count; only the
+   * in-memory progress key is derived from it. A structured blob has no detectable secret shape
+   * (the published-evidence scan catches only secret-shaped patterns), so it is handled like
+   * stateSignature, which is never written as text either. Persisting it would need a stringified
+   * projection through redaction.redactText and the lab's scrubText, with its fields capped or
+   * allowlisted, since pattern and literal redaction cannot sanitize an arbitrary blob.
    */
   appState?: Record<string, unknown>;
   /**
@@ -89,10 +83,9 @@ export interface CuaObservation {
   url?: string;
   /**
    * The page's vertical scroll offset (window.scrollY), when the executor can read it. Scroll
-   * position IS state (#393): inside a scroll-pinned (scrollytelling) section the viewport stays
-   * visually fixed while the participant advances, so the frame hash reads "no change" and the
-   * no-progress backstop ended working reading sessions as gave_up. Runtime-only, like url/text —
-   * it feeds the progress key (bucketed) and is never persisted.
+   * position is state (#393): inside a scroll-pinned section the viewport stays visually fixed
+   * while the participant advances, so the frame hash alone reads "no change". Runtime-only like
+   * url and text: it feeds the progress key, bucketed, and is never persisted.
    */
   scrollY?: number;
   title?: string;
@@ -131,12 +124,18 @@ export interface CuaTurnRequest {
   previousResponseId?: string;
   /** Safety checks the harness chose to acknowledge, passed back to the model. */
   acknowledgedSafetyChecks?: CuaSafetyCheck[];
-  /** A nudge injected by the backstop before it trips, summarizing the stall. */
+  /**
+   * Harness guidance for this request: a backstop nudge, a dwell-window note, a rejected-action
+   * note, or the closing-report instruction.
+   */
   contextHint?: string;
 }
 
 export interface CuaTurn {
-  /** This action proposal yielded from a provider request that remains active. No receipt or usage is settled yet. */
+  /**
+   * Set on a turn from a continuing request: a single-dispatch request that returned actions and
+   * is still open. No receipt or usage is settled yet; the loop books both when it settles.
+   */
   providerRequestPending?: true;
   providerRequest?: ProviderRequestReceipt;
   /** Continuation handle for the next turn. */
@@ -192,22 +191,17 @@ export interface CuaProvider {
   };
   readonly capabilities: ActorCapabilities;
   /**
-   * True when nextTurn requires `observation.screenshot` to be present (a VISION model that
-   * reasons over pixels). The OpenAI computer-use provider sets this; a state-reasoning
-   * provider omits it (defaults falsey).
-   *
-   * PROVIDER-AUTHORING CONTRACT: a vision provider MUST set `requiresFrame: true`. The loop
-   * uses it to convert what would otherwise be a silent blank-frame crash into a structured
-   * per-turn fail-closed `harness_error` when a screenshot-less executor is paired with a
-   * vision provider. Default-false is a known third-party-author footgun this slice accepts
-   * (only one vision provider exists today) but records — see
+   * True when nextTurn needs `observation.screenshot` (a model that reasons over pixels). A
+   * provider that reasons over pixels must set it: the loop then ends a session whose executor
+   * returns no frame as `harness_error`, where the provider would otherwise fail on a blank frame.
+   * It defaults to false, so a vision provider that omits it gets no such guard; see
    * docs/architecture/state-driven-executor.md.
    */
   readonly requiresFrame?: boolean;
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
    *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete. */
   readonly interactionUsageIncomplete?: boolean;
-  /** Latest known usage for the active, unsettled request. Used only for runtime spend guards. */
+  /** Latest known usage of the continuing request. Used only for runtime spend guards. */
   readonly pendingRequestUsage?: CuaTurn["usage"];
   nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
@@ -244,33 +238,32 @@ export interface CuaLoopOptions {
   /** Hard wall-clock runaway guard. The only count-free hard stop. */
   timeoutMs: number;
   /**
-   * Per-turn bound on the provider call (#469). Without it a single hung HTTP request was
-   * indistinguishable from "the participant is still thinking" and cost the lane its whole
-   * remaining budget: three lanes of one run stalled within seven seconds of each other and were
-   * closed 36 minutes later as budget_reached with nothing in the trace to say why. A stalled
-   * turn is retried once with a notice; a second stall ends the lane as harness_error, named.
+   * Per-attempt bound on the provider call (#469), so a hung request is told apart from a
+   * participant still thinking. A stalled turn is retried once with a notice; a second stall ends
+   * the lane as harness_error.
    */
   turnTimeoutMs?: number;
   /**
-   * Per-call bound on observation work (#480): executor.observe(), and the idle actions
-   * (`wait`, `screenshot`, `move`) whose only job is to look. A default `wait` hung for ~90 s
-   * inside the desktop SDK and ended a lane as actor_error after twelve turns of ordinary work.
-   * A stalled observe is retried once; a stalled idle action is skipped with a notice.
+   * Per-call bound on observation work (#480): executor.observe() and the idle actions (`wait`,
+   * `screenshot`), whose only job is to look. A `wait` adds its own ms to the bound. A stalled
+   * observe is retried once; a stalled idle action is skipped with a notice.
    */
   observationTimeoutMs?: number;
   /** Injected clock (ms). Lets tests drive deadlines deterministically. */
   now: () => number;
-  /** Cancellation. The loop checks it each turn and after each action batch. */
+  /**
+   * Cancellation. Checked before each turn, each action and each dwell frame, and raced against
+   * every provider and desktop call.
+   */
   signal?: AbortSignal;
-  /** Idle streak (no material action) that trips the backstop. Default 6. */
+  /** Idle streak (no material action) that trips the backstop. Default 24. */
   idleSteps?: number;
-  /** Non-idle no-progress streak that trips the backstop. Default 8. */
+  /** No-progress streak that trips the backstop. Default 20. */
   noProgressSteps?: number;
   /**
    * If the model flags safety checks, decide which to acknowledge. Returning the
    * list proceeds (the acks are echoed back on the next turn's request); returning
-   * null/[] pauses the run (blocked_approval). Default: pause on any safety check
-   * (fail-closed; real approval policy wires in later).
+   * null/[] pauses the run (blocked_approval). Default: pause on any safety check.
    */
   acknowledgeSafetyChecks?: (checks: CuaSafetyCheck[]) => CuaSafetyCheck[] | null;
   /**
@@ -317,11 +310,10 @@ export interface CuaLoopOptions {
    */
   tasks?: readonly LabTask[];
   /**
-   * FAIL-CLOSED spend cap (USD). When set, the loop aborts (completionReason "budget_reached")
-   * the moment the running ESTIMATED spend crosses it, BEFORE the next provider turn — the
-   * runaway-retry-loop guard. Absent = uncapped (the historical CUA behavior). maxUsd: 0 can
-   * still permit a model request before its reported positive spend trips the check. Enforcement needs a measurable estimate, so
-   * the lab refuses a cap on an unpriced model at PREFLIGHT rather than running uncapped.
+   * Spend cap in USD. When set, the loop stops with budget_reached as soon as the running
+   * estimated spend crosses it, before the next provider turn. Absent means uncapped. maxUsd: 0
+   * can still permit one model request before its reported spend trips the check. Enforcement
+   * needs an estimate, so the lab refuses a cap on an unpriced model at preflight.
    */
   maxUsd?: number;
   /**
@@ -340,16 +332,16 @@ export interface CuaLoopOptions {
    * limit, not this participant's runaway, so it never reads as `gave_up`.
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
-  /** Fail closed on unavailable request usage when a spend cap is declared. A library option: no
-   * built-in route enables it, and absent preserves their existing behavior. */
+  /**
+   * Stop when a request's usage is unavailable while a spend cap is declared. A library option: no
+   * built-in route sets it.
+   */
   requireReportedUsageForSpendCap?: boolean;
   /**
-   * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
-   * after EVERY executor.observe() (the initial observe and each post-action observe), so the
-   * orchestrator can watch a seat's live `location.href` mid-run WITHOUT the loop ever persisting it.
-   * The URL is the same runtime-only field documented on CuaObservation.url (never written to the
-   * trace); this callback keeps that hygiene — it only hands the value back in memory. Used by the
-   * concurrent shared-world barrier to latch a host seat's `/lobby/CODE` URL. Default: no-op.
+   * Runtime-only: called with `observation.url` for each observation a turn may receive (the
+   * initial one, each post-action one and the one after a dwell window), so an orchestrator can
+   * watch a seat's live `location.href` without the loop persisting it. The concurrent
+   * shared-world barrier uses it to latch a host seat's `/lobby/CODE` URL. Default: no-op.
    */
   onObservedUrl?: (url: string | undefined) => void;
   /**
@@ -362,24 +354,21 @@ export interface CuaLoopOptions {
    */
   onMessage?: (text: string) => void;
   /**
-   * RUNTIME-ONLY per-turn raw-frame callback: invoked with the same full-fidelity screenshot Buffer
-   * the vision provider already sends to OpenAI that turn (never the redacted/persisted copy). The
-   * concurrent shared-world host-first barrier vision-reads the lobby code straight off the host's
-   * waiting-room frame — the robust CDP-INDEPENDENT relay, since the code is rendered on screen even
-   * when the CDP url-read fails and even when the host never narrates it. The frame Buffer is in-memory
-   * only here (this hook never persists it; the loop's own screenshot persistence is separate and
-   * governed by redactScreenshots). Fire-and-forget (never awaited by the loop). Default: no-op.
+   * Runtime-only: called with each raw frame a turn may receive and each dwell-window frame, before
+   * any redaction. The concurrent shared-world barrier reads the lobby code off the host's
+   * waiting-room frame, which works even when the CDP URL read fails and the host never narrates
+   * the code. The buffer stays in memory; screenshot persistence is separate and follows
+   * redactScreenshots. Not awaited. Default: no-op.
    */
   onScreenshot?: (frame: Buffer) => void;
   /**
-   * Per-turn trace snapshot callback (#441): invoked with the redacted trace items recorded so
-   * far — once after the initial observation and once at the end of every turn (after that
-   * turn's screenshot lands, so a flush never shows an action without the frame that preceded
-   * it). The array is a fresh copy each call; items are already redaction-clean (they are the
-   * same objects the final trace persists). Fire-and-forget: the loop never awaits the
-   * receiver, so a slow disk flush can never stall a turn. Default: no-op.
+   * Trace snapshot for a watcher (#441): the redacted items recorded so far, with the running
+   * usage so a run can be priced in flight. Called after each checkpoint's screenshot (the initial
+   * observation and every acted turn, so a flush never shows an action without the frame before
+   * it), after each dwell frame, and after a closing request. The array is a fresh copy; its items
+   * are the objects the final trace persists. Not awaited, so a slow flush cannot stall a turn.
+   * Default: no-op.
    */
-  /** Per-turn trace snapshot, with the RUNNING usage so a watcher can price a run in flight. */
   onTrace?: (
     items: readonly ActorTraceItem[],
     usage: ActorTokenUsage,

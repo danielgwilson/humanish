@@ -25,7 +25,7 @@ import {
   runScriptedBrowserSession,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
-} from "./scripted-browser.js";
+} from "./scripted-browser/actor.js";
 
 // Closed first-party actor registry. These ids are implemented in core; supported out-of-tree
 // actor registration does not ship. See docs/architecture/actor-contract.md.

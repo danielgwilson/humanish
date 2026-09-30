@@ -91,7 +91,7 @@ describe("continuing provider requests in the CUA loop", () => {
       estimateTurnCostUsd: estimate,
     });
     expect(result.completionReason).toBe("harness_error");
-    expect(result.reason).toContain("ChatGPT account");
+    expect(result.reason).toContain("account-billed providers");
     expect(result.trace.executionProfile?.billing).toBe("account-unknown");
     expect(execute).not.toHaveBeenCalled();
     expect(estimate).not.toHaveBeenCalled();

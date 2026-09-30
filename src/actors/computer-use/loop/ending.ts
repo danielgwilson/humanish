@@ -9,17 +9,17 @@ import { isCuaPromptRefusedError, isCuaProviderError } from "../provider-error.j
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice, type Evidence } from "./trace.js";
-import type { CuaObservation, CuaTurn } from "./types.js";
+import type { CuaObservation, CuaProvider, CuaTurn } from "./types.js";
 
 // How a loop session ends. Every ending is one Stop value: the completion reason, its public
 // reason text, the structured cause when there is one, the trace evidence to record, and whether
-// the stop earns a read-only closing request. LoopSession.conclude commits a stop where it is
+// the stop earns a read-only debrief request. LoopSession.conclude commits a stop where it is
 // decided.
 
-/** A harness-observed completion after which the participant is asked for a closing account. */
-export interface ClosingTrigger {
-  readonly trigger: "stop_when" | "dwell";
-  /** The final observation, already captured; the closing request sends it without observing. */
+/** A harness-observed completion after which the participant is asked for a debrief. */
+export interface DebriefTrigger {
+  readonly kind: "stop_when" | "dwell";
+  /** The final observation, already captured; the debrief request sends it without observing. */
   readonly observation: CuaObservation;
 }
 
@@ -29,7 +29,7 @@ export interface Stop {
   readonly stopCause?: ActorStopCause;
   /** Trace evidence for this stop, recorded when the stop is concluded. */
   readonly evidence?: Evidence;
-  readonly closing?: ClosingTrigger;
+  readonly debriefTrigger?: DebriefTrigger;
 }
 
 /**
@@ -101,7 +101,7 @@ export function timeLimit(session: LoopSession): Stop {
   }
   return {
     completionReason: "budget_reached",
-    reason: session.activity.interruptedActionOutcome
+    reason: session.actionHistory.interruptedActionOutcome
       ? `reached the ${timeoutMs}ms time budget with ${materialActions} material action attempt(s), ${turns} turn(s); the latest action outcome is uncertain`
       : `reached the ${timeoutMs}ms time budget after productive activity (${materialActions} material action(s), ${turns} turn(s))`,
     stopCause: "time_limit",
@@ -125,14 +125,12 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
   };
 }
 
-// Fail CLOSED and LOUD on a non-finite estimate: a stale positional estimator (the pre-#334
-// (input, output, cachedInput) signature) arithmetics the usage OBJECT into NaN, and NaN > maxUsd
-// is false forever — a spend cap that silently never trips is the one failure mode this guard
-// exists to prevent (red-team finding).
+// Fail closed on a non-finite estimate: NaN > maxUsd is always false, so a cap fed NaN would never
+// trip.
 export const nonFiniteEstimate: Stop = {
   completionReason: "harness_error",
   reason:
-    "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set — likely a stale pre-#334 positional (input, output, cachedInput) callback; it now receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+    "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
 };
 
 /** A study-level stop is a recruiting decision hitting its limit, not this participant's runaway. */
@@ -145,7 +143,7 @@ export function studySpendLimit(reason: string): Stop {
 export const accountBilledCaps: Stop = {
   completionReason: "harness_error",
   reason:
-    "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+    "API dollar caps and output-token limits cannot bound account-billed providers; use a finite timeout or an API-billed participant.",
 };
 
 const noticeEvidence = (status: string, title: string, text: string): Evidence => ({
@@ -235,10 +233,7 @@ export function blockedOnSafetyChecks(checks: string): Stop {
  * A vision provider against a screenshot-less observation is a fail-closed harness error, not a
  * silent crash. The provider sets requiresFrame; a state-reasoning provider omits it.
  */
-export function missingFrame(
-  provider: LoopSession["provider"],
-  observation: CuaObservation,
-): Stop | undefined {
+export function missingFrame(provider: CuaProvider, observation: CuaObservation): Stop | undefined {
   if (provider.requiresFrame !== true || observation.screenshot !== undefined) return undefined;
   return {
     completionReason: "harness_error",
@@ -265,7 +260,7 @@ export function stopWhenMatched(
           ),
         ),
     },
-    closing: { trigger: "stop_when", observation },
+    debriefTrigger: { kind: "stop_when", observation },
   };
 }
 
@@ -273,13 +268,13 @@ export function dwellCompleted(heldMs: number, when: string, observation: CuaObs
   return {
     completionReason: "goal_satisfied",
     reason: `dwell window complete (${heldMs}ms held ${when})`,
-    closing: { trigger: "dwell", observation },
+    debriefTrigger: { kind: "dwell", observation },
   };
 }
 
 /** The friction backstop tripped: cite the reason, the last material action and recent actions. */
 export function gaveUp(session: LoopSession, reason: string): Stop {
-  const { lastMaterialActionTitle, recentActionTitles } = session.activity;
+  const { lastMaterialActionTitle, recentActionTitles } = session.actionHistory;
   const screenshotRef = session.lastScreenshotRef;
   const details = (): string =>
     [
@@ -308,11 +303,11 @@ export function gaveUp(session: LoopSession, reason: string): Stop {
  * Classify an error that ended the session, with the diagnostics a reader needs to place it.
  * A stop cause committed by an earlier stop that failed to record is kept.
  */
-export function stopForError(error: unknown, session: LoopSession): Stop {
+export function stopForError(session: LoopSession, error: unknown): Stop {
   if (error instanceof CuaDeadlineError) return timeLimit(session);
   if (error instanceof CuaAbortError) return harnessAborted;
   const redact = (text: string): string => session.redactNarration(text);
-  const { lastActionTitle } = session.activity;
+  const { lastActionTitle } = session.actionHistory;
   const lastAction = (): string | undefined =>
     lastActionTitle === undefined ? undefined : `last action: ${redact(lastActionTitle)}`;
   const screenshot =

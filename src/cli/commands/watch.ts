@@ -33,7 +33,7 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     .option("--count <count>", "Lab only: override headed desktop lane count.")
     .option(
       "--scorer <path>",
-      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code — review it as code.",
+      "Terminal/computer-use/shared-world labs only: repo-relative adopter scorer module (.mjs). Overrides review.scorer.ref. Executable code: review it as code.",
     )
     .option(
       "--run-id <id>",

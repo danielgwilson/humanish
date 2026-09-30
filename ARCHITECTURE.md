@@ -44,15 +44,16 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    which checks each image with `assertScreenshotEvidence` (`src/evidence/image.ts`). Lane errors
    pass through `redactText` (`src/evidence/redaction.ts`) before they are recorded. Screenshots
    are blurred only when the lab sets `policies.redactScreenshots: true`.
-7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`.
-   `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
-   `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
-   The route writes one bundle before the lanes start and the final one after they finish. The
-   terminal, scripted and preview routes instead start their run with `runScope` and
-   `startRun` and publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes
-   `run.json`, then the `status.json` outcome, then `review.json`, `review.md`, `events.ndjson`
-   and `observer/observer-data.json`, and the pointer last. The computer-use and shared-world
-   routes move onto it next.
+7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`. The route
+   started its run with `runScope` and `startRun` (`src/run/run.ts`) before any sandbox. It
+   publishes an in-progress bundle with `Run.writeSnapshot` before the lanes start, rewrites it
+   from the lanes' live traces through `startLiveTraceFlush`
+   (`src/routes/computer-use/live-flush.ts`), and publishes the final bundle with `Run.finish`.
+   `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
+   `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
+   `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
+   status outcome and writes the pointer only until one pointer write succeeds. The terminal,
+   scripted and preview routes publish the same way; the shared-world route moves onto it next.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
@@ -147,8 +148,18 @@ computer-use labs in the fixture accept them. The other routes refuse them at pa
 
 The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
 then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before
-the error reaches the caller. The lab preflight probe has no run directory, so it writes no
-receipt and relies on that timeout alone.
+the error reaches the caller. The lab preflight probe has no run directory, so
+`runLabPreflight` (`src/lab/preflight.ts`) journals its receipt in
+`.humanish/preflight/<probe-id>/` and removes the journal after a confirmed kill.
+`humanish reclaim --preflight` (`reclaimPreflightSandboxes`, `src/run/reclaim.ts`) kills what a
+killed or failed probe left. It acts on a journal only when the probe marked it abandoned, its
+lease has elapsed, or its owner ran on this host in this pid namespace and is gone; otherwise it
+says why it left the journal. A public-preview probe's timeout is each target's readiness budget
+plus five minutes. A clone probe's timeout is `cloneProvisioningBudgetMs`
+(`src/subject/clone.ts`), the longest its clone and serve steps can take with the lab's declared
+or default budgets and retries, plus five minutes. A declared `sandboxTimeoutMs`, or E2B's
+60-minute maximum, caps both. Without a declared timeout a clone probe gets 13 minutes (clone and
+serve as-is) up to 60 (a Node app that installs and builds), where it used to get 10.
 
 ## Make your first change
 

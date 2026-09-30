@@ -4,7 +4,11 @@ import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../fe
 import { cleanupRun, listRuns, readReview } from "../../run/manage.js";
 import { runDryRun } from "../../run/dry-run.js";
 import { verifyRun } from "../../run/verify.js";
-import { reclaimRunSandboxes, type ReclaimResult } from "../../run/reclaim.js";
+import {
+  reclaimPreflightSandboxes,
+  reclaimRunSandboxes,
+  type ReclaimResult,
+} from "../../run/reclaim.js";
 import type { CleanupResult, RunResult } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/manage.js";
 import type { VerifyResult } from "../../run/verify.js";
@@ -254,7 +258,7 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
   parent
     .command("stats")
     .description(
-      "Cost, outcome, and duration roll-ups across run history (#472). Estimates stay labelled; unknown costs count as unknown.",
+      "Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.",
     )
     .summary("Roll up cost, outcomes, and durations across runs.")
     .option("--lab <id>", "Only runs from this lab id.")
@@ -335,17 +339,30 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
   parent
     .command("reclaim")
     .description(
-      "Kill an interrupted run's sandboxes by their journaled exact ids (the #358 salvage path — reads the run's sandbox-receipts.ndjson; never enumerates the E2B account). Needs E2B_API_KEY in the environment.",
+      "Kill an interrupted run's sandboxes by the exact ids journaled in its sandbox-receipts.ndjson; never enumerates the E2B account. Needs E2B_API_KEY in the environment.",
     )
     .summary("Reclaim an interrupted run's sandboxes by recorded id.")
     .option("--cwd <path>", "Target project directory.", ".")
     .option("--run <id>", "Run id, or 'latest'.", "latest")
+    .addOption(
+      new Option(
+        "--preflight",
+        "Reclaim sandboxes left by interrupted `humanish lab preflight` probes (journaled in .humanish/preflight) instead of a run's.",
+      ).conflicts("run"),
+    )
     .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: { cwd: string; run: string; json?: boolean }, command) => {
-      const result = await reclaimRunSandboxes(options.cwd, options.run);
-      writeResult(command, io, result, formatReclaimHuman);
-      io.setExitCode(result.ok ? 0 : 2);
-    });
+    .action(
+      async (
+        options: { cwd: string; run: string; preflight?: boolean; json?: boolean },
+        command,
+      ) => {
+        const result = options.preflight
+          ? await reclaimPreflightSandboxes(options.cwd)
+          : await reclaimRunSandboxes(options.cwd, options.run);
+        writeResult(command, io, result, formatReclaimHuman);
+        io.setExitCode(result.ok ? 0 : 2);
+      },
+    );
 }
 
 function formatReclaimHuman(result: ReclaimResult): string {

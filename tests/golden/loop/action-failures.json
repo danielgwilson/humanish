@@ -221,7 +221,7 @@
     "result": {
       "status": "abandoned",
       "completionReason": "gave_up",
-      "reason": "gave up: 3 consecutive turns with no change to the UI state",
+      "reason": "gave up: 3 consecutive turns that repeated a recent action on an unchanged UI state",
       "trace": {
         "schema": "humanish.actor-trace.v1",
         "provider": "golden-cua",
@@ -245,7 +245,7 @@
         "durationMs": 29000,
         "status": "abandoned",
         "completionReason": "gave_up",
-        "reason": "gave up: 3 consecutive turns with no change to the UI state",
+        "reason": "gave up: 3 consecutive turns that repeated a recent action on an unchanged UI state",
         "ids": {
           "model": "golden-1"
         },
@@ -365,7 +365,7 @@
             "lifecycle": "completed",
             "status": "blocked",
             "title": "computer-use backstop gave up",
-            "text": "reason: gave up: 3 consecutive turns with no change to the UI state; last material action: none; recent actions: keypress Control+- -> keypress Control+- -> keypress Control+- -> keypress Control+-",
+            "text": "reason: gave up: 3 consecutive turns that repeated a recent action on an unchanged UI state; last material action: none; recent actions: keypress Control+- -> keypress Control+- -> keypress Control+- -> keypress Control+-",
             "screenshotRef": {
               "path": "screenshots/turn-04.png",
               "redaction": "none"
