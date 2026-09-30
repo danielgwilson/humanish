@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import { chmod, cp, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve, join } from "node:path";
+import { GUEST_PROOF_CASES } from "./guest-runtime-proof-contract.mjs";
 const exec = promisify(execFile);
 const root = resolve(import.meta.dirname, "..");
 const image = process.env.HUMANISH_GUEST_IMAGE;
@@ -85,6 +86,7 @@ for (const name of [
   ...driverModules.map((name) => "src/" + name + ".ts"),
   "scripts/guest-desktop-proof.mjs",
   "scripts/guest-desktop-proof-child.mjs",
+  "scripts/guest-runtime-proof-contract.mjs",
   "package.json",
   "pnpm-lock.yaml",
   "tsconfig.json",
@@ -96,26 +98,8 @@ for (const name of [
 }
 const payloadHashes = await hashes(payload);
 await writeFile(join(directory, "payload-sha256.json"), JSON.stringify(payloadHashes, null, 2));
-const expectedCases = [
-  "native address bar navigation",
-  "Unicode exact readback",
-  "rapid consecutive text stays ordered",
-  "stalled renderer Unicode readback",
-  "large Unicode transfer and literal multiline text",
-  "cancel after actual content preparation makes no input",
-  "isolated focus probe resists page prototype replacement",
-  "address bar rejects Unicode and controls without typing",
-  "additional tab is rejected without mutating either page",
-  "iframe text is explicitly unsupported",
-  "navigation invalidates a prepared insertion",
-  "native click uses full-frame coordinates",
-  "double click and multi-point drag",
-  "native wheel scroll",
-  "reject bad key without input",
-  "modal dialog rejects text without accepting or filling it",
-  "revocation during drag sends no release",
-  "held modifiers reach the click and are released after it",
-];
+// The same driver cases the browser appliance proof checks.
+const expectedCases = GUEST_PROOF_CASES.driver;
 let container;
 let failure;
 const receipt = {
