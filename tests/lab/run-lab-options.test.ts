@@ -707,3 +707,26 @@ describe("an onEvent failure never escapes", () => {
     }
   });
 });
+
+describe("the in-process check sees the legacy executor too", () => {
+  const legacyInProcess = { buildExecutor: inProcess.executor, buildProvider: createProvider };
+
+  it("refuses prepareDesktop beside cuaHooks.buildExecutor, as beside inProcess", () => {
+    for (const options of [
+      { cuaHooks: legacyInProcess, prepareDesktop },
+      { inProcess, createProvider, prepareDesktop },
+    ]) {
+      const result = normalize(config("cuAppUrl"), options);
+      expect(result).toMatchObject({ ok: false, code: "HUMANISH_LAB_OPTION_UNSUPPORTED" });
+      if (!result.ok) expect(result.message).toContain("RunLabOptions.prepareDesktop");
+    }
+  });
+
+  it("leaves onStream unset beside cuaHooks.buildExecutor", () => {
+    const hooks = normalized(config("cuAppUrl"), {
+      cuaHooks: legacyInProcess,
+      onStream: () => undefined,
+    }).cuaHooks!;
+    expect(hooks.onRuntimeStreamReady).toBeUndefined();
+  });
+});

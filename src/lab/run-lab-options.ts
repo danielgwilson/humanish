@@ -219,7 +219,13 @@ function unsupportedOption(
     if (prepareDesktop !== undefined) {
       if (isLocalBrowserLab(config))
         return unsupported("prepareDesktop", route, "a local VM study has no E2B desktop.");
-      if (inProcess !== undefined || source === "local-app")
+      // The run is in process when either executor home is set: inProcess or the older
+      // cuaHooks.buildExecutor. Either way no desktop exists to prepare.
+      if (
+        inProcess !== undefined ||
+        options.cuaHooks?.buildExecutor !== undefined ||
+        source === "local-app"
+      )
         return unsupported("prepareDesktop", route, "an in-process run has no desktop.");
     }
     return undefined;
@@ -334,7 +340,17 @@ export function normalizeRunLabOptions(
       const hooks = withMapped(legacy.cuaHooks, {
         ...envHome,
         ...scoring,
-        ...computerUseHooks(config, { prepareDesktop, onStream, createProvider, inProcess }, emit),
+        ...computerUseHooks(
+          config,
+          {
+            prepareDesktop,
+            onStream,
+            createProvider,
+            inProcess,
+            legacyInProcess: legacy.cuaHooks?.buildExecutor !== undefined,
+          },
+          emit,
+        ),
       });
       if (hooks !== undefined) normalized.cuaHooks = hooks;
       break;
@@ -462,13 +478,15 @@ function computerUseHooks(
     onStream: RunLabHomes["onStream"];
     createProvider: ProviderFactory | undefined;
     inProcess: Extract<RunLabDriving, { inProcess: object }>["inProcess"] | undefined;
+    /** The caller set the older cuaHooks.buildExecutor, so the run is in process. */
+    legacyInProcess: boolean;
   },
   emit: ((event: LabEvent) => void) | undefined,
 ): CuaActorLabHooks {
-  const { prepareDesktop, onStream, createProvider, inProcess } = homes;
+  const { prepareDesktop, onStream, createProvider, inProcess, legacyInProcess } = homes;
   // A local VM study and an in-process run start no E2B stream, and the local study refuses a
   // stream hook outright, so onStream is left unset there: it is never called.
-  const streams = !isLocalBrowserLab(config) && inProcess === undefined;
+  const streams = !isLocalBrowserLab(config) && inProcess === undefined && !legacyInProcess;
   return {
     ...(prepareDesktop === undefined
       ? {}
