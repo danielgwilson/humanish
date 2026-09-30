@@ -7,6 +7,10 @@ export async function startLocalApp() {
   let greeted = false;
   let messages = 0;
   let stateReads = 0;
+  /**
+   * @param {import("node:http").IncomingMessage} request
+   * @param {import("node:http").ServerResponse} response
+   */
   const handleRequest = async (request, response) => {
     if (request.method === "GET" && request.url === "/state") {
       stateReads += 1;

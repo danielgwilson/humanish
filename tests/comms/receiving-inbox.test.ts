@@ -10,6 +10,7 @@ import {
 } from "../../src/comms/receiving-inbox.js";
 import type { ParticipantEmail } from "../../src/comms/receiving-types.js";
 import { localInboxDesktop, unusedInboxPort } from "../helpers/comms-receiving-inbox-desktop.js";
+import { e2bShell } from "../../src/substrates/e2b/shell.js";
 
 const PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6VwAAAABJRU5ErkJggg==";
@@ -255,11 +256,11 @@ describe("production loopback receiving server", () => {
   it("serves only the current participant snapshot with CSP; removes stale routes, rejects ingress, cleans up", async () => {
     const local = localInboxDesktop(),
       other = localInboxDesktop();
-    const a = await deployReceivingInbox(local.desktop, {
+    const a = await deployReceivingInbox(e2bShell(local.desktop), {
       leaseId: "participant-a",
       port: await unusedInboxPort(),
     });
-    const b = await deployReceivingInbox(other.desktop, {
+    const b = await deployReceivingInbox(e2bShell(other.desktop), {
       leaseId: "participant-b",
       port: await unusedInboxPort(),
     });
@@ -315,7 +316,7 @@ describe("production loopback receiving server", () => {
 
   it("keeps the prior snapshot when a write fails and rejects unsafe routes before transport", async () => {
     const local = localInboxDesktop();
-    const surface = await deployReceivingInbox(local.desktop, {
+    const surface = await deployReceivingInbox(e2bShell(local.desktop), {
       leaseId: "publication-test",
       port: await unusedInboxPort(),
     });
@@ -347,7 +348,7 @@ describe("production loopback receiving server", () => {
     local.desktop.commands.run = () => new Promise(() => undefined);
     const start = Date.now();
     await expect(
-      deployReceivingInbox(local.desktop, { leaseId: "timeout", requestTimeoutMs: 100 }),
+      deployReceivingInbox(e2bShell(local.desktop), { leaseId: "timeout", requestTimeoutMs: 100 }),
     ).rejects.toThrow("could not start");
     expect(Date.now() - start).toBeLessThan(1000);
   });

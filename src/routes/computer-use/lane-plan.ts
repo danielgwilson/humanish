@@ -2,7 +2,7 @@ import {
   isLocalBrowserLab,
   LOCAL_BROWSER_LIFETIME_MS,
 } from "../../substrates/local/runtime-config.js";
-import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../substrates/e2b/cua-provisioning.js";
+import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/inbox.js";
 import {
