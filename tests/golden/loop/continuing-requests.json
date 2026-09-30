@@ -1,0 +1,956 @@
+{
+  "twoCyclesThenTerminal": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "continuing-synthetic",
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": false,
+            "usage": {
+              "input": 20,
+              "output": 4
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:19.000Z",
+        "durationMs": 18000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {},
+        "counts": {
+          "turns": 3,
+          "actions": 2,
+          "materialActions": 2,
+          "screenshots": 3,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (12, 18)",
+            "coord": {
+              "x": 12,
+              "y": 18
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "ui_action-004",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "1970-01-01T00:00:13.000Z"
+          },
+          {
+            "id": "screenshot-005",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-02",
+            "screenshotRef": {
+              "path": "screenshots/turn-02.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:15.000Z"
+          },
+          {
+            "id": "message-006",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 3",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:18.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1,
+            "keyboard": 1
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "declaredOutcome": "reached",
+        "tokenUsage": {
+          "input": 20,
+          "output": 4,
+          "turns": [
+            {
+              "input": 20,
+              "output": 4
+            }
+          ],
+          "total": 24
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "0"
+          }
+        }
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 10,
+          "output": 2,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 2
+            }
+          ]
+        },
+        0.12
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 12,
+          "y": 18
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 2,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 10,
+              "output": 2
+            }
+          ]
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "1"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          }
+        }
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 18,
+          "output": 3,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 18,
+              "output": 3
+            }
+          ]
+        },
+        0.21
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "keypress",
+          "keys": [
+            "ENTER"
+          ]
+        }
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-02.png",
+        15
+      ],
+      [
+        "onTrace",
+        5,
+        {
+          "input": 18,
+          "output": 3,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 18,
+              "output": 3
+            }
+          ]
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "2"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 20,
+          "output": 4,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 20,
+              "output": 4
+            }
+          ]
+        },
+        0.24
+      ]
+    ]
+  },
+  "pendingUsageCrossesCap": {
+    "result": {
+      "status": "incomplete",
+      "completionReason": "budget_reached",
+      "reason": "estimated spend $0.21 crossed execution.caps.maxUsd=$0.1 with no material progress; aborted fail-closed before the next model turn",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "continuing-synthetic",
+        "providerRequests": [],
+        "historyTurnsOmitted": 0,
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:06.000Z",
+        "durationMs": 5000,
+        "status": "incomplete",
+        "completionReason": "budget_reached",
+        "stopCause": "spend_limit",
+        "reason": "estimated spend $0.21 crossed execution.caps.maxUsd=$0.1 with no material progress; aborted fail-closed before the next model turn",
+        "ids": {},
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          }
+        ],
+        "interactionUsageIncomplete": true,
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "ready"
+          }
+        }
+      ],
+      [
+        "estimateTurnCostUsd",
+        {
+          "input": 20,
+          "output": 1,
+          "cachedInput": 0,
+          "cacheWriteInput": 0,
+          "turns": [
+            {
+              "input": 20,
+              "output": 1,
+              "cachedInput": 0
+            }
+          ]
+        },
+        0.21
+      ]
+    ]
+  },
+  "invalidPendingYield": {
+    "result": {
+      "status": "failed",
+      "completionReason": "harness_error",
+      "reason": "participant provider error: invalid_response; cleanup: unconfirmed",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "continuing-synthetic",
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": "unknown",
+            "usageComplete": false,
+            "cleanup": "unconfirmed",
+            "profileVerified": false,
+            "errorCode": "invalid_response"
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "1 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:08.000Z",
+        "durationMs": 7000,
+        "status": "failed",
+        "completionReason": "harness_error",
+        "reason": "participant provider error: invalid_response; cleanup: unconfirmed",
+        "ids": {},
+        "counts": {
+          "turns": 0,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 1,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "participant request cleanup unconfirmed",
+            "text": "The request did not confirm cleanup within the settlement boundary. No further participant request or action is admitted.",
+            "at": "1970-01-01T00:00:06.000Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "error",
+            "title": "participant provider error",
+            "text": "participant provider error: invalid_response; cleanup: unconfirmed",
+            "at": "1970-01-01T00:00:07.000Z"
+          }
+        ],
+        "interactionUsageIncomplete": true,
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "ready"
+          }
+        }
+      ]
+    ]
+  },
+  "accountUsageRecorded": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "executionProfile": {
+          "schema": "humanish.actor-execution-profile.v1",
+          "transport": "codex-app-server",
+          "authentication": "chatgpt-account",
+          "billing": "account-unknown",
+          "requestedModel": "gpt-6-astra",
+          "reasoningEffort": "low",
+          "cliVersion": "0.154.0",
+          "toolPolicy": "codex-ui-tools-v1",
+          "participantSchema": "humanish.codex-ui-tool.v1",
+          "memoryPolicy": "continuing-thread-v1"
+        },
+        "providerRequests": [
+          {
+            "ordinal": 1,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": true,
+            "usage": {
+              "input": 10,
+              "output": 2
+            }
+          },
+          {
+            "ordinal": 2,
+            "kind": "interaction",
+            "dispatched": true,
+            "usageComplete": true,
+            "cleanup": "confirmed",
+            "profileVerified": true,
+            "usage": {
+              "input": 7
+            }
+          }
+        ],
+        "historyTurnsOmitted": 0,
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "raw",
+          "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+        },
+        "startedAt": "1970-01-01T00:00:01.000Z",
+        "completedAt": "1970-01-01T00:00:13.000Z",
+        "durationMs": 12000,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 1,
+          "materialActions": 1,
+          "screenshots": 2,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "screenshot-001",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-00-start",
+            "screenshotRef": {
+              "path": "screenshots/turn-00-start.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:03.000Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (1, 1)",
+            "coord": {
+              "x": 1,
+              "y": 1
+            },
+            "at": "1970-01-01T00:00:07.000Z"
+          },
+          {
+            "id": "screenshot-003",
+            "kind": "screenshot",
+            "lifecycle": "completed",
+            "title": "turn-01",
+            "screenshotRef": {
+              "path": "screenshots/turn-01.png",
+              "redaction": "none"
+            },
+            "at": "1970-01-01T00:00:09.000Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:12.000Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1
+          },
+          "total": 1,
+          "shortcutTotal": 0
+        },
+        "interactionUsageIncomplete": true,
+        "tokenUsage": {
+          "input": 17,
+          "output": 2,
+          "turns": [
+            {
+              "input": 4,
+              "output": 1
+            },
+            {
+              "input": 6,
+              "output": 1
+            },
+            {
+              "input": 7
+            }
+          ]
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-00-start.png",
+        15
+      ],
+      [
+        "onTrace",
+        1,
+        {},
+        {
+          "executionProfile": {
+            "schema": "humanish.actor-execution-profile.v1",
+            "transport": "codex-app-server",
+            "authentication": "chatgpt-account",
+            "billing": "account-unknown",
+            "requestedModel": "gpt-6-astra",
+            "reasoningEffort": "low",
+            "cliVersion": "0.154.0",
+            "toolPolicy": "codex-ui-tools-v1",
+            "participantSchema": "humanish.codex-ui-tool.v1",
+            "memoryPolicy": "continuing-thread-v1"
+          },
+          "providerRequests": [],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "0"
+          }
+        }
+      ],
+      [
+        "executor.execute",
+        {
+          "kind": "click",
+          "x": 1,
+          "y": 1
+        }
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onScreenshot",
+        15
+      ],
+      [
+        "writeScreenshot",
+        "turn-01.png",
+        15
+      ],
+      [
+        "onTrace",
+        3,
+        {
+          "input": 10,
+          "output": 2,
+          "turns": [
+            {
+              "input": 4,
+              "output": 1
+            },
+            {
+              "input": 6,
+              "output": 1
+            }
+          ],
+          "total": 12
+        },
+        {
+          "executionProfile": {
+            "schema": "humanish.actor-execution-profile.v1",
+            "transport": "codex-app-server",
+            "authentication": "chatgpt-account",
+            "billing": "account-unknown",
+            "requestedModel": "gpt-6-astra",
+            "reasoningEffort": "low",
+            "cliVersion": "0.154.0",
+            "toolPolicy": "codex-ui-tools-v1",
+            "participantSchema": "humanish.codex-ui-tool.v1",
+            "memoryPolicy": "continuing-thread-v1"
+          },
+          "providerRequests": [
+            {
+              "ordinal": 1,
+              "kind": "interaction",
+              "dispatched": true,
+              "usageComplete": true,
+              "cleanup": "confirmed",
+              "profileVerified": true,
+              "usage": {
+                "input": 10,
+                "output": 2
+              }
+            }
+          ],
+          "historyTurnsOmitted": 0
+        }
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "screenshot": "[buffer 15 bytes]",
+            "stateSignature": "1"
+          },
+          "previousExecution": {
+            "actions": [
+              {
+                "index": 0,
+                "status": "completed"
+              }
+            ]
+          }
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  }
+}

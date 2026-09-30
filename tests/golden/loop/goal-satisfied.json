@@ -1,0 +1,343 @@
+{
+  "result": {
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Booked the appointment.",
+    "trace": {
+      "schema": "humanish.actor-trace.v1",
+      "provider": "golden-cua",
+      "providerVersion": "golden-1",
+      "protocol": "cua-loop",
+      "lane": "computer-use",
+      "persona": {
+        "id": "golden",
+        "traitsApplied": [
+          "friction-tolerance:low"
+        ],
+        "promptDigest": "golden"
+      },
+      "redaction": {
+        "status": "passed",
+        "screenshots": "raw",
+        "notes": "3 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+      },
+      "startedAt": "1970-01-01T00:00:01.000Z",
+      "completedAt": "1970-01-01T00:00:23.000Z",
+      "durationMs": 22000,
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Booked the appointment.",
+      "ids": {
+        "model": "golden-1",
+        "turnId": "r3"
+      },
+      "counts": {
+        "turns": 3,
+        "actions": 3,
+        "materialActions": 2,
+        "screenshots": 3,
+        "reasonings": 1,
+        "messages": 2,
+        "idleTurns": 0,
+        "noProgressTurns": 0
+      },
+      "items": [
+        {
+          "id": "screenshot-001",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-00-start",
+          "screenshotRef": {
+            "path": "screenshots/turn-00-start.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:03.000Z"
+        },
+        {
+          "id": "reasoning-002",
+          "kind": "reasoning",
+          "lifecycle": "completed",
+          "title": "reasoning turn 1",
+          "text": "Looking for the booking form.",
+          "at": "1970-01-01T00:00:06.000Z"
+        },
+        {
+          "id": "ui_action-003",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "click (10, 20)",
+          "coord": {
+            "x": 10,
+            "y": 20
+          },
+          "at": "1970-01-01T00:00:08.000Z"
+        },
+        {
+          "id": "screenshot-004",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-01",
+          "screenshotRef": {
+            "path": "screenshots/turn-01.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:10.000Z"
+        },
+        {
+          "id": "message-005",
+          "kind": "message",
+          "lifecycle": "completed",
+          "title": "message turn 2",
+          "text": "Typing the email.",
+          "at": "1970-01-01T00:00:13.000Z"
+        },
+        {
+          "id": "ui_action-006",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "type [18 chars]",
+          "at": "1970-01-01T00:00:15.000Z"
+        },
+        {
+          "id": "ui_action-007",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "wait 50ms",
+          "at": "1970-01-01T00:00:17.000Z"
+        },
+        {
+          "id": "screenshot-008",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-02",
+          "screenshotRef": {
+            "path": "screenshots/turn-02.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:19.000Z"
+        },
+        {
+          "id": "message-009",
+          "kind": "message",
+          "lifecycle": "completed",
+          "title": "message turn 3",
+          "text": "Booked the appointment.",
+          "at": "1970-01-01T00:00:22.000Z"
+        }
+      ],
+      "affordanceUse": {
+        "schema": "humanish.affordance-use.v1",
+        "counts": {
+          "pointer": 1,
+          "keyboard": 1,
+          "observation": 1
+        },
+        "total": 3,
+        "shortcutTotal": 0
+      },
+      "tokenUsage": {
+        "input": 350,
+        "output": 60,
+        "cachedInput": 10,
+        "turns": [
+          {
+            "input": 100,
+            "output": 20,
+            "cachedInput": 10
+          },
+          {
+            "input": 120,
+            "output": 30
+          },
+          {
+            "input": 130,
+            "output": 10
+          }
+        ],
+        "total": 410
+      },
+      "capabilities": {
+        "headless": true,
+        "structuredTrace": true,
+        "lanes": [
+          "computer-use"
+        ],
+        "producesScreenshots": true,
+        "byoModel": true,
+        "preGrantableApprovals": false,
+        "inProcessTools": false,
+        "license": "open"
+      }
+    }
+  },
+  "log": [
+    [
+      "executor.observe",
+      0
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-00-start.png",
+      15
+    ],
+    [
+      "onTrace",
+      1,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "s0"
+        }
+      }
+    ],
+    [
+      "onMessage",
+      "Looking for the booking form."
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "click",
+        "x": 10,
+        "y": 20
+      }
+    ],
+    [
+      "executor.observe",
+      1
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-01.png",
+      15
+    ],
+    [
+      "onTrace",
+      4,
+      {
+        "input": 100,
+        "output": 20,
+        "cachedInput": 10,
+        "cacheWriteInput": 0,
+        "turns": [
+          {
+            "input": 100,
+            "output": 20,
+            "cachedInput": 10
+          }
+        ]
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "s1"
+        },
+        "previousResponseId": "r1"
+      }
+    ],
+    [
+      "onMessage",
+      "Typing the email."
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "type",
+        "text": "hello@example.test"
+      }
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "wait",
+        "ms": 50
+      }
+    ],
+    [
+      "executor.observe",
+      2
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-02.png",
+      15
+    ],
+    [
+      "onTrace",
+      8,
+      {
+        "input": 220,
+        "output": 50,
+        "cachedInput": 10,
+        "cacheWriteInput": 0,
+        "turns": [
+          {
+            "input": 100,
+            "output": 20,
+            "cachedInput": 10
+          },
+          {
+            "input": 120,
+            "output": 30
+          }
+        ]
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "s2"
+        },
+        "previousResponseId": "r2"
+      }
+    ],
+    [
+      "onMessage",
+      "Booked the appointment."
+    ]
+  ]
+}

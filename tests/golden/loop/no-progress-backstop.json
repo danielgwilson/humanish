@@ -1,0 +1,402 @@
+{
+  "result": {
+    "status": "abandoned",
+    "completionReason": "gave_up",
+    "reason": "gave up: 3 consecutive turns with no change to the UI state",
+    "trace": {
+      "schema": "humanish.actor-trace.v1",
+      "provider": "golden-cua",
+      "providerVersion": "golden-1",
+      "protocol": "cua-loop",
+      "lane": "computer-use",
+      "persona": {
+        "id": "golden",
+        "traitsApplied": [
+          "friction-tolerance:low"
+        ],
+        "promptDigest": "golden"
+      },
+      "redaction": {
+        "status": "passed",
+        "screenshots": "raw",
+        "notes": "5 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+      },
+      "startedAt": "1970-01-01T00:00:01.000Z",
+      "completedAt": "1970-01-01T00:00:30.000Z",
+      "durationMs": 29000,
+      "status": "abandoned",
+      "completionReason": "gave_up",
+      "reason": "gave up: 3 consecutive turns with no change to the UI state",
+      "ids": {
+        "model": "golden-1"
+      },
+      "counts": {
+        "turns": 4,
+        "actions": 4,
+        "materialActions": 4,
+        "screenshots": 5,
+        "reasonings": 0,
+        "messages": 0,
+        "idleTurns": 0,
+        "noProgressTurns": 3
+      },
+      "items": [
+        {
+          "id": "screenshot-001",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-00-start",
+          "screenshotRef": {
+            "path": "screenshots/turn-00-start.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:03.000Z"
+        },
+        {
+          "id": "ui_action-002",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "click (301, 486)",
+          "coord": {
+            "x": 301,
+            "y": 486
+          },
+          "at": "1970-01-01T00:00:07.000Z"
+        },
+        {
+          "id": "screenshot-003",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-01",
+          "screenshotRef": {
+            "path": "screenshots/turn-01.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:09.000Z"
+        },
+        {
+          "id": "ui_action-004",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "click (301, 486)",
+          "coord": {
+            "x": 301,
+            "y": 486
+          },
+          "at": "1970-01-01T00:00:13.000Z"
+        },
+        {
+          "id": "screenshot-005",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-02",
+          "screenshotRef": {
+            "path": "screenshots/turn-02.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:15.000Z"
+        },
+        {
+          "id": "ui_action-006",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "click (301, 486)",
+          "coord": {
+            "x": 301,
+            "y": 486
+          },
+          "at": "1970-01-01T00:00:19.000Z"
+        },
+        {
+          "id": "screenshot-007",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-03",
+          "screenshotRef": {
+            "path": "screenshots/turn-03.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:21.000Z"
+        },
+        {
+          "id": "notice-008",
+          "kind": "notice",
+          "title": "Participant context hint",
+          "text": "No visible progress for 2 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe.",
+          "lifecycle": "completed",
+          "at": "1970-01-01T00:00:24.000Z"
+        },
+        {
+          "id": "ui_action-009",
+          "kind": "ui_action",
+          "lifecycle": "completed",
+          "title": "click (301, 486)",
+          "coord": {
+            "x": 301,
+            "y": 486
+          },
+          "at": "1970-01-01T00:00:26.000Z"
+        },
+        {
+          "id": "screenshot-010",
+          "kind": "screenshot",
+          "lifecycle": "completed",
+          "title": "turn-04",
+          "screenshotRef": {
+            "path": "screenshots/turn-04.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:28.000Z"
+        },
+        {
+          "id": "notice-011",
+          "kind": "notice",
+          "lifecycle": "completed",
+          "status": "blocked",
+          "title": "computer-use backstop gave up",
+          "text": "reason: gave up: 3 consecutive turns with no change to the UI state; last material action: click (301, 486); recent actions: click (301, 486) -> click (301, 486) -> click (301, 486) -> click (301, 486)",
+          "screenshotRef": {
+            "path": "screenshots/turn-04.png",
+            "redaction": "none"
+          },
+          "at": "1970-01-01T00:00:29.000Z"
+        }
+      ],
+      "affordanceUse": {
+        "schema": "humanish.affordance-use.v1",
+        "counts": {
+          "pointer": 4
+        },
+        "total": 4,
+        "shortcutTotal": 0
+      },
+      "capabilities": {
+        "headless": true,
+        "structuredTrace": true,
+        "lanes": [
+          "computer-use"
+        ],
+        "producesScreenshots": true,
+        "byoModel": true,
+        "preGrantableApprovals": false,
+        "inProcessTools": false,
+        "license": "open"
+      }
+    }
+  },
+  "log": [
+    [
+      "executor.observe",
+      0
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-00-start.png",
+      15
+    ],
+    [
+      "onTrace",
+      1,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "same"
+        }
+      }
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "click",
+        "x": 301,
+        "y": 486
+      }
+    ],
+    [
+      "executor.observe",
+      1
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-01.png",
+      15
+    ],
+    [
+      "onTrace",
+      3,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "same"
+        }
+      }
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "click",
+        "x": 301,
+        "y": 486
+      }
+    ],
+    [
+      "executor.observe",
+      2
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-02.png",
+      15
+    ],
+    [
+      "onTrace",
+      5,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "same"
+        }
+      }
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "click",
+        "x": 301,
+        "y": 486
+      }
+    ],
+    [
+      "executor.observe",
+      3
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-03.png",
+      15
+    ],
+    [
+      "onTrace",
+      7,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ],
+    [
+      "provider.nextTurn",
+      {
+        "instructions": "Act as the synthetic persona and finish the task.",
+        "observation": {
+          "screenshot": "[buffer 15 bytes]",
+          "stateSignature": "same"
+        },
+        "contextHint": "No visible progress for 2 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."
+      }
+    ],
+    [
+      "executor.execute",
+      {
+        "kind": "click",
+        "x": 301,
+        "y": 486
+      }
+    ],
+    [
+      "executor.observe",
+      4
+    ],
+    [
+      "onObservedUrl",
+      null
+    ],
+    [
+      "onScreenshot",
+      15
+    ],
+    [
+      "writeScreenshot",
+      "turn-04.png",
+      15
+    ],
+    [
+      "onTrace",
+      10,
+      {
+        "input": 0,
+        "output": 0,
+        "cachedInput": 0,
+        "cacheWriteInput": 0
+      },
+      {}
+    ]
+  ]
+}
