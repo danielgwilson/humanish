@@ -90,11 +90,13 @@ async function typeWith(desktop: E2BDesktopLike, text = SECRET): Promise<unknown
     .catch((error: unknown) => error);
 }
 
-/** Assert a failure names the phase only: no text, no path, no substrate output. */
-function expectPhaseOnly(error: unknown, phase: string): void {
+/** Assert a failure names the phase and exit code only: no text, no path, no substrate output. */
+function expectPhaseOnly(error: unknown, phase: string, exitCode?: number): void {
   expect(error).toBeInstanceOf(CuaTypeError);
   expect((error as CuaTypeError).phase).toBe(phase);
-  expect((error as CuaTypeError).message).toBe(`type failed at ${phase}`);
+  expect((error as CuaTypeError).message).toBe(
+    `type failed at ${phase}${exitCode === undefined ? "" : ` (exit ${exitCode})`}`,
+  );
   expect((error as Error).cause).toBeUndefined();
 }
 
@@ -190,7 +192,7 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
 
   it("fails the step without retrying when xdotool fails, and still removes the directory", async () => {
     const { desktop, rec } = makeFakeDesktop({ throwOn: /xdotool type/ });
-    expectPhaseOnly(await typeWith(desktop), "text-command");
+    expectPhaseOnly(await typeWith(desktop), "text-command", 1);
     expect(rec.writeCalls).toEqual([]);
     expect(rec.commandRuns.filter((command) => command.includes("xdotool type"))).toHaveLength(1);
     expect(rec.commandRuns.at(-1)).toBe(`rm -rf -- '${TYPE_DIR}'`);
@@ -198,9 +200,9 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
 
   it("treats a returned non-zero exit as a failure too", async () => {
     const { desktop, rec } = makeFakeDesktop({
-      onCommand: (command) => (command.includes("xdotool type") ? { exitCode: 1 } : undefined),
+      onCommand: (command) => (command.includes("xdotool type") ? { exitCode: 2 } : undefined),
     });
-    expectPhaseOnly(await typeWith(desktop), "text-command");
+    expectPhaseOnly(await typeWith(desktop), "text-command", 2);
     expect(rec.commandRuns.at(-1)).toBe(`rm -rf -- '${TYPE_DIR}'`);
   });
 
@@ -228,6 +230,39 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
     const { desktop, rec } = makeFakeDesktop({ throwOn: /mktemp/ });
     expectPhaseOnly(await typeWith(desktop), "text-tempfile");
     expect(rec.fileWrites).toEqual([]);
+  });
+
+  it("removes the directory when the typing request fails before any exit code (a request-layer timeout)", async () => {
+    const { desktop, rec } = makeFakeDesktop({
+      onCommand: (command) => {
+        if (command.includes("xdotool type"))
+          throw Object.assign(new Error("deadline exceeded"), { name: "TimeoutError" });
+        return undefined;
+      },
+    });
+    expectPhaseOnly(await typeWith(desktop), "text-command");
+    expect(rec.fileWrites).toHaveLength(1);
+    expect(rec.commandRuns.at(-1)).toBe(`rm -rf -- '${TYPE_DIR}'`);
+  });
+
+  it("never types any character twice: one xdotool command, no SDK write, whatever fails", async () => {
+    // The SDK write types 25-character chunks and can fail after typing one; this fake does both.
+    const typesThenFails = () => {
+      throw new Error("chunk 2 failed after chunk 1 was typed");
+    };
+    for (const text of ["Plan the weekly sync now. Review", "Plan the weekly sync now. Réunion"])
+      for (const failure of [
+        { throwOn: /xdotool type/ },
+        {
+          onCommand: (command: string) =>
+            command.includes("xdotool type") ? { exitCode: 1 } : undefined,
+        },
+      ]) {
+        const { desktop, rec } = makeFakeDesktop({ ...failure, write: typesThenFails });
+        await typeWith(desktop, text);
+        expect(rec.writeCalls).toEqual([]);
+        expect(rec.commandRuns.filter((command) => command.includes("xdotool"))).toHaveLength(1);
+      }
   });
 
   it("keeps the SDK write, with no retry, on a desktop without command and file surfaces", async () => {

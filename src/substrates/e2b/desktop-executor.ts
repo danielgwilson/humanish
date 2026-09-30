@@ -1,5 +1,6 @@
 import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
+import { commandFailureInfo } from "../command-failure.js";
 
 import type { CuaAction, CuaExecutor, CuaObservation } from "../../actors/computer-use/loop.js";
 import { CuaExecutorError } from "../../actors/computer-use/executor-error.js";
@@ -186,16 +187,18 @@ export type CuaTypePhase = "desktop-write" | "text-tempfile" | "text-command";
 
 /**
  * A `type` action that failed. Typed text can be a credential (a login step typing a subject-env
- * password), so the message names the phase only: no text, no temp-file path, no substrate
- * output. The loop records `.name` + `.message` into the actor trace.
+ * password), so the message names the phase and, for xdotool, its exit code only: no text, no
+ * temp-file path, no substrate output. The loop records `.name` + `.message` into the actor trace.
  */
 export class CuaTypeError extends Error {
   readonly phase: CuaTypePhase;
+  readonly exitCode?: number;
 
-  constructor(phase: CuaTypePhase) {
-    super(`type failed at ${phase}`);
+  constructor(phase: CuaTypePhase, exitCode?: number) {
+    super(`type failed at ${phase}${exitCode === undefined ? "" : ` (exit ${exitCode})`}`);
     this.name = "CuaTypeError";
     this.phase = phase;
+    if (exitCode !== undefined) this.exitCode = exitCode;
   }
 }
 
@@ -250,12 +253,13 @@ async function typeText(desktop: TypingDesktop, text: string): Promise<void> {
         `DISPLAY="\${DISPLAY:-:0}" LC_ALL=C.UTF-8 xdotool type --delay ${XDOTOOL_TYPE_DELAY_MS} --file ${shellQuote(file)}`,
         { requestTimeoutMs: timeoutMs, timeoutMs },
       );
-    } catch {
-      throw new CuaTypeError("text-command");
+    } catch (error) {
+      // The SDK throws on a non-zero exit; only its exit code is kept.
+      throw new CuaTypeError("text-command", commandFailureInfo(error).exitCode);
     }
     // A structural fake may return a non-zero exit instead of throwing, as the SDK does.
     if (result?.exitCode !== undefined && result.exitCode !== 0)
-      throw new CuaTypeError("text-command");
+      throw new CuaTypeError("text-command", result.exitCode);
   } finally {
     await commands.run(`rm -rf -- ${shellQuote(directory)}`, quick).catch(() => undefined);
   }
