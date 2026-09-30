@@ -1,0 +1,2785 @@
+{
+  "config invalid": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_CONFIG_INVALID",
+        "message": "OpenAI analysis needs a supported model, positive USD admission limit and 256–32768 output tokens. Codex account analysis uses its qualified model and null dollar/output-token caps. Both require timeout 1–600000 ms."
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "question unsafe": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_QUESTION_UNSAFE",
+        "message": "The reviewer question matched a sensitive-text pattern. Remove sensitive details before retrying."
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "run not found": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "no-such-run",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_RUN_NOT_FOUND",
+        "message": "The selected run is unavailable or its storage is unsafe."
+      }
+    },
+    "requests": [],
+    "progress": []
+  },
+  "admission over budget": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": false,
+        "error": "analysis_budget_exceeded",
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "error": {
+        "code": "analysis_budget_exceeded",
+        "message": "The conservative admission estimate exceeds --max-cost. No provider request was sent."
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "dry run (openai)": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": true,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": true
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "dry run with a preferred larger output": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": true,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 32768,
+        "estimatedCostUsd": 0.74411,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": true
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "dry run (codex)": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": true,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": null,
+        "outputTokenAllowance": null,
+        "estimatedCostUsd": null,
+        "ratesAsOf": null
+      },
+      "warnings": [
+        "Evidence and configuration admission only. Codex CLI, login, model access and account allowance were not checked; no provider request was sent."
+      ],
+      "ok": true
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "api key missing": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_API_KEY_MISSING",
+        "message": "Set OPENAI_API_KEY to run analysis. --dry-run checks admission without a key or provider request."
+      },
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "aborted before start": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_CANCELLED",
+        "message": "Analysis was cancelled before dispatch."
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  },
+  "completed (openai)": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": true,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [
+      {
+        "url": "https://api.openai.com/v1/responses",
+        "model": "gpt-5.6-sol",
+        "maxOutputTokens": 8192,
+        "bodySha256": "6540ce586816279a"
+      }
+    ],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      }
+    }
+  },
+  "reused": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": true,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": true,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "cacheWriteInputTokens": 13468,
+        "cachedInputTokens": 0,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259,
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "estimatedCostUsd": 0.07206
+      },
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      }
+    }
+  },
+  "rerun": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": true,
+      "analysisId": "analysis-golden-3",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-3/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-3/analysis.json"
+    },
+    "requests": [
+      {
+        "url": "https://api.openai.com/v1/responses",
+        "model": "gpt-5.6-sol",
+        "maxOutputTokens": 8192,
+        "bodySha256": "6540ce586816279a"
+      }
+    ],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis-attempts/analysis-golden-3/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-3",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-3/start.json": {
+        "id": "analysis-golden-3",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      },
+      "analysis/analysis-golden-3/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-3",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      }
+    }
+  },
+  "provider HTTP 503": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "failed",
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "error": {
+        "code": "analysis_provider_http_error",
+        "message": "The attempt retained its status and any known usage. Inspect it with humanish analyze show."
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "failed"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "error": "analysis_provider_http_error"
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": null,
+        "error": "analysis_provider_http_error",
+        "captureVersion": 2
+      }
+    }
+  },
+  "provider output fails validation": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "failed",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "error": {
+        "code": "analysis_validation_failed_schema_invalid",
+        "message": "The attempt retained its status and any known usage. Inspect it with humanish analyze show."
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "failed"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": "analysis_validation_failed_schema_invalid"
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": null,
+        "error": "analysis_validation_failed_schema_invalid",
+        "captureVersion": 2
+      }
+    }
+  },
+  "output over the admitted limit": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 1024,
+        "estimatedCostUsd": 0.10923,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 4096,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.14956,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.10923
+      },
+      "error": {
+        "code": "analysis_admission_estimate_exceeded",
+        "message": "The attempt retained its status and any known usage. Inspect it with humanish analyze show."
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.10923
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.10923
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.10923
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.10923,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "dba72a9685abeab8e0552cca5dec6a34e3cd582ce80789f6cb56ae7ca9f9a8df",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.10923,
+          "inputTokens": 13543,
+          "outputTokens": 4096,
+          "estimatedCostUsd": 0.14956
+        },
+        "error": "analysis_admission_estimate_exceeded"
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "dba72a9685abeab8e0552cca5dec6a34e3cd582ce80789f6cb56ae7ca9f9a8df",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "dba72a9685abeab8e0552cca5dec6a34e3cd582ce80789f6cb56ae7ca9f9a8df",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 1024
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.10923,
+          "inputTokens": 13543,
+          "outputTokens": 4096,
+          "estimatedCostUsd": 0.14956
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": "analysis_admission_estimate_exceeded",
+        "captureVersion": 2
+      }
+    }
+  },
+  "dispatch guard throws": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_UNAVAILABLE",
+        "message": "Analysis could not be completed safely. Source evidence was not changed."
+      }
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      }
+    ],
+    "files": {}
+  },
+  "cancelled during the dispatch guard": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "cancelled",
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": false,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "error": {
+        "code": "analysis_cancelled",
+        "message": "The attempt retained its status and any known usage. Inspect it with humanish analyze show."
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "cancelled"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "cancelled",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": false,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "error": "analysis_cancelled"
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "cancelled",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": false,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": null,
+        "error": "analysis_cancelled",
+        "captureVersion": 2
+      }
+    }
+  },
+  "report publication fails": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "error": {
+        "code": "ANALYSIS_PUBLICATION_FAILED",
+        "message": "The attempt's usage was saved, but changed or unsafe evidence prevented report publication."
+      }
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      }
+    }
+  },
+  "receipt publication fails": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "error": {
+        "code": "ANALYSIS_PUBLICATION_FAILED",
+        "message": "Storage changed or became unavailable after the attempt. Usage is retained in this response; no durable receipt could be written."
+      }
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1": "sha256:51654c4241b421d4"
+    }
+  },
+  "Observer refresh fails": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": 17750,
+        "outputTokenAllowance": 8192,
+        "estimatedCostUsd": 0.25259,
+        "ratesAsOf": "2026-09-03"
+      },
+      "warnings": [
+        "Analysis was saved, but Observer could not be refreshed. Run humanish observe again."
+      ],
+      "ok": true,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 13543,
+        "outputTokens": 221,
+        "cachedInputTokens": 0,
+        "cacheWriteInputTokens": 13468,
+        "estimatedCostUsd": 0.07206,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": "2026-09-03",
+        "estimatedAdmissionUsd": 0.25259
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": 0.25259,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-5.6-sol",
+        "maxCostUsd": 5,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "52d979c1849c48ae630173b75b55aa7872935c44689f0377f496de206eb3aace",
+        "config": {
+          "model": "gpt-5.6-sol",
+          "question": null,
+          "maxCostUsd": 5,
+          "timeoutMs": 1000,
+          "maxOutputTokens": 8192
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "openai",
+        "usage": {
+          "cacheWriteInputTokens": 13468,
+          "cachedInputTokens": 0,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": "2026-09-03",
+          "estimatedAdmissionUsd": 0.25259,
+          "inputTokens": 13543,
+          "outputTokens": 221,
+          "estimatedCostUsd": 0.07206
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      }
+    }
+  },
+  "completed (codex)": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": null,
+        "outputTokenAllowance": null,
+        "estimatedCostUsd": null,
+        "ratesAsOf": null
+      },
+      "warnings": [],
+      "ok": true,
+      "analysisId": "analysis-golden-1",
+      "status": "partial",
+      "usage": {
+        "inputTokens": 400,
+        "outputTokens": 80,
+        "cachedInputTokens": 20,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": true,
+        "dispatched": true,
+        "ratesAsOf": null,
+        "estimatedAdmissionUsd": null
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [
+      {
+        "model": "gpt-6-astra",
+        "maxOutputTokens": null,
+        "images": 0,
+        "bodySha256": "5bada3361fe1f63f"
+      }
+    ],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "validating",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null,
+        "status": "partial"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-6-astra",
+        "maxCostUsd": null,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "promptVersion": "study-evidence-6",
+        "provider": "codex",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": 20,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": null,
+          "estimatedAdmissionUsd": null,
+          "inputTokens": 400,
+          "outputTokens": 80,
+          "estimatedCostUsd": null
+        },
+        "error": null
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "partial",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "config": {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "question": null,
+          "maxCostUsd": null,
+          "timeoutMs": 1000,
+          "maxOutputTokens": null,
+          "identity": {
+            "transport": "codex-app-server",
+            "authentication": "chatgpt-account",
+            "billing": "account-unknown",
+            "requestedModel": "gpt-6-astra",
+            "resolvedModel": "gpt-6-astra",
+            "reasoningEffort": "low",
+            "toolPolicy": "restricted-codex-v1",
+            "cliVersion": "0.157.1"
+          }
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "codex",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": 20,
+          "usageComplete": true,
+          "dispatched": true,
+          "ratesAsOf": null,
+          "estimatedAdmissionUsd": null,
+          "inputTokens": 400,
+          "outputTokens": 80,
+          "estimatedCostUsd": null
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": {
+          "summary": "The participant encountered an obstacle.",
+          "participants": [
+            {
+              "streamId": "sim-01-ui",
+              "summary": "The participant attempted the assigned task.",
+              "intent": "Create an item.",
+              "outcome": "blocked",
+              "outcomeReason": "The retained evidence shows an obstacle.",
+              "evidenceIds": [
+                "e000001",
+                "e000002"
+              ],
+              "feedback": [],
+              "limitations": []
+            }
+          ],
+          "findings": [
+            {
+              "id": "finding-1",
+              "title": "Item creation was blocked",
+              "summary": "The participant could not create an item.",
+              "impact": "blocked_task",
+              "affectedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposedStreamIds": [
+                "sim-01-ui"
+              ],
+              "exposureReason": "The included participants attempted the same task.",
+              "recovery": "not_observed",
+              "confidence": "medium",
+              "observations": [
+                {
+                  "claim": "The creation attempt did not produce an item.",
+                  "basis": "inference",
+                  "evidenceIds": [
+                    "e000001"
+                  ],
+                  "limitation": "This is a synthetic fixture."
+                }
+              ],
+              "nextStep": "Check the create interaction.",
+              "priorityReason": "The obstacle affected the assigned task."
+            }
+          ],
+          "limitations": [
+            "Synthetic fixture; no real product behavior is measured."
+          ],
+          "concernReviews": []
+        },
+        "error": null,
+        "captureVersion": 2
+      }
+    }
+  },
+  "codex provider fails": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "admission": {
+        "allowed": true,
+        "error": null,
+        "inputTokenAllowance": null,
+        "outputTokenAllowance": null,
+        "estimatedCostUsd": null,
+        "ratesAsOf": null
+      },
+      "warnings": [],
+      "ok": false,
+      "analysisId": "analysis-golden-1",
+      "status": "failed",
+      "usage": {
+        "inputTokens": null,
+        "outputTokens": null,
+        "cachedInputTokens": null,
+        "cacheWriteInputTokens": null,
+        "estimatedCostUsd": null,
+        "usageComplete": false,
+        "dispatched": true,
+        "ratesAsOf": null,
+        "estimatedAdmissionUsd": null
+      },
+      "error": {
+        "code": "analysis_codex_process_failed",
+        "message": "The Codex analyst process ended without a usable report. Inspect the retained attempt before retrying."
+      },
+      "executionReceiptPath": ".humanish/runs/analysis-golden/analysis-attempts/analysis-golden-1/receipt.json",
+      "artifactPath": ".humanish/runs/analysis-golden/analysis/analysis-golden-1/analysis.json"
+    },
+    "requests": [],
+    "progress": [
+      {
+        "phase": "admitted",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "requesting",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null
+      },
+      {
+        "phase": "finished",
+        "evidenceCount": 2,
+        "captureCount": 0,
+        "estimatedAdmissionUsd": null,
+        "status": "failed"
+      }
+    ],
+    "files": {
+      "analysis-attempts/analysis-golden-1/receipt.json": {
+        "schema": "humanish.analysis-execution.v1",
+        "model": "gpt-6-astra",
+        "maxCostUsd": null,
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "promptVersion": "study-evidence-6",
+        "provider": "codex",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": true,
+          "ratesAsOf": null,
+          "estimatedAdmissionUsd": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "error": "analysis_codex_process_failed"
+      },
+      "analysis-attempts/analysis-golden-1/start.json": {
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "promptVersion": "study-evidence-6",
+        "schema": "humanish.analysis-execution-start.v1",
+        "createdAt": "[ts]"
+      },
+      "analysis/analysis-golden-1/analysis.json": {
+        "schema": "humanish.study-analysis.v1",
+        "id": "analysis-golden-1",
+        "runId": "analysis-golden",
+        "status": "failed",
+        "createdAt": "[ts]",
+        "completedAt": "[ts]",
+        "sourceRunSha256": "[source-sha256]",
+        "inputDigest": "[input-digest]",
+        "configDigest": "9e63469e4fb20f329cc358c3c4b60a4e436ffcd38501f22d4db56e0d3b63ca94",
+        "config": {
+          "provider": "codex",
+          "model": "gpt-6-astra",
+          "question": null,
+          "maxCostUsd": null,
+          "timeoutMs": 1000,
+          "maxOutputTokens": null,
+          "identity": {
+            "transport": "codex-app-server",
+            "authentication": "chatgpt-account",
+            "billing": "account-unknown",
+            "requestedModel": "gpt-6-astra",
+            "resolvedModel": "gpt-6-astra",
+            "reasoningEffort": "low",
+            "toolPolicy": "restricted-codex-v1",
+            "cliVersion": "0.157.1"
+          }
+        },
+        "promptVersion": "study-evidence-6",
+        "provider": "codex",
+        "usage": {
+          "cacheWriteInputTokens": null,
+          "cachedInputTokens": null,
+          "usageComplete": false,
+          "dispatched": true,
+          "ratesAsOf": null,
+          "estimatedAdmissionUsd": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "estimatedCostUsd": null
+        },
+        "participants": [
+          {
+            "streamId": "sim-01-ui",
+            "label": "UI journey",
+            "assignment": null,
+            "recordedStatus": "complete",
+            "recordedReason": null,
+            "provenance": {
+              "actorStatus": null,
+              "completionReason": null,
+              "stopCause": null,
+              "goalSource": null,
+              "declaredOutcome": null,
+              "taskOutcomes": null
+            }
+          }
+        ],
+        "coverage": {
+          "includedStreamIds": [
+            "sim-01-ui"
+          ],
+          "omittedStreamIds": [],
+          "evidenceCount": 2,
+          "captureCount": 0,
+          "complete": false,
+          "omissions": [
+            "Some participants have no recorded assignment.",
+            "Some participants have no normalized recorded trace."
+          ]
+        },
+        "evidence": [
+          {
+            "id": "e000001",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-a",
+            "kind": "run_event:sim.contract.ready",
+            "text": "UI journey stream contract ready.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          },
+          {
+            "id": "e000002",
+            "streamId": "sim-01-ui",
+            "eventId": "event-001-b",
+            "kind": "run_event:sim.live-substrate.missing",
+            "text": "No live actor launched in dry-run mode; observer lane is ready for real substrate evidence.",
+            "quoteEligible": false,
+            "at": "[ts]",
+            "elapsedMs": null,
+            "frame": null,
+            "capture": null
+          }
+        ],
+        "result": null,
+        "error": "analysis_codex_process_failed",
+        "captureVersion": 2
+      }
+    }
+  },
+  "dry-run bundle": {
+    "result": {
+      "schema": "humanish.analyze-result.v1",
+      "ok": false,
+      "run": "analysis-golden",
+      "dryRun": false,
+      "reused": false,
+      "warnings": [],
+      "error": {
+        "code": "ANALYSIS_REQUIRES_LIVE_RUN",
+        "message": "A dry-run proves harness contracts, not participant behavior. Select a completed live study for analysis."
+      }
+    },
+    "requests": [],
+    "progress": [],
+    "files": {}
+  }
+}
