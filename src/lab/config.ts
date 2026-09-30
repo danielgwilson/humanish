@@ -78,6 +78,7 @@ import {
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
+  scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings } from "./warnings.js";
@@ -172,6 +173,8 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);
+  const scenarioCapsReason = scenarioCapsValidationReason(config);
+  if (scenarioCapsReason) return invalid(scenarioCapsReason);
 
   // All-parallel default (#350): a multi-seat computer-use lab that does not declare
   // execution.concurrency runs EVERY seat at once — the declared field is a cap the author chose,

@@ -613,13 +613,14 @@ export interface LabScenarioCaps {
   /**
    * STUDY-LEVEL model-spend budget (#299), the number a researcher actually reasons with: "this
    * study is N participants, roughly $X" — decided once, up front, where recruiting decisions are
-   * made. Consumed on the CUA route: every lane's running ESTIMATED model spend feeds one shared
-   * ledger, and the moment the run total crosses this, each lane stops at its next turn with an
-   * honest `budget_reached` (status `incomplete` — the participant ran out of budget; never
-   * `gave_up`, because a study-level stop is not the participant's doing). Estimated MODEL spend
-   * only — desktop-minutes ride the cost summary but not this ledger. Independent of the per-lane
-   * `maxUsd` backstop; either, both, or neither may be set. Inert (warned) on the terminal route,
-   * where the single agent's maxUsd already caps the whole run.
+   * made. The computer-use route reads it from `execution.caps.maxTotalUsd` only: every lane's
+   * running ESTIMATED model spend feeds one shared ledger, and the moment the run total crosses
+   * this, each lane stops at its next turn with an honest `budget_reached` (status `incomplete` —
+   * the participant ran out of budget; never `gave_up`, because a study-level stop is not the
+   * participant's doing). Estimated MODEL spend only — desktop-minutes ride the cost summary but
+   * not this ledger. Independent of the per-lane `maxUsd` backstop; either, both, or neither may
+   * be set. A positive `scenario.caps.maxTotalUsd` on a computer-use lab is a parse error; on the
+   * terminal route it is inert (warned), since the single agent's maxUsd already caps the run.
    */
   maxTotalUsd?: number;
   /** Max billable product jobs the agent may trigger. 0 = none. */

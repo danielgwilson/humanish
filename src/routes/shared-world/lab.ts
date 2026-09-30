@@ -70,6 +70,7 @@ import {
   externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
+  scenarioCapsValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
 import { liveObserverResult } from "../../observer/live.js";
@@ -266,6 +267,7 @@ async function runConcurrentSharedWorldInScope(
   // harness-owned; a public site the harness neither provisioned nor exposed has neither property.
   const invalidReason =
     outputTokenLimitValidationReason(config) ??
+    scenarioCapsValidationReason(config) ??
     (planeClass === "external-public"
       ? externalPublicSharedWorldValidationReason(config)
       : concurrentSharedWorldValidationReason(config));

@@ -181,7 +181,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           }
         ],
         "subject": {
@@ -196,7 +198,9 @@
       "concurrency": 1,
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
-      "caps": {}
+      "caps": {
+        "maxUsd": 3
+      }
     },
     "live": {
       "requirements": [
@@ -265,7 +269,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           }
         ],
         "subject": {
@@ -280,7 +286,9 @@
       "concurrency": 1,
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
-      "caps": {}
+      "caps": {
+        "maxUsd": 3
+      }
     },
     "live": {
       "requirements": [
@@ -356,7 +364,9 @@
                 950
               ]
             },
-            "limits": {}
+            "limits": {
+              "maxOutputTokens": 8192
+            }
           }
         ],
         "subject": {
@@ -372,7 +382,9 @@
       "concurrency": 1,
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
-      "caps": {}
+      "caps": {
+        "maxUsd": 3
+      }
     },
     "live": {
       "requirements": [

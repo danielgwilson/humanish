@@ -263,7 +263,10 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   (`HUMANISH_TERMINAL_LAB_UNPRICED_CAP`) unless the caller passes a `costProbe`
   hook. The no-spend proof is derived from that real ledger, never asserted (see
   Terminal Cost Ledger And No-Spend Proof).
-  Inert (warned) on every other route;
+  Inert (warned) on every other route, except that a positive
+  `scenario.caps.maxUsd` or `scenario.caps.maxTotalUsd` on a computer-use lab
+  is a parse error naming the matching `execution.caps` field, which is what
+  that route enforces;
 - `policies`: `redactRepos`, `redactScreenshots`, `allowPublicTargets`, and the
   terminal-product credential-boundary booleans `allowPrivateRepoAccess`,
   `allowProviderCredentials`, `allowPaymentCredentials`, `allowGitHubMutation`

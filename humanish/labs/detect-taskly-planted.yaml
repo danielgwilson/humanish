@@ -23,18 +23,17 @@ subject:
     url: http://127.0.0.1:8000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192
     persona: synthetic-new-user
     mission: >-
       You are trying Taskly, a small web app for keeping a to-do list, for the first time. Use it the way you would actually use a list app. Add a few tasks, including one long enough to describe something properly. Mark something complete. Try the filters to see just what is left and just what is finished. Rename one of your tasks. Tidy up when you are done. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw.
 execution:
   target: e2b-desktop
   timeoutMs: 600000
-scenario:
-  mode: dry-run
   caps:
     maxUsd: 3
-    maxJobs: 0
-    maxMinutes: 12
+scenario:
+  mode: dry-run
 policies:
   allowPrivateRepoAccess: false
   allowProviderCredentials: false

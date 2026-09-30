@@ -1749,6 +1749,30 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
     expect(desktopLoads).toBe(0);
   });
 
+  it("engine re-enforcement refuses a positive scenario.caps.maxTotalUsd before loading a desktop", async () => {
+    const valid = concurrentConfig(3, 3);
+    const broken: LabConfig = {
+      ...valid,
+      scenario: { ...valid.scenario, caps: { maxTotalUsd: 5 } },
+    };
+    let desktopLoads = 0;
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: broken,
+      dryRun: false,
+      hooks: {
+        loadDesktopModule: async () => {
+          desktopLoads += 1;
+          throw new Error("must not load");
+        },
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID");
+    expect(result.error?.message).toContain("execution.caps.maxTotalUsd");
+    expect(desktopLoads).toBe(0);
+  });
+
   it("engine re-enforcement: a local-tree config declaring subject.localTree.keep on the concurrent route fails closed (would orphan the N actor sandboxes)", async () => {
     const valid = localTreeConcurrentConfig();
     const broken: LabConfig = {

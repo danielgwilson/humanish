@@ -30,6 +30,7 @@ subject:
     url: http://127.0.0.1:3000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192
     persona: synthetic-new-user
     mission: >-
       You are trying this to-do app for the first time. Use it the way you would actually use a
@@ -41,12 +42,10 @@ actors:
 execution:
   target: e2b-desktop
   timeoutMs: 600000
-scenario:
-  mode: dry-run
   caps:
     maxUsd: 3
-    maxJobs: 0
-    maxMinutes: 12
+scenario:
+  mode: dry-run
 policies:
   allowPrivateRepoAccess: false
   allowProviderCredentials: false
