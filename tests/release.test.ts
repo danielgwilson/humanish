@@ -50,6 +50,7 @@ describe("release readiness", () => {
       "LICENSE",
       "SECURITY.md",
       "CONTRIBUTING.md",
+      "ARCHITECTURE.md",
     ]);
     expect(packageJson.scripts.prepack).toBe("pnpm build");
     expect(packageJson.scripts["public-surface:scan"]).toBe("node scripts/public-surface-scan.mjs");
