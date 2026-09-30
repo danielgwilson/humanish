@@ -18,8 +18,32 @@ import type { LocalTreeArchive } from "../../run/source-archive.js";
 export interface SharedWorldLabHooks extends BrowserLabAdapterHooks {
   /** Lazy-load the E2B desktop module (tests inject a fake; default loadE2BDesktopModule). */
   loadDesktopModule?: () => Promise<E2BDesktopModule>;
-  /** Runs once after sandbox creation, before subject provisioning (library setup seam). */
-  prepareDesktop?: (desktop: E2BDesktopSandbox) => Promise<void>;
+  /**
+   * Runs after a sandbox is created and before anything is provisioned on it. The provisioned
+   * plane calls it for the subject sandbox with no lane, then for each seat's desktop with its lane;
+   * the external-public plane calls it for the seats only.
+   */
+  prepareDesktop?: (
+    desktop: E2BDesktopSandbox,
+    lane?: { laneId: string; laneIndex: number; laneCount: number },
+  ) => Promise<void>;
+  /**
+   * Awaited after a seat's live desktop stream starts. The URL carries an auth key and must never
+   * be persisted. A rejection becomes a run warning, as on the computer-use route.
+   */
+  onRuntimeStreamReady?: (stream: {
+    laneId: string;
+    sandboxId: string;
+    simId: string;
+    streamId: string;
+    url: string;
+  }) => Promise<void> | void;
+  /** Awaited after a seat's sandbox is gone, for seats whose stream started. Rejections are swallowed. */
+  onRuntimeStreamEnded?: (stream: {
+    laneId: string;
+    simId: string;
+    streamId: string;
+  }) => Promise<void> | void;
   /** The per-seat computer-use session runner (default: the resolved actor descriptor's). */
   runSession?: (options: CuaActorSessionOptions) => Promise<CuaLoopResult>;
   /** The operator environment (keys + subject env values). Defaults to process.env. */

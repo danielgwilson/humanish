@@ -19,14 +19,16 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
 2. `routeOf` (`src/lab/plan.ts`) picks one of five routes from `subject.source`,
    `subject.topology`, `execution.target` and the registry lane of `actors[0].type`. The
    predicates live in `src/lab/routing.ts`, and `selectLabBackend` (`src/lab/engine.ts`) maps the
-   route to its backend name. `runLab` in `src/lab/engine.ts` dispatches to
-   `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
-   `runConcurrentSharedWorld` or `runPreviewLab` (`src/routes/preview.ts`), which takes its sim
-   count and admission from `planLab` and then calls `runDryRun`. `runTerminalProductLab` takes
-   its configuration refusals and plan from `planTerminalLab` (`src/routes/terminal/plan.ts`), and
-   `runScriptedBrowserLab` from `planScriptedLab` (`src/routes/scripted-browser/plan.ts`). A run
-   is live only when the lab declares `scenario.mode: live`. The `--dry-run` flag forces a dry
-   run.
+   route to its backend name. `runLab` in `src/lab/engine.ts` first calls
+   `normalizeRunLabOptions` (`src/lab/run-lab-options.ts`). It refuses a library option the route
+   cannot honor, or a new option set together with the hook-bag field it replaces, and maps the
+   other new options into the route's hook bags. `runLab` then dispatches to `runCuaActorLab`,
+   `runScriptedBrowserLab`, `runTerminalProductLab`, `runConcurrentSharedWorld` or `runPreviewLab`
+   (`src/routes/preview.ts`), which takes its sim count and admission from `planLab` and then
+   calls `runDryRun`. `runTerminalProductLab` takes its configuration refusals and plan from
+   `planTerminalLab` (`src/routes/terminal/plan.ts`), and `runScriptedBrowserLab` from
+   `planScriptedLab` (`src/routes/scripted-browser/plan.ts`). A run is live only when the lab
+   declares `scenario.mode: live`. The `--dry-run` flag forces a dry run.
 3. `cuaLabRejection` (`src/routes/computer-use/preflight.ts`) repeats the parse checks for
    library callers. On a live run, `liveCuaRejection` in the same file checks provider keys, the
    local agent login and subject env vars, and refuses a dollar cap it cannot price. Both run

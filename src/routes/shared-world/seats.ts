@@ -185,20 +185,27 @@ export function startSeatFlush(ctx: PlaneContext, live: LiveSeats, bundle: RunBu
   });
 }
 
-/** The caller's desktop hooks, plus the runtime stream URLs each seat reports to the live Observer. */
+/**
+ * The caller's desktop hooks, plus the runtime stream URLs each seat reports to the live Observer.
+ * The Observer learns of a stream before the caller's stream hook runs.
+ */
 function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveSeats): CuaActorLabHooks {
   return {
     ...(hooks.loadDesktopModule ? { loadDesktopModule: hooks.loadDesktopModule } : {}),
     ...(hooks.detachedTimers ? { detachedTimers: hooks.detachedTimers } : {}),
     ...(hooks.env ? { env: hooks.env } : {}),
     ...(hooks.prepareDesktop
-      ? { prepareDesktop: (desktop: E2BDesktopSandbox) => hooks.prepareDesktop!(desktop) }
+      ? {
+          prepareDesktop: (desktop: E2BDesktopSandbox, lane) =>
+            hooks.prepareDesktop!(desktop, lane),
+        }
       : {}),
     onRuntimeStreamReady: (stream) => {
       live.streamUrls.push({ streamId: stream.streamId, url: stream.url });
       if (live.observer) {
         attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
       }
+      return hooks.onRuntimeStreamReady?.(stream);
     },
     onRuntimeStreamEnded: (stream) => {
       // Mark, never remove (#357): the tile falls back to recorded evidence and says why.
@@ -208,6 +215,7 @@ function runtimeStreamHooks(hooks: SharedWorldLabHooks, live: LiveSeats): CuaAct
       if (live.observer) {
         attachObserverRuntimeStreamUrls(live.observer, live.streamUrls);
       }
+      return hooks.onRuntimeStreamEnded?.(stream);
     },
   };
 }
