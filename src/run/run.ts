@@ -51,7 +51,7 @@ import { round6 } from "../pricing.js";
 import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../analysis/store.js";
 import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive, digestText, redactText } from "../redaction.js";
-import type { E2BDesktopModule } from "../e2b-desktop-launch.js";
+import type { E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import {
   bindExistingRunArtifactPaths,
   RUNS_RELATIVE_ROOT,

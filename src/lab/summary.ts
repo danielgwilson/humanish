@@ -1,5 +1,5 @@
-import { isLocalBrowserLab } from "../local-runtime-config.js";
-import { localRuntimeStatus, type LocalRuntimeStatus } from "../local-runtime.js";
+import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 // What a lab IS, for the surface that has to describe it before you spend money (#455).
 //
 // The run index and run detail answer questions about runs. This answers a question about the LAB

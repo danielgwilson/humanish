@@ -23,7 +23,10 @@ import {
   type CuaTurn,
   type CuaTurnRequest,
 } from "../src/computer-use.js";
-import { createE2BDesktopExecutor, type E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import {
+  createE2BDesktopExecutor,
+  type E2BDesktopLike,
+} from "../src/substrates/e2b/desktop-executor.js";
 import { extractLobbyCode, runConcurrentSharedWorld } from "../src/index.js";
 import { makeChromeBrowserStateObserver } from "../src/cua-actor-lab.js";
 import {
@@ -40,7 +43,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import { defaultRedactionHooks } from "../src/redaction.js";
 import type { RunBundle } from "../src/index.js";
 import { verifyRun } from "../src/run/run.js";

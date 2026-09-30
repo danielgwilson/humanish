@@ -15,7 +15,7 @@
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 
-import { perceptualSignature } from "../src/e2b-desktop-executor.js";
+import { perceptualSignature } from "../src/substrates/e2b/desktop-executor.js";
 import { actionFingerprint, type CuaAction } from "../src/computer-use.js";
 
 /**

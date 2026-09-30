@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../src/actor-contract.js";
 import { runCuaActorSession } from "../src/computer-use-actor.js";
-import type { E2BDesktopLike } from "../src/e2b-desktop-executor.js";
+import type { E2BDesktopLike } from "../src/substrates/e2b/desktop-executor.js";
 
 // The single LIVE rung for the computer-use actor: a real E2B desktop driven by the real OpenAI
 // Computer Use loop. Spend-gated three ways — it never runs in CI or by accident:

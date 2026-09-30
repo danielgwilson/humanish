@@ -21,7 +21,7 @@ import {
   makeChromeBrowserStateObserver,
   makeChromeDesktopGeometryObserver,
 } from "../src/cua-actor-lab.js";
-import type { E2BCommandResult, E2BDesktopSandbox } from "../src/e2b-desktop-launch.js";
+import type { E2BCommandResult, E2BDesktopSandbox } from "../src/substrates/e2b/desktop-launch.js";
 
 const execFileAsync = promisify(execFile);
 

@@ -1,5 +1,5 @@
-import { isLocalBrowserLab } from "../local-runtime-config.js";
-import { localRuntimeStatus, type LocalRuntimeStatus } from "../local-runtime.js";
+import { isLocalBrowserLab } from "../substrates/local/runtime-config.js";
+import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import type { LabConfig } from "./config.js";
 import type { LabBackend } from "./engine.js";
 import type { DetectedLocalAgent } from "../local-agent-cli.js";

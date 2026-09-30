@@ -22,7 +22,7 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopExecutorOptions,
   type E2BDesktopLike,
-} from "./e2b-desktop-executor.js";
+} from "./substrates/e2b/desktop-executor.js";
 import {
   createOpenAiResponsesProvider,
   type OpenAiResponsesProviderOptions,

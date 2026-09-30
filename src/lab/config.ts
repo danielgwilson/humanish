@@ -2,7 +2,7 @@ import {
   isLocalBrowserLab,
   localBrowserDefaults,
   localBrowserUnsupportedReason,
-} from "../local-runtime-config.js";
+} from "../substrates/local/runtime-config.js";
 import { resolveAutomaticAnalysis, type LabAnalysis } from "../analysis/automatic-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //

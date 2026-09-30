@@ -93,7 +93,7 @@ import {
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "./e2b-desktop-launch.js";
+} from "./substrates/e2b/desktop-launch.js";
 import { renderObserver, type ObserverResult } from "./observer/render.js";
 import { personaBrief, personaToDirectives, renderPersonaPromptSection } from "./lab/persona.js";
 import { digestText, redactedTail, redactText } from "./redaction.js";

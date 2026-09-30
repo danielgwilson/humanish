@@ -39,7 +39,7 @@ import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
   E2BDesktopSandbox,
-} from "../src/e2b-desktop-launch.js";
+} from "../src/substrates/e2b/desktop-launch.js";
 import { LAB_CONFIG_SCHEMA, parseLabConfig, type LabConfig } from "../src/lab/config.js";
 import { SANDBOX_CATCH_SCRIPT, externalCatchHealthy } from "../src/comms/sandbox-catch.js";
 import { recipientInboxUrl } from "../src/comms/inbox.js";

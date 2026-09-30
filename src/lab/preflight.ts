@@ -5,13 +5,13 @@ import {
 } from "../analysis/automatic-config.js";
 
 import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "../cua-actor-lab.js";
-import { probeUrl } from "../e2b-detached.js";
+import { probeUrl } from "../substrates/e2b/detached.js";
 import {
   createDesktopSandbox,
   loadE2BDesktopModule,
   type E2BDesktopModule,
   type E2BDesktopSandbox,
-} from "../e2b-desktop-launch.js";
+} from "../substrates/e2b/desktop-launch.js";
 import { isLoopbackUrl, type LabConfig } from "./config.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";

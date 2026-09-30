@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/e2b-desktop-launch.js";
+import type {
+  E2BDesktopModule,
+  E2BDesktopSandbox,
+} from "../../src/substrates/e2b/desktop-launch.js";
 import { runLabPreflight, type LabPreflightResult } from "../../src/lab/preflight.js";
 import { createProgram } from "../../src/program.js";
 
