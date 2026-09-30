@@ -1,4 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -2198,5 +2199,57 @@ describe("terminal persona traits (#308)", () => {
     const { persona, warnings } = await resolveTerminalPersona(await projectRootFor(cwd), "broken");
     expect(persona).toBeNull();
     expect(warnings.join(" ")).toContain("could not be parsed as YAML");
+  });
+});
+
+// Characterization: the complete run directory of a passing live terminal run on the fake E2B
+// module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
+// Regenerate with `pnpm vitest run tests/routes/terminal/lab.test.ts -u` and review the diff.
+describe("terminal run directory golden", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-golden-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("live run with a passing actor verdict", async () => {
+    const runs: RecordedRun[] = [];
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      hooks: {
+        env: baseEnv(),
+        now: () => 1_000,
+        loadModule: async () =>
+          makeFakeModule({
+            creates: [],
+            runs,
+            killed: [],
+            codexBehavior: (cmd) => ({
+              exitCode: 0,
+              stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+            }),
+          }),
+      },
+    });
+    expect(result.ok).toBe(true);
+    const nonce = nonceFrom(runs.find((run) => run.command.includes(" exec "))?.command ?? "");
+    // The prompt carries a random per-run verdict nonce, so the digests over it vary.
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", result.runId), {
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+        [nonce, "[nonce]"],
+      ],
+      maskKeys: ["promptDigest", "sourceDigest", "commandDigest"],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/terminal-live.json",
+    );
   });
 });

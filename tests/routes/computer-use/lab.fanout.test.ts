@@ -5,6 +5,8 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
@@ -308,6 +310,21 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
+  it("dry-run run directory matches its golden", async () => {
+    const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true });
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      replace: [
+        [runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/computer-use-fanout-dry-run.json",
+    );
+  });
+
   it("a 4-lane roster yields ONE bundle, simCount 4, per-lane requested screens, a plan event, contract statuses; verifyRun ok", async () => {
     const planSeen: CuaLanePlan[] = [];
     const outcome = await runLab(fanoutConfig(), {
@@ -526,6 +543,29 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
       ...extra,
     };
   }
+
+  // Characterization: the complete run directory of a four-lane fan-out, pinned so a refactor of
+  // bundle assembly or artifact writing shows up as a diff. Regenerate with -u.
+  it("live run directory matches its golden", async () => {
+    const handle = makeFanoutModule();
+    const outcome = await runLab(fanoutConfig(), {
+      cwd,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      // Lanes overlap, so a stepped clock would be read in a different order each run.
+      cuaHooks: passingHooks(handle, { now: () => 1_000_000 }),
+    });
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
+      replace: [
+        [runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      "../../golden/routes/computer-use-fanout-live.json",
+    );
+  });
 
   it("carries each lane's declared reasoning effort into the provider options (#497)", async () => {
     // The link a unit test cannot see and a live run costs money to check: lab YAML -> lane spec ->

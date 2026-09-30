@@ -1,0 +1,387 @@
+{
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "shared-world.run.created",
+      "message": "Created shared-world run for shared-world-proof (actor openai-computer-use, 2 role(s), ONE shared plane, sequential turns)."
+    },
+    {
+      "id": "event-001-plane",
+      "at": "[ts]",
+      "level": "info",
+      "type": "shared-world.plane.provenance",
+      "message": "Shared plane declared: clone of example-org/collab-app, served at http://127.0.0.1:3000/ in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; env names: DATABASE_URL (values never persisted).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-contract-role-author",
+      "at": "[ts]",
+      "level": "info",
+      "type": "shared-world.contract.ready",
+      "message": "Role role-author: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-contract-role-reviewer",
+      "at": "[ts]",
+      "level": "info",
+      "type": "shared-world.contract.ready",
+      "message": "Role role-reviewer: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-004-timeline",
+      "at": "[ts]",
+      "level": "info",
+      "type": "shared-world.timeline",
+      "message": "Interaction timeline: 5 entries (2 turn(s) interleaved with checkpoints); deltas observed on none. Attribution ceiling: sequential-only, no-concurrent-races, delta-attributed-to-turn-not-action."
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": "[observer build]",
+  "observer/study-analysis.json": "[observer build]",
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Dry-run shared-world contract: 2 role(s) declared against ONE plane (openai-computer-use) at http://127.0.0.1:3000/; no desktop launched, $0 spend.",
+    "gaps": [
+      "Live shared-world session not yet run (dry-run contract only)."
+    ]
+  },
+  "review.md": "# Shared-world proof\n\n- run: [run]\n- mode: dry-run\n- attribution class: shared-world\n- topology: shared-world\n- roles: 2; sequence: role-author → role-reviewer\n- verdict: contract_proof_only\n- summary: Dry-run shared-world contract: 2 role(s) declared against ONE plane (openai-computer-use) at http://127.0.0.1:3000/; no desktop launched, $0 spend.\n- plane: Shared plane declared: clone of example-org/collab-app, served at http://127.0.0.1:3000/ in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; env names: DATABASE_URL (values never persisted).\n- timeline: Interaction timeline: 5 entries (2 turn(s) interleaved with checkpoints); deltas observed on none. Attribution ceiling: sequential-only, no-concurrent-races, delta-attributed-to-turn-not-action.\n- attribution limits: sequential-only, no-concurrent-races, delta-attributed-to-turn-not-action\n\n## Gaps\n- Live shared-world session not yet run (dry-run contract only).\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "dry-run",
+    "simCount": 2,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "author",
+      "name": "Shared-world roster (2 roles)",
+      "source": "lab:shared-world-proof",
+      "sourceDigest": "9b29f3aa0132c511"
+    },
+    "scenario": {
+      "id": "shared-world-shared-world-proof",
+      "title": "Shared-world proof",
+      "goal": "Persona: author.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nLane focus: Create a note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:shared-world-proof",
+      "sourceDigest": "9b29f3aa0132c511"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "shared-world.run.created",
+        "message": "Created shared-world run with ONE shared plane and 2 sequential role seats (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "author",
+        "scenarioId": "shared-world-shared-world-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract role role-author (author) for openai-computer-use against the shared plane at http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-002",
+        "index": 2,
+        "personaId": "reviewer",
+        "scenarioId": "shared-world-shared-world-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract role role-reviewer (reviewer) for openai-computer-use against the shared plane at http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-002"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "assignment": {
+          "mission": "Use the shared app.",
+          "focus": "Create a note."
+        },
+        "kind": "browser",
+        "label": "Shared-world role role-author — shared-world-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Shared desktop, role role-author"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/compose",
+          "intent": "Watch role role-author (author) drive the SHARED app (one plane; sequential turn).",
+          "state": "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      },
+      {
+        "id": "stream-002",
+        "simId": "sim-002",
+        "assignment": {
+          "mission": "Use the shared app.",
+          "focus": "Review the note."
+        },
+        "kind": "browser",
+        "label": "Shared-world role role-reviewer — shared-world-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Shared desktop, role role-reviewer"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/inbox",
+          "intent": "Watch role role-reviewer (reviewer) drive the SHARED app (one plane; sequential turn).",
+          "state": "Contract role only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "shared-world.run.created",
+        "message": "Created shared-world run for shared-world-proof (actor openai-computer-use, 2 role(s), ONE shared plane, sequential turns)."
+      },
+      {
+        "id": "event-001-plane",
+        "at": "[ts]",
+        "level": "info",
+        "type": "shared-world.plane.provenance",
+        "message": "Shared plane declared: clone of example-org/collab-app, served at http://127.0.0.1:3000/ in-sandbox (dry-run contract; nothing cloned). Seed recipe da2a491995d48367; env names: DATABASE_URL (values never persisted).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-contract-role-author",
+        "at": "[ts]",
+        "level": "info",
+        "type": "shared-world.contract.ready",
+        "message": "Role role-author: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-contract-role-reviewer",
+        "at": "[ts]",
+        "level": "info",
+        "type": "shared-world.contract.ready",
+        "message": "Role role-reviewer: dry-run contract role ready; switch scenario.mode to live for a real shared-world session.",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-004-timeline",
+        "at": "[ts]",
+        "level": "info",
+        "type": "shared-world.timeline",
+        "message": "Interaction timeline: 5 entries (2 turn(s) interleaved with checkpoints); deltas observed on none. Attribution ceiling: sequential-only, no-concurrent-races, delta-attributed-to-turn-not-action."
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Dry-run shared-world contract bundle: no desktop launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs. Checkpoints persist digest-only."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "contract_proof_only",
+      "summary": "Dry-run shared-world contract: 2 role(s) declared against ONE plane (openai-computer-use) at http://127.0.0.1:3000/; no desktop launched, $0 spend.",
+      "gaps": [
+        "Live shared-world session not yet run (dry-run contract only)."
+      ]
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "clone",
+      "repo": "example-org/collab-app",
+      "envNames": [
+        "DATABASE_URL"
+      ],
+      "state": {
+        "provenance": "declared-not-run",
+        "seed": [
+          {
+            "name": "migrate",
+            "when": "before-start",
+            "commandDigest": "867652585ad90648"
+          }
+        ]
+      }
+    },
+    "attributionClass": "shared-world",
+    "sharedWorld": {
+      "schema": "humanish.shared-world.v1",
+      "topology": "shared-world",
+      "topologyMode": "sequential",
+      "roleCount": 2,
+      "plane": {
+        "seedDigest": "da2a491995d48367",
+        "envNames": [
+          "DATABASE_URL"
+        ]
+      },
+      "sequence": [
+        "role-author",
+        "role-reviewer"
+      ],
+      "timeline": [
+        {
+          "kind": "checkpoint",
+          "name": "cp-baseline",
+          "digest": "bada0489f38a81a6",
+          "deltaFromPrev": false
+        },
+        {
+          "kind": "turn",
+          "roleId": "role-author",
+          "simId": "sim-001",
+          "streamId": "stream-001",
+          "seedDigest": "da2a491995d48367"
+        },
+        {
+          "kind": "checkpoint",
+          "name": "cp-after-role-author",
+          "digest": "bada0489f38a81a6",
+          "deltaFromPrev": false
+        },
+        {
+          "kind": "turn",
+          "roleId": "role-reviewer",
+          "simId": "sim-002",
+          "streamId": "stream-002",
+          "seedDigest": "da2a491995d48367"
+        },
+        {
+          "kind": "checkpoint",
+          "name": "cp-after-role-reviewer",
+          "digest": "bada0489f38a81a6",
+          "deltaFromPrev": false
+        }
+      ],
+      "attributionLimits": [
+        "sequential-only",
+        "no-concurrent-races",
+        "delta-attributed-to-turn-not-action"
+      ]
+    }
+  },
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "dry-run",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "contract_proof_only"
+    }
+  }
+}

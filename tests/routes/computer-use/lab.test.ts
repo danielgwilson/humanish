@@ -7,6 +7,8 @@ import { link, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
 
@@ -6502,4 +6504,51 @@ describe("adopter-hosted comms on the app-url route (#380)", () => {
       await rm(dir, { recursive: true, force: true });
     }
   }, 60_000);
+});
+
+// Characterization: the complete run directory of a single-lane computer-use run on the fake E2B
+// module and a scripted provider transport, pinned so a refactor of bundle assembly or artifact
+// writing shows up as a diff. Regenerate with `pnpm vitest run tests/routes/computer-use/lab.test.ts -u`.
+describe("computer-use run directory goldens", () => {
+  let goldenCwd: string;
+  beforeEach(async () => {
+    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-golden-"));
+  });
+  afterEach(async () => {
+    await rm(goldenCwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["dry run", true, "computer-use-dry-run.json"],
+    ["live run", false, "computer-use-live.json"],
+  ] as const)("%s with one lane", async (_label, dryRun, golden) => {
+    const { module } = makeFakeModule(makeFakeSandbox());
+    let clock = 0;
+    const outcome = await runLab(cuaConfig(), {
+      cwd: goldenCwd,
+      dryRun,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+      cuaHooks: {
+        env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" },
+        loadDesktopModule: async () => module,
+        now: () => (clock += 30_000),
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    });
+    const runId = outcome.result.runId;
+    if (!runId) throw new Error("the run wrote no bundle");
+    const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
+      replace: [
+        [runId, "[run]"],
+        [goldenCwd, "[cwd]"],
+      ],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      `../../golden/routes/${golden}`,
+    );
+  });
 });

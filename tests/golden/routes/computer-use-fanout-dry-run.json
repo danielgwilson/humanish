@@ -1,0 +1,552 @@
+{
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 lanes, per-lane worlds)."
+    },
+    {
+      "id": "event-001-fanout-plan",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.fanout.plan",
+      "message": "Fan-out plan: 4 lane(s) (per-lane-worlds), concurrency 2, 2 wave(s); per-lane session budget 60s; worst-case ~44 sandbox-minutes (dry-run: $0). Lanes: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+    },
+    {
+      "id": "event-002-subject-mobile-newcomer",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-contract-mobile-newcomer",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.contract.ready",
+      "message": "Lane mobile-newcomer: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-subject-small-skimmer",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-005-contract-small-skimmer",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.contract.ready",
+      "message": "Lane small-skimmer: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-006-subject-desktop-power",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-007-contract-desktop-power",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.contract.ready",
+      "message": "Lane desktop-power: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-008-subject-wide-researcher",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    },
+    {
+      "id": "event-009-contract-wide-researcher",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.contract.ready",
+      "message": "Lane wide-researcher: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+      "simId": "sim-004",
+      "streamId": "stream-004"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": "[observer build]",
+  "observer/study-analysis.json": "[observer build]",
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "contract_proof_only",
+    "summary": "Dry-run fan-out contract: 4 per-lane-world lanes composed for openai-computer-use against http://127.0.0.1:3000/; no desktops launched, $0 spend.",
+    "gaps": [
+      "Live fan-out session not yet run (dry-run contract only)."
+    ]
+  },
+  "review.md": "# Fan-out proof\n\n- run: [run]\n- mode: dry-run\n- run gate: contract_proof_only\n- summary: Dry-run fan-out contract: 4 per-lane-world lanes composed for openai-computer-use against http://127.0.0.1:3000/; no desktops launched, $0 spend.\n\n## Gaps\n- Live fan-out session not yet run (dry-run contract only).\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "dry-run",
+    "simCount": 4,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "first-time-visitor",
+      "name": "Computer-use fan-out (4 lanes)",
+      "source": "lab:fanout-proof",
+      "sourceDigest": "9a12d26ecfc42242"
+    },
+    "scenario": {
+      "id": "cua-fanout-proof",
+      "title": "Fan-out proof",
+      "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:fanout-proof",
+      "sourceDigest": "9a12d26ecfc42242"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use fan-out run with 4 per-lane desktop browser lanes (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "first-time-visitor",
+        "scenarioId": "cua-fanout-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract lane mobile-newcomer (first-time-visitor/mobile) for openai-computer-use against http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-002",
+        "index": 2,
+        "personaId": "impatient-skimmer",
+        "scenarioId": "cua-fanout-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract lane small-skimmer (impatient-skimmer/small-mobile) for openai-computer-use against http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-002"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-003",
+        "index": 3,
+        "personaId": "power-user",
+        "scenarioId": "cua-fanout-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract lane desktop-power (power-user/desktop) for openai-computer-use against http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-003"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      },
+      {
+        "id": "sim-004",
+        "index": 4,
+        "personaId": "comparison-shopper",
+        "scenarioId": "cua-fanout-proof",
+        "status": "contract_proof_only",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens.",
+        "summary": "Contract lane wide-researcher (comparison-shopper/wide) for openai-computer-use against http://127.0.0.1:3000/.",
+        "streamIds": [
+          "stream-004"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "mobile-newcomer",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Sign up from a phone."
+        },
+        "kind": "browser",
+        "label": "CUA lane mobile-newcomer — fanout-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop mobile-newcomer"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 500,
+              "height": 896
+            },
+            "declared": {
+              "width": 414,
+              "height": 896,
+              "preset": "mobile"
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch lane mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
+          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      },
+      {
+        "id": "stream-002",
+        "simId": "sim-002",
+        "laneId": "small-skimmer",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Skim and bounce."
+        },
+        "kind": "browser",
+        "label": "CUA lane small-skimmer — fanout-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop small-skimmer"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 500,
+              "height": 740
+            },
+            "declared": {
+              "width": 360,
+              "height": 740,
+              "preset": "small-mobile"
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch lane small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
+          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      },
+      {
+        "id": "stream-003",
+        "simId": "sim-003",
+        "laneId": "desktop-power",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Open advanced settings."
+        },
+        "kind": "browser",
+        "label": "CUA lane desktop-power — fanout-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop desktop-power"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1440,
+              "height": 950
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch lane desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
+          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      },
+      {
+        "id": "stream-004",
+        "simId": "sim-004",
+        "laneId": "wide-researcher",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Compare the plans."
+        },
+        "kind": "browser",
+        "label": "CUA lane wide-researcher — fanout-proof",
+        "status": "contract_proof_only",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "CUA desktop wide-researcher"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1920,
+              "height": 1080
+            }
+          }
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch lane wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
+          "state": "Contract bundle only: dry-run produced the evidence shape without launching a desktop or spending provider tokens."
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use fan-out run for fanout-proof (actor openai-computer-use, 4 lanes, per-lane worlds)."
+      },
+      {
+        "id": "event-001-fanout-plan",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.fanout.plan",
+        "message": "Fan-out plan: 4 lane(s) (per-lane-worlds), concurrency 2, 2 wave(s); per-lane session budget 60s; worst-case ~44 sandbox-minutes (dry-run: $0). Lanes: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+      },
+      {
+        "id": "event-002-subject-mobile-newcomer",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Lane mobile-newcomer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-contract-mobile-newcomer",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.contract.ready",
+        "message": "Lane mobile-newcomer: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-subject-small-skimmer",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Lane small-skimmer: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-005-contract-small-skimmer",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.contract.ready",
+        "message": "Lane small-skimmer: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+        "simId": "sim-002",
+        "streamId": "stream-002"
+      },
+      {
+        "id": "event-006-subject-desktop-power",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Lane desktop-power: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-007-contract-desktop-power",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.contract.ready",
+        "message": "Lane desktop-power: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+        "simId": "sim-003",
+        "streamId": "stream-003"
+      },
+      {
+        "id": "event-008-subject-wide-researcher",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Lane wide-researcher: subject app declared at http://127.0.0.1:3000/ (loopback inside the lane's own desktop sandbox).",
+        "simId": "sim-004",
+        "streamId": "stream-004"
+      },
+      {
+        "id": "event-009-contract-wide-researcher",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.contract.ready",
+        "message": "Lane wide-researcher: dry-run contract lane ready; switch scenario.mode to live for a real desktop session.",
+        "simId": "sim-004",
+        "streamId": "stream-004"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Dry-run fan-out contract bundle: no desktops launched and no screenshots captured. Typed text is recorded as length only and reasoning/messages pass through text redaction whenever a session runs."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "contract_proof_only",
+      "summary": "Dry-run fan-out contract: 4 per-lane-world lanes composed for openai-computer-use against http://127.0.0.1:3000/; no desktops launched, $0 spend.",
+      "gaps": [
+        "Live fan-out session not yet run (dry-run contract only)."
+      ]
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    }
+  },
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "dry-run",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "contract_proof_only"
+    }
+  }
+}

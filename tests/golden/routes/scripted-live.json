@@ -1,0 +1,547 @@
+{
+  "actor-desktop.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "browser-persona",
+    "protocol": "scripted-steps",
+    "lane": "scripted-browser",
+    "persona": {
+      "id": "synthetic-new-user",
+      "traitsApplied": [],
+      "promptDigest": "41dea98c2dc4"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "raw",
+      "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+    "ids": {},
+    "counts": {
+      "steps": 4,
+      "actions": 4,
+      "assertions": 3,
+      "blocked": 0,
+      "screenshots": 4
+    },
+    "items": [
+      {
+        "id": "step-01-load",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "passed",
+        "title": "goto: Load landing page",
+        "screenshotRef": {
+          "path": "screenshots/desktop-step-01-load.png",
+          "redaction": "none"
+        },
+        "text": "goto completed for Load landing page.\nselector-visible: passed — Expected selector was visible."
+      },
+      {
+        "id": "step-02-fill-email",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "passed",
+        "title": "fill: Fill the signup email",
+        "screenshotRef": {
+          "path": "screenshots/desktop-step-02-fill-email.png",
+          "redaction": "none"
+        },
+        "text": "fill completed for Fill the signup email."
+      },
+      {
+        "id": "step-03-submit",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "passed",
+        "title": "click: Submit the form",
+        "screenshotRef": {
+          "path": "screenshots/desktop-step-03-submit.png",
+          "redaction": "none"
+        },
+        "text": "click completed for Submit the form.\nstate-changed: passed — Visible page state changed."
+      },
+      {
+        "id": "step-04-confirm",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "status": "passed",
+        "title": "waitForText: Confirm success copy",
+        "screenshotRef": {
+          "path": "screenshots/desktop-step-04-confirm.png",
+          "redaction": "none"
+        },
+        "text": "waitForText completed for Confirm success copy.\ntext-present: passed — Expected text was present."
+      }
+    ],
+    "tokenUsage": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "costUsd": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "scripted-browser"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "open"
+    }
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.run.created",
+      "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.subject.declared",
+      "message": "Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+    },
+    {
+      "id": "event-002-spend",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.spend",
+      "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+    },
+    {
+      "id": "event-003-session-desktop",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.session.goal_satisfied",
+      "message": "desktop: passed — Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+      "simId": "scripted-desktop",
+      "streamId": "scripted-desktop-stream"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": "[observer build]",
+  "observer/study-analysis.json": "[observer build]",
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
+    "gaps": []
+  },
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: pass\n- summary: Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4.\n- spend: Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app.\n- scripted-desktop: browser-persona (scripted-browser/scripted-steps) passed (goal_satisfied); 4 step action(s), 4 raw screenshot(s)\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "synthetic-new-user",
+      "name": "Scripted journey persona (synthetic-new-user)",
+      "source": "lab:scripted-routing-proof",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "scripted-desktop",
+        "index": 1,
+        "personaId": "synthetic-new-user",
+        "scenarioId": "scripted-first-run",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+        "summary": "Scripted-browser actor (scripted-browser) replayed scripted-first-run on the desktop surface; goal_satisfied.",
+        "streamIds": [
+          "scripted-desktop-stream"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — scripted-routing-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "../screenshots/desktop-step-04-confirm.png",
+          "title": "Desktop browser surface (raw)"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[app-url]/",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+          "actorStatus": "passed",
+          "screenshotUrl": "../screenshots/desktop-step-04-confirm.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "browser-persona",
+          "protocol": "scripted-steps",
+          "lane": "scripted-browser",
+          "persona": {
+            "id": "synthetic-new-user",
+            "traitsApplied": [],
+            "promptDigest": "41dea98c2dc4"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "Deterministic scripted steps. Step URLs sanitized to loopback origin+path (query/hash redacted); fill values are committed-scenario constants passed through redactText; screenshots are full-fidelity raw in gitignored .humanish."
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+          "ids": {},
+          "counts": {
+            "steps": 4,
+            "actions": 4,
+            "assertions": 3,
+            "blocked": 0,
+            "screenshots": 4
+          },
+          "items": [
+            {
+              "id": "step-01-load",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "goto: Load landing page",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-01-load.png",
+                "redaction": "none"
+              },
+              "text": "goto completed for Load landing page.\nselector-visible: passed — Expected selector was visible."
+            },
+            {
+              "id": "step-02-fill-email",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "fill: Fill the signup email",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-02-fill-email.png",
+                "redaction": "none"
+              },
+              "text": "fill completed for Fill the signup email."
+            },
+            {
+              "id": "step-03-submit",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "click: Submit the form",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-03-submit.png",
+                "redaction": "none"
+              },
+              "text": "click completed for Submit the form.\nstate-changed: passed — Visible page state changed."
+            },
+            {
+              "id": "step-04-confirm",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "status": "passed",
+              "title": "waitForText: Confirm success copy",
+              "screenshotRef": {
+                "path": "screenshots/desktop-step-04-confirm.png",
+                "redaction": "none"
+              },
+              "text": "waitForText completed for Confirm success copy.\ntext-present: passed — Expected text was present."
+            }
+          ],
+          "tokenUsage": {
+            "input": 0,
+            "output": 0,
+            "total": 0,
+            "costUsd": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "scripted-browser"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "open"
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "desktop browser trace",
+            "path": "traces/desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop actor trace",
+            "path": "actor-desktop.json",
+            "kind": "trace"
+          },
+          {
+            "label": "desktop screenshot 01 (raw)",
+            "path": "screenshots/desktop-step-01-load.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "desktop screenshot 02 (raw)",
+            "path": "screenshots/desktop-step-02-fill-email.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "desktop screenshot 03 (raw)",
+            "path": "screenshots/desktop-step-03-submit.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "desktop screenshot 04 (raw)",
+            "path": "screenshots/desktop-step-04-confirm.png",
+            "kind": "screenshot"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Subject app declared at [app-url]/; the lab did not provision it — subject build/commit provenance is UNPINNED; evidence binds to the scenario digest 41dea98c2dc4."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests and use no sandbox on this route; post-run analysis has a separate budget unless disabled. scenario.mode: live gates real browser actuation against the declared app."
+      },
+      {
+        "id": "event-003-session-desktop",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.session.goal_satisfied",
+        "message": "desktop: passed — Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+        "simId": "scripted-desktop",
+        "streamId": "scripted-desktop-stream"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "summary": "Scripted-browser actor replayed scripted-first-run on 1 surface against [app-url]/: 1/1 satisfied the scenario predicate.",
+      "gaps": []
+    },
+    "feedbackCandidates": []
+  },
+  "screenshots/desktop-step-01-load.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+  "screenshots/desktop-step-02-fill-email.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+  "screenshots/desktop-step-03-submit.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+  "screenshots/desktop-step-04-confirm.png": "sha256:dc1ee8a784c37702b5b456b1657db9c8ce3fc98fd4e30c203b300aaf724eae2f",
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass"
+    }
+  },
+  "traces/desktop.json": {
+    "schema": "humanish.browser-persona-trace.v1",
+    "capturedAt": "[ts]",
+    "appUrl": "[app-url]/",
+    "browserCommand": "injected-browser",
+    "durationMs": "[durationMs]",
+    "httpStatus": 200,
+    "ok": true,
+    "reason": "Desktop browser surface completed 4/4 scripted browser steps from [app-url]/ with HTTP 200.",
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "stepCount": 4
+    },
+    "screenshotPath": "screenshots/desktop-step-04-confirm.png",
+    "steps": [
+      {
+        "action": "goto",
+        "assertions": [
+          {
+            "id": "selector-visible",
+            "reason": "Expected selector was visible.",
+            "status": "passed"
+          }
+        ],
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-01-load",
+        "label": "Load landing page",
+        "reason": "goto completed for Load landing page.",
+        "screenshotPath": "screenshots/desktop-step-01-load.png",
+        "status": "passed",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "fill",
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-02-fill-email",
+        "label": "Fill the signup email",
+        "reason": "fill completed for Fill the signup email.",
+        "screenshotPath": "screenshots/desktop-step-02-fill-email.png",
+        "status": "passed",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "click",
+        "assertions": [
+          {
+            "id": "state-changed",
+            "reason": "Visible page state changed.",
+            "status": "passed"
+          }
+        ],
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-03-submit",
+        "label": "Submit the form",
+        "reason": "click completed for Submit the form.",
+        "screenshotPath": "screenshots/desktop-step-03-submit.png",
+        "status": "passed",
+        "url": "[app-url]/"
+      },
+      {
+        "action": "waitForText",
+        "assertions": [
+          {
+            "id": "text-present",
+            "reason": "Expected text was present.",
+            "status": "passed"
+          }
+        ],
+        "completedAt": "[ts]",
+        "durationMs": "[durationMs]",
+        "id": "step-04-confirm",
+        "label": "Confirm success copy",
+        "reason": "waitForText completed for Confirm success copy.",
+        "screenshotPath": "screenshots/desktop-step-04-confirm.png",
+        "status": "passed",
+        "url": "[app-url]/"
+      }
+    ],
+    "surface": {
+      "id": "desktop",
+      "label": "Desktop browser surface",
+      "viewport": {
+        "width": 1440,
+        "height": 960,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      }
+    },
+    "redaction": "passed"
+  }
+}

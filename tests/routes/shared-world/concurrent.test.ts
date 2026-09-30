@@ -1,4 +1,5 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
+import { runDirSnapshot } from "../../helpers/run-golden.js";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2077,4 +2078,42 @@ it("routes actor output limits and per-lane reasoning to concurrent provider req
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+// Characterization: the complete run directory of a three-seat concurrent run on the fake E2B
+// module, pinned so a refactor of bundle assembly or artifact writing shows up as a diff.
+// Regenerate with `pnpm vitest run tests/routes/shared-world/concurrent.test.ts -u`.
+describe("concurrent shared-world run directory goldens", () => {
+  let goldenCwd: string;
+  beforeEach(async () => {
+    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-csw-golden-"));
+  });
+  afterEach(async () => {
+    await rm(goldenCwd, { recursive: true, force: true });
+  });
+
+  it.each([
+    ["dry run", true, "shared-world-concurrent-dry-run.json"],
+    ["live run", false, "shared-world-concurrent-live.json"],
+  ] as const)("%s with three seats", async (_label, dryRun, golden) => {
+    const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const result = await runConcurrentSharedWorld({
+      cwd: goldenCwd,
+      config: concurrentConfig(3, 3),
+      dryRun,
+      hooks,
+      automaticAnalysis: { run: automaticAnalysisBoundary() },
+    });
+    // Seats tear down in parallel, so their sandbox receipts append in completion order.
+    const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", result.runId), {
+      replace: [
+        [result.runId, "[run]"],
+        [goldenCwd, "[cwd]"],
+      ],
+      unorderedFiles: ["sandbox-receipts.ndjson"],
+    });
+    await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
+      `../../golden/routes/${golden}`,
+    );
+  });
 });
