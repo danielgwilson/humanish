@@ -20,6 +20,7 @@ import {
 } from "../../src/comms/sandbox-catch.js";
 import type { E2BDesktopSandbox } from "../../src/substrates/e2b/desktop-launch.js";
 import { freePort } from "../helpers/free-port.js";
+import { e2bShell } from "../../src/substrates/e2b/shell.js";
 
 // A probe that a stranger's server cannot satisfy. CI failed this file with "expected
 // '<main>landing page</main>' to contain 'INBOX OK'": between freePort() releasing a port and
@@ -220,7 +221,10 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     const { desktop, calls, files } = makeFakeDesktop((cmd) =>
       cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
     );
-    const deployed = await deployCommsCatch(desktop, { port: 8025, timers: instantTimers });
+    const deployed = await deployCommsCatch(e2bShell(desktop), {
+      port: 8025,
+      timers: instantTimers,
+    });
 
     expect(deployed.baseUrl).toBe("http://127.0.0.1:8025"); // inject THIS as the app's email-API base URL
     expect(deployed.ready).toBe(true);
@@ -245,7 +249,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     const { desktop, calls, files } = makeFakeDesktop((cmd) =>
       cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
     );
-    const deployed = await deployCommsCatch(desktop, {
+    const deployed = await deployCommsCatch(e2bShell(desktop), {
       port: 8025,
       inboxPort: 8026,
       timers: instantTimers,
@@ -267,7 +271,7 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
       cmd.includes("curl") ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' } : undefined,
     );
     await expect(
-      deployCommsCatch(desktop, { port: 8025, inboxPort: 8025, timers: instantTimers }),
+      deployCommsCatch(e2bShell(desktop), { port: 8025, inboxPort: 8025, timers: instantTimers }),
     ).rejects.toThrow(/invalid inboxPort/);
   });
 
@@ -279,14 +283,14 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
     );
     const deployed = { deliveriesPath: "/tmp/humanish-comms/deliveries.ndjson" };
 
-    const first = await drainCommsCatch(desktop, deployed, 0);
+    const first = await drainCommsCatch(e2bShell(desktop), deployed, 0);
     expect(first.sends).toHaveLength(1);
     expect(first.cursor).toBe(1);
     expect(first.sends[0]!.path).toBe("/emails");
 
     // A second send appears; draining from the prior cursor yields ONLY the new one.
     ndjson += JSON.stringify({ t: 2, path: "/v3/mail/send", body: "{}" }) + "\n";
-    const second = await drainCommsCatch(desktop, deployed, first.cursor);
+    const second = await drainCommsCatch(e2bShell(desktop), deployed, first.cursor);
     expect(second.sends).toHaveLength(1);
     expect(second.sends[0]!.path).toBe("/v3/mail/send");
     expect(second.cursor).toBe(2);
@@ -348,8 +352,8 @@ describe("comms-sandbox-catch: deploy / drain / route over the E2B interface (fa
       if (cmd.startsWith("cat ")) return { stdout: captured };
       return undefined;
     });
-    const deployed = await deployCommsCatch(desktop, { timers: instantTimers });
-    const { sends } = await drainCommsCatch(desktop, deployed);
+    const deployed = await deployCommsCatch(e2bShell(desktop), { timers: instantTimers });
+    const { sends } = await drainCommsCatch(e2bShell(desktop), deployed);
     await routeCapturedSends(sends, bus);
 
     const inbox = await bus.poll(user);
@@ -379,9 +383,14 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
       if (cmd.startsWith("cat ")) return { stdout: captured };
       return undefined;
     });
-    const deployed = await deployCommsCatch(desktop, { timers: instantTimers });
+    const deployed = await deployCommsCatch(e2bShell(desktop), { timers: instantTimers });
 
-    const collected = await collectCommsThread({ desktop, deployed, channel, inboxes: [user] });
+    const collected = await collectCommsThread({
+      shell: e2bShell(desktop),
+      deployed,
+      channel,
+      inboxes: [user],
+    });
     expect(collected.captured).toBe(1);
     expect(collected.matched).toBe(1);
     const artifact = collected.artifact;
@@ -408,9 +417,11 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
       if (cmd.startsWith("cat ")) return { stdout: "" };
       return undefined;
     });
-    const deployedEmpty = await deployCommsCatch(empty.desktop, { timers: instantTimers });
+    const deployedEmpty = await deployCommsCatch(e2bShell(empty.desktop), {
+      timers: instantTimers,
+    });
     const emptyCollected = await collectCommsThread({
-      desktop: empty.desktop,
+      shell: e2bShell(empty.desktop),
       deployed: deployedEmpty,
       channel,
       inboxes: [user],
@@ -436,9 +447,11 @@ describe("comms-sandbox-catch: collectCommsThread (whole-run evidence collect)",
       if (cmd.startsWith("cat ")) return { stdout: stranger };
       return undefined;
     });
-    const deployedOther = await deployCommsCatch(other.desktop, { timers: instantTimers });
+    const deployedOther = await deployCommsCatch(e2bShell(other.desktop), {
+      timers: instantTimers,
+    });
     const strangerCollected = await collectCommsThread({
-      desktop: other.desktop,
+      shell: e2bShell(other.desktop),
       deployed: deployedOther,
       channel,
       inboxes: [user],
@@ -471,20 +484,30 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
     const deployed = { deliveriesPath: "/tmp/x/deliveries.ndjson", surfaceDir: "/tmp/x/surface" };
 
     // Empty catch → no render.
-    let r = await refreshInboxSurface({ desktop, deployed, recipients });
+    let r = await refreshInboxSurface({ shell: e2bShell(desktop), deployed, recipients });
     expect(r).toEqual({ count: 0, rendered: false });
     expect(Object.keys(files)).toHaveLength(0);
 
     // Mail arrives → render; the served files were written into the surface dir.
     nd.value = captured;
-    r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 });
+    r = await refreshInboxSurface({
+      shell: e2bShell(desktop),
+      deployed,
+      recipients,
+      sinceCount: 0,
+    });
     expect(r).toEqual({ count: 1, rendered: true });
     expect(Object.keys(files)).toContain("/tmp/x/surface/inbox/index");
     expect(Object.keys(files)).toContain("/tmp/x/surface/api/inbox/latest");
 
     // Nothing new since the last successful render (sinceCount === current count) → skip (cheap idle tick).
     const before = Object.keys(files).length;
-    r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 1 });
+    r = await refreshInboxSurface({
+      shell: e2bShell(desktop),
+      deployed,
+      recipients,
+      sinceCount: 1,
+    });
     expect(r).toEqual({ count: 1, rendered: false });
     expect(Object.keys(files).length).toBe(before);
   });
@@ -516,10 +539,15 @@ describe("comms-sandbox-catch: refreshInboxSurface (mid-run full rebuild)", () =
 
     // First refresh throws mid-render (surface partially/not written); count is NOT advanced by the caller.
     await expect(
-      refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 }),
+      refreshInboxSurface({ shell: e2bShell(desktop), deployed, recipients, sinceCount: 0 }),
     ).rejects.toThrow();
     // Retry (sinceCount still 0, because the caller only advances on rendered:true) rebuilds cleanly.
-    const r = await refreshInboxSurface({ desktop, deployed, recipients, sinceCount: 0 });
+    const r = await refreshInboxSurface({
+      shell: e2bShell(desktop),
+      deployed,
+      recipients,
+      sinceCount: 0,
+    });
     expect(r).toEqual({ count: 1, rendered: true });
     // Exactly ONE message rendered — the retry rebuilt from a fresh channel, so no duplicate.
     const list = JSON.parse(files["/tmp/x/surface/api/inbox/index"]!) as unknown[];

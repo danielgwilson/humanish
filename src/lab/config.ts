@@ -566,6 +566,18 @@ export function parseLabConfig(raw: unknown): LabConfigParseResult {
     );
   }
 
+  // A clone lab is served in-sandbox for a participant to drive, so only a computer-use or a
+  // scripted-browser actor can run it. Any other actor would parse and then fail at run start.
+  // Terminal actors were already refused above with their own message.
+  if (config.subject.source === "clone") {
+    const type = config.actors[0]?.type ?? "";
+    if (!actorResolvesToComputerUse(type) && !actorResolvesToScriptedBrowser(type)) {
+      return invalid(
+        `clone subjects need a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) or scripted-browser actor (one of: ${registeredScriptedBrowserActors().join(", ")}); the lab clones and serves the app for that participant to drive. Got "${type}".`,
+      );
+    }
+  }
+
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return invalid(tasksReason);
 

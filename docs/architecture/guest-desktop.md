@@ -20,7 +20,10 @@ Xauthority and guest temporary directory come from the owner. Key names map to a
 closed list before reaching xdotool, whose own command syntax must never receive
 arbitrary participant strings. A native wheel step is not an exact pixel-scroll
 promise; one action permits at most 100 wheel steps. The entire drag is checked
-before its first input.
+before its first input. A pointer action's held keys must be modifiers (Shift,
+Ctrl, Alt, Super). They go down with one `keydown` before the action and up with
+one `keyup` after it. When an input fails, the `keyup` is still sent once, unless
+the session was revoked; the failure then closes the executor as below.
 
 Each input checks the current authority after asynchronous preparation. A
 partial or unacknowledged input closes the executor; it is never automatically

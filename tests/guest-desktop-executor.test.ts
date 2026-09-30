@@ -2,9 +2,9 @@ import { PNG } from "pngjs";
 import { describe, expect, it, vi } from "vitest";
 import {
   createGuestDesktopExecutor,
-  guestDesktopChord,
   type GuestDesktopTools,
 } from "../src/guest-desktop-executor.js";
+import { xdotoolChord } from "../src/guest-desktop-keys.js";
 
 function fixture(overrides: Partial<GuestDesktopTools> = {}) {
   const authority = new AbortController();
@@ -51,10 +51,10 @@ describe("guest headed desktop", () => {
     expect(f.onTerminal).not.toHaveBeenCalled();
   });
   it("normalizes common aliases only", () => {
-    expect(guestDesktopChord(["CONTROL", "SHIFT", "l"])).toBe("ctrl+shift+l");
-    expect(guestDesktopChord(["ALT", "ArrowLeft"])).toBe("alt+Left");
-    expect(guestDesktopChord(["F12"])).toBe("F12");
-    expect(() => guestDesktopChord(["CTRL", "Control", "a"])).toThrow();
+    expect(xdotoolChord(["CONTROL", "SHIFT", "l"])).toBe("ctrl+shift+l");
+    expect(xdotoolChord(["ALT", "ArrowLeft"])).toBe("alt+Left");
+    expect(xdotoolChord(["F12"])).toBe("F12");
+    expect(() => xdotoolChord(["CTRL", "Control", "a"])).toThrow();
   });
   it.each([
     [-1, 0],
@@ -177,5 +177,94 @@ describe("guest headed desktop", () => {
       f.executor.execute({ kind: "scroll", x: 1, y: 1, dx: 1_000_000, dy: 0 }),
     ).rejects.toMatchObject({ disposition: "not_dispatched" });
     expect(f.tools.input).not.toHaveBeenCalled();
+  });
+});
+
+describe("guest held modifiers", () => {
+  it("holds modifiers around the pointer input as one keydown and one keyup", async () => {
+    const inputs: string[][] = [];
+    const f = fixture({ input: async (args) => void inputs.push([...args]) });
+    await f.executor.execute({ kind: "click", x: 10, y: 20, heldKeys: ["SHIFT", "CTRL"] });
+    await f.executor.execute({
+      kind: "drag",
+      path: [
+        { x: 1, y: 1 },
+        { x: 5, y: 5 },
+      ],
+      heldKeys: ["ALT"],
+    });
+    expect(inputs).toEqual([
+      ["keydown", "shift+ctrl"],
+      ["mousemove", "10", "20"],
+      ["click", "1"],
+      ["keyup", "shift+ctrl"],
+      ["keydown", "alt"],
+      ["mousemove", "1", "1"],
+      ["mousedown", "1"],
+      ["mousemove", "5", "5"],
+      ["mouseup", "1"],
+      ["keyup", "alt"],
+    ]);
+    // A scroll that sends no wheel steps presses nothing.
+    await f.executor.execute({ kind: "scroll", x: 1, y: 1, dx: 0, dy: 0, heldKeys: ["SHIFT"] });
+    expect(inputs).toHaveLength(10);
+  });
+  it.each([["a"], ["HYPER"], ["CTRL", "CONTROL"], ["--window"]])(
+    "refuses held key %j before any input",
+    async (...heldKeys) => {
+      const f = fixture();
+      await expect(
+        f.executor.execute({ kind: "click", x: 1, y: 1, heldKeys }),
+      ).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
+      expect(f.tools.input).not.toHaveBeenCalled();
+      expect(f.onTerminal).not.toHaveBeenCalled();
+    },
+  );
+  it("releases held modifiers when the pointer input fails, then ends the session", async () => {
+    const inputs: string[][] = [];
+    const f = fixture({
+      input: async (args) => {
+        inputs.push([...args]);
+        if (args[0] === "click") throw new Error("synthetic click failure");
+      },
+    });
+    await expect(
+      f.executor.execute({ kind: "click", x: 1, y: 1, heldKeys: ["SHIFT"] }),
+    ).rejects.toMatchObject({ code: "execution_failed", disposition: "outcome_uncertain" });
+    expect(inputs).toEqual([
+      ["keydown", "shift"],
+      ["mousemove", "1", "1"],
+      ["click", "1"],
+      ["keyup", "shift"],
+    ]);
+    expect(f.onTerminal).toHaveBeenCalledOnce();
+  });
+  it("does not retry a failed keyup or release after revocation", async () => {
+    const failedRelease: string[][] = [];
+    const releaseFails = fixture({
+      input: async (args) => {
+        failedRelease.push([...args]);
+        if (args[0] === "keyup") throw new Error("synthetic keyup failure");
+      },
+    });
+    await expect(
+      releaseFails.executor.execute({ kind: "move", x: 1, y: 1, heldKeys: ["SHIFT"] }),
+    ).rejects.toMatchObject({ disposition: "outcome_uncertain" });
+    expect(failedRelease.filter((args) => args[0] === "keyup")).toHaveLength(1);
+
+    const revoked: string[][] = [];
+    const f = fixture({
+      input: async (args) => {
+        revoked.push([...args]);
+        if (args[0] === "mousemove") f.authority.abort();
+      },
+    });
+    await expect(
+      f.executor.execute({ kind: "click", x: 1, y: 1, heldKeys: ["SHIFT"] }),
+    ).rejects.toMatchObject({ disposition: "outcome_uncertain" });
+    expect(revoked).toEqual([
+      ["keydown", "shift"],
+      ["mousemove", "1", "1"],
+    ]);
   });
 });

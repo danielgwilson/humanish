@@ -62,7 +62,7 @@ try {
   // parseLabConfig accepts a decoded OBJECT, not a YAML string.
   const parsed = parseLabConfig({
     schema: LAB_CONFIG_SCHEMA,
-    id: "state-driven-local-app-example",
+    id: "participant-example",
     title: "Deterministic local-app integration example",
     subject: { source: "local-app", appUrl: app.appUrl },
     // This registry id selects the CUA loop. buildProvider supplies the actual provider.

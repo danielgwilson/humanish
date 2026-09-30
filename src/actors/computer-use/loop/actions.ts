@@ -14,8 +14,19 @@ import type { CuaAction, CuaTurnRequest } from "./types.js";
 const ACTION_FINGERPRINT_BUCKET = 24;
 const RECENT_ACTION_TITLES = 8;
 
+/** The label suffix for a pointer action's held keys: key names, never typed text. */
+function holding(action: CuaAction): string {
+  return "heldKeys" in action && action.heldKeys?.length
+    ? ` holding ${action.heldKeys.join("+")}`
+    : "";
+}
+
 /** A public-safe one-line action label. Never includes raw typed text. */
 export function describeCuaAction(action: CuaAction): string {
+  return describeAction(action) + holding(action);
+}
+
+function describeAction(action: CuaAction): string {
   switch (action.kind) {
     case "click":
       return `click (${action.x}, ${action.y})`;
@@ -52,13 +63,16 @@ export function actionFingerprint(actions: readonly CuaAction[]): string {
   const bucket = (value: number): number => Math.round(value / ACTION_FINGERPRINT_BUCKET);
   return actions
     .map((action) => {
+      // A shift-click and a plain click on one control are different attempts.
+      const held =
+        "heldKeys" in action && action.heldKeys?.length ? `+${action.heldKeys.join("+")}` : "";
       switch (action.kind) {
         case "click":
         case "double_click":
         case "move":
-          return `${action.kind}@${bucket(action.x)},${bucket(action.y)}`;
+          return `${action.kind}@${bucket(action.x)},${bucket(action.y)}${held}`;
         case "scroll":
-          return `scroll@${bucket(action.x)},${bucket(action.y)}:${Math.sign(action.dx)},${Math.sign(action.dy)}`;
+          return `scroll@${bucket(action.x)},${bucket(action.y)}:${Math.sign(action.dx)},${Math.sign(action.dy)}${held}`;
         case "type":
           return `type:${action.text.length}`;
         case "speak":
@@ -66,7 +80,7 @@ export function actionFingerprint(actions: readonly CuaAction[]): string {
         case "keypress":
           return `keypress:${action.keys.join("+")}`;
         case "drag":
-          return `drag:${action.path.length}`;
+          return `drag:${action.path.length}${held}`;
         case "wait":
           return "wait";
         case "screenshot":

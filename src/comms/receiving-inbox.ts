@@ -8,7 +8,7 @@ import {
   MAX_INLINE_IMAGES_BYTES,
 } from "./images.js";
 import { extractLinks, extractOtpCodes } from "./fake-inbox.js";
-import type { E2BDesktopSandbox } from "../substrates/e2b/desktop-launch.js";
+import type { Shell, ShellResult } from "../substrates/shell.js";
 import type {
   ParticipantEmail,
   ReceivingSurface,
@@ -477,9 +477,9 @@ function shq(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-/** Desktop SDK transport only; never opens a host/public listener or sends management credentials. */
+/** Machine shell transport only; never opens a host/public listener or sends management credentials. */
 export async function deployReceivingInbox(
-  desktop: E2BDesktopSandbox,
+  shell: Shell,
   options: { leaseId: string; port?: number; requestTimeoutMs?: number },
 ): Promise<ReceivingSurface> {
   const port = options.port ?? 8026,
@@ -518,15 +518,15 @@ export async function deployReceivingInbox(
       if (timer) clearTimeout(timer);
     }
   }
-  async function command(cmd: string): Promise<string> {
-    const result = await bounded(
-      desktop.commands.run(cmd, { requestTimeoutMs: timeout, timeoutMs: timeout }),
-    );
+  async function checked(call: Promise<ShellResult>): Promise<string> {
+    const result = await bounded(call);
     if (result.exitCode !== 0) throw new Error("Receiving inbox desktop command failed.");
-    return result.stdout ?? "";
+    return result.stdout;
   }
+  const command = (cmd: string): Promise<string> =>
+    checked(shell.run(cmd, { requestTimeoutMs: timeout, timeoutMs: timeout }));
   const write = async (path: string, data: string): Promise<void> => {
-    await bounded(desktop.files.write(path, data, { requestTimeoutMs: timeout }));
+    await bounded(shell.writeFile(path, data, { requestTimeoutMs: timeout }));
   };
   const stop = async (): Promise<void> => {
     stopped = true;
@@ -540,8 +540,11 @@ export async function deployReceivingInbox(
     await command(`mkdir -m 700 ${shq(dir)}`);
     await write(`${dir}/snapshot.json`, '{"generation":0,"routes":{}}');
     await write(`${dir}/server.py`, SERVER);
-    await command(
-      `setsid -f python3 ${shq(`${dir}/server.py`)} ${shq(dir)} ${port} ${shq(nonce)} ${shq(RECEIVING_INBOX_CSP)} < /dev/null > /dev/null 2>&1`,
+    await checked(
+      shell.start(
+        `python3 ${shq(`${dir}/server.py`)} ${shq(dir)} ${port} ${shq(nonce)} ${shq(RECEIVING_INBOX_CSP)}`,
+        { requestTimeoutMs: timeout, timeoutMs: timeout },
+      ),
     );
     const ready = await command(
       `python3 -c ${shq("import sys,time,urllib.request\nend=time.monotonic()+float(sys.argv[3])\nwhile time.monotonic()<end:\n try:\n  response=urllib.request.urlopen(sys.argv[1],timeout=.5)\n  if response.read(128).decode()==sys.argv[2]: sys.exit(0)\n except Exception: pass\n time.sleep(.1)\nsys.exit(1)\n")} ${shq(`http://127.0.0.1:${port}/health`)} ${shq(nonce)} ${Math.max(0.1, timeout / 1000 - 0.2)}`,

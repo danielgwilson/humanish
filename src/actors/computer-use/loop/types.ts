@@ -21,14 +21,26 @@ import type { ReasoningEffort } from "../../reasoning-effort.js";
 // CuaExecutor, and the options and result of runComputerUseLoop. src/actors/computer-use/loop.ts
 // re-exports every name here; import them from there.
 
+/**
+ * One desktop action. `heldKeys` on a pointer action are held down for the whole action and
+ * released after it, named as the provider sent them (for example `SHIFT` for a shift-click). An
+ * executor that cannot hold them refuses the action before dispatch; it never runs the action
+ * without them.
+ */
 export type CuaAction =
-  | { kind: "click"; x: number; y: number; button?: "left" | "right" | "middle" }
-  | { kind: "double_click"; x: number; y: number }
-  | { kind: "move"; x: number; y: number }
-  | { kind: "scroll"; x: number; y: number; dx: number; dy: number }
+  | {
+      kind: "click";
+      x: number;
+      y: number;
+      button?: "left" | "right" | "middle";
+      heldKeys?: string[];
+    }
+  | { kind: "double_click"; x: number; y: number; heldKeys?: string[] }
+  | { kind: "move"; x: number; y: number; heldKeys?: string[] }
+  | { kind: "scroll"; x: number; y: number; dx: number; dy: number; heldKeys?: string[] }
   | { kind: "type"; text: string }
   | { kind: "keypress"; keys: string[] }
-  | { kind: "drag"; path: Array<{ x: number; y: number }> }
+  | { kind: "drag"; path: Array<{ x: number; y: number }>; heldKeys?: string[] }
   | { kind: "wait"; ms?: number }
   | { kind: "speak"; text: string }
   | { kind: "screenshot" };
