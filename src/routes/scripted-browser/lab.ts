@@ -74,6 +74,10 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
+import {
+  observeDesktopResources,
+  type DesktopResourceObservation,
+} from "../../substrates/e2b/desktop-resources.js";
 import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
@@ -420,6 +424,10 @@ async function runScriptedBrowserLabInScope(
   let subjectCommit: string | undefined;
   let subjectSandboxId: string | undefined;
   let subjectKilled = false;
+  const now = hooks.now ?? Date.now;
+  let subjectCreatedAtMs: number | undefined;
+  let subjectTornDownAtMs: number | undefined;
+  let subjectResources: DesktopResourceObservation | undefined;
   let hostDigest: string | undefined;
 
   if (!dryRun) {
@@ -470,6 +478,8 @@ async function runScriptedBrowserLabInScope(
         });
         subjectDesktop = subject.sandbox;
         subjectSandboxId = subject.allocation.resourceId;
+        subjectCreatedAtMs = now();
+        subjectResources = await observeDesktopResources(subjectDesktop);
 
         if (hooks.prepareDesktop) {
           await hooks.prepareDesktop(subjectDesktop);
@@ -554,6 +564,7 @@ async function runScriptedBrowserLabInScope(
               `Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
             );
           }
+          subjectTornDownAtMs = now();
         } else {
           warnings.push(
             "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
@@ -614,6 +625,18 @@ async function runScriptedBrowserLabInScope(
     source,
     surfaces,
     ...(subject === undefined ? {} : { subject }),
+    ...(subjectSandboxId === undefined
+      ? {}
+      : {
+          subjectDesktop: {
+            durationMs:
+              subjectCreatedAtMs === undefined || subjectTornDownAtMs === undefined
+                ? undefined
+                : Math.max(0, subjectTornDownAtMs - subjectCreatedAtMs),
+            observation: subjectResources,
+            killed: subjectKilled,
+          },
+        }),
     ...(config.execution?.desktop?.template === undefined
       ? {}
       : { desktopTemplate: config.execution.desktop.template }),

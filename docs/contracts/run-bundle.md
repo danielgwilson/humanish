@@ -242,8 +242,14 @@ never shown as a bare charge. It follows the same **declared-absent** discipline
 terminal cost ledger: an unpriceable line stays present with
 `estimatedCostUsd: null` + a `reason` and contributes nothing;
 `estimatedTotalUsd` is `null` iff every line is null (never coerced to `0`).
-Dry-runs and lanes that spend nothing omit `cost` entirely, so pre-existing
-bundles stay byte-stable. Each lane's own estimate also rides its
+Dry runs omit `cost`. A live run that spends nothing records an explicit zero: no
+`breakdown` lines, `estimatedTotalUsd: 0`, `ratesAsOf: null` and `fullyEstimated: true`.
+A local scripted run (no model request, no hosted desktop) is such a run; a scripted run on
+a provisioned clone records the clone's desktop as a `laneId: subject` line. A live bundle
+without `cost` has an unmeasured spend. Terminal runs write no `cost` block: their
+`terminal-ledgers.json` counts Codex tokens but cannot price them, because the lane does not
+pin Codex's model, and E2B time for the terminal sandbox is not measured. Neither missing
+number is $0. Each lane's own estimate also rides its
 `stream.actor.estimatedCost` (`humanish.actor-estimated-cost.v1`), kept distinct
 from the reserved provider-returned `tokenUsage.costUsd`. See
 [`schemas.md`](schemas.md) → Run Cost Summary And Estimated Actor Cost.

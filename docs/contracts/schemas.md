@@ -997,7 +997,11 @@ and is never coerced to `0`); `fullyMeasured` is true only when no line is null.
 Core meters only the `provider` line, populated from the actor trace's
 `tokenUsage.costUsd` when present (else `null`); `product`/`media`/`payment`
 remain `null` unless an adapter supplies those signals through the shipped
-cost-probe seam.
+cost-probe seam. The terminal lane records the model as `codex` and does not pin Codex's
+model, so a measured token count stays `usd: null` with `source: unpriced-token-usage`. E2B
+time for the terminal sandbox has no line, and the run bundle carries no `cost` block, so
+`knownTotalUsd: 0` with `fullyMeasured: false` means no line was priced and the run's spend
+is unknown.
 
 ```yaml
 schema: humanish.terminal-cost-ledger.v1
@@ -1151,7 +1155,9 @@ The summary follows the SAME null discipline as the terminal cost ledger above.
 EVERY line is null (never coerced to `0`); a present-but-unpriceable line stays
 in `breakdown` with `estimatedCostUsd: null` + a `reason` (it records that we
 tried and could not price it) and contributes nothing. `fullyEstimated` is
-`false` when any applicable line is null (the total is then a lower bound);
+`false` when any applicable line is null (the total is then a lower bound). A spend-free
+live run has no lines and records `estimatedTotalUsd: 0` with `ratesAsOf: null`; verify
+asks for a rates date only when a line is priced.
 `placeholder` is true when any contributing rate is a stand-in; `ratesAsOf` is
 the MIN (oldest) `asOf` across contributing rates. An aggregate is only as fresh
 as its stalest input, so MAX would overclaim freshness (each `breakdown` line
