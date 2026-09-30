@@ -24,10 +24,10 @@ import {
   type RunPointer,
 } from "./results.js";
 import type { RunStream } from "./streams.js";
-import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./guards-streams.js";
+import { isRunSimulationStatus, isRunStream, isRunStreamKind } from "./stream-shape.js";
 import { isLocalEvidenceArtifactPath } from "./paths.js";
-import { isRunFeedbackCandidate } from "./guards-feedback.js";
-import { isSharedWorldEvidence } from "./guards-shared-world.js";
+import { isRunFeedbackCandidate } from "./feedback-shape.js";
+import { isSharedWorldEvidence } from "./shared-world-shape.js";
 import { isNonNegativeSafeInteger, isPositiveSafeInteger, isRecord } from "./type-guards.js";
 
 export function isRunBundle(value: unknown): value is RunBundle {

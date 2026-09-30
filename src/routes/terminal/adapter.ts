@@ -158,7 +158,7 @@ export async function applyAdapterExtensionSeam(args: {
   return declaredVerdictFailure;
 }
 
-/** Structural guard for an adapter-returned RunAdapterScore (mirrors run/guards.ts isRunAdapterScore, kept
+/** Structural guard for an adapter-returned RunAdapterScore (mirrors run/bundle-shape.ts isRunAdapterScore, kept
  *  local so the lane fails closed at the seam BEFORE the bundle verifier re-checks it). */
 function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   return (
@@ -175,7 +175,7 @@ function isAdapterScoreShape(value: unknown): value is RunAdapterScore {
   );
 }
 
-/** Structural guard for an adapter-returned feedback candidate. This mirrors run/guards-feedback.ts's full
+/** Structural guard for an adapter-returned feedback candidate. This mirrors run/feedback-shape.ts's full
  * isRunFeedbackCandidate predicate, including its local evidence-path contract, so a malformed
  * candidate is dropped at the extension seam instead of poisoning the persisted bundle. */
 function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCandidate {

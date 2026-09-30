@@ -2,8 +2,8 @@
 // advisory for a provisioned env with no declared state story.
 
 import type { RunBundle } from "../run/bundle.js";
-import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "../run/guards-shared-world.js";
-import { ARCHIVE_SHA256_PATTERN } from "../run/guards.js";
+import { COMMAND_DIGEST_PATTERN, SUBJECT_ENV_NAME_PATTERN } from "../run/shared-world-shape.js";
+import { ARCHIVE_SHA256_PATTERN } from "../run/bundle-shape.js";
 
 /**
  * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject CLAIM

@@ -5,7 +5,7 @@ import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { validatePreparedRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { RUN_BUNDLE_FILE, RUN_BUNDLE_SCHEMA, type RunBundle } from "../run/bundle.js";
-import { isCleanupResult, isRunBundle } from "../run/guards.js";
+import { isCleanupResult, isRunBundle } from "../run/bundle-shape.js";
 import { readRunJsonIfExists, readRunTextIfExists, resolveRunPath } from "../run/locate.js";
 import { isRecord } from "../run/type-guards.js";
 import {

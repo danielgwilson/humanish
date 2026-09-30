@@ -31,7 +31,7 @@ import {
   type CleanupResult,
   type RunPointer,
 } from "./results.js";
-import { isReviewSummary, isRunBundle } from "./guards.js";
+import { isReviewSummary, isRunBundle } from "./bundle-shape.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { isNodeError, isRecord } from "./type-guards.js";

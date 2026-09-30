@@ -6,7 +6,7 @@ import {
   SHARED_WORLD_CHECKPOINT_KEYS,
   planeProvenanceFindings,
   sharedWorldCommonFindings,
-} from "../run/guards-shared-world.js";
+} from "../run/shared-world-shape.js";
 import { isRecord } from "../run/type-guards.js";
 import { concurrentSharedWorldFindings } from "./shared-world-concurrent.js";
 
