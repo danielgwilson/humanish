@@ -286,17 +286,22 @@ export type {
   RunCuaActorLabOptions,
 } from "./routes/computer-use/types.js";
 export type { SubjectPhaseEvent } from "./subject/steps.js";
-export { SCRIPTED_BROWSER_PROVIDER, runScriptedBrowserSession } from "./actors/scripted-browser.js";
+export {
+  SCRIPTED_BROWSER_PROVIDER,
+  runScriptedBrowserSession,
+} from "./actors/scripted-browser/actor.js";
 export type {
   BrowserPersonaJourney,
   BrowserSurface,
   ScriptedBrowserLaunchArgs,
   ScriptedBrowserLike,
-  ScriptedBrowserSessionOptions,
-  ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
   ScriptedPageLike,
-} from "./actors/scripted-browser.js";
+} from "./actors/scripted-browser/types.js";
+export type {
+  ScriptedBrowserSessionOptions,
+  ScriptedBrowserSessionResult,
+} from "./actors/scripted-browser/actor.js";
 export {
   SCRIPTED_BROWSER_LAB_SCHEMA,
   buildScriptedLabBundle,
