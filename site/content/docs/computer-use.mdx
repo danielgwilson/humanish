@@ -45,8 +45,8 @@ scenario: { mode: live }
 npx humanish lab run cua-browser --dry-run --json --no-open
 ```
 
-Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (pass via
-`--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. A cloned
+Live runs (`scenario.mode: live`) need `OPENAI_API_KEY` + `E2B_API_KEY` (from
+`humanish keys set`, the environment, or `--env-file`) and the optional peer dependency: `npm i -D @e2b/desktop`. A cloned
 subject is served **inside** the sandbox on loopback; to instead drive a deployment
 you own (a Vercel preview, staging), use an `app-url` subject with
 `policies.allowPublicTargets: true`. The actor's API key never enters the sandbox;
@@ -91,8 +91,9 @@ Run bundles live in gitignored
 `policies.redactScreenshots: true` to persist blurred thumbnails at capture instead
 (for unowned subjects, or bundles you intend to share as-is). Raw bundles stay local
 in gitignored `.humanish/`; nothing scans the pixels, so review them before sharing
-anywhere. A redact-on-export step is planned. The frame sent to the model is always
-full-resolution regardless. See the [capture and sharing policy](https://github.com/danielgwilson/humanish/blob/main/docs/principles/invariants-and-defaults.md). `humanish verify` reports
+anywhere. `humanish export --run <id> --format bundle --redact-screenshots` writes a
+blurred copy as a new bundle workspace and leaves the original unchanged. The frame
+sent to the model is always full-resolution regardless. See the [capture and sharing policy](https://github.com/danielgwilson/humanish/blob/main/docs/principles/invariants-and-defaults.md). `humanish verify` reports
 raw-screenshot bundles as `shareSafety.status: local_only`; `humanish feedback issue`
 refuses them until the run is share-ready.
 
@@ -165,7 +166,6 @@ actors:
           textIncludes: Dashboard
     lanes:
       - id: reviewer
-        entry: /items/123
         instruction: Review the item and return to the queue.
         stopWhen:
           any:
@@ -237,7 +237,7 @@ ends setup before participant dispatch.
 
 **From Humanish 0.81.0.** After a `stopWhen` match or `dwell` with `then: stop`, a provider that supports
 closing reports can make one read-only request using the final observation.
-The current OpenAI provider supports this; local coding-agent providers do not.
+The OpenAI provider and a local Codex participant support this; Claude Code does not.
 There is no extra CLI flag. Desktop interaction has already stopped, and any
 actions requested by the closing response are rejected rather than executed.
 

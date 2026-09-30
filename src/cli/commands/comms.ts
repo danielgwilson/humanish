@@ -243,7 +243,7 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
   comms
     .command("catch")
     .description(
-      "Run the email catch on THIS host so humanish can study an app it does not provision (#328). Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
+      "Run the email catch on this host so humanish can study an app it does not provision. Your app posts its email sends here; the persona opens /inbox; humanish drains GET /deliveries and writes digest-only evidence. Point your lab's comms.email.external.catchBaseUrl at this server.",
     )
     .summary("Run the adopter-hosted email catch.")
     .option(

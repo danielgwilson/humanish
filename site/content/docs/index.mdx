@@ -5,7 +5,7 @@ description: Install humanish, point one synthetic participant at an example app
 
 You can't run a user study on an app that has no users yet. humanish runs one anyway: one command puts a synthetic participant with a persona and a task in front of your app in a real browser, and what comes back is what they did, where they got stuck, and what it cost.
 
-This page goes from install to a finished study on an example app. It takes about ten minutes and about twenty cents of provider fees. [Your own app](/docs/your-app) is the next page.
+This page goes from install to a finished study on an example app. It takes about ten minutes. The participant and desktop cost about twenty cents, and the default post-run analysis about fifty cents more, [described below](#run-the-example). [Your own app](/docs/your-app) is the next page.
 
 ## Install
 
@@ -47,6 +47,8 @@ npx humanish run try-live
 
 Allow a few minutes for the build and the participant. With an OpenAI key, the lab caps estimated model spend at $2. If `init` found no OpenAI key and a signed-in Codex or Claude Code, it wrote a `local-agent` participant instead, bounded by a ten-minute session limit with no dollar cap. Three fresh installs on September 1, 2026 finished in 108 to 111 seconds at about $0.16 of model spend each, plus a few cents of desktop time; the [receipt](https://github.com/danielgwilson/humanish/blob/main/docs/goals/computer-use-actor/receipts/cold-install-try-live-2026-09-01.md) has the run ids. Your run will differ.
 
+With an OpenAI key, a post-run analysis also runs by default when the participant finishes. It sends selected text and captures from the run to OpenAI. On five `try-live` runs on 2026-09-30, `humanish stats` recorded about $0.15 for the participant and $0.49 to $0.59 for the analysis, about $0.50 typical; yours will differ. Before sending, humanish estimates the analysis with its full output allowance, so the estimate runs well above the bill, and it refuses the analysis when that estimate exceeds $3. To skip it, add `review.analysis: false` to the lab.
+
 To watch the desktop while it runs, use `npx humanish watch try-live` instead.
 
 ## Read what came back
@@ -76,7 +78,7 @@ npx humanish run first-run
 npx humanish observe --run latest --open
 ```
 
-This writes a synthetic sample bundle and opens it. Nothing is spent and no participant visits any app; it exists so you can see the evidence format before adding keys. `humanish run` and `humanish watch` with no lab do the same.
+This writes a synthetic sample bundle and opens it. Nothing is spent and no participant visits any app; it exists so you can see the evidence format before adding keys. `humanish run --dry-run` and `humanish watch` with no lab do the same.
 
 ## Next
 

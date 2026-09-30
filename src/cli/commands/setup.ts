@@ -239,7 +239,7 @@ async function readSecretValue(useStdin: boolean, promptLabel: string): Promise<
 export function registerKeysCommand(parent: Command, io: CliIo): void {
   const keys = parent
     .command("keys")
-    .description("Manage the humanish user-level key store used by provider-key discovery (#436).")
+    .description("Manage the humanish user-level key store used by provider-key discovery.")
     .summary("Manage the user-level provider key store.");
 
   keys

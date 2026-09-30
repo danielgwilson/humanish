@@ -12,9 +12,11 @@ set `review.analysis: false`. A qualified Codex account analyst can also be
 [selected explicitly](https://github.com/danielgwilson/humanish/blob/main/docs/product/automatic-analysis.md);
 changing the participant alone does not change the analyst.
 
-Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment.
-Keep a finite `execution.timeoutMs`; API-model dollar caps do not bound your
-subscription usage. Review those caps when changing providers.
+Replace the `actors` block in your [own-app lab](/docs/your-app) with this fragment,
+and delete `execution.caps`. A Codex participant signed in with a ChatGPT account
+has no API price, so a dollar cap is refused with `HUMANISH_CUA_LAB_UNPRICED_CAP`;
+for Claude Code the cap does not bound subscription usage. Keep a finite
+`execution.timeoutMs`, which bounds both.
 
 ```yaml
 actors:
@@ -86,7 +88,7 @@ inputs execute in the selected sandbox; credentials stay with the host CLI.
   enough `execution.timeoutMs` for the task and inspect elapsed time in its evidence.
 - **The evidence says which brain ran it.** The trace records
   the provider and resolved Codex model. Qualified ChatGPT-account participants
-  additionally record their execution profile with unknown-dollar billing.
+  also record their execution profile with unknown-dollar billing.
 - **Both agents keep one conversation for the whole run.** Codex through an
   app-server thread, Claude Code through one `claude -p` stream-json session.
   A participant that starts every turn cold cannot remember trying the menu
