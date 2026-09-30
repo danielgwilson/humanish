@@ -1,4 +1,4 @@
-import { constants } from "node:fs";
+import { constants, type BigIntStats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import path from "node:path";
 
@@ -59,6 +59,23 @@ export async function readBoundedStudyFile(
   return result.state === "read" ? result.bytes : null;
 }
 
+/**
+ * Still the same single-link regular file, unchanged since `before`. Every recheck uses this one
+ * field set; ctime catches a chmod or link change that leaves size and mtime alone.
+ */
+function sameFile(before: BigIntStats, current: BigIntStats): boolean {
+  return (
+    current.isFile() &&
+    !current.isSymbolicLink() &&
+    current.nlink === 1n &&
+    current.dev === before.dev &&
+    current.ino === before.ino &&
+    current.size === before.size &&
+    current.mtimeNs === before.mtimeNs &&
+    current.ctimeNs === before.ctimeNs
+  );
+}
+
 export type BoundedStudyFileResult =
   | { state: "read"; bytes: Buffer }
   | { state: "limit"; size: bigint }
@@ -101,18 +118,7 @@ export async function readBoundedStudyFileResult(
     if (before.size > BigInt(maxBytes)) {
       if ((await validateRoot()) !== physicalRoot) return unavailable;
       await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.nlink !== 1n ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs ||
-        final.ctimeNs !== before.ctimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
       return { state: "limit", size: before.size };
     }
     // O_NONBLOCK avoids hanging if a regular leaf is raced into a special file.
@@ -121,16 +127,7 @@ export async function readBoundedStudyFileResult(
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
     try {
-      const opened = await handle.stat({ bigint: true });
-      if (
-        !opened.isFile() ||
-        opened.nlink !== 1n ||
-        opened.dev !== before.dev ||
-        opened.ino !== before.ino ||
-        opened.size !== before.size ||
-        opened.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await handle.stat({ bigint: true }))) return unavailable;
       const chunks: Buffer[] = [];
       let total = 0;
       while (total <= maxBytes) {
@@ -141,28 +138,11 @@ export async function readBoundedStudyFileResult(
         if (total > maxBytes) return unavailable;
         chunks.push(chunk.subarray(0, bytesRead));
       }
-      const after = await handle.stat({ bigint: true });
-      if (
-        after.size !== before.size ||
-        after.mtimeNs !== before.mtimeNs ||
-        after.ctimeNs !== before.ctimeNs ||
-        after.nlink !== 1n ||
-        total !== Number(before.size)
-      )
+      if (!sameFile(before, await handle.stat({ bigint: true })) || total !== Number(before.size))
         return unavailable;
       if ((await validateRoot()) !== physicalRoot) return unavailable;
       await validateParents();
-      const final = await lstat(candidate, { bigint: true });
-      if (
-        !final.isFile() ||
-        final.isSymbolicLink() ||
-        final.dev !== before.dev ||
-        final.ino !== before.ino ||
-        final.nlink !== 1n ||
-        final.size !== before.size ||
-        final.mtimeNs !== before.mtimeNs
-      )
-        return unavailable;
+      if (!sameFile(before, await lstat(candidate, { bigint: true }))) return unavailable;
       return { state: "read", bytes: Buffer.concat(chunks, total) };
     } finally {
       await handle.close();
