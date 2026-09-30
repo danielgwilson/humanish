@@ -9,12 +9,15 @@ export interface ReadyCuaDesktop {
 }
 
 /** Existing bundle fields. Provider-specific facts remain optional and must be measured. */
-export type DesktopLaneEvidence = Pick<
+export type DesktopLaneEvidence = {
+  /** The substrate confirmed the desktop was released (an E2B kill or a local VM shutdown). The lane
+   *  outcome records it as `killed`. */
+  released: boolean;
+} & Pick<
   LaneRunOutcome,
   | "sandboxId"
   | "desktopDurationMs"
   | "desktopResources"
-  | "killed"
   | "streamUrlPresent"
   | "subjectCommit"
   | "desktopBrowser"

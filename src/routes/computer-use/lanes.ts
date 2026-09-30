@@ -313,11 +313,13 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
 
   const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
 
+  const { released, ...desktopEvidence } = desktopLane.snapshot();
   return {
     spec,
     ...(session ? { session } : {}),
     ...(sessionError === undefined ? {} : { sessionError }),
-    ...desktopLane.snapshot(),
+    ...desktopEvidence,
+    killed: released,
     screenshots,
     warnings,
     noEngagement,

@@ -95,13 +95,13 @@ export function createE2BCuaDesktopLane(
   let failureCode: CuaActorLabErrorCode | undefined;
   let sandboxId: string | undefined;
   // Host-side E2B desktop billed-span endpoints, measured via the injected clock. Captured right
-  // after create() succeeds and again in the finally after teardown resolves (both the killed and
+  // after create() succeeds and again in the finally after teardown resolves (both the released and
   // kept-for-debug paths). This measured span excludes allocation before the acquired handle;
   // a kept/unconfirmed allocation gets an extra unknown lifetime cost line.
   let sandboxCreatedAtMs: number | undefined;
   let sandboxTornDownAtMs: number | undefined;
   let desktopResources: DesktopResourceObservation | undefined;
-  let killed = false;
+  let released = false;
   let streamUrl: string | undefined;
   let subjectCommit: string | undefined;
   let desktopBrowser: DesktopBrowserEvidence | undefined;
@@ -549,7 +549,7 @@ export function createE2BCuaDesktopLane(
           mediaStop,
           warnings,
         });
-        killed = await releaseLaneDesktop({
+        released = await releaseLaneDesktop({
           allocation,
           keepReason: laneKeepReason(deps),
           failed,
@@ -559,8 +559,8 @@ export function createE2BCuaDesktopLane(
         // Close the observed span. A kept or unconfirmed sandbox can still accrue compute cost;
         // the summary records that remaining lifetime as unknown instead of calling this complete.
         sandboxTornDownAtMs = deps.now();
-        // The lane's live stream is now a dead page whichever teardown path ran (killed, kept, or
-        // kill-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
+        // The lane's live stream is now a dead page whichever teardown path ran (released, kept,
+        // or release-failed-awaiting-TTL) — tell the watch overlay so the tile falls back to recorded
         // evidence instead of "sandbox not found" (#357). Guarded: a viewer callback must never
         // break teardown.
         if (streamUrl !== undefined) {
@@ -590,7 +590,7 @@ export function createE2BCuaDesktopLane(
       ...(sandboxId === undefined ? {} : { sandboxId }),
       ...(desktopDurationMs === undefined ? {} : { desktopDurationMs }),
       ...(desktopResources === undefined ? {} : { desktopResources }),
-      killed,
+      released,
       streamUrlPresent: streamUrl !== undefined,
       ...(subjectCommit === undefined ? {} : { subjectCommit }),
       ...(desktopBrowser === undefined ? {} : { desktopBrowser }),

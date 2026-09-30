@@ -109,7 +109,7 @@ export async function runLocalFirecrackerStudy(
             email?.kind === "fake" ? inboxRecipientFor(email, spec.laneId)?.address : undefined;
           let finalizing: Promise<void> | undefined;
           const evidence: DesktopLaneEvidence = {
-            killed: false,
+            released: false,
             streamUrlPresent: false,
             stateStepRecords: [],
             phaseRecords: [],
@@ -174,11 +174,11 @@ export async function runLocalFirecrackerStudy(
                   }
                 }
                 try {
-                  evidence.killed = (await session.close()).status === "released";
+                  evidence.released = (await session.close()).status === "released";
                 } catch {
-                  evidence.killed = false;
+                  evidence.released = false;
                 }
-                if (!evidence.killed) {
+                if (!evidence.released) {
                   cleanupUnconfirmed = true;
                   warnings.push("Local desktop cleanup is unconfirmed.");
                 }
