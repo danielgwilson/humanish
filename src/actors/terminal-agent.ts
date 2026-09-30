@@ -1,5 +1,5 @@
 // Registry contract for the terminal-product lane. The shipped live implementation is
-// intentionally route-owned by `runTerminalProductLab` in `e2b-terminal-lab.ts`: that route must
+// intentionally route-owned by `runTerminalProductLab` in `routes/terminal/lab.ts`: that route must
 // coordinate sandbox creation, command-scoped runtime auth, caps, evidence capture, and by-id
 // cleanup as one fail-closed lifecycle.
 //

@@ -18,11 +18,11 @@ import {
   type ScriptedBrowserLabHooks,
   type ScriptedBrowserLabResult,
 } from "../routes/scripted-browser.js";
+import { runTerminalProductLab } from "../routes/terminal/lab.js";
 import {
-  runTerminalProductLab,
   type TerminalProductLabHooks,
   type TerminalProductLabResult,
-} from "../routes/terminal/lab.js";
+} from "../routes/terminal/types.js";
 import {
   runSharedWorldLab,
   type SharedWorldLabHooks,

@@ -1,0 +1,452 @@
+import path from "node:path";
+import type { ActorPersonaRef, ActorTrace } from "../../actors/contract.js";
+import { type RunLabProvenance } from "../../run/status.js";
+import type { LabScenarioCaps, LabRuntimeAuth } from "../../lab/types.js";
+import { redactText } from "../../evidence/redaction.js";
+import { participantAssignment } from "../../lab/participant-assignment.js";
+import {
+  PUBLIC_TARGET_CWD,
+  REVIEW_SCHEMA,
+  RUN_BUNDLE_SCHEMA,
+  type ReviewSummary,
+  type RunBundle,
+  type RunEvent,
+  type RunSimulation,
+  type RunSimulationStatus,
+  type RunStream,
+} from "../../run/bundle.js";
+import {
+  TERMINAL_EVENTS_ARTIFACT,
+  TERMINAL_LEDGERS_ARTIFACT,
+  TERMINAL_TRANSCRIPT_ARTIFACT,
+  type TerminalLedgers,
+} from "./types.js";
+
+/**
+ * Project the terminal-product lab run into a humanish.run-bundle.v1 (no schema change — a new
+ * producer only). DRY-RUN: a contract bundle. The terminal stream is a contract placeholder
+ * (stdin disabled, no captured tail — honest: nothing ran), the subject is declared UNPINNED, and
+ * the caps/policies/runtime-auth declarations are recorded without pretending that live ledgers
+ * exist. The shipped live builder fills the same evidence contract. Exported for tests.
+ */
+export function buildTerminalProductBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  actorId: string;
+  createdAt: string;
+  dryRun: boolean;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  persona: ActorPersonaRef;
+  productName: string;
+  publicSurfaces: string[];
+  caps?: LabScenarioCaps;
+  runtimeAuth?: string;
+  stdin: "disabled" | "planned" | "sent";
+  policies: {
+    allowPrivateRepoAccess: boolean;
+    allowProviderCredentials: boolean;
+    allowPaymentCredentials: boolean;
+    allowGitHubMutation: boolean;
+  };
+  runId: string;
+  source: RunBundle["source"];
+}): RunBundle {
+  const reason =
+    "Contract bundle only: dry-run declared the terminal-product study contract without creating an E2B sandbox, injecting any key, or spending. This run did not execute an agent or prove live behavior.";
+
+  const simulation: RunSimulation = {
+    id: "sim-001",
+    index: 1,
+    personaId: args.persona.id,
+    scenarioId: `terminal-${args.labId}`,
+    status: "contract_proof_only",
+    streamKind: "terminal",
+    mode: "cli-sim",
+    progress: 100,
+    currentStep: reason,
+    summary: `Contract lane for the terminal agent (${args.actorId}) studying ${args.productName} from public surfaces.`,
+    streamIds: ["stream-001"],
+    startedAt: args.createdAt,
+    updatedAt: args.createdAt,
+  };
+
+  // The terminal stream is a CONTRACT PLACEHOLDER on the dry-run path: stdin is disabled and no
+  // exec output was captured, so the tail is empty and transport stays "snapshot" — NOT "pty"
+  // (captured non-interactive exec output is never an interactive PTY; invariant 6 + the PTY
+  // ruling). The shipped live builder fills terminal.tail from redacted exec-stream capture.
+  const stream: RunStream = {
+    id: "stream-001",
+    simId: "sim-001",
+    assignment: participantAssignment({ mission: args.mission }),
+    kind: "terminal",
+    label: `Terminal agent — ${args.labId}`,
+    status: "contract_proof_only",
+    transport: "snapshot",
+    updatedAt: args.createdAt,
+    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
+    terminal: {
+      title: `${args.actorId} exec (stdin ${args.stdin})`,
+      format: "plain",
+      stdin: args.stdin,
+      tail: "",
+    },
+    ui: {
+      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
+      state: reason,
+    },
+    artifacts: [
+      { label: "run bundle", path: "run.json", kind: "bundle" as const },
+      { label: "review", path: "review.md", kind: "review" as const },
+      { label: "events", path: "events.ndjson", kind: "events" as const },
+    ],
+  };
+
+  const capsText = describeCaps(args.caps);
+  const events: RunEvent[] = [
+    {
+      id: "event-000-created",
+      at: args.createdAt,
+      level: "info",
+      type: "terminal-lab.run.created",
+      message: `Created terminal-product lab run for ${args.labId} (actor ${args.actorId}, product ${args.productName}).`,
+    },
+    {
+      id: "event-001-subject",
+      at: args.createdAt,
+      level: "info",
+      type: "terminal-lab.subject.declared",
+      // Invariant 5: provenance recorded or its absence DECLARED. The agent drives PUBLIC surfaces,
+      // not a clone, so the subject provenance is explicitly UNPINNED; evidence binds to the
+      // composed-prompt digest. Public surfaces are recorded (they are public by declaration).
+      message: `Subject product declared: ${args.productName}; public surfaces: ${args.publicSurfaces.join(", ")}. The lab did not provision/clone the product — subject provenance is UNPINNED (a public-surface study cannot be commit-pinned); evidence binds to the composed-prompt digest ${args.persona.promptDigest}.`,
+      simId: "sim-001",
+      streamId: "stream-001",
+    },
+    {
+      id: "event-002-credentials",
+      at: args.createdAt,
+      level: "info",
+      type: "terminal-lab.credentials.declared",
+      // Names-only evidence (invariant 1): the runtime-auth CHANNEL is declared; no value is ever
+      // recorded. The deny-by-default policies are recorded so the credential posture is auditable.
+      message: `Runtime auth channel: ${args.runtimeAuth ?? "none declared"} (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=${args.policies.allowPrivateRepoAccess}, allowProviderCredentials=${args.policies.allowProviderCredentials}, allowPaymentCredentials=${args.policies.allowPaymentCredentials}, allowGitHubMutation=${args.policies.allowGitHubMutation}.`,
+      simId: "sim-001",
+      streamId: "stream-001",
+    },
+    {
+      id: "event-003-caps",
+      at: args.createdAt,
+      level: "info",
+      type: "terminal-lab.caps.declared",
+      message: `Spend/job/time caps: ${capsText}. A live run never exercises the runtime key without a fail-closed cap; its no-spend proof is derived from the persisted cost ledger. This dry-run spends $0 by mechanism.`,
+      simId: "sim-001",
+      streamId: "stream-001",
+    },
+    {
+      id: "event-004-contract",
+      at: args.createdAt,
+      level: "info",
+      type: "terminal-lab.contract.ready",
+      message:
+        "Dry-run contract bundle ready. Switch scenario.mode to live with the required runtime auth and caps to exercise the in-sandbox agent route, captured exec stream, and declared runtime-auth placement.",
+      simId: "sim-001",
+      streamId: "stream-001",
+    },
+  ];
+
+  const review: ReviewSummary = {
+    schema: REVIEW_SCHEMA,
+    verdict: "contract_proof_only",
+    summary: reason,
+    gaps: [
+      "This dry-run did not execute the live in-sandbox agent route; it proves contract shape only, not live behavior, scale, or adoption.",
+      "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.",
+    ],
+  };
+
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: args.dryRun ? "dry-run" : "live",
+    simCount: 1,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
+    source: args.source,
+    persona: {
+      id: args.persona.id,
+      name: `Autonomous terminal agent (${args.persona.id})`,
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    scenario: {
+      id: `terminal-${args.labId}`,
+      title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
+      // The author mission is public-safe committed lab text — recorded plaintext as the goal,
+      // redacted defensively before persisting (it never carries a secret, but the harness never
+      // trusts that). The full composed prompt is bound by digest, not text.
+      goal: redactText(args.mission),
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    lifecycle: [
+      {
+        at: args.createdAt,
+        event: "terminal-lab.run.created",
+        message: `Created terminal-product lab run with one in-sandbox agent lane (actor ${args.actorId}, product ${args.productName}).`,
+      },
+    ],
+    simulations: [simulation],
+    streams: [stream],
+    events,
+    redaction: {
+      status: "passed",
+      notes:
+        "Dry-run contract bundle: no sandbox ran, no key was injected, no exec output was captured. The author mission is public-safe committed lab text (redacted defensively); the composed prompt is bound by digest. The shipped live path applies scrubKnownValues then redactText at the capture source before persistence.",
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson",
+    },
+    review,
+    feedbackCandidates: [],
+  };
+}
+
+/**
+ * Build the LIVE terminal-product run bundle (mode "live") from the captured session: the actor
+ * trace seam (stream.actor = trace), the substrate-lifecycle events, the terminal stream with the
+ * redacted transcript tail, and references to the written evidence artifacts (terminal event
+ * stream, transcript, ledgers, actor trace). verifyRun's terminal-product check (gated on
+ * mode==="live") enforces the ledgers + proven cleanup + interventions-present over this bundle.
+ */
+export function buildLiveTerminalProductBundle(args: {
+  /** Lab provenance for the bundle\'s own `lab` field (#455). */
+  lab?: RunLabProvenance;
+  actorId: string;
+  createdAt: string;
+  labId: string;
+  labTitle?: string;
+  mission: string;
+  persona: ActorPersonaRef;
+  productName: string;
+  publicSurfaces: string[];
+  caps?: LabScenarioCaps;
+  runtimeAuthKeyName: string;
+  runtimeAuth?: LabRuntimeAuth;
+  policies: {
+    allowPrivateRepoAccess: boolean;
+    allowProviderCredentials: boolean;
+    allowPaymentCredentials: boolean;
+    allowGitHubMutation: boolean;
+  };
+  runId: string;
+  source: RunBundle["source"];
+  trace: ActorTrace;
+  ledgers: TerminalLedgers;
+  sandboxId?: string;
+  sessionError?: string;
+  sessionReason: string;
+}): RunBundle {
+  const simStatus: RunSimulationStatus =
+    args.trace.status === "passed"
+      ? "passed"
+      : args.trace.status === "blocked"
+        ? "blocked"
+        : args.trace.status === "timed_out"
+          ? "timed_out"
+          : "failed";
+  const messageItem = args.trace.items.find((item) => item.kind === "message");
+  const tail = (messageItem?.text ?? args.trace.reason).slice(0, 2000);
+
+  const simulation: RunSimulation = {
+    id: "sim-001",
+    index: 1,
+    personaId: args.persona.id,
+    scenarioId: `terminal-${args.labId}`,
+    status: simStatus,
+    streamKind: "terminal",
+    mode: "cli-sim",
+    progress: 100,
+    currentStep: args.sessionReason,
+    summary: `Terminal agent (${args.actorId}) studied ${args.productName} from public surfaces (${args.trace.status}).`,
+    streamIds: ["stream-001"],
+    startedAt: args.createdAt,
+    updatedAt: args.trace.completedAt,
+  };
+
+  // transport "snapshot": the persisted tail is a redacted snapshot of the captured exec output,
+  // NOT an interactive PTY (stdin disabled). The actor trace seam carries the structured evidence.
+  const stream: RunStream = {
+    id: "stream-001",
+    simId: "sim-001",
+    assignment: participantAssignment({ mission: args.mission }),
+    kind: "terminal",
+    label: `Terminal agent — ${args.labId}`,
+    status: simStatus,
+    transport: "snapshot",
+    updatedAt: args.trace.completedAt,
+    embed: { kind: "placeholder", title: `Terminal agent (${args.productName})` },
+    terminal: {
+      title: `${args.actorId} exec (stdin disabled)`,
+      format: "plain",
+      stdin: "disabled",
+      tail,
+    },
+    ui: {
+      intent: `Watch the terminal agent discover and use ${args.productName} from its public surfaces.`,
+      state: args.sessionReason,
+    },
+    actor: args.trace,
+    artifacts: [
+      { label: "run bundle", path: "run.json", kind: "bundle" as const },
+      { label: "review", path: "review.md", kind: "review" as const },
+      { label: "event log", path: "events.ndjson", kind: "events" as const },
+      { label: "actor trace", path: "actor.json", kind: "trace" as const },
+      { label: "terminal event stream", path: TERMINAL_EVENTS_ARTIFACT, kind: "log" as const },
+      { label: "terminal transcript", path: TERMINAL_TRANSCRIPT_ARTIFACT, kind: "log" as const },
+      { label: "terminal ledgers", path: TERMINAL_LEDGERS_ARTIFACT, kind: "log" as const },
+    ],
+  };
+
+  // Substrate-lifecycle ledger -> bundle events (each already sanitized when recorded).
+  const lifecycleEvents: RunEvent[] = args.ledgers.lifecycle.map((record, index) => ({
+    id: `event-${String(index).padStart(3, "0")}-${record.event}`,
+    at: record.at,
+    level:
+      record.event.includes("error") ||
+      record.event.includes("timed_out") ||
+      record.event.includes("exceeded")
+        ? "warn"
+        : "info",
+    type: record.event,
+    message: record.message,
+    simId: "sim-001",
+    streamId: "stream-001",
+  }));
+
+  // Surface the no-spend proof as a first-class bundle event so the Observer/review can SHOW it.
+  // It is DERIVED from the cost ledger (never asserted): it lists the known-zero lines it vouches
+  // for AND the unmeasured (null) lines it explicitly cannot vouch for.
+  const noSpend = args.ledgers.noSpendProof;
+  lifecycleEvents.push({
+    id: "event-cost-no-spend-proof",
+    at: args.trace.completedAt,
+    level: noSpend.satisfied ? "info" : "warn",
+    type: "terminal-lab.no-spend.proof",
+    message: noSpend.statement,
+    simId: "sim-001",
+    streamId: "stream-001",
+  });
+
+  const verdict: ReviewSummary["verdict"] =
+    args.trace.status === "passed"
+      ? "pass"
+      : args.trace.status === "blocked"
+        ? "blocked"
+        : args.trace.status === "timed_out"
+          ? "timed_out"
+          : "fail";
+  const review: ReviewSummary = {
+    schema: REVIEW_SCHEMA,
+    verdict,
+    summary: args.sessionReason,
+    gaps: [
+      ...(args.trace.status === "passed"
+        ? []
+        : [`Agent session ended ${args.trace.status}: ${args.sessionReason}`]),
+      // Honesty gap: the no-spend proof always declares which spend lines it could NOT measure, so a
+      // green run never silently over-claims a fully-proven $0.
+      ...(noSpend.unmeasuredLines.length > 0
+        ? [
+            `No-spend proof is partial: ${noSpend.unmeasuredLines.join(", ")} spend was UNMEASURED for this run (recorded null, not claimed zero; an adapter may supply these signals through costProbe).`,
+          ]
+        : []),
+    ],
+  };
+
+  return {
+    schema: RUN_BUNDLE_SCHEMA,
+    runId: args.runId,
+    mode: "live",
+    simCount: 1,
+    createdAt: args.createdAt,
+    cwd: PUBLIC_TARGET_CWD,
+    ...(args.lab === undefined ? {} : { lab: args.lab }),
+    artifactRoot: path.join(".humanish", "runs", args.runId),
+    source: args.source,
+    persona: {
+      id: args.persona.id,
+      name: `Autonomous terminal agent (${args.persona.id})`,
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    scenario: {
+      id: `terminal-${args.labId}`,
+      title: args.labTitle ?? `Terminal-product lab: ${args.labId}`,
+      goal: redactText(args.mission),
+      source: `lab:${args.labId}`,
+      sourceDigest: args.persona.promptDigest,
+    },
+    lifecycle: args.ledgers.lifecycle.map((record) => ({
+      at: record.at,
+      event: record.event,
+      message: record.message,
+    })),
+    simulations: [simulation],
+    streams: [stream],
+    events: lifecycleEvents,
+    redaction: {
+      status: "passed",
+      notes: `Live terminal-product run: the in-sandbox agent's output was captured via commands.run onStdout/onStderr and scrubbed (literal known values incl. the runtime key) THEN redacted (shape patterns) AT THE SOURCE before persisting. ${args.runtimeAuth === "openai-egress" ? `Runtime auth openai-egress: the raw key from ${args.runtimeAuthKeyName} is reserved for E2B's external api.openai.com HTTPS header transform. ${args.ledgers.commandLog.some((command) => command.label === "codex-exec") ? "Codex received an inert CODEX_API_KEY placeholder." : "Codex was not launched."} Any created sandbox retains a spendable OpenAI proxy capability until teardown; additional provider calls may not appear in the Codex usage ledger.` : `Runtime auth openai-env: the runtime key (${args.runtimeAuthKeyName}) was injected ONLY into the command-scoped codex invocation, never sandbox-global env or metadata; only its NAME appears in evidence.`} Subject provenance is UNPINNED (public-surface study).`,
+    },
+    artifacts: {
+      run: "run.json",
+      reviewJson: "review.json",
+      reviewMarkdown: "review.md",
+      observerData: "observer/observer-data.json",
+      events: "events.ndjson",
+    },
+    review,
+    feedbackCandidates: [],
+  };
+}
+
+function describeCaps(caps: LabScenarioCaps | undefined): string {
+  if (!caps) return "none declared (a live run requires caps)";
+  const parts: string[] = [];
+  if (caps.maxUsd !== undefined) parts.push(`maxUsd=${caps.maxUsd}`);
+  if (caps.maxJobs !== undefined) parts.push(`maxJobs=${caps.maxJobs}`);
+  if (caps.maxMinutes !== undefined) parts.push(`maxMinutes=${caps.maxMinutes}`);
+  return parts.length > 0 ? parts.join(", ") : "empty";
+}
+
+export function renderTerminalReviewMarkdown(bundle: RunBundle): string {
+  const subject = bundle.events.find((event) => event.type === "terminal-lab.subject.declared");
+  const credentials = bundle.events.find(
+    (event) => event.type === "terminal-lab.credentials.declared",
+  );
+  const caps = bundle.events.find((event) => event.type === "terminal-lab.caps.declared");
+  return [
+    `# ${bundle.scenario.title}`,
+    "",
+    `- run: ${bundle.runId}`,
+    `- mode: ${bundle.mode}`,
+    `- verdict: ${bundle.review.verdict}`,
+    `- summary: ${bundle.review.summary}`,
+    `- mission: ${bundle.scenario.goal}`,
+    ...(subject ? [`- subject: ${subject.message}`] : []),
+    ...(credentials ? [`- credentials: ${credentials.message}`] : []),
+    ...(caps ? [`- caps: ${caps.message}`] : []),
+    ...(bundle.review.gaps.length > 0
+      ? ["", "## Gaps", ...bundle.review.gaps.map((gap) => `- ${gap}`)]
+      : []),
+    "",
+  ].join("\n");
+}

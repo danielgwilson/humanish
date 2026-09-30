@@ -3,7 +3,7 @@ import type { RunLabProvenance } from "../../run/status.js";
 import { loadAdapterScorer, type AdapterScorerModule } from "../../lab/adapter-scorer-loader.js";
 import type { LabBackend } from "../../lab/engine.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
-import type { TerminalProductLabHooks } from "../../routes/terminal/lab.js";
+import type { TerminalProductLabHooks } from "../../routes/terminal/types.js";
 import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/bundle.js";

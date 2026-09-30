@@ -20,7 +20,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { BrowserLabScoringContext } from "./adapter-extension.js";
-import type { TerminalProductScoringContext } from "../routes/terminal/lab.js";
+import type { TerminalProductScoringContext } from "../routes/terminal/types.js";
 import type { LabBackend } from "./engine.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type {

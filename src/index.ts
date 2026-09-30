@@ -306,11 +306,9 @@ export type {
   ScriptedBrowserLabResult,
   ScriptedBrowserLabSession,
 } from "./routes/scripted-browser.js";
-export {
-  TERMINAL_PRODUCT_LAB_SCHEMA,
-  buildTerminalProductBundle,
-  runTerminalProductLab,
-} from "./routes/terminal/lab.js";
+export { TERMINAL_PRODUCT_LAB_SCHEMA } from "./routes/terminal/types.js";
+export { buildTerminalProductBundle } from "./routes/terminal/bundle.js";
+export { runTerminalProductLab } from "./routes/terminal/lab.js";
 export type {
   CommandLogRecord,
   CostCategory,
@@ -324,7 +322,7 @@ export type {
   TerminalProductLabHooks,
   TerminalProductLabResult,
   TerminalProductScoringContext,
-} from "./routes/terminal/lab.js";
+} from "./routes/terminal/types.js";
 export {
   SHARED_WORLD_LAB_PROVIDER_METADATA,
   SHARED_WORLD_LAB_SCHEMA,
