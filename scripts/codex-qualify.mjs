@@ -282,13 +282,15 @@ say("  <schema-out>          = the schema generator's output directory");
 say("  <codex>               = the release's native vendor directory");
 say(`  file and socket paths only: ${PATH_PATTERNS.map((entry) => entry.label).join(", ")}`);
 say("  addresses: <loopback> = the offline provider; live <chatgpt.com> and <resolver> are listed");
-say("  Exec argv (argv[0] included) gets the literal rewrites only. Skipped from file comparison,");
-say("  judged in order on each operation's outcome: an open that resolved to a known-database");
-say("  -journal/-wal/-shm file, or its unlink; a file created with O_EXCL whose last successful");
+say("  Exec argv (argv[0] included) gets the literal rewrites only. A successful open compares");
+say("  on the path the kernel reported (-yy); a `..` path the kernel did not resolve fails.");
+say("  Skipped from file comparison, judged in order on each operation's outcome: an open that");
+say("  resolved to a known-database -journal/-wal/-shm file, or its unlink; a file created with");
 say(
-  "  operation is an unlink; a successful removal of a path the run created in its own directory;",
+  "  O_EXCL whose last successful operation is an unlink; a successful removal, with no `..`, of",
 );
-say("  and schema-generator writes with no `..` that resolved inside the schema output directory.");
+say("  a path an earlier operation of the run created in its own directory; and schema-generator");
+say("  writes with no `..` that resolved inside the schema output directory.");
 const releases = [install(baselineVersion), install(candidateVersion)];
 for (const release of releases) say(`  ${release.version} native sha256 ${release.sha256}`);
 const [base, cand] = releases;

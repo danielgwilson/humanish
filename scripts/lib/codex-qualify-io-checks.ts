@@ -13,7 +13,7 @@ import {
   type ProbeSummary,
   type QualifyCheck,
 } from "./codex-qualify-checks.js";
-import type { FileEvent } from "./strace.js";
+import { fileEventKey, type FileEvent } from "./strace.js";
 
 const DATABASES = KNOWN_DATABASES.map((db) => db.replace(".", "\\.")).join("|");
 const SIDECAR_PATH = new RegExp(
@@ -21,7 +21,6 @@ const SIDECAR_PATH = new RegExp(
 );
 const SIDECAR_ENTRY = new RegExp(`^home/(?:${DATABASES})-(?:journal|wal|shm) file$`);
 
-const key = (event: FileEvent): string => JSON.stringify([event.op, ...event.paths]);
 const creates = new Set(["create", "write", "mkdir", "link", "symlink", "truncate"]);
 /**
  * Paths the run created exclusively and removed again, judged on the ordered log: the first
@@ -62,6 +61,8 @@ export function comparedFileEvents(
 ): string[] {
   const before = new Set(preexisting);
   const transient = transientPaths(log);
+  // Paths the run has created so far, in log order; a private removal must name one of them.
+  const created = new Set<string>();
   const exempt = (event: FileEvent): boolean => {
     const target = event.paths[0] ?? "";
     if (SIDECAR_PATH.test(target) && event.paths.length === 1) {
@@ -74,12 +75,22 @@ export function comparedFileEvents(
       (event.op === "unlink" || creates.has(event.op))
     )
       return true;
-    const own = /^<(?:codex-home|probe|work)>\//.test(target);
     return (
-      (event.op === "unlink" || event.op === "rmdir") && event.ok && own && !before.has(target)
+      (event.op === "unlink" || event.op === "rmdir") &&
+      event.ok &&
+      /^<(?:codex-home|probe|work)>\//.test(target) &&
+      !target.split("/").includes("..") &&
+      !before.has(target) &&
+      created.has(target)
     );
   };
-  return [...new Set(log.filter((event) => !exempt(event)).map(key))].sort();
+  const kept = new Set<string>();
+  for (const event of log) {
+    if (!exempt(event)) kept.add(fileEventKey(event));
+    if (event.ok && creates.has(event.op)) created.add(event.paths[0]!);
+    if (event.ok && (event.op === "rename" || event.op === "link")) created.add(event.paths[1]!);
+  }
+  return [...kept].sort();
 }
 /**
  * Writes inside the schema generator's output directory are its output, which the protocol
@@ -208,7 +219,11 @@ export function prepChecks(
         comparedFileEvents(withoutSchemaOutput(base.fileLog), base.preexisting),
         comparedFileEvents(withoutSchemaOutput(cand.fileLog), cand.preexisting),
       ),
-      ioUring: cand.ioUring > 0 ? [`${cand.ioUring} io_uring_setup`] : [],
+      // Any ring in either release's trace fails, as offline and live.
+      ioUring:
+        base.ioUring + cand.ioUring > 0
+          ? [`baseline ${base.ioUring}, candidate ${cand.ioUring} io_uring_setup`]
+          : [],
     };
   };
   const clean = (name: string): boolean =>

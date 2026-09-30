@@ -7,9 +7,14 @@ const REWRITES = [
   { label: "<codex>", path: "/opt/codex/vendor/t" },
 ];
 const root = `10 execve("${CODEX}", ["${CODEX}", "app-server", "--strict-config"], 0x1 /* 64 vars */) = 0`;
+// A finished trace: strace -q ends with an exit line for every traced process.
+const complete = (lines: string[]): string => {
+  const pids = [...new Set(lines.map((line) => /^(\d+) /.exec(line)?.[1]).filter(Boolean))];
+  return [...lines, ...pids.map((pid) => `${pid} +++ exited with 0 +++`)].join("\n");
+};
 const parse = (...lines: string[]) =>
   parseTrace(
-    [root, ...lines].join("\n"),
+    complete([root, ...lines]),
     CODEX,
     REWRITES,
     new Map([["127.0.0.1:8080", "<loopback>"]]),
@@ -79,12 +84,20 @@ describe("strace exec record", () => {
       "truncated",
     );
     expect(parse("11 <... execve resumed>) = 0").error).toContain("resumed without its start");
-    expect(parse('11 execve("/bin/sh", ["sh"], 0x2 /* 1 vars */ <unfinished ...>').error).toContain(
-      "never finished",
-    );
-    expect(parseTrace('10 execve("/bin/sh", ["sh"], 0x1) = 0', CODEX, []).error).toContain(
-      "not the traced command",
-    );
+    expect(
+      parseTrace(
+        [
+          root,
+          '11 execve("/bin/sh", ["sh"], 0x2 /* 1 vars */ <unfinished ...>',
+          "10 +++ exited with 0 +++",
+        ].join("\n"),
+        CODEX,
+        REWRITES,
+      ).error,
+    ).toContain("ends before process 11 exited");
+    expect(
+      parseTrace(complete(['10 execve("/bin/sh", ["sh"], 0x1) = 0']), CODEX, []).error,
+    ).toContain("not the traced command");
   });
 });
 
@@ -195,7 +208,7 @@ describe("strace command", () => {
 
 describe("strace record details the exemptions rely on", () => {
   const withCwd = (...lines: string[]) =>
-    parseTrace([root, ...lines].join("\n"), CODEX, REWRITES, new Map(), "/tmp/probe-x/cwd");
+    parseTrace(complete([root, ...lines]), CODEX, REWRITES, new Map(), "/tmp/probe-x/cwd");
 
   it("records each file operation in order, whether it succeeded and the path the kernel opened", () => {
     const trace = withCwd(
@@ -222,11 +235,7 @@ describe("strace record details the exemptions rely on", () => {
   });
 
   it("fails a relative file path whose directory is unknown, as it does for an exec", () => {
-    const trace = parseTrace(
-      [root, '11 open("notes.txt", O_WRONLY|O_CREAT, 0644) = 5</elsewhere/notes.txt>'].join("\n"),
-      CODEX,
-      REWRITES,
-    );
+    const trace = parseTrace(complete([root, '11 mkdir("notes", 0755) = 0']), CODEX, REWRITES);
     expect(trace.error).toContain("relative to an unknown directory");
   });
 
@@ -247,5 +256,134 @@ describe("strace record details the exemptions rely on", () => {
   it("counts io_uring setup, whose operations strace cannot see", () => {
     expect(withCwd("11 io_uring_setup(8, 0x7ffd1234) = 5").ioUring).toBe(1);
     expect(withCwd().ioUring).toBe(0);
+  });
+});
+
+describe("strace record integrity", () => {
+  const trace = (...lines: string[]) =>
+    parseTrace(lines.join("\n"), CODEX, REWRITES, new Map(), "/tmp/probe-x/cwd");
+  const child = '11 execve("/bin/true", ["/bin/true"], 0x2 /* 1 vars */) = 0';
+
+  it("fails a line outside strace's grammar, such as a truncated one", () => {
+    // Codex's reproduction: a valid root exec followed by the truncated text "11 exe".
+    expect(parseTrace(complete([root, "11 exe"]), CODEX, REWRITES).error).toContain(
+      "outside strace's grammar",
+    );
+  });
+
+  it("fails a trace that ends before every traced process's end line", () => {
+    expect(trace(root, child, "10 +++ exited with 0 +++").error).toContain(
+      "ends before process 11 exited",
+    );
+    expect(trace(root, child, "11 +++ exited with 0 +++").error).toContain(
+      "ends before process 10 exited",
+    );
+    // A reused pid needs its own end line.
+    expect(
+      trace(root, child, "11 +++ exited with 0 +++", child, "10 +++ exited with 0 +++").error,
+    ).toContain("ends before process 11 exited");
+  });
+
+  it("accepts strace's end, signal and superseded lines", () => {
+    expect(
+      trace(
+        root,
+        child,
+        "10 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=11, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---",
+        "11 +++ killed by SIGTERM +++",
+        "10 +++ killed by SIGKILL (core dumped) +++",
+      ).error,
+    ).toBeNull();
+    // Thread 12 execs; strace moves the leader's pid onto it.
+    const replaced = trace(
+      root,
+      '12 execve("/bin/true", ["/bin/true"], 0x2 /* 1 vars */ <unfinished ...>',
+      "10 +++ superseded by execve in pid 12 +++",
+      "10 <... execve resumed>) = 0",
+      "10 +++ exited with 0 +++",
+    );
+    expect(replaced.error).toBeNull();
+    expect(replaced.execs).toEqual([JSON.stringify(["/bin/true", "/bin/true"])]);
+    expect(
+      trace(root, "10 --- stopped by SIGSTOP ---", "10 +++ exited with 0 +++").error,
+    ).toContain("outside strace's grammar");
+  });
+
+  it("counts a call unfinished when its process ended as one it died in", () => {
+    const died = trace(
+      root,
+      '11 unlink("/srv/op/shared" <unfinished ...>',
+      '12 execve("/bin/true", ["/bin/true"], 0x2 /* 1 vars */ <unfinished ...>',
+      "11 +++ killed by SIGKILL +++",
+      "12 +++ killed by SIGKILL +++",
+      "10 +++ exited with 0 +++",
+    );
+    expect(died.error).toBeNull();
+    expect(died.fileLog).toEqual([{ op: "unlink", paths: ["/srv/op/shared"], ok: false }]);
+    expect(died.execs).toEqual([JSON.stringify(["/bin/true", "/bin/true"])]);
+    expect(
+      trace(root, '11 unlink("/srv/op/shared" <unfinished ...>', "10 +++ exited with 0 +++").error,
+    ).toContain("ends before process 11 exited");
+  });
+
+  it("allows strace's undecoded ??? call only as one the thread died in", () => {
+    const lines = (...tail: string[]) =>
+      trace(root, "11 ???( <unfinished ...>", ...tail, "10 +++ exited with 0 +++").error;
+    expect(lines("11 <... ??? resumed>) = ?", "11 +++ exited with 0 +++")).toBeNull();
+    expect(lines("11 +++ exited with 0 +++")).toBeNull();
+    expect(lines("11 <... ??? resumed>) = 0", "11 +++ exited with 0 +++")).toContain(
+      "outside strace's grammar",
+    );
+    expect(
+      trace(
+        root,
+        "11 <... ??? resumed>) = ?",
+        "11 +++ exited with 0 +++",
+        "10 +++ exited with 0 +++",
+      ).error,
+    ).toContain("??? resumed without its start");
+    expect(trace(root, "11 ???(3, 4) = 0", "10 +++ exited with 0 +++").error).toContain(
+      "outside strace's grammar",
+    );
+  });
+});
+
+describe("strace paths the kernel resolved", () => {
+  const withCwd = (...lines: string[]) =>
+    parseTrace(complete([root, ...lines]), CODEX, REWRITES, new Map(), "/tmp/probe-x/cwd");
+
+  it("compares an open on the path the kernel opened, not the lexical one", () => {
+    // Codex's reproduction: chdir("cache/..") through a symlink moves the write elsewhere.
+    const trace = withCwd(
+      '10 symlink("/var/lib/codex/cache", "/tmp/probe-x/cwd/cache") = 0',
+      '10 chdir("cache/..") = 0',
+      '10 open("notes.txt", O_WRONLY|O_CREAT, 0644) = 5</var/lib/codex/notes.txt>',
+    );
+    expect(trace.error).toBeNull();
+    expect(trace.files).toContain(JSON.stringify(["write", "/var/lib/codex/notes.txt"]));
+    expect(trace.files).not.toContain(JSON.stringify(["write", "<probe>/cwd/notes.txt"]));
+  });
+
+  it("fails a path the kernel did not resolve after a chdir through ..", () => {
+    expect(withCwd('10 chdir("cache/..") = 0', '10 mkdir("x", 0755) = 0').error).toContain(
+      "relative to an unknown directory",
+    );
+  });
+
+  it("fails a path with .. that the kernel did not resolve", () => {
+    // Codex's reproduction: unlink("<home>/../../shared-cache") has no descriptor to resolve.
+    expect(withCwd('10 unlink("/tmp/probe-x/chome/../../shared-cache") = 0').error).toContain(
+      "contains ..",
+    );
+  });
+
+  it("learns the working directory the kernel reports for AT_FDCWD", () => {
+    const trace = withCwd(
+      '10 chdir("cache/..") = 0',
+      '10 openat(AT_FDCWD</var/lib/codex>, "a", O_WRONLY|O_CREAT, 0644) = 5</var/lib/codex/a>',
+      '10 mkdir("b", 0755) = 0',
+    );
+    expect(trace.error).toBeNull();
+    expect(trace.files).toContain(JSON.stringify(["mkdir", "/var/lib/codex/b"]));
   });
 });

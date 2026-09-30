@@ -23,6 +23,7 @@ const denied = (): never => {
 function fakeProc(overrides: Partial<ObserverIo> = {}, state = "S"): ObserverIo {
   const files: Record<string, string> = {
     "/p/100/stat": `100 (codex) ${state} 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 555 0`,
+    "/p/100/task/100/stat": `100 (codex) ${state} 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 555 0`,
     "/p/net/unix": "Num RefCount Protocol Flags Type St Inode Path\n",
     "/p/net/tcp": "  sl local rem st\n",
     "/p/net/udp": "  sl local rem st\n",
@@ -68,7 +69,14 @@ describe("process observer tables", () => {
 describe("process observer read failures", () => {
   it("fails when the app-server's descriptors cannot be read", async () => {
     const observation = await observe(
-      fakeProc({ readdir: (dir) => (dir === "/p/100/fd" ? denied() : ["100", "net"]) }),
+      fakeProc({
+        readdir: (dir) =>
+          /^\/p\/100\/(?:task\/\d+\/)?fd$/.test(dir)
+            ? denied()
+            : dir === "/p/100/task"
+              ? ["100"]
+              : ["100", "net"],
+      }),
     );
     expect(observation.ok).toBe(false);
     expect(observation.error).toContain("descriptors are unreadable");
@@ -111,6 +119,59 @@ describe("process observer read failures", () => {
     expect(observation.ok).toBe(true);
   });
 
+  describe("an app-server whose process-level descriptors refuse", () => {
+    // Thread 100 is the leader; 101 is a second thread. `flags` 4 is PF_EXITING.
+    const stat = (pid: number, state: string, flags = 0) =>
+      `${pid} (codex) ${state} 1 0 0 0 0 ${flags} 0 0 0 0 0 0 0 0 0 0 0 0 555 0`;
+    const threads = (tasks: Record<string, { state: string; flags?: number; fd?: boolean }>) =>
+      fakeProc(
+        {
+          readFile: (file) => {
+            const tid = /^\/p\/100\/task\/(\d+)\/stat$/.exec(file)?.[1];
+            if (tid !== undefined && tasks[tid])
+              return stat(Number(tid), tasks[tid].state, tasks[tid].flags);
+            if (file === "/p/net/tcp")
+              return (
+                "  sl local rem st\n" +
+                "   0: 0100007F:9C40 0100007F:1F90 01 00000000:00000000 00:00000000 00000000  1000        0 42 1\n"
+              );
+            return fakeProc().readFile(file);
+          },
+          readdir: (dir) => {
+            if (dir === "/p/100/fd") return denied();
+            if (dir === "/p/100/task") return Object.keys(tasks);
+            const tid = /^\/p\/100\/task\/(\d+)\/fd$/.exec(dir)?.[1];
+            if (tid !== undefined) return tasks[tid]?.fd ? ["3"] : denied();
+            return fakeProc().readdir(dir);
+          },
+          readlink: (file) => (file.endsWith("/fd/3") ? "socket:[42]" : "/usr/bin/codex"),
+        },
+        tasks["100"]?.state ?? "S",
+      );
+
+    it("reads a zombie leader's sockets through its running thread", async () => {
+      const observation = await observe(
+        threads({ "100": { state: "Z" }, "101": { state: "S", fd: true } }),
+      );
+      expect(observation.error).toBeNull();
+      expect(observation.tcpRemotes).toEqual(["127.0.0.1:8080"]);
+    });
+
+    it("treats threads that have all begun to exit as holding nothing", async () => {
+      const observation = await observe(
+        threads({ "100": { state: "R", flags: 4 }, "101": { state: "Z" } }),
+      );
+      expect(observation.error).toBeNull();
+    });
+
+    it("fails when a thread refuses without exiting", async () => {
+      const observation = await observe(
+        threads({ "100": { state: "R", flags: 4 }, "101": { state: "S" } }),
+      );
+      expect(observation.error).toContain("descriptors are unreadable");
+    });
+  });
+
   it("stops following the root pid once another process reuses it", async () => {
     let reused = false;
     const io = fakeProc({
@@ -131,6 +192,29 @@ describe("process observer read failures", () => {
     const observation = await observer.stop();
     expect(observation.ok).toBe(true);
     expect(observation.root?.comm).toBe("codex");
+  });
+});
+
+describe("process observer malformed input", () => {
+  const withFile = (file: string, text: string) =>
+    fakeProc({
+      readFile: (name) => (name === file ? text : fakeProc().readFile(name)),
+    });
+
+  it("fails on a network table without its header or with a short row", async () => {
+    expect((await observe(withFile("/p/net/unix", ""))).ok).toBe(false);
+    expect((await observe(withFile("/p/net/tcp", "  sl local rem st\n   0: 0100007F\n"))).ok).toBe(
+      false,
+    );
+  });
+
+  it("fails on empty ss output when a socket needs its peer", async () => {
+    const observation = await observe(fakeProc({ unixSocketTable: () => "" }));
+    expect(observation.ok).toBe(false);
+  });
+
+  it("fails on an empty stat for the root process", async () => {
+    expect((await observe(withFile("/p/100/stat", ""))).ok).toBe(false);
   });
 });
 

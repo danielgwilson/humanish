@@ -67,10 +67,11 @@ qualifies Linux only. The runs used `scripts/codex-qualify.mjs` at commit cd400b
 lands separately from the admission change. With it,
 `pnpm codex:qualify 0.159.2 --baseline 0.154.0 --live` passed all 53 checks. Evidence is
 retained locally in `.humanish/codex-qualify/0.159.2-r4/evidence.json`. As for 0.157.1, this
-is drift evidence against a vendor release, not proof against an adversarial binary, and the
-harness gaps a later review found are fixed in the qualifier's own change. With the fixes, the
-same command passed all 56 of its checks (evidence
-`.humanish/codex-qualify/0.159.2-r5/evidence.json`).
+is drift evidence against a vendor release, not proof against an adversarial binary. The
+harness gaps two later reviews found are fixed in the qualifier's own change; the 0.157.1
+receipt lists them, with the missing strace end lines the stricter trace check exposed. With
+the fixes, the same command passed all 56 of its checks (evidence
+`.humanish/codex-qualify/0.159.2-r6/evidence.json`).
 
 - Participant isolate: 0.159.2 exposes only `clock__curr_time` and `humanish_ui`; the clock
   call succeeds and fetch is refused. 0.154.0's `skills__list` and `skills__read` failed
@@ -85,10 +86,10 @@ same command passed all 56 of its checks (evidence
 - Live: each of the eight launches matched 0.154.0's same launch for execs, sockets and file
   writes. TCP went only to `<chatgpt.com>:443`, UDP only to the resolver and to
   `<chatgpt.com>` for source address selection, and nothing connected to the daemon socket.
-  The analyst turn used 2,200 input and 22 output tokens with complete usage; the analyst,
-  aborted at its first delta, returned `cancelled` 593 ms later; the participant was
-  cancelled with one tool call and no later one; each session's private work directory was
-  removed.
+  In the r6 run the analyst turn used 2,201 input and 22 output tokens with complete usage;
+  the analyst, aborted at its first delta, returned `cancelled` 1,278 ms later; the
+  participant was cancelled with one tool call and no later one; each session's private work
+  directory was removed.
 
 An earlier run of the first fixed script failed its temp-directory check, which then counted
 every `humanish-codex-analysis-*` entry in the shared temporary directory: 4 before, 5

@@ -4,7 +4,8 @@
 // environment. It resolves each observed process's sockets, including the listener path behind a
 // connected unix client (through `ss`), and after stop reports anything still alive. The strace log
 // is the lifecycle record; sampling adds sockets held open and survivors. A read the sampler needs
-// that fails for any reason other than the process having exited fails the observation.
+// that fails for any reason other than the process or thread having exited, or begun to exit,
+// fails the observation.
 import { execFileSync } from "node:child_process";
 import { accessSync, constants, readFileSync, readdirSync, readlinkSync } from "node:fs";
 import path from "node:path";
@@ -49,6 +50,8 @@ interface Stat {
   start: string;
   /** The state letter; Z and X have exited and hold no descriptors. */
   state: string;
+  /** PF_EXITING: the task has begun to exit. */
+  exiting: boolean;
 }
 
 function onPath(name: string): string {
@@ -81,19 +84,32 @@ function gone<T>(read: () => T, fallback: T, also: readonly string[] = []): T {
   }
 }
 
-function readStat(io: ObserverIo, proc: string, pid: number): Stat | undefined {
-  const text = gone(() => io.readFile(path.join(proc, String(pid), "stat")), undefined);
+const PF_EXITING = 0x4;
+function readStatFile(io: ObserverIo, file: string, pid: number): Stat | undefined {
+  const text = gone(() => io.readFile(file), undefined);
   if (text === undefined) return undefined;
   const open = text.indexOf("("),
     close = text.lastIndexOf(")");
   const fields = text.slice(close + 2).split(" ");
+  // A stat that does not parse is a failed read, not an absent process.
+  if (
+    open < 0 ||
+    close < open ||
+    fields.length < 20 ||
+    !/^\d+$/.test(fields[1] ?? "") ||
+    !/^\d+$/.test(fields[6] ?? "")
+  )
+    throw new Error(`malformed stat for pid ${pid}`);
   return {
     comm: text.slice(open + 1, close),
     state: fields[0] ?? "",
     ppid: Number(fields[1]),
     start: fields[19] ?? "",
+    exiting: (Number(fields[6]) & PF_EXITING) !== 0,
   };
 }
+const readStat = (io: ObserverIo, proc: string, pid: number): Stat | undefined =>
+  readStatFile(io, path.join(proc, String(pid), "stat"), pid);
 const pids = (io: ObserverIo, proc: string): number[] =>
   io
     .readdir(proc)
@@ -131,41 +147,78 @@ function commandLine(io: ObserverIo, proc: string, pid: number): string {
   }
 }
 const DENIED = Symbol("denied");
+const refused = (error: unknown): boolean => ["EACCES", "EPERM"].includes(code(error) ?? "");
+function fdInodes(io: ObserverIo, fdDir: string): string[] {
+  return gone(() => io.readdir(fdDir), []).flatMap((fd) => {
+    const target = gone(() => io.readlink(path.join(fdDir, fd)), "");
+    const match = /^socket:\[(\d+)\]$/.exec(target);
+    return match ? [match[1]!] : [];
+  });
+}
 /**
  * Socket inodes a process holds, or DENIED when the kernel refuses its descriptors. A process that
  * dropped dumpability (bubblewrap's sandboxed child does) refuses them even to its own user.
  */
 function socketInodes(io: ObserverIo, proc: string, pid: number): string[] | typeof DENIED {
-  const fdDir = path.join(proc, String(pid), "fd");
   try {
-    return gone(() => io.readdir(fdDir), []).flatMap((fd) => {
-      const target = gone(() => io.readlink(path.join(fdDir, fd)), "");
-      const match = /^socket:\[(\d+)\]$/.exec(target);
-      return match ? [match[1]!] : [];
-    });
+    return fdInodes(io, path.join(proc, String(pid), "fd"));
   } catch (error) {
-    if (!["EACCES", "EPERM"].includes(code(error) ?? "")) throw error;
-    // An exited process not yet reaped (a zombie) also refuses; it holds no descriptors.
+    if (!refused(error)) throw error;
+    return threadInodes(io, proc, pid);
+  }
+}
+/**
+ * A task that has begun to exit drops its memory map, and the kernel then hands its /proc entries
+ * to root; a leader that exited alone is a zombie while its threads run. So when the process's
+ * descriptors refuse, each thread's are read. A refusing thread counts as holding nothing only if
+ * it has begun to exit (PF_EXITING) or has exited; any other refusal is DENIED.
+ */
+function threadInodes(io: ObserverIo, proc: string, pid: number): string[] | typeof DENIED {
+  const dir = path.join(proc, String(pid), "task");
+  const tasks = gone(() => io.readdir(dir), []);
+  if (tasks.length === 0) {
     const state = readStat(io, proc, pid)?.state;
     return state === undefined || state === "Z" || state === "X" ? [] : DENIED;
   }
+  const inodes: string[] = [];
+  for (const tid of tasks) {
+    try {
+      inodes.push(...fdInodes(io, path.join(dir, tid, "fd")));
+    } catch (error) {
+      if (!refused(error)) throw error;
+      const stat = readStatFile(io, path.join(dir, tid, "stat"), pid);
+      if (stat !== undefined && !stat.exiting && stat.state !== "Z" && stat.state !== "X")
+        return DENIED;
+    }
+  }
+  return inodes;
 }
 
+/** The whitespace-split rows of a table whose first line is its header; no header throws. */
+function rows(text: string, header: RegExp, name: string): string[][] {
+  const [first, ...rest] = text.split("\n");
+  if (!header.test(first?.trim() ?? "")) throw new Error(`${name} has no header`);
+  return rest.filter((line) => line.trim() !== "").map((line) => line.trim().split(/\s+/));
+}
+const malformed = (name: string): never => {
+  throw new Error(`${name} has a row that does not parse`);
+};
 /** Unix socket inode to bound path, from /proc/net/unix (unnamed sockets have no path). */
 export function parseUnixTable(text: string): Map<string, string> {
   const table = new Map<string, string>();
-  for (const line of text.split("\n").slice(1)) {
-    const fields = line.trim().split(/\s+/);
-    if (fields.length >= 8 && fields[7]) table.set(fields[6]!, fields[7]);
+  for (const fields of rows(text, /^Num\b/, "/proc/net/unix")) {
+    if (fields.length < 7 || !/^\d+$/.test(fields[6]!)) malformed("/proc/net/unix");
+    if (fields[7]) table.set(fields[6]!, fields[7]);
   }
   return table;
 }
 /** Unix socket inode to its own path (or `*`) and its peer's inode, from `ss -xan`. */
 export function parseUnixPeers(text: string): Map<string, { path: string; peer: string }> {
   const table = new Map<string, { path: string; peer: string }>();
-  for (const line of text.split("\n").slice(1)) {
-    const fields = line.trim().split(/\s+/);
-    if (fields.length >= 8) table.set(fields[5]!, { path: fields[4]!, peer: fields[7]! });
+  for (const fields of rows(text, /^Netid\b/, "ss -xan")) {
+    if (fields.length < 8 || !/^\d+$/.test(fields[5]!) || !/^(\d+|\*)$/.test(fields[7]!))
+      malformed("ss -xan");
+    table.set(fields[5]!, { path: fields[4]!, peer: fields[7]! });
   }
   return table;
 }
@@ -178,9 +231,16 @@ function ipv4(hex: string): string {
  */
 export function parseInetTable(text: string, protocol: "tcp" | "udp"): Map<string, string> {
   const table = new Map<string, string>();
-  for (const line of text.split("\n").slice(1)) {
-    const fields = line.trim().split(/\s+/);
-    if (fields.length < 10 || (protocol === "tcp" && fields[3] === "0A")) continue;
+  const hexAddress = /^[0-9A-F]+:[0-9A-F]{4}$/;
+  for (const fields of rows(text, /^sl\b/, `/proc/net/${protocol}`)) {
+    if (
+      fields.length < 10 ||
+      !hexAddress.test(fields[1]!) ||
+      !hexAddress.test(fields[2]!) ||
+      !/^\d+$/.test(fields[9]!)
+    )
+      malformed(`/proc/net/${protocol}`);
+    if (protocol === "tcp" && fields[3] === "0A") continue;
     const [address, port] = fields[2]!.split(":");
     const host =
       address!.length === 8
@@ -223,6 +283,11 @@ export function observeProcesses(options: {
     optional
       ? gone(() => io.readFile(path.join(proc, "net", name)), "")
       : io.readFile(path.join(proc, "net", name));
+  // A host without IPv6 has no tcp6/udp6 table; one that exists must parse.
+  const optionalTable = (name: string, protocol: "tcp" | "udp"): Map<string, string> => {
+    const text = table(name, true);
+    return text === "" ? new Map() : parseInetTable(text, protocol);
+  };
   const sample = (): void => {
     if (error !== null) return;
     try {
@@ -282,11 +347,11 @@ export function observeProcesses(options: {
         // A host without IPv6 has no tcp6/udp6 table and no IPv6 sockets to miss.
         const tcp = new Map([
           ...parseInetTable(table("tcp"), "tcp"),
-          ...parseInetTable(table("tcp6", true), "tcp"),
+          ...optionalTable("tcp6", "tcp"),
         ]);
         const udp = new Map([
           ...parseInetTable(table("udp"), "udp"),
-          ...parseInetTable(table("udp6", true), "udp"),
+          ...optionalTable("udp6", "udp"),
         ]);
         for (const inode of inodes) {
           if (unix.has(inode)) unixSockets.add(unix.get(inode)!);

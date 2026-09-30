@@ -96,6 +96,7 @@ describe("codex:qualify file checks", () => {
         [
           fileEvent("write", ["<codex-home>/logs_2.sqlite-journal"]),
           fileEvent("unlink", ["<codex-home>/queue_1.sqlite-shm"]),
+          fileEvent("write", ["<codex-home>/tmp/arg0/codex-arg0<tmp>/.lock"]),
           fileEvent("unlink", ["<codex-home>/tmp/arg0/codex-arg0<tmp>/.lock"]),
           fileEvent("unlink", ["<codex-home>/config.toml"]),
           fileEvent("write", ["<codex-home>/unrelated-wal"]),
@@ -106,6 +107,7 @@ describe("codex:qualify file checks", () => {
     ).toEqual([
       event("unlink", "<codex-home>/config.toml"),
       event("unlink", "<operator-codex-home>/auth.json"),
+      event("write", "<codex-home>/tmp/arg0/codex-arg0<tmp>/.lock"),
       event("write", "<codex-home>/unrelated-wal"),
     ]);
   });
@@ -278,9 +280,9 @@ describe("codex:qualify exemptions an honest release or the harness could slip t
     expect(
       comparedFileEvents([ev("write", JOURNAL, true, JOURNAL), ev("unlink", JOURNAL)], []),
     ).toEqual([]);
-    // Opened through a symlink: the kernel opened another file.
+    // Opened through a symlink: the kernel opened another file, and that path is compared.
     expect(comparedFileEvents([ev("write", JOURNAL, true, "/srv/op/notes.txt")], [])).toEqual([
-      event("write", JOURNAL),
+      event("write", "/srv/op/notes.txt"),
     ]);
   });
 
@@ -299,8 +301,12 @@ describe("codex:qualify exemptions an honest release or the harness could slip t
 
   it("compares a failed removal of the run's own file", () => {
     const own = "<codex-home>/tmp/arg0/codex-arg0<tmp>/.lock";
-    expect(comparedFileEvents([ev("unlink", own)], [])).toEqual([]);
-    expect(comparedFileEvents([ev("unlink", own, false)], [])).toEqual([event("unlink", own)]);
+    const made = ev("write", own, true, own);
+    expect(comparedFileEvents([made, ev("unlink", own)], [])).toEqual([event("write", own)]);
+    expect(comparedFileEvents([made, ev("unlink", own, false)], [])).toEqual([
+      event("unlink", own),
+      event("write", own),
+    ]);
   });
 });
 
@@ -370,5 +376,45 @@ describe("codex:qualify live sampler and io_uring", () => {
     expect(failed(networkChecks(probeSet(), offline))).toContain(
       "no traced process set up io_uring",
     );
+  });
+});
+
+describe("codex:qualify fourth-review fixes", () => {
+  it("never exempts a removal that climbs out of the private directory with ..", () => {
+    // Codex's reproduction: <codex-home>/../../shared-cache was exempt as the run's own file.
+    const escape = "<codex-home>/../../shared-cache";
+    expect(comparedFileEvents([fileEvent("unlink", [escape])], [])).toEqual([
+      event("unlink", escape),
+    ]);
+  });
+
+  it("exempts a private removal only when the run created that path earlier", () => {
+    const stale = "<codex-home>/stale.json";
+    expect(comparedFileEvents([fileEvent("unlink", [stale])], [])).toEqual([
+      event("unlink", stale),
+    ]);
+    expect(
+      comparedFileEvents([fileEvent("write", [stale]), fileEvent("unlink", [stale])], []),
+    ).toEqual([event("write", stale)]);
+  });
+
+  it("compares a write on the path the kernel opened", () => {
+    const lexical = "<probe>/cwd/notes.txt";
+    const baseline = [fileEvent("write", [lexical])];
+    const candidate = [fileEvent("write", [lexical], "/var/lib/codex/notes.txt")];
+    expect(comparedFileEvents(candidate, [])).toEqual([event("write", "/var/lib/codex/notes.txt")]);
+    expect(comparedFileEvents(baseline, [])).not.toEqual(comparedFileEvents(candidate, []));
+  });
+
+  it("fails the preparatory commands when the baseline set up io_uring", () => {
+    const command = (ioUring: number) => ({ ...traced([], { ioUring }), preexisting: [] });
+    expect(
+      failed(
+        prepChecks(
+          { "features list (analyst)": command(1) },
+          { "features list (analyst)": command(0) },
+        ),
+      ),
+    ).toEqual(["preparatory commands' execs, sockets and file writes stay within the baseline's"]);
   });
 });

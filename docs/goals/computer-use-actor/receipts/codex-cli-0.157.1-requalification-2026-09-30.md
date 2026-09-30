@@ -84,9 +84,14 @@ passed all 53 checks. Evidence is retained locally in
 This is drift evidence: 0.157.1 did nothing in these scenarios that 0.154.0 did not. A third
 review of that qualifier found exemptions a release could hide behind (a failed unlink
 counted as a removal, sidecar and schema-output paths matched by prefix, unsampled live
-remotes). Those are harness gaps, fixed in the qualifier's own change, not behavior observed
-in 0.157.1. With the fixes, `pnpm codex:qualify 0.157.1 --baseline 0.154.0 --live` passed all
-56 of its checks (evidence `.humanish/codex-qualify/0.157.1-r5/evidence.json`). The qualifier cannot show that a binary built to evade it is safe; see the
+remotes). A fourth found more: a trace line outside strace's grammar was skipped, so a
+cut-short trace passed; the private-removal exemption accepted a `..` path; a `chdir` through
+a symlink compared a write on the wrong path; malformed sampler rows read as empty; and the
+preparatory check ignored the baseline's io_uring. Those are harness gaps, fixed in the
+qualifier's own change, not behavior observed in 0.157.1. With the fixes,
+`pnpm codex:qualify 0.157.1 --baseline 0.154.0 --live` passed all 56 of its checks (evidence
+`.humanish/codex-qualify/0.157.1-r6/evidence.json`). The qualifier cannot show that a binary
+built to evade it is safe; see the
 [admission rules](../../../architecture/restricted-codex-analysis.md#admitting-a-codex-cli-release).
 
 - Participant isolate, from its own `Object.keys(tools)` and each call's result: 0.154.0
@@ -118,17 +123,27 @@ in 0.157.1. With the fixes, `pnpm codex:qualify 0.157.1 --baseline 0.154.0 --liv
   same exec set, socket set and file writes as 0.154.0's same launch. TCP went only to
   `<chatgpt.com>:443`, UDP only to the resolver's port 53 and to `<chatgpt.com>` for source
   address selection, and nothing connected to the daemon socket. The four `--version` checks
-  executed nothing. The analyst turn used 2,200 input and 22 output tokens with complete
-  usage; the analyst, aborted at its first delta, returned `cancelled` 528 ms later; the
-  participant was cancelled with one tool call and no later one; each session's private work
-  directory was removed. The operator-mode participant created and removed a SQLite
-  temporary file under `/var/tmp`, which the exclusive-create exemption covers.
+  executed nothing. In the r6 run the analyst turn used 2,201 input and 22 output tokens with
+  complete usage; the analyst, aborted at its first delta, returned `cancelled` 1,638 ms
+  later; the participant was cancelled with one tool call and no later one; each session's
+  private work directory was removed. The operator-mode participant created and removed a
+  SQLite temporary file under `/var/tmp`, which the exclusive-create exemption covers.
 
 The sampler now treats two cases the earlier script got wrong. A zombie refuses
 `/proc/<pid>/fd` with `EACCES` like a live non-dumpable process, so every short-lived child
 had briefly looked unreadable; a zombie holds no descriptors and now counts as exited. After
 a live launch exited, its root pid could be reused by another process, which the sampler then
 followed; it now stops at a changed start time.
+
+The fourth review's stricter trace check showed that earlier runs could not have detected a
+cut-short 0.154.0 trace. strace prints a process's `+++ killed by SIG... +++` line only for
+signals in its `-e signal=` set, and the script passed `-e signal=none`. 0.154.0 has no SIGTERM
+handler, so the probe's SIGTERM ended it with no end line, and the first run with the stricter
+check failed all five 0.154.0 probes on that. The script now prints signals, and every traced
+process in the r6 run reached its end line. The sampler also briefly refused an exiting
+app-server's descriptors: once a task drops its memory map, the kernel gives its `/proc`
+entries to root before the process is a zombie. It now reads each thread's descriptors and
+counts a refusing thread as holding nothing only when its `stat` flags show it exiting.
 
 Local validation of the per-host rework passed `pnpm release:check` (3,815 core and
 87 TUI tests), 384 Observer tests and the four Observer browser proofs. Tests cover

@@ -184,7 +184,13 @@ at 0.154.0 until an equivalent macOS tracer exists.
    generation and feature listing. The trace follows the process and every descendant,
    detached ones included, and records execs, socket operations (`connect`, `bind`, `sendto`,
    `sendmsg`, `sendmmsg`, `socketpair`), write-intent file operations with their outcome, the
-   working directory of each process (`chdir`, `fchdir`, `clone`) and `io_uring_setup`. The
+   working directory of each process (`chdir`, `fchdir`, `clone`) and `io_uring_setup`. A
+   trace line outside strace's syscall grammar fails the trace. The only other lines allowed
+   are strace's own: a process's exit or kill line, a signal delivery, a thread's execve
+   superseding its thread-group leader, and the `???` start and `= ?` resumption strace prints
+   for a call it could not decode in a thread being killed. Every traced process must reach
+   its exit or kill line, so a trace cut short fails. A call still unfinished when its process
+   ended counts as one it died in: an exec counts as run and a file operation as attempted. The
    checks:
    - the generated app-server schema: thread item, raw response item and server request types
      must be unchanged; new notifications and changed launcher-facing files are listed for
@@ -225,6 +231,9 @@ at 0.154.0 until an equivalent macOS tracer exists.
      removed and retyped entries and traced writes must stay within the baseline's same
      scenario; size changes are listed for review. A relative path resolves against the
      process's tracked working directory, and one whose directory is unknown fails the trace.
+     A successful open compares on the path the kernel reports through `-yy`. A `chdir`
+     through `..` leaves the directory unknown until the kernel reports it (`AT_FDCWD<path>`),
+     and a path containing `..` without a kernel-reported path fails the trace.
      Skipped events are judged one occurrence at a time, in order and on their outcome:
      - an open that the kernel resolved to the `-journal`, `-wal` or `-shm` file of a known
        database (`goals_1`, `logs_2`, `memories_1`, `queue_1`, `state_5`) it named, or an
@@ -234,16 +243,23 @@ at 0.154.0 until an equivalent macOS tracer exists.
        (`O_CREAT|O_EXCL`, so it did not exist before) and whose last was a successful unlink,
        such as SQLite's `etilqs_` temporary files. A failed unlink is not a removal, and a
        recreation after the unlink keeps the file;
-     - a successful removal of a path the run created inside its own private directory.
+     - a successful unlink or rmdir, with no `..`, of a path inside the run's own private
+       directory that an earlier create, rename or link in the same trace made and that was
+       not there when the command started.
    - a `/proc` sampler, every 50 ms from spawn to close, over the app-server's descendant tree
      and any process carrying the probe's private `CODEX_HOME`. It records TCP and UDP
      remotes, bound unix paths and, through `ss`, the listener path behind each connected unix
      client. Nothing may outlive the app-server, TCP and UDP may reach only the loopback
      provider, and unix sockets must sit in the probe directory. Any read the sampler needs
      that fails for a reason other than the process having exited (including a zombie) fails
-     qualification, for the baseline as for the candidate. The one exception is a descendant that dropped dumpability, as
-     bubblewrap's sandboxed child does: the kernel refuses its descriptors, so it is listed,
-     and it must be one of the traced execs, whose sockets strace records.
+     qualification, for the baseline as for the candidate, and so does a `/proc` or `ss` table
+     without its header, a row that does not parse, or an empty or malformed `stat`. A task
+     that has begun to exit drops its memory map, and the kernel then gives its `/proc`
+     entries to root, so when a process's descriptors refuse, each thread's are read; a thread
+     that refuses counts as holding nothing only if its `stat` flags show it exiting
+     (`PF_EXITING`) or it has exited. The one exception is a descendant that dropped
+     dumpability, as bubblewrap's sandboxed child does: the kernel refuses its descriptors, so
+     it is listed, and it must be one of the traced execs, whose sockets strace records.
 
    Events compare exactly after rewrites listed in the script and printed with every run, and
    nothing else. Literal paths: `<codex-home>` for a launch's private `CODEX_HOME`,
