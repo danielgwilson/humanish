@@ -434,6 +434,29 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     expect(verified.ok).toBe(true); // the bundle still verifies — the seam stayed fail-closed
   });
 
+  it("drops an adapter candidate whose idempotency_key is blank", async () => {
+    const hooks = passingHooks({
+      deriveFeedback: (ctx) => {
+        const [candidate] = exampleAdapterFeedback(ctx);
+        return candidate ? [{ ...candidate, idempotency_key: "  " }] : [];
+      },
+    });
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      hooks,
+    });
+    const bundle = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
+    ) as RunBundle;
+
+    expect(bundle.feedbackCandidates).toHaveLength(0);
+    expect(result.warnings.some((warning) => warning.includes("feedback-candidate.v1"))).toBe(true);
+    expect((await verifyRun(cwd, result.runId)).ok).toBe(true);
+  });
+
   it("drops an adapter candidate with an escaping evidence path and leaves outside files unchanged", async () => {
     const outsideSentinel = path.join(cwd, "outside-sentinel.txt");
     const original = "outside must stay unchanged\n";

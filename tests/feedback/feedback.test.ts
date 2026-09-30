@@ -26,6 +26,7 @@ import {
 import { FEEDBACK_SCHEMA } from "../../src/feedback/draft.js";
 import { createProgram } from "../../src/cli/program.js";
 import { runDryRun } from "../../src/run/dry-run.js";
+import { verifyRun } from "../../src/verify/verify.js";
 
 async function withFixtureCopy<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "humanish-feedback-fixture-"));
@@ -368,6 +369,46 @@ describe("feedback issue drafts", () => {
       expect(rendered.ok).toBe(true);
       expect(rendered.issueMarkdown).toContain("source_candidate_id: setup-quality-oss-01");
       expect(rendered.issueMarkdown).toContain("Substrate: e2b-desktop");
+    });
+  });
+
+  it("refuses a run whose feedback candidate has an empty idempotency_key", async () => {
+    await withFixtureCopy(async (cwd) => {
+      await runDryRun({ cwd, dryRun: true, runId: "feedback-blank-key" });
+      const runPath = path.join(cwd, ".humanish/runs/feedback-blank-key/run.json");
+      const bundle = JSON.parse(await readFile(runPath, "utf8")) as {
+        feedbackCandidates: unknown[];
+      };
+      bundle.feedbackCandidates = [
+        {
+          schema: "humanish.feedback-candidate.v1",
+          id: "blank-key",
+          run_id: "feedback-blank-key",
+          adapter_id: "example-adapter",
+          scenario_id: "example-scenario",
+          persona_id: "example-persona",
+          actor: "codex-tui",
+          substrate: "e2b-desktop",
+          failure_owner: "target-app",
+          summary: "Example friction",
+          expected: "The save completes.",
+          actual: "The save stalls.",
+          evidence: [{ path: "review.md", kind: "review", note: "Review." }],
+          redaction: { status: "passed", notes: "Synthetic fixture candidate." },
+          idempotency_key: "humanish:feedback-blank-key:example",
+          proposed_next_state: "target-app-setup",
+          acceptance_proof: ["humanish verify --run feedback-blank-key --json"],
+        },
+      ];
+      await writeFile(runPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      // The same candidate with a real key verifies, so the blank key is the only defect below.
+      expect((await verifyRun(cwd, "feedback-blank-key")).ok).toBe(true);
+
+      (bundle.feedbackCandidates[0] as { idempotency_key: string }).idempotency_key = "";
+      await writeFile(runPath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      expect((await verifyRun(cwd, "feedback-blank-key")).ok).toBe(false);
+      expect((await draftFeedback(cwd, "feedback-blank-key")).ok).toBe(false);
+      expect((await verifyFeedback(cwd, "feedback-blank-key")).ok).toBe(false);
     });
   });
 

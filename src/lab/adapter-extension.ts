@@ -7,6 +7,7 @@ import type {
   RunFeedbackCandidate,
   RunScorerProvenance,
 } from "../run/bundle.js";
+import { isFeedbackIdempotencyKey } from "../run/feedback-shape.js";
 
 type BrowserAdapterBackend = "cua" | "shared-world" | "concurrent-shared-world";
 
@@ -267,7 +268,7 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
     !isRecord(candidate.redaction) ||
     candidate.redaction.status !== "passed" ||
     typeof candidate.redaction.notes !== "string" ||
-    typeof candidate.idempotency_key !== "string" ||
+    !isFeedbackIdempotencyKey(candidate.idempotency_key) ||
     !isFeedbackNextState(candidate.proposed_next_state) ||
     !Array.isArray(candidate.acceptance_proof) ||
     !candidate.acceptance_proof.every((item) => typeof item === "string")

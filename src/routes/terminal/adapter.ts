@@ -6,6 +6,7 @@ import {
   type RunFeedbackCandidate,
   type RunScorerProvenance,
 } from "../../run/bundle.js";
+import { isFeedbackIdempotencyKey } from "../../run/feedback-shape.js";
 import {
   applyAdapterScoreFailureToReview,
   frozenBundleView,
@@ -200,7 +201,7 @@ function isAdapterFeedbackCandidateShape(value: unknown): value is RunFeedbackCa
     isAdapterRecord(value.redaction) &&
     value.redaction.status === "passed" &&
     typeof value.redaction.notes === "string" &&
-    typeof value.idempotency_key === "string" &&
+    isFeedbackIdempotencyKey(value.idempotency_key) &&
     isAdapterFeedbackNextState(value.proposed_next_state) &&
     Array.isArray(value.acceptance_proof) &&
     value.acceptance_proof.every((item) => typeof item === "string") &&
