@@ -219,10 +219,11 @@ persona?, device?, instruction?, target?, entry? }`. The parser expands it into
   (public-safe, since a template name is not a secret). Inert (warned) on every route
   that creates no desktop, incl. the in-process `local-app` cua route, so it is
   never silently ignored (invariant 6). Custom images need the
-  Desktop SDK's `xdotool` input support and `xclip` or `xsel` on `PATH` for
-  clipboard recovery when direct typing fails. If both clipboard utilities are
-  absent, recovery fails with `clipboard-utility-missing`; a dry-run does not
-  inspect the image's installed tools;
+  Desktop SDK's `xdotool` input support and the `C.UTF-8` locale: text with
+  non-ASCII characters, and ASCII text the SDK write fails to type, is typed
+  with `LC_ALL=C.UTF-8 xdotool type --file`. Without that locale such a type
+  action fails with `text-command`; a dry-run does not inspect the image's
+  installed tools;
 - `execution.desktop.browser` (e2b-desktop computer-use/fan-out routes, plus
   shared-world actor seats): optional browser family
   preference: `default`, `chrome`, `chromium`, or `firefox`. Absent/default

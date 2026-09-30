@@ -21,7 +21,7 @@ interface Call {
 // returns a caller-provided PNG buffer.
 function makeFakeDesktop(
   screenshotBytes: Uint8Array | Buffer,
-  opts: { sync?: boolean; writeError?: Error; withClipboardFallback?: boolean } = {},
+  opts: { sync?: boolean; writeError?: Error; withCommandSurface?: boolean } = {},
 ): { desktop: E2BDesktopLike; calls: Call[] } {
   const calls: Call[] = [];
   const record = (method: string, ...args: unknown[]): Promise<void> | void => {
@@ -46,7 +46,7 @@ function makeFakeDesktop(
     drag: (from, to) => record("drag", from, to),
     wait: (ms) => record("wait", ms),
   };
-  if (opts.withClipboardFallback) {
+  if (opts.withCommandSurface) {
     desktop.files = {
       write: async (remotePath, data, options) => {
         calls.push({ method: "files.write", args: [remotePath, data, options] });
@@ -153,27 +153,19 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
     expect(calls).toEqual([{ method: "write", args: ["hello@example.test"] }]);
   });
 
-  it("falls back to clipboard paste when desktop.write fails and clipboard surfaces are present", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT, {
-      writeError: new Error("exit status 1"),
-      withClipboardFallback: true,
-    });
+  it("types non-ASCII text through xdotool from a temp file, without the SDK write", async () => {
+    const { desktop, calls } = makeFakeDesktop(SHOT, { withCommandSurface: true });
     const executor = createE2BDesktopExecutor(desktop);
 
     await executor.execute({ kind: "type", text: "hello — with punctuation" });
 
-    expect(calls.map((call) => call.method)).toEqual([
-      "write",
-      "files.write",
-      "commands.run",
-      "press",
-    ]);
-    expect(calls[1]?.args[1]).toBe("hello — with punctuation");
-    expect(String(calls[2]?.args[0])).not.toContain("hello");
-    expect(calls[3]).toEqual({ method: "press", args: [["Control", "v"]] });
+    expect(calls.map((call) => call.method)).toEqual(["files.write", "commands.run"]);
+    expect(calls[0]?.args[1]).toBe("hello — with punctuation");
+    expect(String(calls[1]?.args[0])).toContain("LC_ALL=C.UTF-8 xdotool type");
+    expect(String(calls[1]?.args[0])).not.toContain("hello");
   });
 
-  it("throws a structured type-fallback error when clipboard fallback surfaces are unavailable", async () => {
+  it("throws a structured type error when the SDK write fails and no command surface exists", async () => {
     const { desktop } = makeFakeDesktop(SHOT, {
       writeError: new Error("exit status 1"),
     });
@@ -181,7 +173,7 @@ describe("createE2BDesktopExecutor.execute action mapping", () => {
 
     const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CuaTypeFallbackError);
-    expect((error as CuaTypeFallbackError).phase).toBe("clipboard-unavailable");
+    expect((error as CuaTypeFallbackError).phase).toBe("text-unavailable");
   });
 
   it("maps keypress to press(keys array)", async () => {

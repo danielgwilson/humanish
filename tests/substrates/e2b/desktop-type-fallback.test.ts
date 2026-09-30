@@ -95,47 +95,44 @@ const throwOnWrite = () => {
   throw new Error("exit status 1");
 };
 
-async function runType(desktop: E2BDesktopLike): Promise<unknown> {
+async function runType(desktop: E2BDesktopLike, text: string = SECRET): Promise<unknown> {
   return createE2BDesktopExecutor(desktop)
-    .execute(typeAction)
+    .execute({ ...typeAction, text })
     .then(() => undefined)
     .catch((error: unknown) => error);
 }
 
-describe("type fallback diagnostics (#248)", () => {
-  it.runIf(process.platform !== "win32").each(["xclip", "xsel"])(
-    "returns while the %s selection owner keeps running, then pastes once",
-    async (utility) => {
-      const root = await mkdtemp(path.join(os.tmpdir(), "humanish-clipboard-pipes-"));
+const UNICODE = "Réunion café — 10h 🚀 会議";
+
+describe("typing text on an E2B desktop", () => {
+  it.runIf(process.platform !== "win32")(
+    "types non-ASCII text with xdotool in the UTF-8 locale from a temp file, then removes it",
+    async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "humanish-type-utf8-"));
       const bin = path.join(root, "bin");
-      const textPath = path.join(root, "clipboard.txt");
-      const ownerPath = path.join(root, "owner.pid");
-      const commandGroups: number[] = [];
+      const record = path.join(root, "xdotool.json");
       let transferPath: string | undefined;
       try {
         await mkdir(bin);
         await symlink("/bin/rm", path.join(bin, "rm"));
-        // A process-lifetime fixture, not an X clipboard implementation: copy stdin exactly,
-        // fork a long-lived owner with inherited stdout/stderr, then let the parent exit.
-        const fixture = path.join(root, "selection-owner.cjs");
+        // A stand-in for xdotool that records its arguments, its locale and the file it was
+        // asked to type, exactly as the desktop's xdotool would read it.
+        const fixture = path.join(root, "xdotool.cjs");
         await writeFile(
           fixture,
           `const fs = require('node:fs');
-const { spawn } = require('node:child_process');
-fs.writeFileSync(${JSON.stringify(textPath)}, fs.readFileSync(0));
-const owner = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'inherit' });
-fs.writeFileSync(${JSON.stringify(ownerPath)}, String(owner.pid));
-owner.unref();
+const args = process.argv.slice(2);
+const file = args[args.indexOf('--file') + 1];
+fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({ args, lcAll: process.env.LC_ALL, text: fs.readFileSync(file, 'utf8') }));
 `,
         );
         const quote = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
         await writeFile(
-          path.join(bin, utility),
-          `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(fixture)}\n`,
+          path.join(bin, "xdotool"),
+          `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(fixture)} "$@"\n`,
           { mode: 0o755 },
         );
         const { desktop, rec } = makeFakeDesktop({
-          write: throwOnWrite,
           fileWrite: async (target, data) => {
             transferPath = target;
             await writeFile(target, data as string);
@@ -146,50 +143,35 @@ owner.unref();
             new Promise((resolve, reject) => {
               const child = spawn("/bin/bash", ["-c", command], {
                 env: { PATH: bin, DISPLAY: ":0" },
-                detached: true,
                 stdio: ["ignore", "pipe", "pipe"],
               });
-              if (child.pid !== undefined) commandGroups.push(child.pid);
               let stderr = "";
               child.stderr.on("data", (chunk) => {
                 stderr += chunk;
               });
               child.stdout.resume();
-              const timer = setTimeout(
-                () => reject(new Error("command output pipes remained open")),
-                2000,
-              );
-              child.on("error", (error) => {
-                clearTimeout(timer);
-                reject(error);
-              });
-              child.on("close", (code) => {
-                clearTimeout(timer);
-                resolve({ exitCode: code ?? 1, stderr });
-              });
+              child.on("error", reject);
+              child.on("close", (code) => resolve({ exitCode: code ?? 1, stderr }));
             }),
         };
-        const text = "Quoted ‘text’ — café\nsecond line: $() and `literal`";
+        const text = `${UNICODE}\nsecond line: $() and \`literal\` 'quoted'`;
         await createE2BDesktopExecutor(desktop).execute({ kind: "type", text });
-        expect(await readFile(textPath, "utf8")).toBe(text);
-        expect(rec.writeCalls).toEqual([text]);
-        expect(rec.pressCalls).toEqual([["Control", "v"]]);
-        // The command returned before its selection owner exited; detachment must not kill it.
-        process.kill(Number(await readFile(ownerPath, "utf8")), 0);
+        const recorded = JSON.parse(await readFile(record, "utf8"));
+        expect(recorded.lcAll).toBe("C.UTF-8");
+        expect(recorded.args.slice(0, 4)).toEqual(["type", "--delay", "75", "--file"]);
+        expect(recorded.text).toBe(text);
+        // The SDK write would split and fail on this text, so it is never tried.
+        expect(rec.writeCalls).toEqual([]);
+        expect(rec.pressCalls).toEqual([]);
         await expect(readFile(transferPath!, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
       } finally {
-        for (const pid of commandGroups) {
-          try {
-            process.kill(-pid, "SIGKILL");
-          } catch {}
-        }
         if (transferPath !== undefined) await rm(transferPath, { force: true });
         await rm(root, { recursive: true, force: true });
       }
     },
   );
 
-  it("primary write succeeds: no clipboard fallback is attempted", async () => {
+  it("types ASCII text with the SDK write and runs no command", async () => {
     const { desktop, rec } = makeFakeDesktop();
     const err = await runType(desktop);
     expect(err).toBeUndefined();
@@ -198,101 +180,94 @@ owner.unref();
     expect(rec.pressCalls).toHaveLength(0);
   });
 
-  it("primary write fails, clipboard fallback succeeds: pastes with Control+V", async () => {
+  it("sends non-ASCII text straight to UTF-8 typing without the SDK write", async () => {
+    const { desktop, rec } = makeFakeDesktop();
+    const err = await runType(desktop, UNICODE);
+    expect(err).toBeUndefined();
+    expect(rec.writeCalls).toEqual([]);
+    expect(rec.fileWrites.map((write) => write.data)).toEqual([UNICODE]);
+    expect(rec.commandRuns).toHaveLength(1);
+    expect(rec.commandRuns[0]).toContain("LC_ALL=C.UTF-8 xdotool type --delay 75 --file");
+    expect(rec.commandRuns[0]).not.toContain("xclip");
+    expect(rec.pressCalls).toEqual([]);
+  });
+
+  it("falls back to UTF-8 typing, with no clipboard, when the SDK write fails", async () => {
     const { desktop, rec } = makeFakeDesktop({ write: throwOnWrite });
     const err = await runType(desktop);
     expect(err).toBeUndefined();
+    expect(rec.writeCalls).toEqual([SECRET]);
     expect(rec.fileWrites).toHaveLength(1);
     expect(rec.commandRuns).toHaveLength(1);
-    expect(rec.pressCalls).toEqual([["Control", "v"]]);
+    expect(rec.commandRuns[0]).toContain("xdotool type");
+    expect(rec.pressCalls).toEqual([]);
   });
 
-  it("clipboard utility missing: real SDK throws CommandExitError(exit 127)", async () => {
+  it("names the command phase with xdotool's stderr when the SDK throws a non-zero exit", async () => {
     const { desktop } = makeFakeDesktop({
-      write: throwOnWrite,
-      commandThrow: {
-        exitCode: 127,
-        stderr: "no xclip/xsel clipboard utility available for paste fallback",
-      },
-    });
-    const err = await runType(desktop);
-    expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    expect((err as CuaTypeFallbackError).phase).toBe("clipboard-utility-missing");
-    expect((err as CuaTypeFallbackError).attemptChain).toContain("desktop.write failed");
-  });
-
-  it("clipboard command fails: real SDK throws CommandExitError(exit 1), stderr surfaces", async () => {
-    const { desktop } = makeFakeDesktop({
-      write: throwOnWrite,
       commandThrow: {
         exitCode: 1,
-        stderr: "clipboard utility present but failed to set the clipboard",
+        stderr: "Invalid multi-byte sequence encountered\nxdo_enter_text_window reported an error",
       },
     });
-    const err = await runType(desktop);
+    const err = await runType(desktop, UNICODE);
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    const fallback = err as CuaTypeFallbackError;
-    expect(fallback.phase).toBe("clipboard-command");
-    expect(fallback.stderrTail).toContain("failed to set the clipboard");
+    const failure = err as CuaTypeFallbackError;
+    expect(failure.phase).toBe("text-command");
+    expect(failure.attemptChain).toEqual(["xdotool type failed (exit 1)"]);
+    expect(failure.stderrTail).toContain("Invalid multi-byte sequence");
   });
 
-  it("also maps a structural fake that RETURNS a non-zero exit (not just throws)", async () => {
+  it("records the SDK write failure first when ASCII text falls back and fails", async () => {
     const { desktop } = makeFakeDesktop({
       write: throwOnWrite,
       commandReturn: { exitCode: 1, stderr: "returned-nonzero shape" },
     });
     const err = await runType(desktop);
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    expect((err as CuaTypeFallbackError).phase).toBe("clipboard-command");
+    const failure = err as CuaTypeFallbackError;
+    expect(failure.phase).toBe("text-command");
+    expect(failure.attemptChain).toEqual(["desktop.write failed", "xdotool type failed (exit 1)"]);
   });
 
-  it("infra error with no exit code: names the command phase, still redacted", async () => {
-    const { desktop } = makeFakeDesktop({
-      write: throwOnWrite,
-      commandThrow: { message: "request timed out" },
-    });
-    const err = await runType(desktop);
+  it("names the command phase for an infra error with no exit code", async () => {
+    const { desktop } = makeFakeDesktop({ commandThrow: { message: "request timed out" } });
+    const err = await runType(desktop, UNICODE);
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    expect((err as CuaTypeFallbackError).phase).toBe("clipboard-command");
+    expect((err as CuaTypeFallbackError).phase).toBe("text-command");
+    expect((err as CuaTypeFallbackError).attemptChain).toEqual(["xdotool type errored"]);
   });
 
-  it("paste keypress (Control+V) fails: names the paste-keypress phase", async () => {
-    const { desktop } = makeFakeDesktop({
-      write: throwOnWrite,
-      press: () => {
-        throw new Error("xdotool key failed");
+  it("names the temp-file phase when the text cannot be written", async () => {
+    const { desktop, rec } = makeFakeDesktop({
+      fileWrite: () => {
+        throw new Error("disk full");
       },
     });
-    const err = await runType(desktop);
+    const err = await runType(desktop, UNICODE);
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    expect((err as CuaTypeFallbackError).phase).toBe("paste-keypress");
+    expect((err as CuaTypeFallbackError).phase).toBe("text-tempfile");
+    expect(rec.commandRuns).toEqual([]);
   });
 
-  it("fails closed when there is no command/file surface for the fallback", async () => {
-    const { desktop } = makeFakeDesktop({
-      write: throwOnWrite,
-      omitCommands: true,
-      omitFiles: true,
-    });
-    const err = await runType(desktop);
+  it("fails closed when there is no command or file surface", async () => {
+    const { desktop } = makeFakeDesktop({ omitCommands: true, omitFiles: true });
+    const err = await runType(desktop, UNICODE);
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
-    expect((err as CuaTypeFallbackError).phase).toBe("clipboard-unavailable");
+    expect((err as CuaTypeFallbackError).phase).toBe("text-unavailable");
   });
 
-  it("never leaks the typed text into the attempt chain, message, or stderr tail", async () => {
-    const { desktop } = makeFakeDesktop({
+  it("never leaks the typed text into the attempt chain, message, command or stderr tail", async () => {
+    const { desktop, rec } = makeFakeDesktop({
       write: throwOnWrite,
-      commandThrow: {
-        exitCode: 1,
-        stderr: "clipboard utility present but failed to set the clipboard",
-      },
+      commandThrow: { exitCode: 1, stderr: "xdo_enter_text_window reported an error" },
     });
     const err = (await runType(desktop)) as CuaTypeFallbackError;
     expect(err).toBeInstanceOf(CuaTypeFallbackError);
     expect(err.message).not.toContain(SECRET);
     expect(err.attemptChain.join(" ")).not.toContain(SECRET);
     expect(err.stderrTail ?? "").not.toContain(SECRET);
-    // The substrate's own stderr still surfaces (that is the useful diagnostic).
-    expect(err.stderrTail).toContain("failed to set the clipboard");
+    expect(rec.commandRuns.join("\n")).not.toContain(SECRET);
+    expect(err.stderrTail).toContain("xdo_enter_text_window");
   });
 });
