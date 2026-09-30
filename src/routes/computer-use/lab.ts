@@ -29,10 +29,8 @@ import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { randomBytes } from "node:crypto";
 import { readFile, realpath, rm } from "node:fs/promises";
 import path from "node:path";
-import {
-  completeAutomaticAnalysis,
-  markFinalizedStudyResult,
-} from "../../analysis/automatic-completion.js";
+import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
+import { legacyFinishedRun, markFinalizedStudyResult } from "../../run/run.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { taskProtocolValidationReason } from "../../lab/validation.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
@@ -153,6 +151,7 @@ async function runCuaActorLabWithSecrets(
   const result = await withRunStatusScope(() => runCuaActorLabInScope(options));
   return completeAutomaticAnalysis(
     result,
+    legacyFinishedRun(result),
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",

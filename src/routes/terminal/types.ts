@@ -9,6 +9,7 @@ import type {
   ActorTrace,
 } from "../../actors/contract.js";
 import { type RunLabProvenance } from "../../run/status.js";
+import type { RunScope } from "../../run/run.js";
 import type { LabConfig } from "../../lab/types.js";
 import { type E2BDesktopModule } from "../../substrates/e2b/desktop-launch.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
@@ -388,10 +389,11 @@ export interface RunLiveTerminalSessionArgs {
   descriptorId: string;
   product: NonNullable<LabConfig["subject"]["product"]>;
   warnings: string[];
-  render: typeof renderObserver;
   failed: (
     code: NonNullable<TerminalProductLabResult["error"]>["code"],
     message: string,
     extras?: { actor?: string; product?: string },
   ) => TerminalProductLabResult;
+  /** The lab's run scope; the live session starts its run in it. */
+  scope: RunScope;
 }

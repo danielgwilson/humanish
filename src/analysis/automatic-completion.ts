@@ -1,5 +1,6 @@
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
+import { validatePreparedRunRootIdentity } from "../run/paths.js";
+import { FinishedRun } from "../run/run.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
 import type { AutomaticStudyAnalysisOutcome } from "./job.js";
@@ -18,18 +19,11 @@ export interface AutomaticAnalysisResult {
   automaticAnalysisTrigger?: "default" | "explicit";
 }
 
-const finalizedResults = new WeakMap<object, PreparedRunArtifactPaths>();
-
-/** Internal producer receipt: call only after final source publication, never for an early refusal. */
-export function markFinalizedStudyResult<T extends object>(
-  result: T,
-  prepared: PreparedRunArtifactPaths,
-): T {
-  finalizedResults.set(result, prepared);
-  return result;
-}
-
-/** One post-completion boundary shared by all live recording producers. */
+/**
+ * One post-completion boundary shared by all live recording producers. `finished` is the token
+ * the producer's run scope issued when the run published its final bundle; without it, or when it
+ * names another run than the result, there is no source to analyze.
+ */
 export async function completeAutomaticAnalysis<
   T extends {
     cwd: string;
@@ -38,6 +32,7 @@ export async function completeAutomaticAnalysis<
   },
 >(
   result: T,
+  finished: FinishedRun | undefined,
   config: StudyAnalysisConfig | undefined,
   hooks?: AutomaticAnalysisHooks,
   trigger: "default" | "explicit" = "explicit",
@@ -51,16 +46,16 @@ export async function completeAutomaticAnalysis<
       ...origin,
       automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" },
     };
-  // An early refusal can echo a caller-supplied ID belonging to an older run.
-  // Require this invocation's internal final-publication receipt before reading that ID.
-  const prepared = finalizedResults.get(result);
-  if (!result.runId || result.runId === "not-created" || prepared === undefined) {
+  // An early refusal can echo a caller-supplied ID belonging to an older run, so the ID alone
+  // proves nothing. Only this invocation's own publication token names a source.
+  if (!FinishedRun.isIssued(finished) || finished.runId !== result.runId) {
     return {
       ...result,
       ...origin,
       automaticAnalysis: { state: "skipped", reason: "analysis_source_unavailable" },
     };
   }
+  const prepared = finished.paths;
   let cleanup: void | (() => void) = undefined;
   try {
     cleanup = hooks?.onStart?.();
@@ -76,7 +71,7 @@ export async function completeAutomaticAnalysis<
     const sourceCwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
     const automaticAnalysis = await (hooks?.run ?? runAutomaticStudyAnalysis)(
       sourceCwd,
-      result.runId,
+      finished.runId,
       config,
       {
         ...hooks?.deps,

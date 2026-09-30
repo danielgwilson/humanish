@@ -23,6 +23,7 @@ import {
   OPENAI_EGRESS_PLACEHOLDER,
 } from "../../../src/routes/terminal/runtime-auth.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
+import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
 import {
   readAutomaticStudyAnalysis,
@@ -2339,5 +2340,119 @@ describe("terminal run directory golden", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       "../../golden/routes/terminal-dry-run.json",
     );
+  });
+});
+
+describe("terminal run lifetime", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-lifetime-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  const noModule = async (): Promise<never> => {
+    throw new Error("a refused run must not load the E2B module");
+  };
+
+  it("T2: a refused start that names an older run never analyzes or changes it", async () => {
+    const older = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: true,
+      open: false,
+      runId: "older",
+      hooks: { env: baseEnv(), loadModule: noModule },
+    });
+    expect(older.ok).toBe(true);
+    const runDir = path.join(cwd, ".humanish", "runs", "older");
+    const snapshot = async () => ({
+      run: await readFile(path.join(runDir, "run.json"), "utf8"),
+      status: await readFile(path.join(runDir, "status.json"), "utf8"),
+    });
+    const before = await snapshot();
+    const config: LabConfig = { ...liveConfig(), review: { analysis: { maxCostUsd: 1 } } };
+    const analysis = automaticAnalysisBoundary();
+    const skipped = { state: "skipped", reason: "analysis_source_unavailable" };
+
+    const keyless = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      runId: "older",
+      automaticAnalysis: { run: analysis },
+      hooks: { env: { E2B_API_KEY: "FAKE-E2B-KEY" }, loadModule: noModule },
+    });
+    expect(keyless).toMatchObject({ ok: false, runId: "older", automaticAnalysis: skipped });
+
+    const inUse = await runTerminalProductLab({
+      cwd,
+      config,
+      dryRun: false,
+      open: false,
+      runId: "older",
+      automaticAnalysis: { run: analysis },
+      hooks: { env: baseEnv(), loadModule: noModule },
+    });
+    expect(inUse).toMatchObject({
+      ok: false,
+      runId: "older",
+      error: { code: "HUMANISH_RUN_ID_IN_USE" },
+      automaticAnalysis: skipped,
+    });
+    expect(analysis).not.toHaveBeenCalled();
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("T3: the receipt lands before the first sandbox command and reclaim kills it after a failed teardown", async () => {
+    const receipts = path.join(cwd, ".humanish", "runs", "receipted", "sandbox-receipts.ndjson");
+    const fake = makeFakeModule({
+      creates: [],
+      runs: [],
+      killed: [],
+      killThrows: () => ({ message: "kill refused" }),
+      codexBehavior: (cmd) => ({
+        exitCode: 0,
+        stdout: `HUMANISH_ACTOR_VERDICT=passed HUMANISH_ACTOR_NONCE=${nonceFrom(cmd)}\n`,
+      }),
+    });
+    const create = fake.Sandbox.create.bind(fake.Sandbox);
+    let receiptsAtFirstCommand: string | undefined;
+    fake.Sandbox.create = async (...args: Parameters<typeof create>) => {
+      const sandbox = await create(...args);
+      const run = sandbox.commands.run.bind(sandbox.commands);
+      sandbox.commands.run = async (...runArgs: Parameters<typeof run>) => {
+        receiptsAtFirstCommand ??= await readFile(receipts, "utf8").catch(() => "");
+        return run(...runArgs);
+      };
+      return sandbox;
+    };
+
+    const result = await runTerminalProductLab({
+      cwd,
+      config: liveConfig(),
+      dryRun: false,
+      open: false,
+      runId: "receipted",
+      hooks: { env: baseEnv(), now: () => 1_000, loadModule: async () => fake },
+    });
+
+    expect(result.sandbox).toMatchObject({ sandboxId: "fake-sandbox-1", killed: false });
+    expect(receiptsAtFirstCommand).toContain('"sandboxId":"fake-sandbox-1"');
+    const reclaimed: string[] = [];
+    await reclaimRunSandboxes(cwd, "receipted", {
+      loadModule: async () =>
+        ({
+          Sandbox: {
+            async kill(sandboxId: string) {
+              reclaimed.push(sandboxId);
+              return true;
+            },
+          },
+        }) as unknown as E2BDesktopModule,
+    });
+    expect(reclaimed).toEqual(["fake-sandbox-1"]);
   });
 });

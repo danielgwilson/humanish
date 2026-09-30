@@ -1,4 +1,3 @@
-import { markFinalizedStudyResult } from "../../analysis/automatic-completion.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
@@ -13,7 +12,6 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
-import { beginRunStatus, type RunStatusHandle } from "../../run/status.js";
 import { actorRegistry } from "../../actors/registry.js";
 import { toErrorMessage } from "../../substrates/command-failure.js";
 import { buildOpenAiEgressNetwork } from "./runtime-auth.js";
@@ -31,12 +29,12 @@ import {
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
-import { createRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { extractLocalActorVerdict, normalizeLocalActorTranscript } from "../../run/verify-actor.js";
 import { applyAdapterExtensionSeam } from "./adapter.js";
-import { buildLiveTerminalProductBundle } from "./bundle.js";
+import { buildLiveTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
 import { buildCostLedger, buildNoSpendProof, evaluateCapsAgainstLedger } from "./ledger.js";
 import { runWithWallClock, teardownSandbox } from "./sandbox.js";
@@ -52,7 +50,7 @@ import {
   UPLOAD_MAX_BYTES,
 } from "./types.js";
 import { createTerminalRecorder } from "./recorder.js";
-import { writeTerminalEvidence, writeTerminalRunFiles } from "./artifacts.js";
+import { writeTerminalEvidence } from "./artifacts.js";
 import { terminalLabResult } from "./result.js";
 
 /**
@@ -65,7 +63,7 @@ import { terminalLabResult } from "./result.js";
 export async function runLiveTerminalSession(
   args: RunLiveTerminalSessionArgs,
 ): Promise<TerminalProductLabResult> {
-  const { options, cwd, config, descriptorId, product, warnings, render, failed } = args;
+  const { options, cwd, config, descriptorId, product, warnings, failed, scope } = args;
   const hooks = options.hooks ?? {};
   const env = hooks.env ?? process.env;
   const now = hooks.now ?? (() => Date.now());
@@ -160,19 +158,20 @@ export async function runLiveTerminalSession(
       : {}),
   };
 
-  const runId = options.runId ?? makeTerminalRunId();
-  const created = await createRunArtifactPaths(physicalCwd, runId);
-  if (!created.ok) return failed(created.code, created.message, { actor: descriptorId });
-  const runPaths = created.paths;
-  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
-  // run without parsing bundles and without depending on the interactive-observer path.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
-    // This entry point IS the live terminal route; its dry-run sibling is a separate function.
+  const started = await scope.startRun({
+    cwd: physicalCwd,
+    runId: options.runId,
+    mintRunId: makeTerminalRunId,
+    // This entry point is the live terminal route; its dry-run sibling is a separate function.
     mode: "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderTerminalReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
+    now,
   });
-  const createdAt = nowIso();
+  if (!started.ok) return failed(started.code, started.message, { actor: descriptorId });
+  const { run } = started;
+  const { runId, createdAt, paths: runPaths } = run;
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd: physicalCwd,
@@ -734,33 +733,29 @@ export async function runLiveTerminalSession(
   });
   await validatePreparedRunArtifactPaths(runPaths);
 
-  await writeTerminalRunFiles({ runPaths, runStatus, bundle, runId, createdAt });
-
-  const observer = await render(physicalCwd, runId, { open: options.open === true });
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
   await validatePreparedRunArtifactPaths(runPaths);
 
-  return markFinalizedStudyResult(
-    terminalLabResult({
-      cwd,
-      labId: config.id,
-      actorId: descriptorId,
-      productName: product.name,
-      runId,
-      sessionStatus,
-      completionReason,
-      sessionReason: sanitize(sessionReason),
-      sessionError,
-      sandboxId,
-      cleanup,
-      cost,
-      noSpendProof,
-      capsExceeded,
-      declaredScorerFailure,
-      observer,
-      warnings,
-    }),
-    runPaths,
-  );
+  return terminalLabResult({
+    cwd,
+    labId: config.id,
+    actorId: descriptorId,
+    productName: product.name,
+    runId,
+    sessionStatus,
+    completionReason,
+    sessionReason: sanitize(sessionReason),
+    sessionError,
+    sandboxId,
+    cleanup,
+    cost,
+    noSpendProof,
+    capsExceeded,
+    declaredScorerFailure,
+    observer,
+    warnings,
+  });
 }
 
 /** Build the in-sandbox `codex exec` command (non-interactive, JSON, stdin disabled by mechanism). */

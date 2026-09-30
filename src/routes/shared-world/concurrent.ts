@@ -49,10 +49,10 @@ import {
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
-  markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
+import { legacyFinishedRun, markFinalizedStudyResult } from "../../run/run.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
 import {
@@ -825,6 +825,7 @@ async function runConcurrentSharedWorldWithSecrets(
   const result = await withRunStatusScope(() => runConcurrentSharedWorldInScope(options));
   return completeAutomaticAnalysis(
     result,
+    legacyFinishedRun(result),
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",
