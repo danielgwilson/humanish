@@ -32,8 +32,7 @@ export async function localCodexParticipantCheck(args: {
   };
 }
 
-/** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
-export async function labSetupChecks(args: {
+interface LabSetupCheckArgs {
   cwd: string;
   lab: string;
   env: NodeJS.ProcessEnv;
@@ -44,7 +43,15 @@ export async function labSetupChecks(args: {
   codexAnalysisReadiness?: (
     env: NodeJS.ProcessEnv,
   ) => Promise<{ ready: boolean; errorCode: string | null }>;
-}): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
+}
+
+type AccountReadiness = () => Promise<{ ready: boolean; errorCode: string | null }>;
+type AnalysisBudget = NonNullable<ReturnType<typeof automaticAnalysisBudget>>;
+
+/** Setup checks only: no model turn, browser or desktop creation. CLI startup may use the network. */
+export async function labSetupChecks(
+  args: LabSetupCheckArgs,
+): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./discover.js");
   const { selectLabBackend, resolveLabDryRun } = await import("./engine.js");
   const resolved = await resolveLabManifest(args.cwd, args.lab);
@@ -74,8 +81,9 @@ export async function labSetupChecks(args: {
     };
   const { desktop, keys } = labKeyRequirements(config, backend, false, args.keyPresent);
   const local = isLocalBrowserLab(config);
+  // One account check, shared by the local participant row and the Codex analysis row.
   let accountReadiness: Promise<{ ready: boolean; errorCode: string | null }> | undefined;
-  const checkAccount = () =>
+  const checkAccount: AccountReadiness = () =>
     (accountReadiness ??= (
       args.codexAnalysisReadiness ??
       (async (env: NodeJS.ProcessEnv) =>
@@ -84,91 +92,134 @@ export async function labSetupChecks(args: {
           { env },
         ))
     )(args.env).catch(() => ({ ready: false, errorCode: "codex_unavailable" })));
-  if (local) {
-    const runtime = await (
-      args.localRuntimeReadiness ??
-      (() =>
-        localRuntimeStatus({
-          env: args.env,
-          media:
-            config.execution?.desktop?.media !== undefined ||
-            config.execution?.desktop?.recording !== undefined,
-        }))
-    )();
-    checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
-    const email = config.comms?.email;
-    if (email?.kind === "fake" && email.external) {
-      const healthy = await externalCatchHealthy(email.external, { timeoutMs: 5000 });
-      checks.push({
-        name: "local captured inbox",
-        ok: healthy,
-        message: healthy
-          ? "Recipient inbox routes are ready. Point your app's email sends at this catch; delivery remains untested. No mailbox-provider credentials are needed, and this does not receive arbitrary internet mail."
-          : "Captured inbox is unavailable or outdated. Start or upgrade and restart humanish comms catch, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated.",
-      });
-    }
-  }
-  if (config.comms?.email?.kind === "real") {
-    const name = await receivingRequiredKey(args.cwd, config.comms.email.connection);
-    if (name) keys.push(name);
+  if (local) checks.push(...(await localBrowserChecks(config, args)));
+  if (config.comms?.email?.kind === "real")
+    checks.push(await realEmailCheck(config.comms.email.connection, keys, args));
+  checks.push(...(await participantChecks(config, backend, keys, local, args, checkAccount)));
+  if (backend === "scripted") checks.push(await scriptedBrowserCheck());
+  checks.push(...subjectEnvChecks(config, args));
+  const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
+  if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
+  checks.push(checkScope(analysis));
+  return { desktop, keys, checks };
+}
+
+/** A local browser study's runtime and, with an external catch, its captured inbox. */
+async function localBrowserChecks(config: LabConfig, args: LabSetupCheckArgs): Promise<Check[]> {
+  const checks: Check[] = [];
+  const runtime = await (
+    args.localRuntimeReadiness ??
+    (() =>
+      localRuntimeStatus({
+        env: args.env,
+        media:
+          config.execution?.desktop?.media !== undefined ||
+          config.execution?.desktop?.recording !== undefined,
+      }))
+  )();
+  checks.push({ name: "local browser runtime", ok: runtime.ok, message: runtime.message });
+  const email = config.comms?.email;
+  if (email?.kind === "fake" && email.external) {
+    const healthy = await externalCatchHealthy(email.external, { timeoutMs: 5000 });
     checks.push({
-      name: "real email connection",
-      ok: name !== null && args.keyPresent(name),
-      message:
-        name === null
-          ? "The selected email connection is missing or invalid. Open Connections in the TUI."
-          : !args.keyPresent(name)
-            ? `Missing ${name} for the selected email connection. Provide it through process env or --env-file. Authentication has not been checked.`
-            : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested.",
+      name: "local captured inbox",
+      ok: healthy,
+      message: healthy
+        ? "Recipient inbox routes are ready. Point your app's email sends at this catch; delivery remains untested. No mailbox-provider credentials are needed, and this does not receive arbitrary internet mail."
+        : "Captured inbox is unavailable or outdated. Start or upgrade and restart humanish comms catch, then check comms.email.external.catchBaseUrl (and inboxBaseUrl if set). No participant was allocated.",
     });
   }
+  return checks;
+}
+
+/** The saved real email connection. Adds the key it needs to `keys`. */
+async function realEmailCheck(
+  connection: string,
+  keys: string[],
+  args: LabSetupCheckArgs,
+): Promise<Check> {
+  const name = await receivingRequiredKey(args.cwd, connection);
+  if (name) keys.push(name);
+  return {
+    name: "real email connection",
+    ok: name !== null && args.keyPresent(name),
+    message:
+      name === null
+        ? "The selected email connection is missing or invalid. Open Connections in the TUI."
+        : !args.keyPresent(name)
+          ? `Missing ${name} for the selected email connection. Provide it through process env or --env-file. Authentication has not been checked.`
+          : "Fresh hosted inbox per participant. Local presence only; run humanish comms check --online to authenticate. Provider permissions/capacity and delivery remain untested.",
+  };
+}
+
+/** How the participant authenticates: the terminal model key, or a local agent's login. */
+async function participantChecks(
+  config: LabConfig,
+  backend: LabBackend,
+  keys: string[],
+  local: boolean,
+  args: LabSetupCheckArgs,
+  checkAccount: AccountReadiness,
+): Promise<Check[]> {
   if (backend === "terminal") {
     const key = keys.find((name) => name !== "E2B_API_KEY")!;
-    checks.push({
-      name: "terminal model authentication",
-      ok: args.keyPresent(key),
-      message:
-        "The in-sandbox Codex runtime needs CODEX_API_KEY or OPENAI_API_KEY. Your host's Codex login is not forwarded; credential placement follows execution.runtimeAuth.",
-    });
-  } else if (backend === "cua" && config.actors[0]?.type === "local-agent") {
-    const choice = config.actors[0]?.localAgent ?? "codex";
-    const agent = args.agents.find((entry) => entry.id === choice);
-    if (local) {
-      checks.push(await localCodexParticipantCheck({ env: args.env, readiness: checkAccount }));
-    } else {
-      checks.push({
-        name: "local participant authentication",
-        ok: agent?.authStatus === "authenticated",
+    return [
+      {
+        name: "terminal model authentication",
+        ok: args.keyPresent(key),
         message:
-          agent?.authStatus === "authenticated"
-            ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
-            : agent
-              ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
-              : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.`,
-      });
-    }
+          "The in-sandbox Codex runtime needs CODEX_API_KEY or OPENAI_API_KEY. Your host's Codex login is not forwarded; credential placement follows execution.runtimeAuth.",
+      },
+    ];
   }
-  if (backend === "scripted") {
-    const { resolveBrowserCommand } = await import("../actors/scripted-browser/browser-command.js");
-    checks.push({
-      name: "scripted browser",
-      ok: !!(await resolveBrowserCommand()),
+  if (backend !== "cua" || config.actors[0]?.type !== "local-agent") return [];
+  const choice = config.actors[0]?.localAgent ?? "codex";
+  const agent = args.agents.find((entry) => entry.id === choice);
+  if (local) return [await localCodexParticipantCheck({ env: args.env, readiness: checkAccount })];
+  return [
+    {
+      name: "local participant authentication",
+      ok: agent?.authStatus === "authenticated",
       message:
-        "Scripted-browser uses local Chrome/Chromium and no participant model. Install Chrome/Chromium or set HUMANISH_BROWSER_COMMAND; a clone subject additionally needs E2B.",
-    });
-  }
-  for (const name of config.subject.env ?? []) {
-    checks.push({
-      name: `subject env ${name}`,
-      ok: !!args.env[name]?.trim() || args.keyPresent(name),
-      message:
-        args.env[name]?.trim() || args.keyPresent(name)
-          ? "present; value not shown"
-          : "missing declared subject environment variable; provide it with --env-file",
-    });
-  }
-  const analysis = automaticAnalysisBudget(config.review?.analysis, backend);
-  if (analysis?.provider === "codex") {
+        agent?.authStatus === "authenticated"
+          ? `${agent.label} reports authenticated on the host. E2B supplies the desktop; no OpenAI API key is required for this participant.`
+          : agent
+            ? `${agent.label} ${agent.authStatus === "unauthenticated" ? "reports not signed in" : "authentication could not be checked"}. Run \`${choice === "codex" ? "codex login status" : "claude auth status"}\`; sign in or update the CLI before running.`
+            : `${choice} is not on this process's PATH. Install and sign in to that CLI, or choose openai-computer-use with OPENAI_API_KEY.`,
+    },
+  ];
+}
+
+/** The local Chrome/Chromium the scripted-browser route drives. */
+async function scriptedBrowserCheck(): Promise<Check> {
+  const { resolveBrowserCommand } = await import("../actors/scripted-browser/browser-command.js");
+  return {
+    name: "scripted browser",
+    ok: !!(await resolveBrowserCommand()),
+    message:
+      "Scripted-browser uses local Chrome/Chromium and no participant model. Install Chrome/Chromium or set HUMANISH_BROWSER_COMMAND; a clone subject additionally needs E2B.",
+  };
+}
+
+/** One row per declared subject env name: present or missing, never the value. */
+function subjectEnvChecks(config: LabConfig, args: LabSetupCheckArgs): Check[] {
+  return (config.subject.env ?? []).map((name) => ({
+    name: `subject env ${name}`,
+    ok: !!args.env[name]?.trim() || args.keyPresent(name),
+    message:
+      args.env[name]?.trim() || args.keyPresent(name)
+        ? "present; value not shown"
+        : "missing declared subject environment variable; provide it with --env-file",
+  }));
+}
+
+/** The post-run analysis: the Codex account, or the OpenAI key and the admission estimate limit. */
+async function analysisCheck(
+  analysis: AnalysisBudget,
+  args: LabSetupCheckArgs,
+  checkAccount: AccountReadiness,
+): Promise<Check> {
+  if (analysis.provider === "codex") {
     const readiness = await checkAccount();
     const recovery =
       readiness.errorCode === "codex_unsupported_platform"
@@ -176,31 +227,33 @@ export async function labSetupChecks(args: {
         : readiness.errorCode === "codex_busy"
           ? "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then retry."
           : "Install the qualified CLI and sign in with a ChatGPT account.";
-    checks.push({
+    return {
       name: "post-run analysis",
       ok: readiness.ready,
       message: readiness.ready
         ? "Qualified Codex CLI and ChatGPT account login are ready for a separate restricted analyst. Analysis sends selected evidence to remote inference; model access and account allowance remain untested. Dollar cost and output-token ceilings are unavailable."
         : `Codex account analysis is unavailable (${readiness.errorCode ?? "codex_unavailable"}). ${recovery} No API fallback is used; participant readiness is independent.`,
-    });
-  } else if (analysis) {
-    checks.push({
-      name: "post-run analysis",
-      ok: true,
-      message: args.keyPresent("OPENAI_API_KEY")
-        ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. Its $${analysis.maxCostUsd} admission estimate limit may decline larger studies before dispatch; it is not a provider billing cap. Participant readiness is independent.`
-        : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
-    });
+    };
   }
-  checks.push({
+  return {
+    name: "post-run analysis",
+    ok: true,
+    message: args.keyPresent("OPENAI_API_KEY")
+      ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. Its $${analysis.maxCostUsd} admission estimate limit may decline larger studies before dispatch; it is not a provider billing cap. Participant readiness is independent.`
+      : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
+  };
+}
+
+/** What doctor checked and what it did not. */
+function checkScope(analysis: ReturnType<typeof automaticAnalysisBudget>): Check {
+  return {
     name: "check scope",
     ok: true,
     message:
       analysis?.provider === "codex"
         ? "The Codex setup check inspects local login and configuration without a model turn or participant resources. Remote account validity, model access, quota and target reachability remain untested; CLI startup may use the network."
         : "Local setup only. Provider credentials are not validated, model access/quota and target reachability are untested, and no paid resources were created.",
-  });
-  return { desktop, keys, checks };
+  };
 }
 
 /** Required participant provider keys, shared by doctor and the TUI. Optional analysis is separate. */
