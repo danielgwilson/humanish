@@ -66,6 +66,11 @@ if (!/^review:\s*\n\s+analysis: false\s*$/m.test(fixture)) {
     "first-contact.yaml must explicitly disable automatic analysis to preserve this gate’s zero-spend product contract.",
   );
 }
+if (!/^\s+runtimeAuth: openai-egress\b/m.test(fixture)) {
+  fail(
+    "first-contact.yaml must use runtimeAuth: openai-egress, so the participant never holds the raw runtime key.",
+  );
+}
 let lab = fixture
   .replace("id: first-contact", `id: ${LAB_ID}`)
   .replace("  mode: dry-run # committed fixture stays contract-only", "  mode: live")
@@ -159,6 +164,10 @@ try {
   console.log("  (no transcript on disk — the run did not get far enough to report)");
 }
 console.log("  " + "-".repeat(70));
+console.log(
+  "  The agent's web_search fetches run on the model provider's side, outside the sandbox; an",
+);
+console.log("  error it reports from one is not the sandbox's network.");
 console.log("");
 
 // VERIFY THE GATE TESTED THE CANDIDATE. Assuming it did is how the first version of this script

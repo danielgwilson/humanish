@@ -821,9 +821,9 @@
         ]
       },
       "personaId": "autonomous-coding-agent",
-      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to try it and report back. Find out what it is from its public surfaces, get it running, and get as far as you can toward actually using it for what it is for. You do not have provider API keys, so do not attempt anything that spends money; if you hit a wall that needs one, say so and keep going with whatever else you can reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, whether you got it working, exactly where you got stuck, and whether you would recommend adopting it.",
+      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to try it and report back. Find out what it is from its public surfaces, get it running, and get as far as you can toward actually using it for what it is for. Your only credential is a proxied model credential for your own reasoning. It is not for humanish, and you have no provider API keys to give humanish, so do not attempt anything that spends money; if you hit a wall that needs a key, say so and keep going with whatever else you can reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, whether you got it working, exactly where you got stuck, and whether you would recommend adopting it.",
       "runtime": {
-        "auth": "openai-env"
+        "auth": "openai-egress"
       },
       "caps": {
         "maxUsd": 0,
