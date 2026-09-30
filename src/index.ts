@@ -291,10 +291,12 @@ export type {
   BrowserSurface,
   ScriptedBrowserLaunchArgs,
   ScriptedBrowserLike,
-  ScriptedBrowserSessionOptions,
-  ScriptedBrowserSessionResult,
   ScriptedLocatorLike,
   ScriptedPageLike,
+} from "./actors/scripted-browser/types.js";
+export type {
+  ScriptedBrowserSessionOptions,
+  ScriptedBrowserSessionResult,
 } from "./actors/scripted-browser.js";
 export {
   SCRIPTED_BROWSER_LAB_SCHEMA,

@@ -27,16 +27,16 @@ import {
   isCuaActorDescriptor,
   isScriptedBrowserActorDescriptor,
 } from "../../src/actors/registry.js";
+import { runScriptedBrowserSession } from "../../src/actors/scripted-browser.js";
 import {
-  runScriptedBrowserSession,
   browserSurfaces,
-  parseBrowserPersonaJourneyFromScenario,
-  resolveBrowserCommand,
   type BrowserPersonaJourney,
   type ScriptedBrowserLike,
   type ScriptedLocatorLike,
   type ScriptedPageLike,
-} from "../../src/actors/scripted-browser.js";
+} from "../../src/actors/scripted-browser/types.js";
+import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser/journey.js";
+import { resolveBrowserCommand } from "../../src/actors/scripted-browser/browser-command.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 
 const PNG_1X1 = syntheticPng1x1();
