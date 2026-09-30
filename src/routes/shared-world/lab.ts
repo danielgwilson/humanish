@@ -41,21 +41,8 @@ import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
-import { FakeInbox } from "../../comms/fake-inbox.js";
-import { buildOriginMap, type OriginMap } from "../../comms/capture-surface.js";
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import {
-  DEFAULT_SANDBOX_CATCH_PORT,
-  collectCommsThread,
-  deployCommsCatch,
-  externalCatchHealthy,
-  externalInboxUrl,
-  refreshInboxSurface,
-  writeInboxSurface,
-  type DeployedCommsCatch,
-} from "../../comms/sandbox-catch.js";
-import type { CommsAddress } from "../../comms/types.js";
 import { redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import {
   adapterScoreFailureMessage,
@@ -72,43 +59,21 @@ import {
   receivingEmailValidationReason,
   taskProtocolValidationReason,
 } from "../../lab/validation.js";
-import { liveObserverResult } from "../../observer/live.js";
 import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
 import {
   buildRunSource,
   type RunSubjectProvenance,
   type RunSubjectStateStepRecord,
 } from "../../run/bundle.js";
-import { mapWithConcurrency } from "../../run/concurrency.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import { runScope, type RunScope } from "../../run/run.js";
-import {
-  prepareSelectedOutputDirectory,
-  writeContainedOutputFile,
-} from "../../run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import type { SharedWorldStateSnapshot } from "../../run/shared-world-evidence.js";
 import type { LocalTreeArchive } from "../../run/source-archive.js";
-import { provisionCloneSubject } from "../../subject/clone.js";
-import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
-import type { SubjectPhaseEvent } from "../../subject/steps.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
-import {
-  loadE2BDesktopModule,
-  type E2BDesktopModule,
-  type E2BDesktopSandbox,
-} from "../../substrates/e2b/desktop-launch.js";
-import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
-import { e2bShell } from "../../substrates/e2b/shell.js";
-import type { Shell } from "../../substrates/shell.js";
-import {
-  defaultPackLocalTree,
-  inboxRecipientFor,
-  laneHasInboxRecipient,
-  resolveSubjectState,
-} from "../computer-use/lab.js";
-import { makeCuaRunBudget, withInboxMission } from "../computer-use/lane-plan.js";
-import { runCuaLane } from "../computer-use/lanes.js";
+import { defaultPackLocalTree, resolveSubjectState } from "../computer-use/lab.js";
+import { makeCuaRunBudget } from "../computer-use/lane-plan.js";
 import {
   actorLanePassed,
   actorWindowsOverlap,
@@ -116,27 +81,14 @@ import {
   maxSimultaneousWindows,
   renderConcurrentReviewMarkdown,
 } from "./bundle.js";
-import { runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
+import { seedRecipeDigest } from "./checkpoints.js";
+import { prepareExternalComms, subjectCommsOf } from "./comms.js";
 import { declaredOriginDigestOf, runExternalPublicPlane } from "./external-public.js";
-import {
-  buildSubjectProvenance,
-  hostOriginDigest,
-  isTokenlessHost,
-  servePort,
-} from "./provenance.js";
-import {
-  DEFAULT_STATE_STEP_TIMEOUT_MS,
-  SANDBOX_TIMEOUT_BUFFER_MS,
-  SUBJECT_PROVISION_BUDGET_MS,
-  buildActorSpec,
-  defaultSeatSessionTimeoutMs,
-  resolveActorSeatUrl,
-  seatLaneDeps,
-  startSeatFlush,
-} from "./seats.js";
+import { runProvisionedPlane } from "./provisioned.js";
+import { buildSubjectProvenance, hostOriginDigest } from "./provenance.js";
+import { buildActorSpec, defaultSeatSessionTimeoutMs } from "./seats.js";
 import {
   CONCURRENT_SHARED_WORLD_LAB_SCHEMA,
-  CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
   type ActorLaneResult,
   type ConcurrentSharedWorldLabErrorCode,
   type ConcurrentSharedWorldLabResult,
@@ -148,19 +100,6 @@ import {
 } from "./types.js";
 
 const DEFAULT_PROBER_CADENCE_MS = 1000;
-
-/**
- * A failure of the caller's `onObserverReady` gate on the provisioned plane. The gate runs inside
- * the try that records participant failures, so it is wrapped to be told apart and rethrown: a gate
- * failure stops the run before any participant starts, as it does on the other routes, and the
- * teardown in that try's finally still kills the subject.
- */
-class ObserverGateError extends Error {
-  constructor(cause: unknown) {
-    super("onObserverReady failed", { cause });
-    this.name = "ObserverGateError";
-  }
-}
 
 function readPositiveInt(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
@@ -394,64 +333,17 @@ async function runConcurrentSharedWorldInScope(
   let subjectSandboxId: string | undefined;
   let subjectKilled = false;
   let getHostUrl: string | undefined;
-  // Persona inbox SURFACE (#297 slice B, shared-world): the getHost-exposed inbox URL a persona (in a
-  // DIFFERENT sandbox) opens, the serve->getHost origin-rewrite map (REQUIRED here so the app's loopback
-  // verify links resolve to a reachable host), and the dedicated surface channel + render loop.
-  let commsInboxUrl: string | undefined;
-  let commsOriginMap: OriginMap = [];
-  let surfaceRenderedCount = 0;
-  let surfaceLoop: Promise<void> | undefined;
   let runError: string | undefined;
-  let snapshotIndex = 0;
   const live: LiveSeats = { streamUrls: [] };
 
-  // Off-app comms (#297): on the provisioned-getHost plane the harness owns the ONE subject sandbox, so
-  // it can redirect the app's email-API sends into an in-sandbox catch and evidence them. Gated ENTIRELY
-  // on config.comms — no comms declared → zero change. The base-URL env is injected into the subject
-  // sandbox at create (fixed port known up front); the catch is deployed before serve; the drain + digest
-  // evidence run at subject teardown, then register run-level in the bundle. NOT available on the
-  // external-public plane (the app is an operator-owned deployment the harness never provisions).
-  const commsEmail =
-    planeClass === "provisioned-getHost" && config.comms?.email?.kind === "fake"
-      ? config.comms.email
-      : undefined;
-  const commsPort = commsEmail ? (commsEmail.port ?? DEFAULT_SANDBOX_CATCH_PORT) : undefined;
-  // injectEnv is absent on an adopter-hosted plane (#328): there is no subject env to inject
-  // because the operator points their own app at their own catch.
-  const commsEnv: Record<string, string> =
-    commsEmail?.injectEnv !== undefined && commsPort !== undefined
-      ? { [commsEmail.injectEnv]: `http://127.0.0.1:${commsPort}` }
-      : {};
+  const subjectComms = subjectCommsOf(config, planeClass);
   let commsArtifactPath: string | undefined;
-  // ADOPTER-HOSTED ingress (#328): on the external-public plane the harness provisions nothing, so
-  // it cannot host a catch — but the OPERATOR can, and then humanish still does every other part of
-  // the funnel: it tells each persona its address and inbox URL, drains the declared catch over
-  // HTTP at teardown, and writes the same digest-only evidence. Declaring `external` is what turns
-  // the previously-inert block into a working one.
-  const externalComms =
-    planeClass === "external-public" ? config.comms?.email?.external : undefined;
-  const externalCommsEmail = externalComms ? config.comms?.email : undefined;
-  if (
-    config.comms?.email?.kind === "fake" &&
-    planeClass === "external-public" &&
-    externalComms === undefined
-  ) {
-    warnings.push(
-      "comms.email is declared but this is the external-public plane (the shared plane is an operator-owned public deployment the harness does not provision) — the in-sandbox email catch cannot be deployed and no comms evidence is collected. Declare `comms.email.external` to host the catch yourself (#328).",
+  const externalComms = await prepareExternalComms(config, planeClass, dryRun, warnings);
+  if (!externalComms.ok) {
+    return fail(
+      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
+      externalComms.message,
     );
-  }
-
-  if (externalComms) {
-    commsInboxUrl = externalInboxUrl(externalComms);
-    // Fail closed BEFORE any actor sandbox is created: a comms lab whose catch is unreachable
-    // collects nothing while every lane still spends. The probe asserts OUR service marker in
-    // /health, so an adopter's proxy answering 200 for everything cannot pass for a catch.
-    if (!dryRun && !(await externalCatchHealthy(externalComms))) {
-      return fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_COMMS_CATCH_UNREACHABLE",
-        `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update Humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`,
-      );
-    }
   }
 
   // External-public plane results, set by runExternalPublicPlane.
@@ -561,418 +453,35 @@ async function runConcurrentSharedWorldInScope(
           descriptor.id,
         );
       }
-      let subjectModule: E2BDesktopModule | undefined;
-      let subjectDesktop: E2BDesktopSandbox | undefined;
-      let subjectShell: Shell | undefined;
-      // The in-sandbox email catch on the ONE subject sandbox (#297); drained at teardown. Undefined
-      // unless a comms lab declared it. Hoisted so the finally can drain before the subject is killed.
-      let deployedComms: DeployedCommsCatch | undefined;
-      // Background prober dispose signal (FIX-9: cleared in finally).
-      let proberDisposed = false;
-      let releaseDispose: () => void = () => {};
-      const disposeSignal = new Promise<void>((resolve) => {
-        releaseDispose = resolve;
+      const outcome = await runProvisionedPlane(ctx, live, {
+        serve,
+        localTreeRoute,
+        localTreeArchive,
+        localTreeArchiveBuffer,
+        subjectRepo,
+        publicRepo,
+        subjectEnvNames,
+        hasGithubToken,
+        checkpoints,
+        commsEmail: subjectComms.email,
+        commsPort: subjectComms.port,
+        commsEnv: subjectComms.env,
+        stateStepRecords,
+        stateSnapshots,
+        timers,
+        proberCadenceMs,
       });
-      let proberLoop: Promise<void> | undefined;
-
-      const proberSnapshot = async (): Promise<void> => {
-        if (!subjectShell) return;
-        const timestamp = now();
-        const idx = snapshotIndex;
-        snapshotIndex += 1;
-        const snapshot = await runCheckpointSnapshot({
-          shell: subjectShell,
-          snapshotIndex: idx,
-          name: `state-${idx}`,
-          checkpoints,
-          prevDigest: undefined,
-          scrub: scrubKnownValues,
-          requestTimeoutMs,
-          timers,
-        });
-        stateSnapshots.push({ timestamp, digest: snapshot.digest });
-      };
-
-      try {
-        subjectModule = await (hooks.loadDesktopModule ?? loadE2BDesktopModule)();
-        // The ONE subject sandbox: headless service host (no GUI seat). The SUBJECT env is provisioned
-        // HERE; the actor sandboxes get NONE of it (FIX-10). A custom desktop template (image) is
-        // honored on BOTH the subject sandbox (here) and every actor sandbox (via runCuaLane, which
-        // reads the same config); absent keeps the byte-stable Sandbox.create(opts) default. The
-        // receipt is on disk before any work, so `humanish reclaim` can kill it by exact id.
-        const subject = await acquireE2BDesktopSandbox({
-          module: subjectModule,
-          options: {
-            apiKey: e2bApiKey,
-            requestTimeoutMs,
-            timeoutMs:
-              timeoutMs +
-              SUBJECT_PROVISION_BUDGET_MS +
-              (config.subject.state?.seed ?? []).reduce(
-                (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
-                0,
-              ) +
-              SANDBOX_TIMEOUT_BUFFER_MS,
-            metadata: {
-              ...CONCURRENT_SHARED_WORLD_PROVIDER_METADATA,
-              labId: config.id,
-              topology: "shared-world",
-              topologyMode: "concurrent",
-              role: "subject",
-              roleCount: String(roles.length),
-            },
-            ...(subjectEnvNames.length > 0 || Object.keys(commsEnv).length > 0
-              ? {
-                  envs: {
-                    ...Object.fromEntries(
-                      subjectEnvNames.map((name) => [name, env[name] as string]),
-                    ),
-                    ...commsEnv,
-                  },
-                }
-              : {}),
-            dpi: 96,
-            lifecycle: { onTimeout: "kill" },
-          },
-          template: config.execution?.desktop?.template,
-          receipt: { root: runPaths, laneId: "subject" },
-        });
-        subjectDesktop = subject.sandbox;
-        subjectShell = e2bShell(subjectDesktop);
-        subjectSandboxId = subject.allocation.resourceId;
-
-        if (hooks.prepareDesktop) {
-          await hooks.prepareDesktop(subjectDesktop);
-        }
-
-        // Start the in-sandbox email catch BEFORE the subject serve, so the app's send-API base URL
-        // (injected into its env at create) resolves the moment it boots. Fail closed if the catch can't
-        // stand up rather than let a comms-declared app silently send real mail to the internet.
-        if (commsEmail && commsPort !== undefined) {
-          // A SECOND (0.0.0.0) read-only inbox listener on commsPort+1 so the persona — which lives in a
-          // DIFFERENT sandbox here — can reach the inbox surface via getHost; capture stays loopback.
-          deployedComms = await deployCommsCatch(subjectShell, {
-            port: commsPort,
-            inboxPort: commsPort + 1,
-            requestTimeoutMs,
-            timers,
-          });
-          if (!deployedComms.ready) {
-            throw new Error(
-              `comms email catch did not become ready in the subject sandbox (loopback capture ${commsPort} / inbox ${commsPort + 1})`,
-            );
-          }
-        }
-
-        // Provision the ONE shared plane: clone + install/build + seed + serve on 0.0.0.0 + probe
-        // (clone route), or upload/extract the once-per-run packed archive + the SAME shared serve
-        // pipeline (local-tree route).
-        const onSubjectPhase =
-          hooks.onPhase ??
-          ((event: SubjectPhaseEvent) => {
-            process.stderr.write(
-              `humanish shared-world (concurrent): ${event.message}${event.durationMs === undefined ? "" : ` (${event.durationMs}ms)`}\n`,
-            );
-          });
-        if (localTreeRoute) {
-          await provisionLocalTreeSubject(subjectShell, {
-            archiveBuffer: localTreeArchiveBuffer!,
-            serve,
-            ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
-            requestTimeoutMs,
-            scrub: scrubKnownValues,
-            onStateStep: (record) => {
-              stateStepRecords.push(record);
-            },
-            onPhase: onSubjectPhase,
-            ...timers,
-          });
-        } else {
-          subjectCommit = await provisionCloneSubject(subjectShell, {
-            repo: subjectRepo,
-            depth: config.subject.clone?.depth ?? 1,
-            serve,
-            ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
-            hasGithubToken,
-            requestTimeoutMs,
-            scrub: scrubKnownValues,
-            onCommit: (commit) => {
-              subjectCommit = commit;
-            },
-            onStateStep: (record) => {
-              stateStepRecords.push(record);
-            },
-            onPhase: onSubjectPhase,
-            ...timers,
-          });
-        }
-
-        // Expose the served port via getHost (FIX-2). Fail closed if the SDK lacks it.
-        if (typeof subjectDesktop.getHost !== "function") {
-          throw new Error(
-            "the installed @e2b/desktop SDK does not expose getHost(port); the concurrent shared-world route requires it to reach the subject plane",
-          );
-        }
-        // getHost returns a BARE host (e.g. "3000-<sandboxId>.e2b.app", no scheme); e2b exposes the
-        // port over https. Normalize to a full URL before the tokenless check + before persisting.
-        const rawHost = subjectDesktop.getHost(servePort(serve.url));
-        const hostUrl = /^https?:\/\//i.test(rawHost) ? rawHost : `https://${rawHost}`;
-        if (!isTokenlessHost(hostUrl)) {
-          throw new Error(
-            "getHost returned a non-tokenless URL; refusing to persist a host URL that may carry a credential (invariant 1)",
-          );
-        }
-        getHostUrl = hostUrl;
-
-        // Persona inbox SURFACE (#297 slice B, shared-world): getHost-expose the read-only inbox listener so
-        // a persona in a DIFFERENT sandbox can open it; build the serve->getHost origin map (REQUIRED here —
-        // the app's loopback verify links must be rewritten to a reachable host); provision the surface
-        // channel; write the EMPTY inbox up front (so /inbox never 404s); and start a render loop that drains
-        // + re-renders on a cadence. The loop shares the prober's dispose signal (disposed together, before
-        // the teardown evidence drain), and uses a DEDICATED FakeInbox + cursor (independent of that drain).
-        if (commsEmail && deployedComms?.inboxPort !== undefined) {
-          const rawInboxHost = subjectDesktop.getHost(deployedComms.inboxPort);
-          const inboxHostUrl = /^https?:\/\//i.test(rawInboxHost)
-            ? rawInboxHost
-            : `https://${rawInboxHost}`;
-          if (!isTokenlessHost(inboxHostUrl)) {
-            throw new Error(
-              "getHost returned a non-tokenless URL for the comms inbox; refusing to advertise it (invariant 1)",
-            );
-          }
-          commsInboxUrl = `${inboxHostUrl}/inbox`;
-          commsOriginMap = buildOriginMap({
-            internalServeUrl: serve.url,
-            reachableBaseUrl: getHostUrl,
-            ...(commsEmail.linkOrigin === undefined ? {} : { linkOrigin: commsEmail.linkOrigin }),
-          });
-          const surfaceRecipients = (commsEmail.recipients ?? [])
-            .filter(
-              (recipient): recipient is { lane: string; address: string } =>
-                recipient.address !== undefined,
-            )
-            .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
-          await writeInboxSurface(subjectShell, deployedComms.surfaceDir, [], {
-            originMap: commsOriginMap,
-            requestTimeoutMs,
-          });
-          const surfaceDeployed = deployedComms;
-          const surfaceCadenceMs = 2500;
-          surfaceLoop = (async () => {
-            // Full, idempotent rebuild each tick; surfaceRenderedCount advances only on a successful render,
-            // so a transient failure retries cleanly. Real timer (dispose-interruptible + cleared) — an
-            // unbounded loop must not busy-spin on the injected instant clock.
-            for (;;) {
-              try {
-                const refreshed = await refreshInboxSurface({
-                  shell: subjectShell!,
-                  deployed: surfaceDeployed,
-                  recipients: surfaceRecipients,
-                  sinceCount: surfaceRenderedCount,
-                  originMap: commsOriginMap,
-                  requestTimeoutMs,
-                });
-                if (refreshed.rendered) surfaceRenderedCount = refreshed.count;
-              } catch {
-                // Never throw into the render loop; the teardown drain + by-id teardown must still run.
-              }
-              if (proberDisposed) break;
-              await new Promise<void>((resolve) => {
-                const timer = setTimeout(resolve, surfaceCadenceMs);
-                void disposeSignal.then(() => {
-                  clearTimeout(timer);
-                  resolve();
-                });
-              });
-              if (proberDisposed) break;
-            }
-          })();
-        }
-
-        // Baseline state snapshot, then start the background cadence prober.
-        await proberSnapshot();
-        const inProgressPlaneCommit = localTreeRoute
-          ? localTreeArchive?.git?.commit
-          : subjectCommit;
-        const inProgressSubject = buildSubjectProvenance({
-          localTreeRoute,
-          publicRepo,
-          subjectCommit: inProgressPlaneCommit,
-          localTreeArchive,
-          subjectEnvNames,
-          state: resolveSubjectState({
-            declared: config.subject.state,
-            dryRun: false,
-            executed: stateStepRecords,
-          }),
-        });
-        const inProgressBundle = buildConcurrentSharedWorldBundle({
-          config,
-          descriptor,
-          createdAt,
-          dryRun: false,
-          inProgress: true,
-          runId,
-          source,
-          roles,
-          actorSpecs,
-          actorResults: [],
-          stateSnapshots,
-          subject: inProgressSubject,
-          seedDigest,
-          ...(inProgressPlaneCommit === undefined ? {} : { subjectCommit: inProgressPlaneCommit }),
-          hostDigest: hostOriginDigest(getHostUrl!),
-        });
-        await run.writeSnapshot(inProgressBundle);
-        if (options.onObserverReady) {
-          live.observer = liveObserverResult(cwd, runId, artifactRoot, [
-            "Live concurrent shared-world Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
-          ]);
-          try {
-            await options.onObserverReady(live.observer);
-          } catch (error) {
-            throw new ObserverGateError(error);
-          }
-        }
-        startSeatFlush(ctx, live, inProgressBundle);
-        proberLoop = (async () => {
-          while (!proberDisposed) {
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            await Promise.race([
-              new Promise<void>((resolve) => {
-                timer = setTimeout(resolve, proberCadenceMs);
-              }),
-              disposeSignal,
-            ]);
-            if (timer) clearTimeout(timer); // FIX-9: no dangling prober timer.
-            if (proberDisposed) break;
-            await proberSnapshot().catch(() => undefined);
-          }
-        })();
-
-        // Launch N actor sandboxes CONCURRENTLY, INDEPENDENT (FIX-11: runCuaLane + mapWithConcurrency,
-        // NOT runCuaLanes — no pipeline gate / fail-fast). Each actor's window is measured on the ONE
-        // orchestrator clock (FIX-1).
-        const baseActorDeps = seatLaneDeps(ctx, live, scrubKnownValues);
-
-        actorResults = await mapWithConcurrency(
-          actorSpecs,
-          Math.max(1, concurrency),
-          async (spec, i) => {
-            const route = resolveActorSeatUrl(getHostUrl!, roles[i]?.entry);
-            // Tell this persona its (getHost-reachable) inbox URL — but only when comms is live AND this lane
-            // has a declared recipient it can actually receive mail into (else it would stall on an empty
-            // inbox). Only the in-sandbox catch exists on this plane; the adopter-hosted catch is the
-            // external-public plane's, wired in ITS execution block below (#387).
-            const laneSpec =
-              commsEmail && commsInboxUrl && laneHasInboxRecipient(commsEmail, spec.laneId)
-                ? withInboxMission(
-                    spec,
-                    commsInboxUrl,
-                    inboxRecipientFor(commsEmail, spec.laneId)?.address,
-                  )
-                : spec;
-            const startedAt = now();
-            const outcome = await runCuaLane(laneSpec, { ...baseActorDeps, appUrl: route });
-            const endedAt = now();
-            return { spec, outcome, startedAt, endedAt, route };
-          },
-        );
-      } catch (error) {
-        if (error instanceof ObserverGateError) throw error.cause;
-        runError = redactText(scrubKnownValues(toErrorMessage(error)));
-        warnings.push(`Concurrent shared-world run failed before completion: ${runError}`);
-      } finally {
-        // FIX-9: stop the prober, take a final snapshot while the subject is still alive, then tear
-        // down the ONE subject sandbox BY id (the actor sandboxes are torn down inside runCuaLane).
-        proberDisposed = true;
-        releaseDispose();
-        if (proberLoop) {
-          await proberLoop.catch(() => undefined);
-        }
-        // Stop the inbox-surface render loop too (shares the prober's dispose signal), before the teardown
-        // evidence drain below — so the two in-sandbox reads never overlap and the surface state is final.
-        if (surfaceLoop) {
-          await surfaceLoop.catch(() => undefined);
-        }
-        if (subjectDesktop && getHostUrl) {
-          await proberSnapshot().catch(() => undefined);
-        }
-        // Off-app comms evidence (#297): drain everything the in-sandbox catch captured, route it into a
-        // host fake inbox addressed to the declared recipients, and write the run-level digest-only thread
-        // artifact — while the subject is STILL alive, before it is killed below. Wrapped so a drain error
-        // never blocks teardown (invariant: all sandboxes torn down by id in this finally).
-        if (commsEmail && deployedComms?.ready && subjectShell) {
-          try {
-            const commsChannel = new FakeInbox();
-            const commsInboxes: CommsAddress[] = [];
-            for (const recipient of commsEmail.recipients ?? []) {
-              if (recipient.address !== undefined) {
-                commsInboxes.push(
-                  await commsChannel.provisionAddress(recipient.lane, recipient.address),
-                );
-              }
-            }
-            const collected = await collectCommsThread({
-              shell: subjectShell,
-              deployed: deployedComms,
-              channel: commsChannel,
-              inboxes: commsInboxes,
-              requestTimeoutMs,
-            });
-            if (collected.artifact) {
-              await writeContainedOutputFile(
-                runPaths,
-                "comms/thread.json",
-                `${JSON.stringify(collected.artifact, null, 2)}\n`,
-                "utf8",
-              );
-              commsArtifactPath = "comms/thread.json";
-            } else if (collected.captured > 0) {
-              warnings.push(
-                `Comms catch captured ${collected.captured} email send(s) but none matched a declared recipient inbox — no comms evidence written. Declare comms.email.recipients[].address to match the address the app sends to.`,
-              );
-            } else {
-              // Zero captures is the silent-broken shape (#351): the app never posted to the catch.
-              warnings.push(
-                `Comms catch captured ZERO email sends — the app never delivered mail through the catch. Verify the app reads ${commsEmail.injectEnv} for its email API base URL (an SDK that ignores it sends real mail or throws) and that the flow reached an email step.`,
-              );
-            }
-          } catch (error) {
-            warnings.push(
-              `Comms evidence collection failed (run continues; subject still torn down): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-            );
-          }
-        }
-        if (subjectSandboxId !== undefined && subjectModule) {
-          if (typeof subjectModule.Sandbox.kill === "function") {
-            try {
-              await subjectModule.Sandbox.kill(subjectSandboxId, {
-                requestTimeoutMs: 60_000,
-              });
-              subjectKilled = true;
-            } catch (error) {
-              warnings.push(
-                `Subject sandbox teardown failed (server-side kill-on-timeout will reclaim it): ${redactText(scrubKnownValues(toErrorMessage(error)))}`,
-              );
-            }
-          } else {
-            warnings.push(
-              "Installed @e2b/desktop SDK does not expose Sandbox.kill; server-side kill-on-timeout will reclaim the subject sandbox.",
-            );
-          }
-        }
-      }
+      actorResults = outcome.actorResults;
+      runError = outcome.runError;
+      subjectCommit = outcome.subjectCommit;
+      subjectSandboxId = outcome.subjectSandboxId;
+      subjectKilled = outcome.subjectKilled;
+      getHostUrl = outcome.getHostUrl;
+      if (outcome.commsArtifactPath !== undefined) commsArtifactPath = outcome.commsArtifactPath;
     }
 
     if (!dryRun && planeClass === "external-public") {
-      const outcome = await runExternalPublicPlane(
-        ctx,
-        live,
-        externalComms && externalCommsEmail && commsInboxUrl
-          ? { external: externalComms, email: externalCommsEmail, inboxUrl: commsInboxUrl }
-          : undefined,
-      );
+      const outcome = await runExternalPublicPlane(ctx, live, externalComms.wiring);
       actorResults = outcome.actorResults;
       runError = outcome.runError;
       publicOriginDigest = outcome.publicOriginDigest;
