@@ -64,23 +64,27 @@ const clockWithSleep = () => {
 };
 
 /**
- * A clock and sleep for dwell scenarios that also tell which observe call is the one right after
- * a dwell window: the second observe since the last sleep (the first is the window's last frame).
+ * A clock and sleep for dwell scenarios that also tell where an observe call falls: the first
+ * observe after a sleep is a window frame, the second is the observation right after the window.
  */
 function dwellWatch() {
   let t = 0;
   let observesSinceSleep = Number.POSITIVE_INFINITY;
+  /** Call once per observe. */
+  const place = (): "frame" | "after window" | "outside" => {
+    observesSinceSleep += 1;
+    if (observesSinceSleep === 1) return "frame";
+    return observesSinceSleep === 2 ? "after window" : "outside";
+  };
   return {
     now: () => (t += 1),
     sleep: async (ms: number) => {
       t += ms;
       observesSinceSleep = 0;
     },
+    place,
     /** Call once per observe; true for the observation taken right after the window. */
-    afterWindow: () => {
-      observesSinceSleep += 1;
-      return observesSinceSleep === 2;
-    },
+    afterWindow: () => place() === "after window",
   };
 }
 
@@ -189,6 +193,23 @@ it("safety checks, stop conditions and dwell windows", async () => {
           () =>
             watch.afterWindow()
               ? { stateSignature: "a", appState: { route: "/after-window" } }
+              : { stateSignature: "a" },
+        ]),
+        options: {
+          now: watch.now,
+          sleep: watch.sleep,
+          dwell: { ms: 20, everyMs: 10, then: "continue" },
+        },
+      };
+    },
+    dwellAppStateInsideWindow: (probe) => {
+      const watch = dwellWatch();
+      return {
+        provider: scriptedProvider(probe, [done("Finished.")]),
+        executor: sequenceExecutor(probe, [
+          () =>
+            watch.place() === "frame"
+              ? { stateSignature: "a", appState: { route: "/in-window" } }
               : { stateSignature: "a" },
         ]),
         options: {

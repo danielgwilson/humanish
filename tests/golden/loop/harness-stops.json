@@ -1812,6 +1812,171 @@
       ]
     ]
   },
+  "dwellAppStateInsideWindow": {
+    "result": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Finished.",
+      "trace": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "golden-cua",
+        "providerVersion": "golden-1",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "golden",
+          "traitsApplied": [
+            "friction-tolerance:low"
+          ],
+          "promptDigest": "golden"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "1970-01-01T00:00:00.001Z",
+        "completedAt": "1970-01-01T00:00:00.034Z",
+        "durationMs": 33,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished.",
+        "ids": {
+          "model": "golden-1"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "notice-001",
+            "kind": "notice",
+            "lifecycle": "started",
+            "title": "dwell window started",
+            "text": "at the start at turn 0: holding 20ms, a frame every 10ms, no actions, no model turns",
+            "at": "1970-01-01T00:00:00.005Z"
+          },
+          {
+            "id": "notice-002",
+            "kind": "notice",
+            "lifecycle": "completed",
+            "status": "ok",
+            "title": "dwell window complete",
+            "text": "2 frame(s) over 23ms; no model turn was requested during the window",
+            "at": "1970-01-01T00:00:00.028Z"
+          },
+          {
+            "id": "notice-003",
+            "kind": "notice",
+            "title": "Participant context hint",
+            "text": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.",
+            "lifecycle": "completed",
+            "at": "1970-01-01T00:00:00.032Z"
+          },
+          {
+            "id": "message-004",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 1",
+            "text": "Finished.",
+            "at": "1970-01-01T00:00:00.033Z"
+          }
+        ],
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": true,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "open"
+        }
+      }
+    },
+    "log": [
+      [
+        "executor.observe",
+        0
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "onTrace",
+        0,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        1
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        2
+      ],
+      [
+        "onTrace",
+        1,
+        {
+          "input": 0,
+          "output": 0,
+          "cachedInput": 0,
+          "cacheWriteInput": 0
+        },
+        {}
+      ],
+      [
+        "executor.observe",
+        3
+      ],
+      [
+        "onObservedUrl",
+        null
+      ],
+      [
+        "provider.nextTurn",
+        {
+          "instructions": "Act as the synthetic persona and finish the task.",
+          "observation": {
+            "stateSignature": "a"
+          },
+          "contextHint": "The study held this page under observation for 0 seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page."
+        }
+      ],
+      [
+        "onMessage",
+        "Finished."
+      ]
+    ]
+  },
   "dwellHintWithBackstopHint": {
     "result": {
       "status": "passed",
