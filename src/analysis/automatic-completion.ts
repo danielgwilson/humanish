@@ -102,6 +102,21 @@ export async function completeAutomaticAnalysis<
   }
 }
 
+/**
+ * True when an analysis the lab never declared was refused because its conservative estimate is
+ * over the default cap. The author did not ask for it, so the refusal does not fail the run;
+ * `humanish analyze --max-cost` can still run it.
+ */
+export function defaultAnalysisOverBudget(result: AutomaticAnalysisResult): boolean {
+  const value = result.automaticAnalysis;
+  return (
+    result.automaticAnalysisTrigger === "default" &&
+    value?.state === "skipped" &&
+    value.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED" &&
+    value.result?.error?.code === "analysis_budget_exceeded"
+  );
+}
+
 export function automaticAnalysisSucceeded(result: AutomaticAnalysisResult): boolean {
   const value = result.automaticAnalysis;
   if (value === undefined) return true;
@@ -111,7 +126,8 @@ export function automaticAnalysisSucceeded(result: AutomaticAnalysisResult): boo
       (result.automaticAnalysisTrigger === "default" &&
         ["AUTOMATIC_ANALYSIS_KEY_MISSING", "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE"].includes(
           value.reason ?? "",
-        ))
+        )) ||
+      defaultAnalysisOverBudget(result)
     );
   return (value.state === "complete" || value.state === "partial") && value.result?.ok === true;
 }

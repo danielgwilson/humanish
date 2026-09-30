@@ -100,9 +100,13 @@ The CLI's JSON keeps `runOk` for the original backend result, `automaticAnalysis
 for post-run analysis, and `ok` for the overall request. Failed, cancelled or
 unknown analysis produces exit code 2 without discarding the recording. A missing
 `OPENAI_API_KEY` skips default analysis and preserves a successful run exit;
-`automaticAnalysisTrigger: "default"` distinguishes that case in JSON. A missing
-key for an explicitly configured analysis remains a failed overall request.
-Either skip is retained for review and does not retry automatically. Partial
+`automaticAnalysisTrigger: "default"` distinguishes that case in JSON. So does a
+default analysis whose conservative estimate is over the default $3 limit: it is
+skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED`, the run exits 0, and the CLI
+prints the `humanish analyze --run <id> --max-cost <usd>` command that runs it.
+A missing key or an over-limit estimate for an explicitly configured analysis
+remains a failed overall request. Every skip is retained for review and does not
+retry automatically. Partial
 findings remain visibly partial; a valid partial result can succeed, while a
 partial result with an analysis error still fails the command. Recorded task
 outcomes and the deterministic review verdict are never rewritten by analysis.

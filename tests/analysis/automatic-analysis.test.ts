@@ -16,7 +16,7 @@ import {
   markFinalizedStudyResult,
   automaticAnalysisSucceeded,
 } from "../../src/analysis/automatic-completion.js";
-import { automaticAnalysisEnvelope } from "../../src/cli/io.js";
+import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
 import { cliAutomaticAnalysisHooks } from "../../src/cli/commands/lab-hooks.js";
 import { createProgram } from "../../src/cli/program.js";
 import { readLabSummary } from "../../src/lab/summary.js";
@@ -478,6 +478,64 @@ describe("automatic analysis admission and producer boundary", () => {
         automaticAnalysis: { state: "partial", reason: "analysis_admission_estimate_exceeded" },
       }),
     ).toBe(false);
+  });
+  describe("a default analysis over the default cap", () => {
+    const overBudget = (code: string, trigger: "default" | "explicit") => ({
+      runId: "over-budget",
+      ok: true,
+      automaticAnalysisTrigger: trigger,
+      automaticAnalysis: {
+        state: "skipped" as const,
+        reason: "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED",
+        result: {
+          schema: "humanish.analyze-result.v1",
+          run: "over-budget",
+          dryRun: false,
+          reused: false,
+          ok: false,
+          admission: {
+            allowed: false,
+            error: code,
+            inputTokenAllowance: 207482,
+            outputTokenAllowance: 16384,
+            estimatedCostUsd: 3.412725,
+            ratesAsOf: "2026-09-03",
+          },
+          warnings: [],
+          error: { code, message: "refused" },
+        } as unknown as NonNullable<AutomaticStudyAnalysisOutcome["result"]>,
+      },
+    });
+
+    it("does not fail a run the author never asked to analyze", () => {
+      expect(automaticAnalysisSucceeded(overBudget("analysis_budget_exceeded", "default"))).toBe(
+        true,
+      );
+      expect(
+        automaticAnalysisEnvelope(overBudget("analysis_budget_exceeded", "default")),
+      ).toMatchObject({ ok: true, runOk: true });
+    });
+
+    it("still fails an explicitly requested analysis or any other admission refusal", () => {
+      expect(automaticAnalysisSucceeded(overBudget("analysis_budget_exceeded", "explicit"))).toBe(
+        false,
+      );
+      expect(automaticAnalysisSucceeded(overBudget("analysis_admission_denied", "default"))).toBe(
+        false,
+      );
+    });
+
+    it("tells a human the command that runs it", () => {
+      const out: string[] = [];
+      const io = {
+        writeOut: (text: string) => out.push(text),
+        writeErr: () => {},
+        setExitCode: () => {},
+      };
+      const command = createProgram(io).command("probe-over-budget");
+      writeResult(command, io, overBudget("analysis_budget_exceeded", "default"), () => "");
+      expect(out.join("")).toContain("humanish analyze --run over-budget --max-cost 4");
+    });
   });
   it("announces preparation before admission without claiming a provider request", () => {
     const writeErr = vi.fn();
