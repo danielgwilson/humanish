@@ -56,7 +56,7 @@ function addCode(codes: string[], code: string): void {
 function providerCodes(codes: string[], values: string[], safe: ReadonlySet<string>): void {
   for (const value of values) addCode(codes, safe.has(value) ? value : "provider_coverage_limited");
 }
-function now(): string {
+function isoNow(): string {
   return new Date().toISOString();
 }
 function providerTime(value: string | undefined): string | undefined {
@@ -114,7 +114,7 @@ function visibleContent(message: ParticipantEmail): string {
   ]);
 }
 /** Deadlines bound even a broken injected dependency; cancellation reaches cooperative I/O. */
-function bounded<T>(
+function withDeadline<T>(
   operation: (context: ReceivingContext) => Promise<T>,
   timeoutMs: number,
   signal?: AbortSignal,
@@ -283,7 +283,7 @@ class ReceivingRun implements CommsReceivingRun {
             if (this.pendingEvidence === pending) delete this.pendingEvidence;
           },
         );
-        await bounded(() => pending, EVIDENCE_MS);
+        await withDeadline(() => pending, EVIDENCE_MS);
         return true;
       } catch {
         addCode(this.evidence.limitations, "evidence_write_failed");
@@ -301,7 +301,7 @@ class ReceivingRun implements CommsReceivingRun {
         if (this.options.signal?.aborted) throw new CommsReceivingError("comms_cancelled");
         await this.store.setState(participant.record.participantId, "intent");
         participant.record.state = "intent";
-        const lease = await bounded(
+        const lease = await withDeadline(
           (context) => this.options.adapter.acquire(participant.record.clientId, context),
           REQUEST_MS,
           this.options.signal,
@@ -399,7 +399,7 @@ class ReceivingRun implements CommsReceivingRun {
     } else
       participant.evidence.messages.push({
         id,
-        firstObservedAt: now(),
+        firstObservedAt: isoNow(),
         ...(timestamp ? { providerTimestamp: timestamp } : {}),
       });
     participant.evidence.observed = participant.messages.size;
@@ -440,9 +440,9 @@ class ReceivingRun implements CommsReceivingRun {
           if (participant.pendingPublication === pending) delete participant.pendingPublication;
         },
       );
-      await bounded(() => pending, SURFACE_MS);
+      await withDeadline(() => pending, SURFACE_MS);
       participant.publishedRevision = revision;
-      const publishedAt = now();
+      const publishedAt = isoNow();
       for (const message of participant.evidence.messages) message.publishedAt ??= publishedAt;
       participant.evidence.published = participant.evidence.messages.filter(
         (message) => message.publishedAt !== undefined,
@@ -459,7 +459,7 @@ class ReceivingRun implements CommsReceivingRun {
     participant.readAbort = controller;
     try {
       await this.store.assertOwnership();
-      const batch = await bounded(
+      const batch = await withDeadline(
         (context) => this.options.adapter.read(structuredClone(participant.lease!), context),
         REQUEST_MS,
         controller.signal,
@@ -512,7 +512,7 @@ class ReceivingRun implements CommsReceivingRun {
       participant.finished
     ) {
       try {
-        await bounded(() => options.surface.stop(), SURFACE_MS);
+        await withDeadline(() => options.surface.stop(), SURFACE_MS);
       } catch {
         /* The caller still owns the desktop. */
       }
@@ -587,7 +587,7 @@ class ReceivingRun implements CommsReceivingRun {
       const evidenceSaved = await this.persist();
       if (participant.surface) {
         try {
-          await bounded(() => participant.surface!.stop(), SURFACE_MS);
+          await withDeadline(() => participant.surface!.stop(), SURFACE_MS);
         } catch {
           addCode(participant.evidence.limitations, "surface_stop_unconfirmed");
         }
@@ -652,7 +652,7 @@ async function releaseOwned(
     ) {
       throw new CommsReceivingError("comms_ownership_mismatch");
     }
-    const result = await bounded(
+    const result = await withDeadline(
       (context) => adapter.release(structuredClone(lease), context),
       REQUEST_MS,
     );
@@ -670,7 +670,7 @@ export async function startCommsReceiving(
     if (!isReceivingProviderId(options.adapter.provider))
       throw new CommsReceivingError("comms_provider_unsupported");
     // The adapter rejects a credential that cannot acquire fresh inboxes.
-    const identity = await bounded(
+    const identity = await withDeadline(
       (context) => options.adapter.authenticate(context),
       REQUEST_MS,
       options.signal,
@@ -717,7 +717,7 @@ export async function recoverCommsReceiving(options: {
   let result: { ok: boolean; recovered: number; unresolved: number; message: string };
   try {
     store = await CommsLeaseStore.recover(options);
-    const identity = await bounded(
+    const identity = await withDeadline(
       (context) => options.adapter.authenticate(context),
       REQUEST_MS,
     ).catch((error: unknown) => {
@@ -745,7 +745,7 @@ export async function recoverCommsReceiving(options: {
           throw new CommsReceivingError("comms_replay_unsupported");
         const lease =
           record.lease ??
-          (await bounded(
+          (await withDeadline(
             (context) => options.adapter.acquire(record.clientId, context),
             REQUEST_MS,
           ));

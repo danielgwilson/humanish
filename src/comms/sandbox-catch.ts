@@ -9,9 +9,9 @@
 
 import type { CommsAddress, CommsChannel, CommsMessage } from "./types.js";
 import { FakeInbox } from "./fake-inbox.js";
-import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./evidence.js";
+import { buildCommsThreadArtifact, type CommsThreadArtifact } from "./thread-evidence.js";
 import { SANDBOX_CATCH_SCRIPT } from "./sandbox-catch-script.js";
-import { buildInboxSurface, type InboxRenderOptions } from "./inbox.js";
+import { buildInboxSurface, type InboxRenderOptions } from "./capture-surface.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./email-catch.js";
 import { startDetachedProcess, type DetachedTimers } from "../substrates/detached.js";
 import { runOrThrow, type Shell } from "../substrates/shell.js";
@@ -528,7 +528,7 @@ export async function collectExternalCommsThread(args: {
 }
 
 /**
- * Render the persona-facing inbox surface (host-side, typed — see inbox.ts) and write the files
+ * Render the persona-facing inbox surface (host-side, typed — see capture-surface.ts) and write the files
  * into the sandbox's served dir, so the catch serves a LIVE inbox the persona opens and clicks. Creates
  * the nested route dirs first; overwrites idempotently, so call it whenever the message set changes
  * (e.g. after a mid-run drain). Returns the number of files written. Raw content is written INTO the

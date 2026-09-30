@@ -1,7 +1,8 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port.
+import { setTimeout as delay } from "node:timers/promises";
 import { toErrorMessage } from "../command-failure.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
-import { buildOriginMap } from "../../comms/inbox.js";
+import { buildOriginMap } from "../../comms/capture-surface.js";
 import { deployReceivingInbox } from "../../comms/receiving-inbox.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
@@ -34,7 +35,7 @@ import { provisionDesktopCli } from "../../subject/desktop-cli.js";
 import { provisionLocalTreeSubject } from "../../subject/local-tree.js";
 import { defaultSubjectPhaseSink, type SubjectPhaseEvent } from "../../subject/steps.js";
 import {
-  BROWSER_SETTLE_MS,
+  DESKTOP_SETTLE_MS,
   openDesktopBrowserTarget,
   openDesktopTerminal,
   startDesktopStream,
@@ -143,11 +144,7 @@ export function createE2BCuaDesktopLane(
     )
     .map((recipient) => ({ lane: recipient.lane, address: recipient.address }));
   let surfaceRenderedCount = 0;
-  let surfaceDisposed = false;
-  let releaseSurface: () => void = () => {};
-  const surfaceDispose = new Promise<void>((resolve) => {
-    releaseSurface = resolve;
-  });
+  const surfaceStop = new AbortController();
   let surfaceLoop: Promise<void> | undefined;
   const stateStepRecords: RunSubjectStateStepRecord[] = [];
   // Completed-only trail (durationMs/ok are set on completed events, never on started ones):
@@ -342,8 +339,8 @@ export function createE2BCuaDesktopLane(
       surfaceLoop = (async () => {
         // Render-first (so even a short session gets a populated inbox), then refresh on a cadence. The
         // cadence uses a REAL timer, NOT the injected instant clock: this loop is unbounded, so an instant
-        // sleep would busy-spin and starve the session's own timers. The wait is interruptible by
-        // surfaceDispose (and the timer cleared) so teardown never blocks for a full cadence. Each refresh
+        // sleep would busy-spin and starve the session's own timers. surfaceStop interrupts the wait
+        // (and clears the timer) so teardown never blocks for a full cadence. Each refresh
         // is a full, idempotent rebuild; `surfaceRenderedCount` only advances on a SUCCESSFUL render so a
         // transient failure retries cleanly (no duplicate emails).
         for (;;) {
@@ -360,15 +357,11 @@ export function createE2BCuaDesktopLane(
           } catch {
             // Never throw into the render loop; the teardown drain + by-id teardown must still run.
           }
-          if (surfaceDisposed) break;
-          await new Promise<void>((resolve) => {
-            const timer = setTimeout(resolve, INBOX_SURFACE_CADENCE_MS);
-            void surfaceDispose.then(() => {
-              clearTimeout(timer);
-              resolve();
-            });
-          });
-          if (surfaceDisposed) break;
+          if (surfaceStop.signal.aborted) break;
+          await delay(INBOX_SURFACE_CADENCE_MS, undefined, { signal: surfaceStop.signal }).catch(
+            () => undefined,
+          );
+          if (surfaceStop.signal.aborted) break;
         }
       })();
     }
@@ -526,7 +519,7 @@ export function createE2BCuaDesktopLane(
       launchedBrowserFamily = browserLaunch.family;
       browserLaunchIdentity = browserLaunch.identity;
       browserLaunched = true;
-      await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+      await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
       // Mobile fidelity beyond viewport size (#221): applied to the launch page before the
       // geometry capture and the participant's first observation, OUTSIDE the stream/geometry
       // try below (whose catch degrades to a warning): a request that cannot be applied fails
@@ -553,7 +546,6 @@ export function createE2BCuaDesktopLane(
               : { profileDir: browserLaunchIdentity.profileDir }),
             targetUrl,
           },
-          browserTargetId,
           {
             width: spec.devicePreset.width,
             height: spec.devicePreset.height,
@@ -562,6 +554,7 @@ export function createE2BCuaDesktopLane(
             touch: fidelityRequest.touch ?? true,
             userAgent: fidelityRequest.userAgent ?? DEFAULT_MOBILE_USER_AGENT,
           },
+          { targetId: browserTargetId },
         );
         appliedFidelity = applied.fidelity;
         emulatedTargetId = applied.targetId;
@@ -573,7 +566,7 @@ export function createE2BCuaDesktopLane(
       // participant arrives at a desktop with the thing they were asked to use already in front
       // of them. They can still open another from the dock — that is the point of a desktop.
       await openDesktopTerminal(desktop, deps.requestTimeoutMs, config.subject.product?.workdir);
-      await desktop.wait(BROWSER_SETTLE_MS).catch(() => undefined);
+      await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
     }
     prepared = true;
   }
@@ -677,39 +670,42 @@ export function createE2BCuaDesktopLane(
                   : { profileDir: browserLaunchIdentity.profileDir }),
                 targetUrl,
               },
-              browserTargetId,
-              // Once per lane: a dark observation channel is a gap in the instrument, and the
-              // funnel's NEVER MEASURED count needs this line to explain itself (#514).
-              (reason) => {
-                warnings.push(
-                  `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
-                    "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session.",
-                );
+              {
+                targetId: browserTargetId,
+                // Once per lane: a dark observation channel is a gap in the instrument, and the
+                // funnel's NEVER MEASURED count needs this line to explain itself (#514).
+                onUnavailable: (reason) => {
+                  warnings.push(
+                    `Browser-state observer unavailable for lane ${spec.laneId} (${redactText(deps.scrubKnownValues(reason))}); ` +
+                      "urlIncludes/urlPathEquals/textIncludes stop conditions and task criteria are NOT being measured this session.",
+                  );
+                },
+                drift:
+                  emulatedTargetId === undefined
+                    ? undefined
+                    : {
+                        emulatedTargetId,
+                        expectedWidth: spec.devicePreset.width,
+                        expectTouch: appliedFidelity?.requested.touch === true,
+                        onDrift: (reason) => {
+                          warnings.push(
+                            `Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`,
+                          );
+                        },
+                        onCovered: (coveredTargetId, read) => {
+                          // A later tab the page itself reported at the phone width: evidence that
+                          // the emulation followed the participant (#623), kept on the bundle.
+                          if (appliedFidelity === undefined) return;
+                          appliedFidelity = {
+                            ...appliedFidelity,
+                            laterTargets: [
+                              ...(appliedFidelity.laterTargets ?? []),
+                              { targetId: coveredTargetId, ...read },
+                            ],
+                          };
+                        },
+                      },
               },
-              emulatedTargetId === undefined
-                ? undefined
-                : {
-                    emulatedTargetId,
-                    expectedWidth: spec.devicePreset.width,
-                    expectTouch: appliedFidelity?.requested.touch === true,
-                    onDrift: (reason) => {
-                      warnings.push(
-                        `Mobile emulation drift on lane ${spec.laneId}: ${reason} (#623).`,
-                      );
-                    },
-                    onCovered: (coveredTargetId, read) => {
-                      // A later tab the page itself reported at the phone width: evidence that
-                      // the emulation followed the participant (#623), kept on the bundle.
-                      if (appliedFidelity === undefined) return;
-                      appliedFidelity = {
-                        ...appliedFidelity,
-                        laterTargets: [
-                          ...(appliedFidelity.laterTargets ?? []),
-                          { targetId: coveredTargetId, ...read },
-                        ],
-                      };
-                    },
-                  },
             ),
           }
         : {},
@@ -724,8 +720,7 @@ export function createE2BCuaDesktopLane(
     // Stop the mid-run inbox-surface loop FIRST — before the teardown evidence drain below — so the two
     // `cat`s never overlap and the final surface state is deterministic. A surface failure can never
     // block teardown (the loop body is fully try/caught and this await is on its already-caught promise).
-    surfaceDisposed = true;
-    releaseSurface();
+    surfaceStop.abort();
     if (surfaceLoop) await surfaceLoop.catch(() => undefined);
     if (desktop && allocation) {
       try {

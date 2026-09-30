@@ -3,7 +3,8 @@
 
 export const SUBJECT_DIR = "/home/user/subject";
 
-export const CLONE_TIMEOUT_MS = 5 * 60_000;
+/** Budget for putting the subject's source on the machine: a clone, or an archive extract. */
+export const SOURCE_TIMEOUT_MS = 5 * 60_000;
 
 export const INSTALL_TIMEOUT_MS = 10 * 60_000;
 

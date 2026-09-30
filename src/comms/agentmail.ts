@@ -116,7 +116,7 @@ function abortCode(budget: Budget): AgentMailReceivingErrorCode {
 function checkAbort(budget: Budget): void {
   if (budget.signal.aborted) fail(abortCode(budget));
 }
-function bounded<T>(promise: Promise<T>, budget: Budget): Promise<T> {
+function unlessAborted<T>(promise: Promise<T>, budget: Budget): Promise<T> {
   if (budget.signal.aborted) return Promise.reject(new AgentMailReceivingError(abortCode(budget)));
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => reject(new AgentMailReceivingError(abortCode(budget)));
@@ -168,7 +168,7 @@ async function bodyBytes(response: Response, budget: Budget, maximum: number): P
   let size = 0;
   try {
     while (true) {
-      const result = await bounded(reader.read(), budget);
+      const result = await unlessAborted(reader.read(), budget);
       if (result.done) break;
       size += result.value.byteLength;
       budget.bytes += result.value.byteLength;
@@ -242,7 +242,7 @@ export function createAgentMailReceiver(options: {
     checkAbort(budget);
     if (++budget.requests > AGENTMAIL_RECEIVING_LIMITS.requests) fail("agentmail_request_limit");
     try {
-      return await bounded(
+      return await unlessAborted(
         fetcher(url, { ...init, signal: budget.signal, credentials: "omit" }).then((response) => {
           if (budget.signal.aborted) {
             void response.body?.cancel().catch(() => {});

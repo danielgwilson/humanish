@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { renderInboxSurfaceLocally } from "../../src/comms/catch-host.js";
 import { freePort, withFreePort } from "../helpers/free-port.js";
-import { inboxRecipientScope } from "../../src/comms/inbox.js";
+import { inboxRecipientScope } from "../../src/comms/capture-surface.js";
 import {
   capturedRecipientAddresses,
   parseDeliveriesNdjson,

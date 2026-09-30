@@ -7,8 +7,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
-import { buildCommsThreadArtifact } from "../../src/comms/evidence.js";
-import { buildInboxSurface } from "../../src/comms/inbox.js";
+import { buildCommsThreadArtifact } from "../../src/comms/thread-evidence.js";
+import { buildInboxSurface } from "../../src/comms/capture-surface.js";
 import {
   collectCommsThread,
   deployCommsCatch,

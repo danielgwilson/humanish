@@ -148,8 +148,8 @@ export type {
 } from "./comms/types.js";
 export { FakeInbox } from "./comms/fake-inbox.js";
 export type { FakeInboxOptions } from "./comms/fake-inbox.js";
-export { COMMS_THREAD_SCHEMA } from "./comms/evidence.js";
-export type { CommsThreadArtifact, CommsThreadEntry } from "./comms/evidence.js";
+export { COMMS_THREAD_SCHEMA } from "./comms/thread-evidence.js";
+export type { CommsThreadArtifact, CommsThreadEntry } from "./comms/thread-evidence.js";
 export { COMMS_RECEIVING_SCHEMA } from "./comms/receiving-types.js";
 export type {
   CommsReceivingEvidence,

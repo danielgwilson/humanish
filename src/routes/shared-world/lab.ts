@@ -42,7 +42,7 @@ import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.j
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
-import { buildOriginMap, type OriginMap } from "../../comms/inbox.js";
+import { buildOriginMap, type OriginMap } from "../../comms/capture-surface.js";
 import { prepareReceivingRun } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
 import {

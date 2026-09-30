@@ -157,7 +157,7 @@ describe("the state observer follows the participant's active tab", () => {
       desktop,
       1000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      "launch-target-id",
+      { targetId: "launch-target-id" },
     )();
     expect(commands).toHaveLength(1);
     // Chrome's /json lists page targets most-recently-focused first; the participant's current
@@ -172,7 +172,7 @@ describe("the state observer follows the participant's active tab", () => {
       desktop,
       1000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      "launch-target-id",
+      { targetId: "launch-target-id" },
     )();
     expect(commands).toHaveLength(1);
     expect(commands[0]).toContain('"prefer":"pinned"');

@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { inboxRecipientScope } from "../../comms/inbox.js";
+import { inboxRecipientScope } from "../../comms/capture-surface.js";
 import { externalInboxUrl, type ExternalCommsCatch } from "../../comms/sandbox-catch.js";
 
 /** Expose only this participant's existing catch pages through its local desktop. */

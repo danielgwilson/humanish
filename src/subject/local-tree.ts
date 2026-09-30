@@ -6,7 +6,7 @@ import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js"
 import type { Shell } from "../substrates/shell.js";
 import { runSubjectServePipeline } from "./serve.js";
 import {
-  CLONE_TIMEOUT_MS,
+  SOURCE_TIMEOUT_MS,
   emitPhaseCompleted,
   emitPhaseStarted,
   SUBJECT_DIR,
@@ -91,7 +91,7 @@ export async function provisionLocalTreeSubject(
   const extract = await runDetachedStep(shell, {
     name: "subject-extract",
     command: extractCommand,
-    timeoutMs: CLONE_TIMEOUT_MS,
+    timeoutMs: SOURCE_TIMEOUT_MS,
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers,
   });

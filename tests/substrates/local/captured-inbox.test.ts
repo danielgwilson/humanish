@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
-import { inboxRecipientScope, recipientInboxUrl } from "../../../src/comms/inbox.js";
+import { inboxRecipientScope, recipientInboxUrl } from "../../../src/comms/capture-surface.js";
 import { startLocalCapturedInbox } from "../../../src/substrates/local/captured-inbox.js";
 
 const cleanup: Array<() => Promise<void>> = [];
