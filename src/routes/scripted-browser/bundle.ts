@@ -58,7 +58,7 @@ export function buildScriptedLabBundle(args: {
     observation: DesktopResourceObservation | undefined;
     killed: boolean;
   };
-  surfaces: BrowserSurface[];
+  surfaces: readonly BrowserSurface[];
 }): RunBundle {
   const resultBySurface = new Map(
     args.sessionResults.map((result) => [result.capture.surface.id, result]),
@@ -300,7 +300,7 @@ function buildScriptedReview(args: {
   scenarioSource: string;
   sessionResults: ScriptedBrowserSessionResult[];
   sessionError?: string;
-  surfaces: BrowserSurface[];
+  surfaces: readonly BrowserSurface[];
 }): ReviewSummary {
   if (args.sessionError) {
     return {

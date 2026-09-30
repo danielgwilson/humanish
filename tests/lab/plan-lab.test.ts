@@ -46,6 +46,12 @@ const cuApp = {
   execution: { target: "e2b-desktop", timeoutMs: 60_000 },
 };
 
+const scriptedApp = {
+  subject: { source: "app-url", appUrl: "http://127.0.0.1:3000" },
+  actors: [{ type: "scripted-browser" }],
+  scenario: { ref: "scripted-first-run" },
+};
+
 describe("planLab", () => {
   it("pins the dry and live plan of every committed lab", async () => {
     const plans: Record<string, unknown> = {};
@@ -198,10 +204,47 @@ describe("planLab", () => {
         terminalHooks: { costProbe: () => ({}) },
       }),
     ).toBe("planned");
+    const publicScripted = {
+      ...parsed(scriptedApp),
+      subject: { source: "app-url", appUrl: "https://example.com/" },
+    } as LabConfig;
+    expect(gap(publicScripted, { cwd: ROOT })).toBe(
+      "scripted HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+    );
     const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as LabConfig;
     expect(gap(unknownActor, { cwd: ROOT })).toBe("computer-use unsupported-composition");
     const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as LabConfig;
     expect(gap(badAnalysis, { cwd: ROOT })).toBe("computer-use analysis-invalid");
+  });
+
+  it("asks a live scripted run for a host browser unless the caller injects one", () => {
+    const clone = parsed({
+      subject: {
+        source: "clone",
+        exposure: "synthetic",
+        repos: ["example-org/example-app"],
+        env: ["DATABASE_URL"],
+        serve: { install: "pnpm i", start: "pnpm start -H 0.0.0.0", url: "http://127.0.0.1:3000/" },
+        state: { seed: [{ name: "seed", command: "pnpm db:seed" }] },
+      },
+      actors: [{ type: "scripted-browser" }],
+      scenario: { ref: "scripted-first-run" },
+      execution: { target: "e2b-desktop" },
+    });
+    const requirements = (config: LabConfig, options: Partial<Parameters<typeof planLab>[1]>) =>
+      planOf(planLab(config, { cwd: ROOT, dryRun: false, ...options })).requirements;
+    expect(requirements(parsed(scriptedApp), {})).toEqual([{ kind: "host-browser" }]);
+    expect(requirements(clone, {})).toEqual([
+      { kind: "key", name: "E2B_API_KEY" },
+      { kind: "subject-env", names: ["DATABASE_URL"] },
+      { kind: "host-browser" },
+    ]);
+    expect(requirements(clone, { scriptedHooks: { browserCommand: "/usr/bin/chromium" } })).toEqual(
+      [
+        { kind: "key", name: "E2B_API_KEY" },
+        { kind: "subject-env", names: ["DATABASE_URL"] },
+      ],
+    );
   });
 
   it("keeps the caller's hooks with the plan and freezes the residual config", () => {
