@@ -7,6 +7,7 @@ import { declaredOutcomeOf, type Stop } from "./loop/ending.js";
 import { DesktopObserver } from "./loop/observation.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
+import { spendStop, unknownSpendStop } from "./loop/spend.js";
 import { accountBillingConflicts } from "./loop/usage.js";
 import { loopResult, notice } from "./loop/trace.js";
 import type {
@@ -27,6 +28,7 @@ export type {
   CuaObservation,
   CuaProvider,
   CuaSafetyCheck,
+  CuaSpendGate,
   CuaTurn,
   CuaTurnRequest,
 } from "./loop/types.js";
@@ -148,6 +150,8 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     backstop = step.backstop;
     const stalled = applyBackstop(session, conversation, step, [checkpoint.hint, batch.hint]);
     if (stalled !== undefined) return stalled;
+    const unknownSpend = unknownSpendStop(session);
+    if (unknownSpend !== undefined) return unknownSpend;
   }
 }
 
@@ -241,7 +245,7 @@ function stopBeforeActing(
   if (turn.interruption !== undefined) {
     // Preserve usage and partial narration of an interrupted response. Its usage still counts
     // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
-    const studyStop = overRunBudget?.(session.usage.running());
+    const studyStop = overRunBudget?.(session.usage.forCap());
     recordNarration(session, turn, turnNumber, "interrupted");
     if (studyStop != null) {
       session.trace.record("notice", () =>
@@ -264,26 +268,6 @@ function forwardNarration(session: LoopSession, turn: CuaTurn): void {
     .filter((t): t is string => typeof t === "string" && t.length > 0)
     .join("\n");
   if (narration.length > 0) onMessage?.(narration);
-}
-
-/**
- * The spend caps, checked before the next provider request so a model stuck retrying cannot keep
- * spending. The lane cap stops the session once the running estimate crosses maxUsd; a null
- * estimate cannot trip it, because preflight guaranteed a rate. The study budget (#299) is checked
- * next.
- */
-function spendStop(session: LoopSession): Stop | undefined {
-  const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
-  if (maxUsd !== undefined && estimateTurnCostUsd) {
-    const running = estimateTurnCostUsd(session.usage.running());
-    if (running !== null && !Number.isFinite(running)) return stops.nonFiniteEstimate;
-    if (running !== null && running > maxUsd) return stops.spendLimit(session, running, maxUsd);
-  }
-  if (overRunBudget) {
-    const runStop = overRunBudget(session.usage.running());
-    if (runStop !== null) return stops.studySpendLimit(runStop);
-  }
-  return undefined;
 }
 
 function recordNarration(

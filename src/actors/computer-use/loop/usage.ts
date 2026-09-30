@@ -10,6 +10,12 @@ import type { CuaLiveMetadata, CuaProvider, CuaTurn } from "./types.js";
 // receipts a single-dispatch provider settles, and whether any usage went unreported.
 
 type TurnUsage = NonNullable<CuaTurn["usage"]>;
+
+interface Reservation {
+  input: number;
+  readonly output: number;
+  provisional: boolean;
+}
 type UsageTurns = NonNullable<ActorTokenUsage["turns"]>;
 
 /** Turn usage with valid input and output counts, cache counts within input, and turns that add up. */
@@ -125,6 +131,11 @@ export class UsageLedger {
   private sawIncompleteUsage = false;
   /** A request may have been billed without any usage reaching the ledger. */
   private mayHaveUnreportedUsage = false;
+  /**
+   * Worst-case charges booked for requests lost without a reply (a stall or a transport failure)
+   * under a declared cap. The cap guards count them; the trace's tokenUsage does not.
+   */
+  private readonly reservations: Reservation[] = [];
 
   constructor(private readonly provider: CuaProvider) {}
 
@@ -137,6 +148,15 @@ export class UsageLedger {
       this.sawIncompleteUsage = true;
     if (interaction && raw?.turns !== undefined && turns === undefined)
       this.mayHaveUnreportedUsage = true;
+    // The reply answers the same request the lost attempts carried, so its reported input is theirs.
+    if (interaction && isCompleteTurnUsage(raw)) {
+      for (const reservation of this.reservations) {
+        if (reservation.provisional) {
+          reservation.input = raw.input;
+          reservation.provisional = false;
+        }
+      }
+    }
     if (raw === undefined) return;
     const usage = {
       ...(validTokenCount(raw.input) ? { input: raw.input } : {}),
@@ -162,6 +182,25 @@ export class UsageLedger {
   /** A request may have been billed without reporting usage. */
   markUnreported(): void {
     this.mayHaveUnreportedUsage = true;
+  }
+
+  /** The input the latest reported request carried; 0 before any was reported. */
+  lastReportedInput(): number {
+    return this.turns.at(-1)?.input ?? 0;
+  }
+
+  /**
+   * Book a lost request at a worst case: `input` tokens at the model's highest input rate and
+   * `output` tokens at its output rate. The input is provisional until the reply to the resent
+   * request reports its own.
+   */
+  reserve(input: number, output: number): void {
+    this.reservations.push({ input, output, provisional: true });
+  }
+
+  /** How many lost requests were booked at a worst case. */
+  get reservedRequests(): number {
+    return this.reservations.length;
   }
 
   /**
@@ -219,6 +258,40 @@ export class UsageLedger {
     );
   }
 
+  /**
+   * What the cap guards price: the running usage plus each booked worst case as one more request.
+   * Booked input is recorded as cache writes, which the rate sheet prices at the highest input
+   * rate it has for the model (src/run/pricing.ts: a write rate, where one exists, is 1.25x
+   * the input rate).
+   */
+  forCap(): ActorTokenUsage {
+    const settled = this.running();
+    if (this.reservations.length === 0 || this.accountBilled()) return settled;
+    const booked = this.reservations.map(({ input, output }) => ({
+      input,
+      output,
+      cachedInput: 0,
+      cacheWriteInput: input,
+    }));
+    const sum = (field: "input" | "output" | "cacheWriteInput"): number =>
+      booked.reduce((total, turn) => total + turn[field], 0);
+    const input = (settled.input ?? 0) + sum("input");
+    const output = (settled.output ?? 0) + sum("output");
+    // Per-request turns keep long-context pricing exact; add them only where the settled usage
+    // has a per-request record or none at all, so the turns still add up to the totals.
+    const perRequest =
+      settled.turns !== undefined || (settled.input ?? 0) + (settled.output ?? 0) === 0;
+    return {
+      ...settled,
+      input,
+      output,
+      cachedInput: settled.cachedInput ?? 0,
+      cacheWriteInput: (settled.cacheWriteInput ?? 0) + sum("cacheWriteInput"),
+      ...(perRequest ? { turns: [...(settled.turns ?? []), ...booked] } : {}),
+      ...(settled.total === undefined ? {} : { total: input + output }),
+    };
+  }
+
   /** The trace's tokenUsage: absent when nothing was reported. */
   tokenUsage(): ActorTokenUsage | undefined {
     if (!this.sawUsage) return undefined;
@@ -264,10 +337,16 @@ export class UsageLedger {
     );
   }
 
-  /** Whether the trace must say that some interaction usage may be missing. */
-  interactionUsageIncomplete(requiresUsage: boolean): boolean {
+  /**
+   * Whether the trace must say that some interaction usage may be missing. A booked worst case
+   * bounds a lost request's cost, but its usage is still unknown.
+   */
+  interactionUsageIncomplete(capDeclared: boolean): boolean {
     return (
-      this.requestPending || this.hasUnreportedUsage() || (requiresUsage && this.sawIncompleteUsage)
+      this.requestPending ||
+      this.hasUnreportedUsage() ||
+      this.reservations.length > 0 ||
+      (capDeclared && this.sawIncompleteUsage)
     );
   }
 

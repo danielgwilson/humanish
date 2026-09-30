@@ -1141,6 +1141,7 @@
           "total": 1,
           "shortcutTotal": 0
         },
+        "interactionUsageIncomplete": true,
         "tokenUsage": {
           "input": 100,
           "output": 50,

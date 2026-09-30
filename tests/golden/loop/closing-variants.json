@@ -2207,6 +2207,7 @@
           "status": "skipped",
           "reason": "remaining model budget is unknown because an earlier participant turn did not report complete usage"
         },
+        "interactionUsageIncomplete": true,
         "capabilities": {
           "headless": true,
           "structuredTrace": true,

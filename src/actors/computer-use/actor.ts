@@ -90,7 +90,8 @@ export interface CuaActorSessionOptions {
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /** RUN-LEVEL spend guard threaded to the loop (#299). See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
-  /** Capped sessions stop if a request's usage is unavailable; library-only policy. */
+  /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
+   *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
   /** RUNTIME-ONLY observed-URL callback threaded to the loop; see CuaLoopOptions.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host seat's live /lobby/CODE URL. */

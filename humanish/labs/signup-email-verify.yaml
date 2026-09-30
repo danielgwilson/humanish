@@ -93,6 +93,7 @@ comms:
     # carries the address, the inbox URL, and the wait steering.
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     mission: >-
       Create an account using the email address in your instructions, complete the email
       verification, sign in, and stop once you can see the signed-in dashboard.

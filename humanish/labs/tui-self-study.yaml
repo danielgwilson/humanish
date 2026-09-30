@@ -48,6 +48,7 @@ subject:
       - https://github.com/danielgwilson/humanish
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     persona: synthetic-new-user
     mission: >-
       You are evaluating a command-line tool called humanish that your team is considering. It is

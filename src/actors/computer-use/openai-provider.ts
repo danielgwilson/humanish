@@ -2,7 +2,7 @@ import { validClosingReport } from "./loop.js";
 import type { ActorCapabilities } from "../contract.js";
 import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./admission-limit.js";
 import { CuaPromptRefusedError } from "./provider-error.js";
-import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./loop.js";
+import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
 import {
   asRecord,
   buildCallOutput,
@@ -401,6 +401,7 @@ export function createOpenAiResponsesProvider(
     signal: AbortSignal | undefined,
     retries = maxRetries,
     interaction = true,
+    spend?: CuaSpendGate,
   ): Promise<unknown> => {
     // Preflight the deterministic next capture leaf before any network side
     // effect. A hostile generated path must fail with zero provider calls.
@@ -428,12 +429,15 @@ export function createOpenAiResponsesProvider(
         if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
         // Dispatch may have reached the provider. Preserve this uncertainty even when a later
         // retry succeeds or is refused locally; only that later refusal is known not to dispatch.
-        if (interaction) interactionUsageIncomplete = true;
+        // Under a spend gate the loop accounts for the attempt instead: it books a resend below
+        // and marks an abort or a final failure itself.
+        if (interaction && spend === undefined) interactionUsageIncomplete = true;
         if (signal?.aborted === true || isAbortError(error)) {
           throw error;
         }
         sawNetworkError = true;
         if (attempt < retries) {
+          spend?.beforeResend();
           await delayFn(2 ** attempt * 200);
           continue;
         }
@@ -498,6 +502,7 @@ export function createOpenAiResponsesProvider(
     req: CuaTurnRequest,
     signal: AbortSignal,
     closing = false,
+    spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     await prepareNextCapture();
     const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
@@ -542,7 +547,7 @@ export function createOpenAiResponsesProvider(
         return post(build(buildContext(req.instructions)), signal, 0);
       for (;;) {
         try {
-          return await post(build(buildContext(req.instructions)), signal);
+          return await post(build(buildContext(req.instructions)), signal, maxRetries, true, spend);
         } catch (error) {
           if (error instanceof SummaryRejectionError && reasoningSummary !== undefined) {
             reasoningSummary = undefined;
@@ -611,7 +616,7 @@ export function createOpenAiResponsesProvider(
     get interactionUsageIncomplete() {
       return interactionUsageIncomplete;
     },
-    nextTurn: (req, signal) => requestTurn(req, signal),
+    nextTurn: (req, signal, spend) => requestTurn(req, signal, false, spend),
     // Stateless mode retains only the latest output packet, not the whole session needed for
     // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.
     get debrief() {

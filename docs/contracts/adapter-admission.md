@@ -30,7 +30,11 @@ A stalled interaction or an OpenAI transport retry may have consumed additional
 tokens without reporting usage. The trace then retains
 `interactionUsageIncomplete: true`; its cost summary keeps the known token
 estimate and adds an unmeasured `interaction_usage_unreported` line. A later
-successful retry or local refusal does not remove that uncertainty. Custom
+successful retry or local refusal does not remove that uncertainty. Under a
+declared dollar cap or study budget, the loop books such a request at its worst
+case before sending it again, and stops the session when that does not fit or
+when no `maxOutputTokens` bounds it (see the computer-use spend thresholds in
+[schemas.md](schemas.md)). Custom
 providers can expose a latched `interactionUsageIncomplete` boolean for hidden
 interactive attempts. Absence of the field does not attest complete billing.
 

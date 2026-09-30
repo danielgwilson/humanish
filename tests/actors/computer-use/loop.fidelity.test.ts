@@ -120,6 +120,8 @@ it("calls every injected function without a receiver", async () => {
           actions: [click(1, 1)],
           message: "Looking",
           pendingSafetyChecks: [{ id: "c", code: "check", message: "m" }],
+          // Reported so the capped session reaches its second turn.
+          usage: { input: 1, output: 1 },
         }),
         done("Finished."),
       ]),

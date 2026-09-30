@@ -73,7 +73,10 @@ function tryLiveLab(actor: StarterActor): StarterFile {
   # only E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add
   # execution.caps.maxUsd.
   - type: local-agent`
-    : "  - type: openai-computer-use";
+    : `  - type: openai-computer-use
+    # Bounds each model reply. Under the cap below it also bounds what a stalled or lost request
+    # can cost, so the run can retry it instead of stopping.
+    maxOutputTokens: 8192`;
   const bound = account
     ? "  timeoutMs: 600000 # bounds the run; a dollar cap cannot be enforced on account usage"
     : `  timeoutMs: 600000

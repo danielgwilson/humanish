@@ -131,6 +131,16 @@ export interface CuaTurnRequest {
   contextHint?: string;
 }
 
+/**
+ * Passed to nextTurn when a spend cap is declared. A provider that sends a request again after a
+ * dispatched attempt failed without a reply (its transport threw) calls beforeResend first. The
+ * loop books that attempt at its worst case and throws when the charge does not fit under the
+ * cap; the provider lets the error propagate and sends nothing more.
+ */
+export interface CuaSpendGate {
+  beforeResend(): void;
+}
+
 export interface CuaTurn {
   /**
    * Set on a turn from a continuing request: a single-dispatch request that returned actions and
@@ -199,11 +209,13 @@ export interface CuaProvider {
    */
   readonly requiresFrame?: boolean;
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
-   *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete. */
+   *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete.
+   *  Attempts reported through a CuaSpendGate, and attempts aborted while one was given, are
+   *  the loop's to account for and are left out. */
   readonly interactionUsageIncomplete?: boolean;
   /** Latest known usage of the continuing request. Used only for runtime spend guards. */
   readonly pendingRequestUsage?: CuaTurn["usage"];
-  nextTurn(req: CuaTurnRequest, signal: AbortSignal): Promise<CuaTurn>;
+  nextTurn(req: CuaTurnRequest, signal: AbortSignal, spend?: CuaSpendGate): Promise<CuaTurn>;
   /** Optional read-only closing report. Implementations must disable tools and make no retries. */
   debrief?: ((req: CuaTurnRequest, signal: AbortSignal) => Promise<CuaTurn>) | undefined;
   /** Release lane-owned model resources. Idempotent; reject if cleanup is unconfirmed. */
@@ -333,7 +345,10 @@ export interface CuaLoopOptions {
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /**
-   * Stop when a request's usage is unavailable while a spend cap is declared. A library option: no
+   * Stricter handling of unknown usage under a declared cap. Every capped session already stops
+   * before its next request once a request's usage is unknown and unbounded, and resends a lost
+   * request only when its worst case fits under the cap. With this option a reply with missing
+   * usage is not acted on, and any failed request stops the session. A library option: no
    * built-in route sets it.
    */
   requireReportedUsageForSpendCap?: boolean;

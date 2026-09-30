@@ -381,7 +381,7 @@ describe("read-only participant debrief", () => {
     },
   );
 
-  it("skips optional spend if any earlier interaction turn omitted usage", async () => {
+  it("stops before another paid request once an interaction turn omitted usage", async () => {
     const s = setup({ maxUsd: 0.5, estimateTurnCostUsd: () => 0.01 });
     s.options.stopWhen = { any: [{ textIncludes: "done" }] };
     s.observe
@@ -394,7 +394,12 @@ describe("read-only participant debrief", () => {
       done: false,
     });
     const result = await s.run();
+    // The capped session does not send a second request whose spend it could not add up.
+    expect(s.nextTurn).toHaveBeenCalledTimes(1);
     expect(s.debrief).not.toHaveBeenCalled();
-    expect(result.trace.debrief?.reason).toContain("earlier participant turn");
+    expect(result.trace).toMatchObject({
+      stopCause: "usage_unreported",
+      interactionUsageIncomplete: true,
+    });
   });
 });

@@ -17,6 +17,7 @@ subject:
     url: http://127.0.0.1:8000/
 actors:
   - type: openai-computer-use
+    maxOutputTokens: 8192 # bounds a stalled request's worst case, so the capped run can retry it
     persona: synthetic-new-user
     mission: >-
       Turn on the camera with the button on the page. If the browser asks for permission to use the camera, allow it for this visit. Then tell me exactly what the page says under the video: the camera's name and the size. Then stop.

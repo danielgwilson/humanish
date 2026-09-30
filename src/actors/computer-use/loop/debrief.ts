@@ -114,13 +114,13 @@ function planDebrief(session: LoopSession, trigger: DebriefTrigger): DebriefPlan
   if (maxUsd !== undefined) {
     const estimate =
       usage.sawUsage || usage.knownPending() !== undefined
-        ? estimateTurnCostUsd?.(usage.running())
+        ? estimateTurnCostUsd?.(usage.forCap())
         : undefined;
     if (estimate === undefined || estimate === null || !Number.isFinite(estimate))
       return { skip: "remaining model budget could not be established" };
     if (estimate >= maxUsd) return { skip: "the estimated model budget was reached" };
   }
-  if (overRunBudget?.(usage.running()) != null)
+  if (overRunBudget?.(usage.forCap()) != null)
     return { skip: "the study model budget was reached" };
   const boundMs = Math.max(
     0,
@@ -207,9 +207,9 @@ function acceptDebriefTurn(session: LoopSession, turn: CuaTurn, record: RecordDe
   session.usage.record(turn, "debrief");
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
   // Refresh a shared budget with all reported usage, without changing the completed task.
-  const sharedStop = overRunBudget?.(session.usage.running());
+  const sharedStop = overRunBudget?.(session.usage.forCap());
   const finalEstimate =
-    maxUsd === undefined ? undefined : estimateTurnCostUsd?.(session.usage.running());
+    maxUsd === undefined ? undefined : estimateTurnCostUsd?.(session.usage.forCap());
   if (
     sharedStop != null ||
     (maxUsd !== undefined && finalEstimate != null && finalEstimate > maxUsd)
