@@ -16,7 +16,8 @@ import {
   renderTaskPrompt,
   type LabTask,
 } from "../../src/lab/tasks.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 
 const PROTOCOL: LabTask[] = [
   {

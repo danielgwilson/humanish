@@ -7,7 +7,8 @@ import path from "node:path";
 
 import { parse } from "yaml";
 
-import { parseLabConfig, type LabConfig } from "./config.js";
+import { parseLabConfig } from "./config.js";
+import { type LabConfig } from "./types.js";
 import {
   assertPreparedSelectedOutputDirectory,
   assertSafeOutputPathSegment,

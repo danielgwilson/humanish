@@ -14,7 +14,7 @@ vi.mock("../../../src/analysis/restricted-codex.js", async (importOriginal) => (
   checkRestrictedCodexAnalysisReadiness: calls.account,
 }));
 
-import type { LabConfig } from "../../../src/lab/config.js";
+import type { LabConfig } from "../../../src/lab/types.js";
 import { runLab } from "../../../src/lab/engine.js";
 
 describe("local browser dry-run", () => {

@@ -3,7 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
-import { parseLabConfig, LAB_CONFIG_SCHEMA } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { resolveLabManifest } from "../../src/lab/discover.js";
 import { parseBrowserPersonaJourneyFromScenario } from "../../src/actors/scripted-browser.js";
@@ -42,6 +43,7 @@ describe("lab refactor structural necessity (rung 1)", () => {
     for (const rel of [
       "src/lab/discover.ts",
       "src/lab/config.ts",
+      "src/lab/types.ts",
       ...cliSources,
       "src/lab/init-templates.ts",
     ]) {

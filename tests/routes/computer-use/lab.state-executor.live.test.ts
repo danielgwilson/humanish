@@ -15,7 +15,8 @@ import type {
   CuaTurn,
   CuaExecutor,
 } from "../../../src/actors/computer-use/loop.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import { runLab } from "../../../src/lab/engine.js";
 import { verifyRun } from "../../../src/run/verify.js";
 

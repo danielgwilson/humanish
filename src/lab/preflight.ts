@@ -15,7 +15,8 @@ import {
   type E2BDesktopModule,
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
-import { isLoopbackUrl, type LabConfig } from "./config.js";
+import { isLoopbackUrl } from "./parse-subject.js";
+import { type LabConfig } from "./types.js";
 import { selectLabBackend, type LabBackend } from "./engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 import { digestText, redactText } from "../evidence/redaction.js";

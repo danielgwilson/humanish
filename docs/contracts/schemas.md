@@ -61,8 +61,8 @@ workflow without leaking private upstream truth into core.
 
 ## Lab Manifest
 
-Schema: `humanish.lab.v2` (`src/lab/config.ts`). There is deliberately no v1
-compatibility: v1 (`kind`, top-level `sims`) had zero real users and was
+Schema: `humanish.lab.v2` (types in `src/lab/types.ts`, parsed by `src/lab/config.ts`). There
+is deliberately no v1 compatibility: v1 (`kind`, top-level `sims`) had zero real users and was
 deleted when labs became config.
 
 A lab is a composition over code primitives, not a hardcoded kind:

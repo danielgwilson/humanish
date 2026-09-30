@@ -28,7 +28,8 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/desktop-launch.js";
-import { LAB_CONFIG_SCHEMA, parseLabConfig } from "../../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
 

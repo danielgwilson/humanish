@@ -5,7 +5,7 @@ import type { LabBackend } from "../../lab/engine.js";
 import type { RunScorerProvenance } from "../../run/bundle.js";
 import type { TerminalProductLabHooks } from "../../routes/terminal/lab.js";
 import type { BrowserLabAdapterHooks } from "../../lab/adapter-extension.js";
-import type { LabConfig } from "../../lab/config.js";
+import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/bundle.js";
 import type { CliIo } from "../io.js";
 

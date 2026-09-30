@@ -37,7 +37,7 @@ import {
   type DesktopBrowserEvidence,
   type SubjectPhaseEvent,
 } from "../../substrates/e2b/cua-provisioning.js";
-import { receivingEmailValidationReason } from "../../lab/config.js";
+import { receivingEmailValidationReason } from "../../lab/validation.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 // The computer-use lab backend: a subject (an app-url the caller provisioned, or a repo the
 // lab clones AND serves in-sandbox) driven by a REGISTRY-RESOLVED computer-use actor inside a
@@ -73,7 +73,10 @@ import {
 } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../../lab/config.js";
+import {
+  desktopMediaValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
 
 import { pathToFileURL } from "node:url";
 import { toErrorMessage } from "../../substrates/command-failure.js";
@@ -124,19 +127,16 @@ import {
 import { type DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import { type DetachedTimers } from "../../substrates/e2b/detached.js";
 import { assertScreenshotEvidence } from "../../evidence/image.js";
+import { MAX_CUA_LANES } from "../../lab/routing.js";
+import { cuaLaneValidationReason, outputTokenLimitValidationReason } from "../../lab/validation.js";
+import { isHttpUrl, isLoopbackUrl, subjectStateInvalidReason } from "../../lab/parse-subject.js";
 import {
-  MAX_CUA_LANES,
-  cuaLaneValidationReason,
-  isHttpUrl,
-  isLoopbackUrl,
-  outputTokenLimitValidationReason,
-  subjectStateInvalidReason,
   type LabActorLane,
   type LabCommsEmail,
   type LabConfig,
   type LabSubjectServe,
   type LabSubjectState,
-} from "../../lab/config.js";
+} from "../../lab/types.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import {
   checkHostedCodexCompatibility,
@@ -928,7 +928,7 @@ function laneSpecsAndPlan(
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
     const device = resolveLaneDevice(config, lane);
     // A lane's persona FALLS BACK to actors[0].persona, matching this field's own doc comment
-    // in src/lab/config.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
+    // in src/lab/types.ts and its sibling resolutions (stopWhen, reasoningEffort) two lines
     // below. Reading only lane.persona when a roster was present meant every fan-out lane of
     // every lab that declared actors[0].persona ran with no persona at all: no personaLine in
     // the prompt, traitsApplied [], and nothing warned (#512).

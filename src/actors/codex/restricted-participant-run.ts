@@ -1,4 +1,4 @@
-import type { LabConfig } from "../../lab/config.js";
+import type { LabConfig } from "../../lab/types.js";
 import { runLab, type LabOutcome } from "../../lab/engine.js";
 import { runCuaActorSession } from "../computer-use/actor.js";
 import type { DesktopSession, DesktopReleaseResult } from "../../substrates/desktop-session.js";

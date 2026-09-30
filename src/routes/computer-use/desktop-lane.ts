@@ -1,6 +1,6 @@
 import type { CuaExecutor } from "../../actors/computer-use/loop.js";
 import type { LaneRunOutcome } from "./lab.js";
-import type { LabCommsEmail, LabCommsRecipient } from "../../lab/config.js";
+import type { LabCommsEmail, LabCommsRecipient } from "../../lab/types.js";
 
 /** A prepared desktop supplies only participant input/observation and its inbox location. */
 export interface ReadyCuaDesktop {

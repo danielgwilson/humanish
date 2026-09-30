@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
-import { LAB_CONFIG_SCHEMA } from "../../src/lab/config.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { readLabSummary } from "../../src/lab/summary.js";
 
 const base = {

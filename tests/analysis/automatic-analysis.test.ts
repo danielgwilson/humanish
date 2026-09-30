@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { parseLabConfig, type LabConfig } from "../../src/lab/config.js";
+import { parseLabConfig } from "../../src/lab/config.js";
+import { type LabConfig } from "../../src/lab/types.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,

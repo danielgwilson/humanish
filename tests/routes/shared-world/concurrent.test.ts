@@ -22,13 +22,10 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/desktop-launch.js";
-import {
-  concurrentSharedWorldValidationReason,
-  LAB_CONFIG_SCHEMA,
-  parseLabConfig,
-  routesToConcurrentSharedWorld,
-  type LabConfig,
-} from "../../../src/lab/config.js";
+import { concurrentSharedWorldValidationReason } from "../../../src/lab/validation.js";
+import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
+import { parseLabConfig } from "../../../src/lab/config.js";
+import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
 import {
   runConcurrentSharedWorld,

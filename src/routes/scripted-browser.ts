@@ -27,7 +27,7 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../analysis/automatic-completion.js";
-import { desktopMediaValidationReason, taskProtocolValidationReason } from "../lab/config.js";
+import { desktopMediaValidationReason, taskProtocolValidationReason } from "../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../cli/key-resolution.js";
 import {
@@ -57,7 +57,7 @@ import {
   type E2BDesktopSandbox,
 } from "../substrates/e2b/desktop-launch.js";
 import type { DetachedTimers } from "../substrates/e2b/detached.js";
-import type { LabConfig } from "../lab/config.js";
+import type { LabConfig } from "../lab/types.js";
 import { renderObserver, type ObserverResult } from "../observer/render.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import {

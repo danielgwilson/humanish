@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   concurrentSharedWorldValidationReason,
+  sharedWorldValidationReason,
+} from "../../src/lab/validation.js";
+import {
   effectiveComputerUseLaneIds,
-  LAB_CONFIG_SCHEMA,
-  parseLabConfig,
   resolveSeatUrl,
   routesToComputerUse,
   routesToConcurrentSharedWorld,
   routesToProvisionedScriptedBrowser,
   routesToScriptedBrowser,
   routesToSharedWorld,
-  sharedWorldValidationReason,
-} from "../../src/lab/config.js";
+} from "../../src/lab/routing.js";
+import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
+import { parseLabConfig } from "../../src/lab/config.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 
 describe("parseLabConfig (humanish.lab.v2)", () => {
