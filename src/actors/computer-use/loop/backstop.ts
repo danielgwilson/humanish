@@ -231,7 +231,7 @@ export function advanceBackstop(
     consecutiveIdle >= limits.idleSteps
       ? `gave up: ${consecutiveIdle} consecutive turns with no material UI action (only screenshot/wait)`
       : consecutiveNoProgress >= limits.noProgressSteps
-        ? `gave up: ${consecutiveNoProgress} consecutive turns with no change to the UI state`
+        ? `gave up: ${consecutiveNoProgress} consecutive turns that repeated a recent action on an unchanged UI state`
         : undefined;
   return {
     backstop: {

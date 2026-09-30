@@ -130,7 +130,7 @@ export function spendLimit(session: LoopSession, estimate: number, maxUsd: numbe
 export const nonFiniteEstimate: Stop = {
   completionReason: "harness_error",
   reason:
-    "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set — likely a stale pre-#334 positional (input, output, cachedInput) callback; it now receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
+    "the injected estimateTurnCostUsd returned a non-finite estimate while execution.caps.maxUsd is set; the estimator receives one ActorTokenUsage object. Failing closed instead of running uncapped.",
 };
 
 /** A study-level stop is a recruiting decision hitting its limit, not this participant's runaway. */
@@ -143,7 +143,7 @@ export function studySpendLimit(reason: string): Stop {
 export const accountBilledCaps: Stop = {
   completionReason: "harness_error",
   reason:
-    "Codex is using a ChatGPT account; API dollar caps and output-token limits cannot bound account usage. Use a finite timeout or the OpenAI API participant.",
+    "API dollar caps and output-token limits cannot bound account-billed providers; use a finite timeout or an API-billed participant.",
 };
 
 const noticeEvidence = (status: string, title: string, text: string): Evidence => ({

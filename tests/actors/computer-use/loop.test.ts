@@ -1148,7 +1148,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change to the UI state");
+    expect(result.reason).toContain("repeated a recent action on an unchanged UI state");
   });
 
   it("gives up on an idle streak, citing the friction (not a turn count)", async () => {
@@ -1355,7 +1355,7 @@ describe("runComputerUseLoop", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change to the UI state");
+    expect(result.reason).toContain("repeated a recent action on an unchanged UI state");
     // A recovery hint was injected before the backstop tripped.
     expect(provider.seen.some((r) => (r.contextHint ?? "").includes("No visible progress"))).toBe(
       true,
@@ -1745,7 +1745,7 @@ describe("runComputerUseLoop with a state-driven (non-vision) executor (issue #1
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change");
+    expect(result.reason).toContain("unchanged UI state");
   });
 
   it("shuffled-key-order appState across turns is NOT progress (gives up)", async () => {

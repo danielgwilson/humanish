@@ -132,7 +132,7 @@ describe("scroll position is state (#393)", () => {
     });
 
     expect(result.completionReason).toBe("gave_up");
-    expect(result.reason).toContain("no change to the UI state");
+    expect(result.reason).toContain("repeated a recent action on an unchanged UI state");
   });
 });
 
