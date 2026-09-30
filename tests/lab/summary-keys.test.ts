@@ -101,3 +101,17 @@ describe("TUI key summary follows the configured route", () => {
     ).toMatchObject({ keysReady: true });
   });
 });
+
+describe("TUI caps summary", () => {
+  it("shows a computer-use lab's execution.caps", async () => {
+    const capped = {
+      ...base,
+      execution: { ...base.execution, caps: { maxUsd: 2, maxTotalUsd: 5 } },
+    };
+    expect((await summary(capped, {})).caps).toEqual({ laneUsd: 2, studyUsd: 5 });
+  });
+
+  it("draws no cap for a computer-use lab that declares none", async () => {
+    expect((await summary(base, {})).caps).toEqual({});
+  });
+});

@@ -17,6 +17,8 @@ import {
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../actors/computer-use/openai-provider.js";
 import { inspectLabManifest } from "./discover.js";
+import { routesToComputerUse } from "./routing.js";
+import type { LabConfig } from "./types.js";
 import { probeKeySources } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 
@@ -115,10 +117,10 @@ function participantsOf(config: Record<string, unknown>): string | undefined {
   return unique.length === 1 ? `${count} × ${unique[0]}` : unique.join(" · ");
 }
 
-function capsOf(config: Record<string, unknown>): LabCaps {
-  const caps =
-    (config.policies as { caps?: { maxUsd?: number; maxTotalUsd?: number } } | undefined)?.caps ??
-    (config.caps as { maxUsd?: number; maxTotalUsd?: number } | undefined);
+/** The computer-use caps; `execution.caps` is inert on other routes, so none is drawn there. */
+function capsOf(config: LabConfig): LabCaps {
+  if (!routesToComputerUse(config)) return {};
+  const caps = config.execution?.caps;
   return {
     ...(typeof caps?.maxUsd === "number" ? { laneUsd: caps.maxUsd } : {}),
     ...(typeof caps?.maxTotalUsd === "number" ? { studyUsd: caps.maxTotalUsd } : {}),
@@ -226,7 +228,7 @@ export async function readLabSummary(
     ...(participants === undefined ? {} : { participants }),
     model: actors?.[0]?.model ?? DEFAULT_OPENAI_CU_MODEL,
     reasoningEffort: reasoningEffortOf(config),
-    caps: capsOf(config),
+    caps: capsOf(inspected.config),
     ...(keysReady === undefined ? {} : { keysReady }),
     ...(missingKeys === undefined ? {} : { missingKeys }),
   };

@@ -15,6 +15,7 @@ import {
   desktopMediaValidationReason,
   outputTokenLimitValidationReason,
   receivingEmailValidationReason,
+  scenarioCapsValidationReason,
 } from "../../lab/validation.js";
 import { defaultSessionTimeoutMs, resolvePerLaneSandboxMs } from "./lane-plan.js";
 import { MAX_SANDBOX_MS, type CuaActorLabErrorCode, type CuaActorLabHooks } from "./types.js";
@@ -86,6 +87,9 @@ export function cuaLabRejection(
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason)
     return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: outputLimitReason };
+  const scenarioCapsReason = scenarioCapsValidationReason(config);
+  if (scenarioCapsReason)
+    return { code: "HUMANISH_CUA_LAB_SUBJECT_INVALID", message: scenarioCapsReason };
   if (
     actor?.maxOutputTokens !== undefined &&
     (hooks.runSession || hooks.buildProvider || hooks.buildExecutor)

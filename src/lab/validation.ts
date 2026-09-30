@@ -262,6 +262,23 @@ export function cloneTargetValidationReason(config: LabConfig): string | null {
   return `clone subjects require \`execution.target: e2b-desktop\` (${got}): the lab clones and serves the repo inside a hosted desktop sandbox. \`execution.target: local\` applies to app-url and local-app subjects.`;
 }
 
+/**
+ * Refuse a positive `scenario.caps.maxUsd` or `maxTotalUsd` on a computer-use lab.
+ * `scenario.caps` belongs to the terminal route; the computer-use route stops on `execution.caps`,
+ * so a dollar figure here would read as a cap while the lab ran uncapped. Zero spends nothing
+ * either way and stays a warning. Enforced at parse and again on the computer-use routes for
+ * library callers.
+ */
+export function scenarioCapsValidationReason(config: LabConfig): string | null {
+  if (!routesToComputerUse(config)) return null;
+  for (const key of ["maxUsd", "maxTotalUsd"] as const) {
+    const value = config.scenario?.caps?.[key];
+    if (value === undefined || value <= 0) continue;
+    return `scenario.caps.${key} (${value}) does not cap a computer-use lab: this route stops on execution.caps.${key}. Move the value to execution.caps.${key}; scenario.caps applies only to terminal-product labs.`;
+  }
+  return null;
+}
+
 /** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */
 export function outputTokenLimitValidationReason(config: LabConfig): string | null {
   const actor = config.actors[0];
