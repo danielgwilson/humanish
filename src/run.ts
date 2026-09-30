@@ -48,11 +48,8 @@ import { screenshotEvidenceError } from "./image-evidence.js";
 import { buildObserverData } from "./observer-data.js";
 import { parseResolvedPersona, type ResolvedPersona } from "./persona.js";
 import { round6 } from "./pricing.js";
-import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./study-analysis-store.js";
-import {
-  isStudyAnalysisRecordPath,
-  studyAnalysisSharingProblems,
-} from "./study-analysis-sharing.js";
+import { loadStudyAnalysis, listStudyAnalysisExecutions } from "./analysis/store.js";
+import { isStudyAnalysisRecordPath, studyAnalysisSharingProblems } from "./analysis/sharing.js";
 import { containsSensitive, digestText, redactText } from "./redaction.js";
 import type { E2BDesktopModule } from "./e2b-desktop-launch.js";
 import {

@@ -2,7 +2,7 @@ import type {
   LoadedStudyAnalysis,
   StudyAnalysisArtifact,
   StudyAnalysisCorrection,
-} from "../../src/study-analysis";
+} from "../../src/analysis/study-analysis";
 import { traceItems } from "./artifact-href";
 import type { ObserverData } from "./observer-data";
 import { participantLabels } from "./participant-label";
@@ -10,7 +10,7 @@ import { type StudyReport } from "./study-report";
 import { parseAutomaticAnalysis } from "./automatic-analysis";
 import { buildPlayerModel } from "./player-model";
 
-export type { LoadedStudyAnalysis } from "../../src/study-analysis";
+export type { LoadedStudyAnalysis } from "../../src/analysis/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
 export const STUDY_ANALYSIS_PLACEHOLDER = ["__HUMANISH", "STUDY_ANALYSIS__"].join("_");
 export const NO_ANALYSIS: LoadedStudyAnalysis = {

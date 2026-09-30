@@ -14,34 +14,34 @@ import {
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   runAutomaticStudyAnalysis,
   readAutomaticStudyAnalysis,
   requestAutomaticStudyAnalysisCancellation,
-} from "../src/automatic-study-analysis.js";
-import { analyzeStudy, withStudyAnalysisLock } from "../src/study-analysis-service.js";
-import * as analysisService from "../src/study-analysis-service.js";
+} from "../../src/analysis/automatic.js";
+import { analyzeStudy, withStudyAnalysisLock } from "../../src/analysis/service.js";
+import * as analysisService from "../../src/analysis/service.js";
 import {
   claimAutomaticStudyAnalysis,
   readAutomaticStudyAnalysisPrepared,
   AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
-} from "../src/study-analysis-job.js";
-import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../src/study-analysis-store.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+} from "../../src/analysis/job.js";
+import { loadStudyAnalysis, listStudyAnalysisExecutions } from "../../src/analysis/store.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   projectShareCheckedAnalysis,
   studyAnalysisSharingProblems,
-} from "../src/study-analysis-sharing.js";
-import { hashStudyAnalysisValue } from "../src/study-analysis-validation.js";
-import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../src/study-analysis-engine.js";
-import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
-import { pinDirectory, renderObserver, serveRunPath } from "../src/observer.js";
-import * as observer from "../src/observer.js";
-import { exportRun } from "../src/export.js";
-import type { PreparedRunArtifactPaths } from "../src/run-paths.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
-import { syntheticResult } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/sharing.js";
+import { hashStudyAnalysisValue } from "../../src/analysis/validation.js";
+import { STUDY_ANALYSIS_PROMPT_VERSION, runStudyAnalysis } from "../../src/analysis/engine.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import { pinDirectory, renderObserver, serveRunPath } from "../../src/observer.js";
+import * as observer from "../../src/observer.js";
+import { exportRun } from "../../src/export.js";
+import type { PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import { syntheticResult } from "./fixtures.js";
 
 const config: StudyAnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -53,7 +53,7 @@ const config: StudyAnalysisConfig = {
 const runId = "automatic-synthetic";
 // Captured provider envelope; only the explicitly synthetic answer changes.
 const wirePath = new URL(
-  "./fixtures/openai-closing-report/typed-closing-report.json",
+  "../fixtures/openai-closing-report/typed-closing-report.json",
   import.meta.url,
 );
 

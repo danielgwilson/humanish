@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { checkRestrictedCodexAnalysisReadiness } from "../src/restricted-codex-analysis.js";
+import { checkRestrictedCodexAnalysisReadiness } from "../src/analysis/restricted-codex.js";
 import { restrictedCodexNpmTarget } from "../src/restricted-codex-session.js";
 import type { RestrictedCodexSpawn } from "../src/restricted-codex-transport.js";
 

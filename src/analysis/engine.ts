@@ -1,8 +1,8 @@
-import { validCodexAnalysisConfig } from "./study-analysis-codex-config.js";
+import { validCodexAnalysisConfig } from "./codex-config.js";
 import { createHash, randomUUID } from "node:crypto";
-import { estimateActorCost, MODEL_RATES } from "./pricing.js";
-import { containsSensitive } from "./redaction.js";
-import { scrubTransientCommsText } from "./run-narration-secrets.js";
+import { estimateActorCost, MODEL_RATES } from "../pricing.js";
+import { containsSensitive } from "../redaction.js";
+import { scrubTransientCommsText } from "../run-narration-secrets.js";
 import {
   STUDY_ANALYSIS_SCHEMA,
   type AnalysisObservation,
@@ -15,14 +15,14 @@ import {
   type AnalysisFetch,
   createStudyAnalysisProvider,
   type StudyAnalysisProvider,
-} from "./study-analysis-provider.js";
+} from "./provider.js";
 import {
   checkAnalysisResult,
   hashStudyAnalysisValue,
   studyAnalysisResponseSchema,
   studyAnalysisResultJsonSchema,
   validateStudyAnalysisInputMetadata,
-} from "./study-analysis-validation.js";
+} from "./validation.js";
 
 export const STUDY_ANALYSIS_PROMPT_VERSION = "study-evidence-6";
 export const SUPPORTED_STUDY_ANALYSIS_MODELS = Object.freeze([
@@ -511,7 +511,7 @@ export async function runStudyAnalysis(
   const provider =
     config.provider === "codex"
       ? (options.codexProvider ??
-        (await import("./restricted-codex-analysis.js")).createRestrictedCodexAnalysisProvider())
+        (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider())
       : createStudyAnalysisProvider({
           apiKey: options.apiKey!,
           ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),

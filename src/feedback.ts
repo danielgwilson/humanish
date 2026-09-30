@@ -2,9 +2,9 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { feedbackProofCommands, projectFeedbackAcceptanceProof } from "./feedback-proof.js";
-import { loadStudyAnalysis } from "./study-analysis-store.js";
-import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
-import { studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
+import { loadStudyAnalysis } from "./analysis/store.js";
+import { hashStudyAnalysisValue } from "./analysis/validation.js";
+import { studyAnalysisSharingProblems } from "./analysis/sharing.js";
 
 import {
   formatParticipantOutcomes,

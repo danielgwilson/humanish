@@ -33,13 +33,13 @@ import {
   parsePublicOrigin,
 } from "./serve-http.js";
 import { isRunStatusRecord, RUN_STATUS_FILE, RUN_STATUS_STALE_MS } from "./run-status.js";
-import { loadStudyAnalysis } from "./study-analysis-store.js";
-import type { LoadedStudyAnalysis } from "./study-analysis.js";
+import { loadStudyAnalysis } from "./analysis/store.js";
+import type { LoadedStudyAnalysis } from "./analysis/study-analysis.js";
 import {
   isStudyAnalysisRecordPath,
   projectShareCheckedAnalysis,
   studyAnalysisSharingProblems,
-} from "./study-analysis-sharing.js";
+} from "./analysis/sharing.js";
 
 export const OBSERVER_SCHEMA = "humanish.observer-result.v1";
 

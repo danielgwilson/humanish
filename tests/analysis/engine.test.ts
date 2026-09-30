@@ -1,30 +1,30 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   estimateStudyAnalysisAdmission,
   preferLargerStudyAnalysisOutput,
   runStudyAnalysis,
   STUDY_ANALYSIS_PROMPT_VERSION,
-} from "../src/study-analysis-engine.js";
+} from "../../src/analysis/engine.js";
 import type {
   StudyAnalysisConfig,
   StudyAnalysisInput,
   StudyAnalysisResult,
-} from "../src/study-analysis.js";
+} from "../../src/analysis/study-analysis.js";
 import {
   digestStudyAnalysisInput,
   hashStudyAnalysisValue,
   validateStudyAnalysisArtifact,
-} from "../src/study-analysis-validation.js";
-import { syntheticPng1x1 } from "./image-fixtures.js";
+} from "../../src/analysis/validation.js";
+import { syntheticPng1x1 } from "../image-fixtures.js";
 
 // Only the synthetic JSON answer is replaced. The transport envelope and token/cache fields
 // come from a captured live response; provenance: fixtures/openai-closing-report/README.md.
 const captured = JSON.parse(
   readFileSync(
-    new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+    new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
     "utf8",
   ),
 );

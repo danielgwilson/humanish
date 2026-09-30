@@ -1,4 +1,4 @@
-import { validStoredCodexAnalysisConfig } from "./study-analysis-codex-config.js";
+import { validStoredCodexAnalysisConfig } from "./codex-config.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 

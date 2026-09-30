@@ -1,20 +1,20 @@
-import type { AnalyzeResult } from "./study-analysis-service.js";
+import type { AnalyzeResult } from "./service.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "./run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
-import { readBoundedStudyFile } from "./study-analysis-evidence.js";
-import { containsSensitive } from "./redaction.js";
-import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./study-analysis-store.js";
-import { hashStudyAnalysisValue } from "./study-analysis-validation.js";
+} from "../selected-output-paths.js";
+import { readBoundedStudyFile } from "./evidence.js";
+import { containsSensitive } from "../redaction.js";
+import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
+import { hashStudyAnalysisValue } from "./validation.js";
 
 export const AUTOMATIC_STUDY_ANALYSIS_DIRECTORY = "analysis-automatic";
 const AUTOMATIC_STUDY_ANALYSIS_SCHEMA = "humanish.automatic-study-analysis.v1";

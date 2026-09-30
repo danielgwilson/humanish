@@ -1,6 +1,6 @@
-import type { AutomaticStudyAnalysisView } from "../../src/study-analysis-job";
+import type { AutomaticStudyAnalysisView } from "../../src/analysis/job";
 
-export type { AutomaticStudyAnalysisView } from "../../src/study-analysis-job";
+export type { AutomaticStudyAnalysisView } from "../../src/analysis/job";
 
 // Browser-only mirror: runtime imports from the producer are forbidden. The
 // contract test pins this against AUTOMATIC_STUDY_ANALYSIS_STALE_MS.

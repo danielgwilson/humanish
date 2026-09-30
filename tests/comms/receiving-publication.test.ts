@@ -16,7 +16,7 @@ import { draftFeedback } from "../../src/feedback.js";
 import { createShareSafetyAdmission } from "../../src/observer-serve.js";
 import { redactScreenshot } from "../../src/redaction.js";
 import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
-import { captureStudyEvidence } from "../../src/study-analysis-evidence.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 
 const RUN = "synthetic-receiving-study";
 const execFileAsync = promisify(execFile);

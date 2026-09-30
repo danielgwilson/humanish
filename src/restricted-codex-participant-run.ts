@@ -2,7 +2,7 @@ import type { LabConfig } from "./lab-config.js";
 import { runLab, type LabOutcome } from "./lab-engine.js";
 import { runCuaActorSession } from "./computer-use-actor.js";
 import type { DesktopSession, DesktopReleaseResult } from "./desktop-session.js";
-import type { AutomaticAnalysisHooks } from "./automatic-analysis-completion.js";
+import type { AutomaticAnalysisHooks } from "./analysis/automatic-completion.js";
 import {
   createRestrictedCodexParticipant,
   type ParticipantProviderCloseResult,

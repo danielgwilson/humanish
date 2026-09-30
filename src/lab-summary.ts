@@ -11,7 +11,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "./local-runtime.js"
 
 import { resolveLabDryRun, selectLabBackend } from "./lab-engine.js";
 import { labKeyRequirements, localCodexParticipantCheck } from "./doctor-lab.js";
-import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { automaticAnalysisBudget } from "./analysis/automatic-config.js";
 import {
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,

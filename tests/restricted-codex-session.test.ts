@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   checkRestrictedCodexAnalysisReadiness,
   createRestrictedCodexAnalysisProvider,
-} from "../src/restricted-codex-analysis.js";
+} from "../src/analysis/restricted-codex.js";
 import type { RestrictedCodexRequest } from "../src/restricted-codex-policy.js";
 import {
   createRestrictedCodexSession,

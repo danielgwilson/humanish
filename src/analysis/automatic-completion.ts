@@ -1,11 +1,8 @@
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "./run-paths.js";
+import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run-paths.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
-import {
-  runAutomaticStudyAnalysis,
-  type AutomaticStudyAnalysisDeps,
-} from "./automatic-study-analysis.js";
-import type { AutomaticStudyAnalysisOutcome } from "./study-analysis-job.js";
+import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
+import type { AutomaticStudyAnalysisOutcome } from "./job.js";
 
 export interface AutomaticAnalysisHooks {
   /** Provider/test dependencies apply only to analysis, never to the participant. */

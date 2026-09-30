@@ -4,7 +4,7 @@ import type { LabConfig } from "./lab-config.js";
 import type { LabBackend } from "./lab-engine.js";
 import type { DetectedLocalAgent } from "./local-agent-cli.js";
 import type { DoctorResult } from "./run.js";
-import { automaticAnalysisBudget } from "./automatic-analysis-config.js";
+import { automaticAnalysisBudget } from "./analysis/automatic-config.js";
 import { externalCatchHealthy } from "./comms/sandbox-catch.js";
 import { receivingRequiredKey } from "./comms/setup.js";
 
@@ -18,7 +18,7 @@ export async function localCodexParticipantCheck(args: {
   const readiness = await (
     args.readiness ??
     (async (env: NodeJS.ProcessEnv) =>
-      (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness(
+      (await import("./analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
         { timeoutMs: 5000 },
         { env },
       ))
@@ -79,7 +79,7 @@ export async function labSetupChecks(args: {
     (accountReadiness ??= (
       args.codexAnalysisReadiness ??
       (async (env: NodeJS.ProcessEnv) =>
-        (await import("./restricted-codex-analysis.js")).checkRestrictedCodexAnalysisReadiness(
+        (await import("./analysis/restricted-codex.js")).checkRestrictedCodexAnalysisReadiness(
           { timeoutMs: 5000 },
           { env },
         ))

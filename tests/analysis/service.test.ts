@@ -2,31 +2,31 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/pr
 import path from "node:path";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
-import { createProgram } from "../src/program.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
+import { createProgram } from "../../src/program.js";
 import {
   analyzeStudy,
   correctStudyAnalysis,
   showStudyAnalysis,
   withStudyAnalysisLock,
-} from "../src/study-analysis-service.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+} from "../../src/analysis/service.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   listStudyAnalyses,
   listStudyAnalysisExecutions,
   writeStudyAnalysis,
-} from "../src/study-analysis-store.js";
-import { draftFeedback, renderIssueUrl } from "../src/feedback.js";
-import { exportRun } from "../src/export.js";
-import { renderObserver, serveObserver } from "../src/observer.js";
-import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../src/run.js";
-import type { StudyAnalysisConfig, StudyAnalysisInput } from "../src/study-analysis.js";
-import { syntheticArtifact, syntheticResult } from "./study-analysis-fixtures.js";
-import { computeStats } from "../src/stats.js";
+} from "../../src/analysis/store.js";
+import { draftFeedback, renderIssueUrl } from "../../src/feedback.js";
+import { exportRun } from "../../src/export.js";
+import { renderObserver, serveObserver } from "../../src/observer.js";
+import { resolveRunPath, runDryRun, verifyRun, type RunBundle } from "../../src/run.js";
+import type { StudyAnalysisConfig, StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import { syntheticArtifact, syntheticResult } from "./fixtures.js";
+import { computeStats } from "../../src/stats.js";
 import {
   runAutomaticStudyAnalysis,
   readAutomaticStudyAnalysis,
-} from "../src/automatic-study-analysis.js";
+} from "../../src/analysis/automatic.js";
 
 const config: StudyAnalysisConfig = {
   model: "gpt-5.6-sol",
@@ -38,7 +38,7 @@ const config: StudyAnalysisConfig = {
 // Real captured wire envelope; only the synthetic analysis answer is replaced.
 // Provenance: fixtures/openai-closing-report/README.md.
 const wirePath = new URL(
-  "./fixtures/openai-closing-report/typed-closing-report.json",
+  "../fixtures/openai-closing-report/typed-closing-report.json",
   import.meta.url,
 );
 

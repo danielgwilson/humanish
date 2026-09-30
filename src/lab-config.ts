@@ -3,7 +3,7 @@ import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
 } from "./local-runtime-config.js";
-import { resolveAutomaticAnalysis, type LabAnalysis } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis, type LabAnalysis } from "./analysis/automatic-config.js";
 // humanish.lab.v2 — a lab is a COMPOSITION over code primitives, not a hardcoded kind.
 //
 // HONEST SCOPE (read before trusting field names): the engine routes by

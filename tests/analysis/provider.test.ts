@@ -1,17 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   createStudyAnalysisProvider,
   parseStudyAnalysisResponse,
   type StudyAnalysisProviderRequest,
-} from "../src/study-analysis-provider.js";
+} from "../../src/analysis/provider.js";
 
 // Transport envelope/usage derive from the retained live closing-report response. See that
 // fixture's provenance README. Analysis content is synthetic; negative cases mutate that wire.
 const captured = JSON.parse(
   readFileSync(
-    new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+    new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
     "utf8",
   ),
 );

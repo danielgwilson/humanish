@@ -2,7 +2,7 @@ import path from "node:path";
 import {
   automaticAnalysisBudget,
   type AutomaticAnalysisBudget,
-} from "./automatic-analysis-config.js";
+} from "./analysis/automatic-config.js";
 
 import { CUA_ACTOR_LAB_PROVIDER_METADATA, provisionCloneSubject } from "./cua-actor-lab.js";
 import { probeUrl } from "./e2b-detached.js";

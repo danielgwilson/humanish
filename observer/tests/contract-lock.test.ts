@@ -17,7 +17,7 @@ it("the app's slot marker matches the injector's", () => {
   expect(OBSERVER_DATA_PLACEHOLDER).toBe(INJECTOR_PLACEHOLDER);
 });
 
-import { STUDY_ANALYSIS_SCHEMA as ANALYSIS_PRODUCER_SCHEMA } from "../../src/study-analysis";
+import { STUDY_ANALYSIS_SCHEMA as ANALYSIS_PRODUCER_SCHEMA } from "../../src/analysis/study-analysis";
 import { STUDY_ANALYSIS_SCHEMA } from "../lib/study-analysis";
 it("the companion analysis schema matches the producer without importing it into app code", () => {
   expect(STUDY_ANALYSIS_SCHEMA).toBe(ANALYSIS_PRODUCER_SCHEMA);

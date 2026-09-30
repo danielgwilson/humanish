@@ -37,13 +37,13 @@
 //      humanish NEVER calls Sandbox.list to prove cleanup, so a shared operator key never reaches a
 //      sandbox it did not create. A live run that cannot prove teardown fails closed.
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./terminal-node-bootstrap.js";

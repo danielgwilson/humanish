@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { Sandbox as SdkDesktop } from "@e2b/desktop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
+import type { AnalysisFetch } from "../src/analysis/provider.js";
 
 import {
   LAB_CONFIG_SCHEMA,
@@ -30,8 +30,8 @@ import { verifyRun } from "../src/run.js";
 import {
   readAutomaticStudyAnalysis,
   runAutomaticStudyAnalysis,
-} from "../src/automatic-study-analysis.js";
-import { resolveAutomaticAnalysis } from "../src/automatic-analysis-config.js";
+} from "../src/analysis/automatic.js";
+import { resolveAutomaticAnalysis } from "../src/analysis/automatic-config.js";
 
 // SLICE 2 deterministic safety net: drive the REAL live orchestration (dryRun:false) against a
 // FAKE E2B module + a MOCK codex CLI at zero spend. The load-bearing assertions are the

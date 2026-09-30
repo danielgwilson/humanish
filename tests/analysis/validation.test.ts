@@ -10,8 +10,8 @@ import {
   validateStudyAnalysisCorrection,
   validateStudyAnalysisInputMetadata,
   validateStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-validation.js";
-import { syntheticArtifact, syntheticInput, syntheticResult } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/validation.js";
+import { syntheticArtifact, syntheticInput, syntheticResult } from "./fixtures.js";
 
 describe("study analysis validation", () => {
   it("preserves legacy artifacts but requires a concern accounting in new responses", () => {

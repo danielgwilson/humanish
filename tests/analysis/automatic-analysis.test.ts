@@ -4,41 +4,41 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
-import { parseLabConfig, type LabConfig } from "../src/lab-config.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
+import { parseLabConfig, type LabConfig } from "../../src/lab-config.js";
 import {
   automaticAnalysisBudget,
   resolveAutomaticAnalysis,
-} from "../src/automatic-analysis-config.js";
+} from "../../src/analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   automaticAnalysisSucceeded,
-} from "../src/automatic-analysis-completion.js";
+} from "../../src/analysis/automatic-completion.js";
 import {
   automaticAnalysisEnvelope,
   cliAutomaticAnalysisHooks,
   createProgram,
-} from "../src/program.js";
-import { readLabSummary } from "../src/lab-summary.js";
-import { runLabPreflight } from "../src/lab-preflight.js";
+} from "../../src/program.js";
+import { readLabSummary } from "../../src/lab-summary.js";
+import { runLabPreflight } from "../../src/lab-preflight.js";
 import { parse as parseYaml } from "yaml";
-import { runLab } from "../src/lab-engine.js";
-import { runCuaActorLab } from "../src/cua-actor-lab.js";
-import { runSharedWorldLab } from "../src/shared-world-lab.js";
-import { runConcurrentSharedWorld } from "../src/concurrent-shared-world-lab.js";
-import { runTerminalProductLab } from "../src/e2b-terminal-lab.js";
-import { runScriptedBrowserLab } from "../src/scripted-browser-lab.js";
-import { claimAutomaticStudyAnalysis } from "../src/study-analysis-job.js";
-import { prepareRunArtifactPaths } from "../src/run-paths.js";
-import { resolveRunPath, runDryRun, verifyRun } from "../src/run.js";
-import { readRunDetail } from "../src/run-detail.js";
-import { stopRun } from "../src/tui-actions.js";
-import * as automaticJobs from "../src/automatic-study-analysis.js";
-import type { AutomaticStudyAnalysisOutcome } from "../src/study-analysis-job.js";
+import { runLab } from "../../src/lab-engine.js";
+import { runCuaActorLab } from "../../src/cua-actor-lab.js";
+import { runSharedWorldLab } from "../../src/shared-world-lab.js";
+import { runConcurrentSharedWorld } from "../../src/concurrent-shared-world-lab.js";
+import { runTerminalProductLab } from "../../src/e2b-terminal-lab.js";
+import { runScriptedBrowserLab } from "../../src/scripted-browser-lab.js";
+import { claimAutomaticStudyAnalysis } from "../../src/analysis/job.js";
+import { prepareRunArtifactPaths } from "../../src/run-paths.js";
+import { resolveRunPath, runDryRun, verifyRun } from "../../src/run.js";
+import { readRunDetail } from "../../src/run-detail.js";
+import { stopRun } from "../../src/tui-actions.js";
+import * as automaticJobs from "../../src/analysis/automatic.js";
+import type { AutomaticStudyAnalysisOutcome } from "../../src/analysis/job.js";
 
 const fixtures = JSON.parse(
-  await readFile(new URL("./fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
+  await readFile(new URL("../fixtures/task-route-preflight/labs.json", import.meta.url), "utf8"),
 ) as Array<{ name: string; config: LabConfig; backend: string }>;
 const supported = new Set([
   "cua",
@@ -644,8 +644,8 @@ describe("automatic analysis admission and producer boundary", () => {
     "%s during the real producer retains default termination and never starts analysis",
     async (signal) => {
       const script = `
-      import { runLab } from ${JSON.stringify(new URL("../src/lab-engine.ts", import.meta.url).href)};
-      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../src/program.ts", import.meta.url).href)};
+      import { runLab } from ${JSON.stringify(new URL("../../src/lab-engine.ts", import.meta.url).href)};
+      import { cliAutomaticAnalysisHooks } from ${JSON.stringify(new URL("../../src/program.ts", import.meta.url).href)};
       const config = ${JSON.stringify(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config)};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);

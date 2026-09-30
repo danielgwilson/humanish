@@ -22,13 +22,13 @@ import { scrubPersonaBrief } from "./persona.js";
 // (composed into its persona context) — physical per-role screen geometry is the concurrent
 // topology's job. Each role records its measured browser viewport separately from that screen.
 
-import { resolveAutomaticAnalysis } from "./automatic-analysis-config.js";
+import { resolveAutomaticAnalysis } from "./analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
   markFinalizedStudyResult,
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 import { desktopMediaValidationReason, taskProtocolValidationReason } from "./lab-config.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "./key-resolution.js";

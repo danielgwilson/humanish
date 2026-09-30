@@ -3,21 +3,21 @@ import os from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   listStudyAnalysisExecutions,
   loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
-} from "../src/study-analysis-store.js";
+} from "../../src/analysis/store.js";
 import {
   digestStudyAnalysisInput,
   validateStudyAnalysisArtifact,
   validateStudyAnalysisInputMetadata,
-} from "../src/study-analysis-validation.js";
-import type { StudyAnalysisInput } from "../src/study-analysis.js";
-import { syntheticArtifact } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/validation.js";
+import type { StudyAnalysisInput } from "../../src/analysis/study-analysis.js";
+import { syntheticArtifact } from "./fixtures.js";
 
 // Original synthetic actor-contract fixture. Scripted captures belong to action
 // events; these assertions do not claim a provider evaluated the fictional app.

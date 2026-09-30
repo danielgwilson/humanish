@@ -17,13 +17,13 @@ import { renderObserver, renderObserverHtml, type ObserverExportAssets } from ".
 import { buildObserverData, type ObserverData } from "./observer-data.js";
 import { resolveRunPath, verifyRun, type RunBundle, type VerifyResult } from "./run.js";
 import { exportRedactedBundle } from "./export-bundle.js";
-import { loadStudyAnalysis } from "./study-analysis-store.js";
-import { studyAnalysisSharingProblems } from "./study-analysis-sharing.js";
+import { loadStudyAnalysis } from "./analysis/store.js";
+import { studyAnalysisSharingProblems } from "./analysis/sharing.js";
 import {
   readBoundedStudyFile,
   STUDY_EVIDENCE_LIMITS,
   validateStudyAnalysisEvidence,
-} from "./study-analysis-evidence.js";
+} from "./analysis/evidence.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */

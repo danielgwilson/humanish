@@ -11,7 +11,7 @@ import {
 } from "./local-firecracker-desktop.js";
 import { localBrowserDefaults, localBrowserUnsupportedReason } from "./local-runtime-config.js";
 import { prepareLocalRuntime } from "./local-runtime.js";
-import { checkRestrictedCodexAnalysisReadiness } from "./restricted-codex-analysis.js";
+import { checkRestrictedCodexAnalysisReadiness } from "./analysis/restricted-codex.js";
 import { createRestrictedCodexParticipant } from "./restricted-codex-participant.js";
 import { guestMediaConfigSchema } from "./guest-media-config.js";
 import { startLocalCapturedInbox } from "./local-captured-inbox.js";

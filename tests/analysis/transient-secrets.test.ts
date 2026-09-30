@@ -3,30 +3,30 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnalysisFetch } from "../src/study-analysis-provider.js";
+import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
-} from "../src/run-narration-secrets.js";
-import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../src/run-paths.js";
-import { runStudyAnalysis } from "../src/study-analysis-engine.js";
-import { captureStudyEvidence } from "../src/study-analysis-evidence.js";
-import { writeStudyAnalysis } from "../src/study-analysis-store.js";
+} from "../../src/run-narration-secrets.js";
+import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../src/run-paths.js";
+import { runStudyAnalysis } from "../../src/analysis/engine.js";
+import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { writeStudyAnalysis } from "../../src/analysis/store.js";
 import type {
   StudyAnalysisConfig,
   StudyAnalysisInput,
   StudyAnalysisResult,
-} from "../src/study-analysis.js";
+} from "../../src/analysis/study-analysis.js";
 import {
   validateAnalysisResult,
   validateStudyAnalysisArtifact,
-} from "../src/study-analysis-validation.js";
-import { syntheticResult } from "./study-analysis-fixtures.js";
+} from "../../src/analysis/validation.js";
+import { syntheticResult } from "./fixtures.js";
 
 // Transport shape and usage derive from the retained live response fixture; only its answer is synthetic.
 const captured = JSON.parse(
   readFileSync(
-    new URL("./fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
+    new URL("../fixtures/openai-closing-report/typed-closing-report.json", import.meta.url),
     "utf8",
   ),
 );

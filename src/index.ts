@@ -3,26 +3,29 @@ export {
   analyzeStudy,
   showStudyAnalysis,
   correctStudyAnalysis,
-} from "./study-analysis-service.js";
-export type { AnalyzeOptions, AnalyzeResult, AnalyzeDeps } from "./study-analysis-service.js";
+} from "./analysis/service.js";
+export type { AnalyzeOptions, AnalyzeResult, AnalyzeDeps } from "./analysis/service.js";
 export {
   runAutomaticStudyAnalysis,
   readAutomaticStudyAnalysis,
   requestAutomaticStudyAnalysisCancellation,
-} from "./automatic-study-analysis.js";
-export { resolveAutomaticAnalysis, automaticAnalysisBudget } from "./automatic-analysis-config.js";
-export type { LabAnalysis, AutomaticAnalysisBudget } from "./automatic-analysis-config.js";
+} from "./analysis/automatic.js";
+export { resolveAutomaticAnalysis, automaticAnalysisBudget } from "./analysis/automatic-config.js";
+export type { LabAnalysis, AutomaticAnalysisBudget } from "./analysis/automatic-config.js";
 export type {
   AutomaticAnalysisHooks,
   AutomaticAnalysisResult,
-} from "./automatic-analysis-completion.js";
+} from "./analysis/automatic-completion.js";
 export type {
   AutomaticStudyAnalysisDeps,
   AutomaticStudyAnalysisOutcome,
   AutomaticStudyAnalysisView,
   AutomaticStudyAnalysisCancellation,
-} from "./automatic-study-analysis.js";
-export { STUDY_ANALYSIS_SCHEMA, STUDY_ANALYSIS_CORRECTION_SCHEMA } from "./study-analysis.js";
+} from "./analysis/automatic.js";
+export {
+  STUDY_ANALYSIS_SCHEMA,
+  STUDY_ANALYSIS_CORRECTION_SCHEMA,
+} from "./analysis/study-analysis.js";
 export type {
   StudyAnalysisConfig,
   OpenAIStudyAnalysisConfig,
@@ -33,7 +36,7 @@ export type {
   StudyAnalysisCorrection,
   AnalysisConcernReview,
   LoadedStudyAnalysis,
-} from "./study-analysis.js";
+} from "./analysis/study-analysis.js";
 export {
   ACTOR_TRACE_SCHEMA,
   CODEX_APP_SERVER_CAPABILITIES,
