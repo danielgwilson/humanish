@@ -1,21 +1,13 @@
-// The persona-facing INBOX SURFACE (#297, slice B): a minimal, dependency-free, high-contrast set of
-// pages a computer-use persona opens to read a captured verification email and click its link — the
-// last step of the off-app comms funnel (redirect → capture → drain → evidence → SURFACE).
+// The inbox surface for captured mail (#297): the pages a computer-use participant opens to read a
+// captured verification email and follow its link. The pages are minimal semantic HTML (native
+// links and tables, black on white, large targets), because vision participants read a simple
+// inbox more reliably than a webmail client. The default view is the app's real captured email,
+// so a hard-to-read email is a finding; a synthesized view and a JSON twin sit one path away.
+// Routes follow Mailpit and Inbucket: list, message, a `latest` alias, and JSON with the links and
+// codes already extracted.
 //
-// Design (research-backed, 2026-08-04): agent/CUA benchmarks hand agents either NO ui or a DELIBERATELY
-// simplified inbox (MiniWoB email-inbox); nobody hands a vision agent a chrome-heavy webmail client.
-// Anthropic computer-use guidance: high contrast, single column, big hit-targets, minimal state. So the
-// surface is minimal SEMANTIC HTML (native <a>/<table>, black-on-white, large targets) — NOT a component
-// UI (shadcn/Base UI break both the no-build ethos AND vision-agent reliability). We render the app's
-// REAL captured email by default (faithful to the app-under-test — an honest signal if its email is a
-// legibility mess), with a synthesized clean view one path away, plus a JSON twin for programmatic
-// actors. Route shape mirrors Mailpit/Inbucket (list, message, `latest` alias, JSON with pre-extracted
-// links/otp).
-//
-// This module is PURE + typed + tested; it consumes the already-normalized CommsMessage[] the tested
-// drain/route path produces (links + codes already extracted), and emits the route→content files the
-// in-sandbox catch serves statically. Raw content here is runtime-only (rendered in-sandbox, served to
-// the in-sandbox browser); it is never persisted — the persisted evidence stays digest-only.
+// Pure: it takes the normalized CommsMessage[] and returns the route files the in-sandbox catch
+// serves. Raw content here is runtime-only; persisted evidence stays digest-only.
 
 import { createHash } from "node:crypto";
 import { capturedInlineImages, inlineImageData } from "./images.js";

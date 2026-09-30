@@ -67,8 +67,9 @@ export interface InboundRaw {
 }
 
 /**
- * The port. Fake (in-process) + real-email + real-sms adapters implement it identically. Async so a
- * real (network) adapter fits without changing callers; the fake adapter just resolves immediately.
+ * The captured-mail port. Only the in-process FakeInbox implements it; real email goes through
+ * ReceivingAdapter (receiving-types.ts). It is async so a network adapter could fit without
+ * changing callers; the fake resolves immediately.
  */
 export interface CommsChannel {
   readonly channel: CommsChannelKind;
@@ -82,6 +83,6 @@ export interface CommsChannel {
   deliverRaw(inbound: InboundRaw): Promise<CommsMessage[]>;
   /** New messages delivered to `address` since `since` (exclusive), oldest-first. Drives the surface. */
   poll(address: CommsAddress, since?: number): Promise<CommsMessage[]>;
-  /** Release inboxes BY id (mirror the by-id sandbox teardown rail). */
+  /** Release every provisioned inbox. */
   teardown(): Promise<void>;
 }

@@ -17,8 +17,8 @@ import { e2bShell } from "./shell.js";
  * Runtime-only CDP endpoint attribution for the exact chromium this lane launched. Port
  * resolution at OBSERVE time: the cached launch-time `cdpPort` wins; absent that, the observer
  * probe re-reads `profileDir`'s DevToolsActivePort marker (a slow cold start can publish it
- * AFTER the launch-time poll gave up); absent both it falls back to the legacy fixed 9222,
- * where a dead endpoint degrades into an honest warning that names the cause.
+ * after the launch-time poll gave up); absent both it uses 9222, the port every lane launches
+ * Chrome with, where a dead endpoint degrades into a warning that names the cause.
  */
 export interface ChromeCdpEndpoint {
   cdpPort?: number;

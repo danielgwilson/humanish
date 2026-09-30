@@ -12,18 +12,6 @@ import {
   type SubjectPhaseEvent,
 } from "./steps.js";
 
-/**
- * Provision a clone subject inside the sandbox: clone → the shared serve pipeline
- * (install → state(before-build) → build → state(before-start) → start → readiness
- * probe → state(after-ready)). Returns the latest subject HEAD after successful
- * provisioning. Throws (with a capped log tail for the caller to redact) on any failing step:
- * the lab persists that as a failed-evidence bundle.
- *
- * Auth: when GITHUB_TOKEN is among the declared subject env names, the clone authenticates
- * via an Authorization header computed IN-SANDBOX from the provisioned env: the token never
- * appears in the script text, the process argv beyond the transient git call, the clone URL,
- * or .git/config.
- */
 /** The longest provisionCloneSubject can take with the lab's budgets: the clone, then serving. */
 export function cloneProvisioningBudgetMs(
   serve: LabSubjectServe,
@@ -32,6 +20,18 @@ export function cloneProvisioningBudgetMs(
   return CLONE_TIMEOUT_MS + serveProvisioningBudgetMs(serve, state);
 }
 
+/**
+ * Provision a clone subject inside the sandbox: clone, then the shared serve pipeline (install,
+ * state before-build, build, state before-start, start, readiness probe, state after-ready).
+ * Returns the latest subject HEAD after successful provisioning. Throws (with a capped log tail
+ * for the caller to redact) on any failing step; the lab persists that as a failed-evidence
+ * bundle.
+ *
+ * Auth: when GITHUB_TOKEN is among the declared subject env names, the clone authenticates via an
+ * Authorization header computed in the sandbox from the provisioned env: the token never appears
+ * in the script text, the process argv beyond the transient git call, the clone URL, or
+ * .git/config.
+ */
 export async function provisionCloneSubject(
   shell: Shell,
   args: {

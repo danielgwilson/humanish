@@ -1,10 +1,7 @@
-// The FAKE in-process email/SMS bus (#297 Stage 2). "Fake" in the precise test-double sense (Fowler):
-// a working, in-memory implementation of the CommsChannel port that takes a production shortcut — the
-// same slot as Kubernetes' `fake` clientset, distinct from a mock/stub. Deterministic, $0, offline,
-// public-safe: a
-// message an app-under-test "sends" (via an ingress like the vendor-neutral email catch) is routed to the
-// addressed actor inbox and read back through the same CommsChannel port a real provider adapter
-// would implement. Nothing leaves the process. See types.ts for the port + public-safety notes.
+// The in-process email/SMS bus (#297): a working, in-memory implementation of the CommsChannel
+// port. Deterministic, offline and free: a message the app under test sends (through an ingress
+// such as the email catch) is routed to the addressed inbox and read back through the same port.
+// Nothing leaves the process. See types.ts for the port and its public-safety notes.
 
 import { digestText } from "../evidence/redaction.js";
 import type {
@@ -96,8 +93,8 @@ function smsAddressFor(actorId: string): string {
 export interface FakeInboxOptions {
   /** "email" (default) or "sms" — the address shape + surface differ; machinery is identical. */
   channel?: CommsChannelKind;
-  /** Email domain for minted addresses. Default example.test (an RFC 6761 reserved, unroutable test
-   *  domain — public-safe; override to a branded reserved domain once it's added to the email allowlist). */
+  /** Email domain for minted addresses. Default example.test, an RFC 6761 reserved, unroutable
+   *  test domain. */
   domain?: string;
   /** Injected clock (ms) for deterministic tests. Default Date.now. */
   now?: () => number;

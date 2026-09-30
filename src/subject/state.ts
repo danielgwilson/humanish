@@ -85,8 +85,8 @@ export async function runStateSteps(
         false,
         `subject state seed steps failed (${when})`,
       );
-      // Fail closed with the existing scrub-before-truncate tail chain: literal scrub of
-      // every provisioned value PRE-truncation, then pattern redaction + cap in tailOf.
+      // Fail closed with the scrub-before-truncate tail chain: literal scrub of every provisioned
+      // value before truncation, then pattern redaction and the cap in failureTail.
       throw new Error(
         `subject state step "${step.name}" ${result.timedOut ? `timed out after ${stepTimeoutMs}ms` : `failed (exit ${result.exitCode})`}: ${failureTail(args.scrub(result.logTail))}`,
       );
