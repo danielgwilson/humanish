@@ -110,33 +110,15 @@ export interface RunStatusHandle {
    *  it before a route can acquire a sandbox, so a run killed after its sandbox receipt lands
    *  still has a record to classify. */
   readonly started: Promise<void>;
-  /** Write `updatedAt` now. Called by the internal cadence; exposed for tests and for backends
-   *  that want to mark a phase boundary. Never throws. */
-  touch(): Promise<void>;
   /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
    *  Idempotent — a second call is a no-op, so a backend with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
-  /**
-   * Stop the cadence WITHOUT claiming an outcome. For a path that is abandoning the run: the record
-   * stays `running` and goes stale, which is the honest reading.
-   *
-   * Resolves when any IN-FLIGHT write has settled, so a caller that is about to delete the run
-   * directory can be sure nothing is still writing into it. Clearing the interval alone is not
-   * enough — a write started microseconds earlier is still on its way to disk.
-   */
-  stop(): Promise<void>;
 }
 
 export interface BeginRunStatusOptions {
   runId: string;
   mode: "dry-run" | "live";
   lab?: RunLabProvenance;
-  /** Injectable clock (tests freeze it; the repo's `now()` convention). */
-  now?: () => number;
-  /** Injectable pid so a test never depends on the real process id. */
-  pid?: number;
-  /** Cadence override; 0 disables the interval entirely (tests drive `touch()` themselves). */
-  touchMs?: number;
 }
 
 /**
@@ -148,8 +130,7 @@ export function beginRunStatus(
   runPaths: PreparedOutputRoot,
   options: BeginRunStatusOptions,
 ): RunStatusHandle {
-  const now = options.now ?? (() => Date.now());
-  const iso = (): string => new Date(now()).toISOString();
+  const iso = (): string => new Date().toISOString();
   const startedAt = iso();
   const base: RunStatusRecord = {
     schema: RUN_STATUS_SCHEMA,
@@ -157,7 +138,7 @@ export function beginRunStatus(
     state: "running",
     mode: options.mode,
     ...(options.lab === undefined ? {} : { lab: options.lab }),
-    pid: options.pid ?? process.pid,
+    pid: process.pid,
     startedAt,
     updatedAt: startedAt,
   };
@@ -184,34 +165,18 @@ export function beginRunStatus(
 
   const started = write(base);
 
-  const touchMs = options.touchMs ?? RUN_STATUS_TOUCH_MS;
-  let timer: ReturnType<typeof setInterval> | undefined;
-  if (touchMs > 0) {
-    timer = setInterval(() => {
-      if (finished) return;
-      void write({ ...base, updatedAt: iso() });
-    }, touchMs);
-    timer.unref?.();
-  }
-  const stop = (): Promise<void> => {
-    if (timer !== undefined) {
-      clearInterval(timer);
-      timer = undefined;
-    }
-    // `writing` is the tail of the serialized write chain, so awaiting it awaits everything queued.
-    return writing.catch(() => undefined);
-  };
+  const timer = setInterval(() => {
+    if (finished) return;
+    void write({ ...base, updatedAt: iso() });
+  }, RUN_STATUS_TOUCH_MS);
+  timer.unref?.();
 
   const handle: RunStatusHandle = {
     started,
-    async touch() {
-      if (finished) return;
-      await write({ ...base, updatedAt: iso() });
-    },
     async finish(outcome?: RunStatusOutcome) {
       if (finished) return;
       finished = true;
-      void stop();
+      clearInterval(timer);
       const completedAt = iso();
       await write({
         ...base,
@@ -221,7 +186,6 @@ export function beginRunStatus(
         ...(outcome === undefined ? {} : { outcome }),
       });
     },
-    stop,
   };
   return handle;
 }

@@ -1,21 +1,24 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { RunBundle } from "../../src/run/bundle.js";
+import { runDryRun } from "../../src/run/dry-run.js";
+import { runScope, type RunScope } from "../../src/run/run.js";
 import {
   RUN_STATUS_FILE,
   RUN_STATUS_SCHEMA,
   RUN_STATUS_STALE_MS,
   RUN_STATUS_TOUCH_MS,
-  beginRunStatus,
   classifyRunStatus,
   inferLegacyLabId,
   isRunStatusRecord,
+  runStatusOutcome,
+  type RunLabProvenance,
   type RunStatusRecord,
 } from "../../src/run/status.js";
-import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 
 describe("run status: identity + liveness on disk (#455)", () => {
   let cwd: string;
@@ -23,13 +26,49 @@ describe("run status: identity + liveness on disk (#455)", () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-status-"));
   });
   afterEach(async () => {
+    vi.useRealTimers();
     await rm(cwd, { recursive: true, force: true });
   });
 
+  const statusPath = (runId: string): string =>
+    path.join(cwd, ".humanish", "runs", runId, RUN_STATUS_FILE);
   const read = async (runId: string): Promise<RunStatusRecord> =>
-    JSON.parse(
-      await readFile(path.join(cwd, ".humanish", "runs", runId, RUN_STATUS_FILE), "utf8"),
-    ) as RunStatusRecord;
+    JSON.parse(await readFile(statusPath(runId), "utf8")) as RunStatusRecord;
+
+  const lab: RunLabProvenance = {
+    id: "observer-live-check",
+    path: ".humanish/labs/observer-live-check.yaml",
+    origin: "ignored",
+  };
+
+  async function startLive(scope: RunScope, runId: string, withLab?: RunLabProvenance) {
+    const started = await scope.startRun({
+      cwd,
+      runId,
+      mintRunId: () => runId,
+      mode: "live",
+      renderReview: (bundle) => `# Review ${bundle.runId}\n`,
+      ...(withLab === undefined ? {} : { lab: withLab }),
+    });
+    if (!started.ok) throw new Error(started.message);
+    return started.run;
+  }
+
+  /** The synthetic preview of the same project, relabeled as a live bundle for `runId`. */
+  async function bundleFor(runId: string): Promise<RunBundle> {
+    const templateId = `${runId}-template`;
+    const preview = await runDryRun({ cwd, dryRun: true, runId: templateId });
+    if (!preview.ok) throw new Error(preview.error?.message ?? "the preview template failed");
+    const template = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", templateId, "run.json"), "utf8"),
+    ) as RunBundle;
+    return {
+      ...template,
+      runId,
+      mode: "live",
+      artifactRoot: path.join(".humanish", "runs", runId),
+    };
+  }
 
   /** Poll until `probe` returns a value, so a timing assertion never depends on scheduler luck. */
   async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs = 2_000): Promise<T> {
@@ -42,82 +81,50 @@ describe("run status: identity + liveness on disk (#455)", () => {
     }
   }
 
-  it("writes a running record with lab identity the moment a run starts", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-a");
-    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
-    const status = beginRunStatus(runPaths, {
-      runId: "run-a",
-      mode: "live",
-      lab: {
-        id: "observer-live-check",
-        path: ".humanish/labs/observer-live-check.yaml",
-        origin: "ignored",
-      },
-      now: () => clock.t,
-      pid: 4242,
-      touchMs: 0,
-    });
-    await status.touch();
+  it("writes a running record with lab identity before startRun returns", async () => {
+    await runScope(async (scope) => {
+      await startLive(scope, "run-a", lab);
 
-    const record = await read("run-a");
-    expect(record.schema).toBe(RUN_STATUS_SCHEMA);
-    expect(record.state).toBe("running");
-    expect(record.mode).toBe("live");
-    expect(record.lab).toEqual({
-      id: "observer-live-check",
-      path: ".humanish/labs/observer-live-check.yaml",
-      origin: "ignored",
+      const record = await read("run-a");
+      expect(record.schema).toBe(RUN_STATUS_SCHEMA);
+      expect(record.state).toBe("running");
+      expect(record.mode).toBe("live");
+      expect(record.lab).toEqual(lab);
+      expect(record.pid).toBe(process.pid);
+      expect(record.updatedAt).toBe(record.startedAt);
+      expect(isRunStatusRecord(record)).toBe(true);
+      // Public-safe by construction: no hostname, no user paths, nothing a share gate must strip.
+      const raw = await readFile(statusPath("run-a"), "utf8");
+      expect(raw).not.toMatch(/host/i);
+      expect(raw).not.toContain(cwd);
     });
-    expect(record.pid).toBe(4242);
-    expect(record.startedAt).toBe("2026-08-19T10:00:00.000Z");
-    expect(isRunStatusRecord(record)).toBe(true);
-    // Public-safe by construction: no hostname, no user paths, nothing a share gate must strip.
-    const raw = await readFile(
-      path.join(cwd, ".humanish", "runs", "run-a", RUN_STATUS_FILE),
-      "utf8",
-    );
-    expect(raw).not.toMatch(/host/i);
-    expect(raw).not.toContain(cwd);
   });
 
-  it("touch moves updatedAt; finish records the outcome and is idempotent", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-b");
-    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
-    const status = beginRunStatus(runPaths, {
-      runId: "run-b",
-      mode: "live",
-      now: () => clock.t,
-      touchMs: 0,
+  it("the cadence refreshes updatedAt while the run lives, and finish ends it", async () => {
+    const bundle = await bundleFor("run-b");
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "Date"],
+      now: Date.parse("2026-08-19T10:00:00.000Z"),
     });
+    await runScope(async (scope) => {
+      const run = await startLive(scope, "run-b");
+      expect((await read("run-b")).updatedAt).toBe("2026-08-19T10:00:00.000Z");
 
-    clock.t += 5_000;
-    await status.touch();
-    expect((await read("run-b")).updatedAt).toBe("2026-08-19T10:00:05.000Z");
+      vi.advanceTimersByTime(RUN_STATUS_TOUCH_MS);
+      const touched = "2026-08-19T10:00:05.000Z";
+      await waitFor(async () => ((await read("run-b")).updatedAt === touched ? true : undefined));
 
-    clock.t += 5_000;
-    await status.finish({
-      verdict: "pass",
-      participants: { total: 1, reachedGoal: 1, reportedFriction: 0 },
-      estimatedCostUsd: 0.34,
+      await run.finish(bundle);
+      const finished = await read("run-b");
+      expect(finished.state).toBe("finished");
+      expect(finished.completedAt).toBe(touched);
+      expect(finished.outcome).toEqual(runStatusOutcome(bundle));
+
+      // A tick after finish would resurrect the run as running; the interval is gone instead.
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime(RUN_STATUS_TOUCH_MS * 3);
+      expect(await read("run-b")).toEqual(finished);
     });
-    const finished = await read("run-b");
-    expect(finished.state).toBe("finished");
-    expect(finished.completedAt).toBe("2026-08-19T10:00:10.000Z");
-    expect(finished.outcome).toEqual({
-      verdict: "pass",
-      participants: { total: 1, reachedGoal: 1, reportedFriction: 0 },
-      estimatedCostUsd: 0.34,
-    });
-
-    // A second finish (a backend with several exit paths) must not rewrite the record, and a late
-    // touch must never resurrect a finished run as running.
-    clock.t += 5_000;
-    await status.finish({ verdict: "fail" });
-    await status.touch();
-    const after = await read("run-b");
-    expect(after.state).toBe("finished");
-    expect(after.outcome?.verdict).toBe("pass");
-    expect(after.completedAt).toBe("2026-08-19T10:00:10.000Z");
   });
 
   it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {
@@ -140,71 +147,30 @@ describe("run status: identity + liveness on disk (#455)", () => {
     expect(RUN_STATUS_STALE_MS).toBe(RUN_STATUS_TOUCH_MS * 3);
   });
 
-  it("the cadence refreshes updatedAt on its own, and never holds the process open", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-c");
-    const clock = { t: Date.parse("2026-08-19T10:00:00.000Z") };
-    const status = beginRunStatus(runPaths, {
-      runId: "run-c",
-      mode: "live",
-      now: () => clock.t,
-      touchMs: 10,
-    });
-    try {
-      // The initial write is fire-and-forget so starting a run never blocks on its own index;
-      // `started` is how a caller that needs determinism waits for it.
-      await status.started;
-      const first = (await read("run-c")).updatedAt;
-      clock.t += 60_000;
-
-      // Poll rather than sleep a fixed span. The claim under test is "the cadence refreshes on its
-      // own", not "it refreshes within 60ms of wall clock" — and on a loaded machine an interval
-      // callback plus its async write can easily miss a fixed window, which made this the one
-      // flaky test in the suite.
-      const second = await waitFor(async () => {
-        const value = (await read("run-c")).updatedAt;
-        return value === first ? undefined : value;
-      });
-      expect(second).not.toBe(first);
-
-      await status.stop();
-      const afterStop = (await read("run-c")).updatedAt;
-      clock.t += 60_000;
-      // The negative half stays a fixed wait: there is nothing to poll for, and the assertion is
-      // that several cadence intervals could have passed and none did.
-      await new Promise((resolve) => setTimeout(resolve, 60));
-      expect((await read("run-c")).updatedAt).toBe(afterStop);
-    } finally {
-      // Always, even when an assertion above throws, and AWAITED: a cadence left running — or a
-      // single write still in flight — writes into the run directory while afterEach is deleting
-      // it, which surfaces as an unrelated ENOTEMPTY.
-      await status.stop();
-    }
-  });
-
   it("a status write failure never breaks the run it describes", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-d");
-    const status = beginRunStatus(runPaths, { runId: "run-d", mode: "dry-run", touchMs: 0 });
-    // Remove the run directory out from under it: the writes now fail, and every call must resolve.
-    await rm(path.join(cwd, ".humanish", "runs", "run-d"), { recursive: true, force: true });
-    await expect(status.touch()).resolves.toBeUndefined();
-    await expect(status.finish({ verdict: "pass" })).resolves.toBeUndefined();
+    const bundle = await bundleFor("run-d");
+    const { finished } = await runScope(async (scope) => {
+      const run = await startLive(scope, "run-d");
+      // A directory where the record goes makes every later status write fail.
+      await rm(statusPath("run-d"));
+      await mkdir(path.join(statusPath("run-d"), "blocker"), { recursive: true });
+      await run.finish(bundle);
+    });
+    expect(finished?.runId).toBe("run-d");
+    const published = JSON.parse(
+      await readFile(path.join(cwd, ".humanish", "runs", "run-d", "run.json"), "utf8"),
+    ) as RunBundle;
+    expect(published.runId).toBe("run-d");
+    expect((await stat(statusPath("run-d"))).isDirectory()).toBe(true);
   });
 
   it("the record is one small file — the point is listing runs without parsing bundles", async () => {
-    const runPaths = await prepareRunArtifactPaths(cwd, "run-e");
-    const status = beginRunStatus(runPaths, {
-      runId: "run-e",
-      mode: "live",
-      lab: { id: "x", path: "humanish/labs/x.yaml", origin: "committed" },
-      touchMs: 0,
+    const bundle = await bundleFor("run-e");
+    await runScope(async (scope) => {
+      await (await startLive(scope, "run-e", lab)).finish(bundle);
     });
-    await status.finish({
-      verdict: "pass",
-      participants: { total: 2, reachedGoal: 2 },
-      estimatedCostUsd: 1.2,
-    });
-    const size = (await stat(path.join(cwd, ".humanish", "runs", "run-e", RUN_STATUS_FILE))).size;
-    expect(size).toBeLessThan(600);
+    expect((await read("run-e")).state).toBe("finished");
+    expect((await stat(statusPath("run-e"))).size).toBeLessThan(600);
   });
 
   it("shape guard accepts additive fields and rejects wrong ones", () => {
