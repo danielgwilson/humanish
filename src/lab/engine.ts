@@ -33,7 +33,9 @@ import type { ObserverResult } from "../observer/render.js";
 import { runDryRun } from "../run/dry-run.js";
 import { type RunResult, type RunScorerProvenance } from "../run/bundle.js";
 import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
-import { backendOf, routeOf } from "./plan.js";
+import { backendOf, resolveLabDryRun, routeOf } from "./plan.js";
+
+export { resolveLabDryRun };
 import { type LabConfig } from "./types.js";
 
 export type LabBackend = "synthetic" | "cua" | "scripted" | "terminal" | "concurrent-shared-world";
@@ -89,24 +91,6 @@ export function selectLabBackend(config: LabConfig): LabBackend {
 /** First actor's declared lane count, if any. */
 function actorLaneCount(config: LabConfig): number | undefined {
   return config.actors[0]?.count;
-}
-
-/** Resolve dry-run: explicit override wins, else the scenario mode, else the given fallback. */
-export function resolveLabDryRun(
-  config: LabConfig,
-  override: boolean | undefined,
-  fallback: boolean | undefined,
-): boolean | undefined {
-  if (override !== undefined) {
-    return override;
-  }
-  if (config.scenario?.mode === "live") {
-    return false;
-  }
-  if (config.scenario?.mode === "dry-run") {
-    return true;
-  }
-  return fallback;
 }
 
 /**

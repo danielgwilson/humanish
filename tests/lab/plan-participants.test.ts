@@ -43,7 +43,9 @@ function parsed(raw: Record<string, unknown>): LabConfig {
 
 async function committedLabs(route: string): Promise<[string, LabConfig][]> {
   const labs: [string, LabConfig][] = [];
-  for (const lab of (await listLabManifests(ROOT)).labs) {
+  for (const lab of (await listLabManifests(ROOT)).labs.filter(
+    (lab) => lab.origin === "committed",
+  )) {
     const resolved = await resolveLabManifest(ROOT, lab.id);
     if (resolved.ok && routeOf(resolved.config) === route) labs.push([lab.id, resolved.config]);
   }
