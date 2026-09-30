@@ -1,22 +1,13 @@
-import type {
-  CuaLiveMetadata,
-  CuaLoopResult,
-  CuaProvider,
-} from "../../actors/computer-use/loop.js";
+import type { CuaLoopResult, CuaProvider } from "../../actors/computer-use/loop.js";
 import { createE2BCuaDesktopLane } from "./e2b-desktop.js";
 import path from "node:path";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
-import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
 import { assertScreenshotEvidence } from "../../evidence/image.js";
-import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
-import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
+import { round6 } from "../../run/pricing.js";
 import type { LabConfig } from "../../lab/types.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { type RunSubjectProvenance } from "../../run/bundle.js";
 import {
   assertSafeOutputPathSegment,
@@ -25,7 +16,14 @@ import {
 } from "../../run/contained-output.js";
 import { type LocalTreeArchive } from "../../run/source-archive.js";
 import { laneOutcomeOk } from "./bundle.js";
-import { withInboxMission } from "./lane-plan.js";
+import {
+  closeParticipantModel,
+  judgeParticipantSession,
+  participantSessionOptions,
+  recordParticipantTrace,
+  startParticipantModel,
+  type ParticipantModel,
+} from "./participant-model.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
@@ -68,7 +66,7 @@ export function makeLaneWriteScreenshot(
 }
 
 /** A blocked lane outcome (pipeline gate / fail-fast skipped it before it ran). */
-function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
+function skippedOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
   return {
     spec,
     killed: false,
@@ -88,10 +86,7 @@ function blockedLaneOutcome(spec: CuaLaneSpec, reason: string): LaneRunOutcome {
 /** Run one participant against a prepared desktop. The adapter owns provisioning, final
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
 export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<LaneRunOutcome> {
-  const { config, env } = deps;
-  let codexParticipant: ReturnType<typeof createRestrictedCodexParticipant> | undefined;
-  let claudeSession: Awaited<ReturnType<typeof startClaudeSession>> | undefined;
-  let localAgentProvider: CuaProvider | undefined;
+  let model: ParticipantModel = {};
   const warnings: string[] = [];
   const screenshots: string[] = [];
   const writeScreenshot = makeLaneWriteScreenshot(deps.artifactRoot, spec, screenshots);
@@ -105,211 +100,43 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
       deps.signalProvisioned(ok);
     }
   };
-  const desktopLane =
+  const desktop =
     deps.createDesktopLane?.(spec, warnings, deps.artifactRoot) ??
     createE2BCuaDesktopLane(spec, deps, warnings);
   try {
-    await desktopLane.prepare();
-    const ready = await desktopLane.openSession();
-    if (deps.hooks.buildProvider) {
-      localAgentProvider = await deps.hooks.buildProvider({
-        config,
-        actor: deps.descriptor,
-        lane: spec,
-        laneCount: deps.laneCount,
-        executor: ready.executor,
-      });
-    } else if (deps.localAgent === "codex") {
-      // Hosted local-agent studies use the same native participant engine as local desktops.
-      // Operator auth deliberately retains the operator's Codex home, config and supported auth
-      // stores instead of applying the isolated restricted-account profile used by local studies.
-      codexParticipant = createRestrictedCodexParticipant({
-        authMode: "operator",
-        ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-        ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        ...(ready.executor.speechEnabled === true ? { speechEnabled: true } : {}),
-        session: { env },
-      });
-      localAgentProvider = codexParticipant.provider;
-    } else if (deps.localAgent === "claude") {
-      // One session for the whole run, like the codex thread above (#520). The one-shot
-      // provider (createLocalAgentProvider) spawned `claude -p` per turn, and every turn
-      // started with no memory of the last. HUMANISH_LOCAL_AGENT_ONE_SHOT=1 keeps that path
-      // reachable as a MEASUREMENT switch: MemTrapBench (2026-08) reports memory frameworks
-      // degrading agent performance by 10-40% on some tasks, so "remembers" has to be measured
-      // against "does not" on the same lab, not assumed. The trace records which one ran.
-      const oneShot =
-        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== undefined &&
-        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "" &&
-        env.HUMANISH_LOCAL_AGENT_ONE_SHOT !== "0";
-      if (oneShot) {
-        localAgentProvider = createLocalAgentProvider({
-          agent: "claude",
-          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        });
-      } else {
-        claudeSession = await startClaudeSession({
-          ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-          ...(config.actors[0]?.model === undefined ? {} : { model: config.actors[0].model }),
-        });
-        localAgentProvider = claudeSession.provider;
-      }
-    }
+    await desktop.prepare();
+    const ready = await desktop.openSession();
+    model = await startParticipantModel(spec, deps, ready.executor);
 
     // World is ready: release the pipeline gate so the remaining lanes may start.
     provisioned = true;
     signal(true);
 
-    // The FAIL-CLOSED spend cap (execution.caps.maxUsd) is wired into the loop as maxUsd + an
-    // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
-    // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
-    // model id here matches provider.version (openai-responses-cu resolves the default when unset).
-    const capModelId = config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL;
-    const maxUsd = config.execution?.caps?.maxUsd;
-    const sessionOptions: CuaActorSessionOptions = {
-      instructions: ready.inbox
-        ? withInboxMission(spec, ready.inbox.url, ready.inbox.address, ready.inbox.receiving)
-            .instructions
-        : spec.instructions,
-      persona: spec.persona,
-      timeoutMs: deps.timeoutMs,
-      // The brain is either a keyed API client or a CLI the operator is already signed in to.
-      // Everything below this line — loop, executor, trace, affordances — is identical either
-      // way, which is what makes a local-agent run comparable to an API one.
-      ...(localAgentProvider === undefined ? {} : { provider: localAgentProvider }),
-      openai: {
-        apiKey: deps.openaiApiKey,
-        ...(config.actors[0]?.model ? { model: config.actors[0]!.model } : {}),
-        // Per-LANE, not per-actor: two lanes at different efforts is the control this exists for.
-        ...(spec.reasoningEffort === undefined ? {} : { reasoningEffort: spec.reasoningEffort }),
-        ...(spec.maxOutputTokens === undefined ? {} : { maxOutputTokens: spec.maxOutputTokens }),
-      },
-      ...(maxUsd === undefined
-        ? {}
-        : {
-            maxUsd,
-            estimateTurnCostUsd: (usage: ActorTokenUsage): number | null =>
-              estimateActorCostForExecution(
-                usage,
-                localAgentProvider?.version ?? capModelId,
-                localAgentProvider?.executionProfile,
-              ).estimatedCostUsd,
-          }),
-      executor: ready.executor,
-      redactScreenshots: deps.redactScreenshots,
-      scrubText: deps.scrubKnownValues,
-      writeScreenshot,
-      ...(spec.idleSteps === undefined ? {} : { idleSteps: spec.idleSteps }),
-      ...(spec.noProgressSteps === undefined ? {} : { noProgressSteps: spec.noProgressSteps }),
-      ...(spec.stopWhen === undefined ? {} : { stopWhen: spec.stopWhen }),
-      ...(spec.dwell === undefined ? {} : { dwell: spec.dwell }),
-      ...(spec.tasks === undefined ? {} : { tasks: spec.tasks }),
-      // The STUDY budget (#299): this lane notes its own running estimate on the shared ledger
-      // and stops when the RUN total crosses the cap — independent of the per-lane maxUsd above.
-      ...(deps.runBudget === undefined
-        ? {}
-        : {
-            overRunBudget: (usage: ActorTokenUsage): string | null => {
-              const estimate = estimateActorCostForExecution(
-                usage,
-                localAgentProvider?.version ?? capModelId,
-                localAgentProvider?.executionProfile,
-              ).estimatedCostUsd;
-              const totalUsd = deps.runBudget!.note(spec.laneId, estimate);
-              return totalUsd > deps.runBudget!.maxTotalUsd
-                ? `study budget reached: the run's estimated model spend $${round6(totalUsd)} crossed execution.caps.maxTotalUsd=$${deps.runBudget!.maxTotalUsd}; this lane stops here and sibling lanes stop at their next turn`
-                : null;
-            },
-          }),
-      ...(deps.onObservedUrl === undefined ? {} : { onObservedUrl: deps.onObservedUrl }),
-      ...(deps.onMessage === undefined ? {} : { onMessage: deps.onMessage }),
-      ...(deps.onScreenshot === undefined ? {} : { onScreenshot: deps.onScreenshot }),
-      ...(deps.onTrace === undefined
-        ? {}
-        : {
-            // Forwards the RUNNING usage as well: the lane is where both are known, and usage
-            // without it never reaches the flush — which is how the live cost stayed unknown.
-            onTrace: (
-              items: readonly ActorTraceItem[],
-              usage: ActorTokenUsage,
-              metadata?: CuaLiveMetadata,
-            ): void => deps.onTrace?.(spec.laneId, items, usage, metadata),
-          }),
-    };
-    session = await deps.runSession(sessionOptions);
+    session = await deps.runSession(
+      participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
+    );
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
-    try {
-      if (codexParticipant === undefined) await localAgentProvider?.close?.();
-    } catch {
-      warnings.push("Model provider cleanup is unconfirmed.");
+    if (await closeParticipantModel(model, warnings)) {
       sessionError ??= "Model provider cleanup is unconfirmed.";
-    }
-    try {
-      const cleanup = await codexParticipant?.close();
-      if (cleanup?.status === "unconfirmed") {
-        warnings.push("Model provider cleanup is unconfirmed.");
-        sessionError ??= "Model provider cleanup is unconfirmed.";
-      }
-    } catch {
-      warnings.push("Model provider cleanup is unconfirmed.");
-      sessionError ??= "Model provider cleanup is unconfirmed.";
-    }
-    try {
-      await claudeSession?.close();
-    } catch {
-      warnings.push("Claude session cleanup failed; desktop cleanup will still run.");
     }
     try {
       if (!provisioned) signal(false);
     } finally {
-      await desktopLane.finalize({ failed: sessionError !== undefined || session === undefined });
+      await desktop.finalize({ failed: sessionError !== undefined || session === undefined });
     }
   }
-  if (session) {
-    // Per-lane model-token cost ESTIMATE, attached to the trace before it is persisted (the model
-    // id is authoritative here — provider.version). Kept at the lab boundary so the pure loop
-    // never depends on the operator rate table. estimateActorCost declares absent (null) for an
-    // unknown rate / missing usage rather than guessing.
-    session.trace.estimatedCost = estimateActorCostForExecution(
-      session.trace.tokenUsage,
-      session.trace.ids.model,
-      session.trace.executionProfile,
-    );
-    await writeContainedOutputFile(
-      deps.artifactRoot,
-      spec.traceArtifactPath,
-      `${JSON.stringify(session.trace, null, 2)}\n`,
-      "utf8",
-    );
-    if (session.trace.redaction.screenshots === "raw") {
-      warnings.push(
-        "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
-      );
-    }
-  }
-
-  const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));
-  if (noEngagement) {
-    warnings.push(
-      "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
-    );
-  }
-
-  const blockerReason = resolveSelfReportedBlocker(session);
-  const selfReportedBlocker = blockerReason !== undefined;
-  const reportedFriction = resolveSelfReportedFriction(session) !== undefined;
-  if (selfReportedBlocker) {
-    warnings.push(
-      `Actor returned goal_satisfied while its final message describes a blocker or asks for missing instructions — NOT counted as a pass: ${redactText(deps.scrubKnownValues(blockerReason))}`,
-    );
-  }
+  if (session) await recordParticipantTrace(spec, deps, session, warnings);
+  const { noEngagement, selfReportedBlocker, reportedFriction } = judgeParticipantSession(
+    session,
+    deps,
+    warnings,
+  );
 
   const harnessError = sessionError !== undefined || session?.completionReason === "harness_error";
 
-  const { released, ...desktopEvidence } = desktopLane.snapshot();
+  const { released, ...desktopEvidence } = desktop.snapshot();
   return {
     spec,
     ...(session ? { session } : {}),
@@ -437,7 +264,7 @@ export async function runCuaLanes(
   laneSpecs: CuaLaneSpec[],
   deps: Omit<CuaLaneDeps, "signalProvisioned">,
   concurrency: number,
-  runLane: typeof runCuaLane = runCuaLane,
+  runParticipant: typeof runCuaLane = runCuaLane,
 ): Promise<{ outcomes: LaneRunOutcome[]; failFastReason?: string }> {
   const failFast: { tripped: boolean; reason: string } = { tripped: false, reason: "" };
   let resolveGate: (() => void) | undefined;
@@ -458,14 +285,14 @@ export async function runCuaLanes(
         try {
           await gate;
         } catch {
-          return blockedLaneOutcome(
+          return skippedOutcome(
             spec,
             `skipped: lane ${laneSpecs[0]?.laneId ?? "lane-01"} failed to provision its world (pipeline gate)`,
           );
         }
       }
       if (failFast.tripped) {
-        return blockedLaneOutcome(spec, `skipped: ${failFast.reason}`);
+        return skippedOutcome(spec, `skipped: ${failFast.reason}`);
       }
       // The lane runner is TOTAL (#342): every exit path returns a recorded outcome. Without this
       // guard, one lane's late throw (e.g. its trace write hitting ENOSPC after its own sandbox was
@@ -473,7 +300,7 @@ export async function runCuaLanes(
       // nobody would ever record — the run spent money and then reported nothing.
       let outcome: LaneRunOutcome;
       try {
-        outcome = await runLane(spec, {
+        outcome = await runParticipant(spec, {
           ...deps,
           ...(index === 0
             ? {
@@ -555,12 +382,12 @@ export function toLaneResult(
     };
   }
   const session = outcome.session;
-  const laneOk = laneOutcomeOk(outcome, dryRun);
+  const participantOk = laneOutcomeOk(outcome, dryRun);
   const status: CuaLaneResult["status"] = session ? session.status : "failed";
   return {
     ...base,
     status,
-    ok: laneOk,
+    ok: participantOk,
     diagnostics: cuaLaneDiagnostics({
       dryRun,
       executionError: outcome.sessionError !== undefined,
@@ -599,7 +426,7 @@ export function toLaneResult(
             streamUrlPresent: outcome.streamUrlPresent,
           },
         }),
-    ...(laneOk
+    ...(participantOk
       ? {}
       : {
           error: {
