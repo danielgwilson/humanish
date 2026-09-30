@@ -1,0 +1,120 @@
+// How humanish judges a participant. A route reduces what happened to plain facts and asks these
+// predicates, so "did this participant pass?" has one answer on every route. The routes' verdict
+// folds and the scorer's come here next.
+
+import type {
+  ActorCompletionReason,
+  ActorStatus,
+  ParticipantDeclaredOutcome,
+} from "../actors/contract.js";
+import type { ReviewSummary } from "./bundle.js";
+
+export type Verdict = ReviewSummary["verdict"];
+
+/** How a finished session ended, as the blocker rule reads it. */
+export interface BlockerFacts {
+  completionReason: ActorCompletionReason;
+  /** A harness-owned stop condition ended the session: a matched stopWhen or a completed dwell window. */
+  stopConditionMatched: boolean;
+  /** What the participant declared in a field, when its provider has one (#570). */
+  declaredOutcome?: ParticipantDeclaredOutcome;
+  /** The route's reading of the closing report: it describes a blocker or asks for instructions. */
+  closingReportReadsBlocked: boolean;
+}
+
+/** How a finished session ended, as the engagement and blocker rules read it. */
+export interface SessionEnding extends BlockerFacts {
+  actions: number;
+  messages: number;
+}
+
+/**
+ * The participant said it reached the goal having taken no action and said nothing, and no stop
+ * condition ended the session. It most likely saw a blank or loading screen, so it is not a pass.
+ */
+export function hollowCompletion(ending: SessionEnding): boolean {
+  return (
+    ending.completionReason === "goal_satisfied" &&
+    ending.actions === 0 &&
+    ending.messages === 0 &&
+    !ending.stopConditionMatched
+  );
+}
+
+/**
+ * The participant said it reached the goal but reported a blocker. A declared outcome is its own
+ * word and wins (#570). Without one, the closing report is read, unless a stop condition ended the
+ * session: a matched stopWhen is structured completion evidence and overrides the text.
+ */
+export function selfReportedBlocker(ending: BlockerFacts): boolean {
+  if (ending.declaredOutcome !== undefined)
+    return ending.declaredOutcome === "blocked" && ending.completionReason === "goal_satisfied";
+  return (
+    ending.completionReason === "goal_satisfied" &&
+    ending.closingReportReadsBlocked &&
+    !ending.stopConditionMatched
+  );
+}
+
+/** What a participant's pass reads: its session's end, or why it has none, and the two judgments above. */
+export interface ParticipantFacts {
+  /** Absent when no session reached a terminal status. */
+  status?: ActorStatus;
+  completionReason?: ActorCompletionReason;
+  /** The harness failed before the session reached a terminal status. */
+  sessionError?: string;
+  /** The pipeline gate or fail-fast skipped the participant. */
+  skipped: boolean;
+  /** hollowCompletion held for its session. */
+  noEngagement: boolean;
+  /** selfReportedBlocker held for its session. */
+  selfReportedBlocker: boolean;
+}
+
+/** A participant passed: its session passed without a harness error, engaged, and reported no blocker. */
+export function participantPassed(participant: ParticipantFacts): boolean {
+  return (
+    !participant.skipped &&
+    participant.status === "passed" &&
+    participant.completionReason !== "harness_error" &&
+    participant.sessionError === undefined &&
+    !participant.noEngagement &&
+    !participant.selfReportedBlocker
+  );
+}
+
+/**
+ * The status a participant is tallied under, given what the route made of the session. A
+ * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
+ * one whose final message describes a blocker is a participant who could not proceed and said so.
+ * Both keep their trace status (the claim is evidence); neither is a participant who reached the
+ * goal. One rule for the single lane and the fan-out roll-up (#476).
+ */
+export function participantStatus(
+  status: ActorStatus,
+  judgments: { noEngagement: boolean; selfReportedBlocker: boolean } | undefined,
+): ActorStatus {
+  if (status !== "passed" || judgments === undefined) return status;
+  if (judgments.noEngagement) return "incomplete";
+  if (judgments.selfReportedBlocker) return "blocked";
+  return status;
+}
+
+/** The review verdict for one participant's status. */
+export function verdictForStatus(status: ActorStatus): Verdict {
+  switch (status) {
+    case "passed":
+      return "pass";
+    case "failed":
+      return "fail";
+    case "blocked":
+      return "blocked";
+    case "timed_out":
+      return "timed_out";
+    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
+    // harness did not fail either. The run reports what happened rather than a verdict on the tool.
+    case "abandoned":
+    case "incomplete":
+      return "fail";
+  }
+}

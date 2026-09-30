@@ -1,5 +1,5 @@
 import { feedbackProofCommands } from "../../feedback/proof.js";
-import type { ActorStatus, ActorTrace } from "../../actors/contract.js";
+import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { containsSensitive, redactText } from "../../evidence/redaction.js";
 import {
@@ -9,6 +9,7 @@ import {
   type RunProviderResource,
   type RunSubjectProvenance,
 } from "../../run/bundle.js";
+import { participantPassed, type ParticipantFacts } from "../../run/judge.js";
 import { digestUrl } from "./lane-plan.js";
 import { resolveSelfReportedFriction } from "./self-report.js";
 import {
@@ -19,17 +20,22 @@ import {
   type LaneRunOutcome,
 } from "./types.js";
 
+/** A lane outcome's facts for the judge. */
+export function participantFactsOf(outcome: LaneRunOutcome): ParticipantFacts {
+  return {
+    ...(outcome.session === undefined
+      ? {}
+      : { status: outcome.session.status, completionReason: outcome.session.completionReason }),
+    ...(outcome.sessionError === undefined ? {} : { sessionError: outcome.sessionError }),
+    skipped: outcome.skippedReason !== undefined,
+    noEngagement: outcome.noEngagement === true,
+    selfReportedBlocker: outcome.selfReportedBlocker === true,
+  };
+}
+
 export function laneOutcomeOk(outcome: LaneRunOutcome | undefined, dryRun: boolean): boolean {
   if (dryRun) return true;
-  if (!outcome || outcome.skippedReason !== undefined) return false;
-  return (
-    outcome.session !== undefined &&
-    outcome.session.status === "passed" &&
-    outcome.session.completionReason !== "harness_error" &&
-    outcome.sessionError === undefined &&
-    !outcome.noEngagement &&
-    !outcome.selfReportedBlocker
-  );
+  return outcome !== undefined && participantPassed(participantFactsOf(outcome));
 }
 
 export function fanoutReviewVerdict(args: {
@@ -281,41 +287,6 @@ export function providerResourcesForOutcome(args: {
       },
     },
   ];
-}
-
-/**
- * The status a participant is TALLIED under, given what the lane made of the session. A
- * goal_satisfied claim with zero engagement is a session that ran out before anything happened;
- * one whose final message describes a blocker is a participant who could not proceed and said so.
- * Both keep their trace status (the claim is evidence); neither is a participant who reached the
- * goal. One rule for the single lane and the fan-out roll-up (#476).
- */
-export function participantStatusForCredibility(
-  status: ActorStatus,
-  credibility: { noEngagement: boolean; selfReportedBlocker: boolean } | undefined,
-): ActorStatus {
-  if (status !== "passed" || credibility === undefined) return status;
-  if (credibility.noEngagement) return "incomplete";
-  if (credibility.selfReportedBlocker) return "blocked";
-  return status;
-}
-
-export function verdictForStatus(status: ActorStatus): ReviewSummary["verdict"] {
-  switch (status) {
-    case "passed":
-      return "pass";
-    case "failed":
-      return "fail";
-    case "blocked":
-      return "blocked";
-    case "timed_out":
-      return "timed_out";
-    // A participant who abandoned, or a session that ran out before the goal, did not pass — but the
-    // harness did not fail either. The run reports what happened rather than a verdict on the tool.
-    case "abandoned":
-    case "incomplete":
-      return "fail";
-  }
 }
 
 export function renderCuaReviewMarkdown(bundle: RunBundle): string {

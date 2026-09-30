@@ -29,8 +29,9 @@ import { withInboxMission } from "./lane-plan.js";
 import {
   resolveSelfReportedBlocker,
   resolveSelfReportedFriction,
-  traceHasStopWhenMatch,
+  sessionEnding,
 } from "./self-report.js";
+import { hollowCompletion } from "../../run/judge.js";
 import type {
   CuaLaneDeps,
   CuaLanePlan,
@@ -290,12 +291,7 @@ export async function runCuaLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<
     }
   }
 
-  const noEngagement =
-    session !== undefined &&
-    session.completionReason === "goal_satisfied" &&
-    (session.trace.counts.actions ?? 0) === 0 &&
-    (session.trace.counts.messages ?? 0) === 0 &&
-    !traceHasStopWhenMatch(session);
+  const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));
   if (noEngagement) {
     warnings.push(
       "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
@@ -394,12 +390,7 @@ async function runInProcessLane(spec: CuaLaneSpec, deps: CuaLaneDeps): Promise<L
     }
   }
 
-  const noEngagement =
-    session !== undefined &&
-    session.completionReason === "goal_satisfied" &&
-    (session.trace.counts.actions ?? 0) === 0 &&
-    (session.trace.counts.messages ?? 0) === 0 &&
-    !traceHasStopWhenMatch(session);
+  const noEngagement = session !== undefined && hollowCompletion(sessionEnding(session));
   if (noEngagement) {
     warnings.push(
       "Actor returned goal_satisfied with ZERO actions and ZERO messages — it likely saw a blank or still-loading screen and stopped without engaging. NOT counted as a pass. Check the screenshot; raise execution.timeoutMs or confirm the subject painted before the first turn.",
