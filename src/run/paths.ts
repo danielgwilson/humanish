@@ -156,6 +156,16 @@ export async function validatePreparedRunArtifactPaths(
   return prepared;
 }
 
+/**
+ * The physical project directory for a caller's cwd, bound before a run is resolved so a symlinked
+ * cwd retargeted later cannot move reads or writes to another project (#1012). A cwd that does not
+ * resolve is returned as given, so the caller still reports it missing.
+ */
+export async function resolvePhysicalCwd(cwdInput: string): Promise<string> {
+  const requested = path.resolve(cwdInput);
+  return realpath(requested).catch(() => requested);
+}
+
 /** Cheap revalidation for repeated contained reads/writes within one prepared run. */
 export async function validatePreparedRunRootIdentity(
   prepared: PreparedRunArtifactPaths,

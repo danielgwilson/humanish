@@ -23,6 +23,7 @@ import {
 } from "./job.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
+import { resolvePhysicalCwd } from "../run/paths.js";
 
 export type {
   AutomaticStudyAnalysisView,
@@ -62,7 +63,7 @@ export async function readAutomaticStudyAnalysis(
   runId: string,
 ): Promise<AutomaticStudyAnalysisView | undefined> {
   if (!exactId(runId)) return undefined;
-  const prepared = await resolveRunPath(path.resolve(cwd), runId).catch(() => null);
+  const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
   return prepared ? readAutomaticStudyAnalysisPrepared(prepared) : undefined;
 }
 
@@ -71,7 +72,7 @@ export async function requestAutomaticStudyAnalysisCancellation(
   runId: string,
 ): Promise<AutomaticStudyAnalysisCancellation> {
   if (!exactId(runId)) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
-  const prepared = await resolveRunPath(path.resolve(cwd), runId).catch(() => null);
+  const prepared = await resolveRunPath(await resolvePhysicalCwd(cwd), runId).catch(() => null);
   return prepared
     ? requestAutomaticStudyAnalysisCancellationPrepared(prepared)
     : { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
