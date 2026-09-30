@@ -7,14 +7,17 @@ import { Command } from "commander";
 import { deriveStudyFacts } from "../telemetry.js";
 import { resolveLabManifest } from "../../lab/discover.js";
 import type { LabResolveFailure } from "../../lab/discover.js";
-import { resolveLabDryRun, selectLabBackend } from "../../lab/engine.js";
+import { resolveLabDryRun } from "../../lab/engine.js";
+import { backendOf, type LabRoute, routeOf } from "../../lab/plan.js";
+import type { LabConfig } from "../../lab/types.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { RunResult } from "../../run/results.js";
-import { runCuaBackend } from "./lab-backend-cua.js";
-import { runScriptedBackend } from "./lab-backend-scripted.js";
-import { runConcurrentSharedWorldBackend } from "./lab-backend-shared-world.js";
-import { runSyntheticBackend } from "./lab-backend-synthetic.js";
-import { runTerminalBackend } from "./lab-backend-terminal.js";
+import { cuaBackendRun } from "./lab-backend-cua.js";
+import { type BackendRun, runBackend } from "./lab-backend-run.js";
+import { scriptedBackendRun } from "./lab-backend-scripted.js";
+import { sharedWorldBackendRun } from "./lab-backend-shared-world.js";
+import { syntheticBackendRun } from "./lab-backend-synthetic.js";
+import { terminalBackendRun } from "./lab-backend-terminal.js";
 import { maybeLoadAdapterScorer } from "./lab-hooks.js";
 import {
   type CliIo,
@@ -55,7 +58,8 @@ export async function runLabCommand(args: {
   // Named here, once, for every backend: a synthetic or terminal result carries no labId, so the
   // starter lab `first-run` went unnamed in telemetry while the computer-use ones were named.
   noteStudyFacts(args.command, deriveStudyFacts({ labId: config.id }));
-  const backend = selectLabBackend(config);
+  const route = routeOf(config);
+  const backend = backendOf(route);
   if (backend !== "cua" && labRerunFlagsRequested(args.options)) {
     writeUnsupportedRerunFlagsResult(args, backend);
     return;
@@ -95,6 +99,11 @@ export async function runLabCommand(args: {
     return;
   }
 
+  // The backend's setup refuses bad options before the scorer loads, so a refused run never
+  // imports the scorer's host code.
+  const run = backendRunFor(route, { ...args, config, labProvenance: lab });
+  if (run === undefined) return;
+
   // #316: resolve + load a config-declared/CLI-flagged adopter scorer FAIL-CLOSED, before any spend.
   // A declared gate that cannot load (bad ref, not found, load failure, no hooks, unsupported backend)
   // aborts with exit 2 rather than green-passing.
@@ -130,35 +139,36 @@ export async function runLabCommand(args: {
     args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);
   }
 
-  switch (backend) {
-    case "synthetic":
-      await runSyntheticBackend({ ...args, config, labProvenance: lab });
-      return;
-    case "cua":
-      await runCuaBackend({ ...args, config, labProvenance: lab, ...(scorer ? { scorer } : {}) });
-      return;
+  await runBackend(config, run, scorer);
+}
+
+/** The route's backend setup. Undefined when the setup has already written its own result. */
+function backendRunFor(
+  route: LabRoute,
+  args: {
+    command: Command;
+    io: CliIo;
+    lab: string;
+    config: LabConfig;
+    labProvenance: RunLabProvenance;
+    mode: "run" | "watch";
+    options: LabCommandOptions;
+  },
+): BackendRun | undefined {
+  switch (route) {
+    case "preview":
+      return syntheticBackendRun(args);
+    case "computer-use":
+      return cuaBackendRun(args);
     case "scripted":
-      await runScriptedBackend({ ...args, config, labProvenance: lab });
-      return;
+      return scriptedBackendRun(args);
     case "terminal":
-      await runTerminalBackend({
-        ...args,
-        config,
-        labProvenance: lab,
-        ...(scorer ? { scorer } : {}),
-      });
-      return;
-    case "concurrent-shared-world":
-      await runConcurrentSharedWorldBackend({
-        ...args,
-        config,
-        labProvenance: lab,
-        ...(scorer ? { scorer } : {}),
-      });
-      return;
+      return terminalBackendRun(args);
+    case "shared-world":
+      return sharedWorldBackendRun(args);
     default:
-      // Compile-time exhaustiveness: a future backend must be handled here, not silently no-op.
-      throw new Error(`Unhandled lab backend: ${String(backend satisfies never)}`);
+      // Compile-time exhaustiveness: a future route must be handled here, not silently no-op.
+      throw new Error(`Unhandled lab route: ${String(route satisfies never)}`);
   }
 }
 

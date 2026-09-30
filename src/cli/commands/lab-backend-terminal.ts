@@ -1,9 +1,8 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { runLab } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
-import { cliAnalysisOptions, type LoadedAdapterScorer } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./lab-hooks.js";
 import { type CliIo, type LabCommandOptions, wantsJson, writeResult } from "../io.js";
 import { showObserver } from "../observer-follow.js";
 import { formatTerminalLabHuman } from "./lab-format.js";
@@ -17,22 +16,13 @@ interface TerminalBackendArgs {
   labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
-  scorer?: LoadedAdapterScorer;
-}
-
-// Mirror of runCuaBackend/runScriptedBackend: open semantics from defaults.open/--no-open/watch,
-// writeResult with the terminal human formatter, exit code result.ok ? 0 : 2, watch-mode follow.
-export async function runTerminalBackend(args: TerminalBackendArgs): Promise<void> {
-  const run = terminalBackendRun(args);
-  if (run === undefined) return;
-  await run.present(await runLab(args.config, run.options));
 }
 
 /**
  * The terminal backend's setup: its open semantics and runLab options, and how it presents the
  * outcome. Undefined when watch-mode setup has already written its own result.
  */
-function terminalBackendRun(args: TerminalBackendArgs): BackendRun | undefined {
+export function terminalBackendRun(args: TerminalBackendArgs): BackendRun | undefined {
   const wantsMachine = wantsJson(args.command);
   const shouldOpen = resolveBackendShouldOpen({
     optionOpen: args.options.open,
@@ -51,12 +41,6 @@ function terminalBackendRun(args: TerminalBackendArgs): BackendRun | undefined {
       open: observerOpen(args.mode, finishedPlan, shouldOpen),
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
       ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-      ...(args.scorer
-        ? {
-            scorer: args.scorer.hooks,
-            scorerProvenance: args.scorer.provenance,
-          }
-        : {}),
     },
     present: async (outcome) => {
       if (outcome.backend !== "terminal") {

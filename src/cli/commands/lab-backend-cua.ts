@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { type LabOutcome, runLab, resolveLabDryRun, type RunLabOptions } from "../../lab/engine.js";
+import { resolveLabDryRun, type RunLabOptions } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
@@ -11,7 +11,7 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
-import { cliAnalysisOptions, type LoadedAdapterScorer } from "./lab-hooks.js";
+import { cliAnalysisOptions } from "./lab-hooks.js";
 import {
   type CliIo,
   type LabCommandOptions,
@@ -41,21 +41,6 @@ interface CuaBackendArgs {
   labProvenance?: RunLabProvenance;
   mode: "run" | "watch";
   options: LabCommandOptions;
-  scorer?: LoadedAdapterScorer;
-}
-
-export async function runCuaBackend(args: CuaBackendArgs): Promise<void> {
-  const run = cuaBackendRun(args);
-  if (run === undefined) return;
-  let outcome: LabOutcome;
-  try {
-    outcome = await runLab(args.config, run.options);
-  } catch (error) {
-    if (run.onRunError === undefined) throw error;
-    await run.onRunError(error);
-    return;
-  }
-  await run.present(outcome);
 }
 
 /**
@@ -63,7 +48,7 @@ export async function runCuaBackend(args: CuaBackendArgs): Promise<void> {
  * with the live Observer hook, and how it presents the outcome or a run error. Undefined when
  * setup has already written its own result.
  */
-function cuaBackendRun(args: CuaBackendArgs): BackendRun | undefined {
+export function cuaBackendRun(args: CuaBackendArgs): BackendRun | undefined {
   const settings = resolveCuaSettings(args);
   if (settings === undefined) return undefined;
   const prepared = prepareCuaWatch(args, settings);
@@ -243,7 +228,6 @@ function cuaRunOptions(
         }
       : {}),
     ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    ...(args.scorer ? { scorer: args.scorer.hooks, scorerProvenance: args.scorer.provenance } : {}),
     ...(args.options.rerunFailedFrom === undefined
       ? {}
       : {

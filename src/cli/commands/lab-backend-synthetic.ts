@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { runLab } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { LabConfig } from "../../lab/types.js";
 import type { RunResult } from "../../run/results.js";
@@ -23,17 +22,11 @@ interface SyntheticBackendArgs {
   options: LabCommandOptions;
 }
 
-export async function runSyntheticBackend(args: SyntheticBackendArgs): Promise<void> {
-  const run = syntheticBackendRun(args);
-  if (run === undefined) return;
-  await run.present(await runLab(args.config, run.options));
-}
-
 /**
  * The preview backend's setup: the sim count and Observer plan, its runLab options, and how it
  * presents the outcome. Undefined when setup has already written its own result.
  */
-function syntheticBackendRun(args: SyntheticBackendArgs): BackendRun | undefined {
+export function syntheticBackendRun(args: SyntheticBackendArgs): BackendRun | undefined {
   const simCount = parseLabCount(args.options.sims, args.config.actors[0]?.count ?? 4);
   if (simCount === null) {
     const result: RunResult = {

@@ -5,7 +5,8 @@ import { isLoopbackUrl } from "./parse/subject.js";
 import { type LabConfig } from "./types.js";
 import { runPublicPreviewPreflight, runSandboxLoopbackPreflight } from "./preflight-probes.js";
 import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
-import { selectLabBackend, type LabBackend } from "./engine.js";
+import type { LabBackend } from "./engine.js";
+import { backendOf, routeOf } from "./plan.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
@@ -150,7 +151,7 @@ export async function runLabPreflight(
     };
   }
 
-  const backend = selectLabBackend(resolved.config);
+  const backend = backendOf(routeOf(resolved.config));
   const ctx: PreflightContext = {
     cwd,
     lab: options.lab,

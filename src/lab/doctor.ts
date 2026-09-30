@@ -53,7 +53,7 @@ export async function labSetupChecks(
   args: LabSetupCheckArgs,
 ): Promise<{ desktop: boolean; keys: string[]; checks: Check[] }> {
   const { resolveLabManifest } = await import("./discover.js");
-  const { selectLabBackend, resolveLabDryRun } = await import("./engine.js");
+  const { backendOf, resolveLabDryRun, routeOf } = await import("./plan.js");
   const resolved = await resolveLabManifest(args.cwd, args.lab);
   if (!resolved.ok)
     return {
@@ -62,7 +62,7 @@ export async function labSetupChecks(
       checks: [{ name: "lab", ok: false, message: resolved.error.message }],
     };
   const config = resolved.config,
-    backend = selectLabBackend(config);
+    backend = backendOf(routeOf(config));
   const dryRun = resolveLabDryRun(config, undefined, true) === true;
   const checks: Check[] = [
     {

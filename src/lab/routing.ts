@@ -108,10 +108,10 @@ export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
 /**
  * True when this config routes to the computer-use backend: an app-url subject whose first
  * actor resolves to a registered computer-use actor, or a clone subject on a hosted desktop
- * whose first actor does. Single source of truth — selectLabBackend and the warning logic
+ * whose first actor does. Single source of truth — routeOf and the warning logic
  * both use it. (The app-url branch used to be unconditionally true; it narrowed when the
  * scripted-browser lane arrived. Behavior-preserving for every parse-valid config —
- * selectLabBackend keeps a bare app-url fallback to the cua backend so library-API configs
+ * routeOf keeps a bare app-url fallback to the cua backend so library-API configs
  * with unknown actors still hit its fail-closed ACTOR_UNSUPPORTED.)
  */
 export function routesToComputerUse(config: LabConfig): boolean {
@@ -143,7 +143,7 @@ export function routesToComputerUse(config: LabConfig): boolean {
  * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
  * on a hosted desktop whose first actor resolves to a computer-use actor AND that declares the
  * `shared-world` topology. Mirror of routesToComputerUse; the single source of truth shared by
- * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. Every
+ * routeOf (which checks it BEFORE the cua route) and the warning logic. Every
  * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
  * clone/local-tree × e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
  * (the cua route) — the topology declaration is the override switch.
@@ -217,7 +217,7 @@ export function resolveSeatUrl(serveUrl: string, entry: string | undefined): str
  * True when this config routes to the scripted-browser backend: an app-url subject whose
  * first actor resolves to a registered scripted-browser actor (execution.target local or
  * absent — the parse layer enforces that pairing). Mirror of routesToComputerUse; the single
- * source of truth for selectLabBackend and the warning logic.
+ * source of truth for routeOf and the warning logic.
  */
 export function routesToScriptedBrowser(config: LabConfig): boolean {
   return routesToLocalScriptedBrowser(config) || routesToProvisionedScriptedBrowser(config);
@@ -241,7 +241,7 @@ export function routesToProvisionedScriptedBrowser(config: LabConfig): boolean {
  * True when this config routes to the terminal-product backend: a terminal-product subject whose
  * first actor resolves to a registered terminal actor (execution.target e2b-terminal or absent —
  * the parse layer enforces that pairing). Mirror of routesToComputerUse/routesToScriptedBrowser;
- * the single source of truth for selectLabBackend and the warning logic.
+ * the single source of truth for routeOf and the warning logic.
  */
 export function routesToTerminalProduct(config: LabConfig): boolean {
   return (
