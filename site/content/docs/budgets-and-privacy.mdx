@@ -43,8 +43,11 @@ admission estimate limit. It is additional to participant budgets and desktop
 time, and is not a provider billing cap. Preflight and live-start output disclose
 it. Set `review.analysis: false` to disable the request, or configure
 `review.analysis.maxCostUsd` to choose another limit. A missing default analysis
-key records a skip while preserving a successful recording. Dry-run and keyless
-preview routes make no analysis request.
+key records a skip while preserving a successful recording. So does a default
+analysis whose admission estimate is over its limit; the CLI then prints the
+`humanish analyze` command that runs it with a sufficient `--max-cost`. An analysis
+you declare in the lab still fails when its estimate is over its limit. Dry-run and
+keyless preview routes make no analysis request.
 
 Analysis usage is stored separately from participant costs. Inspect it with
 `humanish analyze list --run latest --json`; unknown usage remains unknown.

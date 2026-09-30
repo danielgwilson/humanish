@@ -71,7 +71,8 @@ one adopter-named env var: with the official Resend SDK it is `RESEND_BASE_URL`,
 which the SDK reads on its own, so nothing in the app has to change; other providers
 need the app to actually pass the env through, and a run whose catch captures zero
 sends warns at teardown) into a catch **inside** the sandbox, so nothing leaves the
-machine. Every lane gets a deterministic inbox address automatically, and each
+machine. Every lane and shared-world seat gets a deterministic inbox address
+automatically (an unnamed seat is `role-01`, `role-02` and so on), and each
 persona's prompt carries the full handoff: the address to sign up with, the inbox URL
 to open, and that waiting for an email is a next step, not a blocker. The run bundle
 gets a digest-only `humanish.comms-thread.v1` artifact (from/to/subject/link
