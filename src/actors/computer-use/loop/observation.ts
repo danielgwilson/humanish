@@ -104,8 +104,9 @@ export class DesktopObserver {
   }
 
   /**
-   * Every observation that carried app state counts, including dwell frames no turn receives:
-   * they feed the task funnel, and the trace notes must say app state was observed.
+   * Every observation that carried app state counts, including dwell frames and the closing
+   * observation, which no turn receives: they feed the task funnel, and the trace notes must say
+   * app state was observed.
    */
   private noteAppState(observation: CuaObservation): void {
     if (observation.appState !== undefined) this.session.observedAppState = true;
@@ -131,6 +132,7 @@ export class DesktopObserver {
     try {
       this.session.phase = "observing closing task state";
       const closing = this.collectHeardSpeech(await this.observeBounded("closing"));
+      this.noteAppState(closing);
       this.observeTasks(closing, turnNumber);
     } catch (error) {
       if (isCuaExecutorError(error)) throw error;
