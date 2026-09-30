@@ -34,9 +34,16 @@ vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOrig
   createRestrictedCodexParticipant: restrictedParticipantFactory,
 }));
 
+const claudeSessionFactory = vi.hoisted(() => vi.fn());
+vi.mock("../../../src/actors/local-agent/claude-session.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../src/actors/local-agent/claude-session.js")>()),
+  startClaudeSession: claudeSessionFactory,
+}));
+
 const temporary: string[] = [];
 afterEach(async () => {
   restrictedParticipantFactory.mockReset();
+  claudeSessionFactory.mockReset();
   await Promise.all(temporary.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
@@ -374,6 +381,34 @@ describe("ready desktop lane contract", () => {
     const result = await runCuaLane(f.spec, f.deps);
     expect(result.harnessError).toBe(false);
     expect(provider.close).toHaveBeenCalledOnce();
+    expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
+  });
+
+  it("runs a hosted Claude lane on one Claude session and closes it before the desktop", async () => {
+    const f = await fixture();
+    const provider: CuaProvider = {
+      id: "claude-session",
+      capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+      nextTurn: async () => ({
+        actions: [],
+        message: "I can read the note form.",
+        outcome: "reached",
+        pendingSafetyChecks: [],
+        done: true,
+      }),
+    };
+    const close = vi.fn(async () => {
+      f.order.push("model-closed");
+    });
+    claudeSessionFactory.mockResolvedValue({ provider, close });
+    f.deps.localAgent = "claude";
+    f.deps.runSession = runCuaActorSession;
+
+    const result = await runCuaLane(f.spec, f.deps);
+
+    expect(result.harnessError).toBe(false);
+    expect(claudeSessionFactory).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledOnce();
     expect(f.order.slice(-2)).toEqual(["model-closed", "release"]);
   });
 
