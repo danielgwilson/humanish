@@ -230,9 +230,13 @@ export async function prepareConcurrentRun(
     dryRun,
   });
   if (!email.ok) {
+    // The run exists by now, so the refusal names it rather than "not-created".
     return {
       ok: false,
-      result: fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", email.message, descriptor.id),
+      result: {
+        ...fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", email.message, descriptor.id),
+        runId,
+      },
     };
   }
   const receiving = email.receiving;
