@@ -39,6 +39,7 @@ import type {
 import type { ScriptedBrowserSessionResult } from "../../src/actors/scripted-browser/actor.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
 import { captureStderr, runDirSnapshot } from "../helpers/run-golden.js";
+import { expectFailureGolden } from "../helpers/failure-golden.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -865,10 +866,11 @@ describe("runScriptedBrowserLab", () => {
           throw new Error("chromium executable missing");
         },
       };
+      const stderr = captureStderr();
       const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
         cwd,
         scriptedHooks: hooks,
-      });
+      }).finally(stderr.stop);
       if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
       const result = outcome.result;
 
@@ -879,6 +881,20 @@ describe("runScriptedBrowserLab", () => {
         await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
       );
       expect(bundle.review.verdict).toBe("fail");
+      await expectFailureGolden(
+        "scripted/browser-launch-fails",
+        path.join(cwd, ".humanish", "runs", result.runId),
+        {
+          result,
+          stderr: stderr.text(),
+          replace: [
+            [result.runId, "[run]"],
+            [cwd, "[cwd]"],
+            [appUrl, "[app-url]/"],
+            [new URL(appUrl).host, "[app-host]"],
+          ],
+        },
+      );
 
       // No step ran, so the bundle references no screenshot and its evidence check passes.
       for (const stream of bundle.streams) {
@@ -983,10 +999,11 @@ describe("runScriptedBrowserLab", () => {
       },
       launchBrowser: async () => makeFakeBrowser({}),
     };
+    const stderr = captureStderr();
     const outcome = await runLab(scriptedConfig({ count: 1, mode: "live" }), {
       cwd,
       scriptedHooks: hooks,
-    });
+    }).finally(stderr.stop);
     if (outcome.backend !== "scripted") throw new Error("expected scripted backend");
     const result = outcome.result;
 
@@ -1002,6 +1019,14 @@ describe("runScriptedBrowserLab", () => {
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.simulations[0].status).toBe("failed");
     expect(bundle.review.verdict).toBe("fail");
+    await expectFailureGolden("scripted/session-throws", runDir, {
+      result,
+      stderr: stderr.text(),
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
   });
 
   it("rejects callback-returned traversal artifacts before parent bundle finalization", async () => {
@@ -1486,13 +1511,28 @@ describe("scripted run lifetime on the provisioned clone route", () => {
       throw new Error("the session must not start when the subject is not served");
     });
 
-    const outcome = await runLab(provisionedScriptedConfig(), { cwd, runId, scriptedHooks: hooks });
+    const stderr = captureStderr();
+    const outcome = await runLab(provisionedScriptedConfig(), {
+      cwd,
+      runId,
+      scriptedHooks: hooks,
+    }).finally(stderr.stop);
     if (outcome.backend !== "scripted") throw new Error(`unexpected backend ${outcome.backend}`);
     expect(outcome.result.ok).toBe(false);
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
     expect(outcome.result.error?.message).toMatch(/^subject install failed/);
     const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));
     expect(bundle.subject).toMatchObject({ source: "clone", commit: "abc123def4567890abc1" });
+    await expectFailureGolden("scripted/clone-install-fails", runDir, {
+      result: outcome.result,
+      stderr: stderr.text(),
+      replace: [
+        [runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+      // Desktop minutes are host-measured wall-clock spans of the fake subject sandbox.
+      maskKeys: ["minutes", "desktopMinutes"],
+    });
   });
 
   it("S3: after a failed subject teardown, reclaim kills the receipted subject", async () => {

@@ -1,0 +1,1323 @@
+{
+  "<result>": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": true,
+    "cwd": "[cwd]",
+    "labId": "cua-routing-proof",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": false,
+    "runId": "[run]",
+    "session": {
+      "status": "passed",
+      "completionReason": "goal_satisfied",
+      "reason": "Done.",
+      "screenshots": 2
+    },
+    "sandbox": {
+      "sandboxId": "fake-sandbox-001",
+      "killed": false,
+      "streamUrlPresent": true
+    },
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    },
+    "plan": {
+      "strategy": "per-lane-worlds",
+      "laneCount": 1,
+      "concurrency": 1,
+      "waves": 1,
+      "perLaneSessionBudgetMs": 60000,
+      "worstCaseSandboxMinutes": 11,
+      "dryRun": false,
+      "lanes": [
+        {
+          "id": "lane-01",
+          "index": 1,
+          "persona": "first-time-visitor",
+          "device": "custom",
+          "resolution": [
+            1280,
+            800
+          ],
+          "instructionDigest": "aef52cb8e81a1192"
+        }
+      ]
+    },
+    "lanes": [
+      {
+        "id": "lane-01",
+        "index": 1,
+        "persona": "first-time-visitor",
+        "device": "custom",
+        "resolution": [
+          1280,
+          800
+        ],
+        "subject": {
+          "source": "app-url",
+          "state": {
+            "provenance": "undeclared"
+          }
+        },
+        "status": "passed",
+        "ok": true,
+        "diagnostics": {
+          "category": "participant_outcome"
+        },
+        "session": {
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "screenshots": 2
+        },
+        "sandbox": {
+          "sandboxId": "fake-sandbox-001",
+          "killed": false,
+          "streamUrlPresent": true
+        }
+      }
+    ],
+    "diagnostics": {
+      "category": "participant_outcome"
+    },
+    "laneSummary": {
+      "strategy": "per-lane-worlds",
+      "total": 1,
+      "passed": 1,
+      "skipped": 0,
+      "harnessErrors": 0,
+      "hollow": 0,
+      "concurrency": 1,
+      "waves": 1
+    },
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+      "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+      "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "Browser outer bounds could not be measured for lane lane-01.",
+      "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "Sandbox teardown returned an unexpected result; release is unconfirmed and server-side kill-on-timeout remains the backstop.",
+      "Screenshots are full-fidelity (raw) for local use — the bundle stays in gitignored .humanish and nothing scans these pixels; review them before sharing anywhere. Set policies.redactScreenshots: true to blur a share-as-is bundle.",
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING"
+    }
+  },
+  "<stderr>": [
+    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context)."
+  ],
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "actor.json": {
+    "schema": "humanish.actor-trace.v1",
+    "provider": "openai-responses-cu",
+    "providerVersion": "gpt-5.6-sol",
+    "protocol": "cua-loop",
+    "lane": "computer-use",
+    "persona": {
+      "id": "first-time-visitor",
+      "traitsApplied": [],
+      "promptDigest": "aef52cb8e81a1192"
+    },
+    "redaction": {
+      "status": "passed",
+      "screenshots": "raw",
+      "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+    },
+    "startedAt": "[ts]",
+    "completedAt": "[ts]",
+    "durationMs": "[durationMs]",
+    "status": "passed",
+    "completionReason": "goal_satisfied",
+    "reason": "Done.",
+    "ids": {
+      "model": "gpt-5.6-sol",
+      "turnId": "resp_2"
+    },
+    "modelSettings": {
+      "reasoningEffort": "medium"
+    },
+    "counts": {
+      "turns": 2,
+      "actions": 1,
+      "materialActions": 1,
+      "screenshots": 2,
+      "reasonings": 0,
+      "messages": 1,
+      "idleTurns": 0,
+      "noProgressTurns": 0
+    },
+    "items": [
+      {
+        "id": "screenshot-001",
+        "kind": "screenshot",
+        "lifecycle": "completed",
+        "title": "turn-00-start",
+        "screenshotRef": {
+          "path": "screenshots/turn-00-start.png",
+          "redaction": "none"
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "ui_action-002",
+        "kind": "ui_action",
+        "lifecycle": "completed",
+        "title": "click (11, 22)",
+        "coord": {
+          "x": 11,
+          "y": 22
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "screenshot-003",
+        "kind": "screenshot",
+        "lifecycle": "completed",
+        "title": "turn-01",
+        "screenshotRef": {
+          "path": "screenshots/turn-01.png",
+          "redaction": "none"
+        },
+        "at": "[ts]"
+      },
+      {
+        "id": "message-004",
+        "kind": "message",
+        "lifecycle": "completed",
+        "title": "message turn 2",
+        "text": "Done.",
+        "at": "[ts]"
+      }
+    ],
+    "affordanceUse": {
+      "schema": "humanish.affordance-use.v1",
+      "counts": {
+        "pointer": 1
+      },
+      "total": 1,
+      "shortcutTotal": 0
+    },
+    "capabilities": {
+      "headless": true,
+      "structuredTrace": true,
+      "lanes": [
+        "computer-use"
+      ],
+      "producesScreenshots": true,
+      "byoModel": false,
+      "preGrantableApprovals": false,
+      "inProcessTools": false,
+      "license": "proprietary"
+    },
+    "estimatedCost": {
+      "schema": "humanish.actor-estimated-cost.v1",
+      "estimatedCostUsd": null,
+      "reason": "no_token_usage",
+      "ratesAsOf": null
+    }
+  },
+  "analysis-automatic/job.json": {
+    "schema": "humanish.automatic-study-analysis.v1",
+    "runId": "[run]",
+    "claimId": "[uuid]",
+    "attemptId": "analysis-[uuid]",
+    "state": "skipped",
+    "analysisId": null,
+    "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+    "createdAt": "[ts]",
+    "updatedAt": "[ts]",
+    "configDigest": "7b2784060eec8cdd30962537f7e3b3be18be27843350c72b45ef40348da98226",
+    "promptVersion": "study-evidence-6",
+    "sourceRunSha256": null,
+    "inputDigest": null,
+    "analysisSha256": null,
+    "receiptSha256": null,
+    "startedAt": null,
+    "finishedAt": "[ts]"
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.run.created",
+      "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.subject.declared",
+      "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session",
+      "at": "[ts]",
+      "level": "info",
+      "type": "cua-lab.session.goal_satisfied",
+      "message": "passed: Done.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-geometry-warning",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-004-geometry-warning",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-005-geometry-warning",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-006-geometry-warning",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser outer bounds could not be measured for lane lane-01.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-007-geometry-warning",
+      "at": "[ts]",
+      "level": "warn",
+      "type": "cua-lab.geometry.warning",
+      "message": "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "pass",
+      "title": "CUA routing proof - Computer-use operator (first-time-visitor)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "first-time-visitor",
+        "name": "Computer-use operator (first-time-visitor)",
+        "source": "lab:cua-routing-proof",
+        "sourceDigest": "aef52cb8e81a1192"
+      },
+      "scenario": {
+        "id": "cua-cua-routing-proof",
+        "title": "CUA routing proof",
+        "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nLane focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "source": "lab:cua-routing-proof",
+        "sourceDigest": "aef52cb8e81a1192"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "cua-lab.run.created",
+          "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+        }
+      ],
+      "knownGaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ],
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "participantsLine": "1/1 reported reaching the goal"
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 0,
+      "warnings": 5
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0.00444,
+      "ratesAsOf": "2026-09-05",
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "lane-01",
+          "estimatedCostUsd": 0.00444,
+          "ratesAsOf": "2026-09-05",
+          "source": "e2b.dev/pricing",
+          "desktop": {
+            "minutes": 0.5,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resources": {
+              "cpuCount": 8,
+              "memoryMiB": 8192
+            },
+            "resourceSource": "e2b.getInfo",
+            "usdPerSecond": 0.000148
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "desktop_lifetime_incomplete",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0.5,
+      "note": "Estimated 0.00444 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    },
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Focus on the landing page."
+        },
+        "kind": "browser",
+        "label": "CUA browser — cua-routing-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "screenshots/turn-01.png",
+          "title": "CUA desktop (raw)"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "warnings": [
+            "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+            "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for lane lane-01.",
+            "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution."
+          ]
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "state": "Done.",
+          "actorStatus": "passed",
+          "screenshotUrl": "screenshots/turn-01.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "openai-responses-cu",
+          "providerVersion": "gpt-5.6-sol",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "first-time-visitor",
+            "traitsApplied": [],
+            "promptDigest": "aef52cb8e81a1192"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "ids": {
+            "model": "gpt-5.6-sol",
+            "turnId": "resp_2"
+          },
+          "modelSettings": {
+            "reasoningEffort": "medium"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 2,
+            "reasonings": 0,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "screenshot-001",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-00-start",
+              "screenshotRef": {
+                "path": "screenshots/turn-00-start.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click (11, 22)",
+              "coord": {
+                "x": 11,
+                "y": 22
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "screenshot-003",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-01",
+              "screenshotRef": {
+                "path": "screenshots/turn-01.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "message-004",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Done.",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "pointer": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "screenshot 01 (raw)",
+            "path": "screenshots/turn-00-start.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "screenshot 02 (raw)",
+            "path": "screenshots/turn-01.png",
+            "kind": "screenshot"
+          }
+        ],
+        "sim": {
+          "id": "sim-001",
+          "index": 1,
+          "personaId": "first-time-visitor",
+          "scenarioId": "cua-cua-routing-proof",
+          "status": "passed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "Done.",
+          "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+          "streamIds": [
+            "stream-001"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Reported complete",
+        "terminalPlain": "",
+        "timeline": [
+          {
+            "id": "event-001-subject",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.subject.declared",
+            "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-002-session",
+            "at": "[ts]",
+            "level": "info",
+            "type": "cua-lab.session.goal_satisfied",
+            "message": "passed: Done.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-003-geometry-warning",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "cua-lab.geometry.warning",
+            "message": "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-004-geometry-warning",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "cua-lab.geometry.warning",
+            "message": "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-005-geometry-warning",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "cua-lab.geometry.warning",
+            "message": "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-006-geometry-warning",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "cua-lab.geometry.warning",
+            "message": "Browser outer bounds could not be measured for lane lane-01.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          },
+          {
+            "id": "event-007-geometry-warning",
+            "at": "[ts]",
+            "level": "warn",
+            "type": "cua-lab.geometry.warning",
+            "message": "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+            "simId": "sim-001",
+            "streamId": "stream-001"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Done.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-005-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-006-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser outer bounds could not be measured for lane lane-01.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-007-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "local_only",
+        "verifiedAt": "[ts]",
+        "reasons": [
+          "RAW_SCREENSHOTS"
+        ]
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": [],
+    "automatic": {
+      "state": "skipped",
+      "analysisId": null,
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      "updatedAt": "[ts]"
+    }
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "pass",
+    "participants": {
+      "total": 1,
+      "reachedGoal": 1,
+      "abandoned": 0,
+      "ranOut": 0,
+      "blocked": 0,
+      "harnessFailed": 0,
+      "reportedFriction": 0
+    },
+    "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+    "gaps": [
+      "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+    ]
+  },
+  "review.md": "# CUA routing proof\n\n- run: [run]\n- mode: live\n- run gate: pass\n- summary: Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.\n- actor: openai-responses-cu (computer-use/cua-loop)\n- evidence: 4 trace item(s), 2 raw screenshot(s)\n\n## Gaps\n- Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate.\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "first-time-visitor",
+      "name": "Computer-use operator (first-time-visitor)",
+      "source": "lab:cua-routing-proof",
+      "sourceDigest": "aef52cb8e81a1192"
+    },
+    "scenario": {
+      "id": "cua-cua-routing-proof",
+      "title": "CUA routing proof",
+      "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nLane focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "source": "lab:cua-routing-proof",
+      "sourceDigest": "aef52cb8e81a1192"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "cua-lab.run.created",
+        "message": "Created computer-use lab run with one desktop browser lane (actor openai-computer-use)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "sim-001",
+        "index": 1,
+        "personaId": "first-time-visitor",
+        "scenarioId": "cua-cua-routing-proof",
+        "status": "passed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "Done.",
+        "summary": "Computer-use actor (openai-computer-use) drove the subject app in a hosted desktop browser; goal_satisfied.",
+        "streamIds": [
+          "stream-001"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "stream-001",
+        "simId": "sim-001",
+        "laneId": "lane-01",
+        "assignment": {
+          "mission": "Explore the app and stop.",
+          "focus": "Focus on the landing page."
+        },
+        "kind": "browser",
+        "label": "CUA browser — cua-routing-proof",
+        "status": "passed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "screenshot",
+          "url": "screenshots/turn-01.png",
+          "title": "CUA desktop (raw)"
+        },
+        "desktopGeometry": {
+          "screen": {
+            "requested": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "warnings": [
+            "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+            "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+            "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+            "Browser outer bounds could not be measured for lane lane-01.",
+            "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution."
+          ]
+        },
+        "ui": {
+          "route": "http://127.0.0.1:3000/",
+          "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+          "state": "Done.",
+          "actorStatus": "passed",
+          "screenshotUrl": "screenshots/turn-01.png"
+        },
+        "actor": {
+          "schema": "humanish.actor-trace.v1",
+          "provider": "openai-responses-cu",
+          "providerVersion": "gpt-5.6-sol",
+          "protocol": "cua-loop",
+          "lane": "computer-use",
+          "persona": {
+            "id": "first-time-visitor",
+            "traitsApplied": [],
+            "promptDigest": "aef52cb8e81a1192"
+          },
+          "redaction": {
+            "status": "passed",
+            "screenshots": "raw",
+            "notes": "2 full-fidelity screenshot(s) retained for local use — NOT redacted for publishing; set redactScreenshots to blur a share-as-is bundle"
+          },
+          "startedAt": "[ts]",
+          "completedAt": "[ts]",
+          "durationMs": "[durationMs]",
+          "status": "passed",
+          "completionReason": "goal_satisfied",
+          "reason": "Done.",
+          "ids": {
+            "model": "gpt-5.6-sol",
+            "turnId": "resp_2"
+          },
+          "modelSettings": {
+            "reasoningEffort": "medium"
+          },
+          "counts": {
+            "turns": 2,
+            "actions": 1,
+            "materialActions": 1,
+            "screenshots": 2,
+            "reasonings": 0,
+            "messages": 1,
+            "idleTurns": 0,
+            "noProgressTurns": 0
+          },
+          "items": [
+            {
+              "id": "screenshot-001",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-00-start",
+              "screenshotRef": {
+                "path": "screenshots/turn-00-start.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "ui_action-002",
+              "kind": "ui_action",
+              "lifecycle": "completed",
+              "title": "click (11, 22)",
+              "coord": {
+                "x": 11,
+                "y": 22
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "screenshot-003",
+              "kind": "screenshot",
+              "lifecycle": "completed",
+              "title": "turn-01",
+              "screenshotRef": {
+                "path": "screenshots/turn-01.png",
+                "redaction": "none"
+              },
+              "at": "[ts]"
+            },
+            {
+              "id": "message-004",
+              "kind": "message",
+              "lifecycle": "completed",
+              "title": "message turn 2",
+              "text": "Done.",
+              "at": "[ts]"
+            }
+          ],
+          "affordanceUse": {
+            "schema": "humanish.affordance-use.v1",
+            "counts": {
+              "pointer": 1
+            },
+            "total": 1,
+            "shortcutTotal": 0
+          },
+          "capabilities": {
+            "headless": true,
+            "structuredTrace": true,
+            "lanes": [
+              "computer-use"
+            ],
+            "producesScreenshots": true,
+            "byoModel": false,
+            "preGrantableApprovals": false,
+            "inProcessTools": false,
+            "license": "proprietary"
+          },
+          "estimatedCost": {
+            "schema": "humanish.actor-estimated-cost.v1",
+            "estimatedCostUsd": null,
+            "reason": "no_token_usage",
+            "ratesAsOf": null
+          }
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          },
+          {
+            "label": "actor trace",
+            "path": "actor.json",
+            "kind": "trace"
+          },
+          {
+            "label": "screenshot 01 (raw)",
+            "path": "screenshots/turn-00-start.png",
+            "kind": "screenshot"
+          },
+          {
+            "label": "screenshot 02 (raw)",
+            "path": "screenshots/turn-01.png",
+            "kind": "screenshot"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.run.created",
+        "message": "Created computer-use lab run for cua-routing-proof (actor openai-computer-use)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.subject.declared",
+        "message": "Subject app declared at http://127.0.0.1:3000/ (loopback inside the desktop sandbox).",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-002-session",
+        "at": "[ts]",
+        "level": "info",
+        "type": "cua-lab.session.goal_satisfied",
+        "message": "passed: Done.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-003-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Desktop screen geometry could not be parsed for lane lane-01; requested geometry remains unverified.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-004-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser window bounds could not be measured for lane lane-01; the live stream will use the full desktop.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-005-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Physical browser containment is unverified for lane lane-01; X window bounds could not be measured. Page-reported outer dimensions can be emulated and do not prove physical visibility.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-006-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser outer bounds could not be measured for lane lane-01.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      },
+      {
+        "id": "event-007-geometry-warning",
+        "at": "[ts]",
+        "level": "warn",
+        "type": "cua-lab.geometry.warning",
+        "message": "Browser CSS viewport could not be measured for lane lane-01; stream.viewport is omitted instead of copying the requested screen resolution.",
+        "simId": "sim-001",
+        "streamId": "stream-001"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use — NOT redacted for publishing; set policies.redactScreenshots: true to blur a share-as-is bundle."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "abandoned": 0,
+        "ranOut": 0,
+        "blocked": 0,
+        "harnessFailed": 0,
+        "reportedFriction": 0
+      },
+      "summary": "Run gate: pass. Participants: 1/1 reported reaching the goal. Recorded summary: Done.",
+      "gaps": [
+        "Participant reports alone do not establish task success. A matched stop condition establishes only its declared condition. Run gate and share-safety results are separate."
+      ]
+    },
+    "feedbackCandidates": [],
+    "providerResources": [
+      {
+        "schema": "humanish.provider-resource.v1",
+        "provider": "e2b-desktop",
+        "kind": "sandbox",
+        "id": "fake-sandbox-001",
+        "owner": "humanish",
+        "status": "running",
+        "simId": "sim-001",
+        "streamId": "stream-001",
+        "laneId": "lane-01",
+        "createdAt": "[ts]",
+        "cleanup": {
+          "killed": false,
+          "reason": "not killed during normal lane teardown; cleanup may reclaim by exact recorded id"
+        }
+      }
+    ],
+    "subject": {
+      "source": "app-url",
+      "state": {
+        "provenance": "undeclared"
+      }
+    },
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": 0.00444,
+      "ratesAsOf": "2026-09-05",
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "model-tokens",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "no_token_usage",
+          "ratesAsOf": null
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "lane-01",
+          "estimatedCostUsd": 0.00444,
+          "ratesAsOf": "2026-09-05",
+          "source": "e2b.dev/pricing",
+          "desktop": {
+            "minutes": 0.5,
+            "durationBasis": "host-acquired-to-cleanup",
+            "resources": {
+              "cpuCount": 8,
+              "memoryMiB": 8192
+            },
+            "resourceSource": "e2b.getInfo",
+            "usdPerSecond": 0.000148
+          }
+        },
+        {
+          "kind": "desktop-minutes",
+          "laneId": "lane-01",
+          "estimatedCostUsd": null,
+          "reason": "desktop_lifetime_incomplete",
+          "ratesAsOf": null
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": 0.5,
+      "note": "Estimated 0.00444 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-05 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute uses observed CPU/RAM and a host-acquired-to-cleanup span where available; pre-handle startup, plan fees, credits, and negotiated pricing are excluded."
+    }
+  },
+  "sandbox-receipts.ndjson": [
+    {
+      "at": "[ts]",
+      "laneId": "lane-01",
+      "provider": "e2b",
+      "sandboxId": "fake-sandbox-001",
+      "timeoutMs": 660000
+    }
+  ],
+  "screenshots/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
+  "screenshots/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "pass",
+      "participants": {
+        "total": 1,
+        "reachedGoal": 1,
+        "reportedFriction": 0
+      },
+      "estimatedCostUsd": 0.00444
+    }
+  }
+}

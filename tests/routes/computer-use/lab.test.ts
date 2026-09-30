@@ -9,6 +9,7 @@ import path from "node:path";
 
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
 
@@ -3383,16 +3384,20 @@ describe("runCuaActorLab", () => {
   it("kills the sandbox and still persists a failed-evidence bundle when the session throws", async () => {
     const sandbox = makeFakeSandbox();
     const { module, killed } = makeFakeModule(sandbox);
+    // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
+    let clock = 0;
+    const stderr = captureStderr();
     const outcome = await runLab(cuaConfig(), {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        now: () => (clock += 30_000),
         loadDesktopModule: async () => module,
         runSession: async () => {
           throw new Error("provider exploded mid-session");
         },
       },
-    });
+    }).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -3406,6 +3411,18 @@ describe("runCuaActorLab", () => {
     );
     expect(bundle.simulations[0].status).toBe("failed");
     expect(bundle.review.verdict).toBe("fail");
+    await expectFailureGolden(
+      "computer-use/session-throws",
+      path.join(cwd, ".humanish", "runs", result.runId),
+      {
+        result,
+        stderr: stderr.text(),
+        replace: [
+          [result.runId, "[run]"],
+          [cwd, "[cwd]"],
+        ],
+      },
+    );
   });
 
   it("rejects a non-computer-use actor at the engine even if a config bypasses the parser", async () => {
@@ -3492,6 +3509,7 @@ describe("runCuaActorLab", () => {
   });
 
   it("turns a missing @e2b/desktop peer into a structured failure with a complete failed bundle (no raw throw, no orphan dir)", async () => {
+    const stderr = captureStderr();
     const outcome = await runLab(cuaConfig(), {
       cwd,
       cuaHooks: {
@@ -3502,7 +3520,7 @@ describe("runCuaActorLab", () => {
           );
         },
       },
-    });
+    }).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     const result = outcome.result;
 
@@ -3515,6 +3533,14 @@ describe("runCuaActorLab", () => {
     expect(files).toContain("run.json");
     expect(files).toContain("review.md");
     expect(result.observer?.ok).toBe(true);
+    await expectFailureGolden("computer-use/desktop-module-missing", runDir, {
+      result,
+      stderr: stderr.text(),
+      replace: [
+        [result.runId, "[run]"],
+        [cwd, "[cwd]"],
+      ],
+    });
   });
 
   it("writes lab identity into the bundle AND a finalized status record on disk (#455)", async () => {
@@ -3650,10 +3676,14 @@ describe("runCuaActorLab", () => {
   it("keeps malformed cleanup responses unconfirmed in the run and its cost evidence", async () => {
     const { module } = makeFakeModule(makeFakeSandbox());
     module.Sandbox.kill = async () => undefined as unknown as boolean;
+    // A stepped clock fixes the sandbox's measured desktop minutes for the failure golden.
+    let clock = 0;
+    const stderr = captureStderr();
     const outcome = await runLab(cuaConfig(), {
       cwd,
       cuaHooks: {
         env: { OPENAI_API_KEY: "k1", E2B_API_KEY: "k2" },
+        now: () => (clock += 30_000),
         loadDesktopModule: async () => module,
         runSession: async (options) =>
           runCuaActorSession({
@@ -3661,7 +3691,7 @@ describe("runCuaActorLab", () => {
             openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    }).finally(stderr.stop);
     if (outcome.backend !== "cua") throw new Error("expected cua backend");
     expect(outcome.result.sandbox?.killed).toBe(false);
     expect(outcome.result.warnings).toContainEqual(
@@ -3673,6 +3703,18 @@ describe("runCuaActorLab", () => {
     expect(bundle.cost.fullyEstimated).toBe(false);
     expect(bundle.cost.breakdown).toContainEqual(
       expect.objectContaining({ reason: "desktop_lifetime_incomplete", estimatedCostUsd: null }),
+    );
+    await expectFailureGolden(
+      "computer-use/cleanup-unconfirmed",
+      path.join(cwd, ".humanish", "runs", outcome.result.runId),
+      {
+        result: outcome.result,
+        stderr: stderr.text(),
+        replace: [
+          [outcome.result.runId, "[run]"],
+          [cwd, "[cwd]"],
+        ],
+      },
     );
   });
 

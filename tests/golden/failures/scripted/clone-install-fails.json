@@ -1,0 +1,580 @@
+{
+  "<result>": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "provisioned-scripted-routing-proof",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": false,
+    "runId": "[run]",
+    "subject": {
+      "source": "clone",
+      "repo": "repo-01",
+      "commit": "abc123def4567890abc1",
+      "envNames": [
+        "GITHUB_TOKEN"
+      ],
+      "state": {
+        "provenance": "declared-not-run"
+      }
+    },
+    "subjectSandbox": {
+      "sandboxId": "fake-subject-001",
+      "killed": true
+    },
+    "scenario": {
+      "id": "scripted-first-run",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4",
+      "steps": 4
+    },
+    "sessions": [],
+    "observer": {
+      "schema": "humanish.observer-result.v1",
+      "ok": true,
+      "cwd": "[cwd]",
+      "run": "[run]",
+      "observerPath": ".humanish/runs/[run]/observer/index.html",
+      "observerDataPath": ".humanish/runs/[run]/observer/observer-data.json",
+      "eventsPath": ".humanish/runs/[run]/events.ndjson",
+      "observerUrl": "file://[cwd]/.humanish/runs/[run]/observer/index.html",
+      "bundlePath": ".humanish/runs/[run]/run.json",
+      "opened": false,
+      "warnings": [
+        "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+        "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+      ]
+    },
+    "warnings": [
+      "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
+      "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
+    ],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_FAILED",
+      "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING"
+    }
+  },
+  "<stderr>": [],
+  "../latest.json": {
+    "schema": "humanish.latest-run.v1",
+    "runId": "[run]",
+    "path": ".humanish/runs/[run]",
+    "updatedAt": "[ts]"
+  },
+  "analysis-automatic/job.json": {
+    "schema": "humanish.automatic-study-analysis.v1",
+    "runId": "[run]",
+    "claimId": "[uuid]",
+    "attemptId": "analysis-[uuid]",
+    "state": "skipped",
+    "analysisId": null,
+    "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+    "createdAt": "[ts]",
+    "updatedAt": "[ts]",
+    "configDigest": "7b2784060eec8cdd30962537f7e3b3be18be27843350c72b45ef40348da98226",
+    "promptVersion": "study-evidence-6",
+    "sourceRunSha256": null,
+    "inputDigest": null,
+    "analysisSha256": null,
+    "receiptSha256": null,
+    "startedAt": null,
+    "finishedAt": "[ts]"
+  },
+  "events.ndjson": [
+    {
+      "id": "event-000-created",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.run.created",
+      "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+    },
+    {
+      "id": "event-001-subject",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.subject.declared",
+      "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run."
+    },
+    {
+      "id": "event-002-spend",
+      "at": "[ts]",
+      "level": "info",
+      "type": "scripted-lab.spend",
+      "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+    },
+    {
+      "id": "event-003-session-error",
+      "at": "[ts]",
+      "level": "error",
+      "type": "scripted-lab.session.error",
+      "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+    }
+  ],
+  "observer/index.html": "[observer build]",
+  "observer/observer-data.json": {
+    "schema": "humanish.observer-data.v1",
+    "schemaVersion": 1,
+    "generatedAt": "[ts]",
+    "run": {
+      "runId": "[run]",
+      "mode": "live",
+      "status": "fail",
+      "title": "First-run scripted walkthrough - Scripted journey persona (synthetic-provider)",
+      "createdAt": "[ts]",
+      "simCount": 1,
+      "persona": {
+        "id": "synthetic-provider",
+        "name": "Scripted journey persona (synthetic-provider)",
+        "source": "lab:provisioned-scripted-routing-proof",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "scenario": {
+        "id": "scripted-first-run",
+        "title": "First-run scripted walkthrough",
+        "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+        "source": "humanish/scenarios/scripted-first-run.yaml",
+        "sourceDigest": "41dea98c2dc4"
+      },
+      "packageName": "humanish",
+      "redaction": {
+        "status": "passed",
+        "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+      },
+      "lifecycle": [
+        {
+          "at": "[ts]",
+          "event": "scripted-lab.run.created",
+          "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+        }
+      ],
+      "knownGaps": []
+    },
+    "summary": {
+      "streams": 1,
+      "byKind": {
+        "ui": 0,
+        "browser": 1,
+        "terminal": 0,
+        "tui": 0,
+        "codex-ui": 0,
+        "artifact": 0,
+        "summary": 0
+      },
+      "active": 0,
+      "blocked": 1,
+      "warnings": 0
+    },
+    "laneGroups": [],
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    },
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — provisioned-scripted-routing-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Desktop browser surface"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[provisioned-subject]",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ],
+        "sim": {
+          "id": "scripted-desktop",
+          "index": 1,
+          "personaId": "synthetic-provider",
+          "scenarioId": "scripted-first-run",
+          "status": "failed",
+          "streamKind": "browser",
+          "mode": "browser-sim",
+          "progress": 100,
+          "currentStep": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+          "summary": "Scripted lab failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+          "streamIds": [
+            "scripted-desktop-stream"
+          ],
+          "startedAt": "[ts]",
+          "updatedAt": "[ts]"
+        },
+        "kindLabel": "Browser",
+        "statusLabel": "Failed",
+        "terminalPlain": "",
+        "timeline": []
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+      },
+      {
+        "id": "event-003-session-error",
+        "at": "[ts]",
+        "level": "error",
+        "type": "scripted-lab.session.error",
+        "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+      }
+    ],
+    "artifactLinks": [
+      {
+        "label": "run bundle",
+        "href": "../run.json",
+        "kind": "bundle"
+      },
+      {
+        "label": "review JSON",
+        "href": "../review.json",
+        "kind": "review"
+      },
+      {
+        "label": "review Markdown",
+        "href": "../review.md",
+        "kind": "review"
+      },
+      {
+        "label": "event log",
+        "href": "../events.ndjson",
+        "kind": "events"
+      },
+      {
+        "label": "observer data",
+        "href": "observer-data.json",
+        "kind": "observer"
+      }
+    ],
+    "publicSafety": {
+      "publishable": false,
+      "note": "Observer artifacts are local evidence. Before filing a public issue, use `humanish feedback issue` so redaction and public-safety checks gate the payload.",
+      "share": {
+        "status": "share_ready",
+        "verifiedAt": "[ts]",
+        "reasons": []
+      }
+    },
+    "raw": {
+      "bundleSchema": "humanish.run-bundle.v1",
+      "artifactRoot": ".humanish/runs/[run]"
+    }
+  },
+  "observer/study-analysis.json": {
+    "state": "none",
+    "analysis": null,
+    "corrections": [],
+    "warnings": [],
+    "automatic": {
+      "state": "skipped",
+      "analysisId": null,
+      "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      "updatedAt": "[ts]"
+    }
+  },
+  "review.json": {
+    "schema": "humanish.review.v1",
+    "verdict": "fail",
+    "summary": "Scripted lab failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+    "gaps": []
+  },
+  "review.md": "# First-run scripted walkthrough\n\n- run: [run]\n- mode: live\n- verdict: fail\n- summary: Scripted lab failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)\n- scenario: scripted-first-run @ 41dea98c2dc4 (humanish/scenarios/scripted-first-run.yaml)\n- subject: Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run.\n- spend: Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject.\n",
+  "run.json": {
+    "schema": "humanish.run-bundle.v1",
+    "runId": "[run]",
+    "mode": "live",
+    "simCount": 1,
+    "createdAt": "[ts]",
+    "cwd": "[target-cwd]",
+    "artifactRoot": ".humanish/runs/[run]",
+    "source": {
+      "packageName": "humanish",
+      "humanishSource": "present",
+      "git": {
+        "schema": "humanish.git-state.v1",
+        "status": "missing",
+        "capturedAt": "[ts]",
+        "head": {
+          "shortSha": null,
+          "refState": "unknown"
+        },
+        "changes": {
+          "staged": 0,
+          "unstaged": 0,
+          "untracked": 0,
+          "total": 0
+        },
+        "note": "No git work tree was detected."
+      }
+    },
+    "persona": {
+      "id": "synthetic-provider",
+      "name": "Scripted journey persona (synthetic-provider)",
+      "source": "lab:provisioned-scripted-routing-proof",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "scenario": {
+      "id": "scripted-first-run",
+      "title": "First-run scripted walkthrough",
+      "goal": "Load the app, submit the primary form, and confirm the success state renders.",
+      "source": "humanish/scenarios/scripted-first-run.yaml",
+      "sourceDigest": "41dea98c2dc4"
+    },
+    "lifecycle": [
+      {
+        "at": "[ts]",
+        "event": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run with 1 surface lane (actor scripted-browser)."
+      }
+    ],
+    "simulations": [
+      {
+        "id": "scripted-desktop",
+        "index": 1,
+        "personaId": "synthetic-provider",
+        "scenarioId": "scripted-first-run",
+        "status": "failed",
+        "streamKind": "browser",
+        "mode": "browser-sim",
+        "progress": 100,
+        "currentStep": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+        "summary": "Scripted lab failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+        "streamIds": [
+          "scripted-desktop-stream"
+        ],
+        "startedAt": "[ts]",
+        "updatedAt": "[ts]"
+      }
+    ],
+    "streams": [
+      {
+        "id": "scripted-desktop-stream",
+        "simId": "scripted-desktop",
+        "kind": "browser",
+        "label": "Desktop browser surface — provisioned-scripted-routing-proof",
+        "status": "failed",
+        "transport": "snapshot",
+        "updatedAt": "[ts]",
+        "embed": {
+          "kind": "placeholder",
+          "title": "Desktop browser surface"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 960,
+          "deviceScaleFactor": 1,
+          "isMobile": false
+        },
+        "ui": {
+          "route": "[provisioned-subject]",
+          "intent": "Load the app, submit the primary form, and confirm the success state renders.",
+          "state": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+        },
+        "artifacts": [
+          {
+            "label": "run bundle",
+            "path": "run.json",
+            "kind": "bundle"
+          },
+          {
+            "label": "review",
+            "path": "review.md",
+            "kind": "review"
+          },
+          {
+            "label": "events",
+            "path": "events.ndjson",
+            "kind": "events"
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-000-created",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.run.created",
+        "message": "Created scripted-browser lab run for provisioned-scripted-routing-proof (actor scripted-browser, 1 surface)."
+      },
+      {
+        "id": "event-001-subject",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.subject.declared",
+        "message": "Provisioned synthetic subject: clone of repo-01@abc123def4567890abc1, served + getHost-exposed in-sandbox; env names: GITHUB_TOKEN (values never persisted); state provenance: declared-not-run; evidence host digest: dry-run."
+      },
+      {
+        "id": "event-002-spend",
+        "at": "[ts]",
+        "level": "info",
+        "type": "scripted-lab.spend",
+        "message": "Scripted participant steps make no model requests; post-run analysis has a separate budget unless disabled. Live provisioned runs may spend E2B sandbox minutes to clone/serve the synthetic subject."
+      },
+      {
+        "id": "event-003-session-error",
+        "at": "[ts]",
+        "level": "error",
+        "type": "scripted-lab.session.error",
+        "message": "subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)"
+      }
+    ],
+    "redaction": {
+      "status": "passed",
+      "notes": "Scripted step URLs are sanitized to loopback origin+path (query/hash redacted) and step text passes text redaction. Screenshots are FULL-FIDELITY (raw), retained for local use in gitignored .humanish — NOT redacted for publishing; policies.redactScreenshots is not yet supported on this route."
+    },
+    "artifacts": {
+      "run": "run.json",
+      "reviewJson": "review.json",
+      "reviewMarkdown": "review.md",
+      "observerData": "observer/observer-data.json",
+      "events": "events.ndjson"
+    },
+    "review": {
+      "schema": "humanish.review.v1",
+      "verdict": "fail",
+      "summary": "Scripted lab failed before a terminal session verdict: subject install failed twice (exit 1, then exit 1); the sandbox could not complete serve.install: (no output)",
+      "gaps": []
+    },
+    "feedbackCandidates": [],
+    "subject": {
+      "source": "clone",
+      "repo": "repo-01",
+      "commit": "abc123def4567890abc1",
+      "envNames": [
+        "GITHUB_TOKEN"
+      ],
+      "state": {
+        "provenance": "declared-not-run"
+      }
+    },
+    "desktopTemplate": "adopter-ui-sim-base",
+    "cost": {
+      "schema": "humanish.run-cost-summary.v1",
+      "currency": "usd",
+      "estimatedTotalUsd": null,
+      "ratesAsOf": null,
+      "fullyEstimated": false,
+      "placeholder": false,
+      "breakdown": [
+        {
+          "kind": "desktop-minutes",
+          "laneId": "subject",
+          "estimatedCostUsd": null,
+          "reason": "no_desktop_resources",
+          "ratesAsOf": null,
+          "desktop": {
+            "minutes": "[minutes]",
+            "durationBasis": "host-acquired-to-cleanup",
+            "resourceUnavailableReason": "metadata_unavailable"
+          }
+        }
+      ],
+      "tokenUsage": {
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "desktopMinutes": "[desktopMinutes]",
+      "note": "No priced spend lines this run — every cost line is DECLARED ABSENT (unknown rate / no usage / no duration); nothing is guessed. Add a rate to src/run/pricing.ts to estimate this model. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+    }
+  },
+  "sandbox-receipts.ndjson": [
+    {
+      "at": "[ts]",
+      "laneId": "subject",
+      "provider": "e2b",
+      "sandboxId": "fake-subject-001",
+      "timeoutMs": 2730000
+    }
+  ],
+  "status.json": {
+    "schema": "humanish.run-status.v1",
+    "runId": "[run]",
+    "state": "finished",
+    "mode": "live",
+    "pid": "[pid]",
+    "startedAt": "[ts]",
+    "updatedAt": "[ts]",
+    "completedAt": "[ts]",
+    "outcome": {
+      "verdict": "fail",
+      "estimatedCostUsd": null
+    }
+  }
+}

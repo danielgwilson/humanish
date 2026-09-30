@@ -1,5 +1,6 @@
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
+import { expectFailureGolden } from "../../helpers/failure-golden.js";
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { readFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -1323,12 +1324,13 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
       index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined,
     );
+    const stderr = captureStderr();
     const result = await runConcurrentSharedWorld({
       cwd,
       config: concurrentConfig(3, 3),
       dryRun: false,
       hooks,
-    });
+    }).finally(stderr.stop);
 
     expect(result.ok).toBe(false);
     expect(result.error?.message).toContain(
@@ -1355,6 +1357,22 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
           ok: false,
         }),
       ]),
+    );
+    await expectFailureGolden(
+      "shared-world/seat-actor-error",
+      path.join(cwd, ".humanish", "runs", result.runId),
+      {
+        result,
+        stderr: stderr.text(),
+        replace: [
+          [result.runId, "[run]"],
+          [cwd, "[cwd]"],
+        ],
+        // Seats tear down in parallel, so their sandbox receipts append in completion order.
+        unorderedFiles: ["sandbox-receipts.ndjson"],
+        // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
+        maskKeys: ["minutes", "desktopMinutes"],
+      },
     );
   });
 
@@ -1460,12 +1478,13 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     const { hooks } = baseHooks(state, makeRendezvous(3), (index) =>
       index === 1 ? { throwMessage: "boom in actor 1" } : undefined,
     );
+    const stderr = captureStderr();
     const result = await runConcurrentSharedWorld({
       cwd,
       config: concurrentConfig(3, 3),
       dryRun: false,
       hooks,
-    });
+    }).finally(stderr.stop);
 
     // The swarm did not run fully coherently → ok false, but the other actors STILL ran (no gate).
     expect(result.ok).toBe(false);
@@ -1487,6 +1506,22 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
       (o) => o.ok,
     ).length;
     expect(okCount).toBe(2);
+    await expectFailureGolden(
+      "shared-world/seat-harness-error",
+      path.join(cwd, ".humanish", "runs", result.runId),
+      {
+        result,
+        stderr: stderr.text(),
+        replace: [
+          [result.runId, "[run]"],
+          [cwd, "[cwd]"],
+        ],
+        // Seats tear down in parallel, so their sandbox receipts append in completion order.
+        unorderedFiles: ["sandbox-receipts.ndjson"],
+        // Desktop minutes are host-measured wall-clock spans of the fake sandboxes.
+        maskKeys: ["minutes", "desktopMinutes"],
+      },
+    );
   });
 
   it("literal-scrubs a provisioned value injected into a forced error before persist", async () => {
