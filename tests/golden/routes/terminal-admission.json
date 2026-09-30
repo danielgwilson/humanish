@@ -1,0 +1,307 @@
+{
+  "real receiving": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "media": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "invalid analysis": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "unregistered actor": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "not-an-actor",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "runtime version": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "message": "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "product without surfaces": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "w",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "terminal-product subjects require `subject.product` with a name and at least one public surface URL."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "live without caps": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": false,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+      "message": "A live terminal-product run grants provider access to the in-sandbox agent and so REQUIRES a fail-closed cap: scenario.caps with maxUsd (0 = no-spend) and a positive maxMinutes (the codex command's wall-clock kill). The live key is never exercised without a cap in force."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  },
+  "live positive maxUsd": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": false,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+      "message": "scenario.caps.maxUsd=1 cannot be enforced: the Codex participant's provider spend is recorded as unpriced tokens and no product, media or payment spend is measured, so a positive dollar cap can never trip. Set scenario.caps.maxUsd to 0 and bound the run with scenario.caps.maxMinutes, the codex command's wall-clock kill. No sandbox was created and the runtime key was not used."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  },
+  "real receiving and media": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "Real email receiving is unsupported on the terminal backend. Use a supported hosted computer-use browser study."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "media and invalid analysis": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "execution.desktop.recording is supported only on independent computer-use desktop lanes. Remove the declaration or select a supported route."
+    }
+  },
+  "invalid analysis and tasks": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks and unregistered actor": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "not-an-actor",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "unregistered actor and runtime version": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "not-an-actor",
+    "product": "widgetsmith-cli",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered terminal actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "runtime version and product without surfaces": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "w",
+    "dryRun": true,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_FAILED",
+      "message": "Terminal runtime settings require an exact Codex version, a nonempty model when declared, and a supported reasoning-effort value."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "product without surfaces and live without caps": {
+    "schema": "humanish.terminal-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "terminal-admission",
+    "actor": "codex-exec",
+    "product": "w",
+    "dryRun": false,
+    "runId": "not-created",
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+      "message": "terminal-product subjects require `subject.product` with a name and at least one public surface URL."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  }
+}

@@ -7,6 +7,7 @@ import type { StudyAnalysisConfig } from "../analysis/study-analysis.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";
+import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import type { RunLabOptions } from "./engine.js";
 import type { ComputerUseParticipant, ExternalPublicSeat, ProvisionedSeat } from "./plan.js";
@@ -166,6 +167,8 @@ export interface SharedWorldPlan extends PlanBase {
 
 export type TerminalPlan = PlanBase & {
   readonly route: "terminal";
+  /** The registered terminal actor that runs. */
+  readonly actor: string;
   readonly product: LabSubjectProduct & { readonly publicSurfaces: NonEmpty<string> };
   /** The declared persona and mission; the route supplies its defaults. */
   readonly personaId?: string;
@@ -227,7 +230,6 @@ export type PlanGap =
   | "local-app-without-executor"
   | "in-process-fan-out"
   | "participant-cap"
-  | "live-terminal-without-caps"
   | "unsupported-composition";
 
 /** The error codes the preview route returns before a run starts. */
@@ -243,6 +245,7 @@ type PreviewRefusalCode =
  */
 export type PlanRefusal =
   | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
+  | TerminalRefusal
   | { readonly route: LabRoute; readonly gap: PlanGap };
 
 export type PlanResult =

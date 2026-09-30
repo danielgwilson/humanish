@@ -22,8 +22,10 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
    route to its backend name. `runLab` in `src/lab/engine.ts` dispatches to
    `runCuaActorLab`, `runScriptedBrowserLab`, `runTerminalProductLab`,
    `runConcurrentSharedWorld` or `runPreviewLab` (`src/routes/preview.ts`), which takes its sim
-   count and admission from `planLab` and then calls `runDryRun`. A run is live only when the lab
-   declares `scenario.mode: live`. The `--dry-run` flag forces a dry run.
+   count and admission from `planLab` and then calls `runDryRun`. `runTerminalProductLab` takes
+   its configuration refusals and plan from `planTerminalLab` (`src/routes/terminal/plan.ts`). A
+   run is live only when the lab declares `scenario.mode: live`. The `--dry-run` flag forces a dry
+   run.
 3. `cuaLabRejection` (`src/routes/computer-use/preflight.ts`) repeats the parse checks for
    library callers. On a live run, `liveCuaRejection` in the same file checks provider keys, the
    local agent login and subject env vars, and refuses a dollar cap it cannot price. Both run

@@ -173,8 +173,31 @@ describe("planLab", () => {
       },
       actors: [{ type: "codex-exec" }],
     });
-    expect(gap(terminal, { cwd: ROOT, dryRun: false })).toBe("terminal live-terminal-without-caps");
+    expect(gap(terminal, { cwd: ROOT, dryRun: false })).toBe(
+      "terminal HUMANISH_TERMINAL_LAB_CAPS_MISSING",
+    );
     expect(gap(terminal, { cwd: ROOT, dryRun: true })).toBe("planned");
+    // The terminal route refuses real receiving before it reads the analysis config.
+    const receivingTerminal = {
+      ...terminal,
+      comms: { email: { kind: "real", connection: "team-inbox" } },
+      review: { analysis: "yes" },
+    } as unknown as LabConfig;
+    expect(gap(receivingTerminal, { cwd: ROOT })).toBe(
+      "terminal HUMANISH_TERMINAL_LAB_SUBJECT_INVALID",
+    );
+    // A positive maxUsd can trip only when the caller's costProbe measures spend.
+    const pricedTerminal = { ...terminal, scenario: { caps: { maxUsd: 1, maxMinutes: 5 } } };
+    expect(gap(pricedTerminal, { cwd: ROOT, dryRun: false })).toBe(
+      "terminal HUMANISH_TERMINAL_LAB_UNPRICED_CAP",
+    );
+    expect(
+      gap(pricedTerminal, {
+        cwd: ROOT,
+        dryRun: false,
+        terminalHooks: { costProbe: () => ({}) },
+      }),
+    ).toBe("planned");
     const unknownActor = { ...parsed(cuApp), actors: [{ type: "not-an-actor" }] } as LabConfig;
     expect(gap(unknownActor, { cwd: ROOT })).toBe("computer-use unsupported-composition");
     const badAnalysis = { ...parsed(cuApp), review: { analysis: "yes" } } as unknown as LabConfig;

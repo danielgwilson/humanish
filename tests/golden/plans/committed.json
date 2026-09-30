@@ -816,6 +816,7 @@
       "dryRun": true,
       "requirements": [],
       "route": "terminal",
+      "actor": "codex-exec",
       "product": {
         "name": "humanish",
         "publicSurfaces": [
@@ -905,6 +906,7 @@
       },
       "requirements": [],
       "route": "terminal",
+      "actor": "codex-exec",
       "product": {
         "name": "humanish",
         "publicSurfaces": [
@@ -958,6 +960,7 @@
       "dryRun": true,
       "requirements": [],
       "route": "terminal",
+      "actor": "codex-exec",
       "product": {
         "name": "humanish",
         "publicSurfaces": [
@@ -2105,6 +2108,7 @@
       },
       "requirements": [],
       "route": "terminal",
+      "actor": "codex-exec",
       "product": {
         "name": "widgetsmith-cli",
         "publicSurfaces": [
