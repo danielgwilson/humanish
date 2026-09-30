@@ -1,0 +1,9 @@
+{
+  "schema": "humanish.review.v1",
+  "verdict": "fail",
+  "summary": "Shared-world run (ONE plane, sequential): 1/3 role(s) reached a terminal, engaged verdict; 1 checkpoint delta(s) observed.",
+  "gaps": [
+    "role-reviewer: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+    "role-later: skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start"
+  ]
+}

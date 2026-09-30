@@ -122,7 +122,8 @@ export function routesToComputerUse(config: LabConfig): boolean {
  * True when this config routes to the SHARED-WORLD backend (#164): a clone or local-tree subject
  * on a hosted desktop whose first actor resolves to a computer-use actor AND that declares the
  * `shared-world` topology. Mirror of routesToComputerUse; the single source of truth shared by
- * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. The same
+ * selectLabBackend (which checks it BEFORE the cua route) and the warning logic. Every
+ * shared-world study runs its participants at once (`execution.concurrency` >= 2). The same
  * clone/local-tree × e2b-desktop × computer-use composition WITHOUT `topology: shared-world` stays per-lane-worlds
  * (the cua route) — the topology declaration is the override switch.
  */
@@ -147,8 +148,7 @@ export function routesToProvisionedSharedWorld(config: LabConfig): boolean {
  * seed. The operator-ownership attestation `subject.publicTarget` is required (validated in
  * externalPublicSharedWorldValidationReason, not here — this predicate is the router only, so a
  * half-declared external-public config still routes here to get its precise fail-closed reason
- * rather than silently downgrading to the per-lane cua route). Always concurrent (concurrency > 1 is
- * enforced by the validation reason).
+ * rather than silently downgrading to the per-lane cua route).
  */
 export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
   return (
@@ -161,17 +161,11 @@ export function routesToExternalPublicSharedWorld(config: LabConfig): boolean {
 }
 
 /**
- * True when this config routes to the CONCURRENT shared-world backend (#164 phase 2): a shared-world
- * config with `execution.concurrency > 1` (N actor seats driving ONE plane AT ONCE). Two plane
- * classes: the getHost provisioned-subject shape (clone/local-tree) AND the external-public shape (a
- * real public deployment used directly as the plane — `source: app-url` + `allowPublicTargets`, no
- * getHost/clone/seed). An omitted `concurrency` is filled at parse with the seat count (all seats
- * live — the all-parallel default, #350), so multi-seat shared-world labs route here unless the
- * author explicitly declares `concurrency: 1`, which is the sequential PoC (getHost only).
- * selectLabBackend checks this BEFORE routesToSharedWorld.
+ * @deprecated Every shared-world study runs its participants at once since the sequential
+ * shared-world route was removed. Use routesToSharedWorld; this alias goes in the next minor.
  */
 export function routesToConcurrentSharedWorld(config: LabConfig): boolean {
-  return routesToSharedWorld(config) && (config.execution?.concurrency ?? 1) > 1;
+  return routesToSharedWorld(config);
 }
 
 /**

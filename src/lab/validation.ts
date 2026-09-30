@@ -9,7 +9,6 @@ import {
   registeredComputerUseActors,
   resolveSeatUrl,
   routesToComputerUse,
-  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
@@ -218,9 +217,6 @@ export function receivingEmailValidationReason(config: LabConfig): string | unde
   if (config.actors.some((actor) => actor.type === "local-agent")) {
     return "Real email receiving is unavailable for local-agent: its host process does not isolate the inbox management credential. Use a hosted first-party computer-use actor.";
   }
-  if (config.subject.topology === "shared-world" && (config.execution?.concurrency ?? 1) <= 1) {
-    return "Real email receiving is unsupported for sequential shared-world studies. Use concurrent shared-world or independent participant desktops.";
-  }
   return undefined;
 }
 
@@ -259,6 +255,17 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
 }
 
 /**
+ * Shared-world participants share one live app, so at least two must be live at once. The
+ * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
+ * fills an omitted concurrency with the participant count.
+ */
+function sharedWorldConcurrencyReason(config: LabConfig): string | null {
+  const concurrency = config.execution?.concurrency ?? 1;
+  if (concurrency >= 2) return null;
+  return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more.`;
+}
+
+/**
  * Cross-validate a CONCURRENT shared-world declaration (#164 phase 2). Returns the failure message,
  * or null when valid. Includes the base shared-world checks PLUS the concurrent extras: a synthetic
  * subject attestation (FIX-3), a 0.0.0.0 serve bind (FIX-4 — getHost only routes to a port bound on
@@ -271,9 +278,8 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
   if (base) {
     return base;
   }
-  if ((config.execution?.concurrency ?? 1) <= 1) {
-    return "the concurrent shared-world route requires `execution.concurrency > 1` (N concurrent actor seats); concurrency 1 is the sequential PoC.";
-  }
+  const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
+  if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.subject.exposure !== "synthetic") {
     return "the concurrent shared-world route requires `subject.exposure: synthetic` — the subject is exposed on an internet-reachable getHost URL for the run, so the author must attest it is synthetic seeded data (no real/external data behind a getHost URL).";
   }
@@ -296,7 +302,7 @@ export function concurrentSharedWorldValidationReason(config: LabConfig): string
  * it FORBIDS every provisioned-subject field (serve/state.seed/state.checkpoint/exposure/clone/repos
  * are inert with no sandbox — fail closed, never silently ignored, per invariant 6), and REQUIRES a
  * non-loopback appUrl + allowPublicTargets + the operator-ownership attestation subject.publicTarget +
- * concurrency > 1 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
+ * concurrency >= 2 + an actors[0].lanes roster of ≥2 with EXACTLY ONE host lane. The getHost synthetic
  * gate is deliberately unreachable here (there is no internet-reachable harness-owned URL to attest).
  * Enforced at parse AND re-enforced in the engine (runConcurrentSharedWorld is exported npm surface).
  */
@@ -314,9 +320,8 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
   }
-  if ((config.execution?.concurrency ?? 1) <= 1) {
-    return "the external-public shared-world route requires `execution.concurrency > 1` (N concurrent seats sharing ONE public plane); concurrency 1 proves no shared world.";
-  }
+  const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
+  if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.policies?.allowPublicTargets !== true) {
     return "the external-public shared-world route requires `policies.allowPublicTargets: true` — the shared plane is a real non-loopback public deployment.";
   }
@@ -370,7 +375,6 @@ export function automaticAnalysisRouteReason(config: LabConfig): string | undefi
     routesToScriptedBrowser(config) ||
     routesToTerminalProduct(config) ||
     routesToSharedWorld(config) ||
-    routesToConcurrentSharedWorld(config) ||
     ["app-url", "local-app", "local-tree", "desktop-cli", "terminal-product"].includes(
       config.subject.source,
     )

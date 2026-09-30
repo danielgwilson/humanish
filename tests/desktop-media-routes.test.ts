@@ -5,12 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   concurrentSharedWorldValidationReason,
   desktopMediaValidationReason,
-  sharedWorldValidationReason,
 } from "../src/lab/validation.js";
 import { parseLabConfig } from "../src/lab/config.js";
 import { type LabConfig } from "../src/lab/types.js";
 import { runCuaActorLab } from "../src/routes/computer-use/lab.js";
-import { runSharedWorldLab } from "../src/routes/shared-world/sequential.js";
 import { runConcurrentSharedWorld } from "../src/routes/shared-world/concurrent.js";
 import { runScriptedBrowserLab } from "../src/routes/scripted-browser.js";
 import { runTerminalProductLab } from "../src/routes/terminal/lab.js";
@@ -35,14 +33,15 @@ const cases: Array<[string, (config: LabConfig) => void, string]> = [
         source: "clone",
         topology: "shared-world",
         repos: ["example-org/collab-app"],
-        serve: { start: "npm start", url: "http://127.0.0.1:3000/" },
+        exposure: "synthetic",
+        serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
         state: { checkpoint: [{ name: "count", command: "echo 0" }] },
       };
       c.actors[0]!.lanes = [
         { id: "author", instruction: "Create a note." },
         { id: "reader", instruction: "Read a note." },
       ];
-      c.execution!.concurrency = 1;
+      c.execution!.concurrency = 2;
     },
     "shared-world routes",
   ],
@@ -152,7 +151,6 @@ describe("declared camera capabilities must reach an implemented route", () => {
             },
           },
         }),
-        runSharedWorldLab({ cwd, config: shared, dryRun: false, hooks }),
         runConcurrentSharedWorld({ cwd, config: shared, dryRun: false, hooks }),
         runScriptedBrowserLab({ cwd, config: scripted, dryRun: false, hooks }),
         runTerminalProductLab({ cwd, config: terminal, dryRun: false, hooks }),
@@ -169,54 +167,46 @@ describe("declared camera capabilities must reach an implemented route", () => {
     }
   });
 
-  it.each(["sequential", "concurrent"] as const)(
-    "rejects camera declarations in the direct %s shared backend without a topology declaration",
-    async (route) => {
-      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-media-direct-shared-"));
-      const config = structuredClone(base);
-      config.subject = {
-        source: "clone",
-        repos: ["example-org/collab-app"],
-        exposure: "synthetic",
-        serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
-        state: { checkpoint: [{ name: "count", command: "echo 0" }] },
-      };
-      config.actors[0]!.lanes = [
-        { id: "author", instruction: "Create a note." },
-        { id: "reader", instruction: "Read a note." },
-      ];
-      config.execution!.concurrency = route === "concurrent" ? 2 : 1;
-      const validate =
-        route === "concurrent"
-          ? concurrentSharedWorldValidationReason
-          : sharedWorldValidationReason;
-      const run = route === "concurrent" ? runConcurrentSharedWorld : runSharedWorldLab;
-      const loadDesktopModule = vi.fn(async () => {
-        throw new Error("must not create a desktop");
+  it("rejects camera declarations in the direct shared backend without a topology declaration", async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-media-direct-shared-"));
+    const config = structuredClone(base);
+    config.subject = {
+      source: "clone",
+      repos: ["example-org/collab-app"],
+      exposure: "synthetic",
+      serve: { start: "npm start -- --host 0.0.0.0", url: "http://127.0.0.1:3000/" },
+      state: { checkpoint: [{ name: "count", command: "echo 0" }] },
+    };
+    config.actors[0]!.lanes = [
+      { id: "author", instruction: "Create a note." },
+      { id: "reader", instruction: "Read a note." },
+    ];
+    config.execution!.concurrency = 2;
+    const loadDesktopModule = vi.fn(async () => {
+      throw new Error("must not create a desktop");
+    });
+    const runSession = vi.fn(async () => {
+      throw new Error("must not dispatch participant");
+    });
+    try {
+      // The config is valid for a hosted CUA lane, and all shared-backend structural
+      // checks pass. Rejection must come from the actual backend's media support.
+      expect(config.subject.topology).toBeUndefined();
+      expect(desktopMediaValidationReason(config)).toBeUndefined();
+      expect(concurrentSharedWorldValidationReason(config)).toBeNull();
+      const result = await runConcurrentSharedWorld({
+        cwd,
+        config,
+        dryRun: false,
+        hooks: { env: {}, loadDesktopModule, runSession },
       });
-      const runSession = vi.fn(async () => {
-        throw new Error("must not dispatch participant");
-      });
-      try {
-        // The config is valid for a hosted CUA lane, and all shared-backend structural
-        // checks pass. Rejection must come from the actual backend's media support.
-        expect(config.subject.topology).toBeUndefined();
-        expect(desktopMediaValidationReason(config)).toBeUndefined();
-        expect(validate(config)).toBeNull();
-        const result = await run({
-          cwd,
-          config,
-          dryRun: false,
-          hooks: { env: {}, loadDesktopModule, runSession },
-        });
-        expect(result.ok).toBe(false);
-        expect(result.runId).toBe("not-created");
-        expect(result.error?.message).toContain("execution.desktop.media");
-        expect(loadDesktopModule).not.toHaveBeenCalled();
-        expect(runSession).not.toHaveBeenCalled();
-      } finally {
-        await rm(cwd, { recursive: true, force: true });
-      }
-    },
-  );
+      expect(result.ok).toBe(false);
+      expect(result.runId).toBe("not-created");
+      expect(result.error?.message).toContain("execution.desktop.media");
+      expect(loadDesktopModule).not.toHaveBeenCalled();
+      expect(runSession).not.toHaveBeenCalled();
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
 });

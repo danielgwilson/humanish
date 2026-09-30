@@ -1,0 +1,81 @@
+{
+  "schema": "humanish.actor-trace.v1",
+  "provider": "captured-usage-fixture",
+  "providerVersion": "gpt-5.6-sol",
+  "protocol": "cua-loop",
+  "lane": "computer-use",
+  "persona": {
+    "id": "reviewer",
+    "traitsApplied": [],
+    "promptDigest": "0634fbf3de12b200"
+  },
+  "redaction": {
+    "status": "passed",
+    "screenshots": "n/a",
+    "notes": "no screenshots captured"
+  },
+  "startedAt": "2026-09-30T08:01:52.651Z",
+  "completedAt": "2026-09-30T08:01:52.651Z",
+  "durationMs": 0,
+  "status": "incomplete",
+  "completionReason": "budget_reached",
+  "stopCause": "study_spend_limit",
+  "reason": "study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+  "ids": {
+    "model": "gpt-5.6-sol",
+    "turnId": "fixture-pending-computer-call"
+  },
+  "counts": {
+    "turns": 1,
+    "actions": 0,
+    "materialActions": 0,
+    "screenshots": 0,
+    "reasonings": 0,
+    "messages": 0,
+    "idleTurns": 0,
+    "noProgressTurns": 0
+  },
+  "items": [],
+  "tokenUsage": {
+    "input": 11541,
+    "output": 229,
+    "cachedInput": 9849,
+    "cacheWriteInput": 1689,
+    "turns": [
+      {
+        "input": 11541,
+        "output": 229,
+        "cachedInput": 9849,
+        "cacheWriteInput": 1689
+      }
+    ],
+    "total": 11770
+  },
+  "capabilities": {
+    "headless": true,
+    "structuredTrace": true,
+    "lanes": [
+      "computer-use"
+    ],
+    "producesScreenshots": true,
+    "byoModel": false,
+    "preGrantableApprovals": false,
+    "inProcessTools": false,
+    "license": "proprietary"
+  },
+  "estimatedCost": {
+    "schema": "humanish.actor-estimated-cost.v1",
+    "estimatedCostUsd": 0.016977,
+    "ratesAsOf": "2026-09-03",
+    "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)",
+    "modelId": "gpt-5.6-sol",
+    "breakdown": {
+      "inputUsd": 0.012397,
+      "outputUsd": 0.00458,
+      "inputTokens": 11541,
+      "outputTokens": 229,
+      "cachedInputTokens": 9849,
+      "cacheWriteInputTokens": 1689
+    }
+  }
+}

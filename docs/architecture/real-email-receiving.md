@@ -53,8 +53,7 @@ Review additional origins as destinations the participant is allowed to open fro
 mail. This policy governs the inbox surface, not all later browser navigation.
 
 Supported execution is hosted computer use with app-url, clone or local-tree
-subjects, including concurrent shared-world studies. Sequential shared-world,
-local-agent, scripted, terminal, desktop-cli, in-process and local-app routes reject
+subjects, including shared-world studies. Local-agent, scripted, terminal, desktop-cli, in-process and local-app routes reject
 real receiving before allocation. Connection mode cannot declare capture options,
 recipients or borrowed mailbox IDs. A fresh address is not an existing account;
 assignments must allow signup or arranging mail to the new identity.

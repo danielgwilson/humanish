@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { type LabConfig } from "../../src/lab/types.js";
 import { runLab, selectLabBackend } from "../../src/lab/engine.js";
-import { runSharedWorldLab } from "../../src/routes/shared-world/sequential.js";
 import { runTerminalProductLab } from "../../src/routes/terminal/lab.js";
 import { runScriptedBrowserLab } from "../../src/routes/scripted-browser.js";
 import * as synthetic from "../../src/run/dry-run.js";
@@ -80,7 +79,6 @@ describe("real receiving admission on non-receiving backends", () => {
   );
 
   it.each([
-    ["sequential shared-world", runSharedWorldLab, "HUMANISH_SHARED_WORLD_LAB_INVALID"],
     ["terminal", runTerminalProductLab, "HUMANISH_TERMINAL_LAB_SUBJECT_INVALID"],
     ["scripted", runScriptedBrowserLab, "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID"],
   ] as const)(

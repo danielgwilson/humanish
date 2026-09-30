@@ -1,0 +1,61 @@
+{
+  "schema": "humanish.actor-trace.v1",
+  "provider": "fake-cua",
+  "protocol": "cua-loop",
+  "lane": "computer-use",
+  "persona": {
+    "id": "reviewer",
+    "traitsApplied": [],
+    "promptDigest": "0634fbf3de12b200"
+  },
+  "redaction": {
+    "status": "passed",
+    "screenshots": "n/a",
+    "notes": "fake trace (no frames captured)"
+  },
+  "startedAt": "2026-01-01T00:00:00.000Z",
+  "completedAt": "2026-01-01T00:00:01.000Z",
+  "durationMs": 1000,
+  "status": "passed",
+  "completionReason": "goal_satisfied",
+  "reason": "passed (goal_satisfied)",
+  "ids": {},
+  "counts": {
+    "actions": 1,
+    "messages": 1,
+    "screenshots": 0
+  },
+  "items": [
+    {
+      "id": "i-msg",
+      "kind": "message",
+      "lifecycle": "completed",
+      "title": "message",
+      "text": "did my role's task"
+    },
+    {
+      "id": "i-act",
+      "kind": "ui_action",
+      "lifecycle": "completed",
+      "title": "click"
+    }
+  ],
+  "capabilities": {
+    "headless": true,
+    "structuredTrace": true,
+    "lanes": [
+      "computer-use"
+    ],
+    "producesScreenshots": true,
+    "byoModel": false,
+    "preGrantableApprovals": false,
+    "inProcessTools": false,
+    "license": "proprietary"
+  },
+  "estimatedCost": {
+    "schema": "humanish.actor-estimated-cost.v1",
+    "estimatedCostUsd": null,
+    "reason": "no_token_usage",
+    "ratesAsOf": null
+  }
+}

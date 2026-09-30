@@ -34,7 +34,7 @@ import {
   extractResponsesOutputText,
   readLobbyCodeFromFrame,
 } from "../../../src/routes/shared-world/concurrent.js";
-import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/sequential.js";
+import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
 import type {
   BrowserLabScoringContext,
   RunAdapterScore,

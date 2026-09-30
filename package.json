@@ -82,9 +82,9 @@
     "guest-media:startup:proof": "node scripts/guest-media-worker-startup-proof.mjs",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "lint": "oxlint --max-warnings=551",
+    "lint": "oxlint --max-warnings=542",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=444 --max-fix-tags=38 --max-caps=2041"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=428 --max-fix-tags=38 --max-caps=1960"
   },
   "dependencies": {
     "commander": "^15.0.0",

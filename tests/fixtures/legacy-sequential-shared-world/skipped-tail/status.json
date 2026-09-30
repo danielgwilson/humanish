@@ -1,0 +1,14 @@
+{
+  "schema": "humanish.run-status.v1",
+  "runId": "shared-world-2026-09-30T08-01-52-597Z-a21004d9",
+  "state": "finished",
+  "mode": "live",
+  "pid": 786208,
+  "startedAt": "2026-09-30T08:01:52.604Z",
+  "updatedAt": "2026-09-30T08:01:52.682Z",
+  "completedAt": "2026-09-30T08:01:52.682Z",
+  "outcome": {
+    "verdict": "fail",
+    "estimatedCostUsd": 0.05093
+  }
+}

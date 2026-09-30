@@ -69,9 +69,8 @@ adapter cannot establish them.
 This change supplies an internal boundary for future runtime adapters. Managed
 local execution, artifact installation, controller-death leases, capability
 admission and new media support require separate implementations and proofs.
-Independent hosted browser and terminal lanes, plus concurrent shared-world
-seats that use `runCuaLane`, use this boundary. Sequential shared-world lifecycle
-remains separate and uses the same re-exported provisioning helpers.
+Independent hosted browser and terminal lanes, plus shared-world seats that use
+`runCuaLane`, use this boundary.
 
 The independent lane's `runSession` testing hook now receives a constructed
 `executor` instead of `desktop`/`executorOptions`. A hook should consume the

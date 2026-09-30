@@ -1,0 +1,122 @@
+{
+  "schema": "humanish.actor-trace.v1",
+  "provider": "captured-usage-fixture",
+  "providerVersion": "gpt-5.6-sol",
+  "protocol": "cua-loop",
+  "lane": "computer-use",
+  "persona": {
+    "id": "author",
+    "traitsApplied": [],
+    "promptDigest": "9b29f3aa0132c511"
+  },
+  "redaction": {
+    "status": "passed",
+    "screenshots": "n/a",
+    "notes": "no screenshots captured"
+  },
+  "startedAt": "2026-09-30T08:01:52.630Z",
+  "completedAt": "2026-09-30T08:01:52.634Z",
+  "durationMs": 4,
+  "status": "passed",
+  "completionReason": "goal_satisfied",
+  "reason": "Finished the synthetic task.",
+  "ids": {
+    "model": "gpt-5.6-sol",
+    "turnId": "fixture-pending-computer-call"
+  },
+  "counts": {
+    "turns": 2,
+    "actions": 2,
+    "materialActions": 2,
+    "screenshots": 0,
+    "reasonings": 0,
+    "messages": 1,
+    "idleTurns": 0,
+    "noProgressTurns": 0
+  },
+  "items": [
+    {
+      "id": "ui_action-001",
+      "kind": "ui_action",
+      "lifecycle": "completed",
+      "title": "click (632, 393)",
+      "coord": {
+        "x": 632,
+        "y": 393
+      },
+      "at": "2026-09-30T08:01:52.633Z"
+    },
+    {
+      "id": "ui_action-002",
+      "kind": "ui_action",
+      "lifecycle": "completed",
+      "title": "keypress ENTER",
+      "at": "2026-09-30T08:01:52.633Z"
+    },
+    {
+      "id": "message-003",
+      "kind": "message",
+      "lifecycle": "completed",
+      "title": "message turn 2",
+      "text": "Finished the synthetic task.",
+      "at": "2026-09-30T08:01:52.634Z"
+    }
+  ],
+  "affordanceUse": {
+    "schema": "humanish.affordance-use.v1",
+    "counts": {
+      "pointer": 1,
+      "keyboard": 1
+    },
+    "total": 2,
+    "shortcutTotal": 0
+  },
+  "tokenUsage": {
+    "input": 23082,
+    "output": 458,
+    "cachedInput": 19698,
+    "cacheWriteInput": 3378,
+    "turns": [
+      {
+        "input": 11541,
+        "output": 229,
+        "cachedInput": 9849,
+        "cacheWriteInput": 1689
+      },
+      {
+        "input": 11541,
+        "output": 229,
+        "cachedInput": 9849,
+        "cacheWriteInput": 1689
+      }
+    ],
+    "total": 23540
+  },
+  "capabilities": {
+    "headless": true,
+    "structuredTrace": true,
+    "lanes": [
+      "computer-use"
+    ],
+    "producesScreenshots": true,
+    "byoModel": false,
+    "preGrantableApprovals": false,
+    "inProcessTools": false,
+    "license": "proprietary"
+  },
+  "estimatedCost": {
+    "schema": "humanish.actor-estimated-cost.v1",
+    "estimatedCostUsd": 0.033953,
+    "ratesAsOf": "2026-09-03",
+    "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)",
+    "modelId": "gpt-5.6-sol",
+    "breakdown": {
+      "inputUsd": 0.024793,
+      "outputUsd": 0.00916,
+      "inputTokens": 23082,
+      "outputTokens": 458,
+      "cachedInputTokens": 19698,
+      "cacheWriteInputTokens": 3378
+    }
+  }
+}

@@ -367,8 +367,8 @@ export interface CuaLoopOptions {
    * limit, not this participant's runaway, so it never reads as `gave_up`.
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
-  /** Fail closed on unavailable request usage for routes requiring complete cap accounting.
-   * Enabled by sequential capped studies; absent preserves other routes' existing behavior. */
+  /** Fail closed on unavailable request usage when a spend cap is declared. A library option: no
+   * built-in route enables it, and absent preserves their existing behavior. */
   requireReportedUsageForSpendCap?: boolean;
   /**
    * RUNTIME-ONLY observed-URL callback (#164 handoff crux): invoked with `observation.url` right
@@ -1308,7 +1308,7 @@ export async function runComputerUseLoop(options: CuaLoopOptions): Promise<CuaLo
     completionReason = "harness_error";
     stopCause = "usage_unreported";
     reason =
-      "provider usage is unavailable for a request, so the declared model-spend cap cannot be established; no further participant or closing request was dispatched";
+      "provider usage is unavailable for a request, so the declared model-spend cap cannot be established; no further or closing request was dispatched";
     record({
       id: nextId("notice"),
       kind: "notice",

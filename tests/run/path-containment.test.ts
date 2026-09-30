@@ -415,7 +415,6 @@ describe("run path containment", () => {
       "run/dry-run.ts",
       "run/browser-proof.ts",
       "routes/computer-use/lab.ts",
-      "routes/shared-world/sequential.ts",
       "routes/shared-world/concurrent.ts",
       "routes/scripted-browser.ts",
       "routes/terminal/lab.ts",

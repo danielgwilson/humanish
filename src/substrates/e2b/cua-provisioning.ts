@@ -659,7 +659,7 @@ export async function openDesktopBrowserTarget(
   };
 }
 
-export function desktopBrowserFamily(value: string | undefined): DesktopBrowserFamily {
+function desktopBrowserFamily(value: string | undefined): DesktopBrowserFamily {
   if (value === "firefox") return "firefox";
   if (
     value === "chrome" ||
@@ -1169,7 +1169,7 @@ async function fitBrowserWindowWithinDesktop(
   return resized;
 }
 
-/** Shared hosted-browser geometry capture used by per-lane and sequential shared-world routes. */
+/** Hosted-browser geometry capture shared by the per-lane and shared-world routes. */
 export async function captureDesktopBrowserGeometry(args: {
   desktop: E2BDesktopSandbox;
   browserFamily: DesktopBrowserFamily;

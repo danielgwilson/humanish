@@ -2,7 +2,14 @@ import { scrubPersonaBrief } from "../../lab/persona.js";
 import { withTransientCommsSecrets } from "../../run/narration-secrets.js";
 import { prepareReceivingRun, receivingPublication } from "../../comms/receiving-runtime.js";
 import type { CommsReceivingRun } from "../../comms/receiving.js";
-import { receivingEmailValidationReason } from "../../lab/validation.js";
+import {
+  concurrentSharedWorldValidationReason,
+  desktopMediaValidationReason,
+  externalPublicSharedWorldValidationReason,
+  outputTokenLimitValidationReason,
+  receivingEmailValidationReason,
+  taskProtocolValidationReason,
+} from "../../lab/validation.js";
 // The CONCURRENT shared-world lab backend (#164 phase 2): N persona lanes drive ONE shared,
 // mutable service plane SIMULTANEOUSLY — the actual leverage of a sim. A recomposition of shipped
 // pieces + the getHost wrapper:
@@ -45,10 +52,6 @@ import {
   type AutomaticAnalysisHooks,
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
-import {
-  desktopMediaValidationReason,
-  taskProtocolValidationReason,
-} from "../../lab/validation.js";
 import { randomBytes } from "node:crypto";
 import { describeMissingKeys } from "../../cli/key-resolution.js";
 import {
@@ -122,11 +125,6 @@ import {
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
 import type { DetachedTimers } from "../../substrates/e2b/detached.js";
-import {
-  concurrentSharedWorldValidationReason,
-  outputTokenLimitValidationReason,
-  externalPublicSharedWorldValidationReason,
-} from "../../lab/validation.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { buildObserverData } from "../../observer/data.js";
 import {
@@ -146,12 +144,8 @@ import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
 } from "../../run/selected-output-paths.js";
-import {
-  combineCheckpointDigest,
-  runCheckpointSnapshot,
-  seedRecipeDigest,
-  type SharedWorldLabHooks,
-} from "./sequential.js";
+import { combineCheckpointDigest, runCheckpointSnapshot, seedRecipeDigest } from "./checkpoints.js";
+import { type SharedWorldLabHooks } from "./hooks.js";
 import type { LocalTreeArchive } from "../../run/source-archive.js";
 import {
   buildRunSource,
@@ -645,7 +639,7 @@ function laneTaxonomyLabel(spec: Pick<CuaLaneSpec, "actorType" | "surface" | "ca
 }
 
 /** Build one actor lane's CuaLaneSpec from a roster role (per-actor device IS honored here — each
- *  actor has its OWN desktop, unlike the sequential one-sandbox PoC). */
+ *  actor has its OWN desktop). */
 function buildActorSpec(
   config: LabConfig,
   role: LabActorLane,
@@ -1116,7 +1110,7 @@ async function runConcurrentSharedWorldInScope(
   };
 
   // Pack the working tree ONCE per run, on the host, BEFORE the subject sandbox is created
-  // (mirrors the sequential route + the cua route's ordering): a packing failure fails the run
+  // (mirrors the cua route's ordering): a packing failure fails the run
   // closed here, never spending sandbox cost. Dry-run packs nothing.
   let localTreeArchive: LocalTreeArchive | undefined;
   let localTreeArchiveBuffer: ArrayBuffer | undefined;

@@ -1,7 +1,6 @@
 import {
   effectiveComputerUseLaneIds,
   routesToComputerUse,
-  routesToConcurrentSharedWorld,
   routesToScriptedBrowser,
   routesToSharedWorld,
   routesToTerminalProduct,
@@ -21,10 +20,9 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   const routesToScripted = routesToScriptedBrowser(config);
   const routesToTerminal = routesToTerminalProduct(config);
   const routesToShared = routesToSharedWorld(config);
-  const routesToConcurrent = routesToConcurrentSharedWorld(config);
   // The external-public plane (a real public deployment as the shared plane) consumes host lanes +
-  // subject.publicTarget; it is only ever the concurrent app-url shape.
-  const routesToExternalPublic = routesToConcurrent && config.subject.source === "app-url";
+  // subject.publicTarget; it is the app-url shared-world shape.
+  const routesToExternalPublic = routesToShared && config.subject.source === "app-url";
   const routesToHostedCuaBrowser = config.execution?.target === "e2b-desktop" && routesToCua;
   for (const [index, actor] of config.actors.entries()) {
     // Shared-world ONLY fields on the roster: per-role `entry` is inert anywhere else (invariant 6).
@@ -36,7 +34,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
     // The host-seat marker acts ONLY on the external-public shared-world route; inert elsewhere.
     if (actor.lanes?.some((lane) => lane.host === true) && !routesToExternalPublic) {
       inert.push(
-        `actors[${index}].lanes[].host (the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)`,
+        `actors[${index}].lanes[].host (the designated host-seat marker; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets)`,
       );
     }
     if (routesToCua || routesToTerminal) {
@@ -91,18 +89,18 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   // shared-world route; inert elsewhere. (It is already parse-rejected on non-app-url sources.)
   if (config.subject.publicTarget !== undefined && !routesToExternalPublic) {
     inert.push(
-      "subject.publicTarget (the external-public ownership attestation; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets × concurrency > 1)",
+      "subject.publicTarget (the external-public ownership attestation; needs the external-public shared-world route: app-url × topology shared-world × allowPublicTargets)",
     );
   }
-  // exposure (the synthetic-subject attestation) acts ONLY on the CONCURRENT shared-world route
-  // (the getHost-exposed plane); inert on the sequential shared-world route (loopback) and elsewhere.
+  // exposure (the synthetic-subject attestation) acts ONLY on the shared-world route (the
+  // getHost-exposed plane) and on scripted clones; inert elsewhere.
   if (
     config.subject.exposure !== undefined &&
-    !routesToConcurrent &&
+    !routesToShared &&
     !(routesToScripted && config.subject.source === "clone")
   ) {
     inert.push(
-      "subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs concurrent shared-world or clone × e2b-desktop × scripted-browser)",
+      "subject.exposure (the synthetic-subject attestation for a getHost-exposed plane; needs shared-world or clone × e2b-desktop × scripted-browser)",
     );
   }
   // comms.email drives the in-sandbox email/SMS catch, which needs a subject sandbox HUMANISH
@@ -128,19 +126,6 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   ) {
     inert.push(
       "comms.email.external (this subject is harness-provisioned, so humanish hosts the catch itself and injects its URL; an adopter-hosted catch would receive nothing. Drop `external` here, or move the study to an app-url/operator-provisioned subject)",
-    );
-  }
-  // The SEQUENTIAL shared-world route has no comms wiring at all (no catch deploy, no inbox
-  // instruction) — a comms block there does nothing, and the actors are never told an inbox
-  // exists. Say so at parse time; the concurrent route (the default since #350: all seats live)
-  // is the one that hosts the email funnel (#351).
-  if (
-    config.comms?.email &&
-    config.subject.topology === "shared-world" &&
-    (config.execution?.concurrency ?? 1) <= 1
-  ) {
-    inert.push(
-      "comms.email (the sequential turn-taking shared-world route has no comms wiring — no catch is deployed and no actor is told an inbox exists; remove `execution.concurrency: 1` so all seats run concurrently, which is the route that hosts the email funnel)",
     );
   }
   // clone.keep IS consumed on the cua route (honored on FAILURE: the sandbox is left up to debug
@@ -264,10 +249,7 @@ export function forwardDeclaredWarnings(config: LabConfig): string[] {
   {
     const seats = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
     const cap = config.execution?.concurrency;
-    // concurrency: 1 on a shared-world lab is the SEQUENTIAL selector (turn-taking is that
-    // route's whole design), not a mistaken throttle — no warning there.
-    const sequentialSelector = config.subject.topology === "shared-world" && cap === 1;
-    if (routesToCua && cap !== undefined && seats > 1 && cap < seats && !sequentialSelector) {
+    if (routesToCua && cap !== undefined && seats > 1 && cap < seats) {
       warnings.push(
         `execution.concurrency ${cap} caps a ${seats}-seat roster: seats run in waves of ${cap}, never all live at once. Remove execution.concurrency (the default runs all ${seats} seats simultaneously) or set it to ${seats}; declare a lower cap only to bound simultaneous paid desktops.`,
       );

@@ -1,0 +1,722 @@
+{
+  "schema": "humanish.run-bundle.v1",
+  "runId": "shared-world-2026-09-30T08-01-52-597Z-a21004d9",
+  "mode": "live",
+  "simCount": 3,
+  "createdAt": "2026-09-30T08:01:52.604Z",
+  "cwd": "[target-cwd]",
+  "artifactRoot": ".humanish/runs/shared-world-2026-09-30T08-01-52-597Z-a21004d9",
+  "source": {
+    "packageName": "humanish",
+    "humanishSource": "present",
+    "git": {
+      "schema": "humanish.git-state.v1",
+      "status": "missing",
+      "capturedAt": "2026-09-30T08:01:52.604Z",
+      "head": {
+        "shortSha": null,
+        "refState": "unknown"
+      },
+      "changes": {
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0,
+        "total": 0
+      },
+      "note": "No git work tree was detected."
+    }
+  },
+  "persona": {
+    "id": "author",
+    "name": "Shared-world roster (3 roles)",
+    "source": "lab:shared-world-proof",
+    "sourceDigest": "9b29f3aa0132c511"
+  },
+  "scenario": {
+    "id": "shared-world-shared-world-proof",
+    "title": "Shared-world proof",
+    "goal": "Persona: author.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nLane focus: Create a note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+    "source": "lab:shared-world-proof",
+    "sourceDigest": "9b29f3aa0132c511"
+  },
+  "lifecycle": [
+    {
+      "at": "2026-09-30T08:01:52.604Z",
+      "event": "shared-world.run.created",
+      "message": "Created shared-world run with ONE shared plane and 3 sequential role seats (actor openai-computer-use)."
+    }
+  ],
+  "simulations": [
+    {
+      "id": "sim-001",
+      "index": 1,
+      "personaId": "author",
+      "scenarioId": "shared-world-shared-world-proof",
+      "status": "passed",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "Finished the synthetic task.",
+      "summary": "Role role-author (author): session ended with goal_satisfied.",
+      "streamIds": [
+        "stream-001"
+      ],
+      "startedAt": "2026-09-30T08:01:52.604Z",
+      "updatedAt": "2026-09-30T08:01:52.604Z"
+    },
+    {
+      "id": "sim-002",
+      "index": 2,
+      "personaId": "reviewer",
+      "scenarioId": "shared-world-shared-world-proof",
+      "status": "incomplete",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+      "summary": "Role role-reviewer (reviewer): session ended with budget_reached.",
+      "streamIds": [
+        "stream-002"
+      ],
+      "startedAt": "2026-09-30T08:01:52.604Z",
+      "updatedAt": "2026-09-30T08:01:52.604Z"
+    },
+    {
+      "id": "sim-003",
+      "index": 3,
+      "personaId": "later",
+      "scenarioId": "shared-world-shared-world-proof",
+      "status": "blocked",
+      "streamKind": "browser",
+      "mode": "browser-sim",
+      "progress": 100,
+      "currentStep": "skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+      "summary": "Role role-later skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start.",
+      "streamIds": [
+        "stream-003"
+      ],
+      "startedAt": "2026-09-30T08:01:52.604Z",
+      "updatedAt": "2026-09-30T08:01:52.604Z"
+    }
+  ],
+  "streams": [
+    {
+      "id": "stream-001",
+      "simId": "sim-001",
+      "assignment": {
+        "mission": "Use the shared app.",
+        "focus": "Create a note."
+      },
+      "kind": "browser",
+      "label": "Shared-world role role-author — shared-world-proof",
+      "status": "passed",
+      "transport": "snapshot",
+      "updatedAt": "2026-09-30T08:01:52.604Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Shared desktop, role role-author"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 817,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "browserWindow": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 950,
+          "source": "xwininfo"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 817,
+          "deviceScaleFactor": 1,
+          "source": "cdp"
+        }
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/compose",
+        "intent": "Watch role role-author (author) drive the SHARED app (one plane; sequential turn).",
+        "state": "Finished the synthetic task.",
+        "actorStatus": "passed"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "captured-usage-fixture",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "author",
+          "traitsApplied": [],
+          "promptDigest": "9b29f3aa0132c511"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "2026-09-30T08:01:52.630Z",
+        "completedAt": "2026-09-30T08:01:52.634Z",
+        "durationMs": 4,
+        "status": "passed",
+        "completionReason": "goal_satisfied",
+        "reason": "Finished the synthetic task.",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "fixture-pending-computer-call"
+        },
+        "counts": {
+          "turns": 2,
+          "actions": 2,
+          "materialActions": 2,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 1,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [
+          {
+            "id": "ui_action-001",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "click (632, 393)",
+            "coord": {
+              "x": 632,
+              "y": 393
+            },
+            "at": "2026-09-30T08:01:52.633Z"
+          },
+          {
+            "id": "ui_action-002",
+            "kind": "ui_action",
+            "lifecycle": "completed",
+            "title": "keypress ENTER",
+            "at": "2026-09-30T08:01:52.633Z"
+          },
+          {
+            "id": "message-003",
+            "kind": "message",
+            "lifecycle": "completed",
+            "title": "message turn 2",
+            "text": "Finished the synthetic task.",
+            "at": "2026-09-30T08:01:52.634Z"
+          }
+        ],
+        "affordanceUse": {
+          "schema": "humanish.affordance-use.v1",
+          "counts": {
+            "pointer": 1,
+            "keyboard": 1
+          },
+          "total": 2,
+          "shortcutTotal": 0
+        },
+        "tokenUsage": {
+          "input": 23082,
+          "output": 458,
+          "cachedInput": 19698,
+          "cacheWriteInput": 3378,
+          "turns": [
+            {
+              "input": 11541,
+              "output": 229,
+              "cachedInput": 9849,
+              "cacheWriteInput": 1689
+            },
+            {
+              "input": 11541,
+              "output": 229,
+              "cachedInput": 9849,
+              "cacheWriteInput": 1689
+            }
+          ],
+          "total": 23540
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": 0.033953,
+          "ratesAsOf": "2026-09-03",
+          "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)",
+          "modelId": "gpt-5.6-sol",
+          "breakdown": {
+            "inputUsd": 0.024793,
+            "outputUsd": 0.00916,
+            "inputTokens": 23082,
+            "outputTokens": 458,
+            "cachedInputTokens": 19698,
+            "cacheWriteInputTokens": 3378
+          }
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "role role-author actor trace",
+          "path": "actors/stream-001.json",
+          "kind": "trace"
+        }
+      ]
+    },
+    {
+      "id": "stream-002",
+      "simId": "sim-002",
+      "assignment": {
+        "mission": "Use the shared app.",
+        "focus": "Review the note."
+      },
+      "kind": "browser",
+      "label": "Shared-world role role-reviewer — shared-world-proof",
+      "status": "incomplete",
+      "transport": "snapshot",
+      "updatedAt": "2026-09-30T08:01:52.604Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Shared desktop, role role-reviewer"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 817,
+        "deviceScaleFactor": 1,
+        "isMobile": false
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        },
+        "browserWindow": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 950,
+          "source": "xwininfo"
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 817,
+          "deviceScaleFactor": 1,
+          "source": "cdp"
+        }
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/inbox",
+        "intent": "Watch role role-reviewer (reviewer) drive the SHARED app (one plane; sequential turn).",
+        "state": "study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+        "actorStatus": "incomplete"
+      },
+      "actor": {
+        "schema": "humanish.actor-trace.v1",
+        "provider": "captured-usage-fixture",
+        "providerVersion": "gpt-5.6-sol",
+        "protocol": "cua-loop",
+        "lane": "computer-use",
+        "persona": {
+          "id": "reviewer",
+          "traitsApplied": [],
+          "promptDigest": "0634fbf3de12b200"
+        },
+        "redaction": {
+          "status": "passed",
+          "screenshots": "n/a",
+          "notes": "no screenshots captured"
+        },
+        "startedAt": "2026-09-30T08:01:52.651Z",
+        "completedAt": "2026-09-30T08:01:52.651Z",
+        "durationMs": 0,
+        "status": "incomplete",
+        "completionReason": "budget_reached",
+        "stopCause": "study_spend_limit",
+        "reason": "study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+        "ids": {
+          "model": "gpt-5.6-sol",
+          "turnId": "fixture-pending-computer-call"
+        },
+        "counts": {
+          "turns": 1,
+          "actions": 0,
+          "materialActions": 0,
+          "screenshots": 0,
+          "reasonings": 0,
+          "messages": 0,
+          "idleTurns": 0,
+          "noProgressTurns": 0
+        },
+        "items": [],
+        "tokenUsage": {
+          "input": 11541,
+          "output": 229,
+          "cachedInput": 9849,
+          "cacheWriteInput": 1689,
+          "turns": [
+            {
+              "input": 11541,
+              "output": 229,
+              "cachedInput": 9849,
+              "cacheWriteInput": 1689
+            }
+          ],
+          "total": 11770
+        },
+        "capabilities": {
+          "headless": true,
+          "structuredTrace": true,
+          "lanes": [
+            "computer-use"
+          ],
+          "producesScreenshots": true,
+          "byoModel": false,
+          "preGrantableApprovals": false,
+          "inProcessTools": false,
+          "license": "proprietary"
+        },
+        "estimatedCost": {
+          "schema": "humanish.actor-estimated-cost.v1",
+          "estimatedCostUsd": 0.016977,
+          "ratesAsOf": "2026-09-03",
+          "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)",
+          "modelId": "gpt-5.6-sol",
+          "breakdown": {
+            "inputUsd": 0.012397,
+            "outputUsd": 0.00458,
+            "inputTokens": 11541,
+            "outputTokens": 229,
+            "cachedInputTokens": 9849,
+            "cacheWriteInputTokens": 1689
+          }
+        }
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        },
+        {
+          "label": "role role-reviewer actor trace",
+          "path": "actors/stream-002.json",
+          "kind": "trace"
+        }
+      ]
+    },
+    {
+      "id": "stream-003",
+      "simId": "sim-003",
+      "assignment": {
+        "mission": "Use the shared app.",
+        "focus": "Review the final note."
+      },
+      "kind": "browser",
+      "label": "Shared-world role role-later — shared-world-proof",
+      "status": "blocked",
+      "transport": "snapshot",
+      "updatedAt": "2026-09-30T08:01:52.604Z",
+      "embed": {
+        "kind": "placeholder",
+        "title": "Shared desktop, role role-later"
+      },
+      "desktopGeometry": {
+        "screen": {
+          "requested": {
+            "width": 1440,
+            "height": 950
+          },
+          "verified": {
+            "width": 1440,
+            "height": 950,
+            "source": "xdpyinfo"
+          }
+        }
+      },
+      "ui": {
+        "route": "http://127.0.0.1:3000/",
+        "intent": "Watch role role-later (later) drive the SHARED app (one plane; sequential turn).",
+        "state": "skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start"
+      },
+      "artifacts": [
+        {
+          "label": "run bundle",
+          "path": "run.json",
+          "kind": "bundle"
+        },
+        {
+          "label": "review",
+          "path": "review.md",
+          "kind": "review"
+        },
+        {
+          "label": "events",
+          "path": "events.ndjson",
+          "kind": "events"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "event-000-created",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "info",
+      "type": "shared-world.run.created",
+      "message": "Created shared-world run for shared-world-proof (actor openai-computer-use, 3 role(s), ONE shared plane, sequential turns)."
+    },
+    {
+      "id": "event-001-plane",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "info",
+      "type": "shared-world.plane.provenance",
+      "message": "Shared plane: clone of example-org/collab-app@abc123def4567890abc1, served at http://127.0.0.1:3000/ in-sandbox; seed recipe da2a491995d48367; env names: DATABASE_URL (values never persisted).",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-002-session-role-author",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "info",
+      "type": "shared-world.session.goal_satisfied",
+      "message": "Role role-author: passed — Finished the synthetic task.",
+      "simId": "sim-001",
+      "streamId": "stream-001"
+    },
+    {
+      "id": "event-003-session-role-reviewer",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "warn",
+      "type": "shared-world.session.budget_reached",
+      "message": "Role role-reviewer: incomplete — study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+      "simId": "sim-002",
+      "streamId": "stream-002"
+    },
+    {
+      "id": "event-004-blocked-role-later",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "warn",
+      "type": "shared-world.session.blocked",
+      "message": "Role role-later skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start.",
+      "simId": "sim-003",
+      "streamId": "stream-003"
+    },
+    {
+      "id": "event-005-timeline",
+      "at": "2026-09-30T08:01:52.604Z",
+      "level": "info",
+      "type": "shared-world.timeline",
+      "message": "Interaction timeline: 5 entries (2 turn(s) interleaved with checkpoints); deltas observed on cp-after-role-author. Attribution ceiling: sequential-only, no-concurrent-races, delta-attributed-to-turn-not-action."
+    }
+  ],
+  "redaction": {
+    "status": "passed",
+    "notes": "Typed text recorded as length only and reasoning/messages pass through text redaction. Screenshots are blurred at capture (policies.redactScreenshots: true) for a share-as-is bundle. Checkpoints persist digest-only."
+  },
+  "artifacts": {
+    "run": "run.json",
+    "reviewJson": "review.json",
+    "reviewMarkdown": "review.md",
+    "observerData": "observer/observer-data.json",
+    "events": "events.ndjson"
+  },
+  "review": {
+    "schema": "humanish.review.v1",
+    "verdict": "fail",
+    "summary": "Shared-world run (ONE plane, sequential): 1/3 role(s) reached a terminal, engaged verdict; 1 checkpoint delta(s) observed.",
+    "gaps": [
+      "role-reviewer: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start",
+      "role-later: skipped: study budget reached: estimated model spend $0.05093 crossed execution.caps.maxTotalUsd=0.042442499999999994; subsequent sequential participants will not start"
+    ]
+  },
+  "cost": {
+    "schema": "humanish.run-cost-summary.v1",
+    "currency": "usd",
+    "estimatedTotalUsd": 0.05093,
+    "ratesAsOf": "2026-09-03",
+    "fullyEstimated": false,
+    "placeholder": false,
+    "breakdown": [
+      {
+        "kind": "model-tokens",
+        "laneId": "role-author",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.033953,
+        "ratesAsOf": "2026-09-03",
+        "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)"
+      },
+      {
+        "kind": "model-tokens",
+        "laneId": "role-reviewer",
+        "modelId": "gpt-5.6-sol",
+        "estimatedCostUsd": 0.016977,
+        "ratesAsOf": "2026-09-03",
+        "source": "developers.openai.com/api/docs/pricing (gpt-5.6 family, standard tier)"
+      },
+      {
+        "kind": "desktop-minutes",
+        "estimatedCostUsd": null,
+        "reason": "no_duration",
+        "ratesAsOf": null,
+        "desktop": {
+          "minutes": null,
+          "durationBasis": "host-acquired-to-cleanup"
+        }
+      }
+    ],
+    "tokenUsage": {
+      "input": 34623,
+      "output": 687,
+      "total": 35310
+    },
+    "desktopMinutes": null,
+    "note": "Estimated 0.05093 USD total (LOWER BOUND — some lines unmeasured/unpriced). Every figure is an ESTIMATE (rates as of 2026-09-03 — the OLDEST contributing rate, since an aggregate is only as fresh as its stalest input), a rate-table multiply, NOT an authoritative provider charge. Desktop compute is unmeasured: no allocation CPU/RAM observation is available."
+  },
+  "feedbackCandidates": [],
+  "subject": {
+    "source": "clone",
+    "repo": "example-org/collab-app",
+    "commit": "abc123def4567890abc1",
+    "envNames": [
+      "DATABASE_URL"
+    ],
+    "state": {
+      "provenance": "seeded",
+      "seed": [
+        {
+          "name": "migrate",
+          "when": "before-start",
+          "commandDigest": "867652585ad90648",
+          "ok": true,
+          "exitCode": 0,
+          "durationMs": 0
+        }
+      ]
+    }
+  },
+  "attributionClass": "shared-world",
+  "sharedWorld": {
+    "schema": "humanish.shared-world.v1",
+    "topology": "shared-world",
+    "topologyMode": "sequential",
+    "roleCount": 3,
+    "plane": {
+      "commit": "abc123def4567890abc1",
+      "seedDigest": "da2a491995d48367",
+      "envNames": [
+        "DATABASE_URL"
+      ]
+    },
+    "sequence": [
+      "role-author",
+      "role-reviewer"
+    ],
+    "timeline": [
+      {
+        "kind": "checkpoint",
+        "name": "cp-baseline",
+        "digest": "59787677753f4f78",
+        "deltaFromPrev": false
+      },
+      {
+        "kind": "turn",
+        "roleId": "role-author",
+        "simId": "sim-001",
+        "streamId": "stream-001",
+        "commit": "abc123def4567890abc1",
+        "seedDigest": "da2a491995d48367"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "cp-after-role-author",
+        "digest": "3140d5365032b9e3",
+        "deltaFromPrev": true
+      },
+      {
+        "kind": "turn",
+        "roleId": "role-reviewer",
+        "simId": "sim-002",
+        "streamId": "stream-002",
+        "commit": "abc123def4567890abc1",
+        "seedDigest": "da2a491995d48367"
+      },
+      {
+        "kind": "checkpoint",
+        "name": "cp-after-role-reviewer",
+        "digest": "3140d5365032b9e3",
+        "deltaFromPrev": false
+      }
+    ],
+    "attributionLimits": [
+      "sequential-only",
+      "no-concurrent-races",
+      "delta-attributed-to-turn-not-action"
+    ],
+    "skippedTail": {
+      "afterRoleId": "role-reviewer",
+      "roles": [
+        {
+          "roleId": "role-later",
+          "simId": "sim-003",
+          "streamId": "stream-003"
+        }
+      ],
+      "cause": "study_spend_limit",
+      "maxTotalUsd": 0.042442499999999994,
+      "estimatedTotalUsd": 0.050929999999999996
+    }
+  }
+}

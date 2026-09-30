@@ -39,7 +39,6 @@ import {
   formatConcurrentSharedWorldLabHuman,
   formatCuaLabHuman,
   formatScriptedLabHuman,
-  formatSharedWorldLabHuman,
   formatTerminalLabHuman,
 } from "./lab-format.js";
 
@@ -433,57 +432,6 @@ export async function runTerminalBackend(args: {
   }
   const result = outcome.result;
   writeResult(args.command, args.io, result, formatTerminalLabHuman);
-  args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
-
-  if (args.mode === "watch" && result.ok && !wantsMachine) {
-    await renderAndMaybeFollowObserver({
-      command: args.command,
-      cwd: args.options.cwd,
-      io: args.io,
-      port: args.options.port ?? "0",
-      runInput: result.runId,
-      ...(args.options.detach === undefined ? {} : { detach: args.options.detach }),
-      ...(shouldOpen === undefined ? {} : { open: shouldOpen }),
-    });
-  }
-}
-
-export async function runSharedWorldBackend(args: {
-  command: Command;
-  io: CliIo;
-  config: LabConfig;
-  labProvenance?: RunLabProvenance;
-  mode: "run" | "watch";
-  options: LabCommandOptions;
-  scorer?: LoadedAdapterScorer;
-}): Promise<void> {
-  const wantsMachine = wantsJson(args.command);
-  const shouldOpen = resolveBackendShouldOpen({
-    optionOpen: args.options.open,
-    defaultsOpen: args.config.defaults?.open,
-    mode: args.mode,
-    wantsMachine,
-  });
-
-  const outcome = await runLab(args.config, {
-    automaticAnalysis: cliAutomaticAnalysisHooks(args.io),
-    cwd: args.options.cwd,
-    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-    open: args.mode === "watch" ? false : shouldOpen,
-    ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),
-    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-    ...(args.scorer
-      ? {
-          sharedWorldHooks: browserScorerHooks(args.scorer),
-          scorerProvenance: args.scorer.provenance,
-        }
-      : {}),
-  });
-  if (outcome.backend !== "shared-world") {
-    throw new Error(`Expected shared-world backend, got ${outcome.backend}.`);
-  }
-  const result = outcome.result;
-  writeResult(args.command, args.io, result, formatSharedWorldLabHuman);
   args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
 
   if (args.mode === "watch" && result.ok && !wantsMachine) {

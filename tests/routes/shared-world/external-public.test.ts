@@ -37,7 +37,7 @@ import {
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { routesToConcurrentSharedWorld } from "../../../src/lab/routing.js";
 import { runLab, selectLabBackend } from "../../../src/lab/engine.js";
-import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/sequential.js";
+import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,
