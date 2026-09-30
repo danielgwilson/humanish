@@ -44,15 +44,16 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    which checks each image with `assertScreenshotEvidence` (`src/evidence/image.ts`). Lane errors
    pass through `redactText` (`src/evidence/redaction.ts`) before they are recorded. Screenshots
    are blurred only when the lab sets `policies.redactScreenshots: true`.
-7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`.
-   `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
-   `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
-   The route writes one bundle before the lanes start and the final one after they finish. The
-   terminal, scripted and preview routes instead start their run with `runScope` and
-   `startRun` and publish it with `Run.finish` (`src/run/run.ts`). `Run.finish` writes
-   `run.json`, then the `status.json` outcome, then `review.json`, `review.md`, `events.ndjson`
-   and `observer/observer-data.json`, and the pointer last. The computer-use and shared-world
-   routes move onto it next.
+7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`. The route
+   started its run with `runScope` and `startRun` (`src/run/run.ts`) before any sandbox. It
+   publishes an in-progress bundle with `Run.writeSnapshot` before the lanes start, rewrites it
+   from the lanes' live traces through `startLiveTraceFlush`
+   (`src/routes/computer-use/live-flush.ts`), and publishes the final bundle with `Run.finish`.
+   `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
+   `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
+   `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
+   status outcome and writes the pointer only until one pointer write succeeds. The terminal,
+   scripted and preview routes publish the same way; the shared-world route moves onto it next.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs

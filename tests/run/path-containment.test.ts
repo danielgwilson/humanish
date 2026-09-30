@@ -422,16 +422,13 @@ describe("run path containment", () => {
   it("wires every direct run producer through the exclusive run directory guard", async () => {
     const read = (file: string) => readFile(path.resolve("src", file), "utf8");
     // Producers not yet on the run scope call the guard themselves; the scope calls it for the rest.
-    const direct = [
-      "routes/computer-use/lab.ts",
-      "routes/shared-world/concurrent.ts",
-      "run/run.ts",
-    ];
+    const direct = ["routes/shared-world/concurrent.ts", "run/run.ts"];
     const scoped = [
       "routes/terminal/lab.ts",
       "routes/terminal/session.ts",
       "routes/scripted-browser.ts",
       "run/dry-run.ts",
+      "routes/computer-use/lab.ts",
     ];
     for (const producer of direct) {
       expect(await read(producer), producer).toContain("createRunArtifactPaths");
