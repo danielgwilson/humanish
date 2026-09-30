@@ -44,8 +44,8 @@ export function registerTransientCommsSecrets(values: string[]): void {
   if (!scope) return;
   usable(scope);
   for (const value of values) {
-    // Match the existing narration registry: short subjects such as "Hi" are ordinary prose.
-    // Received OTP extraction starts at four characters; management keys and addresses are longer.
+    // Values under four characters are ordinary prose (a subject such as "Hi"). Received OTP
+    // extraction starts at four characters; management keys and addresses are longer.
     if (value.length < 4 || scope.values.has(value)) continue;
     const bytes = Buffer.byteLength(value);
     if (

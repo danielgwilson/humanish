@@ -1,11 +1,6 @@
-// #358 salvage tier: every created sandbox id is journaled to the run dir THE MOMENT create
-// returns, before any work happens in it. The lane loop lives in the caller's local process, so a
-// sleeping laptop / crash / kill takes every in-memory sandbox id with it — leaving nothing to
-// clean up BY ID and forcing the one thing this codebase never does (enumerate the account).
-// A durable append-only receipt file makes an interrupted run reclaimable by exact recorded id:
-// `humanish reclaim` reads it, kills what is still alive, and reports honestly. The server-side
-// create-time TTL remains the liveness backstop either way; receipts make the cleanup PROMPT and
-// the spend loss small instead of TTL-bounded.
+// Every created sandbox id is journaled to the run dir the moment create returns, before any work
+// happens in it. The lane loop lives in the caller's local process, so a sleeping laptop, crash or
+// kill loses every in-memory id; this append-only file keeps them for `humanish reclaim`.
 import { appendFile } from "node:fs/promises";
 
 import { prepareContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";

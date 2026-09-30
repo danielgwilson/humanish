@@ -1,8 +1,5 @@
-// `humanish stats`: what a directory of studies cost and how they came out (#472).
-//
-// Every number here already exists per bundle. What did not exist was the roll-up, so "what has
-// this month of studies cost" meant reading run.json files by hand. The rules the per-run numbers
-// live by carry over unchanged: an estimate is labelled an estimate, a run whose cost is unknown
+// `humanish stats`: what a directory of studies cost and how they came out. It rolls up per-bundle
+// numbers under the per-run rules: an estimate is labelled an estimate, a run whose cost is unknown
 // counts as unknown and never as zero, and every rate has a denominator next to it.
 
 import path from "node:path";
@@ -37,7 +34,7 @@ interface StatsLabRow {
   /** Over live runs with both timestamps. */
   medianDurationMs?: number;
   durationSamples: number;
-  /** Legacy participant/desktop-only median over runs with a known estimate. */
+  /** Participant and desktop median over runs with a known estimate; excludes analysis. */
   medianCostUsd?: number;
   costSamples: number;
   /** Runs with no estimate: a subscription brain, an interrupted run, an old bundle. Never zero. */
@@ -50,7 +47,7 @@ interface StatsDayRow {
   day: string;
   runs: number;
   live: number;
-  /** Legacy participant/desktop subtotal; costs also includes retained analysis. */
+  /** Participant and desktop subtotal; `costs` also includes retained analysis. */
   estimatedSpendUsd: number;
   unpricedRuns: number;
   costs: StudyCosts;
@@ -67,7 +64,7 @@ export interface StatsResult {
     live: number;
     dryRun: number;
     running: number;
-    /** Legacy participant/desktop subtotal. Use costs.estimatedTotalUsd for retained analysis too. */
+    /** Participant and desktop subtotal. costs.estimatedTotalUsd also includes retained analysis. */
     estimatedSpendUsd: number;
     unpricedRuns: number;
     participants: StatsParticipants;

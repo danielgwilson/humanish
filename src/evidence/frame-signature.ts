@@ -1,17 +1,5 @@
 import { PNG } from "pngjs";
 
-// ---------------------------------------------------------------------------
-// Perceptual signature.
-//
-// A coarse, deterministic hash of a frame for no-progress detection in the loop.
-// It is robust to small noise (a blinking cursor, a single changed clock digit)
-// because it area-averages the frame down to a 16x16 grayscale grid and then
-// quantizes each cell to 4 levels (2 bits). Two visually-identical frames produce
-// the same signature; a clearly different frame differs. It is NOT reversible to
-// the image, so exposing it (e.g. in a trace) is public-safe. On any decode
-// failure it returns a stable fallback so two unreadable frames compare equal.
-// ---------------------------------------------------------------------------
-
 const SIGNATURE_GRID = 32;
 const SIGNATURE_LEVELS = 16;
 const SIGNATURE_FALLBACK = "unreadable";
@@ -21,23 +9,16 @@ const SIGNATURE_FALLBACK = "unreadable";
  * a SIGNATURE_GRID x SIGNATURE_GRID grayscale grid, CONTRAST-NORMALIZES that grid, quantizes each
  * cell to SIGNATURE_LEVELS, and packs the cells into a hex string. Deterministic (no Date, no
  * random). Returns SIGNATURE_FALLBACK on any decode failure so two unreadable frames compare equal.
+ * The hash cannot be reversed to the image, so exposing it in a trace is public-safe.
  *
- * Why normalization, and why this grid (#383). The original was 16x16 at 2 bits per cell with no
- * normalization. On a 1440x950 desktop that is one cell per ~90x59 px, and on a light-themed web app
- * the area-average of nearly every cell lands at the top of the range: a measured run had 93% of the
- * 256 cells pinned to level 3 and levels 0 and 1 never used at all. The hash was effectively a
- * constant, so renaming a row in a sidebar, adding a list item, or opening a small panel could not
- * move it — 22 frames across one run produced 5 distinct values, and 9 visibly different consecutive
- * frames produced ONE. The no-progress backstop read that as a stuck agent and ended a lane that was
- * a foreign key away from finishing its mission.
+ * Normalization stretches each frame's own min..max across the full range before quantizing, so a
+ * mostly-white UI uses all the levels. Without it, a light-themed app pinned 93% of cells to one
+ * level and visibly different frames hashed the same. The 32x32 grid makes a cell about 45x30 px on
+ * a 1440x950 desktop, so widget-sized changes survive the averaging.
  *
- * Stretching each frame's own min..max across the full range before quantizing is what makes a
- * mostly-white UI use the levels it actually has, and the finer grid shrinks a cell to ~45x30 px so
- * ordinary widget-sized changes survive the averaging.
- *
- * This is still a coarse whole-frame hash and it is still only ONE input to the backstop — see the
- * corroboration rule in src/actors/computer-use/loop.ts, which is what keeps a blind frame from
- * ending a run on its own.
+ * It is still a coarse whole-frame hash and only one input to the no-progress backstop. The
+ * corroboration rule in src/actors/computer-use/loop/backstop.ts keeps a blind frame from ending a
+ * run on its own.
  */
 export function perceptualSignature(pngBytes: Buffer | Uint8Array): string {
   let cells: number[];

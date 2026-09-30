@@ -5,11 +5,9 @@ import { PNG } from "pngjs";
 
 import { SCREENSHOT_MAX_SOURCE_PIXELS, readPngDeclaredDimensions } from "./screenshot-image.js";
 
-// Single source of truth for public-safety redaction patterns. Both the Codex
-// actor trace (src/actors/codex/app-server.ts) and the run-bundle scanner/redactor
-// (src/run/verify-artifacts.ts, selection.ts, manage.ts) use these so the denylist
-// cannot drift between producers and the verify gate. See docs/contracts/policy.md for the
-// enforcement-scope policy.
+// Single source of truth for public-safety redaction patterns. Producers and the verify gate
+// both use these, so the denylist cannot drift between them. See docs/contracts/policy.md for
+// the enforcement-scope policy.
 
 const SECRET_PATTERNS: RegExp[] = [
   /\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b/g,
@@ -146,8 +144,6 @@ const SCREENSHOT_MAX_WIDTH_DEFAULT = 96;
 // makes the output too coarse to read text off: a 1024px+ desktop frame is
 // downscaled at least ~8x. A caller can only ask for something smaller.
 const SCREENSHOT_MAX_WIDTH_CAP = 128;
-// Reject absurd source dimensions before decode so a crafted IHDR cannot OOM the
-// process before the try/catch can fall back to a placeholder.
 const SCREENSHOT_PLACEHOLDER_GRAY = 128;
 
 /**
@@ -230,8 +226,10 @@ function effectiveBlurRadius(outW: number): number {
 }
 
 // Peek a PNG's declared IHDR dimensions without decoding it, and report whether
-// the pixel count exceeds the cap. A too-short or non-PNG buffer returns false
-// and falls through to PNG.sync.read, which throws and lands on the placeholder.
+// the pixel count exceeds the cap, so a crafted IHDR cannot OOM the process before
+// the try/catch can fall back to a placeholder. A too-short or non-PNG buffer
+// returns false and falls through to PNG.sync.read, which throws and lands on the
+// placeholder.
 function sourcePixelsExceedCap(buf: Buffer): boolean {
   const dimensions = readPngDeclaredDimensions(buf);
   return dimensions !== null && dimensions.width * dimensions.height > SCREENSHOT_MAX_SOURCE_PIXELS;

@@ -80,7 +80,7 @@ export function formatStudyTaskFunnel(funnel: StudyTaskFunnel): string {
     .map((task) => {
       if (!task.observable) return `${task.id} (no completion criterion)`;
       // A count that is entirely unmeasured must not render as a bare "0/3": that reads as a
-      // participant failure when it is our observer that produced nothing (#514).
+      // participant failure when it is our observer that produced nothing.
       if (task.unmeasured === task.sessions) {
         return `${task.id} (never measured in ${task.sessions})`;
       }
@@ -151,8 +151,7 @@ export function formatParticipantOutcomes(
   append(outcomes.abandoned, ["abandoned"], "gave up");
   append(outcomes.ranOut, ["incomplete", "timed_out"], "interrupted (stop details unavailable)");
   // "blocked" covers an approval the run could not give AND a blocker the participant reported in
-  // its own words (#476); the old "on an approval" read wrongly on a keyboard-first participant who
-  // wrote "Blocked before diagram creation" about a mouse-only modal.
+  // its own words, so the label names no cause.
   if (outcomes.blocked > 0) parts.push(`${outcomes.blocked} blocked`);
   append(outcomes.harnessFailed, ["failed"], "lost to a harness failure");
   // Last, and separate, because it cuts across the outcomes rather than partitioning them: someone

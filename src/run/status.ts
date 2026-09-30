@@ -1,24 +1,14 @@
-// Run identity + liveness on disk (#455/#475): one small record per run that says WHICH LAB the
-// run belongs to and WHETHER IT IS STILL ALIVE, written by every backend.
+// Run identity and liveness on disk: one small record per run, written by every backend, that says
+// which lab the run belongs to and whether it is still alive. A reader can list and classify runs
+// from it without parsing every bundle, and can tell a live run from an abandoned one.
 //
-// Why it exists. Two questions could not be answered from the filesystem before this:
-//   1. "which lab produced this run?" — the bundle carried no lab field; attribution rode a string
-//      convention (`persona.source = "lab:<id>"`) that is not universal.
-//   2. "is this run still going?" — the mid-run bundle flush is gated on an interactive-observer
-//      callback, so a run launched by an agent (`lab run --json`) or detached wrote nothing at all
-//      until it completed. Anything watching the directory could not tell running from abandoned.
+// run.json remains the evidence of record. This file is a derived index and liveness record:
+// `verify` never gates on it, nothing here is a claim about what a participant did, and when the
+// two disagree run.json wins and this file can be rebuilt from it.
 //
-// EVIDENCE VS INDEX (the honesty rule that makes this safe). `run.json` remains the
-// evidence-of-record; this file is a DERIVED INDEX + LIVENESS RECORD. `verify` never gates on it,
-// nothing here is a claim about what a participant did, and when the two disagree `run.json` wins
-// and this file is rebuildable from it. It exists so a reader can list and classify runs without
-// parsing every bundle (a 25-run tree measured 152ms warm that way), and so a live run is
-// recognizable while it is live.
-//
-// PUBLIC-SAFETY. Only public-safe fields: the run id, the lab id/path/origin (author-chosen names,
-// the same strings `humanish lab list` already prints), the mode, a local pid, and timestamps.
-// Deliberately NOT the hostname or any user/path identity — this file sits inside a run directory
-// that an operator may share, so it must carry nothing a share-safety gate would have to strip.
+// Public safety: it holds only the run id, the lab id/path/origin (the strings `humanish lab list`
+// prints), the mode, a local pid and timestamps. It holds no hostname or user/path identity: an
+// operator may share the run directory, so a share-safety gate must have nothing to strip here.
 
 import type { RunBundle } from "./bundle.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./selected-output-paths.js";
@@ -95,7 +85,7 @@ export interface RunStatusRecord {
   mode: "dry-run" | "live";
   /** Absent when the run did not come from a lab manifest (a library caller, a bare `run`). */
   lab?: RunLabProvenance;
-  /** The pid that owns the run, for local liveness and (later) cancellation. */
+  /** The pid that owns the run, for local liveness checks. */
   pid: number;
   startedAt: string;
   /** Refreshed on a fixed cadence while the run is alive; the staleness signal. */

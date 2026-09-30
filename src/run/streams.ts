@@ -62,11 +62,11 @@ interface RunStreamCompletion {
 
 /**
  * The CLOSED set of core meaningful-use scoring components. Closed by design: these are the generic
- * dimensions core itself meters (setup/filesystem/nested/actor/product/feedback). A product-specific
- * scorecard does NOT extend this enum (that would be closed-taxonomy rot — every adopter's nouns
- * leaking into core); it ships as a thin in-repo extension that emits a namespaced `RunAdapterScore`
- * via the lane's `score` hook, leaving its own component breakdown in that score's `data`. Exported
- * so a thin adapter can type against core's score shape without forking.
+ * dimensions core itself meters (setup/filesystem/nested/actor/product/feedback). A
+ * product-specific scorecard does NOT extend this enum, so adopters' nouns stay out of core. It
+ * ships as a thin in-repo extension that emits a namespaced `RunAdapterScore` via the lane's
+ * `score` hook, leaving its own component breakdown in that score's `data`. Exported so a thin
+ * adapter can type against core's score shape without forking.
  */
 export type RunMeaningfulUseComponentId =
   | "setup-correctness"
@@ -204,10 +204,10 @@ export interface RunStream {
     url?: string;
     title?: string;
   };
-  /** Set by the attached watch server when the lane's sandbox is gone (#357): the injected
-   *  live URL would render a provider error page, so viewers fall back to recorded evidence.
-   *  Runtime-only — never persisted into bundles; declared here because the served
-   *  observer-data carries it and the client is typed against this contract. */
+  /** Set by the attached watch server when the lane's sandbox is gone: the injected live URL
+   *  would render a provider error page, so viewers fall back to recorded evidence. Runtime-only
+   *  and never persisted into bundles; declared here because the served observer-data carries it
+   *  and the client is typed against this contract. */
   liveEnded?: boolean;
   /**
    * Browser CSS layout viewport. Deterministic browser adapters may declare and render this

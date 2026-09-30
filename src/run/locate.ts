@@ -94,8 +94,7 @@ export async function readImplicitProjectFile(
   return bytes.toString("utf8");
 }
 
-/** Resolve "latest" or an explicit run id to its prepared artifact paths. Exported for the
- *  reclaim command (#358), which must locate a run WITHOUT trusting anything but the managed dir. */
+/** Resolve "latest" or an explicit run id to its prepared artifact paths. */
 export async function resolveRunPath(
   cwd: string,
   runInput: string,

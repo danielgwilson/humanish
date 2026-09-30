@@ -92,8 +92,8 @@ const issueKey = Symbol("FinishedRun");
 /**
  * Proof that one run published its final bundle, and the only input automatic analysis accepts.
  * A private field makes the type nominal, so no object literal satisfies it, `isIssued` checks
- * that field at runtime, and the constructor refuses callers without the module-private key. This guards against accidental
- * misuse; code in the same process can still forge one.
+ * that field at runtime, and the constructor refuses callers without the module-private key. This
+ * guards against accidental misuse; code in the same process can still forge one.
  */
 export class FinishedRun {
   readonly #observer: ObserverTarget | undefined;

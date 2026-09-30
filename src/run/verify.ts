@@ -384,7 +384,7 @@ export async function loadRunBundle(
   return loadRunBundlePrepared(cwd, runPaths);
 }
 
-/** Internal continuity seam for callers that already bound one run identity. */
+/** loadRunBundle for a caller that already holds prepared paths. Revalidates them first. */
 export async function loadRunBundlePrepared(
   cwdInput: string,
   runPaths: PreparedRunArtifactPaths,
@@ -405,7 +405,7 @@ export async function loadRunBundlePrepared(
   };
 }
 
-/** Internal continuity seam for callers that already bound one run identity. */
+/** verifyRun for a caller that already holds prepared paths. Revalidates them first. */
 export async function verifyRunPrepared(
   cwdInput: string,
   runInput: string,
@@ -486,8 +486,8 @@ function buildShareSafety(args: {
 
 /**
  * The `subject state provenance` check (invariant 5 + invariant 4): a bundle's subject CLAIM
- * must match its recorded evidence. Bundles without a subject block (all pre-existing and
- * non-cua bundles) pass untouched. Live-vs-dry-run is judged from bundle.mode, exactly like
+ * must match its recorded evidence. A bundle without a subject block passes untouched.
+ * Live-vs-dry-run is judged from bundle.mode, exactly like
  * noEngagementActorFindings. Covers both the state story (seed/external) and, for the
  * local-tree route, the archive content pin.
  */
@@ -577,9 +577,9 @@ function subjectStateFindings(bundle: RunBundle): string[] {
     case "undeclared":
       break;
     case "external-public": {
-      // #164 phase 2: an operator-declared, operator-owned public deployment humanish neither
-      // provisioned nor seeded. There is no in-sandbox state story — a seed record or an external
-      // channel here would contradict the "no subject sandbox" invariant of this plane class.
+      // An operator-declared, operator-owned public deployment that humanish neither provisioned
+      // nor seeded. It has no in-sandbox state story, so a seed record or an external channel here
+      // contradicts the "no subject sandbox" invariant of this plane class.
       if (subject.source !== "app-url") {
         findings.push(
           'state marker "external-public" requires subject.source "app-url" — the external-public plane is a real public deployment, not a clone/local-tree subject',

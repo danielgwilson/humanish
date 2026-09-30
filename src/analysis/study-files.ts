@@ -12,7 +12,11 @@ import {
 // inside the run, the file a single-link regular file that stays inside it, and the read bounded.
 // Evidence capture, analysis jobs, the analysis store, cost reading and export all read through here.
 
-/** Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. */
+/**
+ * Analysis inputs are retained local artifacts, never URLs or caller-selected outputs. The path is
+ * percent-decoded up to five times, and each round must still be a plain relative path, so an
+ * encoded `..` or separator cannot survive into a later decode.
+ */
 export function isStudyEvidencePath(value: string): boolean {
   if (!value || value.length > 1024) return false;
   try {
