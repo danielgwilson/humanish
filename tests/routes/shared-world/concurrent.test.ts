@@ -44,6 +44,7 @@ import type {
   RunBundle,
   SubjectPhaseEvent,
 } from "../../../src/index.js";
+import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
 import {
   serveObserver,
@@ -1687,17 +1688,29 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
         "Local tree root produced zero packable entries after the always-on denylist.",
       );
     };
+    const analysis = automaticAnalysisBoundary();
     const result = await runConcurrentSharedWorld({
       cwd,
       config: localTreeConcurrentConfig(3, 3),
       dryRun: false,
       hooks,
+      automaticAnalysis: { run: analysis },
     });
 
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_FAILED");
     expect(result.error?.message).toContain("zero packable entries");
     expect(created).toHaveLength(0);
+    // Packing runs after the run started: the scope closes that run with no outcome and no
+    // snapshot, and a refusal is never analyzed.
+    expect(analysis).not.toHaveBeenCalled();
+    const runsRoot = path.join(cwd, ".humanish", "runs");
+    const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+    const runDir = path.join(runsRoot, runId!);
+    const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
+    expect(await readdir(runDir)).not.toContain("run.json");
   });
 
   it("engine re-enforcement (library API surface, bypassing the parser): a local-tree config missing subject.serve fails closed", async () => {
@@ -2222,5 +2235,71 @@ describe("concurrent shared-world run directory goldens", () => {
     await expect(`${JSON.stringify(snapshot, null, 2)}\n`).toMatchFileSnapshot(
       `../../golden/routes/${golden}`,
     );
+  });
+});
+
+describe("concurrent run lifetime", () => {
+  it("W2: a throwing onObserverReady on the provisioned plane kills the subject, closes the run and runs no analysis", async () => {
+    const { hooks, created, killed } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const analysis = automaticAnalysisBoundary();
+    const failure = new Error("synthetic observer failure");
+    await expect(
+      runConcurrentSharedWorld({
+        cwd,
+        config: concurrentConfig(3, 3),
+        dryRun: false,
+        hooks,
+        automaticAnalysis: { run: analysis },
+        onObserverReady: async () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toBe(failure);
+
+    // Only the subject existed when the gate ran, and teardown still killed it.
+    expect(created).toHaveLength(1);
+    expect(killed).toEqual(["fake-sandbox-001"]);
+    expect(analysis).not.toHaveBeenCalled();
+    const runsRoot = path.join(cwd, ".humanish", "runs");
+    const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
+    const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
+    expect(status.state).toBe("finished");
+    expect(status).not.toHaveProperty("outcome");
+  });
+
+  it("W5: after every teardown kill fails, reclaim kills the subject and each seat", async () => {
+    const { hooks, created } = baseHooks({ worldVersion: 0 }, makeRendezvous(3));
+    const module = await hooks.loadDesktopModule!();
+    const kill = module.Sandbox.kill!.bind(module.Sandbox);
+    module.Sandbox.kill = async (sandboxId, options) => {
+      await kill(sandboxId, options);
+      throw new Error("synthetic kill failure");
+    };
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      hooks,
+    });
+    expect(created).toHaveLength(4);
+
+    const reclaimed: string[] = [];
+    await reclaimRunSandboxes(cwd, result.runId, {
+      loadModule: async () =>
+        ({
+          Sandbox: {
+            async kill(sandboxId: string) {
+              reclaimed.push(sandboxId);
+              return true;
+            },
+          },
+        }) as unknown as E2BDesktopModule,
+    });
+    expect(reclaimed.sort()).toEqual([
+      "fake-sandbox-001",
+      "fake-sandbox-002",
+      "fake-sandbox-003",
+      "fake-sandbox-004",
+    ]);
   });
 });
