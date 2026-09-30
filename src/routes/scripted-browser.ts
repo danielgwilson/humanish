@@ -2,9 +2,9 @@
 // already runs) or one provisioned synthetic clone subject (served in E2B and exposed through
 // getHost) driven by the REGISTRY-RESOLVED scripted-browser actor.
 // Mirrors routes/computer-use/lab.ts: the descriptor returned by the registry runs the session; this
-// backend consumes `scenario.ref` (resolves the committed scenario whose browser steps ARE the
-// actor's behavior — no built-in fallback on the lab route, unlike `run --app-url`), composes
-// the per-surface sessions, persists the evidence bundle, and renders the Observer.
+// backend consumes `scenario.ref` (resolves the committed scenario whose browser steps are the
+// actor's behavior), composes the per-surface sessions, persists the evidence bundle, and renders
+// the Observer.
 //
 // Spend posture: scripted participant steps make no model requests, and their traces record
 // tokenUsage zeros. Post-run analysis has a separate model budget unless explicitly disabled. Local
@@ -104,9 +104,8 @@ import {
 
 export const SCRIPTED_BROWSER_LAB_SCHEMA = "humanish.scripted-lab-result.v1";
 
-// Journey wall-clock budget per surface — same default as `run --app-url`.
-// 5 minutes (was 60s): a scripted surface has zero model cost and sandbox-seconds are pennies;
-// a short default only truncated slow-loading subjects.
+// Journey wall-clock budget per surface: 5 minutes. A scripted surface has zero model cost and
+// sandbox-seconds are pennies; a short default only truncated slow-loading subjects.
 const DEFAULT_SESSION_TIMEOUT_MS = 300_000;
 const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
@@ -172,7 +171,7 @@ export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
   schema: typeof SCRIPTED_BROWSER_LAB_SCHEMA;
   /** True when the bundle verified AND (dry-run, or every session reached a terminal verdict
    * without a harness error). The subject failing the script is successful EVIDENCE, not a lab
-   * failure — deliberate divergence from `run --app-url`, whose ok means "journey passed". */
+   * failure. */
   ok: boolean;
   cwd: string;
   labId: string;
@@ -527,7 +526,7 @@ async function runScriptedBrowserLabInScope(
         hostDigest = hostOriginDigest(hostUrl);
       }
 
-      // One session per surface, in parallel — parity with `run --app-url`.
+      // One session per surface, in parallel.
       sessionResults = await Promise.all(
         surfaces.map((surface) => {
           const sessionOptions: ScriptedBrowserSessionOptions = {
@@ -836,7 +835,7 @@ async function resolveScriptedScenario(
   if (!parsed.journey) {
     return {
       ok: false,
-      message: `${source} declares no executable browser steps — the scripted-browser actor needs a scenario with browser.steps (there is no built-in fallback on the lab route).`,
+      message: `${source} declares no executable browser steps — the scripted-browser actor needs a scenario with browser.steps.`,
     };
   }
 

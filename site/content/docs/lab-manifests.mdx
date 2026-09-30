@@ -63,11 +63,10 @@ and [schema contracts](https://github.com/danielgwilson/humanish/blob/main/docs/
 
 ## Scripted browser scenarios
 
-`humanish run --app-url http://127.0.0.1:3000` looks for executable browser
-steps in committed `humanish/scenarios/*.yaml`. If none are present, Humanish
-falls back to the built-in two-step browser persona proof. Browser steps are
-public-safe source, so use synthetic fixture values and committed relative app
-paths only.
+A scripted-browser lab replays committed browser steps against an app you run on
+a loopback URL. The steps come from the scenario named by `scenario.ref` and make
+no model requests. Browser steps are public-safe source, so use synthetic fixture
+values and committed relative app paths only.
 
 ```yaml
 schema: humanish.scenario.v1
@@ -101,5 +100,38 @@ browser:
 
 Supported actions are `goto`, `fill`, `click`, `assertText`, `waitForText`,
 and `waitForSelector`. Supported expectations are `text`, `selectorVisible`,
-`urlIncludes`, and `stateChanged`. Generated traces are stored as JSON under
-`.humanish/runs/<run>/traces/` and summarized in the Observer.
+`urlIncludes`, and `stateChanged`.
+
+Save the scenario as `humanish/scenarios/todo-onboarding.yaml` and point a lab at
+it. [`humanish/labs/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/labs/scripted-demo.yaml)
+is a complete example.
+
+```yaml
+schema: humanish.lab.v2
+id: todo-onboarding
+subject:
+  source: app-url
+  appUrl: http://127.0.0.1:3000
+actors:
+  - type: scripted-browser
+    count: 2
+scenario:
+  ref: todo-onboarding
+  mode: live
+review:
+  analysis: false
+```
+
+`count: 2` adds a mobile surface to the desktop one. Without `mode: live` the lab
+is a dry run: it validates the steps and writes a contract bundle without opening a
+browser. Post-run analysis is separate from the steps: when `OPENAI_API_KEY` is
+set it runs by default with a $3 cap. `analysis: false` turns it off, so the study
+makes no model requests.
+
+```bash
+npx humanish lab run todo-onboarding --json --no-open
+npx humanish verify --run latest --json
+```
+
+Traces are stored as JSON under `.humanish/runs/<run>/traces/` and summarized in
+the Observer.

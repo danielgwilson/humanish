@@ -262,7 +262,7 @@ async function runLabInScope(config: LabConfig, options: RunLabOptions): Promise
       // the loop), but `scenario.mode: live` is still the gate: a live scripted run actuates a
       // real browser against a real running app (fills forms, clicks buttons — state-mutating
       // effects on the operator's app), which deserves the same affirmative declaration as
-      // spend. This differs deliberately from `run --app-url`, which actuates on invocation.
+      // spend.
       const dryRun = resolveLabDryRun(config, options.dryRun, true) ?? true;
       const result = await runScriptedBrowserLab({
         ...(options.automaticAnalysis === undefined

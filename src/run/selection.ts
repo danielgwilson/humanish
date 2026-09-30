@@ -1,23 +1,9 @@
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 import { parse as parseYaml } from "yaml";
-import {
-  parseBrowserPersonaJourneyFromScenario,
-  type BrowserPersonaJourney,
-} from "../actors/scripted-browser.js";
 import { parseResolvedPersona, type ResolvedPersona } from "../lab/persona.js";
 import { digestText } from "../evidence/redaction.js";
-import {
-  assertPreparedSelectedOutputDirectory,
-  assertSafeOutputPathSegment,
-  type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+import type { PreparedSelectedOutputDirectory } from "./selected-output-paths.js";
 import type { RunBundle } from "./bundle.js";
-import {
-  implicitProjectDirectoryExists,
-  inspectImplicitProjectPath,
-  readImplicitProjectFile,
-} from "./locate.js";
+import { readImplicitProjectFile } from "./locate.js";
 import { escapeRegExp } from "./primitives.js";
 
 const builtinPersona = {
@@ -35,32 +21,10 @@ const builtinScenario = {
   sourceDigest: "builtin",
 };
 
-async function listImplicitProjectDirectory(
-  projectRoot: PreparedSelectedOutputDirectory,
-  relativePath: string,
-): Promise<string[]> {
-  if (!(await implicitProjectDirectoryExists(projectRoot, relativePath))) {
-    return [];
-  }
-  const directory = path.join(
-    projectRoot.physicalPath,
-    ...relativePath.replace(/\\/g, "/").split("/"),
-  );
-  const names = await readdir(directory);
-  await assertPreparedSelectedOutputDirectory(projectRoot);
-  for (const name of names) {
-    assertSafeOutputPathSegment(name, "Implicit project directory entry");
-    await inspectImplicitProjectPath(projectRoot, `${relativePath.replace(/\\/g, "/")}/${name}`);
-  }
-  return names;
-}
-
 export async function loadDryRunSelection(
   projectRoot: PreparedSelectedOutputDirectory,
   humanishSource: "present" | "missing",
 ): Promise<{
-  browserJourney?: BrowserPersonaJourney;
-  browserJourneyFailure?: string;
   persona: RunBundle["persona"];
   resolvedPersona: ResolvedPersona;
   scenario: RunBundle["scenario"];
@@ -84,7 +48,6 @@ export async function loadDryRunSelection(
   const scenarioPath = "humanish/scenarios/first-run-smoke.yaml";
   const personaText = await readImplicitProjectFile(projectRoot, personaPath);
   const scenarioText = await readImplicitProjectFile(projectRoot, scenarioPath);
-  const browserJourneySelection = await loadBrowserPersonaJourneySelection(projectRoot);
 
   if (personaText === null) {
     warnings.push(`${personaPath} was not found; using built-in persona defaults.`);
@@ -119,10 +82,6 @@ export async function loadDryRunSelection(
   }
 
   return {
-    ...(browserJourneySelection.journey ? { browserJourney: browserJourneySelection.journey } : {}),
-    ...(browserJourneySelection.failure
-      ? { browserJourneyFailure: browserJourneySelection.failure }
-      : {}),
     persona:
       personaText === null
         ? builtinPersona
@@ -144,63 +103,8 @@ export async function loadDryRunSelection(
             source: scenarioPath,
             sourceDigest: digestText(scenarioText),
           },
-    warnings: [...warnings, ...browserJourneySelection.warnings],
+    warnings,
   };
-}
-
-async function loadBrowserPersonaJourneySelection(
-  projectRoot: PreparedSelectedOutputDirectory,
-): Promise<{
-  failure?: string;
-  journey?: BrowserPersonaJourney;
-  warnings: string[];
-}> {
-  const warnings: string[] = [];
-  const names = await listImplicitProjectDirectory(projectRoot, "humanish/scenarios");
-  const files = names
-    .filter((name) => name.endsWith(".yaml") || name.endsWith(".yml"))
-    .sort((left, right) => {
-      if (left === "first-run-smoke.yaml") return -1;
-      if (right === "first-run-smoke.yaml") return 1;
-      return left.localeCompare(right);
-    });
-
-  for (const name of files) {
-    const relativePath = path.join("humanish", "scenarios", name);
-    const text = await readImplicitProjectFile(projectRoot, relativePath);
-    if (text === null) {
-      continue;
-    }
-    let raw: unknown;
-    try {
-      raw = parseYaml(text);
-    } catch {
-      return {
-        failure: `${relativePath} could not be parsed as YAML; browser persona journey failed closed.`,
-        warnings,
-      };
-    }
-
-    const parsed = parseBrowserPersonaJourneyFromScenario({
-      raw,
-      relativePath,
-      sourceDigest: digestText(text),
-    });
-    if (parsed.failure) {
-      return {
-        failure: parsed.failure,
-        warnings,
-      };
-    }
-    if (parsed.journey) {
-      return {
-        journey: parsed.journey,
-        warnings,
-      };
-    }
-  }
-
-  return { warnings };
 }
 
 function readYamlScalar(text: string, key: string): string | null {

@@ -75,7 +75,6 @@ describe("readOrientation", () => {
     dir = await emptyProject();
     const state = await readOrientation(dir);
     for (const next of state.nextCommands) {
-      expect(next.command).not.toContain("--app-url");
       expect(next.command).not.toMatch(/\brun\b.*\blive\b/);
     }
   });

@@ -7,7 +7,6 @@ import {
   prepareSelectedOutputDirectory,
   writePreparedRunLatestPointer,
 } from "./selected-output-paths.js";
-import { runBrowserAppProof } from "./browser-proof.js";
 import {
   buildRunSource,
   RUN_BUNDLE_SCHEMA,
@@ -26,7 +25,7 @@ import { loadDryRunSelection } from "./selection.js";
 import { createReviewSummary, writeRunBundleArtifacts } from "./write-bundle.js";
 
 /**
- * The synthetic/local backends. The body runs inside a status scope so that returning from it —
+ * The synthetic dry-run backend. The body runs inside a status scope so that returning from it —
  * by any of its exits, including the fail-closed ones — finalizes whatever status records it
  * opened. See `withRunStatusScope`.
  */
@@ -49,7 +48,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
     };
   }
 
-  const simCount = normalizeSimCount(options.appUrl ? (options.simCount ?? 2) : options.simCount);
+  const simCount = normalizeSimCount(options.simCount);
   if (simCount === null) {
     return {
       schema: "humanish.run-result.v1",
@@ -65,36 +64,6 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
 
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
 
-  if (options.appUrl !== undefined) {
-    if (options.dryRun) {
-      return {
-        schema: "humanish.run-result.v1",
-        ok: false,
-        cwd,
-        warnings,
-        error: {
-          code: "HUMANISH_APP_URL_OPTION_CONFLICT",
-          message: "Use --app-url for a live browser app proof; remove --dry-run.",
-        },
-      };
-    }
-
-    if (simCount > 2) {
-      return {
-        schema: "humanish.run-result.v1",
-        ok: false,
-        cwd,
-        warnings,
-        error: {
-          code: "HUMANISH_INVALID_SIM_COUNT",
-          message: "--sims must be 1 or 2 when --app-url is used.",
-        },
-      };
-    }
-
-    return runBrowserAppProof({ ...options, appUrl: options.appUrl, cwd, projectRoot, simCount });
-  }
-
   if (!options.dryRun) {
     return {
       schema: "humanish.run-result.v1",
@@ -103,8 +72,7 @@ async function runDryRunInScope(options: RunOptions): Promise<RunResult> {
       warnings,
       error: {
         code: "HUMANISH_LIVE_RUN_UNIMPLEMENTED",
-        message:
-          "Only run --dry-run is implemented here. Use --app-url for a live browser capture, or run a lab for a live study.",
+        message: "Only run --dry-run is implemented here. Run a lab for a live study.",
       },
     };
   }

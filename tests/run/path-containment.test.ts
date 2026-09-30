@@ -387,15 +387,10 @@ describe("run path containment", () => {
         "id: safe-user\nname: Safe User\n",
         "utf8",
       );
-      await writeFile(
-        path.join(cwd, "humanish", "scenarios", "first-run-smoke.yaml"),
-        "id: safe-smoke\ntitle: Safe Smoke\ngoal: Safe goal\n",
-        "utf8",
-      );
       const outside = path.join(root, "outside-secret.yaml");
       await writeFile(outside, "id: SHOULD-NOT-BE-READ\ntitle: secret\n", "utf8");
       try {
-        await link(outside, path.join(cwd, "humanish", "scenarios", "extra.yaml"));
+        await link(outside, path.join(cwd, "humanish", "scenarios", "first-run-smoke.yaml"));
       } catch (error) {
         const code = error instanceof Error && "code" in error ? String(error.code) : "";
         if (["EPERM", "ENOTSUP", "EOPNOTSUPP"].includes(code)) return;
@@ -413,7 +408,6 @@ describe("run path containment", () => {
   it("wires every direct run producer through the shared path guard", async () => {
     const producers = [
       "run/dry-run.ts",
-      "run/browser-proof.ts",
       "routes/computer-use/lab.ts",
       "routes/shared-world/concurrent.ts",
       "routes/scripted-browser.ts",

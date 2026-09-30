@@ -1,8 +1,7 @@
 // The deterministic scripted browser driver ("browser-persona") plus its actor-registry
-// session wrapper: the journey parser, the surface capture engines and their small private
-// helpers. run/browser-proof.ts (the `run --app-url` path) and actors/registry.ts (the
-// "scripted-browser" actor) both depend on it, and the registry is const-initialized, so this
-// module must not import either of them.
+// session wrapper: the journey parser, the step executor and their small private helpers.
+// actors/registry.ts (the "scripted-browser" actor) depends on it, and the registry is
+// const-initialized, so this module must not import the registry.
 //
 // The step executor's `page` is typed as the narrow structural ScriptedPageLike instead of
 // playwright's Page (browserPersonaPageState already took { evaluate, url }; E2BDesktopLike is
@@ -14,7 +13,7 @@
 // importable from this code path. tokenUsage on every projected trace records zeros as an
 // affirmative $0 declaration that is TRUE by mechanism.
 
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -124,7 +123,7 @@ export interface BrowserSurface {
   };
 }
 
-export interface BrowserSurfaceCapture {
+interface BrowserSurfaceCapture {
   capturedAt: string;
   durationMs: number;
   httpStatus?: number;
@@ -134,7 +133,7 @@ export interface BrowserSurfaceCapture {
    * Surface-level screenshot the producer wrote (the last step's screenshot).
    * Omitted for a blocked capture whose evidence is the failure itself, so the
    * stream never claims a screenshot embed/ui reference that does not exist.
-   * See src/evidence/artifact-reference.ts.
+   * verifyRun fails closed on a referenced local artifact that is missing or empty.
    */
   screenshotPath?: string;
   steps: BrowserPersonaStepCapture[];
@@ -167,9 +166,9 @@ interface BrowserPersonaStepCapture {
   /**
    * Path to the step screenshot the producer actually wrote. Omitted for blocked
    * steps where the failure itself is the recorded evidence and no screenshot was
-   * written — the bundle must not reference an artifact that does not exist (see
-   * src/evidence/artifact-reference.ts). A step that ran and attempted a screenshot keeps
-   * this even when its assertions failed, so a broken producer still fails verify.
+   * written — the bundle must not reference an artifact that does not exist. A step that
+   * ran and attempted a screenshot keeps this even when its assertions failed, so a broken
+   * producer still fails verify.
    */
   screenshotPath?: string;
   status: "passed" | "blocked";
@@ -227,322 +226,8 @@ export const browserSurfaces: BrowserSurface[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Surface capture engines. The HUMANISH_BROWSER_PERSONA_DRIVER=fixture env
-// switch stays a `run --app-url` affordance only; the lab route never consults it (its test
-// seam is the launchBrowser DI hook — an env-switched semi-real driver inside a lab would blur
-// what the evidence claims).
+// Step executor.
 // ---------------------------------------------------------------------------
-
-export async function captureBrowserSurface(args: {
-  absoluteArtifactRoot: PreparedOutputDirectory;
-  appUrl: string;
-  browserCommand: string;
-  browserJourney: BrowserPersonaJourney;
-  surface: BrowserSurface;
-  timeoutMs: number;
-}): Promise<BrowserSurfaceCapture> {
-  if (process.env.HUMANISH_BROWSER_PERSONA_DRIVER === "fixture") {
-    return captureBrowserSurfaceFixture(args);
-  }
-
-  return captureBrowserSurfaceWithPlaywright(args);
-}
-
-async function captureBrowserSurfaceFixture(args: {
-  absoluteArtifactRoot: PreparedOutputDirectory;
-  appUrl: string;
-  browserCommand: string;
-  browserJourney: BrowserPersonaJourney;
-  surface: BrowserSurface;
-  timeoutMs: number;
-}): Promise<BrowserSurfaceCapture> {
-  const started = Date.now();
-  const tracePath = path.join("traces", `${args.surface.id}.json`);
-  await assertScriptedOutputRoot(args.absoluteArtifactRoot);
-  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
-  const capturedAt = new Date().toISOString();
-  const profileDir = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-profile-"));
-  const steps: BrowserPersonaStepCapture[] = [];
-  let currentUrl = args.appUrl;
-
-  try {
-    for (const [index, step] of args.browserJourney.steps.entries()) {
-      if (step.action === "goto") {
-        currentUrl = resolveBrowserStepUrl(args.appUrl, step.path ?? args.browserJourney.startPath);
-      }
-      const stepStarted = Date.now();
-      const screenshotPath = screenshotPathForBrowserStep(args.surface, step);
-      await prepareContainedOutputFile(args.absoluteArtifactRoot, screenshotPath);
-      const screenshotBytes = await captureBrowserCommandScreenshot({
-        appUrl: currentUrl,
-        browserCommand: args.browserCommand,
-        profileDir,
-        surface: args.surface,
-        timeoutMs: args.timeoutMs,
-      });
-      assertScreenshotEvidence(screenshotPath, screenshotBytes);
-      await writeContainedOutputFile(args.absoluteArtifactRoot, screenshotPath, screenshotBytes);
-      const assertions = fixtureAssertionsForBrowserStep(step, httpProbe.ok);
-      steps.push({
-        action: step.action,
-        ...(assertions.length === 0 ? {} : { assertions }),
-        completedAt: new Date().toISOString(),
-        durationMs: Date.now() - stepStarted,
-        id: step.id,
-        label: step.label,
-        reason: httpProbe.ok
-          ? `Fixture driver captured ${step.action} step ${index + 1}/${args.browserJourney.steps.length}.`
-          : httpProbe.reason,
-        screenshotPath,
-        status:
-          httpProbe.ok && assertions.every((assertion) => assertion.status === "passed")
-            ? "passed"
-            : "blocked",
-        url: sanitizeLoopbackUrl(currentUrl),
-      });
-    }
-  } catch (error) {
-    const reason = `Browser screenshot command failed for ${args.surface.id}: ${compactBrowserError(error)}`;
-    const blockedSteps = buildBlockedBrowserPersonaSteps({
-      browserJourney: args.browserJourney,
-      currentUrl,
-      reason,
-      surface: args.surface,
-      timestamp: capturedAt,
-    });
-    const blockedScreenshotPath = surfaceScreenshotPath(blockedSteps);
-    await writeContainedOutputFile(
-      args.absoluteArtifactRoot,
-      tracePath,
-      `${JSON.stringify(
-        buildBrowserTrace({
-          appUrl: args.appUrl,
-          browserCommand: path.basename(args.browserCommand),
-          browserJourney: args.browserJourney,
-          capturedAt,
-          durationMs: Date.now() - started,
-          ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-          ok: false,
-          reason,
-          ...(blockedScreenshotPath === undefined ? {} : { screenshotPath: blockedScreenshotPath }),
-          steps: blockedSteps,
-          surface: args.surface,
-        }),
-        null,
-        2,
-      )}\n`,
-      "utf8",
-    );
-    return {
-      capturedAt,
-      durationMs: Date.now() - started,
-      ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-      ok: false,
-      reason,
-      ...(blockedScreenshotPath === undefined ? {} : { screenshotPath: blockedScreenshotPath }),
-      steps: blockedSteps,
-      surface: args.surface,
-      tracePath,
-    };
-  } finally {
-    await rm(profileDir, { force: true, recursive: true }).catch(() => undefined);
-  }
-
-  // Every step in the success path attempts a screenshot, so each carries a
-  // screenshotPath. A step claiming success whose screenshot is missing or empty
-  // must still drag the capture out of `ok` — the strict verifier then catches it.
-  const screenshotStats = await Promise.all(
-    steps
-      .map(async (step) => {
-        if (!step.screenshotPath) return null;
-        const screenshotFile = await prepareContainedOutputFile(
-          args.absoluteArtifactRoot,
-          step.screenshotPath,
-        );
-        return stat(screenshotFile);
-      })
-      .map((result) => result.catch(() => null)),
-  );
-  const screenshotsOk = screenshotStats.every((stats) => stats?.isFile() && stats.size > 0);
-  const ok = Boolean(
-    screenshotsOk && httpProbe.ok && steps.every((step) => step.status === "passed"),
-  );
-  const reason = ok
-    ? `${args.surface.label} completed ${steps.length}/${steps.length} browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
-    : screenshotsOk
-      ? `${args.surface.label} persona screenshots exist, but app HTTP readiness was not proven: ${httpProbe.reason}.`
-      : `${args.surface.label} persona screenshot artifacts were missing or empty.`;
-  const completedAt = new Date().toISOString();
-  const durationMs = Date.now() - started;
-  const fixtureScreenshotPath = surfaceScreenshotPath(steps);
-
-  await writeContainedOutputFile(
-    args.absoluteArtifactRoot,
-    tracePath,
-    `${JSON.stringify(
-      buildBrowserTrace({
-        appUrl: args.appUrl,
-        browserCommand: path.basename(args.browserCommand),
-        browserJourney: args.browserJourney,
-        capturedAt: completedAt,
-        durationMs,
-        ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-        ok,
-        reason,
-        ...(fixtureScreenshotPath === undefined ? {} : { screenshotPath: fixtureScreenshotPath }),
-        steps,
-        surface: args.surface,
-      }),
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-
-  return {
-    capturedAt: completedAt,
-    durationMs,
-    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-    ok,
-    reason,
-    ...(fixtureScreenshotPath === undefined ? {} : { screenshotPath: fixtureScreenshotPath }),
-    steps,
-    surface: args.surface,
-    tracePath,
-  };
-}
-
-async function captureBrowserSurfaceWithPlaywright(args: {
-  absoluteArtifactRoot: PreparedOutputDirectory;
-  appUrl: string;
-  browserCommand: string;
-  browserJourney: BrowserPersonaJourney;
-  surface: BrowserSurface;
-  timeoutMs: number;
-}): Promise<BrowserSurfaceCapture> {
-  const started = Date.now();
-  const tracePath = path.join("traces", `${args.surface.id}.json`);
-  await assertScriptedOutputRoot(args.absoluteArtifactRoot);
-  const httpProbe = await probeAppUrl(args.appUrl, Math.min(args.timeoutMs, 15_000));
-  let browser: ScriptedBrowserLike | null = null;
-  let page: ScriptedPageLike | null = null;
-  const steps: BrowserPersonaStepCapture[] = [];
-
-  try {
-    browser = await launchPlaywrightChromium({
-      browserCommand: args.browserCommand,
-      timeoutMs: args.timeoutMs,
-    });
-    const context = await browser.newContext({
-      deviceScaleFactor: args.surface.viewport.deviceScaleFactor,
-      isMobile: args.surface.viewport.isMobile,
-      viewport: {
-        width: args.surface.viewport.width,
-        height: args.surface.viewport.height,
-      },
-    });
-    page = await context.newPage();
-
-    for (const step of args.browserJourney.steps) {
-      steps.push(
-        await executeBrowserPersonaStep({
-          absoluteArtifactRoot: args.absoluteArtifactRoot,
-          appUrl: args.appUrl,
-          browserJourney: args.browserJourney,
-          page,
-          step,
-          surface: args.surface,
-          timeoutMs: args.timeoutMs,
-        }),
-      );
-    }
-  } catch (error) {
-    const now = new Date().toISOString();
-    const reason = compactBrowserError(error);
-    if (steps.length === 0) {
-      steps.push(
-        ...buildBlockedBrowserPersonaSteps({
-          browserJourney: args.browserJourney,
-          currentUrl: args.appUrl,
-          reason,
-          surface: args.surface,
-          timestamp: now,
-        }),
-      );
-    } else if (steps.length < args.browserJourney.steps.length) {
-      const nextStep = args.browserJourney.steps[steps.length];
-      if (nextStep) {
-        const { screenshotPath, written: blockedShotWritten } = await captureBlockedStepScreenshot(
-          page,
-          args.absoluteArtifactRoot,
-          args.surface,
-          nextStep,
-        );
-        steps.push({
-          action: nextStep.action,
-          completedAt: now,
-          durationMs: Date.now() - started,
-          id: nextStep.id,
-          label: nextStep.label,
-          reason,
-          ...(blockedShotWritten ? { screenshotPath } : {}),
-          status: "blocked",
-          url: page ? sanitizeLoopbackUrl(page.url()) : args.appUrl,
-        });
-      }
-    }
-  } finally {
-    await browser?.close().catch(() => undefined);
-  }
-
-  const completedAt = new Date().toISOString();
-  const durationMs = Date.now() - started;
-  const ok =
-    httpProbe.ok &&
-    steps.length === args.browserJourney.steps.length &&
-    steps.every((step) => step.status === "passed");
-  const reason = ok
-    ? `${args.surface.label} completed ${steps.length}/${steps.length} browser persona steps from ${args.appUrl}${httpProbe.status === undefined ? "" : ` with HTTP ${httpProbe.status}`}.`
-    : `${args.surface.label} browser persona journey blocked: ${steps.find((step) => step.status !== "passed")?.reason ?? httpProbe.reason}`;
-  const playwrightScreenshotPath = surfaceScreenshotPath(steps);
-
-  await writeContainedOutputFile(
-    args.absoluteArtifactRoot,
-    tracePath,
-    `${JSON.stringify(
-      buildBrowserTrace({
-        appUrl: args.appUrl,
-        browserCommand: path.basename(args.browserCommand),
-        browserJourney: args.browserJourney,
-        capturedAt: completedAt,
-        durationMs,
-        ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-        ok,
-        reason,
-        ...(playwrightScreenshotPath === undefined
-          ? {}
-          : { screenshotPath: playwrightScreenshotPath }),
-        steps,
-        surface: args.surface,
-      }),
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-
-  return {
-    capturedAt: completedAt,
-    durationMs,
-    ...(httpProbe.status === undefined ? {} : { httpStatus: httpProbe.status }),
-    ok,
-    reason,
-    ...(playwrightScreenshotPath === undefined ? {} : { screenshotPath: playwrightScreenshotPath }),
-    steps,
-    surface: args.surface,
-    tracePath,
-  };
-}
 
 async function executeBrowserPersonaStep(args: {
   absoluteArtifactRoot: PreparedOutputDirectory;
@@ -727,26 +412,6 @@ async function waitForPageText(
   );
 }
 
-function browserScreenshotArgs(args: {
-  appUrl: string;
-  profileDir: string;
-  screenshotPath: string;
-  surface: BrowserSurface;
-}): string[] {
-  return [
-    "--headless=new",
-    ...CHROMIUM_EVIDENCE_HYGIENE_FLAGS,
-    "--disable-gpu",
-    "--disable-dev-shm-usage",
-    "--hide-scrollbars",
-    `--user-data-dir=${args.profileDir}`,
-    `--window-size=${args.surface.viewport.width},${args.surface.viewport.height}`,
-    `--force-device-scale-factor=${args.surface.viewport.deviceScaleFactor}`,
-    `--screenshot=${args.screenshotPath}`,
-    args.appUrl,
-  ];
-}
-
 function buildBlockedBrowserPersonaSteps(args: {
   browserJourney: BrowserPersonaJourney;
   currentUrl: string;
@@ -759,7 +424,7 @@ function buildBlockedBrowserPersonaSteps(args: {
   // failure IS the evidence: keep the blocked status + reason, but omit the
   // screenshot reference so the bundle never claims an artifact that does not
   // exist (otherwise verify's missingLocalEvidenceArtifacts fails closed on
-  // evidence that was never meant to exist). See src/evidence/artifact-reference.ts.
+  // evidence that was never meant to exist).
   return args.browserJourney.steps.map((step) => ({
     action: step.action,
     completedAt: args.timestamp,
@@ -769,29 +434,6 @@ function buildBlockedBrowserPersonaSteps(args: {
     reason: args.reason,
     status: "blocked" as const,
     url: sanitizeBrowserEvidenceUrl(args.currentUrl, args.urlPolicy),
-  }));
-}
-
-function fixtureAssertionsForBrowserStep(
-  step: BrowserPersonaStepManifest,
-  httpOk: boolean,
-): BrowserPersonaAssertionCapture[] {
-  const assertions: BrowserPersonaAssertionCapture[] = [];
-  const expectation = step.expectation;
-  if (!expectation) {
-    return assertions;
-  }
-  const ids: Array<BrowserPersonaAssertionCapture["id"]> = [];
-  if (expectation.stateChanged === true) ids.push("state-changed");
-  if (expectation.text) ids.push("text-present");
-  if (expectation.selectorVisible) ids.push("selector-visible");
-  if (expectation.urlIncludes) ids.push("url-includes");
-  return ids.map((id) => ({
-    id,
-    reason: httpOk
-      ? "Fixture driver recorded the expected assertion shape."
-      : "Fixture driver could not prove the assertion because app HTTP readiness failed.",
-    status: httpOk ? "passed" : "blocked",
   }));
 }
 
@@ -822,8 +464,7 @@ function assertScriptedSessionPathIds(options: ScriptedBrowserSessionOptions): v
  * Best-effort screenshot of a blocked step. The step is blocked, so its failure is
  * the evidence; the shot is a bonus. Returns the relative path plus whether the
  * write actually produced a non-empty file, so the caller only references the path
- * when the file truly exists (never claim a screenshot that is not there --
- * src/evidence/artifact-reference.ts).
+ * when the file truly exists (never claim a screenshot that is not there).
  */
 async function captureBlockedStepScreenshot(
   page: ScriptedPageLike | null,
@@ -850,7 +491,7 @@ async function captureBlockedStepScreenshot(
  * Surface-level screenshot path = the last step that actually wrote one. Returns
  * undefined when no step wrote a screenshot (a fully blocked capture whose evidence
  * is the failure itself), so the producer never synthesizes a path to a file it did
- * not write. See src/evidence/artifact-reference.ts.
+ * not write.
  */
 function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): string | undefined {
   for (let index = steps.length - 1; index >= 0; index -= 1) {
@@ -860,10 +501,6 @@ function surfaceScreenshotPath(steps: BrowserPersonaStepCapture[]): string | und
     }
   }
   return undefined;
-}
-
-function resolveBrowserStepUrl(appUrl: string, value: string | undefined): string {
-  return resolveBrowserStepUrlForPolicy(appUrl, value, LOOPBACK_EVIDENCE_URL_POLICY);
 }
 
 function resolveBrowserStepUrlForPolicy(
@@ -972,103 +609,6 @@ function sanitizeBrowserEvidenceUrl(
   } catch {
     return evidenceOrigin;
   }
-}
-
-async function captureScreenshotWithBrowser(args: {
-  args: string[];
-  browserCommand: string;
-  screenshotPath: string;
-  timeoutMs: number;
-}): Promise<void> {
-  const child = spawn(args.browserCommand, args.args, {
-    detached: true,
-    stdio: "ignore",
-  });
-  let exitCode: number | null = null;
-  let signal: NodeJS.Signals | null = null;
-  child.once("exit", (code, childSignal) => {
-    exitCode = code;
-    signal = childSignal;
-  });
-  child.unref();
-
-  const deadline = Date.now() + args.timeoutMs;
-  while (Date.now() <= deadline) {
-    const stats = await stat(args.screenshotPath).catch(() => null);
-    if (stats?.isFile() && stats.size > 0) {
-      terminateProcessGroup(child.pid);
-      return;
-    }
-    if (exitCode !== null || signal !== null) {
-      break;
-    }
-    await wait(250);
-  }
-
-  terminateProcessGroup(child.pid, true);
-  const stats = await stat(args.screenshotPath).catch(() => null);
-  if (stats?.isFile() && stats.size > 0) {
-    return;
-  }
-
-  throw new Error(
-    exitCode !== null || signal !== null
-      ? `browser exited before screenshot was written (exit=${exitCode ?? "null"} signal=${signal ?? "null"})`
-      : `timed out after ${args.timeoutMs}ms waiting for screenshot`,
-  );
-}
-
-async function captureBrowserCommandScreenshot(args: {
-  appUrl: string;
-  browserCommand: string;
-  profileDir: string;
-  surface: BrowserSurface;
-  timeoutMs: number;
-}): Promise<Buffer> {
-  const stagingPath = await mkdtemp(path.join(os.tmpdir(), "humanish-browser-command-shot-"));
-  const stagingRoot = await prepareSelectedOutputDirectory(path.dirname(stagingPath), stagingPath);
-  try {
-    const screenshotPath = path.join(stagingRoot.physicalPath, "capture.png");
-    await captureScreenshotWithBrowser({
-      args: browserScreenshotArgs({
-        appUrl: args.appUrl,
-        profileDir: args.profileDir,
-        screenshotPath,
-        surface: args.surface,
-      }),
-      browserCommand: args.browserCommand,
-      screenshotPath,
-      timeoutMs: args.timeoutMs,
-    });
-    const bytes = await readContainedRegularFile(stagingRoot, "capture.png");
-    if (!bytes) {
-      throw new Error("Browser screenshot command did not write a single-link staging file.");
-    }
-    return bytes;
-  } finally {
-    await assertPreparedSelectedOutputDirectory(stagingRoot)
-      .then(() => rm(stagingRoot.physicalPath, { force: true, recursive: true }))
-      .catch(() => undefined);
-  }
-}
-
-function terminateProcessGroup(pid: number | undefined, force = false): void {
-  if (!pid) {
-    return;
-  }
-
-  try {
-    process.kill(-pid, force ? "SIGKILL" : "SIGTERM");
-    return;
-  } catch {}
-
-  try {
-    process.kill(pid, force ? "SIGKILL" : "SIGTERM");
-  } catch {}
-}
-
-async function wait(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function probeAppUrl(
@@ -1345,38 +885,10 @@ function browserStepExpectationValue(value: unknown): BrowserPersonaStepExpectat
   return Object.keys(expectation).length === 0 ? undefined : expectation;
 }
 
-export function builtinBrowserPersonaJourney(): BrowserPersonaJourney {
-  return {
-    goal: "Drive a synthetic persona through a two-step browser journey against a running local app URL.",
-    scenarioId: "browser-persona-two-step",
-    scenarioTitle: "Browser Persona Two-Step Journey",
-    source: "builtin:browser-persona-two-step",
-    sourceDigest: digestText("browser-persona-two-step"),
-    startPath: "",
-    steps: [
-      {
-        action: "goto",
-        id: "step-01-load",
-        label: "Load app",
-      },
-      {
-        action: "click",
-        expectation: {
-          stateChanged: true,
-        },
-        id: "step-02-interact",
-        label: "Complete primary action",
-        value: "synthetic.user@example.test",
-      },
-    ],
-  };
-}
-
 // ---------------------------------------------------------------------------
-// The registry-facing actor session. NEW code (not moved): it reuses the moved
-// primitives — the REAL step executor, expectation evaluator, blocked-step
-// builder, native trace writer — against an injected or playwright-launched
-// browser, and projects the result into humanish.actor-trace.v1.
+// The registry-facing actor session. It runs the step executor, expectation
+// evaluator, blocked-step builder and native trace writer against an injected or
+// playwright-launched browser, and projects the result into humanish.actor-trace.v1.
 // ---------------------------------------------------------------------------
 
 export const SCRIPTED_BROWSER_PROVIDER = "browser-persona";
@@ -1395,7 +907,7 @@ export interface ScriptedBrowserSessionOptions {
   /** id = actors[0].persona ?? "scripted-journey"; promptDigest = journey.sourceDigest prefix
    *  (the step manifest IS the "prompt" — no model prompt exists on this lane). */
   persona: ActorPersonaRef;
-  /** Journey wall-clock budget (default upstream: 60_000, today's run --app-url default). */
+  /** Journey wall-clock budget in ms; the lab route passes execution.timeoutMs or 300_000. */
   timeoutMs: number;
   /** Absolute; the session writes screenshots/ and traces/<surface>.json beneath it. */
   artifactRoot: string;

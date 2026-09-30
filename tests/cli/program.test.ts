@@ -1,6 +1,16 @@
 import { CommanderError } from "commander";
 import { EventEmitter } from "node:events";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { connect as netConnect, createServer as createNetServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -683,38 +693,34 @@ describe("humanish CLI scaffold", () => {
     );
   });
 
-  it("fails closed when direct run-only options are mixed with lab manifests", async () => {
+  it("refuses the removed run --app-url before loading env or writing a run", async () => {
     await withTempApp(
-      {
-        "package.json": JSON.stringify({ name: "fixture-app" }, null, 2),
-        "humanish/labs/first-run.yaml": [
-          "schema: humanish.lab.v2",
-          "id: first-run",
-          "subject:",
-          "  source: this-repo",
-          "actors:",
-          "  - type: synthetic-persona",
-        ].join("\n"),
-      },
+      { "package.json": JSON.stringify({ name: "fixture-app" }, null, 2) },
       async (cwd) => {
-        const result = await runCli([
-          "run",
-          "first-run",
-          "--app-url",
-          "http://127.0.0.1:3000",
-          "--cwd",
-          cwd,
-          "--json",
-        ]);
+        // A missing --env-file would fail on its own; the refusal has to come first.
+        const base = ["--app-url", "http://127.0.0.1:3000", "--env-file", "missing.env"];
+        const direct = await runCli(["run", ...base, "--sims", "2", "--cwd", cwd, "--json"]);
+        const withLab = await runCli(["run", "first-run", ...base, "--cwd", cwd, "--json"]);
+        const human = await runCli(["run", ...base, "--cwd", cwd]);
 
-        const envelope = JSON.parse(result.stdout) as {
-          ok: boolean;
-          error: { code: string; message: string };
-        };
-        expect(result.exitCode).toBe(2);
-        expect(envelope.ok).toBe(false);
-        expect(envelope.error.code).toBe("HUMANISH_APP_URL_OPTION_CONFLICT");
-        expect(envelope.error.message).toContain("lab-compatible options");
+        for (const result of [direct, withLab]) {
+          const envelope = JSON.parse(result.stdout) as {
+            ok: boolean;
+            error: { code: string; message: string };
+          };
+          expect(result.exitCode).toBe(2);
+          expect(envelope.ok).toBe(false);
+          expect(envelope.error.code).toBe("HUMANISH_APP_URL_REMOVED");
+          expect(envelope.error.message).toContain(
+            "https://humanish.dev/docs/lab-manifests#scripted-browser-scenarios",
+          );
+        }
+        expect(human.exitCode).toBe(2);
+        expect(human.stdout).toMatch(/^HUMANISH_APP_URL_REMOVED: /);
+        await expect(access(path.join(cwd, ".humanish"))).rejects.toThrow();
+
+        const run = createProgram().commands.find((command) => command.name() === "run");
+        expect(run?.helpInformation()).not.toContain("--app-url");
       },
     );
   });

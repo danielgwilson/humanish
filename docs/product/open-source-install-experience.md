@@ -222,9 +222,9 @@ browser:
         stateChanged: true
 ```
 
-`humanish run --app-url <loopback-url>` uses the first executable browser
-scenario it finds. If no executable browser steps exist, Humanish falls back to
-the built-in two-step browser persona proof and says so in warnings/review.
+A scripted-browser lab runs the scenario named by `scenario.ref` against a
+loopback `subject.appUrl`; `humanish/labs/scripted-demo.yaml` is the example.
+A missing or non-executable scenario fails before any browser starts.
 
 Live E2B desktop labs are an optional advanced path. Target projects that need
 them should install `@e2b/desktop` explicitly instead of receiving that
