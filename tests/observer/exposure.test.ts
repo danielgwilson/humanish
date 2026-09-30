@@ -167,6 +167,14 @@ describe("validateExposure: watch surface (edge auth REQUIRED)", () => {
     expect(result.plan.oauth?.allowEmails).toEqual(["you@example.com"]);
   });
 
+  it("--safe without --expose → SAFE_NOT_APPLICABLE (serve keeps it as a loopback filter)", () => {
+    const result = validateExposure("watch", request({ safe: true }), live);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("HUMANISH_WATCH_SAFE_NOT_APPLICABLE");
+    expect(validateExposure("serve", request({ safe: true })).ok).toBe(true);
+  });
+
   it("--expose --tunnel ngrok (no oauth, no safe) → EXPOSE_REQUIRES_EDGE_AUTH", () => {
     const result = validateExposure("watch", request({ expose: true, tunnel: "ngrok" }), live);
     expect(result.ok).toBe(false);

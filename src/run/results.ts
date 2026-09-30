@@ -48,6 +48,7 @@ export interface RunResult {
       | "HUMANISH_INVALID_PORT"
       | "HUMANISH_UNSUPPORTED_RERUN_FLAGS"
       | "HUMANISH_WATCH_OPTION_CONFLICT"
+      | "HUMANISH_WATCH_SAFE_NOT_APPLICABLE"
       | "HUMANISH_APP_URL_REMOVED"
       // #316 CLI-loadable adopter scorer — fail-closed at load, pre-spend.
       | "HUMANISH_LAB_SCORER_BAD_REF"

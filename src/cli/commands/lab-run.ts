@@ -24,6 +24,7 @@ import {
   writeResult,
 } from "../io.js";
 import { watchExposeRequested } from "../observer-follow.js";
+import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 
 export async function runLabCommand(args: {
   command: Command;
@@ -70,6 +71,23 @@ export async function runLabCommand(args: {
       error: {
         code: "HUMANISH_WATCH_OPTION_CONFLICT",
         message: `--expose/--tunnel/--oauth stream a live desktop and apply only to computer-use labs; this lab resolved to ${backend}.`,
+      },
+    };
+    writeResult(args.command, args.io, result, formatRunHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+  // A live run is never share_ready, so watch --safe admits nothing. The computer-use backend
+  // refuses it through validateExposure; refuse it here for the others.
+  if (backend !== "cua" && args.options.safe === true) {
+    const result: RunResult = {
+      schema: "humanish.run-result.v1",
+      ok: false,
+      cwd: resolve(args.options.cwd),
+      warnings: [],
+      error: {
+        code: "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
+        message: WATCH_SAFE_NOT_APPLICABLE_MESSAGE,
       },
     };
     writeResult(args.command, args.io, result, formatRunHuman);

@@ -72,8 +72,9 @@ warning recommending at least one `--allow-email`/`--allow-domain`.
 
 The `watch` surface reuses the same validator but is stricter: a live,
 in-progress run is never `share_ready` (raw, unverified screenshots), so `--safe`
-would admit nothing. `watch --expose --safe` is therefore refused outright with
-`HUMANISH_WATCH_SAFE_NOT_APPLICABLE`, so the flag is never silently ignored.
+would admit nothing. `watch --safe`, with or without `--expose` and on every route, is
+therefore refused outright with `HUMANISH_WATCH_SAFE_NOT_APPLICABLE` (exit 2), so the flag is
+never silently ignored.
 `watch --expose` always requires edge auth (`--tunnel --oauth` or `--public-url`),
 and is also refused with `--dry-run`/`--detach`/`--json` (no live desktop / no
 attached follow). An exposed watch serves ONLY the attached live run: its
