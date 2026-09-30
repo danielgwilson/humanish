@@ -156,8 +156,8 @@ Initial label taxonomy:
 
 ## GitHub Projects
 
-Projects are useful for maintainer operating visibility, not canonical truth.
-The public CLI should not require Projects. Canonical state should live in:
+Projects are useful for maintainer operating visibility. They do not hold the
+feedback state. The public CLI should not require Projects. The state should live in:
 
 - issue body YAML blocks;
 - labels;

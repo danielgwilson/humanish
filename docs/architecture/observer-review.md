@@ -3,7 +3,7 @@
 Observer shows a study's participants, their recorded screens, and the events
 that explain those screens. The grid, player and exported HTML use the same
 current renderer. Screens fit their actual aspect ratio; a portrait capture is
-never cropped to fill a landscape tile.
+never cropped to fill a wide tile.
 
 ## Choose the right entry point
 
@@ -62,7 +62,7 @@ limit while keeping selected participants removable.
 
 Icon buttons use Lucide glyphs, accessible names, hover/focus hints and visible
 keyboard focus. Touch targets expand to 44px. Popovers have explicit close buttons;
-Escape dismisses a hint without navigating the player. These conventions follow
+Escape dismisses a hint without moving the player. These conventions follow
 [Carbon icon usage](https://carbondesignsystem.com/elements/icons/usage/),
 [ARIA toggle-button semantics](https://www.w3.org/WAI/ARIA/apg/patterns/button/),
 and [WCAG target sizing](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).

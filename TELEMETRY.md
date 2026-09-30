@@ -13,8 +13,8 @@ subject is your product and a lab id can name something you have not announced.
 humanish shipped sixty-one releases without being able to answer _"does anyone
 get to a working first run?"_. The answer, when it finally arrived, came from an
 adoption post-mortem: the first live run had been impossible for months, because
-the starter labs shipped with a placeholder URL. Nobody reported it. A tool that
-cannot see its own activation is guessing about the thing that matters most.
+the starter labs shipped with a placeholder URL. Nobody reported it. Without
+telemetry, humanish cannot tell whether new users reach a working first run.
 
 ## What is collected
 
@@ -57,11 +57,11 @@ HUMANISH_TELEMETRY_DEBUG=1 humanish run first-run
 
 ## What is never collected
 
-Your own lab ids and titles. Your subjects — repos, URLs, app names. Personas,
+Your own lab ids and titles. Your subjects: repos, URLs, app names. Personas,
 missions, or any prompt text. Paths, working directories, hostnames, usernames.
 Run ids, evidence, screenshots, traces. Credential names or values. There is no
-field in the payload that could carry any of these; the allowlist is enforced in
-code and pinned by tests, not promised in prose.
+field in the payload that could carry any of these. `src/cli/telemetry.ts` enforces
+the allowlist and `tests/cli/telemetry.test.ts` pins it.
 
 Your machine is identified by a random id generated locally on first use, tied
 to nothing.
@@ -73,8 +73,8 @@ above), every event asks for no person profile to be built for the machine id
 (`$process_person_profile: false`), and the receiving project is set to
 discard the client address at ingestion. Events sent by versions before 0.66.0 did not carry the opt-out, so
 the receiver attached a city-level location to them; that setting has been
-turned off for the project and the doc said "anonymous" while it was on. Stated
-here rather than quietly fixed.
+turned off for the project and the doc said "anonymous" while it was on. This page
+records that so the fix is not silent.
 
 ## What never reports
 
@@ -108,5 +108,4 @@ humanish-specific configuration. The opt-out is stored under your user config
 (`~/.config/humanish/telemetry.json`), never inside the project you are studying.
 
 Telemetry never blocks, slows, or fails a command: it is fire-and-forget, bounded
-by a two-second timeout, and every error inside it is swallowed. Metrics are our
-problem, not yours.
+by a two-second timeout, and every error inside it is swallowed.

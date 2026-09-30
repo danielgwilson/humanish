@@ -80,8 +80,8 @@ Implemented:
   `share_ready` evidence;
 - skills.sh-compatible agent skill;
 - first-class lab manifest resolution through `humanish/labs/*.yaml` and
-  ignored `.humanish/labs/*.yaml` overlays — `humanish.lab.v2` compositions
-  (`src/lab/config.ts`), one engine, no hardcoded lab kinds;
+  ignored `.humanish/labs/*.yaml` overlays, as `humanish.lab.v2` compositions
+  (`src/lab/config.ts`) with one engine and no hardcoded lab kinds;
 - a first-party actor registry with five registered descriptors
   (`src/actors/registry.ts`); `actors[0].type` is a real dispatch key on the
   computer-use, scripted-browser, and terminal-product routes;
@@ -103,7 +103,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
 - an off-app comms funnel for email-gated flows: a vendor-neutral in-sandbox
   catch redirects the app's own send API, a persona reads a minimal inbox surface
   and clicks through, and a digest-only `humanish.comms-thread.v1` artifact
-  records the thread with no raw address, link, or code — wired into the
+  records the thread with no raw address, link, or code. It is wired into the
   computer-use and concurrent shared-world routes and live-proven on computer-use.
   SMS is not yet a configured execution route;
 - resolved-persona directives that actually shape the actor prompt on the
@@ -117,7 +117,7 @@ clone` + `serve` clones, installs, and serves a real app in-sandbox from
   a pass fails the run on the scorer-capable routes, while library callers keep
   the additive behavior (`costProbe` stays library-only); on the terminal route
   the scoring context carries the FULL normalized transcript (byte-identical to
-  the persisted `terminal-transcript.txt`), not only the ~2KB tail projection;
+  the persisted `terminal-transcript.txt`) instead of the ~2KB tail projection;
 - containment checks for managed run storage, Observer and feedback reads,
   actor artifacts, lab discovery, Git metadata, and source archives;
 - cleanup inspection receipts that do not treat mutable run-bundle IDs as
@@ -127,7 +127,7 @@ Still not good enough:
 
 The [current proof-roadmap checkpoint](https://github.com/danielgwilson/humanish/blob/main/docs/goals/proof-roadmap/README.md)
 supersedes implementation-status phrases in the 2026-06-10 roadmap packet
-(kept as written — it is a dated record; its README carries current status)
+(kept as written because it is a dated record; its README carries current status)
 without changing its success standard.
 
 - capability receipts are not adopter replacement: no first-party deletion
@@ -137,10 +137,10 @@ without changing its success standard.
   out-of-tree actor-registration API;
 - run storage and provider-resource lifecycle logic still spans several routes
   instead of one `RunStore` and `ResourceLease` boundary;
-- multi-origin shared-world is a ratified design direction, but remains
+- multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
-- the README hero is the drawDB real-application study — a legible capture of a
-  studied public subject, not a Humanish adopter; coverage beyond that single
+- the README hero is the drawDB real-application study, a legible capture of a
+  studied public subject (drawDB is not a Humanish adopter); coverage beyond that single
   studied subject (the stratified breadth panel) remains open.
 
 ## First Commands
@@ -194,7 +194,7 @@ Do not close a change on narrative alone.
 Useful proof includes:
 
 - `pnpm release:check`;
-- `pnpm release:dogfood` before a tag — see below;
+- `pnpm release:dogfood` before a tag (see below);
 - focused unit or contract tests;
 - a generated run bundle under ignored `.humanish/`;
 - Observer screenshots or health output;
@@ -254,15 +254,15 @@ pnpm release:dogfood     # needs OPENAI_API_KEY + E2B_API_KEY; costs about a dol
 ```
 
 `release:check` proves the code is internally consistent. It cannot tell you whether
-someone landing on this build can get anywhere with it, and that gap is not
-theoretical: `0.56.0` passed every check and shipped a regression that hid a run's
+someone landing on this build can get anywhere with it. That gap has cost a release:
+`0.56.0` passed every check and shipped a regression that hid a run's
 price at exactly the moment a person was deciding whether to set keys up. A
 synthetic participant found it hours later.
 
 So the last gate before a tag is the product's own first-contact study, pointed at
 the release candidate. It packs the tarball, uploads it into the sandbox, and has a
-real autonomous agent install THAT — not `humanish@latest`, which would measure the
-last release, the one artifact we already know about.
+real autonomous agent install that tarball. Installing `humanish@latest` instead would
+measure the last release, the one artifact we already know about.
 
 It prints the participant's report and fails the gate if they could not get there.
 **Read the report even when it passes.** The verdict is a marker the participant

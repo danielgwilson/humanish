@@ -10,15 +10,15 @@ real public app possible without any persona-to-persona messaging.
 | ------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Shared plane        | a `clone`/`local-tree` subject served + `getHost`-exposed IN-SANDBOX | a real operator-OWNED public deployment (`source: app-url`) used DIRECTLY                  |
 | Harness role        | MINTED and controls the host URL                                     | OBSERVES that the seats converged on ONE origin (tolerant of a declared→observed redirect) |
-| Subject sandbox     | one (headless service host) + N actor desktops                       | NONE — only N actor desktops                                                               |
+| Subject sandbox     | one (headless service host) + N actor desktops                       | none; only N actor desktops                                                                |
 | Attestation         | `subject.exposure: synthetic` (synthetic seeded data)                | `subject.publicTarget: { owner, authorized }` (you own/operate it)                         |
 | Provenance          | `subject.state.provenance == seeded`                                 | `subject.state.provenance == external-public`                                              |
 | Plane identity      | `plane.hostDigest`; every `routeHostDigest == it` (harness-minted)   | `plane.publicOriginDigest`; every CDP-observed `routeHostDigest == it` (observed)          |
-| Shared-state proof  | authoritative in-sandbox checkpoint `stateSeries` + delta-on-pass    | NONE — `stateSeries` OMITTED (Option A)                                                    |
+| Shared-state proof  | authoritative in-sandbox checkpoint `stateSeries` + delta-on-pass    | none; `stateSeries` OMITTED (Option A)                                                     |
 | Concurrency-on-pass | ≥2 overlapping windows AND a state delta at/after an overlap start   | ≥2 overlapping windows ONLY (temporal co-occupancy)                                        |
-| Extra proof         | —                                                                    | `lobbyConvergenceDigest` (all seats on one `/lobby/CODE`)                                  |
+| Extra proof         | none                                                                 | `lobbyConvergenceDigest` (all seats on one `/lobby/CODE`)                                  |
 
-THE HONEST DELTA. getHost = harness-minted host + synthetic-seeded attestation + authoritative
+In short: getHost = harness-minted host + synthetic-seeded attestation + authoritative
 in-sandbox checkpoint `stateSeries`. external-public = operator-attested public origin + NO synthetic
 claim + NO authoritative shared-state proof (concurrency evidenced by temporal co-occupancy +
 observed lobby-path convergence only). Every downgrade is asserted-ABSENT by verify, never silently
@@ -29,14 +29,14 @@ external-public honest-downgrade limits are REQUIRED.
 Why the getHost synthetic gate is deliberately NOT reachable from the app-url branch: that gate
 (`concurrentSharedWorldValidationReason` → `plane.exposure == synthetic` + a `0.0.0.0` bind +
 `subject.state.provenance == seeded`, `src/run/verify-shared-world-concurrent.ts`) exists because a getHost URL is
-internet-reachable AND harness-owned — real data behind a harness-exposed URL is the hazard. A public
+internet-reachable AND harness-owned; real data behind a harness-exposed URL is the hazard. A public
 site the harness neither provisioned nor exposed has NEITHER property, so the gate's hazard does not
 exist there. The app-url branch is validated by `externalPublicSharedWorldValidationReason` and is
 reached before the getHost gate; a snapshot regression test pins the getHost path byte-unchanged.
 
 ## The CDP lobby-code handoff barrier
 
-The crux — reading a seat's live URL mid-run — is ALREADY implemented: `makeChromeBrowserStateObserver`
+Reading a seat's live URL mid-run is already implemented: `makeChromeBrowserStateObserver`
 (`src/substrates/e2b/cua-provisioning.ts`) runs an in-sandbox `node -e` script that resolves the seat's Chrome CDP port,
 selects the seat's page, and sends `Runtime.evaluate({ url: location.href, title, text })` over the
 page's `webSocketDebuggerUrl`. `createE2BDesktopExecutor` stamps `observation.url` from it every turn.
@@ -58,12 +58,12 @@ Flow, a host-first barrier inside `runConcurrentSharedWorld`'s fan-out:
    host KEEPS PLAYING after resolving, so its window overlaps the followers'.
 3. **Barrier.** Follower lanes (`host` absent) do NOT compose a mission or open their target until
    `await Promise.race([lobbyCodeLatch.promise, timeout(HANDOFF_DEADLINE_MS)])`. On resolve, CODE is
-   threaded into each follower's mission ("…choose Join, enter lobby code {CODE}…") — NOT a raw URL
-   navigation, because a direct `/lobby/CODE` visit does not auto-join a non-member (lobby-trivia's
+   threaded into each follower's mission ("…choose Join, enter lobby code {CODE}…"). It is not a raw
+   URL navigation, because a direct `/lobby/CODE` visit does not auto-join a non-member (lobby-trivia's
    lobby page redirects unknown/non-member sessions home); the follower goes through the real Join
    flow.
 4. **Convergence confirmation.** Each follower's own `onObservedUrl` confirms it reached `/lobby/CODE`;
-   this observed convergence becomes the `lobbyConvergenceDigest` — the pass signal that the handoff
+   this observed convergence becomes the `lobbyConvergenceDigest`, the pass signal that the handoff
    LANDED rather than merely being instructed. Recorded only when EVERY seat converged on ONE code.
 5. **Fail-closed timeout.** If the host never yields a `/lobby/CODE` within `HANDOFF_DEADLINE_MS`
    (default 120s, capped by `execution.timeoutMs`; injectable in tests), the latch rejects; every
@@ -85,7 +85,7 @@ The convergence proof is about what the seats OBSERVED, not what was DECLARED. `
 is the sha256-16 of the ONE origin the seats' CDP-observed final URLs converged on; verify requires every
 `laneWindow.routeHostDigest` to agree on it. A normal cross-origin redirect (apex→www, http→https;
 lobby-trivia.example.test 307-redirects) makes the OBSERVED origin differ from the declared `subject.appUrl`, which
-is EXPECTED and must never fail the run — so the declared origin is recorded separately as
+is EXPECTED and must never fail the run. So the declared origin is recorded separately as
 `plane.declaredOriginDigest` for reference and is NEVER asserted equal to the observed one. Operator
 OWNERSHIP rests on the `subject.publicTarget.authorized` attestation + the declared `appUrl`, NOT on
 digest equality. Verify fails closed only when the seats did not converge on a single OBSERVED origin

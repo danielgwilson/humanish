@@ -49,7 +49,7 @@ A partially received frame has a nonrenewing 35-second assembly deadline.
 
 Version 1 has only `HELLO`, `OBSERVE`, and `EXECUTE`. Both directions carry the
 version, operation, identity, strictly increasing sequence and `request-N`
-correlation ID. Execute additionally carries the distinct `action-N` ID.
+correlation ID. Execute also carries the distinct `action-N` ID.
 Unknown fields, methods, versions, stale identity, duplicates, missing or wrong
 correlation, malformed UTF-8/JSON and oversized frames close admission. There is
 no generic CDP, command, file, navigation-management, or runtime-management method.

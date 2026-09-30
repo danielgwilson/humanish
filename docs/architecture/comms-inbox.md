@@ -7,7 +7,7 @@ parsed renderer, strict remote-asset blocking and private lease lifecycle.
 The catch captures application mail without sending it to an external recipient.
 Humanish gives each participant an address and a matching
 `/inbox/for/<address-digest>` URL. The same address scope applies to list, message,
-plain view, latest-message and JSON routes. Navigating back from a missing message
+plain view, latest-message and JSON routes. Going back from a missing message
 stays in that scope. An unknown scope is empty; it never falls back to all mail.
 A lane without an assigned address receives no inbox instruction.
 

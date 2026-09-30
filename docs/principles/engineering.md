@@ -10,7 +10,7 @@ low maintenance cost, alongside correctness, privacy and security.
 
 - **KISS:** use familiar patterns, existing repo code and maintained upstream
   components. Judge total complexity: dependencies, services, configuration,
-  deployment and failure handling, not just source lines.
+  deployment and failure handling as well as source lines.
 - **YAGNI:** implement the requested behavior. Explicit near-term requirements
   constrain today's design: defer their implementation, not compatibility. Avoid
   choices that force an overhaul to deliver an already-required follow-up.
@@ -48,7 +48,7 @@ low maintenance cost, alongside correctness, privacy and security.
 
 ## Working And Resuming
 
-- Read the [ramp](docs/ramp/README.md), current task and relevant component
+- Read the [ramp](../ramp/README.md), current task and relevant component
   instructions. Read detailed contracts for the boundary being changed, not every
   historical roadmap. Consult the invariants for security/evidence changes and the
   release procedure before publishing.
@@ -58,7 +58,7 @@ low maintenance cost, alongside correctness, privacy and security.
   treat an old plan as authorization to resume paused or rejected work.
 - When granted autonomous shipping authority, push, open the PR, address reviews
   and required checks, merge when green, fast-forward main and clean up the task
-  worktree/branch. Follow [release gates](docs/release/open-source-readiness.md)
+  worktree/branch. Follow [release gates](../release/open-source-readiness.md)
   when a release is authorized; do not add new approval steps on your own.
 - Stay on `0.x` until the maintainer explicitly chooses 1.0. The next minor
   after `0.99.0` is `0.100.0`; routine shipping authority does not authorize 1.0.

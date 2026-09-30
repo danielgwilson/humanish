@@ -2,10 +2,10 @@
 
 Date: 2026-06-01
 
-Status: product target for the first world-class `humanish` implementation.
+Status: product target for the first `humanish` implementation.
 
 Safety amendment (2026-07-14): the `0.15.1` package binds managed run and
-output storage to validated physical paths, treats provider IDs persisted in a
+output storage to validated physical paths and treats provider IDs persisted in a
 run bundle as evidence rather than cleanup authority. The historical product target below remains useful for
 intent and sequencing, but current behavior is defined by the README and
 [`docs/goals/current.md`](../goals/current.md).
@@ -83,13 +83,13 @@ New projects should get a boring, legible format stack:
 - `.json` and `.ndjson` for generated run artifacts, Observer data, review
   output, event streams, and synthetic fixtures.
 
-Use `.yml` only where an outside ecosystem convention already expects it, for
+Use `.yml` only where an outside tool's convention already expects it, for
 example GitHub Actions workflows. Do not scaffold `.yml` for Humanish source and
 do not use TOML unless a future scalar global-config case clearly needs it.
 
 ## First-Run Principles
 
-- No keys required for the first wow moment.
+- No keys required for the first successful run.
 - No live GitHub mutation.
 - No hosted queues or private infrastructure.
 - No real customer/user/patient data.

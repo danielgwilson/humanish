@@ -8,7 +8,7 @@ cost/no-spend ledger, caps, and product scoring/feedback hooks are implemented;
 the kept 2026-07-09 live receipt verifies 15/15 checks and `share_ready` at a
 `$0` cap. That capability receipt is not adopter replacement: no deletion
 branch has yet removed the reference adopter's bespoke generic study harness.
-See the ratified goal packet
+See the goal packet
 ([`docs/goals/terminal-product-lane/goal.md`](../goals/terminal-product-lane/goal.md))
 for the full slice plan and the safety contract.
 
@@ -19,9 +19,9 @@ agent (Codex) discovering and using a CLI/product from its **public surfaces
 only**, running **inside an E2B shell** with declared runtime-auth placement and
 spend/time caps, emitting durable terminal/substrate/cost/no-spend/cleanup/
 intervention proof that verifies fail-closed. This is distinct from the browser
-lanes: it is not testing whether a browser can click a local web app — it tests
-whether an autonomous agent can discover and use a CLI/product surface from
-public materials.
+lanes. It tests whether an autonomous agent can discover and use a CLI/product
+surface from public materials. It does not test whether a browser can click a
+local web app.
 
 It rides the established lane-addition pattern (proven by the scripted-browser
 and local-app lanes): a new `subject.source` × `execution.target`, a routing
@@ -33,19 +33,19 @@ fail-closed cross-validation, and forward-declared warnings.
 | Axis                                  | Value                                                                                                                        |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `subject.source`                      | `terminal-product`                                                                                                           |
-| `subject.product`                     | `{ name, publicSurfaces[] }` — the only world the agent sees                                                                 |
+| `subject.product`                     | `{ name, publicSurfaces[] }`: the only world the agent sees                                                                  |
 | `execution.target`                    | `e2b-terminal` (or absent → implied)                                                                                         |
 | `execution.terminal`                  | `{ transport: exec-stream, stdin: disabled }`                                                                                |
 | `execution.runtimeAuth`               | `openai-env` (default) or opt-in `openai-egress`; names-only durable evidence                                                |
 | `execution.runtime.version`           | Optional exact `@openai/codex` version; observed before keyed execution                                                      |
 | `actors[0].model` / `reasoningEffort` | Forwarded to Codex; retained as declarations, not observed provider identity                                                 |
-| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }` — the blast-radius budget                                                                  |
+| `scenario.caps`                       | `{ maxUsd, maxJobs, maxMinutes }`: the blast-radius budget                                                                   |
 | `policies`                            | `allowPrivateRepoAccess` / `allowProviderCredentials` / `allowPaymentCredentials` / `allowGitHubMutation`, all DEFAULT FALSE |
-| `actors[0].type`                      | `codex-exec` — a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                       |
+| `actors[0].type`                      | `codex-exec`: a registered terminal actor (`keyPlacement: in-sandbox-command-scoped`)                                        |
 | `LabBackend`                          | `terminal` → `runTerminalProductLab` ([`src/routes/terminal/lab.ts`](../../src/routes/terminal/lab.ts))                      |
 
-Routing is `routesToTerminalProduct(config)` — the single source of truth that
-both `selectLabBackend` and the forward-declared-warning logic consume, mirroring
+Routing is `routesToTerminalProduct(config)`, the one predicate that both
+`selectLabBackend` and the forward-declared-warning logic consume, mirroring
 `routesToComputerUse` / `routesToScriptedBrowser`.
 
 ## Repeating a terminal study with the same runtime
@@ -195,8 +195,8 @@ behavior. The desktop route retains its ten-minute runtime step deadline.
 The default mode **inverts** the credential-placement default of every other E2B route.
 On the computer-use route the model's key stays _outside_ the sandbox; here the
 agent-under-test runs _inside_ with a real `OPENAI_API_KEY`/`CODEX_API_KEY` and
-is **presumed exfiltratable**. The doctrine (invariants-and-defaults.md, the
-placement rule): _keys live where the keyed process runs — and nowhere else;
+is **presumed exfiltratable**. The placement rule in invariants-and-defaults.md
+applies: _keys live where the keyed process runs, and nowhere else;
 blast radius is bounded by key scoping and budgets, not by hoping._
 
 The inversion is declared as registry metadata, not a code convention: the
@@ -214,14 +214,14 @@ At SLICE 1, `runTerminalProductLab` implemented only the dry-run path: it built 
 `humanish.run-bundle.v1` contract bundle, honestly labeled contract-only, with:
 
 - the subject declared as a terminal-product with its public surfaces, provenance
-  **UNPINNED** (the agent drives public surfaces, not a clone — invariant 5);
+  **UNPINNED** (the agent drives public surfaces, not a clone; invariant 5);
 - the author mission recorded as plaintext (public-safe committed lab text) + a
   **digest** of the full composed prompt (nothing beyond the author mission goes
   plaintext);
 - the caps / deny-by-default policies / runtime-auth channel recorded as
-  declarations (names only — invariant 1);
+  declarations (names only; invariant 1);
 - a terminal-kind stream that is an honest **contract placeholder**: stdin
-  disabled, empty tail, `transport: snapshot` — **not** `pty` (captured
+  disabled, empty tail, `transport: snapshot`, **not** `pty` (captured
   non-interactive exec output is never an interactive PTY; invariant 6 + the
   goal packet's PTY ruling). SLICE 2 later added redacted exec-stream capture;
 - empty/placeholder ledgers (substrate lifecycle, command log, terminal event
@@ -240,20 +240,20 @@ The DI seams SLICE 2 needs (`loadModule`, `buildSandbox`, `runtimeAuthEnv`,
 `RunLabOptions.terminalHooks`, mirroring `cuaHooks` / `scriptedHooks`; only the
 dry-run path was implemented in that slice.
 
-## SLICE 4 — the product-adapter extension seam (layer 6)
+## SLICE 4: the product-adapter extension seam (layer 6)
 
 This lane is proof-roadmap **layer 6**: an adopter attaches product-specific
 scoring + feedback as a THIN in-repo extension WITHOUT forking core. SLICE 4
-ships the SEAM (not a built-in product scorer — the adopter's scorecard lives in
-the adopter's repo):
+ships the SEAM. Core ships no built-in product scorer; the adopter's scorecard
+lives in the adopter's repo:
 
 - **Exported contract types** a thin adapter types against from the package
-  barrel (`humanish`) alone — never a deep `src/` import: `RunBundle`,
+  barrel (`humanish`) alone, never through a deep `src/` import: `RunBundle`,
   `RunFeedbackCandidate`, `RunAdapterScore`, `RunMeaningfulUseScore`
   (+ `RunMeaningfulUseComponentId`), `ActorTrace`, and the terminal-lane
   `TerminalProductScoringContext` / `TerminalLedgers` / `TerminalCostLedger` /
   `NoSpendProof` / `CostLine` / record types. Before this slice these were not
-  exported — which FORCED a fork (a thin adapter could not type against the
+  exported, which forced a fork (a thin adapter could not type against the
   bundle), the gap issue #154 acceptance #8 names.
 - **A registrable scorer / feedback DI hook** on `TerminalProductLabHooks`:
   `score?(ctx: TerminalProductScoringContext) => RunAdapterScore | Promise<…>`
@@ -274,7 +274,7 @@ the adopter's repo):
 
 The seam is fail-closed: the lane scrubs+redacts the returned payloads and DROPS
 any malformed score/candidate with a warning, and `verifyRun` re-checks the
-surviving shapes — a bad extension never poisons a verifiable bundle. Proven by
+surviving shapes, so a bad extension never poisons a verifiable bundle. Proven by
 `tests/routes/terminal/product-adapter-seam.test.ts` (a thin in-repo example adapter
 typing against the barrel only, registering a scorer, attaching namespaced nouns,
 emitting a candidate; the bundle verifies). At SLICE 4 this was contract proof,

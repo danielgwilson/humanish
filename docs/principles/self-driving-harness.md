@@ -2,12 +2,12 @@
 
 Date: 2026-06-01
 
-Status: initial repo doctrine for `humanish`.
+Status: initial principles for `humanish`.
 
 ## Thesis
 
-`humanish` should be a closed-loop product simulation system, not just a
-CLI that launches agents.
+`humanish` should be a closed-loop product simulation system. Launching agents
+is one step of that loop.
 
 The operating loop is:
 
@@ -21,9 +21,9 @@ persona scenario run
 -> rerun and compare
 ```
 
-The hard part is not getting an agent to do something. The hard part is making
-the result verifiable, repeatable, safe to file, and useful to the next
-agent with no chat context.
+Getting an agent to act is the easy step. The work is making the result
+verifiable, repeatable, safe to file, and useful to the next agent with no chat
+context.
 
 ## Public Boundary
 
@@ -51,8 +51,9 @@ or issue links.
 
 ### 3. Run Bundles Are Source Of Truth
 
-The observer is a projection. The GitHub Project is a cockpit. The issue queue
-is a work surface. The run bundle is the canonical evidence record.
+The Observer is a view derived from the bundle. The GitHub Project and the issue
+queue track work. The run bundle is the evidence record the other surfaces derive
+from.
 
 ### 4. Coverage Is The Product
 
@@ -118,12 +119,12 @@ or reviewer-like gate that checks coverage, evidence, and product relevance.
 ## Anti-Patterns
 
 - Treating the best model as a substitute for harness quality.
-- Using screenshots as vibes without state or transcript evidence.
+- Treating screenshots as proof without state or transcript evidence.
 - Letting product-specific nouns leak into generic core.
 - Generating GitHub issue drafts from vague summaries without bundle links.
 - Closing issues because a PR exists, not because product proof exists.
 - Giving autonomous agents broad write authority before observe/draft stages
   are reliable.
-- Letting project fields become canonical state.
+- Letting project fields become the source of truth.
 - Retrying failed issue submission paths until duplicates appear.
 - Storing private data in examples because it was convenient during extraction.
