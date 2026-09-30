@@ -64,7 +64,11 @@
   // knip reports cycles as warnings by default, which exit 0.
   "rules": { "cycles": "error" },
   "cycles": {
-    // Known cycle, removed by the study-analysis split. Any new cycle fails `pnpm knip`.
-    "allow": [["src/analysis/store.ts", "src/analysis/job.ts"]],
+    // Known cycle, removed by the study-analysis split. Any new cycle fails `pnpm knip`. knip
+    // matches an allowed cycle by the file its traversal reaches first, so both orders are listed.
+    "allow": [
+      ["src/analysis/store.ts", "src/analysis/job.ts"],
+      ["src/analysis/job.ts", "src/analysis/store.ts"],
+    ],
   },
 }

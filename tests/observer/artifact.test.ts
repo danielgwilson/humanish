@@ -4,7 +4,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { observerArtifactNeedsBuild, renderObserver } from "../../src/observer/render.js";
+import { renderObserver } from "../../src/observer/render.js";
+import { observerArtifactNeedsBuild } from "../../src/observer/artifact.js";
 import { OBSERVER_DATA_SCHEMA } from "../../src/observer/data.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 

@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { exportRun, formatExportHuman, localOnlyBanner } from "../../src/feedback/export.js";
-import { renderObserverHtml } from "../../src/observer/render.js";
+import { renderObserverHtml } from "../../src/observer/artifact.js";
 import type { ObserverData } from "../../src/observer/data.js";
 import type { VerifyResult } from "../../src/run/verify.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";

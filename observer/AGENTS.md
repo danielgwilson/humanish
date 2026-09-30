@@ -37,7 +37,7 @@ From the repo root (pnpm workspace):
 - `styles/globals.css` holds the chrome styles; `styles/humanish/` holds the vendored registry
   CSS.
 - `scripts/inject.ts`: the reference slot-injection helper. Since the 2026-08-16 cutover,
-  `src/observer/render.ts` mirrors it.
+  `src/observer/artifact.ts` mirrors it.
 - `tests/`: the architecture constraints as executable tests.
 
 ## Rules
@@ -58,7 +58,7 @@ From the repo root (pnpm workspace):
   No new colors: every color reads a humanish token.
 - The CLI consumes the built artifact as its only renderer (cutover 2026-08-16,
   #439): the root build copies `observer/dist/index.html` to
-  `dist/observer-app.html`, and `src/observer/render.ts` injects each run's snapshot
+  `dist/observer-app.html`, and `src/observer/artifact.ts` injects each run's snapshot
   into the slot (mirroring `scripts/inject.ts`). In a repo checkout the
   artifact auto-builds (production-forced, cross-process locked). There is no
   flag and no legacy fallback; rollback is a version pin.

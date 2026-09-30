@@ -122,11 +122,8 @@ import type { Shell } from "../../substrates/shell.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import { type LabActorLane, type LabConfig } from "../../lab/types.js";
 import { liveObserverResult } from "../../observer/live.js";
-import {
-  attachObserverRuntimeStreamUrls,
-  type ObserverResult,
-  type ObserverRuntimeStreamUrl,
-} from "../../observer/render.js";
+import { attachObserverRuntimeStreamUrls, type ObserverResult } from "../../observer/render.js";
+import type { ObserverRuntimeStreamUrl } from "../../observer/run-routes.js";
 import { redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
