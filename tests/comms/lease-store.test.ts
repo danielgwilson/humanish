@@ -17,7 +17,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AGENTMAIL_RECEIVING_CODES, AgentMailReceivingError } from "../../src/comms/agentmail.js";
 import { CommsLeaseStore, inspectCommsLeaseStore } from "../../src/comms/lease-store.js";
-import { recoverCommsReceiving } from "../../src/comms/receiving.js";
+import { recoverCommsReceiving } from "../../src/comms/receiving-recovery.js";
 import type {
   ReceivingAdapter,
   ReceivingIdentity,
@@ -70,6 +70,7 @@ describe("private communications cleanup authority", () => {
       provider: "agentmail",
       addressing: "provisioned",
       idempotentAcquire: true,
+      authRejectedCode: "agentmail_auth_rejected",
       codes: AGENTMAIL_RECEIVING_CODES,
       authenticate,
       acquire,

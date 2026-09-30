@@ -71,7 +71,7 @@ import { verifyRun } from "../../../src/run/verify.js";
 import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
 import type { LocalTreeArchive } from "../../../src/run/source-archive.js";
 import { freePort } from "../../helpers/free-port.js";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../../src/routes/terminal/node-bootstrap.js";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves BOTH faces of the sandbox: the

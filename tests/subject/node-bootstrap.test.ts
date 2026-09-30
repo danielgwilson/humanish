@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   TERMINAL_NODE_BOOTSTRAP_COMMAND,
   TERMINAL_NODE_NPM_PREFIX_SCRIPT,
-} from "../../../src/routes/terminal/node-bootstrap.js";
+} from "../../src/subject/node-bootstrap.js";
 
 const execFileAsync = promisify(execFile);
 

@@ -6,9 +6,8 @@
 
 import type { LabConfig } from "../../lab/types.js";
 import { liveObserverResult } from "../../observer/live.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { mapWithConcurrency } from "../../run/concurrency.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import { buildConcurrentSharedWorldBundle } from "./bundle.js";
 import { drainExternalComms } from "./comms.js";
 import { LobbyHandoff, runFollowerLane, runHostLane, type HandoffSeatDeps } from "./handoff.js";

@@ -9,7 +9,7 @@
 // it, rather than the orchestrator relaying the code out-of-band.
 
 import { commandDigestOf } from "../../subject/state.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
+import { toErrorMessage } from "../../evidence/redaction.js";
 import { inboxRecipientFor, laneHasInboxRecipient } from "../computer-use/lab.js";
 import { withInboxMission } from "../computer-use/lane-plan.js";
 import { runCuaLane } from "../computer-use/lanes.js";

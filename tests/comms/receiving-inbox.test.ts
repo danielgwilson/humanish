@@ -3,11 +3,8 @@ import { dirname } from "node:path";
 import { request } from "node:http";
 import { parseFragment, type DefaultTreeAdapterTypes } from "parse5";
 import { describe, expect, it } from "vitest";
-import {
-  deployReceivingInbox,
-  RECEIVING_INBOX_CSP,
-  renderReceivingInbox,
-} from "../../src/comms/receiving-inbox.js";
+import { RECEIVING_INBOX_CSP, renderReceivingInbox } from "../../src/comms/receiving-render.js";
+import { deployReceivingInbox } from "../../src/comms/receiving-surface.js";
 import type { ParticipantEmail } from "../../src/comms/receiving-types.js";
 import { localInboxDesktop, unusedInboxPort } from "../helpers/comms-receiving-inbox-desktop.js";
 import { e2bShell } from "../../src/substrates/e2b/shell.js";

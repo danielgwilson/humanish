@@ -1,9 +1,8 @@
 // E2B owns provisioning and final evidence; the participant runner only uses the ready port.
 import { setTimeout as delay } from "node:timers/promises";
-import { toErrorMessage } from "../command-failure.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { buildOriginMap } from "../../comms/capture-surface.js";
-import { deployReceivingInbox } from "../../comms/receiving-inbox.js";
+import { deployReceivingInbox } from "../../comms/receiving-surface.js";
 import {
   DEFAULT_SANDBOX_CATCH_PORT,
   collectCommsThread,
@@ -61,7 +60,7 @@ import { observeDesktopResources, type DesktopResourceObservation } from "./desk
 import { acquireE2BDesktopSandbox } from "./sandbox.js";
 import { readDetachedLog } from "../detached.js";
 import { e2bShell } from "./shell.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { type RunSubjectStateStepRecord } from "../../run/bundle.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";

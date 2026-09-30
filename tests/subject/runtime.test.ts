@@ -11,7 +11,7 @@ import {
   corepackCommandFor,
   needsNodeRuntime,
   nodeBootstrapCommand,
-} from "../../src/routes/subject-runtime.js";
+} from "../../src/subject/runtime.js";
 
 describe("needsNodeRuntime", () => {
   it("detects the package managers and runtimes a Node app's pipeline actually uses", () => {

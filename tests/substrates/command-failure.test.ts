@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  commandFailureInfo,
-  isCommandExitError,
-  tailOf,
-} from "../../src/substrates/command-failure.js";
+import { commandFailureInfo, isCommandExitError } from "../../src/substrates/command-failure.js";
+import { tailOf } from "../../src/substrates/shell.js";
 
 /** Shape matching @e2b/desktop's CommandExitError (name + exitCode + stderr/stdout). */
 function commandExitError(fields: {

@@ -1,14 +1,13 @@
 // Screen and browser-window geometry on a hosted E2B desktop, measured in the sandbox rather than
 // taken from the request.
 import { type DevicePreset } from "../../lab/device-presets.js";
-import { failureTail, redactText } from "../../evidence/redaction.js";
+import { failureTail, redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { type RunDesktopGeometry } from "../../run/streams.js";
 import {
   chromeCdpProbeCommand,
   parseChromeCdpProbeOutput,
   type ChromeCdpPagePreference,
 } from "../../routes/computer-use/cdp-probe.js";
-import { toErrorMessage } from "../command-failure.js";
 import { shellQuote } from "../shell.js";
 import { e2bShell } from "./shell.js";
 import {

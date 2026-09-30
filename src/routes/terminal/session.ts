@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "./node-bootstrap.js";
+import { TERMINAL_NODE_BOOTSTRAP_COMMAND } from "../../subject/node-bootstrap.js";
 import { parseTerminalTokenUsage } from "./token-usage.js";
 import {
   buildRuntimeExecPrefix,
@@ -13,7 +13,6 @@ import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
 import { actorRegistry } from "../../actors/registry.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import { buildOpenAiEgressNetwork } from "./runtime-auth.js";
 import type { LabRuntimeAuth } from "../../lab/types.js";
 import {
@@ -28,7 +27,7 @@ import {
   personaToDirectives,
   renderPersonaPromptSection,
 } from "../../lab/persona.js";
-import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
+import { digestText, redactText, scrubLiterals, toErrorMessage } from "../../evidence/redaction.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";

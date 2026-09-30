@@ -10,21 +10,6 @@
 // read here; caller-supplied text (e.g. typed input) must never be passed to the
 // failing command as an argument, so it cannot appear in these fields.
 
-/** Sanitized, whitespace-collapsed, length-capped tail of command output. */
-export function tailOf(value: string | undefined): string {
-  return (value ?? "").trim().replace(/\s+/g, " ").slice(-240);
-}
-
-/**
- * Coerce an unknown thrown value to its message string. Prefer this over the
- * inline `error instanceof Error ? error.message : String(error)` so error
- * stringification stays uniform. Note: this does NOT redact -- sites that emit
- * to public-bound artifacts must run the result through `redactText` first.
- */
-export function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * True when `error` is (structurally) the @e2b/desktop CommandExitError: a
  * non-zero substrate command exit that the real Sandbox surfaces as a THROW.
@@ -38,6 +23,8 @@ export function toErrorMessage(error: unknown): string {
  * name override or an exitCode) or a generic Error with no exit signal, so only a
  * genuine substrate-command failure is treated as recoverable.
  */
+import { tailOf } from "./shell.js";
+
 export function isCommandExitError(error: unknown): boolean {
   if (error === null || typeof error !== "object") return false;
   const e = error as { name?: unknown; exitCode?: unknown };

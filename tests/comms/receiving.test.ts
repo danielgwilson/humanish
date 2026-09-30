@@ -8,12 +8,11 @@ import {
   createAgentMailReceiver,
 } from "../../src/comms/agentmail.js";
 import {
-  inspectCommsRecovery,
-  recoverCommsReceiving,
   startCommsReceiving,
   type CommsReceivingRun,
   type StartCommsReceivingOptions,
 } from "../../src/comms/receiving.js";
+import { inspectCommsRecovery, recoverCommsReceiving } from "../../src/comms/receiving-recovery.js";
 import type {
   CommsReceivingEvidence,
   ReceivedEmail,
@@ -64,6 +63,7 @@ function receiver() {
     provider: "agentmail",
     addressing: "provisioned",
     idempotentAcquire: true,
+    authRejectedCode: "agentmail_auth_rejected",
     codes: AGENTMAIL_RECEIVING_CODES,
     authenticate,
     acquire,

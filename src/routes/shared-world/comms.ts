@@ -4,9 +4,8 @@
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { collectExternalCommsThread } from "../../comms/sandbox-catch.js";
 import type { CommsAddress } from "../../comms/types.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import type { ExternalCommsWiring, PlaneContext } from "./types.js";
 
 /**

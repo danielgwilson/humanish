@@ -6,7 +6,7 @@ import {
   detectLocalAgents,
   type LocalAgentId,
 } from "../../actors/local-agent/cli.js";
-import { describeMissingKeys } from "../../cli/key-resolution.js";
+import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { externalCatchHealthy } from "../../comms/sandbox-catch.js";
 import { MODEL_RATES } from "../../run/pricing.js";
 import {

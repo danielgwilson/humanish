@@ -1,10 +1,10 @@
 import { registerTransientCommsSecrets } from "../run/narration-secrets.js";
 import type { LabConfig } from "../lab/types.js";
 import { readCommsConnections, type CommsConnection } from "./connections.js";
-import { discoverProviderKeys } from "../cli/key-resolution.js";
+import { discoverProviderKeys } from "../keys/key-resolution.js";
 import { createAgentMailReceiver } from "./agentmail.js";
 import { startCommsReceiving } from "./receiving.js";
-import { renderReceivingInbox } from "./receiving-inbox.js";
+import { renderReceivingInbox } from "./receiving-render.js";
 import type { ReceivingAdapter } from "./receiving-types.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { writeContainedOutputFile } from "../run/selected-output-paths.js";

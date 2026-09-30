@@ -14,18 +14,13 @@ import { SANDBOX_CATCH_SCRIPT } from "./sandbox-catch-script.js";
 import { buildInboxSurface, type InboxRenderOptions } from "./capture-surface.js";
 import { DEFAULT_EMAIL_PROFILES, type EmailSendProfile } from "./email-catch.js";
 import { startDetachedProcess, type DetachedTimers } from "../substrates/detached.js";
-import { runOrThrow, type Shell } from "../substrates/shell.js";
+import { runOrThrow, shellQuote, type Shell } from "../substrates/shell.js";
 
 /** The default in-sandbox loopback port for the catch. Fixed (not ephemeral) so the injected base-URL
  *  env is known before the sandbox is created. 8025 is the conventional local-mail-UI port and is
  *  unlikely to collide with a subject app; override via config if it does. */
 export const DEFAULT_SANDBOX_CATCH_PORT = 8025;
 const DEFAULT_CATCH_DIR = "/tmp/humanish-comms";
-
-/** Single-quote for safe shell interpolation. */
-function shq(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
 
 export interface DeployCommsCatchOptions {
   /** Fixed loopback port the catch listens on (default 8025). Must be free inside the sandbox. */
@@ -139,16 +134,18 @@ export async function deployCommsCatch(
   const deliveriesPath = `${dir}/deliveries.ndjson`;
   const surfaceDir = `${dir}/surface`;
 
-  await runOrThrow(shell, `mkdir -p ${shq(dir)} ${shq(surfaceDir)}`, { requestTimeoutMs });
+  await runOrThrow(shell, `mkdir -p ${shellQuote(dir)} ${shellQuote(surfaceDir)}`, {
+    requestTimeoutMs,
+  });
   await shell.writeFile(scriptPath, SANDBOX_CATCH_SCRIPT);
   await startDetachedProcess(shell, {
     name,
     command: [
       "python3",
-      shq(scriptPath),
+      shellQuote(scriptPath),
       String(port),
-      shq(deliveriesPath),
-      shq(surfaceDir),
+      shellQuote(deliveriesPath),
+      shellQuote(surfaceDir),
       ...(inboxPort === undefined && smtpPort === undefined ? [] : [String(inboxPort ?? 0)]),
       // The token slot is positional: an SMTP port cannot be reached without filling it. In-sandbox
       // the capture listener is loopback-only, so an empty token is the same posture as before.
@@ -188,7 +185,7 @@ export async function drainCommsCatch(
 ): Promise<{ sends: RawCapturedSend[]; cursor: number }> {
   const result = await runOrThrow(
     shell,
-    `cat ${shq(deployed.deliveriesPath)} 2>/dev/null || true`,
+    `cat ${shellQuote(deployed.deliveriesPath)} 2>/dev/null || true`,
     { requestTimeoutMs },
   );
   const stdout = result.stdout;
@@ -547,7 +544,7 @@ export async function writeInboxSurface(
     const slash = file.path.lastIndexOf("/");
     if (slash > 0) dirs.add(`${surfaceDir}/${file.path.slice(0, slash)}`);
   }
-  await runOrThrow(shell, `mkdir -p ${[...dirs].map(shq).join(" ")}`, {
+  await runOrThrow(shell, `mkdir -p ${[...dirs].map(shellQuote).join(" ")}`, {
     requestTimeoutMs: options.requestTimeoutMs ?? 30_000,
   });
   for (const file of files) {

@@ -74,6 +74,7 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
 | Folder                 | What it holds                                                                | Read first                          |
 | ---------------------- | ---------------------------------------------------------------------------- | ----------------------------------- |
 | `src/cli/`             | The commander program, with one file per command family in `commands/`       | `src/cli/program.ts`                |
+| `src/keys/`            | Provider key discovery: env files, the user key store and key-source probes  | `src/keys/key-resolution.ts`        |
 | `src/lab/`             | Lab manifest types, parsing, validation, routing and dispatch                | `src/lab/engine.ts`                 |
 | `src/routes/`          | One folder per route, each with its own bundle assembly                      | `src/routes/computer-use/lab.ts`    |
 | `src/actors/`          | The actor contract, the registry and each actor's session code               | `src/actors/registry.ts`            |

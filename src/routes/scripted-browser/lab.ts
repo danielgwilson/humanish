@@ -45,8 +45,8 @@ import {
   type AutomaticAnalysisResult,
 } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
-import { describeMissingKeys } from "../../cli/key-resolution.js";
-import { redactText } from "../../evidence/redaction.js";
+import { describeMissingKeys } from "../../keys/key-resolution.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabConfig } from "../../lab/types.js";
 import {
   cloneTargetValidationReason,
@@ -68,7 +68,6 @@ import {
 import type { RunLabProvenance } from "../../run/status.js";
 import { provisionCloneSubject } from "../../subject/clone.js";
 import { commandDigestOf } from "../../subject/state.js";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import type { DetachedTimers } from "../../substrates/detached.js";
 import {
   loadE2BDesktopModule,

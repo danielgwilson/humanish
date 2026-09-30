@@ -5,7 +5,6 @@ import type {
 } from "../../actors/computer-use/loop.js";
 import { createE2BCuaDesktopLane } from "../../substrates/e2b/cua-desktop.js";
 import path from "node:path";
-import { toErrorMessage } from "../../substrates/command-failure.js";
 import { cuaLaneDiagnostics } from "./diagnostics.js";
 import type { ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
@@ -16,7 +15,7 @@ import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { estimateActorCostForExecution, round6 } from "../../run/pricing.js";
 import type { LabConfig } from "../../lab/types.js";
-import { redactText } from "../../evidence/redaction.js";
+import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { createRestrictedCodexParticipant } from "../../actors/codex/restricted-participant.js";
 import { type RunSubjectProvenance } from "../../run/bundle.js";
 import {

@@ -3,9 +3,19 @@ import { constants } from "node:fs";
 import { lstat, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { parse, stringify } from "yaml";
-import { readCommsConnections } from "./connections.js";
-import { discoverProviderKeys } from "../cli/key-resolution.js";
-import { AgentMailReceivingError } from "./agentmail.js";
+import { COMMS_CONFIG_PATH, readCommsConnections } from "./connections.js";
+import {
+  discoverProviderKeys,
+  listUserKeys,
+  probeKeySources,
+  type KeyResolutionDeps,
+} from "../keys/key-resolution.js";
+import {
+  COMMS_PROVIDERS,
+  commsProviderLabel,
+  DEFAULT_COMMS_PROVIDER,
+  type ReceivingProviderId,
+} from "./providers.js";
 import { createReceivingAdapter } from "./receiving-runtime.js";
 import { RECEIVING_SCOPE_UNSUPPORTED, type ReceivingAdapter } from "./receiving-types.js";
 import { parseLabConfig } from "../lab/config.js";
@@ -32,6 +42,22 @@ export interface CommsCheckResult {
   code: string;
   message: string;
 }
+export interface CommsSetupStatus {
+  authentication?: CommsCheckResult;
+  schema: "humanish.comms-setup.v1";
+  ok: boolean;
+  configPath: string;
+  providers: typeof COMMS_PROVIDERS;
+  connections: { name: string; provider: ReceivingProviderId; apiKeyEnv: string }[];
+  credential: {
+    present: boolean;
+    source: string | null;
+    stored: boolean;
+    strict: boolean;
+    explicitlyEmpty: boolean;
+  };
+  message: string;
+}
 export async function checkCommsConnection(args: {
   cwd: string;
   connection?: string;
@@ -42,7 +68,7 @@ export async function checkCommsConnection(args: {
   const base: CommsCheckResult = {
     schema: "humanish.comms-check.v1",
     ok: false,
-    connection: args.connection ?? "agentmail",
+    connection: args.connection ?? DEFAULT_COMMS_PROVIDER.id,
     online: args.online === true,
     credentialPresent: false,
     authenticated: null,
@@ -54,6 +80,8 @@ export async function checkCommsConnection(args: {
     message:
       "Could not read this email connection. Check Connections or .humanish/local/comms.yaml.",
   };
+  let adapter: ReceivingAdapter | undefined;
+  let label: string = DEFAULT_COMMS_PROVIDER.label;
   try {
     const connection = (await readCommsConnections(args.cwd)).connections[base.connection];
     if (!connection)
@@ -61,8 +89,9 @@ export async function checkCommsConnection(args: {
         ...base,
         ready: false,
         code: "connection_missing",
-        message: "Save an AgentMail connection in Connections first.",
+        message: `Save an ${DEFAULT_COMMS_PROVIDER.label} connection in Connections first.`,
       };
+    label = commsProviderLabel(connection.provider);
     const env = { ...args.env };
     await discoverProviderKeys({ cwd: args.cwd, env, announce: () => {} });
     const key = env[connection.apiKeyEnv]?.trim();
@@ -86,7 +115,8 @@ export async function checkCommsConnection(args: {
     base.checkedAt = new Date().toISOString();
     const makeAdapter =
       args.makeAdapter ?? ((apiKey: string) => createReceivingAdapter(connection, apiKey));
-    await makeAdapter(key).authenticate({ timeoutMs: 8_000 });
+    adapter = makeAdapter(key);
+    await adapter.authenticate({ timeoutMs: 8_000 });
     return {
       ...base,
       ok: true,
@@ -96,7 +126,11 @@ export async function checkCommsConnection(args: {
         "Authentication passed. Inbox permissions, available capacity and delivery remain untested; this check created no resources.",
     };
   } catch (error) {
-    const code = error instanceof AgentMailReceivingError ? error.code : "check_unavailable";
+    // Only a code the adapter declares may reach the result; anything else stays generic.
+    const raw =
+      typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+    const code =
+      typeof raw === "string" && adapter?.codes.has(raw) === true ? raw : "check_unavailable";
     // The adapter authenticated the key but rejected its scope.
     if (code === RECEIVING_SCOPE_UNSUPPORTED)
       return {
@@ -107,13 +141,13 @@ export async function checkCommsConnection(args: {
         message:
           "Authenticated, but this release requires an organization-scoped key to acquire fresh inboxes.",
       };
-    const rejected = code === "agentmail_auth_rejected";
+    const rejected = code === adapter?.authRejectedCode;
     return {
       ...base,
       code,
       ...(rejected ? { authenticated: false, ready: false } : {}),
       message: rejected
-        ? "AgentMail rejected this credential or its permissions. Check the effective key source and replace it if needed. The saved key was kept."
+        ? `${label} rejected this credential or its permissions. Check the effective key source and replace it if needed. The saved key was kept.`
         : "The connection check could not complete. The saved key was kept; retry when the provider is available.",
     };
   }
@@ -149,8 +183,8 @@ export async function configureCommsLab(args: {
 }): Promise<CommsConfigureResult> {
   const base = { schema: "humanish.comms-configure.v1" as const, ok: false, applied: false };
   try {
-    if (!(await readCommsConnections(args.cwd)).connections[args.connection])
-      return { ...base, message: "Save the selected connection first." };
+    const connection = (await readCommsConnections(args.cwd)).connections[args.connection];
+    if (!connection) return { ...base, message: "Save the selected connection first." };
     const source = await resolveLabManifest(args.cwd, args.lab);
     if (!source.ok) return { ...base, message: "The selected lab could not be read safely." };
     const root = await prepareSelectedOutputDirectory(args.cwd, args.cwd);
@@ -215,7 +249,7 @@ export async function configureCommsLab(args: {
       path: destination,
       planToken: token,
       connection: args.connection,
-      message: `Save ${destination} with fresh AgentMail inboxes. Email is hosted; actor and analysis models may see content. Recordings require local review and cannot be automatically published. Provider charges are separate. Launch this exact path.`,
+      message: `Save ${destination} with fresh ${commsProviderLabel(connection.provider)} inboxes. Email is hosted; actor and analysis models may see content. Recordings require local review and cannot be automatically published. Provider charges are separate. Launch this exact path.`,
     };
     if (!args.apply) return plan;
     if (args.planToken !== undefined && args.planToken !== token)
@@ -256,6 +290,54 @@ export async function configureCommsLab(args: {
       ...base,
       message:
         "Could not configure this lab safely. Check configuration, paths and permissions; no provider resources were created.",
+    };
+  }
+}
+
+export async function readCommsSetup(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  deps?: KeyResolutionDeps,
+): Promise<CommsSetupStatus> {
+  const base = {
+    schema: "humanish.comms-setup.v1" as const,
+    configPath: COMMS_CONFIG_PATH,
+    providers: COMMS_PROVIDERS,
+  };
+  const keyEnv = DEFAULT_COMMS_PROVIDER.keyEnv;
+  const credential = {
+    present: false,
+    source: null as string | null,
+    stored: false,
+    strict: env.HUMANISH_STRICT_KEYS?.trim() === "1",
+    explicitlyEmpty: env[keyEnv] !== undefined && env[keyEnv].trim() === "",
+  };
+  try {
+    const config = await readCommsConnections(cwd);
+    const [probe] = await probeKeySources([keyEnv], {
+      cwd,
+      env,
+      ...(deps ? { deps } : {}),
+    });
+    credential.source = probe?.source ?? null;
+    credential.present = credential.source !== null;
+    credential.stored = listUserKeys(env, deps).includes(keyEnv);
+    return {
+      ...base,
+      ok: true,
+      connections: Object.entries(config.connections).map(([name, value]) => ({ name, ...value })),
+      credential,
+      message:
+        "Checks are local. Authentication, permissions, capacity and delivery have not been verified.",
+    };
+  } catch {
+    return {
+      ...base,
+      ok: false,
+      connections: [],
+      credential,
+      message:
+        "Could not read connection setup. Check .humanish/local/comms.yaml and key-store permissions. No changes were made.",
     };
   }
 }

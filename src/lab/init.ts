@@ -8,7 +8,7 @@ import {
   type FirstRunEnvironment,
 } from "../cli/first-run-path.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
-import { probeKeySources } from "../cli/key-resolution.js";
+import { probeKeySources } from "../keys/key-resolution.js";
 
 import {
   DEFAULT_LOCAL_BROWSER_STARTER,

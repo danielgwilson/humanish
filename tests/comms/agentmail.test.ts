@@ -500,6 +500,7 @@ describe("AgentMail behind the receiving seam", () => {
       provider: "agentmail",
       addressing: "provisioned",
       idempotentAcquire: true,
+      authRejectedCode: "agentmail_auth_rejected",
     });
   });
   it.each(["pod", "inbox"])("rejects a %s-scoped key with the scope code", async (scope) => {

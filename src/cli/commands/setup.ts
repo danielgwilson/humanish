@@ -5,7 +5,7 @@ import {
   setUserKey,
   unsetUserKey,
   userKeyStorePath,
-} from "../key-resolution.js";
+} from "../../keys/key-resolution.js";
 import { promptSecret } from "../secret-prompt.js";
 import { runInit } from "../../lab/init.js";
 import {
