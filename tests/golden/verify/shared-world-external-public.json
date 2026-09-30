@@ -1,0 +1,121 @@
+{
+  "good run": {
+    "ok": true,
+    "failing": []
+  },
+  "fails closed when provenance is 'seeded'": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "subject state provenance",
+        "message": "subject state findings: state marker \"seeded\" with zero seed step records is a hollow state claim"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest"
+      }
+    ]
+  },
+  "fails closed when exposure is 'synthetic' (a lie on a real site)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site"
+      }
+    ]
+  },
+  "fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, 0000000000000000"
+      }
+    ]
+  },
+  "fails closed when a required external-public attributionLimit is missing": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims"
+      }
+    ]
+  },
+  "fails closed on a passed run with no overlapping windows (relaxed concurrency-on-pass)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
+      }
+    ]
+  },
+  "the second laneWindow ends before it starts": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock"
+      }
+    ]
+  },
+  "the second laneWindow records a malformed routeHostDigest": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, not-a-digest"
+      }
+    ]
+  },
+  "the third laneWindow names an unknown simulation and stream": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\""
+      }
+    ]
+  },
+  "one outcome is dropped": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: phantom/dropped role: outcomes count (2) must equal roleCount (3)"
+      }
+    ]
+  },
+  "every variant at once": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "subject state provenance",
+        "message": "subject state findings: state marker \"seeded\" with zero seed step records is a hollow state claim"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: attributionLimits is missing the mandatory external-public disclosure \"no-synthetic-attestation\" — an absent honest-downgrade ceiling overclaims, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"player-2\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"player-2\" must record a sha256-16 routeHostDigest of the origin it reached, laneWindow \"player-3\" references unknown simId \"sim-999\", laneWindow \"player-3\" references unknown streamId \"stream-999\", the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 3e38c933ea57479e, not-a-digest, sharedWorld.plane.exposure must be ABSENT on the external-public plane class — the harness neither provisioned nor exposed the plane, so it cannot attest \"synthetic\" on a real site, the external-public plane class requires subject.state.provenance == \"external-public\" (got \"seeded\") — a seeded/unpinned/undeclared claim on an operator-owned public deployment is dishonest, review verdict is pass but no two laneWindows overlap in time — the external-public run was not actually concurrent (concurrency is proven by temporal co-occupancy on this class)"
+      }
+    ]
+  },
+  "a follower stuck on /": {
+    "ok": true,
+    "failing": []
+  },
+  "seats observed on www while declared apex": {
+    "ok": true,
+    "failing": []
+  },
+  "seats on two different observed origins": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: sharedWorld.plane.publicOriginDigest (sha256-16 of the OBSERVED origin the seats converged on) is required on the external-public plane class, the seats did not converge on ONE OBSERVED origin — distinct observed origin digests: 18411940b0773353, 3e38c933ea57479e"
+      }
+    ]
+  }
+}

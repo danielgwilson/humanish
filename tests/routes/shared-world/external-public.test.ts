@@ -49,6 +49,12 @@ import type {
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import type { RunBundle } from "../../../src/index.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import {
+  LANE_SHAPE_VARIANTS,
+  pinnedVerifyResult,
+  verifyGolden,
+  type PinnedVerifyResult,
+} from "../../helpers/verify-findings.js";
 import * as observerRender from "../../../src/observer/render.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runDirSnapshot } from "../../helpers/run-golden.js";
@@ -1040,18 +1046,70 @@ describe("handoff timeout fail-closed", () => {
 // ---------------------------------------------------------------------------
 // 8. Verify evidence class (external-public) fail-closed inversions.
 // ---------------------------------------------------------------------------
+type ExternalMutation = (bundle: RunBundle) => void;
+
+const externalPublicInversions: ReadonlyArray<readonly [string, ExternalMutation, string]> = [
+  [
+    "fails closed when provenance is 'seeded'",
+    (b) => {
+      b.subject!.state.provenance = "seeded" as never;
+    },
+    'provenance == "external-public"',
+  ],
+  [
+    "fails closed when exposure is 'synthetic' (a lie on a real site)",
+    (b) => {
+      (b.sharedWorld!.plane as { exposure?: string }).exposure = "synthetic";
+    },
+    "exposure must be ABSENT",
+  ],
+  [
+    "fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)",
+    (b) => {
+      b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000";
+    },
+    "did not converge on ONE OBSERVED origin",
+  ],
+  [
+    "fails closed when a required external-public attributionLimit is missing",
+    (b) => {
+      b.sharedWorld!.attributionLimits = b.sharedWorld!.attributionLimits.filter(
+        (l) => l !== "no-synthetic-attestation",
+      );
+    },
+    "no-synthetic-attestation",
+  ],
+  [
+    "fails closed on a passed run with no overlapping windows (relaxed concurrency-on-pass)",
+    (b) => {
+      // Force strictly non-overlapping windows.
+      b.sharedWorld!.laneWindows!.forEach((w, i) => {
+        w.startedAt = i * 1000;
+        w.endedAt = i * 1000 + 100;
+      });
+    },
+    "no two laneWindows overlap",
+  ],
+];
+
+async function externalPublicRun(
+  session: Parameters<typeof makeExternalRunSession>[0] = { seen: [] },
+): Promise<{ runId: string; ok: boolean }> {
+  const { hooks } = makeExternalHooks(makeExternalRunSession(session));
+  const result = await runConcurrentSharedWorld({
+    cwd,
+    config: parseExternal(),
+    dryRun: false,
+    hooks,
+  });
+  return { runId: result.runId, ok: result.ok };
+}
+
 describe("verify evidence class: external-public fail-closed inversions", () => {
   async function goodRun(): Promise<string> {
-    const seen: CuaActorSessionOptions[] = [];
-    const { hooks } = makeExternalHooks(makeExternalRunSession({ seen }));
-    const result = await runConcurrentSharedWorld({
-      cwd,
-      config: parseExternal(),
-      dryRun: false,
-      hooks,
-    });
-    expect(result.ok).toBe(true);
-    return result.runId;
+    const { runId, ok } = await externalPublicRun();
+    expect(ok).toBe(true);
+    return runId;
   }
 
   async function mutateAndVerify(
@@ -1067,50 +1125,10 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
     return { ok: check?.ok ?? true, message: check?.message ?? "" };
   }
 
-  it("fails closed when provenance is 'seeded'", async () => {
-    const { ok, message } = await mutateAndVerify(await goodRun(), (b) => {
-      b.subject!.state.provenance = "seeded" as never;
-    });
+  it.each(externalPublicInversions)("%s", async (_name, mutate, fragment) => {
+    const { ok, message } = await mutateAndVerify(await goodRun(), mutate);
     expect(ok).toBe(false);
-    expect(message).toContain('provenance == "external-public"');
-  });
-
-  it("fails closed when exposure is 'synthetic' (a lie on a real site)", async () => {
-    const { ok, message } = await mutateAndVerify(await goodRun(), (b) => {
-      (b.sharedWorld!.plane as { exposure?: string }).exposure = "synthetic";
-    });
-    expect(ok).toBe(false);
-    expect(message).toContain("exposure must be ABSENT");
-  });
-
-  it("fails closed when a routeHostDigest diverges (seats did not converge on ONE observed origin)", async () => {
-    const { ok, message } = await mutateAndVerify(await goodRun(), (b) => {
-      b.sharedWorld!.laneWindows![1]!.routeHostDigest = "0000000000000000";
-    });
-    expect(ok).toBe(false);
-    expect(message).toContain("did not converge on ONE OBSERVED origin");
-  });
-
-  it("fails closed when a required external-public attributionLimit is missing", async () => {
-    const { ok, message } = await mutateAndVerify(await goodRun(), (b) => {
-      b.sharedWorld!.attributionLimits = b.sharedWorld!.attributionLimits.filter(
-        (l) => l !== "no-synthetic-attestation",
-      );
-    });
-    expect(ok).toBe(false);
-    expect(message).toContain("no-synthetic-attestation");
-  });
-
-  it("fails closed on a passed run with no overlapping windows (relaxed concurrency-on-pass)", async () => {
-    const { ok, message } = await mutateAndVerify(await goodRun(), (b) => {
-      // Force strictly non-overlapping windows.
-      b.sharedWorld!.laneWindows!.forEach((w, i) => {
-        w.startedAt = i * 1000;
-        w.endedAt = i * 1000 + 100;
-      });
-    });
-    expect(ok).toBe(false);
-    expect(message).toContain("no two laneWindows overlap");
+    expect(message).toContain(fragment);
   });
 
   it("does NOT require a stateSeries and does NOT apply the getHost hostDigest assertion", async () => {
@@ -1122,6 +1140,60 @@ describe("verify evidence class: external-public fail-closed inversions", () => 
     expect(bundle.sharedWorld?.plane.hostDigest).toBeUndefined();
     const verify = await verifyRun(cwd, runId);
     expect(verify.ok).toBe(true);
+  });
+});
+
+describe("external-public verify findings golden", () => {
+  it("pins verify's failing checks for the good bundle, each inversion and each divergent run", async () => {
+    const entries: Array<readonly [string, PinnedVerifyResult]> = [];
+    const good = await externalPublicRun();
+    const bundlePath = path.join(cwd, ".humanish", "runs", good.runId, "run.json");
+    const original = await readFile(bundlePath, "utf8");
+    entries.push(["good run", await pinnedVerifyResult(cwd, good.runId)]);
+    const variants: ReadonlyArray<readonly [string, (bundle: Record<string, unknown>) => void]> = [
+      ...externalPublicInversions.map(
+        ([name, mutate]) =>
+          [
+            name,
+            (bundle: Record<string, unknown>) => mutate(bundle as unknown as RunBundle),
+          ] as const,
+      ),
+      ...LANE_SHAPE_VARIANTS,
+    ];
+    for (const [name, mutate] of variants) {
+      const bundle = JSON.parse(original) as Record<string, unknown>;
+      mutate(bundle);
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      entries.push([name, await pinnedVerifyResult(cwd, good.runId)]);
+    }
+    // Several invariants fail at once, so the golden also pins the order across them.
+    const combined = JSON.parse(original) as Record<string, unknown>;
+    for (const [, mutate] of variants) mutate(combined);
+    await writeFile(bundlePath, `${JSON.stringify(combined, null, 2)}\n`, "utf8");
+    entries.push(["every variant at once", await pinnedVerifyResult(cwd, good.runId)]);
+    const runs: ReadonlyArray<readonly [string, Parameters<typeof makeExternalRunSession>[0]]> = [
+      ["a follower stuck on /", { seen: [], stuckPersonaId: "casual-friend" }],
+      [
+        "seats observed on www while declared apex",
+        { seen: [], observedOrigin: "https://www.lobby-trivia.example.test" },
+      ],
+      [
+        "seats on two different observed origins",
+        {
+          seen: [],
+          observedOrigin: "https://www.lobby-trivia.example.test",
+          divergentPersonaId: "casual-friend",
+          divergentOrigin: "https://lobby-trivia.example.test",
+        },
+      ],
+    ];
+    for (const [name, session] of runs) {
+      const run = await externalPublicRun(session);
+      entries.push([name, await pinnedVerifyResult(cwd, run.runId)]);
+    }
+    await expect(verifyGolden(entries)).toMatchFileSnapshot(
+      "../../golden/verify/shared-world-external-public.json",
+    );
   });
 });
 

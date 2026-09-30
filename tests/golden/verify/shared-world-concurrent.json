@@ -1,0 +1,144 @@
+{
+  "good run": {
+    "ok": true,
+    "failing": []
+  },
+  "(a) a 'concurrent' bundle whose laneWindows do NOT overlap": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent"
+      }
+    ]
+  },
+  "(b) missing best-effort-causal-attribution": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: attributionLimits is missing the mandatory concurrent disclosure \"best-effort-causal-attribution\" — an absent ceiling overclaims"
+      }
+    ]
+  },
+  "(b2) a FORBIDDEN limit present (sequential-only)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: attributionLimits carries the forbidden disclosure \"sequential-only\" — a concurrent run cannot claim a sequential guarantee"
+      }
+    ]
+  },
+  "(c) a value-shaped stateSeries field (allowed-keys tripwire)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: a stateSeries snapshot carries an unexpected field \"rawCount\" — the series is digest-only (no per-delta attribution)"
+      }
+    ]
+  },
+  "(d) divergent plane provenance across laneWindows": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane, laneWindow \"persona-01\" plane provenance diverges from sharedWorld.plane"
+      }
+    ]
+  },
+  "(e) a PASSED run with no stateSeries delta": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: review verdict is pass but no stateSeries delta occurs at/after an overlap interval start — the shared world did not change under concurrent load (hollow concurrent claim)"
+      }
+    ]
+  },
+  "(f) a persona with goal_satisfied + zero engagement": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "actor engagement",
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+      }
+    ]
+  },
+  "(g) the topologyMode discriminator is enforced (sequential timeline smuggled onto a concurrent bundle)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch)"
+      }
+    ]
+  },
+  "(h) an actor that drove a host OTHER than the harness-minted plane (FIX-2 / invariant 2)": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"persona-01\" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)"
+      }
+    ]
+  },
+  "the second laneWindow ends before it starts": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"persona-02\" must carry numeric startedAt <= endedAt on one clock"
+      }
+    ]
+  },
+  "the second laneWindow records a malformed routeHostDigest": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"persona-02\" must record a sha256-16 routeHostDigest of the host it drove, laneWindow \"persona-02\" drove a host that differs from the harness-minted plane.hostDigest (invariant 2)"
+      }
+    ]
+  },
+  "the third laneWindow names an unknown simulation and stream": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: laneWindow \"persona-03\" references unknown simId \"sim-999\", laneWindow \"persona-03\" references unknown streamId \"stream-999\""
+      }
+    ]
+  },
+  "one outcome is dropped": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: phantom/dropped role: outcomes count (2) must equal roleCount (3)"
+      }
+    ]
+  },
+  "every variant at once": {
+    "ok": false,
+    "failing": [
+      {
+        "name": "actor engagement",
+        "message": "no-engagement findings: stream-001 live actor trace (fake-cua) claims goal_satisfied with zero actions and zero messages — a hollow run is not credible evidence"
+      },
+      {
+        "name": "shared-world evidence",
+        "message": "shared-world findings: a concurrent shared-world bundle must NOT carry a sequential timeline (topologyMode mismatch), attributionLimits is missing the mandatory concurrent disclosure \"best-effort-causal-attribution\" — an absent ceiling overclaims, attributionLimits carries the forbidden disclosure \"sequential-only\" — a concurrent run cannot claim a sequential guarantee, phantom/dropped role: outcomes count (2) must equal roleCount (3), laneWindow \"persona-02\" must carry numeric startedAt <= endedAt on one clock, laneWindow \"persona-02\" must record a sha256-16 routeHostDigest of the host it drove, laneWindow \"persona-03\" references unknown simId \"sim-999\", laneWindow \"persona-03\" references unknown streamId \"stream-999\", laneWindow \"persona-01\" drove a host that differs from the harness-minted plane.hostDigest (invariant 2), laneWindow \"persona-02\" drove a host that differs from the harness-minted plane.hostDigest (invariant 2), laneWindows reference divergent plane provenance (commit/seedDigest) — a concurrent run drives ONE plane, laneWindow \"persona-01\" plane provenance diverges from sharedWorld.plane, a stateSeries snapshot carries an unexpected field \"rawCount\" — the series is digest-only (no per-delta attribution), review verdict is pass but no two laneWindows overlap in time — the run was not actually concurrent"
+      }
+    ]
+  },
+  "lane 1 returns a terminal failed actor trace": {
+    "ok": true,
+    "failing": []
+  },
+  "lane 1 throws a harness error": {
+    "ok": true,
+    "failing": []
+  }
+}

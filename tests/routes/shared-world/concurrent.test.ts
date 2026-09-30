@@ -42,6 +42,12 @@ import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../..
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/run/verify.js";
+import {
+  LANE_SHAPE_VARIANTS,
+  pinnedVerifyResult,
+  verifyGolden,
+  type PinnedVerifyResult,
+} from "../../helpers/verify-findings.js";
 import { computeStats } from "../../../src/run/stats.js";
 import {
   serveObserver,
@@ -1808,37 +1814,12 @@ describe("runConcurrentSharedWorld (local-tree route: subject.source: local-tree
   });
 });
 
-describe("verifyRun fails closed on each injected concurrent overclaim", () => {
-  async function goodBundlePath(): Promise<{ runId: string; bundlePath: string }> {
-    const state = { worldVersion: 0 };
-    const { hooks } = baseHooks(state, makeRendezvous(3));
-    const result = await runConcurrentSharedWorld({
-      cwd,
-      config: concurrentConfig(3, 3),
-      dryRun: false,
-      hooks,
-    });
-    expect(result.ok).toBe(true);
-    const baseline = await verifyRun(cwd, result.runId);
-    expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
-    return {
-      runId: result.runId,
-      bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
-    };
-  }
+type BundleMutation = (bundle: Record<string, unknown>) => void;
 
-  async function mutateAndVerify(
-    mutate: (bundle: Record<string, unknown>) => void,
-  ): Promise<boolean> {
-    const { runId, bundlePath } = await goodBundlePath();
-    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
-    mutate(bundle);
-    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
-    return (await verifyRun(cwd, runId)).ok;
-  }
-
-  it("(a) a 'concurrent' bundle whose laneWindows do NOT overlap", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+const concurrentOverclaims: ReadonlyArray<readonly [string, BundleMutation]> = [
+  [
+    "(a) a 'concurrent' bundle whose laneWindows do NOT overlap",
+    (bundle) => {
       const sw = bundle.sharedWorld as {
         laneWindows: Array<{ startedAt: number; endedAt: number }>;
       };
@@ -1846,55 +1827,49 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
         w.startedAt = i * 1000;
         w.endedAt = i * 1000 + 10;
       }); // sequential, no overlap
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(b) missing best-effort-causal-attribution", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(b) missing best-effort-causal-attribution",
+    (bundle) => {
       const sw = bundle.sharedWorld as { attributionLimits: string[] };
       sw.attributionLimits = sw.attributionLimits.filter(
         (l) => l !== "best-effort-causal-attribution",
       );
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(b2) a FORBIDDEN limit present (sequential-only)", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(b2) a FORBIDDEN limit present (sequential-only)",
+    (bundle) => {
       const sw = bundle.sharedWorld as { attributionLimits: string[] };
       sw.attributionLimits = [...sw.attributionLimits, "sequential-only"];
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(c) a value-shaped stateSeries field (allowed-keys tripwire)", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(c) a value-shaped stateSeries field (allowed-keys tripwire)",
+    (bundle) => {
       const sw = bundle.sharedWorld as { stateSeries: Array<Record<string, unknown>> };
       sw.stateSeries[0]!.rawCount = "42"; // a non-allowed field; the series is digest-only
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(d) divergent plane provenance across laneWindows", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(d) divergent plane provenance across laneWindows",
+    (bundle) => {
       const sw = bundle.sharedWorld as { laneWindows: Array<Record<string, unknown>> };
       sw.laneWindows[0]!.commit = "deadbeefdeadbeef0000";
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(e) a PASSED run with no stateSeries delta", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(e) a PASSED run with no stateSeries delta",
+    (bundle) => {
       const sw = bundle.sharedWorld as { stateSeries: Array<{ digest: string }> };
       const d = sw.stateSeries[0]!.digest;
       for (const s of sw.stateSeries) s.digest = d; // flatten → no delta
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(f) a persona with goal_satisfied + zero engagement", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(f) a persona with goal_satisfied + zero engagement",
+    (bundle) => {
       const streams = bundle.streams as Array<{
         actor?: { completionReason?: string; counts?: Record<string, number>; items?: unknown[] };
       }>;
@@ -1902,12 +1877,11 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
       stream.actor!.completionReason = "goal_satisfied";
       stream.actor!.counts = { actions: 0, messages: 0, screenshots: 0 };
       stream.actor!.items = [];
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(g) the topologyMode discriminator is enforced (sequential timeline smuggled onto a concurrent bundle)", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(g) the topologyMode discriminator is enforced (sequential timeline smuggled onto a concurrent bundle)",
+    (bundle) => {
       const sw = bundle.sharedWorld as Record<string, unknown>;
       sw.timeline = [
         {
@@ -1917,24 +1891,89 @@ describe("verifyRun fails closed on each injected concurrent overclaim", () => {
           deltaFromPrev: false,
         },
       ];
-    });
-    expect(ok).toBe(false);
-  });
-
-  it("(h) an actor that drove a host OTHER than the harness-minted plane (FIX-2 / invariant 2)", async () => {
-    const ok = await mutateAndVerify((bundle) => {
+    },
+  ],
+  [
+    "(h) an actor that drove a host OTHER than the harness-minted plane (FIX-2 / invariant 2)",
+    (bundle) => {
       const sw = bundle.sharedWorld as { laneWindows: Array<{ routeHostDigest: string }> };
       sw.laneWindows[0]!.routeHostDigest = "ffffffffffffffff"; // a different host than plane.hostDigest
-    });
-    expect(ok).toBe(false);
+    },
+  ],
+];
+
+async function goodConcurrentRun(
+  laneOverride?: Parameters<typeof baseHooks>[2],
+): Promise<{ runId: string; bundlePath: string; ok: boolean }> {
+  const { hooks } = baseHooks({ worldVersion: 0 }, makeRendezvous(3), laneOverride);
+  const result = await runConcurrentSharedWorld({
+    cwd,
+    config: concurrentConfig(3, 3),
+    dryRun: false,
+    hooks,
+  });
+  return {
+    runId: result.runId,
+    bundlePath: path.join(cwd, ".humanish", "runs", result.runId, "run.json"),
+    ok: result.ok,
+  };
+}
+
+describe("verifyRun fails closed on each injected concurrent overclaim", () => {
+  async function mutateAndVerify(mutate: BundleMutation): Promise<boolean> {
+    const { runId, bundlePath, ok } = await goodConcurrentRun();
+    expect(ok).toBe(true);
+    const baseline = await verifyRun(cwd, runId);
+    expect(baseline.ok).toBe(true); // the un-mutated bundle MUST verify (so a failure is attributable)
+    const bundle = JSON.parse(await readFile(bundlePath, "utf8"));
+    mutate(bundle);
+    await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+    return (await verifyRun(cwd, runId)).ok;
+  }
+
+  it.each(concurrentOverclaims)("%s", async (_name, mutate) => {
+    expect(await mutateAndVerify(mutate)).toBe(false);
   });
 });
 
-// --- The committed live-fixture lab: deterministic $0 wiring proof (#164) ----------------------
-// Proves the live rung's lab + synthetic fixture are wired correctly BEFORE any spend: the
-// committed humanish/labs/shared-world-concurrent-live.yaml parses, routes to the concurrent
-// backend, passes the synthetic/seeded/0.0.0.0 validations, dry-runs to a verified bundle, AND
-// drives the REAL orchestrator on the fake N+1 substrate at $0.
+describe("concurrent shared-world verify findings golden", () => {
+  it("pins verify's failing checks for the good bundle, each overclaim and each failing lane", async () => {
+    const entries: Array<readonly [string, PinnedVerifyResult]> = [];
+    const good = await goodConcurrentRun();
+    const original = await readFile(good.bundlePath, "utf8");
+    entries.push(["good run", await pinnedVerifyResult(cwd, good.runId)]);
+    for (const [name, mutate] of [...concurrentOverclaims, ...LANE_SHAPE_VARIANTS]) {
+      const bundle = JSON.parse(original) as Record<string, unknown>;
+      mutate(bundle);
+      await writeFile(good.bundlePath, `${JSON.stringify(bundle, null, 2)}\n`, "utf8");
+      entries.push([name, await pinnedVerifyResult(cwd, good.runId)]);
+    }
+    // Several invariants fail at once, so the golden also pins the order across them.
+    const combined = JSON.parse(original) as Record<string, unknown>;
+    for (const [, mutate] of [...concurrentOverclaims, ...LANE_SHAPE_VARIANTS]) mutate(combined);
+    await writeFile(good.bundlePath, `${JSON.stringify(combined, null, 2)}\n`, "utf8");
+    entries.push(["every variant at once", await pinnedVerifyResult(cwd, good.runId)]);
+    const failingLanes: ReadonlyArray<readonly [string, Parameters<typeof baseHooks>[2]]> = [
+      [
+        "lane 1 returns a terminal failed actor trace",
+        (index) =>
+          index === 1 ? { status: "failed", completionReason: "actor_error" } : undefined,
+      ],
+      [
+        "lane 1 throws a harness error",
+        (index) => (index === 1 ? { throwMessage: "boom in actor 1" } : undefined),
+      ],
+    ];
+    for (const [name, laneOverride] of failingLanes) {
+      const run = await goodConcurrentRun(laneOverride);
+      entries.push([name, await pinnedVerifyResult(cwd, run.runId)]);
+    }
+    await expect(verifyGolden(entries)).toMatchFileSnapshot(
+      "../../golden/verify/shared-world-concurrent.json",
+    );
+  });
+});
+
 describe("concurrent physical geometry guard", () => {
   it("starts no participant on clipped seats and reclaims the host plus every actor desktop", async () => {
     const state = { worldVersion: 0 };
