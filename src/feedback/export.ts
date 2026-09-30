@@ -24,6 +24,7 @@ import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "../analysis/study-files.js";
+import { shellQuote } from "../substrates/shell.js";
 
 const EXPORT_SCHEMA = "humanish.export-result.v1";
 /** Past this the file stops being a thing you attach to an email. Declared, never silent. */
@@ -504,8 +505,8 @@ export function formatExportHuman(result: ExportResult | ExportFailure): string 
       `humanish export ${result.runId}`,
       `workspace: ${result.path} (${(result.bytes / 1024).toFixed(0)} KB, ${result.embeddedImages} blurred image(s))`,
       `share safety: ${result.shareSafety.status}`,
-      `verify: humanish verify --cwd ${shellArgument(result.path)} --run ${shellArgument(result.runId)}`,
-      `feedback: humanish feedback draft --cwd ${shellArgument(result.path)} --run ${shellArgument(result.runId)}`,
+      `verify: humanish verify --cwd ${shellQuote(result.path)} --run ${shellQuote(result.runId)}`,
+      `feedback: humanish feedback draft --cwd ${shellQuote(result.path)} --run ${shellQuote(result.runId)}`,
       ...result.warnings.map((warning) => `warning: ${warning}`),
       "",
     ].join("\n");
@@ -517,8 +518,4 @@ export function formatExportHuman(result: ExportResult | ExportFailure): string 
     ...result.warnings.map((warning) => `warning: ${warning}`),
   ];
   return `${lines.join("\n")}\n`;
-}
-
-function shellArgument(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
 }

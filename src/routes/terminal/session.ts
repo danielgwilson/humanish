@@ -22,6 +22,7 @@ import {
   type E2BDesktopSandbox,
 } from "../../substrates/e2b/desktop-launch.js";
 import { acquireE2BShellSandbox } from "../../substrates/e2b/sandbox.js";
+import { shellQuote } from "../../substrates/shell.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -433,7 +434,7 @@ export async function runLiveTerminalSession(
             // Inlined into the command string rather than passed as `envs`: the ONLY call in this
             // lane that carries envs is the keyed codex exec, and that invariant is worth more than
             // the convenience of a second envs channel.
-            uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD='${destination.replace(/'/g, "'\\''")}'; `;
+            uploadAssignment = `export HUMANISH_PRODUCT_UPLOAD=${shellQuote(destination)}; `;
             recordLifecycle(
               "terminal-lab.product.uploaded",
               `Uploaded ${info.size} bytes to the sandbox in ${Math.max(0, now() - uploadStartedAt)}ms (no runtime env; declared egress auth may already be available).`,
@@ -790,7 +791,7 @@ function buildCodexExecCommand(args: {
   // Pinned via npx (never an ambient/preinstalled `codex` binary, which the stock @e2b/desktop
   // image does not ship, per issue #159); npm_config_update_notifier=false silences npx's own
   // update check so it cannot leak into the captured stdout the scorer/redactor parse.
-  const quotedPrompt = `'${args.prompt.replace(/'/g, "'\\''")}'`;
+  const quotedPrompt = shellQuote(args.prompt);
   // --dangerously-bypass-approvals-and-sandbox: codex's OWN inner sandbox is
   // redundant here and blocks the network/file access the study mission needs.
   // The E2B sandbox is the trust boundary (the disposable machine), and exec mode has no

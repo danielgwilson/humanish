@@ -1,10 +1,10 @@
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
+import { shellQuote } from "../substrates/shell.js";
 
 /** Commands run from the evidence workspace using an installed Humanish CLI. */
 export function feedbackProofCommands(runId: string): { verify: string; watch: string } {
-  const argument = /^[a-z0-9][a-z0-9._-]*$/i.test(runId)
-    ? runId
-    : `'${runId.replace(/'/g, "'\\''")}'`;
+  // A plain id stays bare so the printed command reads naturally.
+  const argument = /^[a-z0-9][a-z0-9._-]*$/i.test(runId) ? runId : shellQuote(runId);
   return {
     verify: `humanish verify --run ${argument} --json`,
     watch: `humanish watch --run ${argument} --no-open`,

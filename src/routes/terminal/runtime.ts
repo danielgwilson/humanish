@@ -1,5 +1,6 @@
 import type { ActorRuntimeProvenance } from "../../actors/contract.js";
 import type { ReasoningEffort } from "../../actors/reasoning-effort.js";
+import { shellQuote } from "../../substrates/shell.js";
 
 const TERMINAL_RUNTIME_PACKAGE = "@openai/codex";
 export const TERMINAL_RUNTIME_VERSION_TIMEOUT_MS = 60_000;
@@ -24,10 +25,6 @@ export function isExactRuntimeVersion(value: unknown): value is string {
 export function parseTerminalRuntimeVersion(stdout: string): string | undefined {
   const match = /^codex-cli ([^\s]+)$/.exec(stdout.trim());
   return match && isExactRuntimeVersion(match[1]) ? match[1] : undefined;
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 export function buildRuntimeVersionCommand(requestedVersion?: string): string {

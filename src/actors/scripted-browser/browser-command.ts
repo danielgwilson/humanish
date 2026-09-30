@@ -6,6 +6,8 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import { shellQuote } from "../../substrates/shell.js";
+
 const execFileAsync = promisify(execFile);
 
 export async function resolveBrowserCommand(): Promise<string | null> {
@@ -50,12 +52,4 @@ async function resolveExecutableFromPath(command: string): Promise<string | null
   } catch {
     return null;
   }
-}
-
-function shellQuote(value: string): string {
-  if (/^[A-Za-z0-9_/:=.,@%+-]+$/.test(value)) {
-    return value;
-  }
-
-  return `'${value.replace(/'/g, "'\\''")}'`;
 }
