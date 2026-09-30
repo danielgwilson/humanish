@@ -108,49 +108,45 @@ export function registerWatchCommand(parent: Command, io: CliIo): void {
     .action((labArg, options, command) => handleWatch(io, labArg, options, command));
 }
 
+interface WatchOptions {
+  cwd: string;
+  count?: string;
+  detach?: boolean;
+  dryRun?: boolean;
+  envFile?: string;
+  follow?: boolean;
+  json?: boolean;
+  lab?: string;
+  open?: boolean;
+  port: string;
+  run?: string;
+  runId?: string;
+  scorer?: string;
+  sims?: string;
+  expose?: boolean;
+  tunnel?: "ngrok";
+  tunnelDomain?: string;
+  oauth?: "google";
+  allowEmail: string[];
+  allowDomain: string[];
+  publicUrl?: string;
+  safe?: boolean;
+}
+
+type WatchRefusal = { code: NonNullable<RunResult["error"]>["code"]; message: string };
+
 async function handleWatch(
   io: CliIo,
   labArg: string | undefined,
-  options: {
-    cwd: string;
-    count?: string;
-    detach?: boolean;
-    dryRun?: boolean;
-    envFile?: string;
-    follow?: boolean;
-    json?: boolean;
-    lab?: string;
-    open?: boolean;
-    port: string;
-    run?: string;
-    runId?: string;
-    scorer?: string;
-    sims?: string;
-    expose?: boolean;
-    tunnel?: "ngrok";
-    tunnelDomain?: string;
-    oauth?: "google";
-    allowEmail: string[];
-    allowDomain: string[];
-    publicUrl?: string;
-    safe?: boolean;
-  },
+  options: WatchOptions,
   command: Command,
 ): Promise<void> {
   const lab = options.lab ?? labArg;
   if (options.lab !== undefined && labArg !== undefined) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: "Use either positional lab or --lab, not both.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
+    refuseWatch(command, io, options.cwd, {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message: "Use either positional lab or --lab, not both.",
+    });
     return;
   }
 
@@ -166,49 +162,7 @@ async function handleWatch(
   }
 
   if (lab) {
-    if (options.run !== undefined) {
-      const result: RunResult = {
-        schema: "humanish.run-result.v1",
-        ok: false,
-        cwd: options.cwd,
-        warnings: [],
-        error: {
-          code: "HUMANISH_WATCH_OPTION_CONFLICT",
-          message:
-            "Use either a lab to start evidence or --run to watch existing evidence, not both.",
-        },
-      };
-      writeResult(command, io, result, formatRunHuman);
-      io.setExitCode(2);
-      return;
-    }
-
-    await runLabCommand({
-      command,
-      io,
-      lab,
-      mode: "watch",
-      options: {
-        cwd: options.cwd,
-        ...(options.count === undefined ? {} : { count: options.count }),
-        ...(options.detach === undefined ? {} : { detach: options.detach }),
-        ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
-        ...(options.open === undefined ? {} : { open: options.open }),
-        port: options.port,
-        ...(options.runId === undefined ? {} : { runId: options.runId }),
-        ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
-        ...(options.sims === undefined ? {} : { sims: options.sims }),
-        ...(options.expose === undefined ? {} : { expose: options.expose }),
-        ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
-        ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
-        ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
-        allowEmail: options.allowEmail,
-        allowDomain: options.allowDomain,
-        ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
-        ...(options.safe === undefined ? {} : { safe: options.safe }),
-        ...(options.json === undefined ? {} : { json: options.json }),
-      },
-    });
+    await watchLab(io, command, lab, options);
     return;
   }
 
@@ -216,91 +170,19 @@ async function handleWatch(
   // non-lab watch path (existing evidence, or a fresh synthetic run) has no live desktop to
   // stream, so exposure flags there are refused rather than silently ignored — use `serve`.
   if (watchExposeRequested(options)) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message:
-          "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
+    refuseWatch(command, io, options.cwd, {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message:
+        "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`.",
+    });
     return;
   }
 
-  const runOptionSource =
-    typeof command.getOptionValueSource === "function"
-      ? command.getOptionValueSource("run")
-      : undefined;
-  const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
-  const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
-  const port = parseObserverPort(options.port);
-  if (options.sims !== undefined && simCount === null) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_INVALID_SIM_COUNT",
-        message: "--sims must be a positive integer.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
+  const target = resolveWatchTarget(options, command);
+  if ("code" in target) {
+    refuseWatch(command, io, options.cwd, target);
     return;
   }
-  if (!runWasOmitted && options.sims !== undefined) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message:
-          "Use either --run to watch existing evidence or --sims to start a fresh run, not both.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
-    return;
-  }
-  if (!runWasOmitted && options.runId !== undefined) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_WATCH_OPTION_CONFLICT",
-        message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
-    return;
-  }
-  if (port === null) {
-    const result: RunResult = {
-      schema: "humanish.run-result.v1",
-      ok: false,
-      cwd: options.cwd,
-      warnings: [],
-      error: {
-        code: "HUMANISH_INVALID_PORT",
-        message: "--port must be an integer between 0 and 65535.",
-      },
-    };
-    writeResult(command, io, result, formatRunHuman);
-    io.setExitCode(2);
-    return;
-  }
-  const requestedSimCount = simCount ?? (runWasOmitted ? 4 : undefined);
 
   const wantsMachine = wantsJson(command);
   const shouldOpen =
@@ -312,7 +194,121 @@ async function handleWatch(
   const wantsFollow = !wantsMachine && options.detach !== true && options.follow !== false;
   const staticOpen = wantsFollow ? false : shouldOpen;
 
-  let rendered: ObserverResult;
+  const rendered = await renderWatchEvidence(
+    io,
+    command,
+    options,
+    target.requestedSimCount,
+    staticOpen,
+  );
+  if (rendered === undefined) return;
+  await reportWatch(io, command, rendered, {
+    follow: wantsFollow,
+    open: shouldOpen,
+    port: target.port,
+  });
+}
+
+function refuseWatch(command: Command, io: CliIo, cwd: string, refusal: WatchRefusal): void {
+  const result: RunResult = {
+    schema: "humanish.run-result.v1",
+    ok: false,
+    cwd,
+    warnings: [],
+    error: refusal,
+  };
+  writeResult(command, io, result, formatRunHuman);
+  io.setExitCode(2);
+}
+
+/** A lab argument starts that lab under watch; `--run` would name other evidence. */
+async function watchLab(
+  io: CliIo,
+  command: Command,
+  lab: string,
+  options: WatchOptions,
+): Promise<void> {
+  if (options.run !== undefined) {
+    refuseWatch(command, io, options.cwd, {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message: "Use either a lab to start evidence or --run to watch existing evidence, not both.",
+    });
+    return;
+  }
+
+  await runLabCommand({
+    command,
+    io,
+    lab,
+    mode: "watch",
+    options: {
+      cwd: options.cwd,
+      ...(options.count === undefined ? {} : { count: options.count }),
+      ...(options.detach === undefined ? {} : { detach: options.detach }),
+      ...(options.dryRun === undefined ? {} : { dryRun: options.dryRun }),
+      ...(options.open === undefined ? {} : { open: options.open }),
+      port: options.port,
+      ...(options.runId === undefined ? {} : { runId: options.runId }),
+      ...(options.scorer === undefined ? {} : { scorer: options.scorer }),
+      ...(options.sims === undefined ? {} : { sims: options.sims }),
+      ...(options.expose === undefined ? {} : { expose: options.expose }),
+      ...(options.tunnel === undefined ? {} : { tunnel: options.tunnel }),
+      ...(options.tunnelDomain === undefined ? {} : { tunnelDomain: options.tunnelDomain }),
+      ...(options.oauth === undefined ? {} : { oauth: options.oauth }),
+      allowEmail: options.allowEmail,
+      allowDomain: options.allowDomain,
+      ...(options.publicUrl === undefined ? {} : { publicUrl: options.publicUrl }),
+      ...(options.safe === undefined ? {} : { safe: options.safe }),
+      ...(options.json === undefined ? {} : { json: options.json }),
+    },
+  });
+}
+
+/** Without a lab, watch shows existing evidence (`--run`) or a fresh synthetic run (`--sims`). */
+function resolveWatchTarget(
+  options: WatchOptions,
+  command: Command,
+): WatchRefusal | { requestedSimCount: number | null | undefined; port: number } {
+  const runOptionSource =
+    typeof command.getOptionValueSource === "function"
+      ? command.getOptionValueSource("run")
+      : undefined;
+  const runWasOmitted = runOptionSource === undefined || runOptionSource === "default";
+  const simCount = options.sims === undefined ? undefined : parsePositiveInteger(options.sims);
+  const port = parseObserverPort(options.port);
+  if (options.sims !== undefined && simCount === null) {
+    return { code: "HUMANISH_INVALID_SIM_COUNT", message: "--sims must be a positive integer." };
+  }
+  if (!runWasOmitted && options.sims !== undefined) {
+    return {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message:
+        "Use either --run to watch existing evidence or --sims to start a fresh run, not both.",
+    };
+  }
+  if (!runWasOmitted && options.runId !== undefined) {
+    return {
+      code: "HUMANISH_WATCH_OPTION_CONFLICT",
+      message: "--run-id only applies to fresh watch runs; remove --run or remove --run-id.",
+    };
+  }
+  if (port === null) {
+    return {
+      code: "HUMANISH_INVALID_PORT",
+      message: "--port must be an integer between 0 and 65535.",
+    };
+  }
+  return { requestedSimCount: simCount ?? (runWasOmitted ? 4 : undefined), port };
+}
+
+/** Render the evidence to show; undefined when a fresh run failed and its result was written. */
+async function renderWatchEvidence(
+  io: CliIo,
+  command: Command,
+  options: WatchOptions,
+  requestedSimCount: number | null | undefined,
+  staticOpen: boolean,
+): Promise<ObserverResult | undefined> {
   if (requestedSimCount !== undefined && requestedSimCount !== null) {
     // A fresh run renders through its finished run, so the page shown is the run just
     // written, never a directory swapped in under its id.
@@ -327,18 +323,26 @@ async function handleWatch(
     if (!runResult.ok || runResult.observer === undefined) {
       writeResult(command, io, runResult, formatRunHuman);
       io.setExitCode(2);
-      return;
+      return undefined;
     }
-    rendered = runResult.observer;
-  } else {
-    rendered = await renderObserver(options.cwd, options.run ?? "latest", {
-      open: staticOpen,
-    });
+    return runResult.observer;
   }
+  return renderObserver(options.cwd, options.run ?? "latest", {
+    open: staticOpen,
+  });
+}
+
+/** Write the result, then keep a live server attached when following. */
+async function reportWatch(
+  io: CliIo,
+  command: Command,
+  rendered: ObserverResult,
+  serve: { follow: boolean; open: boolean; port: number },
+): Promise<void> {
   let server: ObserverServer | null = null;
   let result = rendered;
-  if (rendered.ok && wantsFollow) {
-    server = await serveObserver(rendered, { open: shouldOpen, port });
+  if (rendered.ok && serve.follow) {
+    server = await serveObserver(rendered, { open: serve.open, port: serve.port });
     result = {
       ...rendered,
       observerUrl: server.url,
