@@ -971,9 +971,9 @@
         ]
       },
       "personaId": "autonomous-coding-agent",
-      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to take it as far as it goes: not just install it, but work out how they would actually use it for what it is for. Find out what it is from its public surfaces and get it running. There are no provider API keys in this environment, so you cannot complete anything that spends money. When you reach something that needs credentials you do not have, work out precisely what would be required: which credentials, what they are called, where they go, and the exact command your teammate should run next. Then carry on with whatever else you can still reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, how far you got, the exact next command and what it needs in order to work, where you got stuck or had to guess, and whether you would recommend adopting it.",
+      "mission": "You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine. A teammate is considering adopting a tool called humanish and has asked you to take it as far as it goes: not just install it, but work out how they would actually use it for what it is for. Find out what it is from its public surfaces and get it running. Your only credential is a proxied model credential for your own reasoning. It is not for humanish, and there are no provider API keys here to give humanish, so you cannot complete anything that spends money. When you reach something that needs credentials you do not have, work out precisely what would be required: which credentials, what they are called, where they go, and the exact command your teammate should run next. Then carry on with whatever else you can still reach. Work in a scratch directory. When you are done, tell your teammate plainly: what it does, how far you got, the exact next command and what it needs in order to work, where you got stuck or had to guess, and whether you would recommend adopting it.",
       "runtime": {
-        "auth": "openai-env"
+        "auth": "openai-egress"
       },
       "caps": {
         "maxUsd": 0,

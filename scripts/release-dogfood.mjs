@@ -115,6 +115,8 @@ try {
   raw = error.stdout ?? "";
 } finally {
   await rm(path.join(cwd, tarball), { force: true });
+  // The run bundle keeps the lab it ran. Left in place, the copy is a live lab in this checkout.
+  await rm(labPath, { force: true });
 }
 
 const start = raw.indexOf("{");
