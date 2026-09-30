@@ -1222,3 +1222,53 @@ describe("external-public run directory goldens", () => {
     );
   });
 });
+
+describe("the live Observer gate on the external-public plane", () => {
+  it("W3: awaits onObserverReady before any participant desktop is created", async () => {
+    const { hooks, created } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+    let enter!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve;
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const running = runConcurrentSharedWorld({
+      cwd,
+      config: parseExternal(),
+      dryRun: false,
+      hooks,
+      onObserverReady: async () => {
+        enter();
+        await gate;
+      },
+    });
+    await entered;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(created).toHaveLength(0);
+    release();
+    await running;
+    expect(created.length).toBeGreaterThan(0);
+  });
+
+  it("W3: a throwing onObserverReady creates no desktop and runs no analysis", async () => {
+    const { hooks, created } = makeExternalHooks(makeExternalRunSession({ seen: [] }));
+    const analysis = automaticAnalysisBoundary();
+    const failure = new Error("synthetic observer failure");
+    await expect(
+      runConcurrentSharedWorld({
+        cwd,
+        config: parseExternal(),
+        dryRun: false,
+        hooks,
+        automaticAnalysis: { run: analysis },
+        onObserverReady: async () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toBe(failure);
+    expect(created).toHaveLength(0);
+    expect(analysis).not.toHaveBeenCalled();
+  });
+});

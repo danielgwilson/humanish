@@ -52,8 +52,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
    `Run.finish` writes `run.json`, then the `status.json` outcome, then `review.json`,
    `review.md`, `events.ndjson` and `observer/observer-data.json`, and the
    `.humanish/runs/latest.json` pointer last. A snapshot writes the same files without the
-   status outcome and writes the pointer only until one pointer write succeeds. The terminal,
-   scripted and preview routes publish the same way; the shared-world route moves onto it next.
+   status outcome and writes the pointer only until one pointer write succeeds. Every other
+   route publishes the same way.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
@@ -61,9 +61,8 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. Its callers run st
 9. After the route returns, `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`)
    calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). It takes the `FinishedRun`
    that `Run.finish` issued (`src/run/run.ts`) and reads the run id and paths from it, so a
-   refusal that echoes an older run's id never analyzes that run. Routes not yet on the run scope
-   pass `legacyFinishedRun(result)`. Dry runs skip analysis. A lab turns it off with
-   `review.analysis: false`.
+   refusal that echoes an older run's id never analyzes that run. Dry runs skip analysis. A lab
+   turns it off with `review.analysis: false`.
 
 [docs/architecture/project-layout.md](docs/architecture/project-layout.md) describes the
 `humanish/` and `.humanish/` folders in a project that runs studies.
