@@ -34,32 +34,20 @@ comment prose (`prose:check`). Lower a cap in the PR that reduces its count.
 
 ## Layout
 
-| Path                                                                        | What it holds                                                                                                                                                                                     |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/cli.ts`, `src/index.ts`                                                | The package bin and its only library export surface                                                                                                                                               |
-| `src/cli/`                                                                  | `program.ts` builds the commander program, `commands/` holds one file per command family, plus argv, env files, keys and telemetry                                                                |
-| `src/lab/`                                                                  | Lab manifests: types (`types.ts`), parsing (`config.ts`, `parse-*.ts`, `keys.ts`), route checks, discovery, preflight, personas, tasks, and `engine.ts`, whose `selectLabBackend` picks the route |
-| `src/routes/`                                                               | One folder per route: `computer-use/`, `shared-world/`, `terminal/`, `scripted-browser.ts`                                                                                                        |
-| `src/actors/`                                                               | What drives a participant: the contract and registry, `computer-use/` (loop, OpenAI provider), `codex/`, `local-agent/`, and the scripted-browser and terminal actors                             |
-| `src/substrates/`                                                           | Where participants run: `e2b/` hosted desktops and `local/` Firecracker and Lima VMs                                                                                                              |
-| `src/run/`                                                                  | Run bundles: types (`bundle.ts`), the dry run (`dry-run.ts`), `verifyRun` (`verify.ts`), paths, status, index, costs, reclaim                                                                     |
-| `src/evidence/`                                                             | Redaction, screenshots and recordings                                                                                                                                                             |
-| `src/analysis/`, `src/comms/`, `src/feedback/`, `src/observer/`, `src/tui/` | Study analysis, email capture, feedback and export, the Observer's host side, the CLI side of `humanish tui`                                                                                      |
-| `src/browser-control/`                                                      | The host-guest browser control protocol                                                                                                                                                           |
-| `src/guest-*.ts`                                                            | The guest runtime. These stay at the root of `src/`: the guest image launches `guest-runtime-main.js` by path                                                                                     |
-| `observer/`, `tui/`, `site/`                                                | Workspaces: the Observer artifact, the Ink app, humanish.dev                                                                                                                                      |
-| `humanish/`                                                                 | The repo's own study source: labs, personas, scenarios, fixtures                                                                                                                                  |
-| `runtime/`                                                                  | Desktop and browser image recipes (Python build scripts)                                                                                                                                          |
-| `scripts/`                                                                  | Proof and release scripts run by package.json                                                                                                                                                     |
-| `docs/contracts/`                                                           | Bundle and schema contracts; documented fields are API                                                                                                                                            |
-| `tests/`                                                                    | vitest suites mirroring `src/`; `tests/fixtures/` and `tests/golden/` hold inputs and expected output                                                                                             |
+[ARCHITECTURE.md](ARCHITECTURE.md#find-the-code-for-each-part-of-the-system) maps each folder to
+the file to read first. Keep these layout rules:
+
+- `src/index.ts` is the package's only library export surface. `src/cli.ts` is its bin.
+- `src/guest-runtime-main.ts`, `src/guest-runtime-revision.ts` and `src/guest-media-worker.ts`
+  stay at the root of `src/`. `scripts/guest-runtime-package.mjs` and the image recipes in
+  `runtime/` address their `dist/` output by file name.
 
 ## Conventions
 
 - TypeScript ESM with strict settings. No `any`; narrow `unknown` at the boundary.
 - Keep files under about 700 lines and functions under about 150 (oxlint warns past both). Split
-  when it helps a reader; do not add to `routes/computer-use/lab.ts` or `actors/computer-use/loop.ts`
-  when a smaller module fits.
+  when it helps a reader; do not add to `src/routes/computer-use/lab.ts` or
+  `src/actors/computer-use/loop.ts` when a smaller module fits.
 - Comments say why the code is the way it is. History, incident narratives, issue archaeology and
   PR numbers go in the commit message. `TODO(#123)` may link an open issue. No all-caps emphasis.
   `prose:check` counts violations in `src/`.

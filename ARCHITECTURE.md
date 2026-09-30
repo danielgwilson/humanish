@@ -75,7 +75,7 @@ steps 3 to 7 and 9.
 | `observer/`            | The Observer page, a single-file Vite build                                  | `observer/AGENTS.md`                |
 | `tui/`                 | The Ink terminal app                                                         | `tui/AGENTS.md`                     |
 | `site/`                | humanish.dev and its user docs in `site/content/docs/`                       | `site/AGENTS.md`                    |
-| `humanish/`            | This repo's own labs, personas and scenarios                                 | `humanish/labs/first-run.yaml`      |
+| `humanish/`            | This repo's own labs, personas, scenarios, fixtures and coverage notes       | `humanish/labs/first-run.yaml`      |
 | `runtime/`             | Desktop and browser image recipes                                            | `runtime/browser-guest/README.md`   |
 | `scripts/`             | Proof, release and check scripts that `package.json` runs                    | `scripts/check-doc-paths.ts`        |
 | `docs/contracts/`      | Bundle and schema contracts, whose documented fields are API                 | `docs/contracts/run-bundle.md`      |
