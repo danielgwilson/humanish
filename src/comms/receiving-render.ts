@@ -16,6 +16,7 @@ import type {
   ReceivingSurfaceFile,
   RenderedReceivingInbox,
 } from "./receiving-types.js";
+import type { CommsInlineImage } from "./types.js";
 
 export const RECEIVING_INBOX_CSP =
   "default-src 'none'; script-src 'none'; connect-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src 'none'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
@@ -124,6 +125,35 @@ interface Content {
   blockedLinkCount: number;
 }
 
+/** What one snapshot's render accumulates across its messages. */
+interface InboxRender {
+  allowed: Set<string>;
+  rewrites: ReadonlyArray<readonly [string | undefined, string | undefined]>;
+  secrets: Set<string>;
+  allLinks: Set<string>;
+  allCodes: Set<string>;
+}
+
+/** The sanitizer's state for one message's HTML. */
+interface MessageRender {
+  inbox: InboxRender;
+  images: CommsInlineImage[];
+  links: Set<string>;
+  blocked: Set<string>;
+  visibleText: string[];
+  assets: number;
+  nodes: number;
+  displayedImages: number;
+  displayedImageBytes: number;
+}
+
+type RenderedMessage = {
+  message: ParticipantEmail;
+  original: string;
+  plain: string;
+  json: Record<string, unknown>;
+};
+
 /** Totals describe the whole snapshot (not increments). Register secrets BEFORE publishing files. */
 export function renderReceivingInbox(options: {
   address: string;
@@ -137,212 +167,16 @@ export function renderReceivingInbox(options: {
     options.messages.length > MAX_RECEIVING_MESSAGES
   )
     throw new Error("Receiving inbox input exceeds limits.");
-  const allowed = new Set(options.allowedOrigins.map(origin).filter((o): o is string => !!o));
-  const rewrites = (options.originMap ?? []).map(
-    ([from, to]) => [origin(from), origin(to)] as const,
-  );
-  const secrets = new Set<string>([options.address]);
-  const allLinks = new Set<string>(),
-    allCodes = new Set<string>();
+  const inbox: InboxRender = {
+    allowed: new Set(options.allowedOrigins.map(origin).filter((o): o is string => !!o)),
+    rewrites: (options.originMap ?? []).map(([from, to]) => [origin(from), origin(to)] as const),
+    secrets: new Set<string>([options.address]),
+    allLinks: new Set<string>(),
+    allCodes: new Set<string>(),
+  };
   const ids = new Set<string>();
   let blockedAssetCount = 0,
     blockedLinkCount = 0;
-
-  function link(raw: string): string | undefined {
-    if (raw) secrets.add(raw);
-    if (raw.length > 8192 || /[\u0000-\u0020\u007f\\]/.test(raw)) return undefined;
-    try {
-      const u = new URL(raw);
-      if (!/^(https?:)$/.test(u.protocol) || u.username || u.password) return undefined;
-      secrets.add(u.href);
-      for (const [key, value] of u.searchParams)
-        if (
-          /token|code|secret|password|auth|invite|verification|key/i.test(key) &&
-          value.length >= 4
-        )
-          secrets.add(value);
-      const mapped = rewrites.find(([from, to]) => from === u.origin && to !== undefined)?.[1];
-      const target = mapped ? new URL(u.pathname + u.search + u.hash, `${mapped}/`) : u;
-      // Never decode paths/queries into a second navigation target or follow redirects here.
-      secrets.add(target.href);
-      if (!allowed.has(target.origin)) return undefined;
-      return target.href;
-    } catch {
-      return undefined;
-    }
-  }
-  function content(message: ParticipantEmail): Content {
-    for (const value of [message.text, message.html ?? ""])
-      if (Buffer.byteLength(value) > MAX_MESSAGE_BYTES)
-        throw new Error("Receiving inbox message exceeds limits.");
-    if (message.from.length > 2048 || (message.subject?.length ?? 0) > 4096)
-      throw new Error("Receiving inbox metadata exceeds limits.");
-    secrets.add(message.from);
-    if (message.subject) secrets.add(message.subject);
-    for (const match of `${message.from}\n${message.subject ?? ""}\n${message.text}\n${message.html ?? ""}`.matchAll(
-      /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-    ))
-      secrets.add(match[0]);
-    const images = capturedInlineImages(message.inlineImages);
-    const links = new Set<string>(),
-      blocked = new Set<string>();
-    let assets = 0,
-      nodes = 0,
-      displayedImages = 0,
-      displayedImageBytes = 0;
-    const parsed = parseFragment(message.html ?? "");
-    const visibleText: string[] = [];
-    function render(node: DefaultTreeAdapterTypes.ChildNode, depth: number): string {
-      if (++nodes > 20000 || depth > 100) throw new Error("Receiving inbox HTML exceeds limits.");
-      if ("value" in node) {
-        visibleText.push(node.value);
-        for (const match of node.value.matchAll(/https?:\/\/[^\s"'<>]+/gi)) secrets.add(match[0]);
-        return esc(node.value);
-      }
-      if (!("tagName" in node)) return "";
-      const tag = node.tagName;
-      const attrs = new Map(node.attrs.map((a) => [a.name, a.value]));
-      // These strings become scrub targets even when the element is dropped.
-      for (const attr of node.attrs) for (const url of extractLinks(attr.value)) secrets.add(url);
-      if (attrs.get("style")?.match(/url\s*\(|@import/i)) assets++;
-      for (const name of ["background", "srcset", "poster"]) if (attrs.get(name)) assets++;
-      if (node.namespaceURI !== "http://www.w3.org/1999/xhtml" || DROP.has(tag)) {
-        if (
-          [
-            "iframe",
-            "frame",
-            "object",
-            "embed",
-            "source",
-            "video",
-            "audio",
-            "link",
-            "style",
-            "svg",
-          ].includes(tag)
-        )
-          assets++;
-        return "";
-      }
-      if (tag === "img") {
-        const src = (attrs.get("src") ?? "").trim();
-        let data: string | undefined;
-        if (/^cid:/i.test(src)) {
-          let cid = "";
-          try {
-            cid = decodeURIComponent(src.slice(4)).replace(/^<|>$/g, "");
-          } catch {
-            /* unsupported content id */
-          }
-          const matches = images.filter((image) => image.contentId === cid);
-          if (matches.length === 1) data = inlineImageData(matches[0]!);
-        } else {
-          const match = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/i.exec(src);
-          if (match)
-            data = inlineImageData({
-              contentId: "inline",
-              contentType: match[1]!.toLowerCase(),
-              base64: match[2]!,
-            });
-        }
-        if (data) {
-          displayedImages++;
-          displayedImageBytes += Buffer.byteLength(data);
-          if (
-            displayedImages > MAX_INLINE_IMAGES ||
-            displayedImageBytes > Math.ceil(MAX_INLINE_IMAGES_BYTES / 3) * 4 + 1024
-          )
-            data = undefined;
-        }
-        const alt = attrs.get("alt")?.slice(0, 1024) || "Email image";
-        if (!data) {
-          assets++;
-          return `<span class="blocked-image" role="img" aria-label="${esc(alt)}">${esc(alt)} — Image unavailable. Remote images are blocked; embedded images must be supported and within the size limit.</span>`;
-        }
-        // srcset, background and all network-bearing image attributes are deliberately absent.
-        const width = /^\d{1,3}$/.test(attrs.get("width") ?? "")
-          ? ` width="${attrs.get("width")}"`
-          : "";
-        const style = safeStyle(attrs.get("style") ?? "");
-        return `<img src="${data}" alt="${esc(alt)}"${width}${style ? ` style="${esc(style)}"` : ""}>`;
-      }
-      const children = node.childNodes.map((child) => render(child, depth + 1)).join("");
-      if (!TAGS.has(tag)) return children; // forms are unwrapped; their controls are dropped
-      if (tag === "a") {
-        const raw = attrs.get("href") ?? "";
-        const href = link(raw.trim());
-        if (!href) {
-          if (raw) blocked.add(raw);
-          return `<span class="blocked-link">${children} <small>(link unavailable: destination is outside this study or unsupported)</small></span>`;
-        }
-        links.add(href);
-        const style = safeStyle(attrs.get("style") ?? "");
-        return `<a href="${esc(href)}" rel="noreferrer noopener" referrerpolicy="no-referrer"${style ? ` style="${esc(style)}"` : ""}>${children || esc(href)}</a>`;
-      }
-      const style = safeStyle(attrs.get("style") ?? "");
-      let safeAttrs = style ? ` style="${esc(style)}"` : "";
-      for (const name of ["colspan", "rowspan"])
-        if ((tag === "td" || tag === "th") && /^[1-9]\d?$/.test(attrs.get(name) ?? ""))
-          safeAttrs += ` ${name}="${attrs.get(name)}"`;
-      if (tag === "td" || tag === "th") {
-        const background = attrs.get("bgcolor");
-        if (background && /^(#[a-f\d]{3,8}|[a-z]{3,20})$/i.test(background))
-          safeAttrs += ` bgcolor="${esc(background)}"`;
-      }
-      return `<${tag}${safeAttrs}>${children}${VOID.has(tag) ? "" : `</${tag}>`}`;
-    }
-    const html = parsed.childNodes.map((node) => render(node, 0)).join("");
-    const text = message.text || visibleText.join(" ");
-    // Ports, numeric host labels and token/query fragments are not OTP evidence. Full links and
-    // token query values still enter the scrub registry through link(), independently of codes.
-    const codeSource = `${message.subject ?? ""}\n${text}\n${visibleText.join(" ")}`.replace(
-      /https?:\/\/[^\s<>"']+/gi,
-      " ",
-    );
-    const codes = extractOtpCodes(esc(codeSource));
-    for (const code of codes) {
-      secrets.add(code);
-      secrets.add(code.toLowerCase());
-      allCodes.add(code);
-      for (const match of codeSource.matchAll(new RegExp(code, "gi"))) secrets.add(match[0]);
-    }
-    for (const raw of extractLinks(message.html ?? "")) secrets.add(raw);
-    let cursor = 0,
-      plainHtml = "",
-      normalizedText = "";
-    // One parsing policy governs plain links, original anchors and JSON's actionable links.
-    const matcher = /https?:\/\/[^\s<>"'\])]+/gi;
-    for (const match of text.matchAll(matcher)) {
-      const raw = match[0].replace(/[.,;!?]+$/, ""),
-        start = match.index!;
-      plainHtml += esc(text.slice(cursor, start));
-      normalizedText += text.slice(cursor, start);
-      const href = link(raw);
-      if (href) {
-        links.add(href);
-        plainHtml += `<a href="${esc(href)}" rel="noreferrer noopener" referrerpolicy="no-referrer">${esc(href)}</a>`;
-        normalizedText += href;
-      } else {
-        blocked.add(raw);
-        plainHtml +=
-          '<span class="blocked-link">[link unavailable: destination is outside this study or unsupported]</span>';
-        normalizedText += "[link unavailable: destination is outside this study or unsupported]";
-      }
-      cursor = start + raw.length;
-    }
-    plainHtml += esc(text.slice(cursor));
-    normalizedText += text.slice(cursor);
-    for (const href of links) allLinks.add(href);
-    return {
-      html,
-      plainHtml,
-      text: normalizedText,
-      links: [...links],
-      codes,
-      blockedAssetCount: assets,
-      blockedLinkCount: blocked.size,
-    };
-  }
 
   const files: ReceivingSurfaceFile[] = [];
   let fileBytes = 0;
@@ -355,31 +189,14 @@ export function renderReceivingInbox(options: {
       contentType: json ? "application/json; charset=utf-8" : "text/html; charset=utf-8",
     });
   };
-  const rendered = options.messages.map((message) => {
+  const rendered = options.messages.map((message): RenderedMessage => {
     if (!LOCAL_ID.test(message.id) || message.id === "latest" || ids.has(message.id))
       throw new Error("Receiving inbox requires unique local message IDs.");
     ids.add(message.id);
-    const c = content(message);
+    const c = messageContent(inbox, message);
     blockedAssetCount += c.blockedAssetCount;
     blockedLinkCount += c.blockedLinkCount;
-    const head = `<header class="hdr"><h1>${esc(message.subject || "(no subject)")}</h1><div><b>From</b> ${esc(message.from)}</div><div><b>To</b> ${esc(options.address)}</div></header>`;
-    const bar = `<nav class="bar" aria-label="Inbox navigation"><a href="/inbox">← Inbox</a><a href="/inbox/${message.id}">Original email</a><a href="/inbox/${message.id}/plain">Plain view</a></nav>`;
-    const limitations =
-      c.blockedAssetCount || c.blockedLinkCount
-        ? '<p class="notice">Some images or links were blocked by the study’s email safety policy. This may affect how the email appears.</p>'
-        : "";
-    const original = page(
-      message.subject || "Email",
-      bar +
-        head +
-        `<main class="body">${limitations}<div class="email-body">${message.html ? c.html : `<pre>${c.plainHtml}</pre>`}</div></main>`,
-    );
-    const plain = page(
-      message.subject || "Email",
-      bar +
-        head +
-        `<main class="body">${limitations}${c.links[0] ? `<p><a class="cta" href="${esc(c.links[0])}" rel="noreferrer noopener" referrerpolicy="no-referrer">Open email link</a></p>` : ""}${c.codes[0] ? `<p>Code: <span class="otp">${esc(c.codes[0])}</span></p>` : ""}<pre>${c.plainHtml}</pre></main>`,
-    );
+    const { original, plain } = messagePages(options.address, message, c);
     const json = {
       id: message.id,
       from: message.from,
@@ -396,18 +213,11 @@ export function renderReceivingInbox(options: {
     add(`inbox/${message.id}.json`, JSON.stringify(json), true);
     return { message, original, plain, json };
   });
-  const rows = [...rendered]
-    .reverse()
-    .map(
-      ({ message }) =>
-        `<tr><td><a href="/inbox/${message.id}">${esc(message.subject || "(no subject)")}</a></td><td>${esc(message.from)}</td></tr>`,
-    )
-    .join("");
   add(
     "inbox",
-    page(
-      "Inbox",
-      `<header class="hdr"><h1>Inbox</h1><div>${esc(options.address)}</div></header><main class="body"><p class="muted">Only messages delivered to your study address appear here. Reload this page to check for new mail.</p>${rows ? `<table class="inbox-list"><thead><tr><th>Subject</th><th>From</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="notice">No messages yet. Reload after the app sends an email.</p>'}</main>`,
+    inboxListPage(
+      options.address,
+      rendered.map(({ message }) => message),
     ),
   );
   add(
@@ -427,8 +237,279 @@ export function renderReceivingInbox(options: {
     files,
     blockedAssetCount,
     blockedLinkCount,
-    secrets: [...secrets].filter(Boolean),
-    linkCount: allLinks.size,
-    codeCount: allCodes.size,
+    secrets: [...inbox.secrets].filter(Boolean),
+    linkCount: inbox.allLinks.size,
+    codeCount: inbox.allCodes.size,
   };
+}
+
+/** The message list, newest first, or the empty-inbox notice. */
+function inboxListPage(address: string, messages: readonly ParticipantEmail[]): string {
+  const rows = [...messages]
+    .reverse()
+    .map(
+      (message) =>
+        `<tr><td><a href="/inbox/${message.id}">${esc(message.subject || "(no subject)")}</a></td><td>${esc(message.from)}</td></tr>`,
+    )
+    .join("");
+  return page(
+    "Inbox",
+    `<header class="hdr"><h1>Inbox</h1><div>${esc(address)}</div></header><main class="body"><p class="muted">Only messages delivered to your study address appear here. Reload this page to check for new mail.</p>${rows ? `<table class="inbox-list"><thead><tr><th>Subject</th><th>From</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="notice">No messages yet. Reload after the app sends an email.</p>'}</main>`,
+  );
+}
+
+/** One message's original and plain pages, which share its navigation bar and header. */
+function messagePages(
+  address: string,
+  message: ParticipantEmail,
+  c: Content,
+): { original: string; plain: string } {
+  const head = `<header class="hdr"><h1>${esc(message.subject || "(no subject)")}</h1><div><b>From</b> ${esc(message.from)}</div><div><b>To</b> ${esc(address)}</div></header>`;
+  const bar = `<nav class="bar" aria-label="Inbox navigation"><a href="/inbox">← Inbox</a><a href="/inbox/${message.id}">Original email</a><a href="/inbox/${message.id}/plain">Plain view</a></nav>`;
+  const limitations =
+    c.blockedAssetCount || c.blockedLinkCount
+      ? '<p class="notice">Some images or links were blocked by the study’s email safety policy. This may affect how the email appears.</p>'
+      : "";
+  const original = page(
+    message.subject || "Email",
+    bar +
+      head +
+      `<main class="body">${limitations}<div class="email-body">${message.html ? c.html : `<pre>${c.plainHtml}</pre>`}</div></main>`,
+  );
+  const plain = page(
+    message.subject || "Email",
+    bar +
+      head +
+      `<main class="body">${limitations}${c.links[0] ? `<p><a class="cta" href="${esc(c.links[0])}" rel="noreferrer noopener" referrerpolicy="no-referrer">Open email link</a></p>` : ""}${c.codes[0] ? `<p>Code: <span class="otp">${esc(c.codes[0])}</span></p>` : ""}<pre>${c.plainHtml}</pre></main>`,
+  );
+  return { original, plain };
+}
+
+/** The allowed, rewritten navigation target for a link, or undefined when it is blocked. */
+function link(inbox: InboxRender, raw: string): string | undefined {
+  const { secrets } = inbox;
+  if (raw) secrets.add(raw);
+  if (raw.length > 8192 || /[\u0000- \u007f\\]/.test(raw)) return undefined;
+  try {
+    const u = new URL(raw);
+    if (!/^(https?:)$/.test(u.protocol) || u.username || u.password) return undefined;
+    secrets.add(u.href);
+    for (const [key, value] of u.searchParams)
+      if (/token|code|secret|password|auth|invite|verification|key/i.test(key) && value.length >= 4)
+        secrets.add(value);
+    const mapped = inbox.rewrites.find(([from, to]) => from === u.origin && to !== undefined)?.[1];
+    const target = mapped ? new URL(u.pathname + u.search + u.hash, `${mapped}/`) : u;
+    // Never decode paths/queries into a second navigation target or follow redirects here.
+    secrets.add(target.href);
+    if (!inbox.allowed.has(target.origin)) return undefined;
+    return target.href;
+  } catch {
+    return undefined;
+  }
+}
+
+function messageContent(inbox: InboxRender, message: ParticipantEmail): Content {
+  registerMessageSecrets(inbox, message);
+  const m: MessageRender = {
+    inbox,
+    images: capturedInlineImages(message.inlineImages),
+    links: new Set<string>(),
+    blocked: new Set<string>(),
+    visibleText: [],
+    assets: 0,
+    nodes: 0,
+    displayedImages: 0,
+    displayedImageBytes: 0,
+  };
+  const parsed = parseFragment(message.html ?? "");
+  const html = parsed.childNodes.map((node) => renderNode(m, node, 0)).join("");
+  const text = message.text || m.visibleText.join(" ");
+  const codes = messageCodes(inbox, message, text, m.visibleText);
+  for (const raw of extractLinks(message.html ?? "")) inbox.secrets.add(raw);
+  const { plainHtml, normalizedText } = plainText(m, text);
+  for (const href of m.links) inbox.allLinks.add(href);
+  return {
+    html,
+    plainHtml,
+    text: normalizedText,
+    links: [...m.links],
+    codes,
+    blockedAssetCount: m.assets,
+    blockedLinkCount: m.blocked.size,
+  };
+}
+
+/** Checks the message limits and registers its sender, subject and every address in it. */
+function registerMessageSecrets(inbox: InboxRender, message: ParticipantEmail): void {
+  for (const value of [message.text, message.html ?? ""])
+    if (Buffer.byteLength(value) > MAX_MESSAGE_BYTES)
+      throw new Error("Receiving inbox message exceeds limits.");
+  if (message.from.length > 2048 || (message.subject?.length ?? 0) > 4096)
+    throw new Error("Receiving inbox metadata exceeds limits.");
+  inbox.secrets.add(message.from);
+  if (message.subject) inbox.secrets.add(message.subject);
+  for (const match of `${message.from}\n${message.subject ?? ""}\n${message.text}\n${message.html ?? ""}`.matchAll(
+    /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+  ))
+    inbox.secrets.add(match[0]);
+}
+
+function renderNode(
+  m: MessageRender,
+  node: DefaultTreeAdapterTypes.ChildNode,
+  depth: number,
+): string {
+  if (++m.nodes > 20000 || depth > 100) throw new Error("Receiving inbox HTML exceeds limits.");
+  if ("value" in node) {
+    m.visibleText.push(node.value);
+    for (const match of node.value.matchAll(/https?:\/\/[^\s"'<>]+/gi))
+      m.inbox.secrets.add(match[0]);
+    return esc(node.value);
+  }
+  if (!("tagName" in node)) return "";
+  const tag = node.tagName;
+  const attrs = new Map(node.attrs.map((a) => [a.name, a.value]));
+  // These strings become scrub targets even when the element is dropped.
+  for (const attr of node.attrs)
+    for (const url of extractLinks(attr.value)) m.inbox.secrets.add(url);
+  if (attrs.get("style")?.match(/url\s*\(|@import/i)) m.assets++;
+  for (const name of ["background", "srcset", "poster"]) if (attrs.get(name)) m.assets++;
+  if (node.namespaceURI !== "http://www.w3.org/1999/xhtml" || DROP.has(tag)) {
+    if (
+      [
+        "iframe",
+        "frame",
+        "object",
+        "embed",
+        "source",
+        "video",
+        "audio",
+        "link",
+        "style",
+        "svg",
+      ].includes(tag)
+    )
+      m.assets++;
+    return "";
+  }
+  if (tag === "img") return renderImage(m, attrs);
+  const children = node.childNodes.map((child) => renderNode(m, child, depth + 1)).join("");
+  if (!TAGS.has(tag)) return children; // forms are unwrapped; their controls are dropped
+  if (tag === "a") {
+    const raw = attrs.get("href") ?? "";
+    const href = link(m.inbox, raw.trim());
+    if (!href) {
+      if (raw) m.blocked.add(raw);
+      return `<span class="blocked-link">${children} <small>(link unavailable: destination is outside this study or unsupported)</small></span>`;
+    }
+    m.links.add(href);
+    const style = safeStyle(attrs.get("style") ?? "");
+    return `<a href="${esc(href)}" rel="noreferrer noopener" referrerpolicy="no-referrer"${style ? ` style="${esc(style)}"` : ""}>${children || esc(href)}</a>`;
+  }
+  const style = safeStyle(attrs.get("style") ?? "");
+  let safeAttrs = style ? ` style="${esc(style)}"` : "";
+  for (const name of ["colspan", "rowspan"])
+    if ((tag === "td" || tag === "th") && /^[1-9]\d?$/.test(attrs.get(name) ?? ""))
+      safeAttrs += ` ${name}="${attrs.get(name)}"`;
+  if (tag === "td" || tag === "th") {
+    const background = attrs.get("bgcolor");
+    if (background && /^(#[a-f\d]{3,8}|[a-z]{3,20})$/i.test(background))
+      safeAttrs += ` bgcolor="${esc(background)}"`;
+  }
+  return `<${tag}${safeAttrs}>${children}${VOID.has(tag) ? "" : `</${tag}>`}`;
+}
+
+/** An embedded image within the per-message limits, or the blocked-image notice. */
+function renderImage(m: MessageRender, attrs: Map<string, string>): string {
+  const src = (attrs.get("src") ?? "").trim();
+  let data: string | undefined;
+  if (/^cid:/i.test(src)) {
+    let cid = "";
+    try {
+      cid = decodeURIComponent(src.slice(4)).replace(/^<|>$/g, "");
+    } catch {
+      /* unsupported content id */
+    }
+    const matches = m.images.filter((image) => image.contentId === cid);
+    if (matches.length === 1) data = inlineImageData(matches[0]!);
+  } else {
+    const match = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/i.exec(src);
+    if (match)
+      data = inlineImageData({
+        contentId: "inline",
+        contentType: match[1]!.toLowerCase(),
+        base64: match[2]!,
+      });
+  }
+  if (data) {
+    m.displayedImages++;
+    m.displayedImageBytes += Buffer.byteLength(data);
+    if (
+      m.displayedImages > MAX_INLINE_IMAGES ||
+      m.displayedImageBytes > Math.ceil(MAX_INLINE_IMAGES_BYTES / 3) * 4 + 1024
+    )
+      data = undefined;
+  }
+  const alt = attrs.get("alt")?.slice(0, 1024) || "Email image";
+  if (!data) {
+    m.assets++;
+    return `<span class="blocked-image" role="img" aria-label="${esc(alt)}">${esc(alt)} — Image unavailable. Remote images are blocked; embedded images must be supported and within the size limit.</span>`;
+  }
+  // srcset, background and all network-bearing image attributes are deliberately absent.
+  const width = /^\d{1,3}$/.test(attrs.get("width") ?? "") ? ` width="${attrs.get("width")}"` : "";
+  const style = safeStyle(attrs.get("style") ?? "");
+  return `<img src="${data}" alt="${esc(alt)}"${width}${style ? ` style="${esc(style)}"` : ""}>`;
+}
+
+/** The message's one-time codes, each registered as a secret in every case it appears in. */
+function messageCodes(
+  inbox: InboxRender,
+  message: ParticipantEmail,
+  text: string,
+  visibleText: readonly string[],
+): string[] {
+  // Ports, numeric host labels and token/query fragments are not OTP evidence. Full links and
+  // token query values still enter the scrub registry through link(), independently of codes.
+  const codeSource = `${message.subject ?? ""}\n${text}\n${visibleText.join(" ")}`.replace(
+    /https?:\/\/[^\s<>"']+/gi,
+    " ",
+  );
+  const codes = extractOtpCodes(esc(codeSource));
+  for (const code of codes) {
+    inbox.secrets.add(code);
+    inbox.secrets.add(code.toLowerCase());
+    inbox.allCodes.add(code);
+    for (const match of codeSource.matchAll(new RegExp(code, "gi"))) inbox.secrets.add(match[0]);
+  }
+  return codes;
+}
+
+/** The text body as escaped HTML and as JSON text, with each link allowed or replaced. */
+function plainText(m: MessageRender, text: string): { plainHtml: string; normalizedText: string } {
+  let cursor = 0,
+    plainHtml = "",
+    normalizedText = "";
+  // One parsing policy governs plain links, original anchors and JSON's actionable links.
+  const matcher = /https?:\/\/[^\s<>"'\])]+/gi;
+  for (const match of text.matchAll(matcher)) {
+    const raw = match[0].replace(/[.,;!?]+$/, ""),
+      start = match.index!;
+    plainHtml += esc(text.slice(cursor, start));
+    normalizedText += text.slice(cursor, start);
+    const href = link(m.inbox, raw);
+    if (href) {
+      m.links.add(href);
+      plainHtml += `<a href="${esc(href)}" rel="noreferrer noopener" referrerpolicy="no-referrer">${esc(href)}</a>`;
+      normalizedText += href;
+    } else {
+      m.blocked.add(raw);
+      plainHtml +=
+        '<span class="blocked-link">[link unavailable: destination is outside this study or unsupported]</span>';
+      normalizedText += "[link unavailable: destination is outside this study or unsupported]";
+    }
+    cursor = start + raw.length;
+  }
+  plainHtml += esc(text.slice(cursor));
+  normalizedText += text.slice(cursor);
+  return { plainHtml, normalizedText };
 }
