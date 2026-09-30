@@ -7,7 +7,7 @@ description: A paired Save-button study exposed missing participant reports and 
 
 This study is about a gap in humanish itself: a participant can complete a task and still have hit a broken control on the way, and until this study the report did not say so. It changed the product, so it stays published.
 
-The AI participant tried Save, recovered with Enter, and reached the requested task state. humanish stopped the session there. Anyone reading only the completion check would miss the broken control that came before it.
+The AI participant tried Save, recovered with Enter, and reached the requested task state. The run ended the session there. Anyone reading only the completion check would miss the broken control that came before it.
 
 If I'm fixing this app, I need to know about those failed Save clicks, even though the task was saved.
 
@@ -36,7 +36,7 @@ The request makes no further app actions and keeps the original task result. It 
 
 That recovered the Save-button account in all three broken/automatic confirmation attempts. It also let a completed task remain complete while preserving the participant's report of difficulty.
 
-## humanish also reported problems that were not there
+## The parser also reported problems that were not there
 
 The working/natural controls caught a separate error. Each participant explicitly reported no friction, but humanish's legacy text parser created a feedback candidate anyway. Those three candidates are false positives in this study.
 

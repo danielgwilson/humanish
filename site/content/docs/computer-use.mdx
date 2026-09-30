@@ -66,7 +66,7 @@ it does not inspect the tools installed in your image.
 
 When a flow is gated behind an email or
 SMS the app itself sends (a signup verification link, a one-time code, a magic link),
-add a `comms:` block to the lab. humanish redirects the app's email-API sends (via
+add a `comms:` block to the lab. The run then redirects the app's email-API sends (via
 one adopter-named env var: with the official Resend SDK it is `RESEND_BASE_URL`,
 which the SDK reads on its own, so nothing in the app has to change; other providers
 need the app to actually pass the env through, and a run whose catch captures zero
