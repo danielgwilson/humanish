@@ -2577,17 +2577,33 @@
       "message": "`subject.product.name` must be a public-safe token starting with a letter or digit (/^[A-Za-z0-9][A-Za-z0-9_.-]*$/)."
     },
     "runLab": {
-      "runs": true,
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
       "result": {
         "backend": "cua",
-        "ok": true,
-        "plan": {
-          "laneCount": 1,
-          "concurrency": 1,
-          "waves": 1,
-          "lanes": [
-            "lane-01"
-          ]
+        "schema": "humanish.cua-lab-result.v2",
+        "ok": false,
+        "cwd": "[cwd]",
+        "labId": "adm-cudesktopcli",
+        "actor": "openai-computer-use",
+        "appUrl": "",
+        "dryRun": true,
+        "runId": "not-created",
+        "lanes": [],
+        "warnings": [],
+        "error": {
+          "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+          "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+        },
+        "automaticAnalysisTrigger": "default",
+        "automaticAnalysis": {
+          "state": "skipped",
+          "reason": "analysis_dry_run"
         }
       }
     },

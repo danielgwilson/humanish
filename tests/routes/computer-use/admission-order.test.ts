@@ -137,6 +137,12 @@ const rules = new Map<string, Rule>([
   ],
   ["sandbox deadline", { mutate: (c) => (record(c, "execution").timeoutMs = 3_300_000) }],
   ["shared-world topology", { mutate: (c) => (record(c, "subject").topology = "shared-world") }],
+  ["in-process clone subject", { mutate: asClone, ...inProcess }],
+  [
+    "in-process desktop-cli without a product",
+    { mutate: (c) => (c.subject = { source: "desktop-cli" }), ...inProcess },
+  ],
+  ["desktop-cli without a product", { mutate: (c) => (c.subject = { source: "desktop-cli" }) }],
   ["count override above the cap", { mutate: () => undefined, countOverride: 17 }],
   ["in-process fan-out", { mutate: (c) => (actor(c).count = 2), ...inProcess }],
   ["live without keys", { mutate: (c) => (record(c, "scenario").mode = "live") }],
@@ -168,6 +174,9 @@ const pairs: [string, string][] = [
   ["sandbox deadline", "count override above the cap"],
   ["sandbox deadline", "shared-world topology"],
   ["shared-world topology", "count override above the cap"],
+  ["shared-world topology", "in-process clone subject"],
+  ["in-process clone subject", "count override above the cap"],
+  ["desktop-cli without a product", "count override above the cap"],
   ["count override above the cap", "in-process fan-out"],
   ["in-process fan-out", "live without keys"],
 ];

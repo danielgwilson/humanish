@@ -18,12 +18,7 @@ import {
   provisionedSubject,
 } from "../../lab/plan-base.js";
 import { computerUseParticipants } from "../../lab/plan-participants.js";
-import type {
-  AppUrlSubject,
-  ComputerUsePlan,
-  ComputerUseRunner,
-  DesktopCliSubject,
-} from "../../lab/plan-types.js";
+import type { AppUrlSubject, ComputerUsePlan, ComputerUseRunner } from "../../lab/plan-types.js";
 import { MAX_CUA_LANES } from "../../lab/routing.js";
 import type { LabConfig, LabSubjectServe } from "../../lab/types.js";
 import {
@@ -345,6 +340,27 @@ export function planComputerUseLab(
       "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld.",
       actor,
     );
+  // The in-process route drives subject.appUrl on this machine and creates no desktop, so it would
+  // skip the subject a clone, local-tree or desktop-cli lab declares.
+  const source = config.subject.source;
+  if (
+    hooks.buildExecutor !== undefined &&
+    (source === "clone" || source === "local-tree" || source === "desktop-cli")
+  )
+    return refuse(
+      "in-scope",
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      `cuaHooks.buildExecutor drives subject.appUrl in this process, and a ${source} subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop.`,
+      actor,
+    );
+  // The parser refuses this too; without a product the desktop study fails later.
+  if (source === "desktop-cli" && config.subject.product?.name === undefined)
+    return refuse(
+      "in-scope",
+      "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use.",
+      actor,
+    );
 
   const participants = computerUseParticipants(config, input.countOverride);
   if (participants.length > MAX_CUA_LANES)
@@ -364,7 +380,6 @@ export function planComputerUseLab(
     );
   if (first === undefined) throw new Error("computerUseParticipants returned no participant");
 
-  const source = config.subject.source;
   const appUrl = config.subject.appUrl ?? "";
   const appUrlSubject: AppUrlSubject = {
     kind: "app-url",
@@ -372,12 +387,10 @@ export function planComputerUseLab(
     publicTargets: config.policies?.allowPublicTargets === true,
   };
   const product = config.subject.product;
-  const desktopCli: DesktopCliSubject = {
-    kind: "desktop-cli",
-    ...(product === undefined ? {} : { product }),
-  };
   const hosted =
-    source === "desktop-cli" ? desktopCli : (provisionedSubject(config) ?? appUrlSubject);
+    source === "desktop-cli" && product !== undefined
+      ? ({ kind: "desktop-cli", product } as const)
+      : (provisionedSubject(config) ?? appUrlSubject);
   const brain = brainOf(config, hooks.buildProvider !== undefined);
   const runner: ComputerUseRunner =
     hooks.buildExecutor !== undefined
@@ -385,7 +398,7 @@ export function planComputerUseLab(
           desktop: "in-process",
           brain: { kind: "caller" },
           participants: [first],
-          subject: source === "local-app" ? { kind: "local-app", appUrl } : hosted,
+          subject: source === "local-app" ? { kind: "local-app", appUrl } : appUrlSubject,
         }
       : isLocalBrowserLab(config)
         ? { desktop: "local-vm", brain, participants: [first, ...rest], subject: appUrlSubject }

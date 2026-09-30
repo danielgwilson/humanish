@@ -451,6 +451,69 @@
       "reason": "analysis_dry_run"
     }
   },
+  "in-process clone subject": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process desktop-cli without a product": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a desktop-cli subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "desktop-cli without a product": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
   "count override above the cap": {
     "schema": "humanish.cua-lab-result.v2",
     "ok": false,
@@ -980,6 +1043,69 @@
     "error": {
       "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
       "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "shared-world topology and in-process clone subject": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "subject.topology: shared-world labs run every seat against one shared app on the shared-world route; runCuaActorLab runs independent lanes. Run the lab with runLab or runConcurrentSharedWorld."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "in-process clone subject and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "cuaHooks.buildExecutor drives subject.appUrl in this process, and a clone subject needs the hosted desktop the in-process route never creates. Use an app-url or local-app subject with buildExecutor, or remove buildExecutor to run on a hosted desktop."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "desktop-cli without a product and count override above the cap": {
+    "schema": "humanish.cua-lab-result.v2",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-cuappurl",
+    "actor": "openai-computer-use",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "lanes": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_CUA_LAB_SUBJECT_INVALID",
+      "message": "desktop-cli subjects need `subject.product.name` — the CLI the participant is being asked to use."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

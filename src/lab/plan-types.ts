@@ -107,24 +107,19 @@ export interface AppUrlSubject {
   readonly publicTargets: boolean;
 }
 
-/** A CLI studied at a desktop. The parser requires `product`; the route runs a library config without it. */
-export interface DesktopCliSubject {
-  readonly kind: "desktop-cli";
-  readonly product?: LabSubjectProduct;
-}
-
 /**
- * Supported subject and desktop pairings, plus two the route runs for a library caller that the
- * parser never produces: public targets on the local VM, and an in-process executor with a
- * provisioned or desktop-cli subject, which drives the app URL on this machine and provisions
- * nothing.
+ * Supported subject and desktop pairings. The local VM also takes public targets: the route runs
+ * that for a library caller, though the parser never produces it.
  */
 export type ComputerUseRunner =
   | {
       readonly desktop: "e2b-desktop";
       readonly brain: Brain;
       readonly participants: NonEmpty<ComputerUseParticipant>;
-      readonly subject: AppUrlSubject | ProvisionedSubject | DesktopCliSubject;
+      readonly subject:
+        | AppUrlSubject
+        | ProvisionedSubject
+        | { readonly kind: "desktop-cli"; readonly product: LabSubjectProduct };
     }
   | {
       readonly desktop: "local-vm";
@@ -137,11 +132,7 @@ export type ComputerUseRunner =
       readonly desktop: "in-process";
       readonly brain: { readonly kind: "caller" };
       readonly participants: readonly [ComputerUseParticipant];
-      readonly subject:
-        | AppUrlSubject
-        | { readonly kind: "local-app"; readonly appUrl: string }
-        | ProvisionedSubject
-        | DesktopCliSubject;
+      readonly subject: AppUrlSubject | { readonly kind: "local-app"; readonly appUrl: string };
     };
 
 export interface ComputerUsePlan extends PlanBase {
