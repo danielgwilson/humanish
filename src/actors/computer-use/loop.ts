@@ -30,11 +30,9 @@ export type {
   CuaTurn,
   CuaTurnRequest,
 } from "./loop/types.js";
-export { actionFingerprint, describeCuaAction } from "./loop/actions.js";
+export { describeCuaAction } from "./loop/actions.js";
 export { stableProgressKey } from "./loop/backstop.js";
 export { validClosingReport } from "./loop/debrief.js";
-export { declaredOutcomeFromClosingLine } from "./loop/ending.js";
-export { statusForCompletionReason } from "./loop/trace.js";
 
 // The computer-use (CUA) loop: drive a model over a desktop turn by turn, observe the screen, act,
 // and stop at a natural endpoint or an unambiguous friction signal. The model sits behind the
@@ -145,15 +143,10 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const step = advanceBackstop(
       backstop,
       { actions: turn.actions, observation, heardNewSpeech: observer.heardNewSpeech },
-      session,
+      { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps },
     );
     backstop = step.backstop;
-    const stalled = applyBackstop(session, conversation, step, [
-      checkpoint.hint,
-      batch.rejectedActionTitle === undefined
-        ? undefined
-        : `Your action (${batch.rejectedActionTitle}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`,
-    ]);
+    const stalled = applyBackstop(session, conversation, step, [checkpoint.hint, batch.hint]);
     if (stalled !== undefined) return stalled;
   }
 }
@@ -188,7 +181,7 @@ function refuseAccountBilledCaps(options: CuaLoopOptions): void {
 
 function haltBeforeTurn(session: LoopSession): Stop | undefined {
   if (session.signal?.aborted) return stops.harnessAborted;
-  if (session.now() - session.startedAtMs > session.timeoutMs) return stops.timeLimit(session);
+  if (session.remaining() < 0) return stops.timeLimit(session);
   return undefined;
 }
 

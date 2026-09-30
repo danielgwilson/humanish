@@ -109,7 +109,7 @@ export class UsageLedger {
   /** Settled single-dispatch requests, in order: the trace's providerRequests. */
   readonly requests: ActorProviderRequest[] = [];
   /** A continuing request returned actions and has not settled yet. */
-  requestPending = false;
+  private requestPending = false;
   /** A request did not confirm cleanup; no further request or action is admitted. */
   cleanupUnconfirmed = false;
   /** Some usage was reported; the trace records tokenUsage only then. */
@@ -154,6 +154,11 @@ export class UsageLedger {
     else if (turns !== undefined) this.turns.push(...turns);
   }
 
+  /** A continuing request returned actions; its receipt and usage settle later. */
+  markPending(): void {
+    this.requestPending = true;
+  }
+
   /** A request may have been billed without reporting usage. */
   markUnreported(): void {
     this.mayHaveUnreportedUsage = true;
@@ -169,8 +174,6 @@ export class UsageLedger {
     usage: ActorTokenUsage | undefined,
     error: CuaProviderError | undefined,
   ): "interaction" | "debrief" {
-    // src/actors/codex/restricted-session.ts sets dispatched only after initialize/config/
-    // account/thread/MCP admission, immediately before turn/start; it is not a success claim.
     const settledKind = this.requestPending ? "interaction" : kind;
     this.requests.push({
       ordinal: this.requests.length + 1,

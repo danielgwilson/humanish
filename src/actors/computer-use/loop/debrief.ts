@@ -2,7 +2,7 @@ import type { ActorTrace, ParticipantClosingReport } from "../../contract.js";
 import { isCuaAdmissionLimitError } from "../admission-limit.js";
 import type { DebriefTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
-import { CuaDeadlineError, CuaStallError, raceCallBound } from "./race.js";
+import { CuaDeadlineError, raceSessionDeadline, requestScope } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "./types.js";
@@ -143,10 +143,8 @@ async function debriefExchange(
   record: RecordDebrief,
 ): Promise<Debrief> {
   const { signal } = session;
-  const controller = new AbortController();
-  const onAbort = (): void => controller.abort();
-  signal?.addEventListener("abort", onAbort, { once: true });
-  const timer = setTimeout(() => controller.abort(), boundMs);
+  const scope = requestScope(signal);
+  const timer = setTimeout(() => scope.end(), boundMs);
   timer.unref?.();
   session.trace.bump("debriefCalls");
   try {
@@ -172,13 +170,7 @@ async function debriefExchange(
             (dispatchSignal) => provider.debrief(request, dispatchSignal),
             boundMs,
           )
-        : await raceCallBound(
-            "participant debrief",
-            provider.debrief(request, controller.signal),
-            boundMs,
-            boundMs,
-            signal,
-          );
+        : await raceSessionDeadline(provider.debrief(request, scope.signal), boundMs, signal);
     return acceptDebriefTurn(session, turn, record);
   } catch (error) {
     // A failed optional report cannot rewrite the already observed structured completion.
@@ -190,9 +182,7 @@ async function debriefExchange(
     }
     const detail = signal?.aborted
       ? "cancelled"
-      : controller.signal.aborted ||
-          error instanceof CuaDeadlineError ||
-          error instanceof CuaStallError
+      : scope.signal.aborted || error instanceof CuaDeadlineError
         ? "closing report deadline reached"
         : error instanceof Error
           ? error.message
@@ -208,8 +198,7 @@ async function debriefExchange(
     );
   } finally {
     clearTimeout(timer);
-    signal?.removeEventListener("abort", onAbort);
-    controller.abort();
+    scope.end();
   }
 }
 

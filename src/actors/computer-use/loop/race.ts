@@ -18,6 +18,30 @@ export class CuaStallError extends Error {
 }
 
 /**
+ * One port call's abort signal. It follows the session signal and is aborted when the loop stops
+ * waiting on the call, because a race alone does not cancel the losing promise.
+ */
+export interface RequestScope {
+  readonly signal: AbortSignal;
+  /** Abort the call and stop following the session signal. Safe to call twice. */
+  end(): void;
+}
+
+export function requestScope(signal: AbortSignal | undefined): RequestScope {
+  const controller = new AbortController();
+  const onAbort = (): void => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+  return {
+    signal: controller.signal,
+    end: () => {
+      signal?.removeEventListener("abort", onAbort);
+      controller.abort();
+    },
+  };
+}
+
+/**
  * raceSessionDeadline with a second, tighter clock: the call's own bound. When the tighter clock
  * wins the result is a CuaStallError (the caller decides whether to retry); when the session clock wins it
  * stays a CuaDeadlineError, which the loop reads as the session deadline (timed_out or

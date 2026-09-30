@@ -1,7 +1,14 @@
 import { isCuaAdmissionLimitError } from "../admission-limit.js";
 import { CuaProviderError, isCuaProviderError } from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
-import { CuaAbortError, CuaDeadlineError, CuaStallError, raceCallBound } from "./race.js";
+import {
+  CuaAbortError,
+  CuaDeadlineError,
+  CuaStallError,
+  raceCallBound,
+  requestScope,
+  type RequestScope,
+} from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type { CuaTurn, CuaTurnRequest } from "./types.js";
@@ -65,30 +72,6 @@ export async function requestTurn(
   }
 }
 
-/**
- * One provider request's signal. It follows the session signal and ends when the loop stops
- * waiting on the request, because a timeout race alone does not cancel the losing promise.
- */
-interface RequestScope {
-  readonly signal: AbortSignal;
-  /** Abort the request and stop following the session signal. Safe to call twice. */
-  end(): void;
-}
-
-function requestScope(signal: AbortSignal | undefined): RequestScope {
-  const controller = new AbortController();
-  const onAbort = (): void => controller.abort();
-  if (signal?.aborted) controller.abort();
-  else signal?.addEventListener("abort", onAbort, { once: true });
-  return {
-    signal: controller.signal,
-    end: () => {
-      signal?.removeEventListener("abort", onAbort);
-      controller.abort();
-    },
-  };
-}
-
 async function retryStalledTurn(
   session: LoopSession,
   request: CuaTurnRequest,
@@ -141,20 +124,17 @@ export async function singleDispatch(
   boundMs: number,
 ): Promise<CuaTurn> {
   const { signal } = session;
-  const controller = new AbortController();
-  const onAbort = (): void => controller.abort();
-  if (signal?.aborted) controller.abort();
-  else signal?.addEventListener("abort", onAbort, { once: true });
+  const scope = requestScope(signal);
   const settlementRef: { current?: Settlement } = {};
   const pending = Promise.resolve()
     .then(() => {
-      if (controller.signal.aborted)
+      if (scope.signal.aborted)
         throw new CuaProviderError("cancelled", {
           dispatched: false,
           usageComplete: false,
           cleanup: "confirmed",
         });
-      return dispatch(controller.signal);
+      return dispatch(scope.signal);
     })
     .then(
       (turn) => {
@@ -180,12 +160,11 @@ export async function singleDispatch(
   } catch (error) {
     outcome = { error };
   } finally {
-    controller.abort();
-    signal?.removeEventListener("abort", onAbort);
+    scope.end();
     if (settlementRef.current === undefined) await cleanupGrace(pending);
   }
   if ("turn" in outcome && outcome.continuing) {
-    session.usage.requestPending = true;
+    session.usage.markPending();
     return outcome.turn;
   }
   const failure = "error" in outcome ? outcome.error : undefined;

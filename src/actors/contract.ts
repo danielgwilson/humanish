@@ -224,6 +224,11 @@ export interface ActorExecutionProfile {
   memoryPolicy: "recent-eight-16k-v1" | "continuing-thread-v1";
 }
 export interface ProviderRequestReceipt {
+  /**
+   * Whether the request reached the provider. It is not a success claim: the Codex restricted
+   * session (src/actors/codex/restricted-session.ts) sets it only after initialize, config,
+   * account, thread and MCP admission, immediately before turn/start.
+   */
   dispatched: boolean | "unknown";
   usageComplete: boolean;
   cleanup: "confirmed" | "unconfirmed";

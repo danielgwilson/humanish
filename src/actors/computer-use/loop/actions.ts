@@ -7,6 +7,7 @@ import {
   CuaStallError,
   raceCallBound,
   raceSessionDeadline,
+  requestScope,
 } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
@@ -127,8 +128,12 @@ function isMaterialAttempt(action: CuaAction, status: ExecutionStatus | undefine
 export interface ActionBatch {
   /** Host input acknowledgements for the provider's next request. */
   readonly execution: NonNullable<CuaTurnRequest["previousExecution"]>;
-  /** The action a pre-dispatch rejection stopped the batch at. */
-  readonly rejectedActionTitle: string | undefined;
+  /** Guidance for the next request, set when a pre-dispatch rejection stopped the batch. */
+  readonly hint: string | undefined;
+}
+
+function rejectedActionHint(title: string): string {
+  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent. Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
 
 /**
@@ -185,7 +190,7 @@ export async function runActionBatch(
             ),
           ),
         );
-        return { execution, rejectedActionTitle: title };
+        return { execution, hint: rejectedActionHint(title) };
       }
       if (isCuaExecutorError(error) || !isCommandExitError(error)) throw error;
       // A skipped action changes nothing on screen, so a persistently-failing run makes no
@@ -207,7 +212,7 @@ export async function runActionBatch(
         : {}),
     }));
   }
-  return { execution, rejectedActionTitle: undefined };
+  return { execution, hint: undefined };
 }
 
 function countAttempt(
@@ -259,12 +264,9 @@ async function executeAction(
   boundMs?: number,
 ): Promise<void> {
   const { signal } = session;
-  const actionController = new AbortController();
-  const onAbort = (): void => actionController.abort();
-  if (signal?.aborted) actionController.abort();
-  else signal?.addEventListener("abort", onAbort, { once: true });
+  const scope = requestScope(signal);
   try {
-    const pending = session.executor.execute(action, actionController.signal);
+    const pending = session.executor.execute(action, scope.signal);
     if (boundMs === undefined) await raceSessionDeadline(pending, session.remaining(), signal);
     else await raceCallBound(`idle action ${title}`, pending, session.remaining(), boundMs, signal);
   } catch (error) {
@@ -287,10 +289,9 @@ async function executeAction(
     }
     throw error;
   } finally {
-    signal?.removeEventListener("abort", onAbort);
     // A deadline also closes async executor preparation, so a late pointer read
     // cannot actuate after the loop stopped waiting for this action.
-    actionController.abort();
+    scope.end();
   }
 }
 
