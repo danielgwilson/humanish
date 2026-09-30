@@ -1,6 +1,6 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
-import { runLab, resolveLabDryRun } from "../../lab/engine.js";
+import { type LabOutcome, runLab, resolveLabDryRun, type RunLabOptions } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import { CUA_ACTOR_LAB_SCHEMA } from "../../routes/computer-use/types.js";
 import type { CuaActorLabErrorCode, CuaActorLabResult } from "../../routes/computer-use/types.js";
@@ -32,8 +32,9 @@ import {
 } from "../observer-follow.js";
 import { formatCuaLabHuman } from "./lab-format.js";
 import { resolveBackendShouldOpen } from "./lab-backend-open.js";
+import type { BackendRun } from "./lab-backend-run.js";
 
-export async function runCuaBackend(args: {
+interface CuaBackendArgs {
   command: Command;
   io: CliIo;
   config: LabConfig;
@@ -41,11 +42,32 @@ export async function runCuaBackend(args: {
   mode: "run" | "watch";
   options: LabCommandOptions;
   scorer?: LoadedAdapterScorer;
-}): Promise<void> {
+}
+
+export async function runCuaBackend(args: CuaBackendArgs): Promise<void> {
+  const run = cuaBackendRun(args);
+  if (run === undefined) return;
+  let outcome: LabOutcome;
+  try {
+    outcome = await runLab(args.config, run.options);
+  } catch (error) {
+    if (run.onRunError === undefined) throw error;
+    await run.onRunError(error);
+    return;
+  }
+  await run.present(outcome);
+}
+
+/**
+ * The computer-use backend's setup: its settings, the watch and exposure plan, the runLab options
+ * with the live Observer hook, and how it presents the outcome or a run error. Undefined when
+ * setup has already written its own result.
+ */
+function cuaBackendRun(args: CuaBackendArgs): BackendRun | undefined {
   const settings = resolveCuaSettings(args);
-  if (settings === undefined) return;
+  if (settings === undefined) return undefined;
   const prepared = prepareCuaWatch(args, settings);
-  if (prepared === undefined) return;
+  if (prepared === undefined) return undefined;
   const live: CuaLiveAttachment = {
     server: null,
     observer: null,
@@ -53,12 +75,17 @@ export async function runCuaBackend(args: {
     exposeWarnings: [],
     publicTarget: undefined,
   };
-  const result = await runCuaLab(args, settings, prepared, live);
-  if (result === undefined) return;
-  await reportCuaRun(args, prepared, result, live);
+  return {
+    options: cuaRunOptions(args, settings, prepared, live),
+    onRunError: (error) => closeLiveAfterRunError(args, settings, live, error),
+    present: async (outcome) => {
+      if (outcome.backend !== "cua") {
+        throw new Error(`Expected cua backend, got ${outcome.backend}.`);
+      }
+      await reportCuaRun(args, prepared, outcome.result, live);
+    },
+  };
 }
-
-type CuaBackendArgs = Parameters<typeof runCuaBackend>[0];
 
 /** Parsed options for one CUA lab invocation. */
 interface CuaRunSettings {
@@ -184,80 +211,76 @@ function prepareCuaWatch(args: CuaBackendArgs, settings: CuaRunSettings): CuaWat
   return { exposure: exposeValidation.plan, finishedPlan };
 }
 
-/**
- * Runs the lab. Resolves to undefined after reporting a tunnel startup failure; the live server
- * and tunnel are closed before that report or any rethrow.
- */
-async function runCuaLab(
+/** The runLab options for this invocation, with the live Observer hook for a followed watch. */
+function cuaRunOptions(
   args: CuaBackendArgs,
   settings: CuaRunSettings,
   prepared: CuaWatchPlan,
   live: CuaLiveAttachment,
-): Promise<CuaActorLabResult | undefined> {
+): RunLabOptions {
   const { finishedPlan } = prepared;
-  let outcome: Awaited<ReturnType<typeof runLab>>;
-  try {
-    outcome = await runLab(args.config, {
-      ...cliAnalysisOptions(args.io),
-      cwd: args.options.cwd,
-      ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
-      // A followed watch opens the served Observer (or prints the phone target under --expose), so
-      // its static render never opens. A non-follow watch opens what its plan says, once. Run mode
-      // keeps the static open.
-      open:
-        args.mode === "watch"
-          ? finishedPlan === undefined
-            ? false
-            : staticObserverOpen(finishedPlan)
-          : settings.shouldOpen,
-      count: settings.count,
-      dryRun: settings.dryRun,
-      ...(settings.wantsFollow
-        ? {
-            // Fires INSIDE runLab, before the actor loop and before sandbox creation, so a
-            // tunnel-auth failure aborts before any spend and leaves no orphaned sandbox.
-            onObserverReady: (observer: ObserverResult & { ok: true }) =>
-              attachLiveObserver(args.io, settings, prepared.exposure, live, observer),
-          }
-        : {}),
-      ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
-      ...(args.scorer
-        ? { scorer: args.scorer.hooks, scorerProvenance: args.scorer.provenance }
-        : {}),
-      ...(args.options.rerunFailedFrom === undefined
-        ? {}
-        : {
-            rerun: {
-              sourceRunId: args.options.rerunFailedFrom,
-              ...(settings.laneIds.length === 0 ? {} : { laneIds: settings.laneIds }),
-            },
-          }),
-    });
-  } catch (error) {
-    // Tear down the loopback server and any tunnel started inside onObserverReady before rethrowing
-    // (or surfacing a structured tunnel-startup failure). The sandbox is created AFTER
-    // onObserverReady returns, so a tunnel failure here cannot orphan one.
-    await live.server?.close().catch((cleanupError: unknown) => {
-      args.io.writeErr(
-        `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
-      );
-    });
-    live.server = null;
-    if (live.tunnel) {
-      await live.tunnel.close().catch(() => undefined);
-      live.tunnel = undefined;
-    }
-    if (error instanceof ServeTunnelError) {
-      refuseCua(args, settings.dryRun, error.code, error.message);
-      return undefined;
-    }
-    throw error;
-  }
+  return {
+    ...cliAnalysisOptions(args.io),
+    cwd: args.options.cwd,
+    ...(args.labProvenance === undefined ? {} : { lab: args.labProvenance }),
+    // A followed watch opens the served Observer (or prints the phone target under --expose), so
+    // its static render never opens. A non-follow watch opens what its plan says, once. Run mode
+    // keeps the static open.
+    open:
+      args.mode === "watch"
+        ? finishedPlan === undefined
+          ? false
+          : staticObserverOpen(finishedPlan)
+        : settings.shouldOpen,
+    count: settings.count,
+    dryRun: settings.dryRun,
+    ...(settings.wantsFollow
+      ? {
+          // Fires INSIDE runLab, before the actor loop and before sandbox creation, so a
+          // tunnel-auth failure aborts before any spend and leaves no orphaned sandbox.
+          onObserverReady: (observer: ObserverResult & { ok: true }) =>
+            attachLiveObserver(args.io, settings, prepared.exposure, live, observer),
+        }
+      : {}),
+    ...(args.options.runId === undefined ? {} : { runId: args.options.runId }),
+    ...(args.scorer ? { scorer: args.scorer.hooks, scorerProvenance: args.scorer.provenance } : {}),
+    ...(args.options.rerunFailedFrom === undefined
+      ? {}
+      : {
+          rerun: {
+            sourceRunId: args.options.rerunFailedFrom,
+            ...(settings.laneIds.length === 0 ? {} : { laneIds: settings.laneIds }),
+          },
+        }),
+  };
+}
 
-  if (outcome.backend !== "cua") {
-    throw new Error(`Expected cua backend, got ${outcome.backend}.`);
+/**
+ * Tears down the loopback server and any tunnel started inside onObserverReady, then reports a
+ * tunnel startup failure or rethrows. The sandbox is created after onObserverReady returns, so a
+ * tunnel failure cannot orphan one.
+ */
+async function closeLiveAfterRunError(
+  args: CuaBackendArgs,
+  settings: CuaRunSettings,
+  live: CuaLiveAttachment,
+  error: unknown,
+): Promise<void> {
+  await live.server?.close().catch((cleanupError: unknown) => {
+    args.io.writeErr(
+      `watch cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}\n`,
+    );
+  });
+  live.server = null;
+  if (live.tunnel) {
+    await live.tunnel.close().catch(() => undefined);
+    live.tunnel = undefined;
   }
-  return outcome.result;
+  if (error instanceof ServeTunnelError) {
+    refuseCua(args, settings.dryRun, error.code, error.message);
+    return;
+  }
+  throw error;
 }
 
 /** Serves the live Observer and, under --expose, puts the planned edge in front of it. */
