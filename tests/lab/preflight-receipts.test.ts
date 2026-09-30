@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readlinkSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -352,6 +352,30 @@ describe("lab preflight receipts", () => {
       }
     },
   );
+
+  it("keeps a journal whose receipts cannot be read, without discarding or killing", async () => {
+    const id = await writeJournal(cwd, {
+      pid: process.pid,
+      hostname: "another-host",
+      createdAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+      leaseMs: 5 * 60_000,
+    });
+    // A second hard link makes the contained read refuse the file, as it refuses any file it
+    // cannot prove is the journal's own. The directory stays writable.
+    const receipts = path.join(cwd, ".humanish", "preflight", id, SANDBOX_RECEIPTS_ARTIFACT);
+    await link(receipts, path.join(cwd, "receipts-alias"));
+    const provider = fakeProvider({});
+
+    const reclaim = await reclaimPreflightSandboxes(cwd, {
+      loadModule: async () => provider.module,
+    });
+
+    expect(reclaim.ok).toBe(false);
+    expect(reclaim.warnings.join("\n")).toContain("could not be read safely");
+    expect(provider.killed).toEqual([]);
+    expect(await journals(cwd)).toEqual([id]);
+    expect(await readFile(receipts, "utf8")).toContain("sb-journaled");
+  });
 
   it("refuses --preflight together with --run", async () => {
     const program = createProgram({

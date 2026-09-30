@@ -7,6 +7,7 @@
 // reads one file inside the managed run dir, kills by id, and never lists anything.
 import { loadE2BDesktopModule, type E2BDesktopModule } from "../substrates/e2b/desktop-launch.js";
 import {
+  containedPathAbsent,
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedOutputRoot,
@@ -52,7 +53,10 @@ export interface ReclaimResult {
   outcomes: ReclaimOutcome[];
   warnings: string[];
   error?: {
-    code: "HUMANISH_RECLAIM_RUN_NOT_FOUND" | "HUMANISH_RECLAIM_MODULE_UNAVAILABLE";
+    code:
+      | "HUMANISH_RECLAIM_RUN_NOT_FOUND"
+      | "HUMANISH_RECLAIM_MODULE_UNAVAILABLE"
+      | "HUMANISH_RECLAIM_RECEIPTS_UNREADABLE";
     message: string;
   };
 }
@@ -111,6 +115,14 @@ export async function reclaimRunSandboxes(
       error: { code: "HUMANISH_RECLAIM_MODULE_UNAVAILABLE", message: journal.message },
     };
   }
+  if (journal.kind === "unreadable") {
+    return {
+      ...base,
+      runId,
+      ok: false,
+      error: { code: "HUMANISH_RECLAIM_RECEIPTS_UNREADABLE", message: UNREADABLE_MESSAGE },
+    };
+  }
 
   const { receiptCount, outcomes } = journal;
   const result: ReclaimResult = { ...base, runId, receiptCount, outcomes, ok: allGone(outcomes) };
@@ -132,6 +144,7 @@ export async function reclaimPreflightSandboxes(
   const warnings: string[] = [];
   const outcomes: ReclaimOutcome[] = [];
   let receiptCount = 0;
+  let unreadable = false;
   const base = { schema: RECLAIM_RESULT_SCHEMA, cwd, runId: "preflight", warnings } as const;
   const journals = await listPreflightJournals(cwd);
   if (journals.length === 0) {
@@ -146,6 +159,12 @@ export async function reclaimPreflightSandboxes(
       continue;
     }
     const reclaimed = await reclaimJournal(journal.root, hooks);
+    if (reclaimed.kind === "unreadable") {
+      // The receipt may name a live sandbox; the journal stays for a later reclaim.
+      unreadable = true;
+      warnings.push(`Preflight ${journal.id} left alone: ${UNREADABLE_MESSAGE}`);
+      continue;
+    }
     if (reclaimed.kind === "module-unavailable") {
       return {
         ...base,
@@ -176,11 +195,15 @@ export async function reclaimPreflightSandboxes(
       );
     });
   }
-  return { ...base, ok: allGone(outcomes), receiptCount, outcomes };
+  return { ...base, ok: !unreadable && allGone(outcomes), receiptCount, outcomes };
 }
+
+const UNREADABLE_MESSAGE =
+  "sandbox-receipts.ndjson is present but could not be read safely (not a single regular file, or a read error). Nothing was killed and the receipts were kept; check the file, then run reclaim again.";
 
 type JournalReclaim =
   | { kind: "empty" }
+  | { kind: "unreadable" }
   | { kind: "module-unavailable"; receiptCount: number; message: string }
   | { kind: "done"; receiptCount: number; outcomes: ReclaimOutcome[] };
 
@@ -190,7 +213,10 @@ async function reclaimJournal(
   hooks: ReclaimHooks,
 ): Promise<JournalReclaim> {
   const bytes = await readContainedRegularFile(root, SANDBOX_RECEIPTS_ARTIFACT);
-  if (bytes === null) return { kind: "empty" };
+  if (bytes === null)
+    return (await containedPathAbsent(root, SANDBOX_RECEIPTS_ARTIFACT))
+      ? { kind: "empty" }
+      : { kind: "unreadable" };
 
   const receipts = parseSandboxReceipts(bytes.toString("utf8"));
   // Load the E2B SDK only when an E2B receipt needs it.

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -220,4 +220,45 @@ describe("sandbox receipts + humanish reclaim (#358 salvage)", () => {
   it(`the receipts artifact name is stable public surface (${SANDBOX_RECEIPTS_ARTIFACT})`, () => {
     expect(SANDBOX_RECEIPTS_ARTIFACT).toBe("sandbox-receipts.ndjson");
   });
+});
+
+describe("reclaim of unreadable receipts", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-reclaim-unreadable-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  // Root reads a mode-000 file anyway, so this case needs an unprivileged user.
+  it.skipIf(process.getuid?.() === 0)(
+    "reports receipts it cannot read instead of claiming there are none",
+    async () => {
+      const run = await runTerminalProductLab({
+        cwd,
+        config: dryRunConfig(),
+        dryRun: true,
+        open: false,
+      });
+      expect(run.ok).toBe(true);
+      const runPaths = await resolveRunPath(cwd, "latest");
+      await appendSandboxReceipt(runPaths!, {
+        at: "t1",
+        laneId: "lane-01",
+        sandboxId: "sb-hidden",
+      });
+      await chmod(path.join(runPaths!.absoluteRunRoot, SANDBOX_RECEIPTS_ARTIFACT), 0o000);
+      const killedIds: string[] = [];
+
+      const result = await reclaimRunSandboxes(cwd, "latest", {
+        loadModule: async () => fakeModule({}, killedIds),
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe("HUMANISH_RECLAIM_RECEIPTS_UNREADABLE");
+      expect(result.warnings.join("\n")).not.toContain("No sandbox-receipts.ndjson");
+      expect(killedIds).toEqual([]);
+    },
+  );
 });
