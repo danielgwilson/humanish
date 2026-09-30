@@ -282,7 +282,7 @@ describe("each new option lands in the bag the route reads", () => {
     expect(terminal).toEqual({ score: module.score, deriveFeedback: module.deriveFeedback });
   });
 
-  it("env goes to the route's bag, beside the bag's other fields", () => {
+  it("env goes to the route's bag, beside the bag's other fields", async () => {
     const loadModule = async () => {
       throw new Error("unused");
     };
@@ -290,7 +290,8 @@ describe("each new option lands in the bag the route reads", () => {
       env: { OPENAI_API_KEY: "k" },
       terminalHooks: { loadModule },
     });
-    expect(options.terminalHooks).toEqual({ env: { OPENAI_API_KEY: "k" }, loadModule });
+    expect(options.terminalHooks!.env).toEqual({ OPENAI_API_KEY: "k" });
+    await expect(options.terminalHooks!.loadModule!()).rejects.toThrow("unused");
   });
 
   it("prepareDesktop gets a participant target on computer use and the subject on scripted", async () => {
@@ -395,7 +396,7 @@ describe("stream, rerun and analysis options land where the route reads them", (
     ).toEqual({ sourceRunId: "r", laneIds: ["lane-02"] });
   });
 
-  it("analysisSignal joins the other analysis deps", () => {
+  it("analysisSignal joins the other analysis deps", async () => {
     const signal = AbortSignal.abort();
     const run = async () => {
       throw new Error("unused");
@@ -404,7 +405,10 @@ describe("stream, rerun and analysis options land where the route reads them", (
       analysisSignal: signal,
       automaticAnalysis: { run },
     });
-    expect(options.automaticAnalysis).toEqual({ run, deps: { signal } });
+    expect(options.automaticAnalysis!.deps).toEqual({ signal });
+    await expect((options.automaticAnalysis!.run as () => Promise<unknown>)()).rejects.toThrow(
+      "unused",
+    );
   });
 
   it("the new fields are gone from what the route receives", () => {
@@ -838,5 +842,35 @@ describe("the scrub covers every env the run could read", () => {
     if (!result.ok) throw new Error(result.message);
     result.options.cuaHooks!.onPreflight!({ lanes: [] } as unknown as CuaLanePlan);
     expect(result.warnings[0]).not.toContain(analysisKey);
+  });
+});
+
+describe("a bag an option maps into is forwarded, not copied", () => {
+  it("keeps a frozen bag's symbol state for its own methods", async () => {
+    const state = Symbol("executor");
+    const bag = Object.freeze({
+      [state]: executor,
+      buildExecutor(this: Record<symbol, CuaExecutor>) {
+        return Promise.resolve(this[state]!);
+      },
+      buildProvider: createProvider,
+    });
+    const hooks = normalized(config("cuLocalApp"), { cuaHooks: bag, env: {} }).cuaHooks!;
+    expect(hooks.env).toEqual({});
+    await expect(hooks.buildExecutor!({} as never)).resolves.toBe(executor);
+  });
+
+  it("does not read an accessor the route never asks for", () => {
+    class Hooks {
+      get loadDesktopModule(): never {
+        throw new Error("accessor read during normalization");
+      }
+    }
+    const hooks = normalized(config("cuAppUrl"), {
+      cuaHooks: new Hooks() as never,
+      env: {},
+    }).cuaHooks!;
+    expect(hooks.env).toEqual({});
+    expect(() => hooks.loadDesktopModule).toThrow("accessor read during normalization");
   });
 });

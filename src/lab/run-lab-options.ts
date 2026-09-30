@@ -402,27 +402,36 @@ export function normalizeRunLabOptions(
 
 /**
  * A caller's bag with new options mapped into it. With nothing to map, the bag passes through as
- * the same object. Otherwise its own and inherited members are copied into a plain object, inherited
- * methods bound to the caller's object, so a class instance keeps its prototype methods and private
- * fields.
+ * the same object. Otherwise a proxy answers the mapped keys itself and forwards every other read
+ * to the bag when it happens: symbols, accessors and private state stay the bag's, and a function
+ * is bound to the bag so a method that reads a private field still works.
  */
 function withMapped<T extends object>(bag: T | undefined, mapped: Partial<T>): T | undefined {
   if (Object.keys(mapped).length === 0) return bag;
   if (bag === undefined) return mapped as T;
-  const copy: Record<string, unknown> = {};
-  for (
-    let source: object | null = bag;
-    source !== null && source !== Object.prototype;
-    source = Object.getPrototypeOf(source) as object | null
-  ) {
-    for (const key of Object.getOwnPropertyNames(source)) {
-      if (key === "constructor" || key in copy) continue;
-      const value: unknown = (bag as Record<string, unknown>)[key];
-      // An inherited method needs the caller's object as `this`; an own member is copied as is.
-      copy[key] = typeof value === "function" && source !== bag ? value.bind(bag) : value;
-    }
-  }
-  return Object.assign(copy, mapped) as T;
+  const overrides = mapped as Record<PropertyKey, unknown>;
+  const isMapped = (key: PropertyKey): boolean => Object.hasOwn(overrides, key);
+  // The proxy's own target stays empty and extensible, so a frozen bag's property invariants never
+  // constrain what the proxy reports.
+  return new Proxy({} as T, {
+    get(_target, key) {
+      if (isMapped(key)) return overrides[key];
+      const value: unknown = Reflect.get(bag, key, bag);
+      return typeof value === "function" ? value.bind(bag) : value;
+    },
+    has(_target, key) {
+      return isMapped(key) || Reflect.has(bag, key);
+    },
+    ownKeys() {
+      return [...new Set([...Reflect.ownKeys(bag), ...Reflect.ownKeys(overrides)])];
+    },
+    getOwnPropertyDescriptor(_target, key) {
+      if (isMapped(key))
+        return { value: overrides[key], writable: true, enumerable: true, configurable: true };
+      const descriptor = Reflect.getOwnPropertyDescriptor(bag, key);
+      return descriptor === undefined ? undefined : { ...descriptor, configurable: true };
+    },
+  });
 }
 
 function scorerHooks(
