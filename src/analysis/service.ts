@@ -155,6 +155,28 @@ const fail = (run: string, dryRun: boolean, code: string): AnalyzeResult => ({
   error: { code, message: messages[code] ?? messages.ANALYSIS_UNAVAILABLE! },
 });
 
+/**
+ * A dry-run bundle cannot be analyzed under any configuration, so this refusal is checked before
+ * the configuration. Every other run problem (missing, unverified, still active) is left to the
+ * full completion gate, which runs after the configuration checks.
+ */
+export async function dryRunBundleRefusal(
+  cwd: string,
+  run: string,
+  dryRun: boolean,
+  expectedRun?: PreparedRunArtifactPaths,
+): Promise<AnalyzeResult | null> {
+  try {
+    const prepared = await resolveStudyAnalysisRun(cwd, run, expectedRun);
+    const loaded = prepared ? await loadRunBundlePrepared(cwd, prepared) : null;
+    return loaded !== null && loaded.bundle.mode !== "live"
+      ? fail(run, dryRun, "ANALYSIS_REQUIRES_LIVE_RUN")
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One analysis or correction writer per run. Never steal a lock based on an untrusted PID. */
 export async function withStudyAnalysisLock<T>(
   prepared: PreparedRunArtifactPaths,
@@ -254,6 +276,8 @@ export async function analyzeStudy(
 ): Promise<AnalyzeResult> {
   let cwd = path.resolve(cwdInput);
   const dryRun = options.dryRun === true;
+  const refusal = await dryRunBundleRefusal(cwd, run, dryRun, deps.expectedRun);
+  if (refusal) return refusal;
   let config = structuredClone(options.config);
   if (
     config.provider === "codex"
