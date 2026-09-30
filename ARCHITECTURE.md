@@ -43,14 +43,21 @@ steps 3 to 7 and 9.
 7. `buildCuaRunBundle` (`src/routes/computer-use/assemble.ts`) builds `run.json`.
    `writeCuaRunArtifacts` (`src/routes/computer-use/bundle.ts`) writes it with `review.json`,
    `events.ndjson`, `observer/observer-data.json` and the `.humanish/runs/latest.json` pointer.
-   The route writes one bundle before the lanes start and the final one after they finish.
+   The route writes one bundle before the lanes start and the final one after they finish. The
+   terminal route instead starts its run with `runScope` and `startRun` and publishes it with
+   `Run.finish` (`src/run/run.ts`). `Run.finish` writes `run.json`, then the `status.json`
+   outcome, then `review.json`, `review.md`, `events.ndjson` and `observer/observer-data.json`,
+   and the pointer last. The other routes move onto it one at a time.
 8. `renderObserver` (`src/observer/render.ts`) verifies the bundle with `verifyRunPrepared`
    (`src/run/verify.ts`), builds the page data with `buildObserverData` (`src/observer/data.ts`)
    and writes `observer/index.html` with `renderObserverHtml`. `humanish verify --run latest` runs
    `verifyRun` from the same file on demand.
 9. After the route returns, `completeAutomaticAnalysis` (`src/analysis/automatic-completion.ts`)
-   calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). Dry runs skip it. A lab turns
-   it off with `review.analysis: false`.
+   calls `runAutomaticStudyAnalysis` (`src/analysis/automatic.ts`). It takes the `FinishedRun`
+   that `Run.finish` issued (`src/run/run.ts`) and reads the run id and paths from it, so a
+   refusal that echoes an older run's id never analyzes that run. Routes not yet on the run scope
+   pass `legacyFinishedRun(result)`. Dry runs skip analysis. A lab turns it off with
+   `review.analysis: false`.
 
 [docs/architecture/project-layout.md](docs/architecture/project-layout.md) describes the
 `humanish/` and `.humanish/` folders in a project that runs studies.
@@ -64,7 +71,7 @@ steps 3 to 7 and 9.
 | `src/routes/`          | One folder or file per route, each with its own bundle assembly              | `src/routes/computer-use/lab.ts`    |
 | `src/actors/`          | The actor contract, the registry and each actor's session code               | `src/actors/registry.ts`            |
 | `src/substrates/`      | Hosted E2B desktops in `e2b/` and local Firecracker and Lima VMs             | `src/substrates/e2b/cua-desktop.ts` |
-| `src/run/`             | Bundle types, verification, paths, status, costs, receipts and reclaim       | `src/run/bundle.ts`                 |
+| `src/run/`             | Run lifecycle, bundle types, verification, paths, status, receipts, reclaim  | `src/run/run.ts`                    |
 | `src/evidence/`        | Redaction, screenshot checks and desktop recordings                          | `src/evidence/redaction.ts`         |
 | `src/analysis/`        | Automatic and on-demand study analysis                                       | `src/analysis/automatic.ts`         |
 | `src/observer/`        | Observer data, the HTML render and the local server                          | `src/observer/render.ts`            |
@@ -123,6 +130,7 @@ refuse them at parse.
 | A sandbox id is recorded before any work runs in it                     | `acquireE2BDesktopSandbox` and `acquireE2BShellSandbox` (`src/substrates/e2b/sandbox.ts`) write the receipt before they return the handle, and every route that creates a sandbox calls them; `reclaimRunSandboxes` (`src/run/reclaim.ts`) switches on the receipt's provider and kills by exact id | `tests/substrates/e2b/sandbox.test.ts`, `tests/routes/terminal/acquisition-boundary.test.ts`, `tests/run/reclaim.test.ts`; `tests/routes/scripted-browser.test.ts` checks create, receipt, then first work |
 | Bundles carry no secrets                                                | `redactText` and `scrubLiterals` (`src/evidence/redaction.ts`); `scanRunPublicSafetyArtifacts` (`src/run/verify-artifacts.ts`); `buildShareSafety` grades `share_ready`, `local_only` or `blocked`                                                                                                  | `tests/evidence/redaction-hooks.test.ts`, `tests/run/narration-secrets.test.ts`, `tests/verify-evidence-refs.test.ts`                                                                                      |
 | Goldens pin route output                                                | `runDirSnapshot` (`tests/helpers/run-golden.ts`) snapshots a whole run folder                                                                                                                                                                                                                       | `tests/golden/routes/`, `tests/golden/observer-data/`, `tests/golden/labs/`                                                                                                                                |
+| A run is closed on every exit, and only a published run is analyzed     | `runScope` and `FinishedRun` (`src/run/run.ts`); `completeAutomaticAnalysis` requires an issued `FinishedRun` for the result's run                                                                                                                                                                  | `tests/run/run-lifecycle.test.ts`, `tests/analysis/automatic-analysis.test.ts`                                                                                                                             |
 
 The receipt write is best-effort. A failed append is ignored. The sandbox's server-side timeout
 then ends a sandbox that has no receipt. Any other failure after create kills the sandbox before

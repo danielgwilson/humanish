@@ -49,14 +49,8 @@ import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import {
-  beginRunStatus,
-  type RunStatusHandle,
-  withRunStatusScope,
-  runStatusOutcome,
-} from "../../run/status.js";
+import { runScope, type RunScope } from "../../run/run.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
-import { renderObserver } from "../../observer/render.js";
 import {
   personaBrief,
   personaToDirectives,
@@ -64,12 +58,8 @@ import {
 } from "../../lab/persona.js";
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
-import { createRunArtifactPaths, validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import {
-  prepareSelectedOutputDirectory,
-  writeContainedOutputFile,
-  writePreparedRunLatestPointer,
-} from "../../run/selected-output-paths.js";
+import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import { buildRunSource } from "../../run/bundle.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
@@ -82,19 +72,20 @@ import {
 export { resolveCommittedPersona as resolveTerminalPersona } from "../../lab/persona-resolve.js";
 
 /**
- * Wrapped so a DIRECT library caller gets the same status-record lifetime the CLI does: returning
- * from this function finalizes any record the run opened, whichever of its fail-closed exits it
- * took. `runLab` establishes a scope too and nesting is harmless — the inner scope owns what it
- * opened. Without this a test or an adopter calling the backend directly leaves the 5s cadence
- * ticking into a directory something else is deleting, which surfaces as an unrelated ENOTEMPTY.
+ * The run scope gives a direct library caller the same run lifetime the CLI gets: whichever of its
+ * fail-closed exits the lab takes, the run it started is closed, and only a run that published its
+ * final bundle reaches automatic analysis.
  */
 export async function runTerminalProductLab(
   options: RunTerminalProductLabOptions,
 ): Promise<TerminalProductLabResult> {
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const result = await withRunStatusScope(() => runTerminalProductLabInScope(options));
+  const { result, finished } = await runScope((scope) =>
+    runTerminalProductLabInScope(options, scope),
+  );
   return completeAutomaticAnalysis(
     result,
+    finished,
     analysis.ok ? analysis.config : undefined,
     options.automaticAnalysis,
     options.config.review?.analysis === undefined ? "default" : "explicit",
@@ -104,11 +95,11 @@ export async function runTerminalProductLab(
 
 async function runTerminalProductLabInScope(
   options: RunTerminalProductLabOptions,
+  scope: RunScope,
 ): Promise<TerminalProductLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
   const hooks = options.hooks ?? {};
-  const render = hooks.renderObserverFn ?? renderObserver;
   const warnings: string[] = [];
   const actorType = config.actors[0]?.type ?? "";
   const product = config.subject.product;
@@ -193,8 +184,8 @@ async function runTerminalProductLabInScope(
       descriptorId: descriptor.id,
       product,
       warnings,
-      render,
       failed,
+      scope,
     });
   }
 
@@ -241,18 +232,18 @@ async function runTerminalProductLabInScope(
       : {}),
   };
 
-  const runId = options.runId ?? makeTerminalRunId();
-  const created = await createRunArtifactPaths(physicalCwd, runId);
-  if (!created.ok) return failed(created.code, created.message, { actor: descriptor.id });
-  const runPaths = created.paths;
-  // Identity + liveness on disk (#455): every backend writes this, so a watcher can classify any
-  // run without parsing bundles and without depending on the interactive-observer path.
-  const runStatus: RunStatusHandle = beginRunStatus(runPaths, {
-    runId,
+  const started = await scope.startRun({
+    cwd: physicalCwd,
+    runId: options.runId,
+    mintRunId: makeTerminalRunId,
     mode: dryRun ? "dry-run" : "live",
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    lab: options.lab,
+    renderReview: renderTerminalReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
-  const createdAt = new Date().toISOString();
+  if (!started.ok) return failed(started.code, started.message, { actor: descriptor.id });
+  const { run } = started;
+  const { runId, createdAt } = run;
   const source = await buildRunSource({
     capturedAt: createdAt,
     cwd: physicalCwd,
@@ -303,51 +294,9 @@ async function runTerminalProductLabInScope(
     ),
   });
 
-  await writeContainedOutputFile(
-    runPaths,
-    "run.json",
-    `${JSON.stringify(bundle, null, 2)}\n`,
-    "utf8",
-  );
-  // Finalize identity+liveness from the bundle just written; a throw before this leaves the record
-  // stale, which reads as interrupted rather than as a false outcome (#455).
-  await runStatus.finish(runStatusOutcome(bundle));
-  await writeContainedOutputFile(
-    runPaths,
-    "review.json",
-    `${JSON.stringify(bundle.review, null, 2)}\n`,
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "review.md",
-    renderTerminalReviewMarkdown(bundle),
-    "utf8",
-  );
-  await writeContainedOutputFile(
-    runPaths,
-    "events.ndjson",
-    `${bundle.events.map((event) => JSON.stringify(event)).join("\n")}\n`,
-    "utf8",
-  );
-  // Keep `verify --run latest` honest: point it at THIS run (the RunPointer shape in run/bundle.ts).
-  await writePreparedRunLatestPointer(
-    runPaths,
-    `${JSON.stringify(
-      {
-        schema: "humanish.latest-run.v1",
-        runId,
-        path: runPaths.relativeRunRoot,
-        updatedAt: createdAt,
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-
-  const observer = await render(physicalCwd, runId, { open: options.open === true });
-  await validatePreparedRunArtifactPaths(runPaths);
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
+  await validatePreparedRunArtifactPaths(finished.paths);
   const ok = observer.ok;
 
   return {

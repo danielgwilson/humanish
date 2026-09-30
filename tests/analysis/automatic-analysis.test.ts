@@ -13,9 +13,9 @@ import {
 } from "../../src/analysis/automatic-config.js";
 import {
   completeAutomaticAnalysis,
-  markFinalizedStudyResult,
   automaticAnalysisSucceeded,
 } from "../../src/analysis/automatic-completion.js";
+import { FinishedRun, legacyFinishedRun, markFinalizedStudyResult } from "../../src/run/run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
 import { cliAutomaticAnalysisHooks } from "../../src/cli/commands/lab-hooks.js";
 import { createProgram } from "../../src/cli/program.js";
@@ -121,10 +121,12 @@ describe("automatic analysis admission and producer boundary", () => {
     const disabled = resolveAutomaticAnalysis(false);
     expect(disabled.ok).toBe(true);
     expect(
-      await completeAutomaticAnalysis(original, disabled.ok ? disabled.config : undefined, {
-        run,
-        onStart,
-      }),
+      await completeAutomaticAnalysis(
+        original,
+        legacyFinishedRun(original),
+        disabled.ok ? disabled.config : undefined,
+        { run, onStart },
+      ),
     ).toBe(original);
     expect(run).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
@@ -149,8 +151,13 @@ describe("automatic analysis admission and producer boundary", () => {
       const fetch = vi.fn<AnalysisFetch>(async () => {
         throw new Error("No provider dispatch permitted");
       });
+      const keyless = markFinalizedStudyResult(
+        { cwd, runId: "keyless", dryRun: false, ok: true },
+        prepared,
+      );
       const result = await completeAutomaticAnalysis(
-        markFinalizedStudyResult({ cwd, runId: "keyless", dryRun: false, ok: true }, prepared),
+        keyless,
+        legacyFinishedRun(keyless),
         { ...config, maxCostUsd: 0.000001 },
         { deps: { apiKey, fetch } },
         trigger,
@@ -291,6 +298,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const onStart = vi.fn();
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "dry", dryRun: true, ok: true },
+      undefined,
       config,
       { run, onStart },
     );
@@ -320,7 +328,10 @@ describe("automatic analysis admission and producer boundary", () => {
       },
       prepared,
     );
-    const result = await completeAutomaticAnalysis(original, config, { run, onStart });
+    const result = await completeAutomaticAnalysis(original, legacyFinishedRun(original), config, {
+      run,
+      onStart,
+    });
     expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "exact-recording", config, {
       expectedRun: prepared,
       preferLargerOutput: false,
@@ -341,7 +352,10 @@ describe("automatic analysis admission and producer boundary", () => {
       prepared,
     );
     const unrelated = await prepareRunArtifactPaths(cwd, "unrelated-recording");
-    await completeAutomaticAnalysis(original, config, { run, deps: { expectedRun: unrelated } });
+    await completeAutomaticAnalysis(original, legacyFinishedRun(original), config, {
+      run,
+      deps: { expectedRun: unrelated },
+    });
     expect(run).toHaveBeenCalledExactlyOnceWith(cwd, "recording", config, {
       expectedRun: prepared,
       preferLargerOutput: false,
@@ -371,7 +385,7 @@ describe("automatic analysis admission and producer boundary", () => {
       throw new Error("unexpected provider call");
     });
     const cleanup = vi.fn();
-    const output = await completeAutomaticAnalysis(result, config, {
+    const output = await completeAutomaticAnalysis(result, legacyFinishedRun(result), config, {
       deps: { apiKey: "synthetic", fetch },
       onStart: () => {
         renameSync(prepared.physicalRunRoot, originalRoot);
@@ -437,6 +451,7 @@ describe("automatic analysis admission and producer boundary", () => {
     const onStart = vi.fn();
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "older-recording", dryRun: false, ok: false },
+      undefined,
       config,
       { run, onStart },
     );
@@ -447,21 +462,58 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(run).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
   });
+  it("never analyzes a run whose publication token names another run than the result", async () => {
+    const run = vi.fn();
+    const onStart = vi.fn();
+    const published = markFinalizedStudyResult(
+      { cwd, runId: "published", dryRun: false, ok: true },
+      await prepareRunArtifactPaths(cwd, "published"),
+    );
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "older-recording", dryRun: false, ok: true },
+      legacyFinishedRun(published),
+      config,
+      { run, onStart },
+    );
+    expect(result.automaticAnalysis).toEqual({
+      state: "skipped",
+      reason: "analysis_source_unavailable",
+    });
+    expect(run).not.toHaveBeenCalled();
+    expect(onStart).not.toHaveBeenCalled();
+  });
+  it("accepts only an issued publication token, never an object shaped like one", async () => {
+    const run = vi.fn();
+    const forged = {
+      runId: "forged",
+      paths: await prepareRunArtifactPaths(cwd, "forged"),
+      renderObserver: vi.fn(),
+    } as unknown as FinishedRun;
+    expect(FinishedRun.isIssued(forged)).toBe(false);
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "forged", dryRun: false, ok: true },
+      forged,
+      config,
+      { run },
+    );
+    expect(result.automaticAnalysis).toEqual({
+      state: "skipped",
+      reason: "analysis_source_unavailable",
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
   it("retains the run after an analysis exception without exposing exception text", async () => {
     const cleanup = vi.fn();
-    const result = await completeAutomaticAnalysis(
-      markFinalizedStudyResult(
-        { cwd, runId: "retained", dryRun: false, ok: true },
-        await prepareRunArtifactPaths(cwd, "retained"),
-      ),
-      config,
-      {
-        run: async () => {
-          throw new Error("private provider response");
-        },
-        onStart: () => cleanup,
-      },
+    const retained = markFinalizedStudyResult(
+      { cwd, runId: "retained", dryRun: false, ok: true },
+      await prepareRunArtifactPaths(cwd, "retained"),
     );
+    const result = await completeAutomaticAnalysis(retained, legacyFinishedRun(retained), config, {
+      run: async () => {
+        throw new Error("private provider response");
+      },
+      onStart: () => cleanup,
+    });
     expect(result.ok).toBe(true);
     expect(result.automaticAnalysis?.state).toBe("failed");
     expect(JSON.stringify(result)).not.toContain("private provider");
