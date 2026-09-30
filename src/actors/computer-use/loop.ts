@@ -45,10 +45,11 @@ export { validClosingReport } from "./loop/debrief.js";
 // Stopping follows the abandonment decision in docs/architecture/actor-contract.md. The
 // participant decides when it is done, and returning no further action ends the session. A harness
 // backstop force-ends only an idle streak (turns with no material action) or a no-progress streak
-// (turns that repeat a recent action on an unchanged screen). There is no turn cap. The wall-clock
-// timeoutMs is the one hard stop: every provider and desktop call is raced against it
-// (loop/race.ts), and the abort signal is checked before each action, so a hung port cannot stall
-// the loop and a cancel cannot actuate the desktop.
+// (turns that repeat a recent action on an unchanged screen). There is no turn cap. The hard stops
+// are the wall-clock timeoutMs and any declared spend, adapter or token limit (loop/ending.ts).
+// Every provider and desktop call is raced against the deadline (loop/race.ts), and the abort
+// signal is checked before each action, so a hung port cannot stall the loop and a cancel cannot
+// actuate the desktop.
 //
 // Layout: this file is the driver. src/actors/computer-use/loop/ holds the parts: the port types,
 // the session state, provider calls, observation, action dispatch, the backstop fold, the Stop

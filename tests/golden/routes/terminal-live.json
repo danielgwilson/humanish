@@ -56,7 +56,7 @@
       ]
     },
     "warnings": [
-      "Persona autonomous-creative-agent has no readable file under humanish/personas; using the id only (no persona context).",
+      "Persona autonomous-creative-agent has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
       "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced.",
       "Observer renders verified local evidence artifacts; runtime stream auth URLs are not persisted.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."

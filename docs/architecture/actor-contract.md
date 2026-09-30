@@ -11,10 +11,11 @@ Product scoring, feedback, and artifact hooks are extension seams, but public ou
 actor registration and its conformance certification are not shipped. Also not shipped: the
 full `Actor.run(input)` interface, `ApprovalPolicy`, `StagehandCuaActor`, and the
 `persona-fidelity` verify check. `RedactionHooks` ships in `src/evidence/redaction.ts`, and
-the computer-use loop takes it; the other adapters do not take it yet. The registry refuses
-a dispatch by lane only: `producesScreenshots` and the other capabilities are declared but
-not checked. Decision 6's capture-time screenshot stance was recanted in 0.6.0; see the
-inline notes and the capture-vs-publish rule in
+the computer-use loop takes it; the other adapters do not take it yet. Of the capabilities,
+routing checks `lanes` and `producesScreenshots` (`src/lab/routing.ts`): an actor that
+declares no screenshots cannot run on the computer-use or scripted-browser lane. Decision
+6's capture-time screenshot stance was recanted in 0.6.0; see the inline notes and the
+capture-vs-publish rule in
 [`docs/principles/invariants-and-defaults.md`](../principles/invariants-and-defaults.md).
 
 `codex-exec` is a real dispatch key for terminal-product labs, but the exported
@@ -269,8 +270,8 @@ export interface Actor {
   public-safe: redacted message, coarse loop phase, last normalized UI action,
   and last screenshot reference only. Do not persist raw stacks, env values,
   target URLs, or unredacted provider payloads in the trace.
-- **Capabilities.** Declare them honestly. The registry is meant to use them to refuse
-  unsuitable dispatch; today it refuses by lane only.
+- **Capabilities.** Declare them honestly. Routing refuses an actor whose `lanes` or
+  `producesScreenshots` do not fit the route; the other capabilities are not checked.
 - **Cost (estimate vs. charge).** `tokenUsage.costUsd` stays RESERVED for a
   real, provider-returned charge (the codex path); a bare `costUsd`
   always means "the provider billed this". The optional `estimatedCost`

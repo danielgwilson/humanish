@@ -1,3 +1,4 @@
+import type { ActorCapabilities } from "../actors/contract.js";
 import { actorRegistry } from "../actors/registry.js";
 import { isLoopbackUrl } from "./parse-subject.js";
 import type { LabConfig } from "./types.js";
@@ -6,48 +7,57 @@ import type { LabConfig } from "./types.js";
 // until a reference panel demands it — N concurrent paid desktops is real money.
 export const MAX_CUA_LANES = 16;
 
-export function actorResolvesToComputerUse(type: string | undefined): boolean {
+type ActorLane = ActorCapabilities["lanes"][number];
+
+// Lanes whose evidence is the participant's screenshots. An actor that declares it produces none
+// cannot run on them: a code-only actor would claim a GUI flow it only reached through a shell.
+const SCREENSHOT_LANES: ReadonlySet<ActorLane> = new Set(["computer-use", "scripted-browser"]);
+
+function runsOnLane(capabilities: ActorCapabilities, lane: ActorLane): boolean {
+  return (
+    capabilities.lanes.includes(lane) &&
+    (!SCREENSHOT_LANES.has(lane) || capabilities.producesScreenshots)
+  );
+}
+
+function actorResolvesTo(type: string | undefined, lane: ActorLane): boolean {
   if (!type) return false;
   const descriptor = (
     actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
   )[type];
-  return Boolean(descriptor?.capabilities.lanes.includes("computer-use"));
+  return descriptor !== undefined && runsOnLane(descriptor.capabilities, lane);
+}
+
+function registeredActorsOn(lane: ActorLane): string[] {
+  return Object.values(actorRegistry)
+    .filter((entry) => runsOnLane(entry.capabilities, lane))
+    .map((entry) => entry.id);
+}
+
+export function actorResolvesToComputerUse(type: string | undefined): boolean {
+  return actorResolvesTo(type, "computer-use");
 }
 
 export function registeredComputerUseActors(): string[] {
-  return Object.values(actorRegistry)
-    .filter((entry) => entry.capabilities.lanes.includes("computer-use"))
-    .map((entry) => entry.id);
+  return registeredActorsOn("computer-use");
 }
 
 export function actorResolvesToScriptedBrowser(type: string | undefined): boolean {
-  if (!type) return false;
-  const descriptor = (
-    actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
-  )[type];
-  return Boolean(descriptor?.capabilities.lanes.includes("scripted-browser"));
+  return actorResolvesTo(type, "scripted-browser");
 }
 
 export function registeredScriptedBrowserActors(): string[] {
-  return Object.values(actorRegistry)
-    .filter((entry) => entry.capabilities.lanes.includes("scripted-browser"))
-    .map((entry) => entry.id);
+  return registeredActorsOn("scripted-browser");
 }
 
 /** True when `type` resolves to a registered terminal actor (the "terminal" lane). Exported so
  *  the engine + tests can resolve the dispatch the same way the parser does. */
 export function actorResolvesToTerminal(type: string | undefined): boolean {
-  if (!type) return false;
-  const descriptor = (
-    actorRegistry as Record<string, (typeof actorRegistry)[keyof typeof actorRegistry] | undefined>
-  )[type];
-  return Boolean(descriptor?.capabilities.lanes.includes("terminal"));
+  return actorResolvesTo(type, "terminal");
 }
 
 export function registeredTerminalActors(): string[] {
-  return Object.values(actorRegistry)
-    .filter((entry) => entry.capabilities.lanes.includes("terminal"))
-    .map((entry) => entry.id);
+  return registeredActorsOn("terminal");
 }
 
 /**

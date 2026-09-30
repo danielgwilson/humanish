@@ -54,7 +54,7 @@ export async function localRuntimeStatus(
     return {
       ok: false,
       installed: false,
-      message: "Local browsers need Linux x64/ARM64 or an M3-or-newer Mac with Lima.",
+      message: "Local browsers need Linux x64 or an M3-or-newer Mac with Lima.",
     };
   if (lima) {
     try {

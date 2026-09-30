@@ -6,7 +6,8 @@
 // near-identical action profiles — which looked like a finding about personas and was actually a
 // finding about the composer. These tests assert the persona's compiled DIRECTIVE TEXT lands in the
 // prompt, because a prompt digest changing is not evidence that behavior changed.
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
@@ -108,6 +109,28 @@ describe("committed persona resolution", () => {
     expect(resolved.warnings).toEqual([]);
     expect(resolved.personas.get("skeptical-power-user")?.traits.patience).toBe("low");
     expect(resolved.personas.get("synthetic-new-user")?.traits.patience).toBe("medium");
+  });
+
+  it("reads a machine-local persona, and a committed persona with the same id wins", async () => {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-local-persona-"));
+    try {
+      const write = async (dir: string, id: string, patience: string) => {
+        await mkdir(path.join(cwd, dir), { recursive: true });
+        await writeFile(
+          path.join(cwd, dir, `${id}.yaml`),
+          `name: ${id}\ntraits:\n  patience: ${patience}\n`,
+        );
+      };
+      await write(".humanish/local/personas", "local-only", "low");
+      await write(".humanish/local/personas", "both-places", "low");
+      await write("humanish/personas", "both-places", "high");
+      const resolved = await resolveCommittedPersonasForCwd(cwd, ["local-only", "both-places"]);
+      expect(resolved.warnings).toEqual([]);
+      expect(resolved.personas.get("local-only")?.traits.patience).toBe("low");
+      expect(resolved.personas.get("both-places")?.traits.patience).toBe("high");
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
   });
 
   it("does not resolve — and does not throw on — unsafe ids or missing files", async () => {

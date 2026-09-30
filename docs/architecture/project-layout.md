@@ -44,7 +44,7 @@ it is public-safe: synthetic personas and fixtures, env var names without values
   runs/           # run bundles, screenshots, transcripts, Observer output
   labs/           # private labs; a committed lab with the same id wins
   local/labs/     # machine-local labs
-  local/personas/ # created by init, not read yet; personas resolve from humanish/personas/
+  local/personas/ # machine-local personas; a committed persona with the same id wins
   cache/ tmp/ logs/
 ```
 

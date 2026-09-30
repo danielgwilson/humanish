@@ -12,6 +12,7 @@ projects…"
 cost not recorded
 
 ❯ Stop this run
+  Open in Observer
 
 ↑↓ move   ⏎ select   esc back   ? keys   q
 quit

@@ -359,7 +359,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-      "message": "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
+      "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -379,8 +379,8 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-      "message": "Local browser studies require a configured local desktop runtime."
+      "code": "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -937,7 +937,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-      "message": "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)"
+      "message": "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -957,8 +957,8 @@
     "lanes": [],
     "warnings": [],
     "error": {
-      "code": "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-      "message": "Local browser studies require a configured local desktop runtime."
+      "code": "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      "message": "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

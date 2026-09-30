@@ -27,9 +27,10 @@ export function runActions(run: RunIndexEntry, detail: RunDetail | null | undefi
     return detail?.observerPath === undefined ? ["reclaim"] : ["reclaim", "observer"];
   }
   // A run that is going nowhere costs money every turn, and stopping it used to mean finding the
-  // pid yourself. Nothing else belongs here: the Observer artifact is not written until it ends,
-  // and "Run again" mid-flight is a way to spend twice by accident.
-  if (run.liveness === "running") return ["stop"];
+  // pid yourself, so Stop leads. The Observer server renders a running run from its saved bundle
+  // (src/tui/actions.ts), so it opens mid-run too. "Run again" mid-flight would spend twice.
+  if (run.liveness === "running")
+    return detail?.observerPath === undefined ? ["stop"] : ["stop", "observer"];
   return detail?.observerPath === undefined ? ["again"] : ["observer", "again"];
 }
 

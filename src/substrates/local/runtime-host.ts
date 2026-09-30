@@ -20,7 +20,9 @@ export function runtimeArchitecture(
   const platform = options.platform ?? process.platform,
     arch = options.arch ?? process.arch;
   if (platform === "linux" && arch === "x64") return "amd64";
-  if ((platform === "linux" || platform === "darwin") && arch === "arm64") return "arm64";
+  // The arm64 image runs in the Mac's Lima guest. A native Linux ARM64 host is refused: the local
+  // participant (the restricted Codex participant) runs only on Linux x64 and Apple-silicon macOS.
+  if (platform === "darwin" && arch === "arm64") return "arm64";
   return undefined;
 }
 

@@ -172,15 +172,24 @@ describe("watching a run", () => {
     expect(frame).not.toContain("**");
   });
 
-  it("offers no actions while a run is still going", async () => {
-    // Nothing on this card is safe or meaningful yet: the Observer artifact is not written until
-    // the run ends, and "Run again" while it is still running is a way to spend twice by accident.
-    // The thinking is what this screen is for while it runs.
+  it("offers Stop, then Observer, while a run is still going, and never Run again", async () => {
+    // Stop leads because a running run costs money every turn. The Observer server renders a
+    // running run from its saved bundle, so it opens mid-run. "Run again" while it is still
+    // running is a way to spend twice by accident.
     const { surface, frame } = await openLiveRun(LIVE_DETAIL);
     surface.unmount();
-    expect(frame).not.toContain("Open in Observer");
+    expect(frame.indexOf("Stop this run")).toBeGreaterThan(-1);
+    expect(frame.indexOf("Open in Observer")).toBeGreaterThan(frame.indexOf("Stop this run"));
     expect(frame).not.toContain("Run again");
     expect(frame).toContain("Connecting fields");
+  });
+
+  it("offers only Stop before a running run has written its bundle", async () => {
+    const { observerPath: _unwritten, ...beforeBundle } = LIVE_DETAIL;
+    const { surface, frame } = await openLiveRun(beforeBundle);
+    surface.unmount();
+    expect(frame).toContain("Stop this run");
+    expect(frame).not.toContain("Open in Observer");
   });
 
   it("names nobody when the run has not written a participant record yet", async () => {

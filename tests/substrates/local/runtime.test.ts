@@ -158,6 +158,18 @@ describe("local runtime preparation", () => {
     expect(state.commands).toHaveLength(1);
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("refuses a native Linux ARM64 host, which the local participant cannot run on", async () => {
+    expect(await localRuntimeStatus({ ...options, platform: "linux", arch: "arm64" })).toEqual({
+      ok: false,
+      installed: false,
+      message: "Local browsers need Linux x64 or an M3-or-newer Mac with Lima.",
+    });
+    await expect(
+      prepareLocalRuntime({ ...options, platform: "linux", arch: "arm64" }),
+    ).rejects.toThrow("Linux x64");
+    expect(state.commands).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("refuses a Rosetta or Intel Node process before preparing a Lima host", async () => {
     await expect(
       prepareLocalRuntime({ ...options, platform: "darwin", arch: "x64" }),

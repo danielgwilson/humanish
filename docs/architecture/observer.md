@@ -68,11 +68,12 @@ the same fresh evidence without browser open or a long-running process.
 ### Reopening a run
 
 The TUI's **Open in Observer** action opens an HTTP view of the selected run's saved
-captures. The TUI offers it once a run has ended, and while the run's automatic
-analysis is queued or running. One loopback evidence server is shared by the
-session's browser tabs; exiting the TUI closes it, including when the UI fails.
-Opening a run does not launch a study. The URL is always shown for manual opening or
-SSH port forwarding, and only contained run paths in the TUI's project are accepted.
+captures, including a run that is still going: the server renders it from the saved
+bundle on each poll. The TUI offers it once the run has written its bundle, after
+Stop on a running run. One loopback evidence server is shared by the session's
+browser tabs; exiting the TUI closes it, including when the UI fails. Opening a run
+does not launch a study. The URL is always shown for manual opening or SSH port
+forwarding, and only contained run paths in the TUI's project are accepted.
 
 | Entry point              | What updates                                                              | Lifetime                         |
 | ------------------------ | ------------------------------------------------------------------------- | -------------------------------- |

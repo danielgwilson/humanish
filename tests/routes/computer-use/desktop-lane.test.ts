@@ -409,7 +409,8 @@ describe("ready desktop lane contract", () => {
     expect(parseLabConfig(config).ok).toBe(true);
     const result = await runCuaActorLab({ cwd: f.cwd, config, dryRun: false, hooks: f.deps.hooks });
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain("configured local desktop runtime");
+    expect(result.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING");
+    expect(result.error?.message).toContain("needs a local desktop");
     expect(f.loadDesktopModule).not.toHaveBeenCalled();
   });
 
