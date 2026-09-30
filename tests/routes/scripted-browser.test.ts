@@ -20,6 +20,12 @@ import { runLab, selectLabBackend } from "../../src/lab/engine.js";
 import { createProgram } from "../../src/cli/program.js";
 import { digestText } from "../../src/evidence/redaction.js";
 import { verifyRun } from "../../src/run/verify.js";
+import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
+import {
+  parseSandboxReceipts,
+  SANDBOX_RECEIPTS_ARTIFACT,
+  type SandboxReceipt,
+} from "../../src/run/sandbox-receipts.js";
 import { runCuaActorLab } from "../../src/routes/computer-use/lab.js";
 import {
   runScriptedBrowserLab,
@@ -93,13 +99,17 @@ interface FakeSubjectSandbox extends E2BDesktopSandbox {
   calls: Array<[string, ...unknown[]]>;
 }
 
-function makeFakeSubjectSandbox(id: string): FakeSubjectSandbox {
+function makeFakeSubjectSandbox(
+  id: string,
+  beforeWork: () => Promise<void> = async () => undefined,
+): FakeSubjectSandbox {
   const calls: Array<[string, ...unknown[]]> = [];
   const sandbox = {
     calls,
     sandboxId: id,
     commands: {
       run: async (command: string) => {
+        await beforeWork();
         calls.push(["commands.run", command]);
         if (command.includes("/status")) return { exitCode: 0, stdout: "0\n" };
         if (command.includes("rev-parse")) return { exitCode: 0, stdout: "abc123def4567890abc1\n" };
@@ -110,6 +120,7 @@ function makeFakeSubjectSandbox(id: string): FakeSubjectSandbox {
     },
     files: {
       write: async (filePath: string, data: string | ArrayBuffer) => {
+        await beforeWork();
         calls.push(["files.write", filePath, String(data)]);
         return undefined;
       },
@@ -136,17 +147,26 @@ function makeFakeSubjectSandbox(id: string): FakeSubjectSandbox {
   return sandbox as unknown as FakeSubjectSandbox;
 }
 
-function makeFakeE2BModule(): {
+/**
+ * `order` logs every module call and the first command or file write on each sandbox, in the
+ * order they happen. `onFirstWork` runs just before that first write is logged, so a test can
+ * snapshot run-dir state at the moment provisioning starts.
+ */
+function makeFakeE2BModule(
+  options: { onFirstWork?: (sandboxId: string) => Promise<string> } = {},
+): {
   module: E2BDesktopModule;
   created: E2BDesktopCreateOptions[];
   templates: (string | undefined)[];
   killed: string[];
   sandboxes: FakeSubjectSandbox[];
+  order: string[];
 } {
   const created: E2BDesktopCreateOptions[] = [];
   const templates: (string | undefined)[] = [];
   const killed: string[] = [];
   const sandboxes: FakeSubjectSandbox[] = [];
+  const order: string[] = [];
   let n = 0;
   const module: E2BDesktopModule = {
     Sandbox: {
@@ -155,21 +175,43 @@ function makeFakeE2BModule(): {
         maybeOptions?: E2BDesktopCreateOptions,
       ) => {
         const template = typeof templateOrOptions === "string" ? templateOrOptions : undefined;
-        const options = typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
+        const createOptions =
+          typeof templateOrOptions === "string" ? maybeOptions! : templateOrOptions;
         n += 1;
-        const sandbox = makeFakeSubjectSandbox(`fake-subject-${String(n).padStart(3, "0")}`);
+        const id = `fake-subject-${String(n).padStart(3, "0")}`;
+        let worked = false;
+        const sandbox = makeFakeSubjectSandbox(id, async () => {
+          if (worked) return;
+          worked = true;
+          if (options.onFirstWork) order.push(await options.onFirstWork(id));
+          order.push(`first-work:${id}`);
+        });
+        order.push(`create:${id}`);
         templates.push(template);
-        created.push(options);
+        created.push(createOptions);
         sandboxes.push(sandbox);
         return sandbox;
       },
       kill: async (sandboxId: string) => {
+        order.push(`kill:${sandboxId}`);
+        // The real SDK returns false for a sandbox that is already gone.
+        const present = !killed.includes(sandboxId);
         killed.push(sandboxId);
-        return true;
+        return present;
       },
     },
   };
-  return { module, created, templates, killed, sandboxes };
+  return { module, created, templates, killed, sandboxes, order };
+}
+
+async function readRunReceipts(runDir: string): Promise<SandboxReceipt[]> {
+  try {
+    return parseSandboxReceipts(
+      await readFile(path.join(runDir, SANDBOX_RECEIPTS_ARTIFACT), "utf8"),
+    );
+  } catch {
+    return [];
+  }
 }
 
 async function withHttpServer<T>(callback: (appUrl: string) => Promise<T>): Promise<T> {
@@ -509,7 +551,14 @@ describe("runScriptedBrowserLab", () => {
   it("live provisioned clone: provisions one synthetic subject, drives getHost, and persists only public-safe URL labels", async () => {
     let clock = Date.parse("2026-09-04T00:00:00.000Z");
     await writeCommittedScenario(cwd);
-    const fakeE2B = makeFakeE2BModule();
+    const runId = "scripted-provisioned-clone";
+    const runDir = path.join(cwd, ".humanish", "runs", runId);
+    const fakeE2B = makeFakeE2BModule({
+      onFirstWork: async () => {
+        const ids = (await readRunReceipts(runDir)).map((receipt) => receipt.sandboxId);
+        return `receipts:${ids.join(",")}`;
+      },
+    });
     const rawSessionUrls: string[] = [];
     const hooks: ScriptedBrowserLabHooks = {
       env: {
@@ -629,7 +678,11 @@ describe("runScriptedBrowserLab", () => {
       },
     };
 
-    const outcome = await runLab(provisionedScriptedConfig(), { cwd, scriptedHooks: hooks });
+    const outcome = await runLab(provisionedScriptedConfig(), {
+      cwd,
+      runId,
+      scriptedHooks: hooks,
+    });
     expect(outcome.backend).toBe("scripted");
     if (outcome.backend !== "scripted") return;
     const result = outcome.result;
@@ -638,6 +691,7 @@ describe("runScriptedBrowserLab", () => {
     expect(result.ok, JSON.stringify({ error: result.error, warnings: result.warnings })).toBe(
       true,
     );
+    expect(result.runId).toBe(runId);
     expect(result.appUrl).toBe("[provisioned-subject]");
     expect(result.subjectSandbox).toEqual({ sandboxId: "fake-subject-001", killed: true });
     expect(result.hostDigest).toMatch(/^[a-f0-9]{16}$/);
@@ -647,7 +701,20 @@ describe("runScriptedBrowserLab", () => {
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
     expect(rawSessionUrls).toEqual(["https://3000-fake-subject-001.e2b.app"]);
 
-    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    // The subject id is on disk before the first provisioning command reaches the sandbox, so a
+    // process killed during clone or install still leaves a reclaimable id.
+    expect(fakeE2B.order).toEqual([
+      "create:fake-subject-001",
+      "receipts:fake-subject-001",
+      "first-work:fake-subject-001",
+      "kill:fake-subject-001",
+    ]);
+    const receipts = await readRunReceipts(runDir);
+    expect(receipts.map((receipt) => receipt.sandboxId)).toEqual(["fake-subject-001"]);
+    expect(receipts[0]).toMatchObject({ laneId: "subject" });
+    expect(fakeE2B.created[0]?.timeoutMs).toEqual(expect.any(Number));
+    expect(receipts[0]?.timeoutMs).toBe(fakeE2B.created[0]?.timeoutMs);
+
     const bundleText = await readFile(path.join(runDir, "run.json"), "utf8");
     const bundle = JSON.parse(bundleText);
     expect(bundle.subject).toMatchObject({
@@ -687,6 +754,16 @@ describe("runScriptedBrowserLab", () => {
 
     const verified = await verifyRun(cwd, result.runId);
     expect(verified.ok).toBe(true);
+
+    // `humanish reclaim` reads the same journal and targets exactly the subject sandbox, which the
+    // finished run already destroyed.
+    const reclaimed = await reclaimRunSandboxes(cwd, runId, {
+      loadModule: async () => fakeE2B.module,
+    });
+    expect(reclaimed.ok).toBe(true);
+    expect(reclaimed.outcomes).toEqual([
+      { sandboxId: "fake-subject-001", laneId: "subject", state: "already-gone" },
+    ]);
   });
 
   it("the subject failing the script is successful EVIDENCE: lab ok stays true, review verdict is fail", async () => {
