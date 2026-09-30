@@ -231,7 +231,7 @@ export interface RunSubjectProvenance {
  * `isolated` (every existing bundle byte-stable). `shared-world` means N roles drove ONE mutable
  * plane and their per-role attribution is weaker (its ceiling is pinned in `sharedWorld.attributionLimits`).
  */
-export type RunAttributionClass = "isolated" | "shared-world";
+type RunAttributionClass = "isolated" | "shared-world";
 
 export interface RunBundle {
   publication?: { restrictions: ["real-communications"] };

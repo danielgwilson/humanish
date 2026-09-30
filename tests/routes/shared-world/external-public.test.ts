@@ -29,7 +29,8 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
-import { extractLobbyCode, runConcurrentSharedWorld } from "../../../src/index.js";
+import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
+import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import {

@@ -68,7 +68,7 @@ interface RunStreamCompletion {
  * `score` hook, leaving its own component breakdown in that score's `data`. Exported so a thin
  * adapter can type against core's score shape without forking.
  */
-export type RunMeaningfulUseComponentId =
+type RunMeaningfulUseComponentId =
   | "setup-correctness"
   | "filesystem-evidence"
   | "nested-humanish-evidence"
@@ -76,7 +76,7 @@ export type RunMeaningfulUseComponentId =
   | "product-surface"
   | "feedback-quality";
 
-export interface RunMeaningfulUseScore {
+interface RunMeaningfulUseScore {
   schema: "humanish.meaningful-use-score.v1";
   status: "pass" | "partial" | "fail";
   score: number;

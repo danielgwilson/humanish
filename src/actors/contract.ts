@@ -98,19 +98,14 @@ export type ActorCompletionReason =
 // "computer-use" (raw pixels + a model). "terminal" is the autonomous-agent lane: a
 // real coding agent (Codex) driving a CLI/product from inside an E2B shell — distinct from
 // "code" (the local/app-server Codex lanes that run on the operator's machine).
-export type ActorLane = "code" | "computer-use" | "scripted-browser" | "terminal";
+type ActorLane = "code" | "computer-use" | "scripted-browser" | "terminal";
 
 // "terminal-exec" is the captured non-interactive exec stream of an in-sandbox agent (stdin
 // disabled): `codex exec --json` launched via `commands.run`, output captured. It is NOT an
 // interactive duplex PTY — labeling captured exec output as an interactive transport would be a
 // claim/mechanism mismatch (invariant 6 + the goal packet's PTY ruling), so it gets its own
 // honest protocol label distinct from "cua-loop"/"scripted-steps".
-export type ActorProtocol =
-  | "json-rpc"
-  | "json-stream"
-  | "cua-loop"
-  | "scripted-steps"
-  | "terminal-exec";
+type ActorProtocol = "json-rpc" | "json-stream" | "cua-loop" | "scripted-steps" | "terminal-exec";
 
 export type ActorTraceItemKind =
   | "message"

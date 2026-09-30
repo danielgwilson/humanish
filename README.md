@@ -322,6 +322,22 @@ Run it after installing `humanish`. It makes no model calls; it proves the
 integration, not persona behavior. See [state-driven local adapters](https://humanish.dev/docs/computer-use#state-driven-local-adapters)
 for the supported library seam.
 
+## Library API
+
+`import ... from "humanish"` covers four things:
+
+- run a lab: `runLab`, `RunLabOptions`, `LabOutcome`, `LabResult`, `LabEvent`, `routeOf`,
+  `parseLabConfig`, `LAB_CONFIG_SCHEMA`;
+- read a run: `verifyRun`, `renderObserver`, `RunBundle`, `ActorTrace`;
+- bring a participant: `CuaProvider`, `CuaExecutor`, `ProviderContext`,
+  `createOpenAiResponsesProvider`, `runComputerUseLoop`, `defaultRedactionHooks`;
+- score a run: `AdapterScorerModule` and its scoring contexts.
+
+Everything else runs through the `humanish` command. The
+[library page](https://humanish.dev/docs/library) has an example for each, and
+[the options contract](docs/contracts/schemas.md#library-options-runlaboptions) lists which routes
+take which option.
+
 ## Three Roles
 
 The researcher declares the study, the participant tries the product, and the

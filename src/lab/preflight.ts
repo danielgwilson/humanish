@@ -8,8 +8,6 @@ import { digest, fail, finalize, LAB_PREFLIGHT_SCHEMA } from "./preflight-result
 import { selectLabBackend, type LabBackend } from "./engine.js";
 import { resolveLabManifest, type LabResolveFailure } from "./discover.js";
 
-export { LAB_PREFLIGHT_SCHEMA } from "./preflight-result.js";
-
 const DEFAULT_PREFLIGHT_TIMEOUT_MS = 30_000;
 
 export type LabPreflightReachabilityMode =
@@ -42,7 +40,7 @@ export interface LabPreflightTarget {
   message: string;
 }
 
-export interface LabPreflightSandbox {
+interface LabPreflightSandbox {
   created: boolean;
   killed?: boolean;
   /** The probe's server-side timeout, after which the provider kills it. */
@@ -51,7 +49,7 @@ export interface LabPreflightSandbox {
   template?: string;
 }
 
-export interface LabPreflightSpend {
+interface LabPreflightSpend {
   e2bDesktop: boolean;
   model: false;
 }

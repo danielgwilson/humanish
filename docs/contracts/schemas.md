@@ -598,7 +598,8 @@ cause, maxTotalUsd?, estimatedTotalUsd? }`. Each ordered `roles` entry names
       value-shaped field). `deltaFromPrev` is true when the observed state changed
       across the intervening turn.
     - turn = `{ kind: turn, roleId, simId, streamId, commit?, seedDigest }` references
-      a real RunSimulation/RunStream; carries the plane provenance it observed
+      a real `RunBundle["simulations"][number]` and `RunBundle["streams"][number]`; carries the
+      plane provenance it observed
       (identical across turns by construction; this is the single-plane proof).
   - Sequential `attributionLimits` MUST contain `sequential-only`, `no-concurrent-races`,
     and `delta-attributed-to-turn-not-action`.

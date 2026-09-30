@@ -85,7 +85,7 @@ function assertScriptedSessionPathIds(options: ScriptedBrowserSessionOptions): v
   }
 }
 
-export const SCRIPTED_BROWSER_PROVIDER = "browser-persona";
+const SCRIPTED_BROWSER_PROVIDER = "browser-persona";
 
 export interface ScriptedBrowserSessionOptions {
   /** Pre-normalized loopback URL, or a harness-minted provisioned subject URL. */

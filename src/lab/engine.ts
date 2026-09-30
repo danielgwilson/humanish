@@ -29,7 +29,7 @@ import type { ObserverResult } from "../observer/render.js";
 import { runPreviewLab } from "../routes/preview.js";
 import { type RunScorerProvenance } from "../run/bundle.js";
 import { type RunResult } from "../run/results.js";
-import { backendOf, resolveLabDryRun, routeOf } from "./plan.js";
+import { backendOf, resolveLabDryRun, routeOf, type LabRoute } from "./plan.js";
 import {
   normalizeRunLabOptions,
   optionRefusalOutcome,
@@ -91,6 +91,15 @@ export type LabOutcome =
   | { backend: "scripted"; result: ScriptedBrowserLabResult }
   | { backend: "terminal"; result: TerminalProductLabResult }
   | { backend: "concurrent-shared-world"; result: ConcurrentSharedWorldLabResult };
+
+/** The result of a run on route `R`, the `result` of that route's `LabOutcome`. */
+export type LabResult<R extends LabRoute = LabRoute> = {
+  preview: RunResult;
+  "computer-use": CuaActorLabResult;
+  scripted: ScriptedBrowserLabResult;
+  terminal: TerminalProductLabResult;
+  "shared-world": ConcurrentSharedWorldLabResult;
+}[R];
 
 /** The backend a config runs on: `routeOf` in plan.ts, under its older name. */
 export function selectLabBackend(config: LabConfig): LabBackend {

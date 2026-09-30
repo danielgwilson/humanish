@@ -116,7 +116,7 @@ interface AnalysisFinding {
   priorityReason: string;
 }
 /** Evidence-grounded disposition of a material concern, not model reasoning. */
-export interface AnalysisConcernReview extends AnalysisObservation {
+interface AnalysisConcernReview extends AnalysisObservation {
   disposition: "finding" | "context" | "unsupported";
   findingId: string | null;
   reason: string;
@@ -130,7 +130,7 @@ export interface StudyAnalysisResult {
   findings: AnalysisFinding[];
   limitations: string[];
 }
-export interface OpenAIStudyAnalysisConfig {
+interface OpenAIStudyAnalysisConfig {
   provider?: "openai" | undefined;
   model: string;
   question: string | null;

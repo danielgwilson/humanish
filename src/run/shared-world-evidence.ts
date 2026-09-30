@@ -121,7 +121,7 @@ export interface SharedWorldCheckpoint {
 
 /** A timeline turn: one role's seat session against the shared plane. Carries the plane
  *  provenance it observed (identical across turns by construction — the single-plane proof). */
-export interface SharedWorldTurn {
+interface SharedWorldTurn {
   kind: "turn";
   roleId: string;
   /** Resolves to a real RunSimulation in this bundle. */
@@ -134,11 +134,11 @@ export interface SharedWorldTurn {
   seedDigest: string;
 }
 
-export type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
+type SharedWorldTimelineEntry = SharedWorldCheckpoint | SharedWorldTurn;
 
 /** Declared seats that were never started after one executed sequential role stopped the run.
  * The executed timeline plus this ordered tail must account for every declared sim/stream. */
-export interface SharedWorldSkippedTail {
+interface SharedWorldSkippedTail {
   afterRoleId: string;
   roles: Array<{ roleId: string; simId: string; streamId: string }>;
   cause: "harness_error" | "session_error" | "usage_unreported" | "study_spend_limit";

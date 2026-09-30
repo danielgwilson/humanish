@@ -19,7 +19,7 @@ import {
   validateCwd,
 } from "../run/locate.js";
 
-export const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
+const DOCTOR_SCHEMA = "humanish.doctor-result.v1";
 
 export interface DoctorResult {
   schema: typeof DOCTOR_SCHEMA;

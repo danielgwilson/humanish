@@ -21,10 +21,11 @@ import {
   type RunAdapterScore,
   type RunBundle,
   type RunFeedbackCandidate,
-  type TerminalLedgers,
-  type TerminalProductLabHooks,
   type TerminalProductScoringContext,
 } from "../../../src/index.js";
+
+// The ledgers reach an adapter through its scoring context; the type needs no export of its own.
+type TerminalLedgers = TerminalProductScoringContext["ledgers"];
 
 // Reuse the SLICE-2/3 fake-E2B-module + mock-CLI pattern. (parseLabConfig + runTerminalProductLab +
 // verifyRun are public package surface too; imported via the deeper modules only to drive the
@@ -32,6 +33,7 @@ import {
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import type { TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { verifyRun } from "../../../src/run/verify.js";
 
@@ -516,8 +518,8 @@ describe("terminal-product extension seam (SLICE 4 conformance — thin adapter,
     });
   });
 
-  // The contract types the adapter needs ARE exported (ActorTrace / TerminalLedgers used via the
-  // context above); this no-op assertion makes the "adapter typed only against the public barrel"
+  // The contract types the adapter needs ARE exported (ActorTrace directly, TerminalLedgers as
+  // TerminalProductScoringContext["ledgers"]); this no-op assertion makes the "adapter typed only against the public barrel"
   // claim explicit and load-bearing in CI — if any export disappeared this would fail to type-check.
   it("the adapter contract types are all reachable from the public package barrel", () => {
     const _typecheck: (ctx: TerminalProductScoringContext) => {

@@ -13,9 +13,9 @@
 import type { CommsMessage } from "./types.js";
 import { digestText } from "../evidence/redaction.js";
 
-export const COMMS_THREAD_SCHEMA = "humanish.comms-thread.v1";
+const COMMS_THREAD_SCHEMA = "humanish.comms-thread.v1";
 
-export interface CommsThreadEntry {
+interface CommsThreadEntry {
   id: string;
   channel: CommsMessage["channel"];
   /** sha256-16 of the raw sender address. */
