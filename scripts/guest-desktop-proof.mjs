@@ -35,8 +35,8 @@ const driverModules = [
   "guest-chromium-text",
   "browser-control/protocol",
   "evidence/desktop-recording-types",
-  "cua-executor-error",
-  "cua-speech",
+  "actors/computer-use/executor-error",
+  "actors/computer-use/speech",
   "evidence/frame-signature",
 ];
 for (const name of driverModules) {
