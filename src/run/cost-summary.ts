@@ -1,18 +1,29 @@
-import type { ActorTrace } from "../../actors/contract.js";
+import type { ActorTrace } from "../actors/contract.js";
+import type { DesktopResourceObservation } from "../substrates/e2b/desktop-resources.js";
 import {
   estimateActorCostForExecution,
   estimateAllocatedDesktopCost,
   estimateDesktopCost,
   round6,
-} from "../../run/pricing.js";
-import { type RunCostLine, type RunCostSummary } from "../../run/bundle.js";
-import type { CuaDesktopUsage } from "./types.js";
+} from "./pricing.js";
+import { type RunCostLine, type RunCostSummary } from "./bundle.js";
 
-export function buildCuaCostSummary(args: {
+// The run cost summary (run.json `cost`): one line per participant's model tokens and one per
+// hosted sandbox's compute time, priced from src/run/pricing.ts where a rate exists.
+
+/** One hosted sandbox's observed lifetime and size. */
+export interface DesktopUsage {
+  laneId?: string;
+  minutes: number | undefined;
+  observation: DesktopResourceObservation | undefined;
+  lifetimeComplete: boolean;
+}
+
+export function buildRunCostSummary(args: {
   lanes: Array<{ laneId?: string; trace: ActorTrace }>;
   /** Legacy library input: uses a labeled planning assumption; live routes use desktops. */
   desktopMinutes?: number | undefined;
-  desktops?: CuaDesktopUsage[];
+  desktops?: DesktopUsage[];
 }): RunCostSummary | undefined {
   const breakdown: RunCostLine[] = [];
   let sumInput = 0;

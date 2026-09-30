@@ -40,14 +40,13 @@ import {
   subjectProvenanceMessage,
   verdictForStatus,
 } from "./bundle.js";
-import { buildCuaCostSummary, desktopSpanToMinutes } from "./costs.js";
+import {
+  buildRunCostSummary,
+  desktopSpanToMinutes,
+  type DesktopUsage,
+} from "../../run/cost-summary.js";
 import { phaseEventIdSuffix } from "./lane-plan.js";
-import type {
-  CuaDesktopUsage,
-  CuaLaneSpec,
-  CuaSubjectProvenanceArg,
-  LaneRunOutcome,
-} from "./types.js";
+import type { CuaLaneSpec, CuaSubjectProvenanceArg, LaneRunOutcome } from "./types.js";
 
 /** Build the N=1 bundle via the unchanged buildCuaBundle (byte-stable). */
 export function buildSingleLaneBundle(args: {
@@ -146,8 +145,8 @@ export function buildSingleLaneBundle(args: {
 type CuaBundleArgs = Parameters<typeof buildCuaBundle>[0];
 
 /** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
-function laneCost(args: CuaBundleArgs): ReturnType<typeof buildCuaCostSummary> {
-  return buildCuaCostSummary({
+function laneCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
+  return buildRunCostSummary({
     lanes: args.session
       ? [
           {
@@ -536,7 +535,7 @@ export function buildCuaBundle(args: {
   /** Host-side E2B desktop billed span for this lane, in minutes (from LaneRunOutcome
    *  desktopDurationMs). Absent when no sandbox ran (in-process/dry-run) → no desktop cost line. */
   desktopMinutes?: number;
-  desktopUsage?: CuaDesktopUsage;
+  desktopUsage?: DesktopUsage;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   const cost = laneCost(args);

@@ -30,7 +30,7 @@ import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { CUA_ACTOR_LAB_PROVIDER_METADATA } from "../../../src/substrates/e2b/cua-desktop.js";
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildCuaBundle } from "../../../src/routes/computer-use/single-bundle.js";
-import { buildCuaCostSummary } from "../../../src/routes/computer-use/costs.js";
+import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
 import { makeLaneWriteScreenshot } from "../../../src/routes/computer-use/lanes.js";
 import {
   resolveSelfReportedBlocker,
@@ -6302,7 +6302,7 @@ describe("runCuaActorLab cost estimates", () => {
     });
 
     // Two priced model-token lines with DIVERGENT asOf dates (an operator edited one rate later).
-    const cost = buildCuaCostSummary({
+    const cost = buildRunCostSummary({
       lanes: [
         { laneId: "lane-01", trace: costTrace(1, "2026-08-01", 1000, 100) },
         { laneId: "lane-02", trace: costTrace(2, "2026-01-15", 2000, 200) },

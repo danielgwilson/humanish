@@ -649,9 +649,3 @@ export interface LaneRunOutcome {
  * reason and contributes NOTHING to estimatedTotalUsd (never coerced to 0); an all-null summary
  * has a null total. Every non-null figure carries its ratesAsOf date + source (invariant 6).
  */
-export interface CuaDesktopUsage {
-  laneId?: string;
-  minutes: number | undefined;
-  observation: DesktopResourceObservation | undefined;
-  lifetimeComplete: boolean;
-}

@@ -8,10 +8,10 @@ import type { BrowserPersonaJourney, BrowserSurface } from "../../actors/scripte
 import { redactText } from "../../evidence/redaction.js";
 import type { DesktopResourceObservation } from "../../substrates/e2b/desktop-resources.js";
 import {
-  buildCuaCostSummary,
+  buildRunCostSummary,
   desktopSpanToMinutes,
   spendFreeCostSummary,
-} from "../computer-use/costs.js";
+} from "../../run/cost-summary.js";
 import {
   PUBLIC_TARGET_CWD,
   REVIEW_SCHEMA,
@@ -281,7 +281,7 @@ function scriptedCost(
     | undefined,
 ) {
   if (subjectDesktop === undefined) return spendFreeCostSummary();
-  return buildCuaCostSummary({
+  return buildRunCostSummary({
     lanes: [],
     desktops: [
       {
