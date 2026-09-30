@@ -23,16 +23,18 @@ pnpm check                       # the full local gate (below)
 pnpm release:check               # check + API proof + public-surface scan + skill check + pack; CI runs this
 ```
 
-`pnpm check` runs format:check, lint (oxlint, type-aware), knip, prose:check, typecheck, the
-vitest suite, the TUI tests, build, the startup proofs and a TUI smoke test. After changing a
-CLI option, run `pnpm docs:generate`; CI fails on a stale `site/content/docs/cli.mdx`. Observer
-changes also need `pnpm build` and the four `observer:*:proof` scripts, which CI's observer job
-runs in Chromium. `pnpm api:proof` (after `pnpm build`) installs the packed tarball in a temporary
-project, compares its export names with `tests/golden/public-api.json` and runs `examples/`. After an
-intended export change, run `pnpm api:proof --update` and review the golden diff.
+`pnpm check` runs format:check, lint (oxlint, type-aware), knip, prose:check, vocabulary:check,
+typecheck, the vitest suite, the TUI tests, build, the startup proofs and a TUI smoke test. After
+changing a CLI option, run `pnpm docs:generate`; CI fails on a stale `site/content/docs/cli.mdx`.
+Observer changes also need `pnpm build` and the four `observer:*:proof` scripts, which CI's observer
+job runs in Chromium. `pnpm api:proof` (after `pnpm build`) installs the packed tarball in a
+temporary project, compares its export names with `tests/golden/public-api.json` and runs
+`examples/`. After an intended export change, run `pnpm api:proof --update` and review the golden
+diff.
 
-Two counts are capped in package.json and only go down: oxlint warnings (`--max-warnings`) and
-comment prose (`prose:check`). Lower a cap in the PR that reduces its count.
+Three counts are capped in package.json and only go down: oxlint warnings (`--max-warnings`),
+comment prose (`prose:check`) and the retired participant words lane, seat, role and sim in `src/`
+identifiers (`vocabulary:check`). Lower a cap in the PR that reduces its count.
 
 ## Layout
 
