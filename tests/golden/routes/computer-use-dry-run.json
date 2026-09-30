@@ -98,6 +98,9 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
+  "<stderr>": [
+    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context)."
+  ],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",

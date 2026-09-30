@@ -41,6 +41,7 @@
       "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
+  "<stderr>": [],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",

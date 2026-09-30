@@ -37,7 +37,7 @@ import type {
 } from "../../src/actors/scripted-browser/types.js";
 import type { ScriptedBrowserSessionResult } from "../../src/actors/scripted-browser/actor.js";
 import { syntheticPng1x1 } from "../image-fixtures.js";
-import { runDirSnapshot } from "../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../helpers/run-golden.js";
 
 const ROOT = process.cwd();
 const PNG_1X1 = syntheticPng1x1();
@@ -1300,11 +1300,15 @@ describe("scripted-browser run directory goldens", () => {
   });
 
   it("dry run with two surfaces", async () => {
-    const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true });
+    const stderr = captureStderr();
+    const outcome = await runLab(scriptedConfig({ count: 2 }), { cwd, dryRun: true }).finally(
+      stderr.stop,
+    );
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],
@@ -1317,17 +1321,19 @@ describe("scripted-browser run directory goldens", () => {
 
   it("live journey that passes on a fake browser", async () => {
     await withHttpServer(async (appUrl) => {
+      const stderr = captureStderr();
       const outcome = await runLab(scriptedConfig({ appUrl, count: 1, mode: "live" }), {
         cwd,
         automaticAnalysis: { run: automaticAnalysisBoundary() },
         scriptedHooks: {
           launchBrowser: async () => makeFakeBrowser({ bodyAfterClick: "Welcome aboard" }),
         },
-      });
+      }).finally(stderr.stop);
       const runId = outcome.result.runId;
       if (!runId) throw new Error("the run wrote no bundle");
       const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
         result: outcome.result,
+        stderr: stderr.text(),
         replace: [
           [runId, "[run]"],
           [cwd, "[cwd]"],
@@ -1354,6 +1360,7 @@ describe("scripted-browser run directory goldens", () => {
     // The subject sandbox's create and teardown read this clock, so its desktop minutes and cost
     // are fixed instead of measured.
     let clock = 0;
+    const stderr = captureStderr();
     const outcome = await runLab(provisionedScriptedConfig(), {
       cwd,
       runId,
@@ -1362,10 +1369,11 @@ describe("scripted-browser run directory goldens", () => {
         ...provisionedCloneHooks(fakeE2B.module).hooks,
         now: () => (clock += 60_000),
       },
-    });
+    }).finally(stderr.stop);
     expect(outcome.result.ok).toBe(true);
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],

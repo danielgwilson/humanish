@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import { runDirSnapshot } from "../../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
 
@@ -6695,6 +6695,7 @@ describe("computer-use run directory goldens", () => {
   ] as const)("%s with one lane", async (_label, dryRun, golden) => {
     const { module } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
+    const stderr = captureStderr();
     const outcome = await runLab(cuaConfig(), {
       cwd: goldenCwd,
       dryRun,
@@ -6709,11 +6710,12 @@ describe("computer-use run directory goldens", () => {
             openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
           }),
       },
-    });
+    }).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [goldenCwd, "[cwd]"],
@@ -6727,6 +6729,7 @@ describe("computer-use run directory goldens", () => {
   it("in-process local-app run with a state executor", async () => {
     const { module, created } = makeFakeModule(makeFakeSandbox());
     let clock = 0;
+    const stderr = captureStderr();
     const outcome = await runLab(localAppConfig(), {
       cwd: goldenCwd,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
@@ -6738,12 +6741,13 @@ describe("computer-use run directory goldens", () => {
         buildExecutor: async () => makeStateExecutor(),
         buildProvider: async () => makeStateProvider(),
       },
-    });
+    }).finally(stderr.stop);
     expect(created).toHaveLength(0);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(goldenCwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [goldenCwd, "[cwd]"],

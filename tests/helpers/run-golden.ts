@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { vi } from "vitest";
 
 // Numeric keys that vary between two runs of the same fixture: wall-clock measurements and the
 // writing process id.
@@ -43,14 +44,40 @@ export interface RunDirSnapshotOptions {
   maskKeys?: readonly string[];
   /** NDJSON files appended by parallel work, so their line order is not deterministic. */
   unorderedFiles?: readonly string[];
+  /** What the run wrote to stderr, from `captureStderr`; snapshotted under `<stderr>` by line. */
+  stderr?: string;
+  /** Parallel lanes interleave their progress lines, so their stderr order is not deterministic. */
+  unorderedStderr?: boolean;
 }
 
 /**
- * The route's returned result under `<result>`, the runs-root `latest.json` pointer under
- * `../latest.json`, and every file of a run directory, with the values that differ between two
- * runs of the same deterministic fixture replaced: the given literals, ISO timestamps, epoch
- * milliseconds, UUIDs, measured durations and the caller's `maskKeys`. JSON is parsed so the
- * snapshot diffs by field; binary files are pinned by digest.
+ * Collect what the code under test writes to process.stderr, instead of printing it, until `stop`.
+ * Routes report subject phases and warnings there, and the CLI passes it through unchanged.
+ */
+export function captureStderr(): { stop(): void; text(): string } {
+  let text = "";
+  const spy = vi.spyOn(process.stderr, "write").mockImplementation(((
+    chunk: string | Uint8Array,
+    ...rest: unknown[]
+  ) => {
+    text += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+    const callback = rest.find((argument) => typeof argument === "function");
+    if (callback) (callback as () => void)();
+    return true;
+  }) as typeof process.stderr.write);
+  return { stop: () => spy.mockRestore(), text: () => text };
+}
+
+// The test process builds the Observer artifact once, on whichever run needs it first, so the
+// notice depends on test order rather than on the run.
+const OBSERVER_BUILD_NOTICE = "observer: building the Observer artifact";
+
+/**
+ * The route's returned result under `<result>`, its stderr lines under `<stderr>` when given, the
+ * runs-root `latest.json` pointer under `../latest.json`, and every file of a run directory, with
+ * the values that differ between two runs of the same deterministic fixture replaced: the given
+ * literals, ISO timestamps, epoch milliseconds, UUIDs, measured durations and the caller's
+ * `maskKeys`. JSON is parsed so the snapshot diffs by field; binary files are pinned by digest.
  */
 export async function runDirSnapshot(
   runDir: string,
@@ -70,6 +97,14 @@ export async function runDirSnapshot(
   const snapshot: Record<string, unknown> = {
     "<result>": normalizeJson(JSON.stringify(options.result) ?? "null"),
   };
+  if (options.stderr !== undefined) {
+    // Phase timings print as "(123ms)"; the count is a measurement.
+    const lines = replace(options.stderr)
+      .replace(/\b\d+ms\b/g, "[ms]")
+      .split("\n")
+      .filter((line) => line !== "" && !line.startsWith(OBSERVER_BUILD_NOTICE));
+    snapshot["<stderr>"] = options.unorderedStderr ? lines.sort() : lines;
+  }
   // Every route writes the pointer; a missing one fails the snapshot.
   snapshot["../latest.json"] = normalizeJson(
     await readFile(path.join(path.dirname(runDir), "latest.json"), "utf8"),

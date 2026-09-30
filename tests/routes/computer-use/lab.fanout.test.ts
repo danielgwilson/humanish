@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
-import { runDirSnapshot } from "../../helpers/run-golden.js";
+import { captureStderr, runDirSnapshot } from "../../helpers/run-golden.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 
@@ -317,11 +317,13 @@ describe("cua fan-out — dry-run ($0 contract bundle)", () => {
   });
 
   it("dry-run run directory matches its golden", async () => {
-    const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true });
+    const stderr = captureStderr();
+    const outcome = await runLab(fanoutConfig(), { cwd, dryRun: true }).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],
@@ -638,15 +640,17 @@ describe("cua fan-out — live with FAKE substrate ($0, real orchestration)", ()
     // One lane at a time. Overlapping lanes reach sandbox creation and append their receipts in
     // whatever order the scheduler gives them, which changed the snapshot once under full-suite
     // load. The concurrency behavior has its own tests in this file.
+    const stderr = captureStderr();
     const outcome = await runLab(fanoutConfig({ concurrency: 1 }), {
       cwd,
       automaticAnalysis: { run: automaticAnalysisBoundary() },
       cuaHooks: passingHooks(handle, { now: () => 1_000_000 }),
-    });
+    }).finally(stderr.stop);
     const runId = outcome.result.runId;
     if (!runId) throw new Error("the run wrote no bundle");
     const snapshot = await runDirSnapshot(path.join(cwd, ".humanish", "runs", runId), {
       result: outcome.result,
+      stderr: stderr.text(),
       replace: [
         [runId, "[run]"],
         [cwd, "[cwd]"],

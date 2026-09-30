@@ -269,6 +269,18 @@
       "reason": "synthetic_no_provider"
     }
   },
+  "<stderr>": [
+    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+    "humanish: Persona impatient-skimmer has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+    "humanish: Persona power-user has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+    "humanish: Persona comparison-shopper has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+    "humanish cua fan-out plan (fanout-proof): 4 lane(s), strategy per-lane-worlds, concurrency 1, 4 wave(s).",
+    "  per-lane session budget 60s; worst-case ~44 sandbox-minutes total.",
+    "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242",
+    "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8",
+    "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7",
+    "  - wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701"
+  ],
   "../latest.json": {
     "schema": "humanish.latest-run.v1",
     "runId": "[run]",
