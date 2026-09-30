@@ -947,20 +947,12 @@
           "allowPaymentCredentials": false,
           "allowGitHubMutation": false
         },
+        "review": {
+          "analysis": false
+        },
         "subject": {}
       },
       "dryRun": true,
-      "analysis": {
-        "config": {
-          "model": "gpt-6-astra",
-          "maxCostUsd": 3,
-          "timeoutMs": 600000,
-          "maxOutputTokens": 16384,
-          "question": null
-        },
-        "trigger": "default",
-        "preferLargerOutput": true
-      },
       "requirements": [],
       "route": "terminal",
       "product": {

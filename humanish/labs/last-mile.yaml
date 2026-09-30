@@ -95,3 +95,7 @@ policies:
   allowProviderCredentials: false
   allowPaymentCredentials: false
   allowGitHubMutation: false
+
+# The description promises no spending; post-run model review would be a paid request.
+review:
+  analysis: false

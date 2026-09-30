@@ -65,8 +65,8 @@ scenario:
     maxJobs: 0 # no billable product jobs
     maxMinutes: 12
 policies:
-  # deny-by-default credential boundary: live execution passes only the runtime LLM key to the
-  # agent command. No E2B key means the participant cannot start a nested study, which is both
+  # deny-by-default credential boundary: live execution gives the agent command only a placeholder
+  # credential, and the runtime key stays in E2B's api.openai.com rule. No E2B key means the participant cannot start a nested study, which is both
   # the safety bound and the study condition (a day-one developer without keys).
   allowPrivateRepoAccess: false
   allowProviderCredentials: false
