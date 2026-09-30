@@ -515,7 +515,9 @@ export async function runStudyAnalysis(
   const provider =
     config.provider === "codex"
       ? (options.codexProvider ??
-        (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider())
+        (await import("./restricted-codex.js")).createRestrictedCodexAnalysisProvider({
+          cliVersion: config.identity.cliVersion,
+        }))
       : createStudyAnalysisProvider({
           apiKey: options.apiKey!,
           ...(options.fetch === undefined ? {} : { fetchFn: options.fetch }),

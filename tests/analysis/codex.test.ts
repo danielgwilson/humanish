@@ -1,3 +1,4 @@
+import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
 import {
   registerTransientCommsSecrets,
   withTransientCommsSecrets,
@@ -25,6 +26,8 @@ import {
   STUDY_ANALYSIS_PROMPT_VERSION,
 } from "../../src/analysis/engine.js";
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
+import { codexAnalysisIdentity } from "../../src/analysis/codex-config.js";
+import { bindCodexAnalysisCliVersion } from "../../src/analysis/restricted-codex.js";
 import type { StudyAnalysisProvider } from "../../src/analysis/provider.js";
 import { analyzeStudy, showStudyAnalysis } from "../../src/analysis/service.js";
 import { listStudyAnalysisExecutions, writeStudyAnalysis } from "../../src/analysis/store.js";
@@ -114,7 +117,8 @@ describe("explicit Codex account analysis", () => {
         resolvedModel: "gpt-6-astra",
         reasoningEffort: "low",
         toolPolicy: "restricted-codex-v1",
-        cliVersion: "0.154.0",
+        // Declared before dispatch; analysis replaces it with the detected release.
+        cliVersion: defaultCodexCliVersion(),
       },
     });
     const budget = automaticAnalysisBudget({ provider: "codex" }, "cua")!;
@@ -417,6 +421,47 @@ describe("explicit Codex account analysis", () => {
     ).toBe("AUTOMATIC_ANALYSIS_ALREADY_REQUESTED");
     expect(run).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("binds the detected CLI release into the identity, only when detection succeeds", async () => {
+    const requested = { ...config(), identity: codexAnalysisIdentity("gpt-6-astra", "0.157.1") };
+    const bound = await bindCodexAnalysisCliVersion(requested, async () => "0.154.0");
+    expect(bound.provider === "codex" && bound.identity.cliVersion).toBe("0.154.0");
+    expect(requested.identity.cliVersion).toBe("0.157.1");
+    expect(await bindCodexAnalysisCliVersion(requested, async () => null)).toBe(requested);
+    expect(await bindCodexAnalysisCliVersion(requested, async () => "0.157.1")).toBe(requested);
+  });
+
+  it("records the detected release in explicit and automatic reports and their claims", async () => {
+    const explicit = await study(),
+      run = provider(explicit.input);
+    const result = await analyzeStudy(
+      explicit.cwd,
+      "codex-analysis",
+      { config: config() },
+      { codexProvider: run, detectCodexCliVersion: async () => "0.154.0" },
+    );
+    expect(result.ok).toBe(true);
+    const saved = (await showStudyAnalysis(explicit.cwd, "codex-analysis", result.analysisId!))
+      .analysis!;
+    expect(saved.config.provider === "codex" && saved.config.identity.cliVersion).toBe("0.154.0");
+    expect(saved.configDigest).toBe(hashStudyAnalysisValue(saved.config));
+
+    const automatic = await study();
+    const outcome = await runAutomaticStudyAnalysis(automatic.cwd, "codex-analysis", config(), {
+      apiKey: "",
+      codexProvider: provider(automatic.input),
+      detectCodexCliVersion: async () => "0.154.0",
+    });
+    expect(outcome.result?.ok).toBe(true);
+    const report = (
+      await showStudyAnalysis(automatic.cwd, "codex-analysis", outcome.result!.analysisId!)
+    ).analysis!;
+    expect(report.config.provider === "codex" && report.config.identity.cliVersion).toBe("0.154.0");
+    // The permanent claim was bound to the same configuration the report records.
+    expect(await readAutomaticStudyAnalysis(automatic.cwd, "codex-analysis")).toMatchObject({
+      state: outcome.state,
+    });
   });
 
   it("records an actionable login failure without API fallback or damage to recordings", async () => {

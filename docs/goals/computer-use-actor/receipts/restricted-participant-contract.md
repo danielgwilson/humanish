@@ -8,7 +8,8 @@ API providers and saved bundles without the new fields keep their defaults.
 ## Admission and output
 
 Admission uses the launcher's supported Linux x64 or Apple Silicon macOS,
-file-backed ChatGPT login route. The requested profile records Codex CLI 0.154.0,
+file-backed ChatGPT login route. The requested profile records the Codex CLI release the
+launcher detected, one admitted for the host in `src/actors/codex/qualified-versions.ts`,
 `gpt-6-astra`, low reasoning effort and the `codex-ui-tools-v1` policy. The durable
 profile itself is a request declaration.
 Each request's `profileVerified` means the launcher passed its version, effective

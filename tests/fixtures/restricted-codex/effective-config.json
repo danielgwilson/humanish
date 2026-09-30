@@ -75,6 +75,7 @@
     },
     "experimental_thread_store_endpoint": null,
     "tool_suggest": null,
+    "cloud": null,
     "openai_base_url": null,
     "mcp_optional_startup_grace_ms": null,
     "experimental_realtime_ws_startup_context": null,
@@ -110,8 +111,10 @@
       "unbounded_connection_retries": false,
       "view_image": false,
       "workspace_dependencies": false,
+      "api_key_model_discovery": false,
       "auth_elicitation": true,
       "background_paginated_rollout_migration": false,
+      "codex_apps_mcp_2026_07_28": false,
       "mcp_2026_07_28": false,
       "mentions_v2": true,
       "remote_control": false,
@@ -134,6 +137,7 @@
     "check_for_update_on_startup": null,
     "notice": null,
     "experimental_compact_prompt_file": null,
+    "mcp_enterprise_managed_auth": null,
     "model_providers": {},
     "experimental_realtime_start_instructions": null,
     "mcp_servers": {},
@@ -161,6 +165,7 @@
     "projects": null,
     "realtime": null,
     "orchestrator": null,
+    "model_post_turn_compact_threshold_percent": null,
     "project_doc_max_bytes": 0,
     "thread_unload_delay_secs": null,
     "permissions": null,
@@ -231,7 +236,7 @@
       },
       "version": "sha256:05c5f568f11b3de350fc307b2bf956d1fe0137dd36109436f0c62e9de800d9bb"
     },
-    "features.code_mode": {
+    "features.code_mode.enabled": {
       "name": {
         "type": "user",
         "file": "/private/probe/home/config.toml",
@@ -556,15 +561,15 @@
           "goals": false,
           "sleep_tool": false,
           "tool_suggest": false,
-          "code_mode": false,
-          "code_mode_host": false,
-          "code_mode_only": false,
           "default_mode_request_user_input": false,
           "unbounded_connection_retries": false,
           "workspace_dependencies": false,
           "remote_plugin": false,
           "recommended_plugins": false,
-          "in_app_local_automation": false
+          "in_app_local_automation": false,
+          "code_mode": false,
+          "code_mode_host": false,
+          "code_mode_only": false
         },
         "skills": {
           "bundled": {

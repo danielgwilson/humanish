@@ -19,6 +19,7 @@ import {
 } from "../../lab/validation.js";
 import { defaultSessionTimeoutMs, resolvePerLaneSandboxMs } from "./lane-plan.js";
 import { MAX_SANDBOX_MS, type CuaActorLabErrorCode, type CuaActorLabHooks } from "./types.js";
+import { describeQualifiedCodexCliVersions } from "../../actors/codex/qualified-versions.js";
 
 /** Which subject route a computer-use lab takes, derived once from its config and hooks. */
 export interface CuaRoute {
@@ -315,7 +316,7 @@ export async function liveCuaRejection(args: {
           message:
             compatibility === "unsupported_platform"
               ? `Hosted Codex participants require Linux or macOS on x64 or arm64. This host is ${process.platform}/${process.arch}; no desktop was launched.`
-              : `Hosted Codex participants require Codex CLI 0.154.0. Run \`codex --version\` and install the supported version before retrying; no desktop was launched.`,
+              : `Hosted Codex participants require a qualified Codex CLI (${describeQualifiedCodexCliVersions()}). Run \`codex --version\` and install a qualified version before retrying; no desktop was launched.`,
         };
       }
       if (

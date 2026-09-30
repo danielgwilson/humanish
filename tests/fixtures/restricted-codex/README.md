@@ -2,7 +2,9 @@
 
 These fixtures derive from retained captures of installed Codex CLI **0.154.0**
 on Linux x64, using the existing ChatGPT file login and `gpt-6-astra` with low
-reasoning effort. The synthetic image contained a blue rectangle and the code
+reasoning effort. `initialize`, `thread-start` and `effective-config` were
+recaptured from CLI **0.157.1** on 2026-09-30 with the same login, model and
+normalization; see the 0.157.1 section below. The synthetic image contained a blue rectangle and the code
 `BLUE-4821`. No application/customer evidence or credential values were captured.
 
 - `initialize`, `thread-start`, `turn-start`, `completed-turn-and-usage`,
@@ -48,8 +50,27 @@ reasoning effort. The synthetic image contained a blue rectangle and the code
   output shape from a 15-second host callback. The screenshot is replaced with
   a tiny synthetic data URL; reasoning and private identifiers are omitted.
 
+## CLI 0.157.1 recapture (2026-09-30)
+
+`initialize`, `thread-start` and `effective-config` come from the product
+readiness path against installed 0.157.1 (account-backed, no model turn). After
+normalization they differ from the 0.154.0 captures only in the version string,
+a new empty `disabledPluginIds` on thread start, three new null config keys
+(`cloud`, `mcp_enterprise_managed_auth`, `model_post_turn_compact_threshold_percent`),
+two new false features, and the origin key `features.code_mode.enabled`. The
+turn, delta, compaction, denial and Code Mode fixtures remain 0.154.0 captures.
+A loopback provider probe ran the same scripted tool requests against both
+binaries: the advertised tools, all 18 injected denials, both question tools and
+the participant Code Mode lifecycle matched, and 0.157.1 no longer offers the
+nested `skills__list` and `skills__read`. That probe's 0.154.0 inventory matched
+`residual-tool-inventory` exactly. The
+[requalification receipt](../../../docs/goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md)
+records the method and the live checks.
+
 IDs, paths, timestamps, and client naming are normalized. Account identifiers,
 auth contents, raw provider errors, and rate-limit/account details are excluded.
+The fake process's `version-X.Y.Z` scenarios report that release from `--version`,
+`initialize` and thread start alike, to exercise per-host admission.
 The fixture-driven fake process is for failure injection and lifecycle tests;
 its successful response is not another live model proof. Continuing-session tests
 reuse these envelopes with successive synthetic turn IDs and cumulative token

@@ -10,6 +10,7 @@ import type {
   CuaProvider,
   CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
+import { describeQualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import { runCuaActorLab } from "../../../src/routes/computer-use/lab.js";
 import { runCuaLane } from "../../../src/routes/computer-use/lanes.js";
 import { type CuaLaneDeps, type CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
@@ -236,7 +237,7 @@ describe("ready desktop lane contract", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.error?.message).toContain("Codex CLI 0.154.0");
+    expect(result.error?.message).toContain(describeQualifiedCodexCliVersions());
     expect(result.error?.message).toContain("no desktop was launched");
     expect(createDesktopLane).not.toHaveBeenCalled();
     expect(restrictedParticipantFactory).not.toHaveBeenCalled();
@@ -247,7 +248,7 @@ describe("ready desktop lane contract", () => {
     const executable = path.join(f.cwd, "codex");
     await writeFile(
       executable,
-      `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.154.0\\n"); process.exit(0); }\nprocess.exit(99);\n`,
+      `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli 0.157.1\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(executable, 0o700);
     const parsed = parseLabConfig({

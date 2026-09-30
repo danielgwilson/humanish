@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import live from "../../tests/golden/observer-data/live.json";
 import {
+  RECORDED_CODEX_CLI_VERSIONS as SERVER_RECORDED_CODEX_CLI_VERSIONS,
   validActorExecutionProfile as serverProfile,
   validActorProviderRequests as serverRequests,
 } from "../../src/actors/contract";
 import {
+  RECORDED_CODEX_CLI_VERSIONS,
   validActorExecutionProfile,
   validActorProviderRequests,
 } from "../lib/actor-execution-profile";
@@ -101,6 +103,26 @@ describe("account participant durable reader", () => {
       const before = structuredClone(data);
       expect(isObserverData(data)).toBe(true);
       expect(data).toEqual(before);
+    }
+  });
+  it("reads every recorded CLI release, and only 0.154.0 for the legacy action schema", () => {
+    expect([...RECORDED_CODEX_CLI_VERSIONS]).toEqual([...SERVER_RECORDED_CODEX_CLI_VERSIONS]);
+    const recorded = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
+      ...uiToolsProfile,
+      cliVersion,
+    }));
+    for (const profile of [legacyRollingProfile, legacyContinuingProfile, ...recorded]) {
+      expect(validActorExecutionProfile(profile)).toBe(true);
+      expect(serverProfile(profile)).toBe(true);
+      expect(isObserverData(account(profile))).toBe(true);
+    }
+    for (const profile of [
+      { ...legacyContinuingProfile, cliVersion: "0.157.1" },
+      { ...uiToolsProfile, cliVersion: "0.155.0" },
+    ]) {
+      expect(validActorExecutionProfile(profile)).toBe(false);
+      expect(serverProfile(profile)).toBe(false);
+      expect(isObserverData(account(profile))).toBe(false);
     }
   });
   it("rejects mixed policy, schema and memory generations", () => {

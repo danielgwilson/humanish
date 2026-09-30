@@ -47,7 +47,7 @@ review:
     timeoutMs: 600000
 ```
 
-This requires Linux x64, qualified Codex CLI `0.154.0`, and a file-backed ChatGPT account login; the analyst
+This requires Linux x64, a Codex CLI release qualified for it (`src/actors/codex/qualified-versions.ts`), and a file-backed ChatGPT account login; the analyst
 uses low reasoning effort and remote inference. Dollar cost and a provider
 enforced output-token ceiling are unknown, so omit `maxCostUsd` and
 `maxOutputTokens`. Numeric values are rejected before participant resources are

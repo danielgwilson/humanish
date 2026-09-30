@@ -9,9 +9,11 @@ import {
   checkRestrictedCodexAnalysisReadiness,
   createRestrictedCodexAnalysisProvider,
 } from "../../../src/analysis/restricted-codex.js";
+import { qualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import type { RestrictedCodexRequest } from "../../../src/actors/codex/restricted-policy.js";
 import {
   createRestrictedCodexSession,
+  detectRestrictedCodexCliVersion,
   type RestrictedCodexSessionOptions,
 } from "../../../src/actors/codex/restricted-session.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
@@ -253,8 +255,76 @@ describe("restricted Codex analyst session", () => {
     expect(await readdir(f.tempRoot)).toEqual([]);
   });
 
+  it("admits each release qualified on Linux x64 and records the one that ran", async () => {
+    for (const version of qualifiedCodexCliVersions("linux", "x64")) {
+      const f = await fixture(`version-${version}`);
+      const session = createRestrictedCodexSession({
+        ...f.options,
+        platform: "linux",
+        arch: "x64",
+      });
+      expect(await session.run(request), version).toMatchObject({ status: "completed" });
+      expect(session.cliVersion).toBe(version);
+      expect(await session.close()).toBe(true);
+    }
+  });
+
+  it("refuses a release other than the one an analysis identity recorded", async () => {
+    const bound = await fixture("success");
+    expect(
+      await createRestrictedCodexAnalysisProvider({ ...bound.options, cliVersion: "0.154.0" })(
+        request,
+      ),
+    ).toMatchObject({ errorCode: "codex_unsupported_version", dispatched: false });
+    expect(bound.spawns.map((entry) => entry.args[0])).toEqual(["--version"]);
+  });
+
+  it("admits only the releases a qualification run names through its seam", async () => {
+    const candidate = await fixture("version-0.158.0");
+    expect(
+      await createRestrictedCodexAnalysisProvider({
+        ...candidate.options,
+        cliVersions: ["0.158.0"],
+      })(request),
+    ).toMatchObject({ status: "completed" });
+    const current = await fixture("success");
+    expect(
+      await createRestrictedCodexAnalysisProvider({ ...current.options, cliVersions: ["0.158.0"] })(
+        request,
+      ),
+    ).toMatchObject({ errorCode: "codex_unsupported_version" });
+  });
+
+  it("detects the installed release without app-server and removes its temporary home", async () => {
+    const qualified = await fixture("version-0.154.0");
+    expect(
+      await detectRestrictedCodexCliVersion(
+        {},
+        { ...qualified.options, platform: "linux", arch: "x64" },
+      ),
+    ).toEqual({ cliVersion: "0.154.0", errorCode: null });
+    expect(qualified.spawns.map((entry) => entry.args)).toEqual([["--version"]]);
+    expect(await readdir(qualified.tempRoot)).toEqual([]);
+    const unqualified = await fixture("version-0.158.0");
+    expect(
+      await detectRestrictedCodexCliVersion(
+        {},
+        { ...unqualified.options, platform: "linux", arch: "x64" },
+      ),
+    ).toEqual({ cliVersion: null, errorCode: "codex_unsupported_version" });
+    expect(
+      await detectRestrictedCodexCliVersion(
+        {},
+        { ...qualified.options, platform: "linux", arch: "arm64" },
+      ),
+    ).toEqual({ cliVersion: null, errorCode: "codex_unsupported_platform" });
+  });
+
   it.each([
     ["wrong-version", "codex_unsupported_version"],
+    ["version-0.158.0", "codex_unsupported_version"],
+    ["initialize-version-mismatch", "codex_unsupported_version"],
+    ["thread-version-mismatch", "codex_unsafe_configuration"],
     ["api-key-auth", "codex_unsupported_auth"],
     ["signed-out", "codex_login_required"],
     ["system-config", "codex_unsafe_configuration"],

@@ -1,3 +1,4 @@
+import { describeQualifiedCodexCliVersions } from "../actors/codex/qualified-versions.js";
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import type { AnalysisFetch, StudyAnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
@@ -79,6 +80,10 @@ export interface AnalyzeDeps {
   /** Set by automatic analysis to its job attempt id; never from an Observer request. */
   analysisId?: string;
   beforeDispatch?: (context: StudyAnalysisDispatchContext) => Promise<void>;
+  /** Internal seam: the installed Codex CLI release, or null when it is unavailable or unqualified. */
+  detectCodexCliVersion?: () => Promise<string | null>;
+  /** Internal: the caller already recorded the detected release in config.identity. */
+  codexCliVersionBound?: boolean;
 }
 
 /** A producer pin is authority for one physical project and exact run ID only. */
@@ -127,10 +132,8 @@ const messages: Record<string, string> = {
 const codexRecovery: Record<string, string> = {
   analysis_codex_busy:
     "Another restricted Codex analyst or setup check is active in this process. Wait for it to finish, then explicitly retry.",
-  analysis_codex_unavailable:
-    "The qualified Codex CLI is unavailable. Install Codex CLI 0.154.0 and sign in with a ChatGPT account, then retry --provider codex.",
-  analysis_codex_unsupported_version:
-    "Codex account analysis requires the qualified CLI version 0.154.0. Other versions have not passed this tool-policy contract.",
+  analysis_codex_unavailable: `The qualified Codex CLI is unavailable. Install a qualified Codex CLI (${describeQualifiedCodexCliVersions()}) and sign in with a ChatGPT account, then retry --provider codex.`,
+  analysis_codex_unsupported_version: `Codex account analysis requires a qualified CLI version (${describeQualifiedCodexCliVersions()}). Other versions have not passed this tool-policy contract.`,
   analysis_codex_unsupported_platform:
     "This platform has not qualified the restricted Codex account launcher.",
   analysis_codex_login_required:
@@ -334,6 +337,15 @@ export async function analyzeStudy(
                 ]
               : base.warnings,
         };
+      // The report, its reuse key and the launcher all name the release that will run.
+      if (
+        config.provider === "codex" &&
+        !deps.codexCliVersionBound &&
+        (deps.detectCodexCliVersion || !deps.codexProvider)
+      )
+        config = await (
+          await import("./restricted-codex.js")
+        ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
       if (!options.rerun) {
         const prior = (await listStudyAnalyses(prepared)).find(
           (entry) =>

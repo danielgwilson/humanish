@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkRestrictedCodexAnalysisReadiness } from "../../../src/analysis/restricted-codex.js";
+import { qualifiedCodexCliVersions } from "../../../src/actors/codex/qualified-versions.js";
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-session.js";
 import type { RestrictedCodexSpawn } from "../../../src/actors/codex/restricted-transport.js";
 
@@ -55,6 +56,7 @@ describe("restricted Codex npm executable resolution", () => {
     it.each(["hoisted", "nested", "bundled"] as const)(
       `resolves the ${target.platform} %s layout to a directly owned native executable`,
       async (layout) => {
+        const qualified = qualifiedCodexCliVersions(target.platform, target.arch).at(-1)!;
         const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-layout-"));
         directories.push(directory);
         const modules = path.join(directory, "node_modules"),
@@ -80,7 +82,7 @@ describe("restricted Codex npm executable resolution", () => {
         if (layout !== "bundled")
           await writeFile(
             path.join(nativeRoot, "package.json"),
-            JSON.stringify({ name: `@openai/${target.packageName}`, version: "0.154.0" }),
+            JSON.stringify({ name: `@openai/${target.packageName}`, version: qualified }),
           );
         const native = path.join(nativeRoot, "vendor", target.triple, "bin", "codex");
         await mkdir(path.dirname(native), { recursive: true });
@@ -93,7 +95,7 @@ describe("restricted Codex npm executable resolution", () => {
         const spawnFn: RestrictedCodexSpawn = (file, args, settings) => {
           calls.push({ file, args, detached: settings.detached });
           // Exercise version admission without executing a foreign-architecture fixture.
-          return spawn(process.execPath, ["-e", "console.log('codex-cli 0.154.0')"], settings);
+          return spawn(process.execPath, ["-e", `console.log('codex-cli ${qualified}')`], settings);
         };
         const result = await checkRestrictedCodexAnalysisReadiness(
           {},
@@ -115,4 +117,34 @@ describe("restricted Codex npm executable resolution", () => {
       },
     );
   }
+
+  it("refuses a Mac native CLI on a release qualified only on Linux", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), "humanish-codex-mac-release-"));
+    directories.push(directory);
+    const packageRoot = path.join(directory, "node_modules", "@openai", "codex");
+    const launcher = path.join(packageRoot, "bin", "codex.js");
+    await mkdir(path.dirname(launcher), { recursive: true });
+    await writeFile(launcher, "#!/usr/bin/env node\nthrow Error('npm shim executed');\n", {
+      mode: 0o755,
+    });
+    const native = path.join(packageRoot, "vendor", "aarch64-apple-darwin", "bin", "codex");
+    await mkdir(path.dirname(native), { recursive: true });
+    await writeFile(native, Buffer.from("cffaedfe", "hex"), { mode: 0o755 });
+    const tempRoot = path.join(directory, "temp");
+    await mkdir(tempRoot);
+    const result = await checkRestrictedCodexAnalysisReadiness(
+      {},
+      {
+        executable: launcher,
+        platform: "darwin",
+        arch: "arm64",
+        tempRoot,
+        spawnFn: (_file, _args, settings) =>
+          spawn(process.execPath, ["-e", "console.log('codex-cli 0.157.1')"], settings),
+        env: { HOME: directory, PATH: "" },
+      },
+    );
+    expect(result).toEqual({ ready: false, errorCode: "codex_unsupported_version" });
+    expect(await readdir(tempRoot)).toEqual([]);
+  });
 });

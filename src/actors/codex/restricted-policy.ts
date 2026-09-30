@@ -2,12 +2,12 @@ import type { ReasoningEffort } from "../reasoning-effort.js";
 
 /** Versioned, deliberately narrow profile qualified with an account-backed vision turn.
  * The CLI still advertises code-mode tools: disabling their host is the enforcement
- * boundary. Feature names alone are not proof that a tool has been removed. */
+ * boundary. Feature names alone are not proof that a tool has been removed. The admitted
+ * CLI releases are per host, in qualified-versions.ts. */
 export const RESTRICTED_CODEX_ANALYSIS_IDENTITY = {
   provider: "codex",
   authMode: "chatgpt",
   modelProvider: "openai",
-  cliVersion: "0.154.0",
   toolPolicy: "restricted-codex-v1",
   reasoningEffort: "low",
 } as const;
@@ -286,7 +286,8 @@ export function admitsRestrictedCodexThread(
   raw: unknown,
   model: string,
   cwd: string,
-  reasoningEffort: ReasoningEffort = "low",
+  reasoningEffort: ReasoningEffort,
+  cliVersion: string,
 ): boolean {
   const value = codexRecord(raw),
     thread = codexRecord(value.thread),
@@ -299,7 +300,7 @@ export function admitsRestrictedCodexThread(
     thread.model === model &&
     thread.modelProvider === "openai" &&
     thread.reasoningEffort === reasoningEffort &&
-    thread.cliVersion === RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion &&
+    thread.cliVersion === cliVersion &&
     Array.isArray(thread.environments) &&
     thread.environments.length === 0 &&
     thread.path === null &&

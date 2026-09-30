@@ -7,6 +7,8 @@ import {
 import { validClosingReport, type CuaTurn } from "../computer-use/loop.js";
 import type { ActorExecutionProfile, ParticipantClosingReport } from "../contract.js";
 
+/** The declared profile. A participant replaces cliVersion with its detected CLI release, or with
+ * this host's newest qualified release before its first launch. */
 export const PARTICIPANT_PROFILE: Readonly<ActorExecutionProfile> = Object.freeze({
   schema: "humanish.actor-execution-profile.v1",
   transport: "codex-app-server",

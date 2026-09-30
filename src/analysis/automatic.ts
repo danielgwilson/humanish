@@ -158,6 +158,11 @@ export async function runAutomaticStudyAnalysis(
   } catch {
     return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
   }
+  // The claim digest must cover the Codex release that will run.
+  if (config.provider === "codex" && (deps.detectCodexCliVersion || !deps.codexProvider))
+    config = await (
+      await import("./restricted-codex.js")
+    ).bindCodexAnalysisCliVersion(config, deps.detectCodexCliVersion);
   let job: AutomaticStudyAnalysisJob;
   try {
     const claimed = await claimAutomaticStudyAnalysis(prepared, {
@@ -221,6 +226,7 @@ export async function runAutomaticStudyAnalysis(
         {
           ...deps,
           signal,
+          codexCliVersionBound: true,
           expectedRun: prepared,
           analysisId: job.attemptId,
           beforeDispatch: async (context) => {

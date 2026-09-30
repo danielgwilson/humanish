@@ -20,11 +20,11 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import type { CuaProviderFailurePhase } from "../computer-use/provider-error.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
+import { admittedCodexCliVersions, parseCodexCliVersion } from "./qualified-versions.js";
 import {
   CODEX_IMAGE,
   CODEX_MAX_OUTPUT_BYTES,
   CODEX_MAX_REQUEST_BYTES,
-  RESTRICTED_CODEX_ANALYSIS_IDENTITY,
   RESTRICTED_CODEX_ANALYSIS_MODELS,
   admitsRestrictedCodexConfig,
   admitsRestrictedCodexThread,
@@ -34,6 +34,7 @@ import {
   restrictedCodexRequestError,
   restrictedCodexUsage,
   toolPolicyViolation,
+  type RestrictedCodexAnalysisErrorCode,
   type RestrictedCodexRequest,
   type RestrictedCodexResult,
   type RestrictedCodexUsage,
@@ -55,6 +56,15 @@ export interface RestrictedCodexSessionOptions {
   tempRoot?: string;
   platform?: NodeJS.Platform;
   arch?: string;
+  /** The release a caller already recorded (an analysis identity); any other release is refused. */
+  cliVersion?: string;
+  /**
+   * Bypasses qualification: replaces this host's admitted releases with any list. It exists only
+   * so the maintainer's qualification script can launch an unqualified candidate. No library
+   * export, lab manifest, CLI flag, RunLabOptions field or cuaHooks entry reaches it
+   * (tests/actors/codex/cli-versions-seam.test.ts).
+   */
+  cliVersions?: readonly string[];
   spawnFn?: RestrictedCodexSpawn;
   participant?: {
     authMode?: "operator";
@@ -207,13 +217,16 @@ async function resolveExecutable(
   throw new RestrictedCodexStop("codex_unavailable");
 }
 
+/** Returns the detected release after checking it against the admitted list. */
 async function checkVersion(
   file: string,
   env: NodeJS.ProcessEnv,
   cwd: string,
   spawnFn: RestrictedCodexSpawn,
   deadline: RestrictedCodexDeadline,
-): Promise<void> {
+  admitted: readonly string[],
+  expected: string | undefined,
+): Promise<string> {
   deadline.check();
   const owned = ownCodexProcess(
     spawnFn(file, ["--version"], { cwd, env, detached: false, stdio: ["pipe", "pipe", "pipe"] }),
@@ -239,8 +252,14 @@ async function checkVersion(
   try {
     await deadline.wait(owned.closed);
     if (exitCode !== 0) throw new RestrictedCodexStop("codex_unavailable");
-    if (text.trim() !== `codex-cli ${RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion}`)
+    const version = parseCodexCliVersion(text);
+    if (
+      version === undefined ||
+      !admitted.includes(version) ||
+      (expected !== undefined && version !== expected)
+    )
       throw new RestrictedCodexStop("codex_unsupported_version");
+    return version;
   } finally {
     clearTimeout(timer);
     if (!(await closeOwnedCodexProcess(owned))) {
@@ -408,6 +427,8 @@ export interface RestrictedCodexSession {
   readonly pendingInferenceUsage?: RestrictedCodexUsage[] | undefined;
   readonly resolvedModel?: string | undefined;
   readonly authentication?: "chatgpt-account" | "api-key" | undefined;
+  /** The admitted release this session launched, once its version check has passed. */
+  readonly cliVersion?: string | undefined;
   run(request: RestrictedCodexRequest, readinessOnly?: boolean): Promise<RestrictedCodexResult>;
   close(): Promise<boolean>;
 }
@@ -442,6 +463,8 @@ export function createRestrictedCodexSession(
   let pendingInferenceUsage: RestrictedCodexUsage[] | undefined;
   let resolvedModel: string | undefined;
   let authentication: "chatgpt-account" | "api-key" | undefined;
+  let cliVersion: string | undefined;
+  const admittedVersions = options.cliVersions ?? admittedCodexCliVersions(platform, arch);
   let activeDeadline: RestrictedCodexDeadline | undefined;
   let interrupt: { threadId: string; turnId: string } | undefined;
   let closed = false,
@@ -522,8 +545,8 @@ export function createRestrictedCodexSession(
         return;
       }
       const item = codexRecord(params.item);
-      // CLI 0.154 thread totals omit compaction requests. Retain known usage,
-      // but never label it complete when native compaction occurred in this turn.
+      // CLI 0.154.0 thread totals omitted compaction requests; later releases were not re-measured.
+      // Retain known usage, but never label it complete when native compaction occurred.
       if (
         method === "thread/compacted" ||
         item.type === "contextCompaction" ||
@@ -727,7 +750,15 @@ export function createRestrictedCodexSession(
         scratch = path.join(work, "scratch");
         for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
         const env = childEnvironment(sourceEnv, home, scratch);
-        await checkVersion(file, env, cwd, spawnFn, deadline);
+        cliVersion = await checkVersion(
+          file,
+          env,
+          cwd,
+          spawnFn,
+          deadline,
+          admittedVersions,
+          options.cliVersion,
+        );
         const configMode = {
           participantCodeMode: participant !== undefined,
           reasoningEffort,
@@ -775,7 +806,7 @@ export function createRestrictedCodexSession(
         });
         if (
           typeof initialize.userAgent !== "string" ||
-          !initialize.userAgent.includes(`/0.154.0 `) ||
+          !initialize.userAgent.includes(`/${cliVersion} `) ||
           (!operatorAuth && initialize.codexHome !== home) ||
           initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") ||
           initialize.platformFamily !== "unix"
@@ -838,7 +869,7 @@ export function createRestrictedCodexSession(
           returnedModel.length === 0 ||
           returnedModel.length > 200 ||
           (selectedModel !== undefined && returnedModel !== selectedModel) ||
-          !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort)
+          !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort, cliVersion)
         )
           throw new RestrictedCodexStop("codex_unsafe_configuration");
         selectedModel = returnedModel;
@@ -959,6 +990,9 @@ export function createRestrictedCodexSession(
     get authentication() {
       return authentication;
     },
+    get cliVersion() {
+      return cliVersion;
+    },
     run(request, readinessOnly = false) {
       const error = restrictedCodexRequestError(request, operatorAuth);
       if (error) return Promise.resolve(restrictedCodexFailure(error));
@@ -1016,4 +1050,51 @@ export async function checkRestrictedCodexSessionReadiness(
     options,
     true,
   );
+}
+
+/** Resolve and version-check the CLI an analyst launch would use, without app-server or a model.
+ * `--version` runs with a private temporary home, removed afterwards. */
+export async function detectRestrictedCodexCliVersion(
+  input: { signal?: AbortSignal; timeoutMs?: number } = {},
+  options: RestrictedCodexSessionOptions = {},
+): Promise<
+  | { cliVersion: string; errorCode: null }
+  | { cliVersion: null; errorCode: RestrictedCodexAnalysisErrorCode }
+> {
+  const platform = options.platform ?? process.platform,
+    arch = options.arch ?? process.arch;
+  if (!((platform === "linux" && arch === "x64") || (platform === "darwin" && arch === "arm64")))
+    return { cliVersion: null, errorCode: "codex_unsupported_platform" };
+  const sourceEnv = options.env ?? process.env;
+  const deadline = new RestrictedCodexDeadline(input.timeoutMs ?? 15_000, input.signal);
+  let work: string | undefined;
+  try {
+    const file = await resolveExecutable(options, sourceEnv);
+    work = await realpath(
+      await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-version-")),
+    );
+    const home = path.join(work, "home");
+    await mkdir(home, { mode: 0o700 });
+    const cliVersion = await checkVersion(
+      file,
+      childEnvironment(sourceEnv, home, work),
+      work,
+      options.spawnFn ?? ((command, args, settings) => spawn(command, args, settings)),
+      deadline,
+      options.cliVersions ?? admittedCodexCliVersions(platform, arch),
+      options.cliVersion,
+    );
+    return { cliVersion, errorCode: null };
+  } catch (error) {
+    return {
+      cliVersion: null,
+      errorCode:
+        error instanceof RestrictedCodexStop
+          ? error.code
+          : (deadline.code ?? "codex_process_failed"),
+    };
+  } finally {
+    deadline.close();
+    if (work) await rm(work, { recursive: true, force: true }).catch(() => undefined);
+  }
 }
