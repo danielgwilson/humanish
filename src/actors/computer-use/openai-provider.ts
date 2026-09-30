@@ -318,6 +318,163 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+/** Response wire capture for one provider: prepares each file before dispatch, then writes it. */
+interface WireCapture {
+  /** Preflight the next capture file; undefined when capture is off. */
+  prepareNext(): Promise<PreparedSelectedOutputDirectory | undefined>;
+  /** Persist one successful RESPONSE body, redacted and pretty-printed. */
+  record(raw: unknown): Promise<void>;
+}
+
+// Opt-in response wire capture (see module header): an undefined directory means OFF and zero
+// behavior change. The counter is per-provider, so file order is call order.
+function createWireCapture(captureDir: string | undefined): WireCapture {
+  let captureCount = 0;
+  let preparedCaptureRoot: Promise<PreparedSelectedOutputDirectory> | undefined;
+  const prepareNext = async (): Promise<PreparedSelectedOutputDirectory | undefined> => {
+    if (captureDir === undefined) return undefined;
+    preparedCaptureRoot ??= prepareSelectedOutputDirectory(process.cwd(), captureDir);
+    const captureRoot = await preparedCaptureRoot;
+    await prepareContainedOutputFile(captureRoot, wireCaptureFileName(captureCount + 1));
+    return captureRoot;
+  };
+  return {
+    prepareNext,
+    // Fails loud: a silent capture failure would mean missing turns in a fixture refresh — the
+    // exact "fixtures drift from the wire" pathology capture exists to prevent.
+    record: async (raw) => {
+      if (captureDir === undefined) return;
+      const captureRoot = await prepareNext();
+      if (!captureRoot) return;
+      captureCount += 1;
+      await writeContainedOutputFile(
+        captureRoot,
+        wireCaptureFileName(captureCount),
+        `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
+        "utf8",
+      );
+    },
+  };
+}
+
+/** What one POST needs from its provider. */
+interface ResponsesTransport {
+  readonly endpoint: string;
+  readonly apiKey: string;
+  readonly fetchFn: FetchLike;
+  readonly delayFn: (ms: number) => Promise<void>;
+  readonly capture: WireCapture;
+  /** An interaction attempt may have reached the provider without its usage coming back. */
+  markUsageIncomplete(): void;
+}
+
+// POST the JSON body and return the parsed JSON on success. Retries on
+// transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
+// ZdrError; any other non-ok status throws with the STATUS ONLY (never the
+// body, which can echo the input/screenshot).
+async function postResponse(
+  transport: ResponsesTransport,
+  body: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+  retries: number,
+  interaction: boolean,
+  spend: CuaSpendGate | undefined,
+): Promise<unknown> {
+  // Preflight the deterministic next capture leaf before any network side
+  // effect. A hostile generated path must fail with zero provider calls.
+  await transport.capture.prepareNext();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${transport.apiKey}`,
+    "Content-Type": "application/json",
+  };
+  const payload = JSON.stringify(body);
+  let lastStatus = 0;
+  let sawNetworkError = false;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    signal?.throwIfAborted();
+    let res: Awaited<ReturnType<FetchLike>>;
+    try {
+      res = await transport.fetchFn(transport.endpoint, {
+        method: "POST",
+        headers,
+        body: payload,
+        ...(signal === undefined ? {} : { signal }),
+      });
+    } catch (error) {
+      // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
+      // rather than propagating caller-added message/context through the transport seam.
+      if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
+      // Dispatch may have reached the provider. Preserve this uncertainty even when a later
+      // retry succeeds or is refused locally; only that later refusal is known not to dispatch.
+      // Under a spend gate the loop accounts for the attempt instead: it books a resend below
+      // and marks an abort or a final failure itself.
+      if (interaction && spend === undefined) transport.markUsageIncomplete();
+      if (signal?.aborted === true || isAbortError(error)) {
+        throw error;
+      }
+      sawNetworkError = true;
+      if (attempt < retries) {
+        spend?.beforeResend();
+        await transport.delayFn(2 ** attempt * 200);
+        continue;
+      }
+      throw new Error("OpenAI Responses network error");
+    }
+    if (res.ok) {
+      const parsed: unknown = await res.json();
+      // Capture AFTER ok and BEFORE parse-to-CuaTurn: responses only, never the
+      // request (screenshots/instructions) and never a non-ok body (input echo).
+      await transport.capture.record(parsed);
+      return parsed;
+    }
+    lastStatus = res.status;
+    if (res.status === 400) {
+      const bodyText = await res.text();
+      if (isZdrRejection(bodyText)) {
+        throw new ZdrError();
+      }
+      if (isSummaryRejection(bodyText)) {
+        throw new SummaryRejectionError();
+      }
+      // A usage-policy flag is terminal for this prompt: typed so the loop names it, never retried.
+      if (namedProviderErrorCode(bodyText) === "invalid_prompt") {
+        throw new CuaPromptRefusedError("OpenAI", "400 invalid_prompt");
+      }
+      const detail = requestRejectionDetail(bodyText);
+      throw new Error(`OpenAI Responses 400${detail === undefined ? "" : ` ${detail}`}`);
+    }
+    if (res.status === 403) {
+      // Misalignment monitoring (2026-09-03): the provider can stop a threaded conversation
+      // mid-run with 403 misalignment_policy_violation; there is no resume path, and earlier
+      // actions may already have executed. Named, terminal, never retried.
+      const bodyText = await res.text().catch(() => "");
+      if (namedProviderErrorCode(bodyText) === "misalignment_policy_violation") {
+        throw new Error(
+          "OpenAI Responses 403 misalignment_policy_violation: the provider stopped this conversation and it cannot be resumed",
+        );
+      }
+      throw new Error("OpenAI Responses 403");
+    }
+    const retryable =
+      res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
+    if (retryable && attempt < retries) {
+      // The provider's own hint wins over the fixed backoff, up to the cap.
+      const backoff = 2 ** attempt * 200;
+      const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
+      await transport.delayFn(
+        hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS),
+      );
+      continue;
+    }
+    const code = namedProviderErrorCode(await res.text().catch(() => ""));
+    throw new Error(`OpenAI Responses ${res.status}${code === undefined ? "" : ` ${code}`}`);
+  }
+  if (sawNetworkError) {
+    throw new Error("OpenAI Responses network error");
+  }
+  throw new Error(`OpenAI Responses ${lastStatus}`);
+}
+
 /**
  * Create a stateful CuaProvider backed by the OpenAI Responses API. The first
  * turn opens a session (buildInitialRequest); subsequent turns send the prior
@@ -336,41 +493,12 @@ export function createOpenAiResponsesProvider(
   }
   const maxOutputTokens = options.maxOutputTokens;
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
-  const endpoint = options.endpoint ?? OPENAI_RESPONSES_URL;
   const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const maxRetries = options.singleDispatch === true ? 0 : (options.maxRetries ?? 3);
-  const fetchFn = options.fetchFn ?? defaultFetch();
-  const delayFn = options.delayFn ?? defaultDelay;
-  // Opt-in response wire capture (see module header): unset/empty means OFF and
-  // zero behavior change. The counter is per-provider, so file order is call order.
-  const captureDir = optionalString((options.env ?? process.env)[WIRE_CAPTURE_ENV]?.trim());
-  let captureCount = 0;
-  let preparedCaptureRoot: Promise<PreparedSelectedOutputDirectory> | undefined;
-
-  const prepareNextCapture = async (): Promise<PreparedSelectedOutputDirectory | undefined> => {
-    if (captureDir === undefined) return undefined;
-    preparedCaptureRoot ??= prepareSelectedOutputDirectory(process.cwd(), captureDir);
-    const captureRoot = await preparedCaptureRoot;
-    await prepareContainedOutputFile(captureRoot, wireCaptureFileName(captureCount + 1));
-    return captureRoot;
-  };
-
-  // Persist one successful RESPONSE body, redacted and pretty-printed. Fails loud:
-  // a silent capture failure would mean missing turns in a fixture refresh — the
-  // exact "fixtures drift from the wire" pathology capture exists to prevent.
-  const captureResponse = async (raw: unknown): Promise<void> => {
-    if (captureDir === undefined) return;
-    const captureRoot = await prepareNextCapture();
-    if (!captureRoot) return;
-    captureCount += 1;
-    await writeContainedOutputFile(
-      captureRoot,
-      wireCaptureFileName(captureCount),
-      `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
-      "utf8",
-    );
-  };
-
+  // An unset or empty capture variable leaves capture off.
+  const capture = createWireCapture(
+    optionalString((options.env ?? process.env)[WIRE_CAPTURE_ENV]?.trim()),
+  );
   let interactionUsageIncomplete = false;
   const settings: OpenAiRequestSettings = {
     model,
@@ -391,111 +519,23 @@ export function createOpenAiResponsesProvider(
       options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto"),
   };
 
-  // POST the JSON body and return the parsed JSON on success. Retries on
-  // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
-  // ZdrError; any other non-ok status throws with the STATUS ONLY (never the
-  // body, which can echo the input/screenshot).
-  const post = async (
+  const transport: ResponsesTransport = {
+    endpoint: options.endpoint ?? OPENAI_RESPONSES_URL,
+    apiKey: options.apiKey,
+    fetchFn: options.fetchFn ?? defaultFetch(),
+    delayFn: options.delayFn ?? defaultDelay,
+    capture,
+    markUsageIncomplete: () => {
+      interactionUsageIncomplete = true;
+    },
+  };
+  const post = (
     body: Record<string, unknown>,
     signal: AbortSignal | undefined,
     retries = maxRetries,
     interaction = true,
     spend?: CuaSpendGate,
-  ): Promise<unknown> => {
-    // Preflight the deterministic next capture leaf before any network side
-    // effect. A hostile generated path must fail with zero provider calls.
-    await prepareNextCapture();
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${options.apiKey}`,
-      "Content-Type": "application/json",
-    };
-    const payload = JSON.stringify(body);
-    let lastStatus = 0;
-    let sawNetworkError = false;
-    for (let attempt = 0; attempt <= retries; attempt += 1) {
-      signal?.throwIfAborted();
-      let res: Awaited<ReturnType<FetchLike>>;
-      try {
-        res = await fetchFn(endpoint, {
-          method: "POST",
-          headers,
-          body: payload,
-          ...(signal === undefined ? {} : { signal }),
-        });
-      } catch (error) {
-        // An explicit local pre-dispatch limit is terminal. Recreate the fixed safe payload
-        // rather than propagating caller-added message/context through the transport seam.
-        if (isCuaAdmissionLimitError(error)) throw new CuaAdmissionLimitError();
-        // Dispatch may have reached the provider. Preserve this uncertainty even when a later
-        // retry succeeds or is refused locally; only that later refusal is known not to dispatch.
-        // Under a spend gate the loop accounts for the attempt instead: it books a resend below
-        // and marks an abort or a final failure itself.
-        if (interaction && spend === undefined) interactionUsageIncomplete = true;
-        if (signal?.aborted === true || isAbortError(error)) {
-          throw error;
-        }
-        sawNetworkError = true;
-        if (attempt < retries) {
-          spend?.beforeResend();
-          await delayFn(2 ** attempt * 200);
-          continue;
-        }
-        throw new Error("OpenAI Responses network error");
-      }
-      if (res.ok) {
-        const parsed: unknown = await res.json();
-        // Capture AFTER ok and BEFORE parse-to-CuaTurn: responses only, never the
-        // request (screenshots/instructions) and never a non-ok body (input echo).
-        await captureResponse(parsed);
-        return parsed;
-      }
-      lastStatus = res.status;
-      if (res.status === 400) {
-        const bodyText = await res.text();
-        if (isZdrRejection(bodyText)) {
-          throw new ZdrError();
-        }
-        if (isSummaryRejection(bodyText)) {
-          throw new SummaryRejectionError();
-        }
-        // A usage-policy flag is terminal for this prompt: typed so the loop names it, never retried.
-        if (namedProviderErrorCode(bodyText) === "invalid_prompt") {
-          throw new CuaPromptRefusedError("OpenAI", "400 invalid_prompt");
-        }
-        const detail = requestRejectionDetail(bodyText);
-        throw new Error(`OpenAI Responses 400${detail === undefined ? "" : ` ${detail}`}`);
-      }
-      if (res.status === 403) {
-        // Misalignment monitoring (2026-09-03): the provider can stop a threaded conversation
-        // mid-run with 403 misalignment_policy_violation; there is no resume path, and earlier
-        // actions may already have executed. Named, terminal, never retried.
-        const bodyText = await res.text().catch(() => "");
-        if (namedProviderErrorCode(bodyText) === "misalignment_policy_violation") {
-          throw new Error(
-            "OpenAI Responses 403 misalignment_policy_violation: the provider stopped this conversation and it cannot be resumed",
-          );
-        }
-        throw new Error("OpenAI Responses 403");
-      }
-      const retryable =
-        res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
-      if (retryable && attempt < retries) {
-        // The provider's own hint wins over the fixed backoff, up to the cap.
-        const backoff = 2 ** attempt * 200;
-        const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
-        await delayFn(
-          hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS),
-        );
-        continue;
-      }
-      const code = namedProviderErrorCode(await res.text().catch(() => ""));
-      throw new Error(`OpenAI Responses ${res.status}${code === undefined ? "" : ` ${code}`}`);
-    }
-    if (sawNetworkError) {
-      throw new Error("OpenAI Responses network error");
-    }
-    throw new Error(`OpenAI Responses ${lastStatus}`);
-  };
+  ): Promise<unknown> => postResponse(transport, body, signal, retries, interaction, spend);
 
   // POST with the recoverable-policy latches: a ZDR rejection switches to explicit-context mode; a
   // reasoning-summary rejection latches summaries off. Each latch can flip only once, so the loop
@@ -530,7 +570,7 @@ export function createOpenAiResponsesProvider(
     closing = false,
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
-    await prepareNextCapture();
+    await capture.prepareNext();
     // A closing report makes exactly one request: no HTTP or policy-latch retries.
     const raw = closing
       ? await post(debriefRequestBody(settings, state, req), signal, 0, false)
