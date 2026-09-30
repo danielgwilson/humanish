@@ -7,7 +7,7 @@ import { escapeRegExp, isRecord } from "./primitives.js";
 
 /**
  * Strip ANSI/control noise from a captured terminal transcript into stable, scannable text.
- * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/lab.ts) normalizes its
+ * Pure (no IO). Exported so the terminal-product lane (src/routes/terminal/session.ts) normalizes its
  * captured exec stream EXACTLY as the local-actor lanes do — the verdict-nonce scorer is only
  * sound against the same normalization the marker is matched on, so the logic must not diverge.
  */
@@ -60,7 +60,7 @@ export function isZeroEventTerminalTrace(value: unknown): boolean {
   );
 }
 
-// The fixed artifact filenames the terminal-product lane (src/routes/terminal/lab.ts) persists.
+// The fixed artifact filenames the terminal-product lane (src/routes/terminal/types.ts) persists.
 // Kept in sync with TERMINAL_LEDGERS_ARTIFACT / TERMINAL_EVENTS_ARTIFACT / TERMINAL_TRANSCRIPT_ARTIFACT.
 const TERMINAL_LEDGERS_FILE = "terminal-ledgers.json";
 
@@ -170,7 +170,7 @@ export async function validateTerminalProductEvidence(
 }
 
 // The four cost categories the no-spend proof + cost ledger reason over. Kept in sync with
-// e2b-terminal-lab.ts COST_CATEGORIES (a missing category on either side is a finding).
+// routes/terminal/ledger.ts COST_CATEGORIES (a missing category on either side is a finding).
 const TERMINAL_COST_CATEGORIES = ["product", "media", "payment", "provider"] as const;
 
 /**

@@ -6,10 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../../src/lab/types.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
-import {
-  runTerminalProductLab,
-  type TerminalProductLabHooks,
-} from "../../../src/routes/terminal/lab.js";
+import { runTerminalProductLab } from "../../../src/routes/terminal/lab.js";
+import { type TerminalProductLabHooks } from "../../../src/routes/terminal/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/desktop-launch.js";
 import { verifyRun } from "../../../src/run/verify.js";
 
@@ -75,7 +73,7 @@ function makeFakeModule(opts: {
       // No Sandbox.getInfo/list on this fake: exercises the noGetInfo fallback in
       // teardownSandbox, where kill(id)'s own boolean is the by-id proof. This lane's cleanup
       // proof is not what these SLICE 3 cost-ledger tests are about; see
-      // tests/e2b-terminal-lab.test.ts for the by-id cleanup coverage.
+      // tests/routes/terminal/lab.test.ts for the by-id cleanup coverage.
     },
   } as unknown as E2BDesktopModule;
 }

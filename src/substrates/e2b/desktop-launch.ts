@@ -42,7 +42,7 @@ export interface E2BDesktopModule {
     /**
      * ACCOUNT-WIDE enumeration. Kept only for the routes that already avoid it for cleanup
      * (shared-world/scripted/cua/preflight kill by exact id and never call this); no cleanup
-     * proof in this codebase should call it (see e2b-terminal-lab.ts teardownSandbox, which
+     * proof in this codebase should call it (see routes/terminal/sandbox.ts teardownSandbox, which
      * reclaims and verifies by id, never by listing).
      */
     list?(options: E2BSandboxListOptions): E2BSandboxPaginator;
