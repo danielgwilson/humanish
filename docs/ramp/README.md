@@ -119,14 +119,44 @@ Still not good enough:
   decision-equivalent proof;
 - the five actor descriptors are a closed first-party union, not a supported
   out-of-tree actor-registration API;
-- the run lifecycle (`runScope` and `Run` in `src/run/run.ts`) covers the terminal and
-  scripted routes; the computer-use and shared-world routes still write their own
-  bundles and move onto it one at a time;
+- every route publishes through the run lifecycle (`runScope` and `Run` in
+  `src/run/run.ts`): computer-use, shared-world, scripted, terminal, and the preview's
+  `runDryRun`;
 - multi-origin shared-world is an accepted design direction, but remains
   unimplemented and gated on a real adopter proving the need;
 - the README hero is the drawDB real-application study, a legible capture of a
   studied public subject (drawDB is not a humanish adopter); coverage beyond that single
   studied subject (the stratified breadth panel) remains open.
+
+## Check which compositions a lab can declare
+
+`parseLabConfig` (`src/lab/config.ts`) enforces this matrix through `compositionReason`
+(`src/lab/composition-rules.ts`), which uses the predicates in `src/lab/routing.ts` and the reasons
+in `src/lab/validation.ts`. The route entries check it again
+for library callers. `tests/fixtures/task-route-preflight/labs.json` holds one lab for each
+accepted row except the local browser row. `tests/lab/task-route-preflight.test.ts` checks that
+each of those labs routes as shown. `tests/lab/engine-local-substrate.test.ts` covers the local
+browser row. Accepted rows have further required fields, such as `subject.serve` on `clone`, and
+the parse error names the missing one. The computer-use actors are `openai-computer-use` and
+`local-agent`.
+
+| Route (backend name)                       | `subject.source`                                 | `execution.target`       | `actors[0].type`                       | Result                                                                         |
+| ------------------------------------------ | ------------------------------------------------ | ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------ |
+| `computer-use` (`cua`)                     | `app-url`                                        | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `app-url`                                        | `local`                  | a computer-use actor                   | Supported on a local Firecracker desktop, inside Lima on macOS                 |
+| `computer-use` (`cua`)                     | `clone`, `local-tree`                            | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `desktop-cli`                                    | `e2b-desktop` or absent  | a computer-use actor                   | Supported                                                                      |
+| `computer-use` (`cua`)                     | `local-app`                                      | `local` or absent        | a computer-use actor                   | Library only; the CLI refuses it with `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR` |
+| `shared-world` (`concurrent-shared-world`) | `clone`, `local-tree` + `topology: shared-world` | `e2b-desktop`            | a computer-use actor                   | Supported                                                                      |
+| `shared-world` (`concurrent-shared-world`) | `app-url` + `topology: shared-world`             | `e2b-desktop`            | a computer-use actor                   | Supported with `policies.allowPublicTargets: true`                             |
+| `scripted`                                 | `app-url` with a loopback URL                    | `local` or absent        | `scripted-browser`                     | Supported                                                                      |
+| `scripted`                                 | `clone`                                          | `e2b-desktop`            | `scripted-browser`                     | Supported                                                                      |
+| `terminal`                                 | `terminal-product`                               | `e2b-terminal` or absent | `codex-exec`                           | Supported                                                                      |
+| `preview` (`synthetic`)                    | `this-repo`                                      | absent                   | not `scripted-browser` or `codex-exec` | Dry run only                                                                   |
+| none                                       | any other pairing                                | any                      | any                                    | Refused at parse with `HUMANISH_LAB_INVALID`                                   |
+
+The fixture's `supported` field records which routes accept declared `actors[0].tasks`. The
+computer-use labs in the fixture accept them. The other routes refuse them at parse.
 
 ## First Commands
 
