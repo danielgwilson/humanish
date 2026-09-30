@@ -647,15 +647,13 @@ describe("chrome-cdp-probe: against a real headless Chrome", () => {
         const launch = await open("launch");
         const foreground = await open("foreground");
         const endpoint = { cdpPort, targetUrl: `${pageUrl}?launch` };
-        const launchRead = makeChromeDesktopGeometryObserver(desktop, 5_000, endpoint, launch);
-        const finalRead = makeChromeDesktopGeometryObserver(
-          desktop,
-          5_000,
-          endpoint,
-          launch,
-          undefined,
-          "active",
-        );
+        const launchRead = makeChromeDesktopGeometryObserver(desktop, 5_000, endpoint, {
+          targetId: launch,
+        });
+        const finalRead = makeChromeDesktopGeometryObserver(desktop, 5_000, endpoint, {
+          targetId: launch,
+          prefer: "active",
+        });
         expect((await launchRead())?.targetId).toBe(launch);
         expect((await finalRead())?.targetId).toBe(foreground);
         await fetch(`http://127.0.0.1:${cdpPort}/json/close/${launch}`);
@@ -688,8 +686,7 @@ describe("hosted geometry wire capture: independent window and CSS measurements"
       { commands: { run: async () => reply } } as unknown as E2BDesktopSandbox,
       1_000,
       { targetUrl: "http://127.0.0.1:8765/index.html" },
-      undefined,
-      (reason) => reasons.push(reason),
+      { onUnavailable: (reason) => reasons.push(reason) },
     )();
 
   it("keeps actual CSS read-back when a background navigation reports zero outer dimensions", async () => {
@@ -754,8 +751,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       }),
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      (reason) => reasons.push(reason),
+      { onUnavailable: (reason) => reasons.push(reason) },
     );
     expect(await observe()).toEqual({});
     expect(await observe()).toEqual({});
@@ -768,8 +764,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       fakeDesktop({ exitCode: 127, stdout: "", stderr: "sh: 1: python3: not found\n" }),
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      (reason) => reasons.push(reason),
+      { onUnavailable: (reason) => reasons.push(reason) },
     );
     expect(await observe()).toEqual({});
     expect(reasons).toHaveLength(1);
@@ -791,8 +786,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       }),
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      (reason) => reasons.push(reason),
+      { onUnavailable: (reason) => reasons.push(reason) },
     );
     expect(await observe()).toEqual({
       url: "http://127.0.0.1:3000/pricing",
@@ -814,8 +808,7 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       }),
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      (reason) => reasons.push(reason),
+      { onUnavailable: (reason) => reasons.push(reason) },
     );
     expect(await observe()).toBeUndefined();
     expect(reasons).toEqual(["CDP endpoint 127.0.0.1:9222/json unreachable (URLError)"]);
@@ -889,14 +882,14 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       desktop,
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      undefined,
       {
-        emulatedTargetId: "EMULATED",
-        expectedWidth: 414,
-        expectTouch: true,
-        onDrift: (reason) => drifts.push(reason),
-        onCovered: (targetId, read) => covered.push([targetId, read]),
+        drift: {
+          emulatedTargetId: "EMULATED",
+          expectedWidth: 414,
+          expectTouch: true,
+          onDrift: (reason) => drifts.push(reason),
+          onCovered: (targetId, read) => covered.push([targetId, read]),
+        },
       },
     );
     expect((await observe()).url).toBe("http://127.0.0.1:3000/");
@@ -931,14 +924,14 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       desktop,
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      undefined,
       {
-        emulatedTargetId: "EMULATED",
-        expectedWidth: 414,
-        expectTouch: true,
-        onDrift: (reason) => drifts.push(reason),
-        onCovered: (targetId) => covered.push(targetId),
+        drift: {
+          emulatedTargetId: "EMULATED",
+          expectedWidth: 414,
+          expectTouch: true,
+          onDrift: (reason) => drifts.push(reason),
+          onCovered: (targetId) => covered.push(targetId),
+        },
       },
     );
     await observe();
@@ -955,12 +948,12 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       desktop,
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      undefined,
       {
-        emulatedTargetId: "EMULATED",
-        expectedWidth: 414,
-        onDrift: (reason) => drifts.push(reason),
+        drift: {
+          emulatedTargetId: "EMULATED",
+          expectedWidth: 414,
+          onDrift: (reason) => drifts.push(reason),
+        },
       },
     );
     await observe();
@@ -977,12 +970,12 @@ describe("makeChromeBrowserStateObserver / makeChromeDesktopGeometryObserver: th
       desktop,
       1_000,
       { targetUrl: "http://127.0.0.1:3000/" },
-      undefined,
-      undefined,
       {
-        emulatedTargetId: "EMULATED",
-        expectedWidth: 414,
-        onDrift: (reason) => drifts.push(reason),
+        drift: {
+          emulatedTargetId: "EMULATED",
+          expectedWidth: 414,
+          onDrift: (reason) => drifts.push(reason),
+        },
       },
     );
     await observe();

@@ -14,7 +14,7 @@
 // Log tails are returned RAW; callers must pass them through redaction before persisting
 // (build output can echo env values and paths).
 
-import { runOrThrow, throwOnExit, type Shell } from "./shell.js";
+import { runOrThrow, shellQuote, throwOnExit, type Shell } from "./shell.js";
 
 const WORK_ROOT = "/tmp/humanish-subject";
 const DEFAULT_POLL_INTERVAL_MS = 3000;
@@ -55,11 +55,6 @@ function assertName(name: string): void {
   }
 }
 
-/** Single-quote a value for safe interpolation into a shell script. */
-function shq(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
 function stepDir(name: string): string {
   return `${WORK_ROOT}/${name}`;
 }
@@ -71,15 +66,15 @@ function wrapperScript(name: string, command: string, cwd: string | undefined): 
   const dir = stepDir(name);
   return [
     "#!/bin/bash",
-    `mkdir -p ${shq(dir)}`,
-    `echo $$ > ${shq(`${dir}/pid`)}`,
+    `mkdir -p ${shellQuote(dir)}`,
+    `echo $$ > ${shellQuote(`${dir}/pid`)}`,
     cwd === undefined
       ? ": # no cwd override"
-      : `cd ${shq(cwd)} || { echo 127 > ${shq(`${dir}/status.tmp`)}; mv ${shq(`${dir}/status.tmp`)} ${shq(`${dir}/status`)}; exit 127; }`,
-    `( ${command} ) > ${shq(`${dir}/log.txt`)} 2>&1`,
+      : `cd ${shellQuote(cwd)} || { echo 127 > ${shellQuote(`${dir}/status.tmp`)}; mv ${shellQuote(`${dir}/status.tmp`)} ${shellQuote(`${dir}/status`)}; exit 127; }`,
+    `( ${command} ) > ${shellQuote(`${dir}/log.txt`)} 2>&1`,
     "code=$?",
-    `echo $code > ${shq(`${dir}/status.tmp`)}`,
-    `mv ${shq(`${dir}/status.tmp`)} ${shq(`${dir}/status`)}`,
+    `echo $code > ${shellQuote(`${dir}/status.tmp`)}`,
+    `mv ${shellQuote(`${dir}/status.tmp`)} ${shellQuote(`${dir}/status`)}`,
     "exit $code",
     "",
   ].join("\n");
@@ -95,9 +90,9 @@ async function writeAndLaunch(
   assertName(name);
   const dir = stepDir(name);
   const scriptPath = `${dir}/run.sh`;
-  await runOrThrow(shell, `mkdir -p ${shq(dir)}`, { requestTimeoutMs });
+  await runOrThrow(shell, `mkdir -p ${shellQuote(dir)}`, { requestTimeoutMs });
   await shell.writeFile(scriptPath, wrapperScript(name, command, cwd));
-  throwOnExit(await shell.start(`bash ${shq(scriptPath)}`, { requestTimeoutMs }));
+  throwOnExit(await shell.start(`bash ${shellQuote(scriptPath)}`, { requestTimeoutMs }));
 }
 
 /** Read the capped log tail for a step (raw — caller redacts). */
@@ -109,7 +104,7 @@ export async function readDetachedLog(
   assertName(name);
   const result = await runOrThrow(
     shell,
-    `tail -c ${LOG_TAIL_BYTES} ${shq(`${stepDir(name)}/log.txt`)} 2>/dev/null || true`,
+    `tail -c ${LOG_TAIL_BYTES} ${shellQuote(`${stepDir(name)}/log.txt`)} 2>/dev/null || true`,
     { requestTimeoutMs },
   );
   return result.stdout;
@@ -135,9 +130,13 @@ export async function runDetachedStep(
 
   const deadline = now() + options.timeoutMs;
   for (;;) {
-    const status = await runOrThrow(shell, `cat ${shq(`${dir}/status`)} 2>/dev/null || true`, {
-      requestTimeoutMs,
-    });
+    const status = await runOrThrow(
+      shell,
+      `cat ${shellQuote(`${dir}/status`)} 2>/dev/null || true`,
+      {
+        requestTimeoutMs,
+      },
+    );
     const text = status.stdout.trim();
     if (text.length > 0) {
       const exitCode = Number.parseInt(text, 10);
@@ -147,7 +146,7 @@ export async function runDetachedStep(
     if (now() >= deadline) {
       // Kill the whole process group (the script is its own session leader via Shell.start).
       await shell
-        .run(`kill -- -$(cat ${shq(`${dir}/pid`)} 2>/dev/null) 2>/dev/null || true`, {
+        .run(`kill -- -$(cat ${shellQuote(`${dir}/pid`)} 2>/dev/null) 2>/dev/null || true`, {
           requestTimeoutMs,
         })
         .catch(() => undefined);
@@ -194,7 +193,7 @@ export async function probeUrl(
 
   for (;;) {
     const result = await shell
-      .run(`curl -sf -o /dev/null --max-time 5 ${shq(url)} && echo READY || echo WAIT`, {
+      .run(`curl -sf -o /dev/null --max-time 5 ${shellQuote(url)} && echo READY || echo WAIT`, {
         requestTimeoutMs,
       })
       .catch(() => ({ stdout: "WAIT" }));

@@ -64,13 +64,9 @@ describe("an E2B desktop command that exits non-zero", () => {
     const desktop = failingDesktop(exited(127, "bash: line 1: python3: command not found"));
     const onUnavailable = vi.fn();
     const executor = createE2BDesktopExecutor(screenDesktop(), {
-      observeBrowserState: makeChromeBrowserStateObserver(
-        desktop,
-        1_000,
-        endpoint,
-        undefined,
-        onUnavailable,
-      ),
+      observeBrowserState: makeChromeBrowserStateObserver(desktop, 1_000, endpoint, {
+        onUnavailable: onUnavailable,
+      }),
     });
     await executor.observe();
     await executor.observe();
@@ -81,13 +77,9 @@ describe("an E2B desktop command that exits non-zero", () => {
   it("reports a timed-out browser-state probe as unavailable too", async () => {
     const desktop = failingDesktop(new TimeoutError("[deadline_exceeded] command timed out"));
     const onUnavailable = vi.fn();
-    const observe = makeChromeBrowserStateObserver(
-      desktop,
-      1_000,
-      endpoint,
-      undefined,
-      onUnavailable,
-    );
+    const observe = makeChromeBrowserStateObserver(desktop, 1_000, endpoint, {
+      onUnavailable: onUnavailable,
+    });
     await expect(observe()).resolves.toEqual({});
     expect(onUnavailable).toHaveBeenCalledTimes(1);
     expect(onUnavailable.mock.calls[0]?.[0]).toMatch(/^probe failed: .*timed out/);
@@ -96,13 +88,9 @@ describe("an E2B desktop command that exits non-zero", () => {
   it("names the exit when the geometry probe fails", async () => {
     const desktop = failingDesktop(exited(1, "Traceback: ConnectionRefusedError"));
     const onUnavailable = vi.fn();
-    const measure = makeChromeDesktopGeometryObserver(
-      desktop,
-      1_000,
-      endpoint,
-      undefined,
-      onUnavailable,
-    );
+    const measure = makeChromeDesktopGeometryObserver(desktop, 1_000, endpoint, {
+      onUnavailable: onUnavailable,
+    });
     await expect(measure()).resolves.toBeUndefined();
     expect(onUnavailable).toHaveBeenCalledWith(
       expect.stringMatching(/^probe exited 1: .*ConnectionRefusedError/),

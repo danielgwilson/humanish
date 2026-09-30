@@ -29,6 +29,25 @@ export interface ChromeCdpEndpoint {
 }
 
 /**
+ * Mobile emulation on later tabs (#623): the holder attaches to every page target Chrome opens
+ * after the launch page, so a tab the participant opens later should lay out at the phone width
+ * too. The first observation on each new target reads that page's own report; a target that
+ * reports the requested width is recorded through `onCovered`, and one that does not (or cannot be
+ * read) fires `onDrift` once, so a phone-labelled lane that spent part of its session at desktop
+ * layout says so with the number the page gave.
+ */
+export interface ChromeEmulationDrift {
+  emulatedTargetId: string;
+  expectedWidth: number;
+  expectTouch?: boolean;
+  onDrift: (reason: string) => void;
+  onCovered?: (
+    targetId: string,
+    read: { innerWidth: number; devicePixelRatio: number; maxTouchPoints: number },
+  ) => void;
+}
+
+/**
  * The URL / title / page-text / scroll observer behind stopWhen and task criteria. One probe per
  * observation, run on the sandbox's python3 (see src/routes/computer-use/cdp-probe.ts for why not
  * node: #514).
@@ -45,27 +64,15 @@ export function makeChromeBrowserStateObserver(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
-  targetId?: string,
-  onUnavailable?: (reason: string) => void,
-  /**
-   * Mobile emulation on later tabs (#623): the holder attaches to every page target Chrome opens
-   * after the launch page, so a tab the participant opens later should lay out at the phone width
-   * too. The first observation on each new target reads that page's OWN report; a target that
-   * reports the requested width is recorded through `onCovered`, and one that does not (or cannot
-   * be read) fires `onDrift` once, so a phone-labelled lane that spent part of its session at
-   * desktop layout says so with the number the page gave.
-   */
-  drift?: {
-    emulatedTargetId: string;
-    expectedWidth: number;
-    expectTouch?: boolean;
-    onDrift: (reason: string) => void;
-    onCovered?: (
-      targetId: string,
-      read: { innerWidth: number; devicePixelRatio: number; maxTouchPoints: number },
-    ) => void;
-  },
+  options: {
+    /** The page target to prefer before the participant switches tabs. */
+    targetId?: string | undefined;
+    /** Called once, with the reason, on the first probe that could not read the page. */
+    onUnavailable?: (reason: string) => void;
+    drift?: ChromeEmulationDrift | undefined;
+  } = {},
 ): () => Promise<{ url?: string; title?: string; text?: string; scrollY?: number }> {
+  const { targetId, onUnavailable, drift } = options;
   let reported = false;
   let drifted = false;
   const checkedTargets = new Set<string>(drift === undefined ? [] : [drift.emulatedTargetId]);
@@ -167,14 +174,15 @@ export async function applyMobileEmulation(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
-  targetId: string | undefined,
   request: ChromeMobileEmulationRequest,
+  options: { targetId?: string | undefined } = {},
 ): Promise<{
   fidelity: NonNullable<RunDesktopGeometry["fidelity"]>;
   warnings: string[];
   targetId?: string;
   holderName: string;
 }> {
+  const { targetId } = options;
   const command = (mode: "hold" | "fidelity") =>
     chromeCdpProbeCommand({
       ...endpoint,

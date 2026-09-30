@@ -1,7 +1,6 @@
-// The addressed message bus (#297) — the seam that makes "off-app" comms (email/SMS the persona
-// actually lives in) a first-class, persona-driven testable surface. A single port, addressed by
-// actor; fake (in-process) and real (provider-backed) adapters implement it identically, so the
-// persona surface + evidence writer consume it without knowing which is behind it.
+// The addressed message bus for captured mail (#297): the email or SMS a persona receives off the
+// app, as a testable surface. One port, addressed by lane, so the inbox surface and the evidence
+// writer read messages without knowing how they were captured.
 //
 // PUBLIC-SAFETY: raw address values, message bodies, links, and codes are RUNTIME-ONLY. Only the
 // address DIGEST (sha256-short, via redaction.digestText) is ever meant to reach a persisted bundle;
@@ -9,11 +8,11 @@
 
 export type CommsChannelKind = "email" | "sms";
 
-/** One actor's inbox identity. `value` is runtime-only; `digest` is the only form meant to persist. */
+/** One lane's inbox identity. `value` is runtime-only; `digest` is the only form meant to persist. */
 export interface CommsAddress {
   channel: CommsChannelKind;
   /** Which lane owns this inbox. */
-  actorId: string;
+  laneId: string;
   /** Runtime-only raw address, e.g. user-07@example.test | +15550137. */
   value: string;
   /** sha256-short(value) — the only form persisted (redaction.digestText). */
@@ -74,8 +73,8 @@ export interface InboundRaw {
 export interface CommsChannel {
   readonly channel: CommsChannelKind;
   readonly kind: "fake" | "real";
-  /** Mint/allocate an inbox for an actor (address auto-generated). Idempotent per actor. */
-  provision(actorId: string): Promise<CommsAddress>;
+  /** Mint an inbox for a lane (address generated). Idempotent per lane. */
+  provision(laneId: string): Promise<CommsAddress>;
   /** Route a composed message from one actor to addressed inboxes. Returns the delivered record. */
   send(message: OutboundMessage): Promise<CommsMessage>;
   /** Route a raw ingress delivery (app-under-test → recipient strings). Returns the messages that

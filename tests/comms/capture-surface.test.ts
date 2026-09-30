@@ -10,7 +10,7 @@ import {
   renderInboxMessage,
   renderInboxMessageSynth,
   rewriteOrigin,
-} from "../../src/comms/inbox.js";
+} from "../../src/comms/capture-surface.js";
 import type { CommsMessage } from "../../src/comms/types.js";
 
 // A realistic captured verification email: an app-LOOPBACK verify link (must be origin-rewritten to be
@@ -244,7 +244,7 @@ describe("comms-inbox: renderInboxList", () => {
 
 describe("recipient-scoped inbox files", () => {
   it("keeps list, message, latest, synthesized and JSON routes in the assigned address scope", async () => {
-    const { inboxRecipientScope } = await import("../../src/comms/inbox.js");
+    const { inboxRecipientScope } = await import("../../src/comms/capture-surface.js");
     const bus = new FakeInbox({ now: () => 123 });
     const ada = await bus.provisionAddress("ada", "ada@example.test");
     const grace = await bus.provisionAddress("grace", "grace@example.test");
@@ -351,7 +351,7 @@ describe("captured email images", () => {
   it("keeps image bytes out of persisted comms evidence and bounds attachment metadata", async () => {
     const { capturedInlineImages, inlineImageData, MAX_INLINE_IMAGE_BYTES } =
       await import("../../src/comms/images.js");
-    const { buildCommsThreadArtifact } = await import("../../src/comms/evidence.js");
+    const { buildCommsThreadArtifact } = await import("../../src/comms/thread-evidence.js");
     const [message] = await captured();
     const image = { contentId: "logo", contentType: "image/png", base64: png };
     expect(

@@ -27,7 +27,7 @@ import {
   type InboxSurfaceRecipient,
 } from "./sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "./sandbox-catch-script.js";
-import { buildInboxSurface } from "./inbox.js";
+import { buildInboxSurface } from "./capture-surface.js";
 
 /** The CLI writer surface this command needs (structurally compatible with cli/io.ts CliIo). */
 interface CatchHostIo {

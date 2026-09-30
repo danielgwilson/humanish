@@ -8,7 +8,7 @@ import {
   MAX_INLINE_IMAGES_BYTES,
 } from "./images.js";
 import { extractLinks, extractOtpCodes } from "./fake-inbox.js";
-import type { Shell, ShellResult } from "../substrates/shell.js";
+import { shellQuote, type Shell, type ShellResult } from "../substrates/shell.js";
 import type {
   ParticipantEmail,
   ReceivingSurface,
@@ -473,10 +473,6 @@ try:
 finally: server.server_close()
 `;
 
-function shq(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
 /** Machine shell transport only; never opens a host/public listener or sends management credentials. */
 export async function deployReceivingInbox(
   shell: Shell,
@@ -500,7 +496,7 @@ export async function deployReceivingInbox(
   let stopped = false,
     generation = 0,
     tail = Promise.resolve();
-  async function bounded<T>(operation: Promise<T>): Promise<T> {
+  async function withTransportTimeout<T>(operation: Promise<T>): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
@@ -519,35 +515,35 @@ export async function deployReceivingInbox(
     }
   }
   async function checked(call: Promise<ShellResult>): Promise<string> {
-    const result = await bounded(call);
+    const result = await withTransportTimeout(call);
     if (result.exitCode !== 0) throw new Error("Receiving inbox desktop command failed.");
     return result.stdout;
   }
   const command = (cmd: string): Promise<string> =>
     checked(shell.run(cmd, { requestTimeoutMs: timeout, timeoutMs: timeout }));
   const write = async (path: string, data: string): Promise<void> => {
-    await bounded(shell.writeFile(path, data, { requestTimeoutMs: timeout }));
+    await withTransportTimeout(shell.writeFile(path, data, { requestTimeoutMs: timeout }));
   };
   const stop = async (): Promise<void> => {
     stopped = true;
     await tail.catch(() => undefined);
     // The server owns its process lifetime. A file signal avoids PID-reuse deletion authority.
     await command(
-      `python3 -c ${shq("import pathlib,time,sys,shutil\np=pathlib.Path(sys.argv[1])\nif not p.exists(): sys.exit(0)\n(p/'stop').touch()\nend=time.monotonic()+4\nwhile time.monotonic()<end:\n try:\n  pid=int((p/'pid').read_text()); cmd=pathlib.Path('/proc/'+str(pid)+'/cmdline').read_bytes()\n except (FileNotFoundError,ProcessLookupError): break\n if str(p/'server.py').encode() not in cmd: break\n time.sleep(.1)\nelse: sys.exit(1)\nshutil.rmtree(p)\n")} ${shq(dir)}`,
+      `python3 -c ${shellQuote("import pathlib,time,sys,shutil\np=pathlib.Path(sys.argv[1])\nif not p.exists(): sys.exit(0)\n(p/'stop').touch()\nend=time.monotonic()+4\nwhile time.monotonic()<end:\n try:\n  pid=int((p/'pid').read_text()); cmd=pathlib.Path('/proc/'+str(pid)+'/cmdline').read_bytes()\n except (FileNotFoundError,ProcessLookupError): break\n if str(p/'server.py').encode() not in cmd: break\n time.sleep(.1)\nelse: sys.exit(1)\nshutil.rmtree(p)\n")} ${shellQuote(dir)}`,
     );
   };
   try {
-    await command(`mkdir -m 700 ${shq(dir)}`);
+    await command(`mkdir -m 700 ${shellQuote(dir)}`);
     await write(`${dir}/snapshot.json`, '{"generation":0,"routes":{}}');
     await write(`${dir}/server.py`, SERVER);
     await checked(
       shell.start(
-        `python3 ${shq(`${dir}/server.py`)} ${shq(dir)} ${port} ${shq(nonce)} ${shq(RECEIVING_INBOX_CSP)}`,
+        `python3 ${shellQuote(`${dir}/server.py`)} ${shellQuote(dir)} ${port} ${shellQuote(nonce)} ${shellQuote(RECEIVING_INBOX_CSP)}`,
         { requestTimeoutMs: timeout, timeoutMs: timeout },
       ),
     );
     const ready = await command(
-      `python3 -c ${shq("import sys,time,urllib.request\nend=time.monotonic()+float(sys.argv[3])\nwhile time.monotonic()<end:\n try:\n  response=urllib.request.urlopen(sys.argv[1],timeout=.5)\n  if response.read(128).decode()==sys.argv[2]: sys.exit(0)\n except Exception: pass\n time.sleep(.1)\nsys.exit(1)\n")} ${shq(`http://127.0.0.1:${port}/health`)} ${shq(nonce)} ${Math.max(0.1, timeout / 1000 - 0.2)}`,
+      `python3 -c ${shellQuote("import sys,time,urllib.request\nend=time.monotonic()+float(sys.argv[3])\nwhile time.monotonic()<end:\n try:\n  response=urllib.request.urlopen(sys.argv[1],timeout=.5)\n  if response.read(128).decode()==sys.argv[2]: sys.exit(0)\n except Exception: pass\n time.sleep(.1)\nsys.exit(1)\n")} ${shellQuote(`http://127.0.0.1:${port}/health`)} ${shellQuote(nonce)} ${Math.max(0.1, timeout / 1000 - 0.2)}`,
     );
     void ready;
   } catch {
@@ -586,10 +582,10 @@ export async function deployReceivingInbox(
           // Monotonic generations also reject an SDK operation that completes after its caller's
           // timeout. The desktop-side lock covers read/compare/rename; transport timeouts do not.
           await command(
-            `python3 -c ${shq("import fcntl,json,os,pathlib,sys,urllib.request\np=pathlib.Path(sys.argv[1]); pending=pathlib.Path(sys.argv[2])\nwith (p/'publish.lock').open('a') as lock:\n fcntl.flock(lock,fcntl.LOCK_EX)\n if (p/'stop').exists(): sys.exit(1)\n with pending.open() as f: new=json.load(f)\n with (p/'snapshot.json').open() as f: old=json.load(f)\n if new['generation']<=old['generation']: sys.exit(1)\n os.replace(pending,p/'snapshot.json')\nwith urllib.request.urlopen(sys.argv[3],timeout=2) as response:\n if response.read(128).decode()!=sys.argv[4]: sys.exit(1)\n")} ${shq(dir)} ${shq(temporary)} ${shq(`http://127.0.0.1:${port}/health`)} ${shq(nonce)}`,
+            `python3 -c ${shellQuote("import fcntl,json,os,pathlib,sys,urllib.request\np=pathlib.Path(sys.argv[1]); pending=pathlib.Path(sys.argv[2])\nwith (p/'publish.lock').open('a') as lock:\n fcntl.flock(lock,fcntl.LOCK_EX)\n if (p/'stop').exists(): sys.exit(1)\n with pending.open() as f: new=json.load(f)\n with (p/'snapshot.json').open() as f: old=json.load(f)\n if new['generation']<=old['generation']: sys.exit(1)\n os.replace(pending,p/'snapshot.json')\nwith urllib.request.urlopen(sys.argv[3],timeout=2) as response:\n if response.read(128).decode()!=sys.argv[4]: sys.exit(1)\n")} ${shellQuote(dir)} ${shellQuote(temporary)} ${shellQuote(`http://127.0.0.1:${port}/health`)} ${shellQuote(nonce)}`,
           );
         } finally {
-          await command(`rm -f ${shq(temporary)}`).catch(() => undefined);
+          await command(`rm -f ${shellQuote(temporary)}`).catch(() => undefined);
         }
       });
       tail = next.catch(() => undefined);

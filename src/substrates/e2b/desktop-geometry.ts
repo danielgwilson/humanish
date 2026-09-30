@@ -99,12 +99,18 @@ export function makeChromeDesktopGeometryObserver(
   desktop: E2BDesktopSandbox,
   requestTimeoutMs: number,
   endpoint: ChromeCdpEndpoint,
-  targetId?: string,
-  onUnavailable?: (reason: string) => void,
-  prefer: ChromeCdpPagePreference = "pinned",
+  options: {
+    /** The page target to measure; absent, the probe attributes one from the endpoint. */
+    targetId?: string | undefined;
+    /** Called with the reason whenever a channel could not be measured. */
+    onUnavailable?: (reason: string) => void;
+    /** Launch captures stay pinned; final captures follow the active tab. */
+    prefer?: ChromeCdpPagePreference;
+  } = {},
 ): () => Promise<
   (Pick<RunDesktopGeometry, "browserWindow" | "viewport"> & { targetId?: string }) | undefined
 > {
+  const { targetId, onUnavailable, prefer = "pinned" } = options;
   const shell = e2bShell(desktop);
   return async () => {
     const result = await shell.run(
@@ -422,11 +428,13 @@ export async function captureDesktopBrowserGeometry(args: {
               : { profileDir: args.launchIdentity.profileDir }),
             targetUrl: args.targetUrl,
           },
-          args.browserTargetId,
-          (reason) => {
-            cdpUnavailable = reason;
+          {
+            targetId: args.browserTargetId,
+            onUnavailable: (reason) => {
+              cdpUnavailable = reason;
+            },
+            prefer: args.pagePreference ?? "pinned",
           },
-          args.pagePreference ?? "pinned",
         )().catch((error: unknown) => {
           cdpUnavailable = toErrorMessage(error);
           return undefined;

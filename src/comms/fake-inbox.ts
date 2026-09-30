@@ -74,17 +74,17 @@ export function extractOtpCodes(body: string): string[] {
   return bare.slice(0, 10);
 }
 
-function sanitizeLocalPart(actorId: string): string {
+function sanitizeLocalPart(laneId: string): string {
   return (
-    actorId
+    laneId
       .toLowerCase()
       .replace(/[^a-z0-9._-]+/g, "-")
       .replace(/^-+|-+$/g, "") || "actor"
   );
 }
 
-function smsAddressFor(actorId: string): string {
-  const digits = digestText(actorId, 16)
+function smsAddressFor(laneId: string): string {
+  const digits = digestText(laneId, 16)
     .replace(/[a-f]/g, (c) => String(c.charCodeAt(0) % 10))
     .slice(0, 7);
   return `+1555${digits}`;
@@ -106,7 +106,7 @@ export class FakeInbox implements CommsChannel {
   readonly kind = "fake" as const;
   private readonly domain: string;
   private readonly clock: () => number;
-  private readonly byActor = new Map<string, CommsAddress>();
+  private readonly byLane = new Map<string, CommsAddress>();
   private readonly byValue = new Map<string, CommsAddress>();
   private readonly queues = new Map<string, CommsMessage[]>();
   private counter = 0;
@@ -117,13 +117,13 @@ export class FakeInbox implements CommsChannel {
     this.clock = options.now ?? ((): number => Date.now());
   }
 
-  async provision(actorId: string): Promise<CommsAddress> {
-    const existing = this.byActor.get(actorId);
+  async provision(laneId: string): Promise<CommsAddress> {
+    const existing = this.byLane.get(laneId);
     if (existing) return existing;
     let value =
       this.channel === "sms"
-        ? smsAddressFor(actorId)
-        : `${sanitizeLocalPart(actorId)}@${this.domain}`;
+        ? smsAddressFor(laneId)
+        : `${sanitizeLocalPart(laneId)}@${this.domain}`;
     // Minted identities must stay distinct. Explicit duplicate addresses below
     // are the intentional shared-mailbox path.
     if (this.byValue.has(value.toLowerCase())) {
@@ -131,43 +131,43 @@ export class FakeInbox implements CommsChannel {
         throw new Error("Generated inbox identity collision; declare distinct addresses");
       let attempt = 0;
       do {
-        value = `${sanitizeLocalPart(actorId)}-${digestText(`${actorId}:${attempt++}`, 16)}@${this.domain}`;
+        value = `${sanitizeLocalPart(laneId)}-${digestText(`${laneId}:${attempt++}`, 16)}@${this.domain}`;
       } while (this.byValue.has(value.toLowerCase()));
     }
     const address: CommsAddress = {
       channel: this.channel,
-      actorId,
+      laneId,
       value,
       digest: digestText(value, 16),
     };
-    this.byActor.set(actorId, address);
+    this.byLane.set(laneId, address);
     this.byValue.set(value.toLowerCase(), address);
     this.queues.set(value.toLowerCase(), []);
     return address;
   }
 
   /**
-   * Provision an inbox for `actorId` at an EXPLICIT address (a lab-declared recipient), so the
+   * Provision an inbox for `laneId` at an EXPLICIT address (a lab-declared recipient), so the
    * app-under-test's send to that literal address resolves in `deliverRaw` (which drops recipients
-   * with no provisioned inbox). Declaring the same address intentionally shares its inbox; if `actorId` already held
+   * with no provisioned inbox). Declaring the same address intentionally shares its inbox; if `laneId` already held
    * a different auto-generated address, the declared address supersedes it (the lab's declaration
    * wins). Idempotent: re-declaring the same address returns the existing inbox without clearing it.
    */
-  async provisionAddress(actorId: string, value: string): Promise<CommsAddress> {
+  async provisionAddress(laneId: string, value: string): Promise<CommsAddress> {
     const normalized = value.trim();
     const key = normalized.toLowerCase();
     const prior = this.byValue.get(key);
     if (prior) {
-      this.byActor.set(actorId, prior);
+      this.byLane.set(laneId, prior);
       return prior;
     }
     const address: CommsAddress = {
       channel: this.channel,
-      actorId,
+      laneId,
       value: normalized,
       digest: digestText(normalized, 16),
     };
-    this.byActor.set(actorId, address);
+    this.byLane.set(laneId, address);
     this.byValue.set(key, address);
     this.queues.set(key, []);
     return address;
@@ -225,7 +225,7 @@ export class FakeInbox implements CommsChannel {
   }
 
   async teardown(): Promise<void> {
-    this.byActor.clear();
+    this.byLane.clear();
     this.byValue.clear();
     this.queues.clear();
     this.counter = 0;
@@ -233,6 +233,6 @@ export class FakeInbox implements CommsChannel {
 
   /** Inspection helper (tests / a surface): every inbox currently provisioned. */
   addresses(): CommsAddress[] {
-    return [...this.byActor.values()];
+    return [...this.byLane.values()];
   }
 }

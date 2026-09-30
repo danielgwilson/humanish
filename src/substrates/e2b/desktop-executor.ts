@@ -1,3 +1,4 @@
+import { shellQuote } from "../shell.js";
 import { perceptualSignature } from "../../evidence/frame-signature.js";
 export { perceptualSignature } from "../../evidence/frame-signature.js";
 
@@ -182,10 +183,6 @@ function toBuffer(bytes: Uint8Array | Buffer): Buffer {
   return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
 }
 
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
 /**
  * The stage of the type -> clipboard-paste fallback chain that failed. Public-safe
  * (a path label, never typed text). Surfaced so a run bundle can tell app focus
@@ -294,7 +291,7 @@ async function pasteTextViaClipboard(
   const clipboardCommand = [
     "set -euo pipefail",
     'export DISPLAY="${DISPLAY:-:0}"',
-    `text_path=${shellSingleQuote(path)}`,
+    `text_path=${shellQuote(path)}`,
     'cleanup() { rm -f "$text_path"; }',
     "trap cleanup EXIT",
     // Try xclip, then fall back to xsel if xclip is absent OR fails; distinguish a

@@ -18,6 +18,8 @@
 // of swallowing an exit code; the TypeScript side turns that into a lane warning that names the
 // consequence ("url/text criteria will read as NEVER MEASURED").
 
+import { shellQuote } from "../../substrates/shell.js";
+
 /** Which target to attribute when the endpoint lists several pages. */
 export type ChromeCdpPagePreference = "pinned" | "active";
 
@@ -522,10 +524,6 @@ def main():
 main()
 `;
 
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
 /** The exact shell command a sandbox runs for one probe. */
 export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
   const payload: Record<string, unknown> = { mode: args.mode, targetUrl: args.targetUrl };
@@ -534,7 +532,7 @@ export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
   if (args.targetId !== undefined) payload.targetId = args.targetId;
   if (args.prefer !== undefined) payload.prefer = args.prefer;
   if (args.emulation !== undefined) payload.emulation = args.emulation;
-  return `python3 -c ${shellSingleQuote(CHROME_CDP_PROBE_PY)} ${shellSingleQuote(JSON.stringify(payload))}`;
+  return `python3 -c ${shellQuote(CHROME_CDP_PROBE_PY)} ${shellQuote(JSON.stringify(payload))}`;
 }
 
 /**

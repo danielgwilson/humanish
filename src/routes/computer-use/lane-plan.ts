@@ -4,7 +4,7 @@ import {
 } from "../../substrates/local/runtime-config.js";
 import { DEFAULT_STATE_STEP_TIMEOUT_MS } from "../../subject/state.js";
 import type { ActorPersonaRef } from "../../actors/contract.js";
-import { recipientInboxUrl } from "../../comms/inbox.js";
+import { recipientInboxUrl } from "../../comms/capture-surface.js";
 import {
   DEFAULT_DEVICE_PRESET,
   isDevicePresetName,

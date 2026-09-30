@@ -5,7 +5,7 @@ import { runDetachedStep, type DetachedTimers } from "../substrates/detached.js"
 import { runOrThrow, type Shell } from "../substrates/shell.js";
 import { runSubjectServePipeline, serveProvisioningBudgetMs } from "./serve.js";
 import {
-  CLONE_TIMEOUT_MS,
+  SOURCE_TIMEOUT_MS,
   emitPhaseCompleted,
   emitPhaseStarted,
   SUBJECT_DIR,
@@ -17,7 +17,7 @@ export function cloneProvisioningBudgetMs(
   serve: LabSubjectServe,
   state: LabSubjectState | undefined,
 ): number {
-  return CLONE_TIMEOUT_MS + serveProvisioningBudgetMs(serve, state);
+  return SOURCE_TIMEOUT_MS + serveProvisioningBudgetMs(serve, state);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function provisionCloneSubject(
   const clone = await runDetachedStep(shell, {
     name: "subject-clone",
     command: cloneCommand,
-    timeoutMs: CLONE_TIMEOUT_MS,
+    timeoutMs: SOURCE_TIMEOUT_MS,
     requestTimeoutMs: args.requestTimeoutMs,
     ...timers,
   });

@@ -11,7 +11,7 @@ import {
   DESKTOP_RECORDING_MAX_BYTES,
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
-import { runOrThrow, type Shell } from "../shell.js";
+import { runOrThrow, shellQuote, type Shell } from "../shell.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./desktop-launch.js";
 import { e2bShell } from "./shell.js";
 
@@ -29,10 +29,6 @@ const baseEnv = Object.freeze({
   LANG: "C.UTF-8",
   DISPLAY: ":0",
 });
-
-function quote(value: string): string {
-  return `'${value.replaceAll("'", `'"'"'`)}'`;
-}
 
 async function settlesWithin(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
   let timer: NodeJS.Timeout | undefined;
@@ -116,11 +112,15 @@ export async function startE2BDesktopRecording(options: {
   };
   try {
     for (const setup of options.audio ? buildDesktopRecorderPulseSetupCommands() : []) {
-      await runOrThrow(shell, `${quote(setup.binary)} ${setup.args.map(quote).join(" ")}`, {
-        env,
-        timeoutMs: 5_000,
-        requestTimeoutMs: options.requestTimeoutMs,
-      });
+      await runOrThrow(
+        shell,
+        `${shellQuote(setup.binary)} ${setup.args.map(shellQuote).join(" ")}`,
+        {
+          env,
+          timeoutMs: 5_000,
+          requestTimeoutMs: options.requestTimeoutMs,
+        },
+      );
     }
   } catch (error) {
     await stopOwnedPulse();
@@ -138,8 +138,8 @@ export async function startE2BDesktopRecording(options: {
     startedAtMs,
   );
   const launch =
-    `set -eu; rm -f ${quote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${quote(command.binary)} ${command.args.map(quote).join(" ")} & ` +
-    `child=$!; printf '%s\\n' "$child" > ${quote(PID_PATH)}; wait "$child"`;
+    `set -eu; rm -f ${shellQuote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${shellQuote(command.binary)} ${command.args.map(shellQuote).join(" ")} & ` +
+    `child=$!; printf '%s\\n' "$child" > ${shellQuote(PID_PATH)}; wait "$child"`;
   let handle: E2BCommandResult;
   // The host launch boundary is the only clock shared with later run events. Capture it before
   // the provider RPC so startup transport latency is not silently removed from the timeline.
@@ -181,7 +181,7 @@ export async function startE2BDesktopRecording(options: {
     await stopOwnedPulse();
     throw new Error("E2B desktop recorder exited during startup.");
   }
-  const pidResult = await runOrThrow(shell, `cat ${quote(PID_PATH)}`, {
+  const pidResult = await runOrThrow(shell, `cat ${shellQuote(PID_PATH)}`, {
     timeoutMs: 5_000,
     requestTimeoutMs: options.requestTimeoutMs,
   }).catch(async (error: unknown) => {
@@ -227,7 +227,7 @@ export async function startE2BDesktopRecording(options: {
           const probeCommand = buildDesktopRecorderProbeCommand(OUTPUT_PATH);
           const probe = await runOrThrow(
             shell,
-            `${quote(probeCommand.binary)} ${probeCommand.args.map(quote).join(" ")}`,
+            `${shellQuote(probeCommand.binary)} ${probeCommand.args.map(shellQuote).join(" ")}`,
             {
               timeoutMs: 30_000,
               requestTimeoutMs: options.requestTimeoutMs,
