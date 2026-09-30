@@ -208,10 +208,12 @@ Fail-closed guards, all BEFORE any key check, so a CLI invocation never sees a m
   where the type does not stop it), on a subject other than `app-url` or `local-app`, or with
   more than one participant. `createProvider` alone is allowed; that is a model swap on the
   normal E2B route.
-- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run without
-  `inProcess` (there is no built-in in-process driver yet). A structured error, never a
-  desktop attempt. The same code refuses an `app-url` lab with `execution.target: local`
-  when no local desktop runtime is configured.
+- `HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR`: a `subject.source: local-app` config run
+  without `inProcess` (there is no built-in in-process driver yet). A structured error,
+  never a desktop attempt.
+- `HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING`: an `app-url` lab with `execution.target: local`
+  and no local desktop lane. `runLab` gives a local browser study its lane; a direct route
+  call or an in-process executor on the same lab has none.
 - `HUMANISH_CUA_LAB_EXECUTOR_NO_PROVIDER`: the deprecated `cuaHooks.buildExecutor` without
   `cuaHooks.buildProvider`.
 

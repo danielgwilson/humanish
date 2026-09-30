@@ -244,16 +244,19 @@ function driverReason(
     return {
       code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
       message:
-        "subject.source: local-app requires a library caller to supply cuaHooks.buildExecutor + buildProvider; there is no built-in driver for an in-process JS contract. (Drive the app via runLab(..., { cuaHooks: { buildExecutor, buildProvider } }).)",
+        "subject.source: local-app has no built-in driver. Supply one through runLab(config, { inProcess: { executor }, createProvider }); a state-driven executor needs a non-vision provider.",
     };
+  // runLab gives a local browser study its desktop lane; a direct route call or an in-process
+  // executor on the same lab has none.
   if (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
     !hooks.createDesktopLane
   )
     return {
-      code: "HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR",
-      message: "Local browser studies require a configured local desktop runtime.",
+      code: "HUMANISH_CUA_LAB_LOCAL_DESKTOP_MISSING",
+      message:
+        "An app-url lab with execution.target: local needs a local desktop. runLab starts one; a direct route call or an in-process executor does not.",
     };
   return undefined;
 }

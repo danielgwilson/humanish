@@ -5661,7 +5661,9 @@ describe("runCuaActorLab in-process (state-driven, no E2B) — issue #148", () =
     expect(created).toHaveLength(0);
     expect(outcome.ok).toBe(false);
     expect(outcome.error?.code).toBe("HUMANISH_CUA_LAB_LOCAL_APP_NO_EXECUTOR");
-    expect(outcome.error?.message).toContain("buildExecutor");
+    // The message names the typed homes, not the deprecated cuaHooks.buildExecutor.
+    expect(outcome.error?.message).toContain("inProcess: { executor }, createProvider");
+    expect(outcome.error?.message).not.toContain("cuaHooks");
     expect(outcome.sandbox).toBeUndefined();
   });
 
