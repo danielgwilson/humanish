@@ -13,6 +13,14 @@
 // command — and names the one that will actually work ON THIS MACHINE, because a next step that
 // fails is worse than none.
 
+import type { LocalAgentId } from "../actors/local-agent/cli.js";
+
+/** A coding agent that reports a signed-in account on this machine. */
+interface SignedInAgent {
+  id: LocalAgentId;
+  label: string;
+}
+
 export interface FirstRunEnvironment {
   /** A sandbox to run the study in. Nothing live happens without it. */
   hasE2bKey: boolean;
@@ -31,8 +39,8 @@ export interface FirstRunEnvironment {
   installedInProject: boolean;
   /** A provider API key for the model. */
   hasProviderKey: boolean;
-  /** A coding agent already signed in locally — Codex or Claude Code. */
-  localAgents: readonly string[];
+  /** The coding agents already signed in locally: Codex, Claude Code, or both. */
+  localAgents: readonly SignedInAgent[];
   /** Host shape only; `doctor --lab local-browser` owns exact read-only readiness. */
   platform?: NodeJS.Platform;
   arch?: string;
@@ -48,6 +56,19 @@ export type FirstRunActor = "openai-computer-use" | "local-agent";
 export function starterActorFor(env: FirstRunEnvironment): FirstRunActor {
   if (!env.hasProviderKey && env.localAgents.length > 0) return "local-agent";
   return "openai-computer-use";
+}
+
+/** The signed-in agent a first study uses: Codex when it is signed in, else the one that is. */
+function preferredAgent(env: FirstRunEnvironment): SignedInAgent | undefined {
+  return env.localAgents.find((agent) => agent.id === "codex") ?? env.localAgents[0];
+}
+
+/**
+ * The `localAgent` a local-agent starter lab names. Left out, the lab would default to Codex and
+ * refuse to run on a machine where only Claude Code is signed in.
+ */
+export function starterLocalAgentFor(env: FirstRunEnvironment): LocalAgentId | undefined {
+  return starterActorFor(env) === "local-agent" ? preferredAgent(env)?.id : undefined;
 }
 
 export interface FirstRunStep {
@@ -99,7 +120,7 @@ export function firstRunSteps(env: FirstRunEnvironment): FirstRunStep[] {
   if (env.hasProviderKey || env.localAgents.length > 0) {
     const brain = env.hasProviderKey
       ? "your provider key"
-      : `${env.localAgents[0]} (already signed in — no API key needed)`;
+      : `${preferredAgent(env)?.label} (already signed in — no API key needed)`;
     // Everything the step needs, in one line. Splitting it across two commands means the second
     // one fails, which is the same dead end this guidance exists to remove.
     const command = env.hasDesktopSdk

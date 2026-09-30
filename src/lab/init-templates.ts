@@ -1,3 +1,5 @@
+import type { LocalAgentId } from "../actors/local-agent/cli.js";
+
 export interface StarterFile {
   path: string;
   contents: string;
@@ -60,7 +62,7 @@ type StarterActor = "openai-computer-use" | "local-agent";
  * refuses a dollar cap on it (HUMANISH_CUA_LAB_UNPRICED_CAP); that variant is bounded by the
  * session timeout instead of a cap it could never enforce.
  */
-function tryLiveLab(actor: StarterActor): StarterFile {
+function tryLiveLab(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {
   const account = actor === "local-agent";
   const cost = account
     ? `  WHAT IT COSTS: one participant, one small task, a few E2B desktop minutes and your Codex
@@ -72,7 +74,8 @@ function tryLiveLab(actor: StarterActor): StarterFile {
     ? `  # Your machine has a coding agent signed in, so this study uses it: no provider API key,
   # only E2B. To use a provider key instead, swap to \`type: openai-computer-use\` and add
   # execution.caps.maxUsd.
-  - type: local-agent`
+  - type: local-agent
+    localAgent: ${localAgent}`
     : `  - type: openai-computer-use
     # Bounds each model reply. Under the cap below it also bounds what a stalled or lost request
     # can cost, so the run can retry it instead of stopping.
@@ -435,12 +438,13 @@ export const humanishScripts: Record<string, string> = {
 export function starterFilesFor(
   actor: StarterActor,
   localBrowser: LocalBrowserStarter = DEFAULT_LOCAL_BROWSER_STARTER,
+  localAgent?: LocalAgentId,
 ): StarterFile[] {
   return starterFiles.map((file) =>
     file.path === "humanish/labs/local-browser.yaml"
       ? localBrowserLab(localBrowser)
       : file.path === "humanish/labs/try-live.yaml"
-        ? tryLiveLab(actor)
+        ? tryLiveLab(actor, localAgent)
         : file,
   );
 }
