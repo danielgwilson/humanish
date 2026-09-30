@@ -3808,7 +3808,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-          "message": "shared-world studies need `execution.concurrency` of at least 2 (got 1). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs `subject.exposure: synthetic` and a `serve.start` that binds 0.0.0.0."
+          "message": "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session)."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

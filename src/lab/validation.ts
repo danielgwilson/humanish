@@ -298,12 +298,13 @@ export function outputTokenLimitValidationReason(config: LabConfig): string | nu
 /**
  * Shared-world participants share one live app, so at least two must be live at once. The
  * sequential shared-world route (`execution.concurrency: 1`) was removed in 0.106.0; the parser
- * fills an omitted concurrency with the participant count.
+ * fills an omitted concurrency with the participant count. Both callers check it after their
+ * two-lane roster floor, so a one-seat roster gets the roster refusal, never this one.
  */
 function sharedWorldConcurrencyReason(config: LabConfig): string | null {
   // Direct library callers skip the parser, so an omitted value defaults here exactly as the
-  // route does: to the participant count.
-  const participants = config.actors[0]?.lanes?.length ?? config.actors[0]?.count ?? 1;
+  // route does: to the participant count. A missing roster reads as 0 and is refused.
+  const participants = config.actors[0]?.lanes?.length ?? 0;
   const concurrency = config.execution?.concurrency ?? participants;
   if (concurrency >= 2) return null;
   return `shared-world studies need \`execution.concurrency\` of at least 2 (got ${concurrency}). Sequential shared-world turns (concurrency 1) were removed in 0.106.0: omit execution.concurrency to run every participant at once, or set it to 2 or more. A provisioned subject also needs \`subject.exposure: synthetic\` and a \`serve.start\` that binds 0.0.0.0.`;
@@ -364,6 +365,10 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   if (!actorResolvesToComputerUse(config.actors[0]?.type)) {
     return `the external-public shared-world route requires a registered computer-use actor (one of: ${registeredComputerUseActors().join(", ")}) — each role seat runs a computer-use session.`;
   }
+  const lanes = config.actors[0]?.lanes;
+  if (!lanes || lanes.length < 2) {
+    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session).";
+  }
   const sharedWorldConcurrency = sharedWorldConcurrencyReason(config);
   if (sharedWorldConcurrency) return sharedWorldConcurrency;
   if (config.policies?.allowPublicTargets !== true) {
@@ -396,10 +401,6 @@ export function externalPublicSharedWorldValidationReason(config: LabConfig): st
   }
   if (config.subject.clone !== undefined || config.subject.repos !== undefined) {
     return "`subject.clone`/`subject.repos` are forbidden on the external-public shared-world route — nothing is cloned; the public deployment IS the plane.";
-  }
-  const lanes = config.actors[0]?.lanes;
-  if (!lanes || lanes.length < 2) {
-    return "the external-public shared-world route requires an `actors[0].lanes` roster of at least 2 roles (a single-seat shared world proves no shared session).";
   }
   if (lanes.some((lane) => lane.entry !== undefined)) {
     return "`actors[0].lanes[].entry` (the loopback same-origin seat path) is forbidden on the external-public shared-world route — there is no harness-served serve.url to resolve it against; seats open the public appUrl and reach the shared session through the real UI.";
