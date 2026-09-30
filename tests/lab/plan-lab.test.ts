@@ -7,27 +7,15 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { listLabManifests, resolveLabManifest } from "../../src/lab/discover.js";
 import { labKeyRequirements } from "../../src/lab/doctor.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 import { planLab } from "../../src/lab/plan.js";
 import type { LabPlan, PlanResult, Requirement } from "../../src/lab/plan-types.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
 import { resolveCuaLanePlan } from "../../src/routes/computer-use/lane-plan.js";
+import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-
-async function committedLabs(): Promise<[string, LabConfig][]> {
-  const labs: [string, LabConfig][] = [];
-  for (const lab of (await listLabManifests(ROOT)).labs.filter(
-    (lab) => lab.origin === "committed",
-  )) {
-    const resolved = await resolveLabManifest(ROOT, lab.id);
-    if (!resolved.ok) throw new Error(`${lab.id}: ${resolved.error.message}`);
-    labs.push([lab.id, resolved.config]);
-  }
-  return labs;
-}
 
 function planOf(result: PlanResult): LabPlan {
   if (!result.ok) throw new Error(`refused on ${result.refusal.route}`);
@@ -55,7 +43,7 @@ const scriptedApp = {
 describe("planLab", () => {
   it("pins the dry and live plan of every committed lab", async () => {
     const plans: Record<string, unknown> = {};
-    for (const [id, config] of await committedLabs()) {
+    for (const [id, config] of await committedLabs(ROOT)) {
       const dry = planLab(config, { cwd: ROOT, dryRun: true });
       const live = planLab(config, { cwd: ROOT, dryRun: false });
       plans[id] = {
@@ -72,7 +60,7 @@ describe("planLab", () => {
 
   it("derives computer-use concurrency, session budget and sandbox time as the lane plan does", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
-      ...(await committedLabs())
+      ...(await committedLabs(ROOT))
         .filter(([, config]) => selectLabBackend(config) === "cua")
         .map(([id, config]) => [id, config, undefined] as [string, LabConfig, undefined]),
       [
@@ -117,7 +105,7 @@ describe("planLab", () => {
   });
 
   it("asks for the keys lab doctor asks for on a live run", async () => {
-    for (const [id, config] of await committedLabs()) {
+    for (const [id, config] of await committedLabs(ROOT)) {
       const result = planLab(config, { cwd: ROOT, dryRun: false });
       if (!result.ok) continue;
       const requirements = result.planned.plan.requirements;

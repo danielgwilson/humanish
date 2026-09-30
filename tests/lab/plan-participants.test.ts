@@ -10,7 +10,6 @@ import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { parseLabConfig } from "../../src/lab/config.js";
-import { listLabManifests, resolveLabManifest } from "../../src/lab/discover.js";
 import {
   computerUseParticipants,
   routeOf,
@@ -22,6 +21,7 @@ import { planCuaLanes } from "../../src/routes/computer-use/lane-plan.js";
 import type { CuaLaneSpec } from "../../src/routes/computer-use/types.js";
 import { runConcurrentSharedWorld } from "../../src/routes/shared-world/lab.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
+import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const cleanup: string[] = [];
@@ -41,15 +41,8 @@ function parsed(raw: Record<string, unknown>): LabConfig {
   return result.config;
 }
 
-async function committedLabs(route: string): Promise<[string, LabConfig][]> {
-  const labs: [string, LabConfig][] = [];
-  for (const lab of (await listLabManifests(ROOT)).labs.filter(
-    (lab) => lab.origin === "committed",
-  )) {
-    const resolved = await resolveLabManifest(ROOT, lab.id);
-    if (resolved.ok && routeOf(resolved.config) === route) labs.push([lab.id, resolved.config]);
-  }
-  return labs;
+async function committedLabsOn(route: string): Promise<[string, LabConfig][]> {
+  return (await committedLabs(ROOT)).filter(([, config]) => routeOf(config) === route);
 }
 
 const stop = { any: [{ textIncludes: "Done" }] };
@@ -165,7 +158,7 @@ const plain = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 describe("computerUseParticipants", () => {
   it("matches the lane specs planCuaLanes builds, for committed labs and variants", async () => {
     const configs: [string, LabConfig, number | undefined][] = [
-      ...(await committedLabs("computer-use")).map(
+      ...(await committedLabsOn("computer-use")).map(
         ([id, config]) => [id, config, undefined] as [string, LabConfig, undefined],
       ),
       ...cuVariants,
@@ -227,7 +220,7 @@ describe("sharedWorldSeats", () => {
 
   it("matches the seats a shared-world dry run records", async () => {
     const configs = [
-      ...(await committedLabs("shared-world")),
+      ...(await committedLabsOn("shared-world")),
       ["unnamed seats", unnamedSeats] as [string, LabConfig],
     ];
     for (const [name, config] of configs) {

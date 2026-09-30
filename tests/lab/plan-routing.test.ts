@@ -6,7 +6,6 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { listLabManifests, resolveLabManifest } from "../../src/lab/discover.js";
 import { selectLabBackend } from "../../src/lab/engine.js";
 import {
   routesToComputerUse,
@@ -19,6 +18,7 @@ import {
   routesToTerminalProduct,
 } from "../../src/lab/routing.js";
 import { LAB_CONFIG_SCHEMA, type LabConfig } from "../../src/lab/types.js";
+import { committedLabs } from "../helpers/committed-labs.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -94,13 +94,7 @@ describe("lab routing", () => {
 
   it("pins the route of every committed lab", async () => {
     const committed: Record<string, string> = {};
-    for (const lab of (await listLabManifests(ROOT)).labs.filter(
-      (lab) => lab.origin === "committed",
-    )) {
-      const resolved = await resolveLabManifest(ROOT, lab.id);
-      if (!resolved.ok) throw new Error(`${lab.id}: ${resolved.error.message}`);
-      committed[lab.id] = describeRouting(resolved.config);
-    }
+    for (const [id, config] of await committedLabs(ROOT)) committed[id] = describeRouting(config);
     expect(Object.keys(committed).length).toBeGreaterThan(0);
     await expect(`${JSON.stringify(committed, null, 2)}\n`).toMatchFileSnapshot(
       "../golden/plans/routing-committed.json",
