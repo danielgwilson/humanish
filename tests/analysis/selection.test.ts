@@ -10,7 +10,8 @@ import {
   validateStudyAnalysisEvidence,
 } from "../../src/analysis/evidence.js";
 import { digestStudyAnalysisInput } from "../../src/analysis/validation.js";
-import { loadStudyAnalysis, writeStudyAnalysis } from "../../src/analysis/store.js";
+import { writeStudyAnalysis } from "../../src/analysis/store.js";
+import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { syntheticArtifact } from "./fixtures.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {

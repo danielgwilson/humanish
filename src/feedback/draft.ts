@@ -4,7 +4,7 @@
 
 import path from "node:path";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/store.js";
+import { loadStudyAnalysis } from "../analysis/load.js";
 import { hashStudyAnalysisValue } from "../analysis/validation.js";
 import type { RunBundle, RunFeedbackCandidate } from "../run/bundle.js";
 import {

@@ -6,7 +6,7 @@ import type { FileHandle } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import { isStudyAnalysisRecordPath, projectShareCheckedAnalysis } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/store.js";
+import { loadStudyAnalysis } from "../analysis/load.js";
 import type { LoadedStudyAnalysis } from "../analysis/study-analysis.js";
 import { listRuns } from "../run/manage.js";
 import { bindExistingRunArtifactPaths, isPathInside, isSafeRunIdSegment } from "../run/paths.js";

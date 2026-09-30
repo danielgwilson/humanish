@@ -7,10 +7,10 @@ import { prepareRunArtifactPaths, type PreparedRunArtifactPaths } from "../../sr
 import { captureStudyEvidence } from "../../src/analysis/evidence.js";
 import {
   listStudyAnalysisExecutions,
-  loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store.js";
+import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import {
   digestStudyAnalysisInput,
   validateStudyAnalysisArtifact,

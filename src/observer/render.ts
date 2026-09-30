@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
-import { loadStudyAnalysis } from "../analysis/store.js";
+import { loadStudyAnalysis } from "../analysis/load.js";
 import {
   bindExistingRunArtifactPaths,
   isSafeRunIdSegment,

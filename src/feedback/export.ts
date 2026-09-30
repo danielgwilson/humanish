@@ -20,7 +20,7 @@ import { resolveRunPath } from "../run/locate.js";
 import { verifyRun, type VerifyResult } from "../run/verify.js";
 import { type RunBundle } from "../run/bundle.js";
 import { exportRedactedBundle } from "./export-bundle.js";
-import { loadStudyAnalysis } from "../analysis/store.js";
+import { loadStudyAnalysis } from "../analysis/load.js";
 import { studyAnalysisSharingProblems } from "../analysis/sharing.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "../analysis/evidence.js";
 import { readBoundedStudyFile } from "../analysis/study-files.js";

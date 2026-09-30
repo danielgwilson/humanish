@@ -21,10 +21,10 @@ import {
   beginStudyAnalysisExecution,
   listStudyAnalyses,
   listStudyAnalysisExecutions,
-  loadStudyAnalysis,
   writeStudyAnalysis,
   writeStudyAnalysisExecutionReceipt,
 } from "../../src/analysis/store.js";
+import { loadStudyAnalysis } from "../../src/analysis/load.js";
 import { digestStudyAnalysisInput, hashStudyAnalysisValue } from "../../src/analysis/validation.js";
 import type {
   StudyAnalysisArtifact,
