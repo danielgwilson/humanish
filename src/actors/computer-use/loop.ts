@@ -22,7 +22,7 @@ import { DesktopObserver } from "./loop/observation.js";
 import { requestTurn } from "./loop/provider-call.js";
 import { LoopSession } from "./loop/session.js";
 import { accountBillingConflicts } from "./loop/usage.js";
-import { loopResult } from "./loop/trace.js";
+import { loopResult, notice } from "./loop/trace.js";
 import type {
   CuaLoopOptions,
   CuaLoopResult,
@@ -272,9 +272,15 @@ function refuseTurn(session: LoopSession, turn: CuaTurn, turnNumber: number): St
   const { overRunBudget } = session.settings;
   if (accountBillingConflicts(session.provider, session.settings)) return accountBilledCaps;
   if (turn.interruption !== undefined) {
-    // Preserve usage and partial narration of an interrupted response.
-    overRunBudget?.(session.usage.running());
+    // Preserve usage and partial narration of an interrupted response. Its usage still counts
+    // toward the study budget; when that exhausts it, sibling lanes stop, so this trace says why.
+    const studyStop = overRunBudget?.(session.usage.running());
     recordNarration(session, turn, turnNumber, true);
+    if (studyStop != null) {
+      session.trace.record("notice", () =>
+        notice("warn", "study budget reached during an interrupted response", studyStop),
+      );
+    }
     return providerInterrupted(turn.interruption);
   }
   if (session.requiresUsage && session.usage.unavailableForCap()) {
