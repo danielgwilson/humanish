@@ -19,6 +19,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
   prepareSelectedOutputDirectory,
+  type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import { validateCwd } from "../run/project.js";
@@ -69,236 +70,89 @@ export interface InitResult {
   };
 }
 
+/** What init will change: reported as changes and warnings, applied as mkdirs then writes. */
+interface InitPlan {
+  changes: InitChange[];
+  warnings: string[];
+  writes: PlannedWrite[];
+  dirs: Array<{ absolutePath: string; relativePath: string }>;
+}
+
 export async function runInit(options: InitOptions): Promise<InitResult> {
   const requestedCwd = path.resolve(options.cwd);
   const mode = getMode(options);
-  const warnings: string[] = [];
-  const changes: InitChange[] = [];
-  const writes: PlannedWrite[] = [];
-  const dirs: Array<{ absolutePath: string; relativePath: string }> = [];
+  const plan: InitPlan = { changes: [], warnings: [], writes: [], dirs: [] };
+  const failed = (error: NonNullable<InitResult["error"]>): InitResult => ({
+    schema: INIT_RESPONSE_SCHEMA,
+    ok: false,
+    mode,
+    cwd: requestedCwd,
+    changes: plan.changes,
+    warnings: plan.warnings,
+    error,
+  });
   const cwdCheck = await validateCwd(requestedCwd);
 
   if (cwdCheck) {
-    return {
-      schema: INIT_RESPONSE_SCHEMA,
-      ok: false,
-      mode,
-      cwd: requestedCwd,
-      changes,
-      warnings,
-      error: cwdCheck,
-    };
+    return failed(cwdCheck);
   }
   const localBrowser = validateLocalBrowserStarter(options.localBrowser);
   if (!localBrowser.ok) {
-    return {
-      schema: INIT_RESPONSE_SCHEMA,
-      ok: false,
-      mode,
-      cwd: requestedCwd,
-      changes,
-      warnings,
-      error: { code: "HUMANISH_INVALID_LOCAL_BROWSER", message: localBrowser.message },
-    };
+    return failed({ code: "HUMANISH_INVALID_LOCAL_BROWSER", message: localBrowser.message });
   }
   const cwd = await realpath(requestedCwd);
   const preparedProjectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
   const initialPathCheck = await validateInitProjectPaths(cwd);
   if (initialPathCheck) {
-    return {
-      schema: INIT_RESPONSE_SCHEMA,
-      ok: false,
-      mode,
-      cwd: requestedCwd,
-      changes,
-      warnings,
-      error: initialPathCheck,
-    };
+    return failed(initialPathCheck);
   }
 
-  // Leave instructions for the NEXT agent. AGENTS.md is the cross-vendor convention (agents.md) —
-  // Codex, Claude Code, Cursor, Aider and others read it — and increasingly the thing that runs
-  // `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
-  // that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
-  //
-  // APPEND-ONLY and idempotent: an existing AGENTS.md is a file someone wrote, so humanish adds its
-  // own section once and never rewrites theirs.
-  {
-    const agentsPath = "AGENTS.md";
-    const existingAgents = await readTextIfExists(preparedProjectRoot, agentsPath);
-    const section = agentsSection();
-    if (existingAgents === null) {
-      changes.push({
-        path: agentsPath,
-        action: "create",
-        target: "source",
-        reason: "how a coding agent runs humanish here",
-      });
-      writes.push({
-        absolutePath: path.join(cwd, agentsPath),
-        relativePath: agentsPath,
-        contents: `# AGENTS.md\n${section}`,
-        target: "source",
-      });
-    } else if (existingAgents.includes(AGENTS_SECTION_MARKER)) {
-      changes.push({
-        path: agentsPath,
-        action: "skip",
-        target: "source",
-        reason: "humanish section already present",
-      });
-    } else {
-      changes.push({
-        path: agentsPath,
-        action: "update",
-        target: "source",
-        reason: "append how a coding agent runs humanish",
-      });
-      writes.push({
-        absolutePath: path.join(cwd, agentsPath),
-        relativePath: agentsPath,
-        contents: `${existingAgents.replace(/\s*$/, "")}\n${section}`,
-        target: "source",
-      });
-    }
-  }
+  await planAgentsFile(preparedProjectRoot, cwd, plan);
 
   // The starter live lab is written for the brain this machine can actually use. Shipping it as
   // openai-computer-use on a machine with no provider key but a signed-in Codex would hand someone
   // a file that asks for a credential they were just told they do not need (#505).
   const machine = await firstRunEnvironment(options.env ?? process.env, requestedCwd);
   const starterActor = starterActorFor(machine);
-  for (const file of starterFilesFor(starterActor, localBrowser.value)) {
-    const absolutePath = path.join(cwd, file.path);
-    const existing = await readTextIfExists(preparedProjectRoot, file.path);
-
-    if (
-      existing !== null &&
-      options.localBrowser !== undefined &&
-      file.path === "humanish/labs/local-browser.yaml"
-    ) {
-      warnings.push(
-        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
-      );
-    }
-
-    if (existing === null) {
-      changes.push({
-        path: file.path,
-        action: "create",
-        target: file.plane,
-        reason: "public-safe starter file",
-      });
-      writes.push({
-        absolutePath,
-        relativePath: file.path,
-        contents: file.contents,
-        target: file.plane,
-      });
-    } else if (existing === file.contents) {
-      changes.push({
-        path: file.path,
-        action: "skip",
-        target: file.plane,
-        reason: "already matches starter",
-      });
-    } else {
-      changes.push({
-        path: file.path,
-        action: "skip",
-        target: file.plane,
-        reason: "existing file would not be overwritten",
-      });
-      warnings.push(
-        `Skipped existing ${file.path}; humanish never overwrites user files during init.`,
-      );
-    }
-  }
-
-  for (const directory of runtimeDirectories) {
-    const absolutePath = path.join(cwd, directory.path);
-    const exists = await pathExists(preparedProjectRoot, directory.path);
-
-    changes.push({
-      path: directory.path,
-      action: exists ? "skip" : "mkdir",
-      target: directory.plane,
-      reason: exists ? "already exists" : "ignored runtime directory",
-    });
-
-    if (!exists) {
-      dirs.push({ absolutePath, relativePath: directory.path });
-    }
-  }
+  await planStarterFiles(
+    preparedProjectRoot,
+    cwd,
+    starterFilesFor(starterActor, localBrowser.value),
+    options.localBrowser !== undefined,
+    plan,
+  );
+  await planRuntimeDirectories(preparedProjectRoot, cwd, plan);
 
   const gitignorePlan = await planGitignore(preparedProjectRoot, cwd);
-  changes.push(gitignorePlan.change);
+  plan.changes.push(gitignorePlan.change);
 
   if (gitignorePlan.write) {
-    writes.push(gitignorePlan.write);
+    plan.writes.push(gitignorePlan.write);
   }
 
   const packagePlan = await planPackageJson(preparedProjectRoot, cwd);
-  changes.push(packagePlan.change);
-  warnings.push(...packagePlan.warnings);
+  plan.changes.push(packagePlan.change);
+  plan.warnings.push(...packagePlan.warnings);
 
   if (packagePlan.error) {
-    return {
-      schema: INIT_RESPONSE_SCHEMA,
-      ok: false,
-      mode,
-      cwd: requestedCwd,
-      changes,
-      warnings,
-      error: packagePlan.error,
-    };
+    return failed(packagePlan.error);
   }
 
   if (packagePlan.write) {
-    writes.push(packagePlan.write);
+    plan.writes.push(packagePlan.write);
   }
 
   if (mode === "needs-confirmation") {
-    return {
-      schema: INIT_RESPONSE_SCHEMA,
-      ok: false,
-      mode,
-      cwd: requestedCwd,
-      changes,
-      warnings,
-      error: {
-        code: "HUMANISH_CONFIRMATION_REQUIRED",
-        message: "Re-run with --dry-run to inspect or --yes to apply safe generated changes.",
-      },
-    };
+    return failed({
+      code: "HUMANISH_CONFIRMATION_REQUIRED",
+      message: "Re-run with --dry-run to inspect or --yes to apply safe generated changes.",
+    });
   }
 
   if (mode === "applied") {
-    await assertPreparedSelectedOutputDirectory(preparedProjectRoot);
-    const applyPathCheck = await validateInitProjectPaths(cwd);
+    const applyPathCheck = await applyInitPlan(preparedProjectRoot, cwd, plan);
     if (applyPathCheck) {
-      return {
-        schema: INIT_RESPONSE_SCHEMA,
-        ok: false,
-        mode,
-        cwd: requestedCwd,
-        changes,
-        warnings,
-        error: applyPathCheck,
-      };
-    }
-
-    for (const directory of dirs) {
-      await prepareContainedOutputDirectory(preparedProjectRoot, directory.relativePath);
-    }
-
-    for (const write of writes) {
-      await writeContainedOutputFile(
-        preparedProjectRoot,
-        write.relativePath,
-        write.contents,
-        "utf8",
-      );
+      return failed(applyPathCheck);
     }
   }
 
@@ -307,11 +161,166 @@ export async function runInit(options: InitOptions): Promise<InitResult> {
     ok: true,
     mode,
     cwd: requestedCwd,
-    changes,
-    warnings,
+    changes: plan.changes,
+    warnings: plan.warnings,
     // Resolved against THIS machine, because a next step that cannot work is worse than none.
     ...(mode === "applied" ? { nextSteps: firstRunGuidance(machine) } : {}),
   };
+}
+
+// Leave instructions for the NEXT agent. AGENTS.md is the cross-vendor convention (agents.md) —
+// Codex, Claude Code, Cursor, Aider and others read it — and increasingly the thing that runs
+// `humanish init` is a coding agent doing setup on someone's behalf. Without this, the agent
+// that arrives tomorrow finds a humanish/ directory and no idea what to do with it.
+//
+// APPEND-ONLY and idempotent: an existing AGENTS.md is a file someone wrote, so humanish adds its
+// own section once and never rewrites theirs.
+async function planAgentsFile(
+  preparedProjectRoot: PreparedSelectedOutputDirectory,
+  cwd: string,
+  plan: InitPlan,
+): Promise<void> {
+  const agentsPath = "AGENTS.md";
+  const existingAgents = await readTextIfExists(preparedProjectRoot, agentsPath);
+  const section = agentsSection();
+  if (existingAgents === null) {
+    plan.changes.push({
+      path: agentsPath,
+      action: "create",
+      target: "source",
+      reason: "how a coding agent runs humanish here",
+    });
+    plan.writes.push({
+      absolutePath: path.join(cwd, agentsPath),
+      relativePath: agentsPath,
+      contents: `# AGENTS.md\n${section}`,
+      target: "source",
+    });
+  } else if (existingAgents.includes(AGENTS_SECTION_MARKER)) {
+    plan.changes.push({
+      path: agentsPath,
+      action: "skip",
+      target: "source",
+      reason: "humanish section already present",
+    });
+  } else {
+    plan.changes.push({
+      path: agentsPath,
+      action: "update",
+      target: "source",
+      reason: "append how a coding agent runs humanish",
+    });
+    plan.writes.push({
+      absolutePath: path.join(cwd, agentsPath),
+      relativePath: agentsPath,
+      contents: `${existingAgents.replace(/\s*$/, "")}\n${section}`,
+      target: "source",
+    });
+  }
+}
+
+/** Create each starter file that is missing; never overwrite one that exists. */
+async function planStarterFiles(
+  preparedProjectRoot: PreparedSelectedOutputDirectory,
+  cwd: string,
+  files: ReturnType<typeof starterFilesFor>,
+  localBrowserRequested: boolean,
+  plan: InitPlan,
+): Promise<void> {
+  for (const file of files) {
+    const absolutePath = path.join(cwd, file.path);
+    const existing = await readTextIfExists(preparedProjectRoot, file.path);
+
+    if (
+      existing !== null &&
+      localBrowserRequested &&
+      file.path === "humanish/labs/local-browser.yaml"
+    ) {
+      plan.warnings.push(
+        "Skipped --local-browser/--local-mission: humanish/labs/local-browser.yaml already exists and init never overwrites it.",
+      );
+    }
+
+    if (existing === null) {
+      plan.changes.push({
+        path: file.path,
+        action: "create",
+        target: file.plane,
+        reason: "public-safe starter file",
+      });
+      plan.writes.push({
+        absolutePath,
+        relativePath: file.path,
+        contents: file.contents,
+        target: file.plane,
+      });
+    } else if (existing === file.contents) {
+      plan.changes.push({
+        path: file.path,
+        action: "skip",
+        target: file.plane,
+        reason: "already matches starter",
+      });
+    } else {
+      plan.changes.push({
+        path: file.path,
+        action: "skip",
+        target: file.plane,
+        reason: "existing file would not be overwritten",
+      });
+      plan.warnings.push(
+        `Skipped existing ${file.path}; humanish never overwrites user files during init.`,
+      );
+    }
+  }
+}
+
+/** Create each ignored runtime directory that is missing. */
+async function planRuntimeDirectories(
+  preparedProjectRoot: PreparedSelectedOutputDirectory,
+  cwd: string,
+  plan: InitPlan,
+): Promise<void> {
+  for (const directory of runtimeDirectories) {
+    const absolutePath = path.join(cwd, directory.path);
+    const exists = await pathExists(preparedProjectRoot, directory.path);
+
+    plan.changes.push({
+      path: directory.path,
+      action: exists ? "skip" : "mkdir",
+      target: directory.plane,
+      reason: exists ? "already exists" : "ignored runtime directory",
+    });
+
+    if (!exists) {
+      plan.dirs.push({ absolutePath, relativePath: directory.path });
+    }
+  }
+}
+
+/**
+ * Recheck the project paths, then make the planned directories and write the planned files.
+ * Returns the path check's error when the project changed since planning, and writes nothing then.
+ */
+async function applyInitPlan(
+  preparedProjectRoot: PreparedSelectedOutputDirectory,
+  cwd: string,
+  plan: InitPlan,
+): Promise<InitResult["error"] | null> {
+  await assertPreparedSelectedOutputDirectory(preparedProjectRoot);
+  const applyPathCheck = await validateInitProjectPaths(cwd);
+  if (applyPathCheck) {
+    return applyPathCheck;
+  }
+
+  for (const directory of plan.dirs) {
+    await prepareContainedOutputDirectory(preparedProjectRoot, directory.relativePath);
+  }
+
+  for (const write of plan.writes) {
+    await writeContainedOutputFile(preparedProjectRoot, write.relativePath, write.contents, "utf8");
+  }
+  return null;
 }
 
 function validateLocalBrowserStarter(
