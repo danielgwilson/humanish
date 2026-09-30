@@ -86,7 +86,7 @@ export function buildSingleLaneBundle(args: {
     persona: spec.persona,
     resolution: spec.resolution,
     desktopRoute: !args.inProcessRoute,
-    feedbackSubstrate: args.inProcessRoute
+    substrate: args.inProcessRoute
       ? "local-filesystem"
       : args.config.execution?.target === "local"
         ? "local-desktop"
@@ -143,6 +143,23 @@ export function buildSingleLaneBundle(args: {
 }
 
 type CuaBundleArgs = Parameters<typeof buildCuaBundle>[0];
+
+/** The lane's runner: a hosted E2B desktop, a local VM desktop, or the in-process route. */
+function laneSubstrate(args: CuaBundleArgs): RunFeedbackCandidate["substrate"] {
+  return args.substrate ?? (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop");
+}
+
+/** Where the lane's browser ran, as the bundle's summary and stream intent say it. */
+function browserPlace(args: CuaBundleArgs): string {
+  switch (laneSubstrate(args)) {
+    case "local-desktop":
+      return "in a browser on a local VM";
+    case "local-filesystem":
+      return "in process, with no desktop";
+    default:
+      return "in a hosted desktop browser";
+  }
+}
 
 /** Run-level cost ESTIMATE (advisory; omitted when nothing was priced and no sandbox ran). */
 function laneCost(args: CuaBundleArgs): ReturnType<typeof buildRunCostSummary> {
@@ -218,9 +235,9 @@ function laneSimulation(args: CuaBundleArgs, view: LaneView): RunSimulation {
     progress: args.inProgress === true ? 20 : 100,
     currentStep: reason,
     summary: args.session
-      ? `Computer-use actor (${args.actorId}) drove the subject app in a hosted desktop browser; ${args.session.completionReason}.`
+      ? `Computer-use actor (${args.actorId}) drove the subject app ${browserPlace(args)}; ${args.session.completionReason}.`
       : args.inProgress === true
-        ? `Computer-use actor (${args.actorId}) is driving the subject app in a hosted desktop browser.`
+        ? `Computer-use actor (${args.actorId}) is driving the subject app ${browserPlace(args)}.`
         : args.sessionError
           ? `Computer-use lab failed before a terminal session verdict: ${args.sessionError}`
           : `Contract lane for the computer-use actor (${args.actorId}) against ${publicAppUrl}.`,
@@ -264,7 +281,7 @@ function laneStream(args: CuaBundleArgs, view: LaneView): RunStream {
     ...(args.recording === undefined ? {} : { recording: args.recording }),
     ui: {
       route: publicAppUrl,
-      intent: "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
+      intent: `Watch the computer-use actor drive the subject app ${browserPlace(args)}.`,
       state: reason,
       ...(args.session ? { actorStatus: args.session.status } : {}),
       ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
@@ -322,11 +339,14 @@ function laneEvents(args: CuaBundleArgs, view: LaneView): RunEvent[] {
           // Invariant 5: declare what the subject WAS, including the ABSENCE of a pin. A
           // local-app / in-process subject is an already-running LOCAL dev server the caller
           // provisioned; it cannot be commit-pinned, so its provenance is honestly UNPINNED and
-          // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox.
+          // no E2B desktop was created. A plain app-url entry runs inside the desktop sandbox, or,
+          // on the local VM, reaches the host's loopback from the VM's browser.
           message:
             args.entryKind === "local-app"
               ? `Subject app declared at ${publicAppUrl} (already-running LOCAL dev server driven in-process; NO clone, NO E2B desktop). Provenance: caller-provisioned and UNPINNED — a running dev server cannot be commit-pinned.`
-              : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
+              : laneSubstrate(args) === "local-desktop"
+                ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
+                : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
           simId: "sim-001",
           streamId: "stream-001",
         },
@@ -483,7 +503,8 @@ export function buildCuaBundle(args: {
   resolution: [number, number];
   /** False only for the custom in-process route, which has no hosted screen/window to claim. */
   desktopRoute?: boolean;
-  feedbackSubstrate?: RunFeedbackCandidate["substrate"];
+  /** The lane's runner; see laneSubstrate for the default. */
+  substrate?: RunFeedbackCandidate["substrate"];
   /** Runtime screen/window/viewport evidence. `viewport` inside this object must be measured. */
   desktopGeometry?: RunDesktopGeometry;
   recording?: RunDesktopRecording;
@@ -611,9 +632,7 @@ export function buildCuaBundle(args: {
             scenarioId: `cua-${args.labId}`,
             adapterId: args.labId,
             goal: redactText(args.mission),
-            substrate:
-              args.feedbackSubstrate ??
-              (args.desktopRoute === false ? "local-filesystem" : "e2b-desktop"),
+            substrate: laneSubstrate(args),
             lanes: [
               {
                 laneId: args.laneId ?? "lane-01",
