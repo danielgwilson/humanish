@@ -3,7 +3,12 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
+import {
+  physicalCwdOf,
+  runIdOf,
+  validatePreparedRunRootIdentity,
+  type PreparedRunArtifactPaths,
+} from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -162,11 +167,11 @@ async function bindJob(
   prepared: PreparedRunArtifactPaths,
 ): Promise<PreparedSelectedOutputDirectory | null> {
   await validatePreparedRunRootIdentity(prepared);
-  const cwd = path.dirname(path.dirname(path.dirname(prepared.absoluteRunRoot)));
+  const cwd = physicalCwdOf(prepared);
   const root = await bindExistingManagedHumanishOutputDirectory(
     cwd,
     "runs",
-    path.basename(prepared.physicalRunRoot),
+    runIdOf(prepared),
     AUTOMATIC_STUDY_ANALYSIS_DIRECTORY,
   );
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
@@ -191,7 +196,7 @@ export async function readAutomaticStudyAnalysisAccounting(
     if (!root) return undefined;
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return "unknown";
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     return {
       attemptId: record.attemptId,
       analysisId: record.analysisId,
@@ -225,7 +230,7 @@ export async function readAutomaticStudyAnalysisPrepared(
     }
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) return unknown();
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     const view: AutomaticStudyAnalysisView = {
       state: record.state,
       analysisId: record.analysisId,
@@ -335,7 +340,7 @@ export async function claimAutomaticStudyAnalysis(
   const createdAt = iso();
   let record: JobRecord = {
     schema: AUTOMATIC_STUDY_ANALYSIS_SCHEMA,
-    runId: path.basename(prepared.physicalRunRoot),
+    runId: runIdOf(prepared),
     claimId: randomUUID(),
     attemptId: `analysis-${randomUUID()}`,
     state: "queued",
@@ -412,7 +417,7 @@ export async function requestAutomaticStudyAnalysisCancellationPrepared(
     if (!root) return { requested: false, reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" };
     const bytes = await readBoundedStudyFile(root, JOB_FILE, MAX_JOB_BYTES);
     if (!bytes) throw new Error("Unavailable job.");
-    const record = parseJob(bytes, path.basename(prepared.physicalRunRoot));
+    const record = parseJob(bytes, runIdOf(prepared));
     if (!pending(record.state)) return { requested: false, reason: null };
     const cancellation = {
       schema: CANCEL_SCHEMA,

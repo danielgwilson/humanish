@@ -23,7 +23,7 @@ import {
 } from "./job.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { readStudyAnalysisExecution, readStudyAnalysisVersion } from "./store.js";
-import { resolvePhysicalCwd } from "../run/paths.js";
+import { physicalCwdOf, resolvePhysicalCwd } from "../run/paths.js";
 
 export type {
   AutomaticStudyAnalysisView,
@@ -135,7 +135,7 @@ export async function runAutomaticStudyAnalysis(
   let cwd = path.resolve(cwdInput);
   const prepared = await resolveStudyAnalysisRun(cwd, runId, deps.expectedRun).catch(() => null);
   if (!prepared) return skipped("AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE");
-  cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
+  cwd = physicalCwdOf(prepared);
   let participantEvidence = false;
   let config = structuredClone(configInput);
   // Do not consume a future run's one claim while a producer is still writing it.

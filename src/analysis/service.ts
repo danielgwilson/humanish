@@ -9,6 +9,8 @@ import { containsSensitive } from "../evidence/redaction.js";
 import { verifyRunPrepared } from "../run/verify.js";
 import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
 import {
+  physicalCwdOf,
+  runIdOf,
   resolvePhysicalCwd,
   validatePreparedRunRootIdentity,
   type PreparedRunArtifactPaths,
@@ -42,6 +44,7 @@ import {
   type StudyAnalysisCorrection,
   type LoadedStudyAnalysis,
 } from "./study-analysis.js";
+import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
 const ANALYZE_RESULT_SCHEMA = "humanish.analyze-result.v1";
 const MAX_STATUS_BYTES = 64 * 1024;
@@ -93,9 +96,9 @@ export async function resolveStudyAnalysisRun(
   expectedRun?: PreparedRunArtifactPaths,
 ): Promise<PreparedRunArtifactPaths | null> {
   if (expectedRun === undefined) return resolveRunPath(cwd, run);
-  const physicalCwd = path.dirname(path.dirname(expectedRun.physicalRunsRoot));
+  const physicalCwd = physicalCwdOf(expectedRun);
   const selectedCwd = await realpath(cwd).catch(() => null);
-  if (selectedCwd !== physicalCwd || run !== path.basename(expectedRun.physicalRunRoot))
+  if (selectedCwd !== physicalCwd || run !== runIdOf(expectedRun))
     throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
   try {
     await validatePreparedRunRootIdentity(expectedRun);
@@ -228,9 +231,13 @@ export async function readCompletedStudyAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
 ): Promise<Buffer> {
-  const bytes = await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes);
+  const bytes = await readBoundedStudyFile(
+    prepared,
+    RUN_BUNDLE_FILE,
+    STUDY_EVIDENCE_LIMITS.sourceBytes,
+  );
   if (!bytes) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
-  const verified = await verifyRunPrepared(cwd, path.basename(prepared.physicalRunRoot), prepared);
+  const verified = await verifyRunPrepared(cwd, runIdOf(prepared), prepared);
   if (!verified.ok && verified.recordingOk !== true) throw new Error("ANALYSIS_VERIFY_FAILED");
   const loaded = await loadRunBundlePrepared(cwd, prepared);
   if (!loaded || loaded.bundle.streams.length === 0) throw new Error("ANALYSIS_NO_PARTICIPANTS");
@@ -298,7 +305,7 @@ export async function analyzeStudy(
   try {
     const prepared = await resolveStudyAnalysisRun(cwd, run, deps.expectedRun);
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
-    if (deps.expectedRun !== undefined) cwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
+    if (deps.expectedRun !== undefined) cwd = physicalCwdOf(prepared);
     const execute = async (): Promise<AnalyzeResult> => {
       if (deps.signal?.aborted) return fail(run, dryRun, "ANALYSIS_CANCELLED");
       const bytes = await readCompletedStudyAnalysisSource(cwd, prepared);
@@ -517,7 +524,7 @@ export async function correctStudyAnalysis(
       replacementClaim: options.replacementClaim ?? null,
     };
     await appendStudyAnalysisCorrection(prepared, correction);
-    await renderObserver(cwd, path.basename(prepared.physicalRunRoot), {
+    await renderObserver(cwd, runIdOf(prepared), {
       open: false,
       expectedRun: prepared,
     }).catch(() => null);

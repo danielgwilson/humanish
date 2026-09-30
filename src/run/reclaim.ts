@@ -21,10 +21,10 @@ import {
   SANDBOX_RECEIPTS_ARTIFACT,
   type ParsedSandboxReceipt,
 } from "./sandbox-receipts.js";
-import path from "node:path";
 
 import { destroyE2BSandbox } from "../substrates/e2b/sandbox.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
+import { runIdOf } from "./paths.js";
 
 const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
 export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
@@ -90,7 +90,7 @@ export async function reclaimRunSandboxes(
       },
     };
   }
-  const runId = path.basename(runPaths.absoluteRunRoot);
+  const runId = runIdOf(runPaths);
 
   const journal = await reclaimJournal(runPaths, hooks);
   if (journal.kind === "empty") {

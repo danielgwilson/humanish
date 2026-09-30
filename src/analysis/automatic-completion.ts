@@ -1,5 +1,4 @@
-import path from "node:path";
-import { validatePreparedRunRootIdentity } from "../run/paths.js";
+import { physicalCwdOf, validatePreparedRunRootIdentity } from "../run/paths.js";
 import { FinishedRun } from "../run/run.js";
 import type { StudyAnalysisConfig } from "./study-analysis.js";
 import { runAutomaticStudyAnalysis, type AutomaticStudyAnalysisDeps } from "./automatic.js";
@@ -68,7 +67,7 @@ export async function completeAutomaticAnalysis<
         automaticAnalysis: { state: "failed", reason: "analysis_source_changed" },
       };
     }
-    const sourceCwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
+    const sourceCwd = physicalCwdOf(prepared);
     const automaticAnalysis = await (hooks?.run ?? runAutomaticStudyAnalysis)(
       sourceCwd,
       finished.runId,

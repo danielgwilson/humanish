@@ -1,10 +1,9 @@
 import { isCommsReceivingEvidence } from "../comms/receiving-evidence.js";
 import { createHash } from "node:crypto";
-import path from "node:path";
 import { screenshotEvidenceError } from "../evidence/image.js";
-import type { PreparedRunArtifactPaths } from "../run/paths.js";
+import { runIdOf, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/primitives.js";
-import type { RunBundle } from "../run/bundle.js";
+import { RUN_BUNDLE_FILE, type RunBundle } from "../run/bundle.js";
 import {
   ACTION_CAPTURE_VERSION,
   type AnalysisEvidence,
@@ -47,7 +46,7 @@ function parseSource(prepared: PreparedRunArtifactPaths, bytes: Buffer): RunBund
   if (
     !isRecord(value) ||
     value.schema !== "humanish.run-bundle.v1" ||
-    value.runId !== path.basename(prepared.physicalRunRoot) ||
+    value.runId !== runIdOf(prepared) ||
     !Array.isArray(value.streams) ||
     value.streams.length > 128 ||
     !Array.isArray(value.events) ||
@@ -123,7 +122,7 @@ export async function captureStudyEvidence(
     }
   }
   if (bundleBytes.length > limits.sourceBytes) throw new Error("ANALYSIS_SOURCE_TOO_LARGE");
-  const current = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
+  const current = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!current || !current.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   const bundle = parseSource(prepared, bundleBytes);
   const captureVersion = ACTION_CAPTURE_VERSION;
@@ -431,7 +430,7 @@ export async function captureStudyEvidence(
   };
   result.inputDigest = digestStudyAnalysisInput(result);
   validateStudyAnalysisInputMetadata(result);
-  const after = await readBoundedStudyFile(prepared, "run.json", limits.sourceBytes);
+  const after = await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, limits.sourceBytes);
   if (!after || !after.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
   return result;
 }
@@ -554,7 +553,7 @@ export async function validateStudyAnalysisEvidence(
 
   const current = await readBoundedStudyFile(
     prepared,
-    "run.json",
+    RUN_BUNDLE_FILE,
     STUDY_EVIDENCE_LIMITS.sourceBytes,
   );
   if (!current?.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");

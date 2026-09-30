@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, opendir } from "node:fs/promises";
 import path from "node:path";
-import { validatePreparedRunRootIdentity, type PreparedRunArtifactPaths } from "../run/paths.js";
+import {
+  physicalCwdOf,
+  runIdOf,
+  validatePreparedRunRootIdentity,
+  type PreparedRunArtifactPaths,
+} from "../run/paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -25,6 +30,7 @@ import type {
   StudyAnalysisArtifact,
   StudyAnalysisCorrection,
 } from "./study-analysis.js";
+import { RUN_BUNDLE_FILE } from "../run/bundle.js";
 
 const STUDY_ANALYSIS_DIRECTORY = "analysis";
 const ANALYSIS_MAX_BYTES = 4 * 1024 * 1024;
@@ -73,11 +79,11 @@ async function existingRoot(
   directory = STUDY_ANALYSIS_DIRECTORY,
 ): Promise<PreparedSelectedOutputDirectory | null> {
   await validatePreparedRunRootIdentity(prepared);
-  const cwd = path.dirname(path.dirname(path.dirname(prepared.absoluteRunRoot)));
+  const cwd = physicalCwdOf(prepared);
   const root = await bindExistingManagedHumanishOutputDirectory(
     cwd,
     "runs",
-    path.basename(prepared.absoluteRunRoot),
+    runIdOf(prepared),
     directory,
   );
   return root ? Object.freeze({ ...root, parentRun: prepared }) : null;
@@ -108,7 +114,7 @@ export async function writeStudyAnalysis(
   const artifact = validateStudyAnalysisArtifact(value);
   const source = await readBoundedStudyFile(
     prepared,
-    "run.json",
+    RUN_BUNDLE_FILE,
     STUDY_EVIDENCE_LIMITS.sourceBytes,
   );
   if (!source) throw new Error("ANALYSIS_SOURCE_UNAVAILABLE");
@@ -120,7 +126,7 @@ export async function writeStudyAnalysis(
   // Recheck source immediately before publishing the immutable record.
   const current = await readBoundedStudyFile(
     prepared,
-    "run.json",
+    RUN_BUNDLE_FILE,
     STUDY_EVIDENCE_LIMITS.sourceBytes,
   );
   if (!current?.equals(source)) throw new Error("ANALYSIS_SOURCE_CHANGED");
@@ -194,7 +200,7 @@ async function readVersion(
     analysis = validateStudyAnalysisArtifact(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
     );
-    if (analysis.id !== id || analysis.runId !== path.basename(prepared.physicalRunRoot))
+    if (analysis.id !== id || analysis.runId !== runIdOf(prepared))
       throw new Error("ANALYSIS_ID_MISMATCH");
   } catch {
     return { id, state: "invalid", analysis: null, warnings: ["ANALYSIS_ARTIFACT_INVALID"] };
@@ -236,7 +242,7 @@ export async function readStudyAnalysisVersion(
       prepared,
       root,
       id,
-      await readBoundedStudyFile(prepared, "run.json", STUDY_EVIDENCE_LIMITS.sourceBytes),
+      await readBoundedStudyFile(prepared, RUN_BUNDLE_FILE, STUDY_EVIDENCE_LIMITS.sourceBytes),
     );
   } catch {
     return null;
@@ -253,7 +259,7 @@ export async function listStudyAnalyses(
     const inventory = await directoryIds(root, MAX_VERSIONS, true);
     const source = await readBoundedStudyFile(
       prepared,
-      "run.json",
+      RUN_BUNDLE_FILE,
       STUDY_EVIDENCE_LIMITS.sourceBytes,
     );
     const results: StudyAnalysisListEntry[] = [];
@@ -293,7 +299,7 @@ async function readCorrections(
   const corrections: StudyAnalysisCorrection[] = [];
   const warnings: string[] = [];
   try {
-    const cwd = path.dirname(path.dirname(path.dirname(prepared.absoluteRunRoot)));
+    const cwd = physicalCwdOf(prepared);
     const directory = await bindExistingManagedHumanishOutputDirectory(
       cwd,
       "runs",
@@ -454,9 +460,7 @@ export async function readStudyAnalysisExecution(
     const receipt = validateStudyAnalysisExecutionReceipt(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
     );
-    return receipt.id === id && receipt.runId === path.basename(prepared.physicalRunRoot)
-      ? receipt
-      : null;
+    return receipt.id === id && receipt.runId === runIdOf(prepared) ? receipt : null;
   } catch {
     return null;
   }
@@ -484,8 +488,7 @@ function executionReceipt(
   prepared: PreparedRunArtifactPaths,
 ): StudyAnalysisExecutionReceipt {
   const artifact = validateStudyAnalysisArtifact(value);
-  if (artifact.runId !== path.basename(prepared.physicalRunRoot))
-    throw new Error("ANALYSIS_ID_MISMATCH");
+  if (artifact.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
   const receipt: StudyAnalysisExecutionReceipt = {
     schema: "humanish.analysis-execution.v1",
     model: artifact.config.model,
@@ -516,8 +519,7 @@ export async function beginStudyAnalysisExecution(
     schema: "humanish.analysis-execution-start.v1",
     createdAt: new Date().toISOString(),
   });
-  if (start.runId !== path.basename(prepared.physicalRunRoot))
-    throw new Error("ANALYSIS_ID_MISMATCH");
+  if (start.runId !== runIdOf(prepared)) throw new Error("ANALYSIS_ID_MISMATCH");
   const root = await prepareContainedOutputDirectoryRoot(
     prepared,
     STUDY_ANALYSIS_EXECUTION_DIRECTORY,
@@ -578,7 +580,7 @@ export async function listStudyAnalysisExecutions(prepared: PreparedRunArtifactP
         const receipt = validateStudyAnalysisExecutionReceipt(
           JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
         );
-        if (receipt.id !== id || receipt.runId !== path.basename(prepared.physicalRunRoot)) {
+        if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) {
           warnings.push("ANALYSIS_RECEIPT_INVALID");
           continue;
         }
@@ -639,8 +641,7 @@ export async function readStudyAnalysisAccountingRecords(
               const start = studyAnalysisExecutionStartSchema.parse(
                 JSON.parse(startBytes.toString("utf8")),
               );
-              if (start.id !== id || start.runId !== path.basename(prepared.physicalRunRoot))
-                throw new Error();
+              if (start.id !== id || start.runId !== runIdOf(prepared)) throw new Error();
               record.start = start;
             } catch {
               warnings.push("ANALYSIS_START_INVALID");
@@ -671,8 +672,7 @@ export async function readStudyAnalysisAccountingRecords(
               maxCostUsd: raw.config?.maxCostUsd,
             });
           const receipt = validateStudyAnalysisExecutionReceipt(candidate);
-          if (receipt.id !== id || receipt.runId !== path.basename(prepared.physicalRunRoot))
-            throw new Error();
+          if (receipt.id !== id || receipt.runId !== runIdOf(prepared)) throw new Error();
           if (
             record.receipt &&
             hashStudyAnalysisValue(record.receipt) !== hashStudyAnalysisValue(receipt)
