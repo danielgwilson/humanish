@@ -421,6 +421,23 @@ async function writeEvidenceImages(
   return input;
 }
 
+/** The host's Codex auth.json, which a private home links to instead of copying. */
+async function hostAuthFile(
+  options: RestrictedCodexSessionOptions,
+  sourceEnv: NodeJS.ProcessEnv,
+): Promise<string> {
+  const authHome =
+    options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
+  if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
+  try {
+    const authFile = await realpath(path.join(authHome, "auth.json"));
+    if (!(await stat(authFile)).isFile()) throw new Error();
+    return authFile;
+  } catch {
+    throw new RestrictedCodexStop("codex_login_required");
+  }
+}
+
 /** One private process and conversation per owner. Only completed turns may continue. */
 export interface RestrictedCodexSession {
   readonly pendingUsage?: RestrictedCodexUsage | undefined;
@@ -507,6 +524,155 @@ export function createRestrictedCodexSession(
       return cleaned;
     })());
   };
+
+  /**
+   * The session's one-time launch: a private home, the auth link, the version check and the
+   * spawn, then initialize, config, account, thread and MCP admission. Each piece of state lands
+   * on the session as soon as it exists, so dispose cleans up a launch that fails partway.
+   */
+  async function launchAdmittedAppServer(
+    request: RestrictedCodexRequest,
+    deadline: RestrictedCodexDeadline,
+    frameLimit: number,
+    enter: (phase: CuaProviderFailurePhase) => void,
+  ): Promise<RestrictedCodexTransport> {
+    const file = await resolveExecutable(options, sourceEnv);
+    deadline.check();
+    work = await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-analysis-"));
+    await chmod(work, 0o700);
+    work = await realpath(work);
+    const home = path.join(work, "home");
+    cwd = path.join(work, "cwd");
+    scratch = path.join(work, "scratch");
+    for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
+    const env = childEnvironment(sourceEnv, home, scratch);
+    cliVersion = await checkVersion(
+      file,
+      env,
+      cwd,
+      spawnFn,
+      deadline,
+      admittedVersions,
+      options.cliVersion,
+    );
+    const configMode = {
+      participantCodeMode: participant !== undefined,
+      reasoningEffort,
+      operatorAuth,
+    };
+    const config = restrictedCodexConfig(request.model, configMode),
+      configPath = path.join(home, "config.toml");
+    if (!operatorAuth) {
+      await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
+      const authFile = await hostAuthFile(options, sourceEnv);
+      deadline.check();
+      authLink = path.join(home, "auth.json");
+      await symlink(authFile, authLink);
+    }
+    deadline.check();
+    const appServerArgs = [
+      "app-server",
+      "--strict-config",
+      ...(operatorAuth ? configArguments(config.overrides) : []),
+    ];
+    const owned = ownCodexProcess(
+      spawnFn(file, appServerArgs, {
+        cwd,
+        env: operatorAuth ? { ...sourceEnv } : env,
+        detached: false,
+        stdio: ["pipe", "pipe", "pipe"],
+      }),
+    );
+    const launched = new RestrictedCodexTransport(owned, deadline, frameLimit);
+    transport = launched;
+    enter("initialize");
+    const initialize = await launched.rpc("initialize", {
+      clientInfo: { name: "humanish_analysis", version: "1.0.0" },
+      capabilities: { experimentalApi: true },
+    });
+    if (
+      typeof initialize.userAgent !== "string" ||
+      !initialize.userAgent.includes(`/${cliVersion} `) ||
+      (!operatorAuth && initialize.codexHome !== home) ||
+      initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") ||
+      initialize.platformFamily !== "unix"
+    )
+      throw new RestrictedCodexStop("codex_unsupported_version");
+    launched.notify("initialized", {});
+    enter("config/read");
+    const effective = await launched.rpc("config/read", { includeLayers: true, cwd });
+    if (!admitsRestrictedCodexConfig(effective, configPath, request.model, configMode))
+      throw new RestrictedCodexStop("codex_unsafe_configuration");
+    const configuredModel = codexRecord(effective.config).model;
+    const selectedModel = typeof configuredModel === "string" ? configuredModel : undefined;
+    enter("account/read");
+    const account = await launched.rpc("account/read", { refreshToken: false });
+    if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
+    const accountType = codexRecord(account.account).type;
+    if (
+      (!operatorAuth && accountType !== "chatgpt") ||
+      (operatorAuth && !["chatgpt", "apiKey"].includes(String(accountType))) ||
+      account.requiresOpenaiAuth !== true
+    )
+      throw new RestrictedCodexStop("codex_unsupported_auth");
+    authentication = accountType === "apiKey" ? "api-key" : "chatgpt-account";
+    const mcpServers = codexRecord(codexRecord(effective.config).mcp_servers);
+    const mcpNames = Object.keys(mcpServers);
+    // Request overrides are split literally on dots by Codex. Limit names to
+    // TOML bare-key characters so each override targets the inherited entry.
+    if (mcpNames.length > 100 || mcpNames.some((name) => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
+      throw new RestrictedCodexStop("codex_unsafe_configuration");
+    const threadConfig = { ...config.overrides };
+    for (const name of mcpNames) threadConfig[`mcp_servers.${name}.enabled`] = false;
+    enter("thread/start");
+    const thread = await launched.rpc("thread/start", {
+      cwd,
+      ephemeral: true,
+      experimentalRawEvents: true,
+      approvalPolicy: "never",
+      sandbox: "read-only",
+      model: selectedModel,
+      modelProvider: "openai",
+      allowProviderModelFallback: false,
+      environments: [],
+      runtimeWorkspaceRoots: [],
+      dynamicTools: participant
+        ? [
+            {
+              type: "function",
+              name: participant.tool.name,
+              description: participant.tool.description,
+              inputSchema: participant.tool.inputSchema,
+            },
+          ]
+        : [],
+      baseInstructions: request.instructions,
+      config: threadConfig,
+    });
+    const returnedModel = codexRecord(thread.thread).model;
+    if (
+      typeof returnedModel !== "string" ||
+      returnedModel.length === 0 ||
+      returnedModel.length > 200 ||
+      (selectedModel !== undefined && returnedModel !== selectedModel) ||
+      !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort, cliVersion)
+    )
+      throw new RestrictedCodexStop("codex_unsafe_configuration");
+    resolvedModel = returnedModel;
+    threadId = String(codexRecord(thread.thread).id);
+    if (!operatorAuth) {
+      enter("mcpServerStatus/list");
+      const mcp = await launched.rpc("mcpServerStatus/list", { limit: 100 });
+      if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null)
+        throw new RestrictedCodexStop("codex_unsafe_configuration");
+    }
+    identity = {
+      requestedModel: request.model,
+      model: returnedModel,
+      instructions: request.instructions,
+    };
+    return launched;
+  }
 
   async function execute(
     request: RestrictedCodexRequest,
@@ -740,152 +906,10 @@ export function createRestrictedCodexSession(
           1024 * 1024,
       );
       if (!transport) {
-        const file = await resolveExecutable(options, sourceEnv);
-        deadline.check();
-        work = await mkdtemp(path.join(options.tempRoot ?? tmpdir(), "humanish-codex-analysis-"));
-        await chmod(work, 0o700);
-        work = await realpath(work);
-        const home = path.join(work, "home");
-        cwd = path.join(work, "cwd");
-        scratch = path.join(work, "scratch");
-        for (const directory of [home, cwd, scratch]) await mkdir(directory, { mode: 0o700 });
-        const env = childEnvironment(sourceEnv, home, scratch);
-        cliVersion = await checkVersion(
-          file,
-          env,
-          cwd,
-          spawnFn,
-          deadline,
-          admittedVersions,
-          options.cliVersion,
-        );
-        const configMode = {
-          participantCodeMode: participant !== undefined,
-          reasoningEffort,
-          operatorAuth,
-        };
-        const config = restrictedCodexConfig(request.model, configMode),
-          configPath = path.join(home, "config.toml");
-        if (!operatorAuth) {
-          await writeFile(configPath, config.toml, { mode: 0o600, flag: "wx" });
-          const authHome =
-            options.authHome ??
-            sourceEnv.CODEX_HOME ??
-            path.join(sourceEnv.HOME ?? homedir(), ".codex");
-          if (!path.isAbsolute(authHome)) throw new RestrictedCodexStop("codex_unsupported_auth");
-          let authFile: string;
-          try {
-            authFile = await realpath(path.join(authHome, "auth.json"));
-            if (!(await stat(authFile)).isFile()) throw new Error();
-          } catch {
-            throw new RestrictedCodexStop("codex_login_required");
-          }
-          deadline.check();
-          authLink = path.join(home, "auth.json");
-          await symlink(authFile, authLink);
-        }
-        deadline.check();
-        const appServerArgs = [
-          "app-server",
-          "--strict-config",
-          ...(operatorAuth ? configArguments(config.overrides) : []),
-        ];
-        const owned = ownCodexProcess(
-          spawnFn(file, appServerArgs, {
-            cwd,
-            env: operatorAuth ? { ...sourceEnv } : env,
-            detached: false,
-            stdio: ["pipe", "pipe", "pipe"],
-          }),
-        );
-        transport = new RestrictedCodexTransport(owned, deadline, frameLimit);
-        phase = "initialize";
-        const initialize = await transport.rpc("initialize", {
-          clientInfo: { name: "humanish_analysis", version: "1.0.0" },
-          capabilities: { experimentalApi: true },
+        transport = await launchAdmittedAppServer(request, deadline, frameLimit, (next) => {
+          phase = next;
         });
-        if (
-          typeof initialize.userAgent !== "string" ||
-          !initialize.userAgent.includes(`/${cliVersion} `) ||
-          (!operatorAuth && initialize.codexHome !== home) ||
-          initialize.platformOs !== (platform === "darwin" ? "macos" : "linux") ||
-          initialize.platformFamily !== "unix"
-        )
-          throw new RestrictedCodexStop("codex_unsupported_version");
-        transport.notify("initialized", {});
-        phase = "config/read";
-        const effective = await transport.rpc("config/read", { includeLayers: true, cwd });
-        if (!admitsRestrictedCodexConfig(effective, configPath, request.model, configMode))
-          throw new RestrictedCodexStop("codex_unsafe_configuration");
-        const configuredModel = codexRecord(effective.config).model;
-        selectedModel = typeof configuredModel === "string" ? configuredModel : undefined;
-        phase = "account/read";
-        const account = await transport.rpc("account/read", { refreshToken: false });
-        if (account.account === null) throw new RestrictedCodexStop("codex_login_required");
-        const accountType = codexRecord(account.account).type;
-        if (
-          (!operatorAuth && accountType !== "chatgpt") ||
-          (operatorAuth && !["chatgpt", "apiKey"].includes(String(accountType))) ||
-          account.requiresOpenaiAuth !== true
-        )
-          throw new RestrictedCodexStop("codex_unsupported_auth");
-        authentication = accountType === "apiKey" ? "api-key" : "chatgpt-account";
-        const mcpServers = codexRecord(codexRecord(effective.config).mcp_servers);
-        const mcpNames = Object.keys(mcpServers);
-        // Request overrides are split literally on dots by Codex. Limit names to
-        // TOML bare-key characters so each override targets the inherited entry.
-        if (mcpNames.length > 100 || mcpNames.some((name) => !/^[A-Za-z0-9_-]{1,200}$/.test(name)))
-          throw new RestrictedCodexStop("codex_unsafe_configuration");
-        const threadConfig = { ...config.overrides };
-        for (const name of mcpNames) threadConfig[`mcp_servers.${name}.enabled`] = false;
-        phase = "thread/start";
-        const thread = await transport.rpc("thread/start", {
-          cwd,
-          ephemeral: true,
-          experimentalRawEvents: true,
-          approvalPolicy: "never",
-          sandbox: "read-only",
-          model: selectedModel,
-          modelProvider: "openai",
-          allowProviderModelFallback: false,
-          environments: [],
-          runtimeWorkspaceRoots: [],
-          dynamicTools: participant
-            ? [
-                {
-                  type: "function",
-                  name: participant.tool.name,
-                  description: participant.tool.description,
-                  inputSchema: participant.tool.inputSchema,
-                },
-              ]
-            : [],
-          baseInstructions: request.instructions,
-          config: threadConfig,
-        });
-        const returnedModel = codexRecord(thread.thread).model;
-        if (
-          typeof returnedModel !== "string" ||
-          returnedModel.length === 0 ||
-          returnedModel.length > 200 ||
-          (selectedModel !== undefined && returnedModel !== selectedModel) ||
-          !admitsRestrictedCodexThread(thread, returnedModel, cwd, reasoningEffort, cliVersion)
-        )
-          throw new RestrictedCodexStop("codex_unsafe_configuration");
-        selectedModel = returnedModel;
-        resolvedModel = returnedModel;
-        threadId = String(codexRecord(thread.thread).id);
-        if (!operatorAuth) {
-          phase = "mcpServerStatus/list";
-          const mcp = await transport.rpc("mcpServerStatus/list", { limit: 100 });
-          if (!Array.isArray(mcp.data) || mcp.data.length !== 0 || mcp.nextCursor !== null)
-            throw new RestrictedCodexStop("codex_unsafe_configuration");
-        }
-        identity = {
-          requestedModel: request.model,
-          model: selectedModel,
-          instructions: request.instructions,
-        };
+        selectedModel = identity!.model;
       } else transport.beginRequest(deadline, frameLimit);
       // onNotification ignores events before dispatch and onRequestComplete follows only a host
       // callback, so wiring both after the first launch's handshake loses nothing.
