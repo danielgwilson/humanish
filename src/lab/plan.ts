@@ -4,7 +4,6 @@
 // backend names.
 
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
-import { browserSurfaces } from "../actors/scripted-browser/types.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import {
@@ -12,6 +11,7 @@ import {
   resolveLaneDevice,
   resolvePerLaneSandboxMs,
 } from "../routes/computer-use/lane-plan.js";
+import { planScriptedLab } from "../routes/scripted-browser/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
 import { isLocalBrowserLab, localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { DevicePreset } from "./device-presets.js";
@@ -34,8 +34,6 @@ import type {
   LabPlan,
   PlanRefusal,
   PlanResult,
-  Requirement,
-  ScriptedPlan,
   SharedWorldPlane,
   SharedWorldPlan,
 } from "./plan-types.js";
@@ -404,43 +402,6 @@ function planSharedWorld(config: LabConfig, base: Base): Built<SharedWorldPlan> 
   };
 }
 
-function planScripted(config: LabConfig, options: RunLabOptions, base: Base): Built<ScriptedPlan> {
-  const scenarioRef = config.scenario?.ref;
-  const surfaces = browserSurfaces.slice(0, config.actors[0]?.count ?? 1);
-  if (scenarioRef === undefined || !isNonEmpty(surfaces)) return "unsupported-composition";
-  let subject: ScriptedPlan["subject"];
-  if (config.subject.source === "clone") {
-    const provisioned = provisionedSubject(config);
-    const seed = provisioned?.state?.seed ?? [];
-    if (provisioned?.kind !== "clone" || provisioned.state === undefined || !isNonEmpty(seed))
-      return "unsupported-composition";
-    subject = { ...provisioned, state: { ...provisioned.state, seed } };
-  } else {
-    subject = { kind: "loopback", appUrl: config.subject.appUrl ?? "" };
-  }
-  const hooks = options.scriptedHooks ?? {};
-  const injectedBrowser = hooks.launchBrowser !== undefined || hooks.browserCommand !== undefined;
-  const requirements: Requirement[] = [];
-  if (!base.dryRun && subject.kind === "clone") {
-    requirements.push({ kind: "key", name: "E2B_API_KEY" });
-    if (isNonEmpty(subject.env)) requirements.push({ kind: "subject-env", names: subject.env });
-  }
-  if (!base.dryRun && subject.kind === "loopback" && !injectedBrowser)
-    requirements.push({ kind: "host-browser" });
-  return {
-    ...base,
-    route: "scripted",
-    subject,
-    scenarioRef,
-    surfaces,
-    ...(config.actors[0]?.persona === undefined ? {} : { personaId: config.actors[0].persona }),
-    ...(config.execution?.timeoutMs === undefined
-      ? {}
-      : { sessionTimeoutMs: config.execution.timeoutMs }),
-    requirements,
-  };
-}
-
 /**
  * The preview route's refusals before a run starts, in its order: real email receiving, then
  * analysis, then tasks. Each would otherwise be silently ignored by a synthetic run.
@@ -488,6 +449,14 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
     });
     return terminal.ok ? planned(terminal.plan, options) : { ok: false, refusal: terminal.refusal };
   }
+  if (route === "scripted") {
+    const scripted = planScriptedLab(lab, {
+      dryRun,
+      ...provenance,
+      ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
+    });
+    return scripted.ok ? planned(scripted.plan, options) : { ok: false, refusal: scripted.refusal };
+  }
   if (route === "preview") {
     const refusal = previewRefusal(lab);
     if (refusal) return { ok: false, refusal };
@@ -505,9 +474,6 @@ export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
       break;
     case "shared-world":
       plan = planSharedWorld(lab, base);
-      break;
-    case "scripted":
-      plan = planScripted(lab, options, base);
       break;
   }
   if (typeof plan === "string") return { ok: false, refusal: { route, gap: plan } };

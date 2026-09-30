@@ -28,19 +28,13 @@ interface ResolvedScriptedScenario {
  * Resolve and consume `scenario.ref`. Path-style refs (contain a separator or end .yaml/.yml)
  * resolve against cwd and are CLAMPED inside it — a ../../ escape is rejected, never recorded
  * as repo-relative provenance. Id-style refs must be public-safe tokens and resolve to
- * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed.
+ * humanish/scenarios/<ref>.yaml (then .yml). Every failure mode is fail-closed. planScriptedLab
+ * has already refused a missing or blank ref.
  */
 export async function resolveScriptedScenario(
   projectRoot: PreparedSelectedOutputDirectory,
-  ref: string | undefined,
+  ref: string,
 ): Promise<ResolvedScriptedScenario | { ok: false; message: string }> {
-  if (!ref || !ref.trim()) {
-    return {
-      ok: false,
-      message:
-        "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes.",
-    };
-  }
   const trimmed = ref.trim();
 
   let absolutePath: string;

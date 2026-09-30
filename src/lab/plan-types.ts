@@ -7,6 +7,7 @@ import type { StudyAnalysisConfig } from "../analysis/study-analysis.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";
+import type { ScriptedRefusal } from "../routes/scripted-browser/plan.js";
 import type { TerminalRefusal } from "../routes/terminal/plan.js";
 import type { RunLabProvenance } from "../run/status.js";
 import type { RunLabOptions } from "./engine.js";
@@ -20,7 +21,6 @@ import type {
   LabSubjectServe,
   LabSubjectState,
   LabSubjectStateCheckpoint,
-  LabSubjectStateStep,
 } from "./types.js";
 
 export type NonEmpty<T> = readonly [T, ...T[]];
@@ -189,19 +189,19 @@ export type TerminalPlan = PlanBase & {
 
 export interface ScriptedPlan extends PlanBase {
   readonly route: "scripted";
+  /** The registered scripted-browser actor id. */
+  readonly actor: string;
+  /**
+   * The loopback URL is normalized. The parser requires seed state on a clone; the route runs a
+   * library caller's clone without it, so the plan does too.
+   */
   readonly subject:
     | { readonly kind: "loopback"; readonly appUrl: string }
-    /** Seeded synthetic state is required on the provisioned subject. */
-    | {
-        readonly kind: "clone";
-        readonly repo: string;
-        readonly serve: LabSubjectServe;
-        readonly env: readonly string[];
-        readonly state: LabSubjectState & { readonly seed: NonEmpty<LabSubjectStateStep> };
-      };
+    | Extract<ProvisionedSubject, { readonly kind: "clone" }>;
   /** Resolved and parsed by the route, right before the run. */
   readonly scenarioRef: string;
-  readonly surfaces: NonEmpty<BrowserSurface>;
+  /** Empty only for a library caller's `count: 0`, which the parser refuses; that run has no sessions. */
+  readonly surfaces: readonly BrowserSurface[];
   /** The declared persona and session timeout; the route supplies its defaults. */
   readonly personaId?: string;
   readonly sessionTimeoutMs?: number;
@@ -246,6 +246,7 @@ type PreviewRefusalCode =
 export type PlanRefusal =
   | { readonly route: "preview"; readonly code: PreviewRefusalCode; readonly message: string }
   | TerminalRefusal
+  | ScriptedRefusal
   | { readonly route: LabRoute; readonly gap: PlanGap };
 
 export type PlanResult =

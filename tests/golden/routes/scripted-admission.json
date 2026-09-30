@@ -1,0 +1,371 @@
+{
+  "real receiving": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study."
+    }
+  },
+  "invalid analysis": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    }
+  },
+  "media": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone on the local target": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "unregistered actor": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "not-an-actor",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered scripted-browser actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "public app url": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone without serve": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "missing scenario ref": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "http://127.0.0.1:3000/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "live clone without an E2B key": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": false,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
+      "message": "Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). also checked .humanish/local/provider.env, ~/.e2b/config.json, gh auth token, and ~/.config/humanish/keys.env. Fill: E2B_API_KEY: run `e2b auth login`, or `humanish keys set e2b`."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  },
+  "real receiving and invalid analysis": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study."
+    }
+  },
+  "invalid analysis and tasks": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_ANALYSIS_INVALID",
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+    }
+  },
+  "tasks and media": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "dryRun": true,
+    "runId": "not-created",
+    "appUrl": "http://127.0.0.1:3000/",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_LAB_TASKS_UNSUPPORTED",
+      "message": "actors[0].tasks is unsupported on this execution path. Task protocols require a per-lane computer-use route; shared-world, terminal-product, scripted-browser and synthetic routes do not consume them. Remove tasks only if a mission-only study is intended."
+    }
+  },
+  "media and clone on the local target": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "execution.desktop.media is supported only on computer-use browser lanes (app-url, clone or local-tree), not this execution route. Remove the declaration or use a supported route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone on the local target and unregistered actor": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "not-an-actor",
+    "appUrl": "",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "clone subjects require `execution.target: e2b-desktop` (got \"local\"): the lab clones and serves the repo inside a hosted desktop sandbox. `execution.target: local` applies to app-url and local-app subjects."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "unregistered actor and public app url": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "not-an-actor",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
+      "message": "actors[0].type \"not-an-actor\" is not a registered scripted-browser actor."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "public app url and missing scenario ref": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "https://example.com/",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "clone without serve and missing scenario ref": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": true,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
+      "message": "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_dry_run"
+    }
+  },
+  "missing scenario ref and live clone without an E2B key": {
+    "schema": "humanish.scripted-lab-result.v1",
+    "ok": false,
+    "cwd": "[cwd]",
+    "labId": "adm-scriptedappurl",
+    "actor": "scripted-browser",
+    "appUrl": "[provisioned-subject]",
+    "dryRun": false,
+    "runId": "not-created",
+    "sessions": [],
+    "warnings": [],
+    "error": {
+      "code": "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
+      "message": "scripted-browser labs require `scenario.ref` — the committed scenario's browser steps are what this actor executes."
+    },
+    "automaticAnalysisTrigger": "default",
+    "automaticAnalysis": {
+      "state": "skipped",
+      "reason": "analysis_source_unavailable"
+    }
+  }
+}

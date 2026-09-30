@@ -1501,9 +1501,10 @@
       "dryRun": true,
       "requirements": [],
       "route": "scripted",
+      "actor": "scripted-browser",
       "subject": {
         "kind": "loopback",
-        "appUrl": "http://127.0.0.1:5173"
+        "appUrl": "http://127.0.0.1:5173/"
       },
       "scenarioRef": "scripted-first-run",
       "surfaces": [

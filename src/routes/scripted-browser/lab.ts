@@ -25,16 +25,13 @@ import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { ActorCompletionReason, ActorPersonaRef, ActorStatus } from "../../actors/contract.js";
-import { actorRegistry, isScriptedBrowserActorDescriptor } from "../../actors/registry.js";
 import {
   runScriptedBrowserSessionInPreparedRoot,
   type ScriptedBrowserSessionOptions,
   type ScriptedBrowserSessionResult,
 } from "../../actors/scripted-browser/actor.js";
 import { resolveBrowserCommand } from "../../actors/scripted-browser/browser-command.js";
-import { normalizeLocalAppUrl } from "../../actors/scripted-browser/steps.js";
 import {
-  browserSurfaces,
   type ScriptedBrowserEvidenceUrlPolicy,
   type ScriptedBrowserLaunchArgs,
   type ScriptedBrowserLike,
@@ -48,11 +45,6 @@ import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import type { LabConfig } from "../../lab/types.js";
-import {
-  cloneTargetValidationReason,
-  desktopMediaValidationReason,
-  taskProtocolValidationReason,
-} from "../../lab/validation.js";
 import { renderObserver, type ObserverResult } from "../../observer/render.js";
 import {
   buildRunSource,
@@ -82,6 +74,7 @@ import { acquireE2BDesktopSandbox } from "../../substrates/e2b/sandbox.js";
 import { e2bShell } from "../../substrates/e2b/shell.js";
 import { resolveSubjectState } from "../computer-use/lab.js";
 import { buildScriptedLabBundle, renderScriptedReviewMarkdown } from "./bundle.js";
+import { evidenceAppUrlOf, planScriptedLab, type ScriptedPlanResult } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";
 import {
   UnsafeScriptedSessionResultError,
@@ -100,10 +93,6 @@ const SANDBOX_TIMEOUT_BUFFER_MS = 10 * 60_000;
 const SUBJECT_PROVISION_BUDGET_MS = 30 * 60_000;
 
 const DEFAULT_STATE_STEP_TIMEOUT_MS = 5 * 60_000;
-
-// Default surface roster is 1 (desktop only): the defaults-table single-lane row governs;
-// `count: 2` is the declared override that adds the mobile surface.
-const DEFAULT_SURFACE_COUNT = 1;
 
 /**
  * Library-level hooks: DI seams so CI drives the full path (real engine, real projection)
@@ -201,7 +190,13 @@ export interface ScriptedBrowserLabResult extends AutomaticAnalysisResult {
 export async function runScriptedBrowserLab(
   options: RunScriptedBrowserLabOptions,
 ): Promise<ScriptedBrowserLabResult> {
-  if (String(options.config.comms?.email?.kind) === "real")
+  // planScriptedLab makes every configuration refusal, in the order this route always has.
+  const planned = planScriptedLab(options.config, {
+    dryRun: options.dryRun,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    ...(options.hooks === undefined ? {} : { hooks: options.hooks }),
+  });
+  if (!planned.ok && planned.refusal.beforeScope)
     return {
       schema: SCRIPTED_BROWSER_LAB_SCHEMA,
       ok: false,
@@ -213,38 +208,11 @@ export async function runScriptedBrowserLab(
       appUrl: options.config.subject.appUrl ?? "",
       sessions: [],
       warnings: [],
-      error: {
-        code: "HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID",
-        message:
-          "Real email receiving is unsupported on the scripted-browser backend. Use a supported hosted computer-use browser study.",
-      },
-    };
-  const analysisReason = resolveAutomaticAnalysis(options.config.review?.analysis);
-  const tasksReason = analysisReason.ok
-    ? taskProtocolValidationReason(options.config, false)
-    : analysisReason.message;
-  if (tasksReason)
-    return {
-      schema: SCRIPTED_BROWSER_LAB_SCHEMA,
-      ok: false,
-      cwd: path.resolve(options.cwd),
-      labId: options.config.id,
-      actor: options.config.actors[0]?.type ?? "",
-      dryRun: options.dryRun,
-      runId: options.runId ?? "not-created",
-      appUrl: options.config.subject.appUrl ?? "",
-      sessions: [],
-      warnings: [],
-      error: {
-        code: analysisReason.ok
-          ? "HUMANISH_LAB_TASKS_UNSUPPORTED"
-          : "HUMANISH_LAB_ANALYSIS_INVALID",
-        message: tasksReason,
-      },
+      error: { code: planned.refusal.code, message: planned.refusal.message },
     };
   const analysis = resolveAutomaticAnalysis(options.config.review?.analysis);
   const { result, finished } = await runScope((scope) =>
-    runScriptedBrowserLabInScope(options, scope),
+    runScriptedBrowserLabInScope(options, planned, scope),
   );
   return completeAutomaticAnalysis(
     result,
@@ -258,6 +226,7 @@ export async function runScriptedBrowserLab(
 
 async function runScriptedBrowserLabInScope(
   options: RunScriptedBrowserLabOptions,
+  planned: ScriptedPlanResult,
   scope: RunScope,
 ): Promise<ScriptedBrowserLabResult> {
   const { config, dryRun } = options;
@@ -286,80 +255,45 @@ async function runScriptedBrowserLabInScope(
     error: { code, message },
   });
 
-  // Resolve the actor through the registry — the parse layer already validated this, but the
-  // engine fails closed rather than trusting a config that arrived through another door
-  // (runScriptedBrowserLab is itself exported npm surface).
-  const mediaReason = desktopMediaValidationReason(config);
-  if (mediaReason) return failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", mediaReason);
-  const cloneTargetReason = cloneTargetValidationReason(config);
-  if (cloneTargetReason) return failed("HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE", cloneTargetReason);
-
-  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
-  if (!descriptor || !isScriptedBrowserActorDescriptor(descriptor)) {
-    return failed(
-      "HUMANISH_SCRIPTED_LAB_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered scripted-browser actor.`,
-    );
-  }
+  // The other refusals come back from inside the run scope, after the output directory checks.
+  if (!planned.ok) return failed(planned.refusal.code, planned.refusal.message, planned.refusal);
+  const { plan } = planned;
   const runSession = hooks.runSession;
-  const provisionedRoute = config.subject.source === "clone";
-  const evidenceAppUrl = provisionedRoute
-    ? "[provisioned-subject]"
-    : (normalizeLocalAppUrl(config.subject.appUrl ?? "") ?? "");
-  const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = provisionedRoute
+  const clone = plan.subject.kind === "clone" ? plan.subject : undefined;
+  const evidenceAppUrl = evidenceAppUrlOf(plan.subject);
+  const urlPolicy: ScriptedBrowserEvidenceUrlPolicy = clone
     ? { kind: "provisioned-subject", evidenceOrigin: evidenceAppUrl }
     : { kind: "loopback" };
-  const serve = config.subject.serve;
-  const subjectRepo = provisionedRoute ? (config.subject.repos?.[0] ?? "") : undefined;
-  const subjectEnvNames = provisionedRoute ? (config.subject.env ?? []) : [];
+  const subjectEnvNames = [...(clone?.env ?? [])];
   const env = hooks.env ?? process.env;
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const hasGithubToken = subjectEnvNames.includes("GITHUB_TOKEN");
   const redactRepoLabel = config.policies?.redactRepos ?? hasGithubToken;
-  const publicRepo =
-    provisionedRoute && subjectRepo ? (redactRepoLabel ? "repo-01" : subjectRepo) : undefined;
   const scrubSourceValues = [
-    ...(subjectRepo ? [subjectRepo] : []),
+    ...(clone ? [clone.repo] : []),
     ...subjectEnvNames.map((name) => env[name] ?? ""),
   ].filter(Boolean);
   const scrubKnownValues = (text: string): string =>
     scrubSourceValues.reduce((acc, value) => acc.split(value).join("[redacted]"), text);
 
-  // Re-enforce the local loopback entry boundary at the engine. The provisioned clone route
-  // mints its own getHost URL later and persists only evidenceAppUrl.
-  let appUrl = provisionedRoute ? (serve?.url ?? "") : evidenceAppUrl;
-  if (!provisionedRoute && !appUrl) {
-    return failed(
-      "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
-      "subject.appUrl must be a loopback http(s) URL (127.0.0.1 or localhost) on the scripted-browser route.",
-      { actor: descriptor.id },
-    );
-  }
-  if (provisionedRoute && (!serve || !subjectRepo || !publicRepo)) {
-    return failed(
-      "HUMANISH_SCRIPTED_LAB_SUBJECT_UNSAFE",
-      "clone scripted-browser labs require one subject repo plus subject.serve; parseLabConfig should have rejected this config.",
-      { actor: descriptor.id, appUrl: evidenceAppUrl },
-    );
-  }
+  // A clone's URL is replaced by its getHost URL once it is served.
+  let appUrl = plan.subject.kind === "clone" ? plan.subject.serve.url : plan.subject.appUrl;
 
-  // Consume scenario.ref (fail-closed: invariant 6 — the steps ARE the actor; there is no
-  // built-in journey fallback on the lab route).
-  const scenario = await resolveScriptedScenario(projectRoot, config.scenario?.ref);
+  const scenario = await resolveScriptedScenario(projectRoot, plan.scenarioRef);
   if (!scenario.ok) {
     return failed("HUMANISH_SCRIPTED_LAB_SCENARIO_INVALID", scenario.message, {
-      actor: descriptor.id,
+      actor: plan.actor,
       appUrl: evidenceAppUrl,
     });
   }
   const journey = scenario.journey;
 
-  if (!dryRun && provisionedRoute) {
+  if (!dryRun && clone) {
     if (!e2bApiKey) {
       return failed(
         "HUMANISH_SCRIPTED_LAB_KEYS_MISSING",
         `Live clone scripted-browser labs require E2B_API_KEY (dry-run remains $0 and does not provision a subject). ${describeMissingKeys(["E2B_API_KEY"], env)}`,
-        { actor: descriptor.id, appUrl: evidenceAppUrl },
+        { actor: plan.actor, appUrl: evidenceAppUrl },
       );
     }
     const missingSubjectEnv = subjectEnvNames.filter((name) => !env[name]?.trim());
@@ -367,15 +301,15 @@ async function runScriptedBrowserLabInScope(
       return failed(
         "HUMANISH_SCRIPTED_LAB_SUBJECT_ENV_MISSING",
         `Subject env values missing for live clone scripted-browser lab: ${missingSubjectEnv.join(", ")}.`,
-        { actor: descriptor.id, appUrl: evidenceAppUrl },
+        { actor: plan.actor, appUrl: evidenceAppUrl },
       );
     }
   }
 
-  const surfaces = browserSurfaces.slice(0, config.actors[0]?.count ?? DEFAULT_SURFACE_COUNT);
-  const timeoutMs = config.execution?.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
+  const surfaces = plan.surfaces;
+  const timeoutMs = plan.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS;
   const persona: ActorPersonaRef = {
-    id: config.actors[0]?.persona ?? "scripted-journey",
+    id: plan.personaId ?? "scripted-journey",
     traitsApplied: [],
     // The step manifest IS the "prompt" on this lane; the digest binds the trace to the
     // committed scenario text.
@@ -390,7 +324,7 @@ async function runScriptedBrowserLabInScope(
       return failed(
         "HUMANISH_SCRIPTED_LAB_BROWSER_MISSING",
         "No Chrome/Chromium browser command was found for the scripted-browser actor. Set HUMANISH_BROWSER_COMMAND to a browser binary playwright-core can launch.",
-        { actor: descriptor.id, appUrl: evidenceAppUrl },
+        { actor: plan.actor, appUrl: evidenceAppUrl },
       );
     }
     browserCommand = resolved;
@@ -406,7 +340,7 @@ async function runScriptedBrowserLabInScope(
     observer: { open: options.open === true, render: hooks.renderObserverFn },
   });
   if (!started.ok) {
-    return failed(started.code, started.message, { actor: descriptor.id, appUrl: evidenceAppUrl });
+    return failed(started.code, started.message, { actor: plan.actor, appUrl: evidenceAppUrl });
   }
   const { run } = started;
   const { runId, createdAt, paths: runPaths } = run;
@@ -434,13 +368,13 @@ async function runScriptedBrowserLabInScope(
     let subjectModule: E2BDesktopModule | undefined;
     let subjectDesktop: E2BDesktopSandbox | undefined;
     try {
-      if (provisionedRoute) {
+      if (clone) {
         const requestTimeoutMs = readPositiveInt(env.HUMANISH_E2B_REQUEST_TIMEOUT_MS, 60_000);
         const timers: DetachedTimers = hooks.detachedTimers ?? {};
         const subjectSandboxTimeoutMs =
           timeoutMs +
           SUBJECT_PROVISION_BUDGET_MS +
-          (config.subject.state?.seed ?? []).reduce(
+          (clone.state?.seed ?? []).reduce(
             (sum, step) => sum + (step.timeoutMs ?? DEFAULT_STATE_STEP_TIMEOUT_MS),
             0,
           ) +
@@ -461,7 +395,7 @@ async function runScriptedBrowserLabInScope(
               tool: "humanish",
               labId: config.id,
               role: "subject",
-              actor: descriptor.id,
+              actor: plan.actor,
             },
             ...(subjectEnvNames.length > 0
               ? {
@@ -487,10 +421,10 @@ async function runScriptedBrowserLabInScope(
         }
 
         subjectCommit = await provisionCloneSubject(e2bShell(subjectDesktop), {
-          repo: subjectRepo!,
+          repo: clone.repo,
           depth: config.subject.clone?.depth ?? 1,
-          serve: serve!,
-          ...(config.subject.state === undefined ? {} : { state: config.subject.state }),
+          serve: clone.serve,
+          ...(clone.state === undefined ? {} : { state: clone.state }),
           hasGithubToken,
           requestTimeoutMs,
           scrub: scrubKnownValues,
@@ -508,7 +442,7 @@ async function runScriptedBrowserLabInScope(
             "the installed @e2b/desktop SDK does not expose getHost(port); clone scripted-browser labs require it to reach the provisioned subject",
           );
         }
-        const rawHost = subjectDesktop.getHost(servePort(serve!.url));
+        const rawHost = subjectDesktop.getHost(servePort(clone.serve.url));
         const hostUrl = /^https?:\/\//i.test(rawHost) ? rawHost : `https://${rawHost}`;
         if (!isTokenlessHost(hostUrl)) {
           throw new Error(
@@ -592,14 +526,14 @@ async function runScriptedBrowserLabInScope(
       await existingScreenshots(runPaths, result),
     );
   }
-  const subject: RunSubjectProvenance | undefined = provisionedRoute
+  const subject: RunSubjectProvenance | undefined = clone
     ? {
         source: "clone",
-        repo: publicRepo!,
+        repo: redactRepoLabel ? "repo-01" : clone.repo,
         ...(subjectCommit === undefined ? {} : { commit: subjectCommit }),
         envNames: subjectEnvNames,
         state: resolveSubjectState({
-          declared: config.subject.state,
+          declared: clone.state,
           dryRun,
           executed: stateStepRecords,
         }),
@@ -608,7 +542,7 @@ async function runScriptedBrowserLabInScope(
 
   const bundle = buildScriptedLabBundle({
     ...(options.lab === undefined ? {} : { lab: options.lab }),
-    actorId: descriptor.id,
+    actorId: plan.actor,
     appUrl: evidenceAppUrl,
     createdAt,
     dryRun,
@@ -666,7 +600,7 @@ async function runScriptedBrowserLabInScope(
     ok,
     cwd,
     labId: config.id,
-    actor: descriptor.id,
+    actor: plan.actor,
     appUrl: evidenceAppUrl,
     dryRun,
     runId,
