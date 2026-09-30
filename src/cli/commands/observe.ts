@@ -2,10 +2,10 @@ import { Command, Option } from "commander";
 import { openTarget, renderObserver, serveObserver } from "../../observer/render.js";
 import type { ObserverResult } from "../../observer/render.js";
 import { SERVE_SCHEMA, serveObserverLibrary } from "../../observer/serve.js";
-import type { ServeErrorCode, ServeResult } from "../../observer/serve.js";
+import type { ServeErrorCode, ServeLibraryServer, ServeResult } from "../../observer/serve.js";
 import { startExposedObserver, validateExposure } from "../../observer/exposure.js";
+import type { ExposurePlan, ExposureResult } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
-import type { ServeTunnel } from "../../observer/tunnel.js";
 import type { RunResult } from "../../run/results.js";
 import {
   type CliIo,
@@ -250,41 +250,26 @@ export function registerServeCommand(parent: Command, io: CliIo): void {
     .action((options, command) => handleServe(io, options, command));
 }
 
-async function handleServe(
-  io: CliIo,
-  options: {
-    cwd: string;
-    expose?: boolean;
-    json?: boolean;
-    open?: boolean;
-    port: string;
-    publicUrl?: string;
-    run?: string;
-    safe?: boolean;
-    tunnel?: "ngrok";
-    tunnelDomain?: string;
-    oauth?: "google";
-    allowEmail: string[];
-    allowDomain: string[];
-  },
-  command: Command,
-): Promise<void> {
-  const wantsMachine = wantsJson(command);
-  const fail = (code: ServeErrorCode, message: string): void => {
-    const result: ServeResult = {
-      schema: SERVE_SCHEMA,
-      ok: false,
-      cwd: options.cwd,
-      mode: "loopback",
-      safe: options.safe === true,
-      host: "127.0.0.1",
-      runsListed: 0,
-      warnings: [],
-      error: { code, message },
-    };
-    writeResult(command, io, result, formatServeHuman);
-    io.setExitCode(2);
-  };
+interface ServeOptions {
+  cwd: string;
+  expose?: boolean;
+  json?: boolean;
+  open?: boolean;
+  port: string;
+  publicUrl?: string;
+  run?: string;
+  safe?: boolean;
+  tunnel?: "ngrok";
+  tunnelDomain?: string;
+  oauth?: "google";
+  allowEmail: string[];
+  allowDomain: string[];
+}
+
+type ServeFail = (code: ServeErrorCode, message: string) => void;
+
+async function handleServe(io: CliIo, options: ServeOptions, command: Command): Promise<void> {
+  const fail: ServeFail = (code, message) => refuseServe(command, io, options, code, message);
 
   const port = parseObserverPort(options.port);
   if (port === null) {
@@ -322,37 +307,71 @@ async function handleServe(
     fail(started.error.code, started.error.message);
     return;
   }
-  const server = started.server;
+  const edge = await startServeEdge(started.server, plan, fail);
+  if (edge === undefined) return;
+  await reportServe(io, command, options, started.server, plan, edge);
+}
 
-  let tunnel: ServeTunnel | undefined;
-  let publicUrl: string | undefined;
-  const warnings: string[] = [];
-  if (plan.exposed) {
-    try {
-      const exposeResult = await startExposedObserver(server, plan);
-      tunnel = exposeResult.tunnel;
-      publicUrl = exposeResult.publicUrl;
-      warnings.push(...exposeResult.warnings);
-    } catch (error: unknown) {
-      await server.close();
-      if (error instanceof ServeTunnelError) {
-        fail(error.code, error.message);
-      } else {
-        fail(
-          "HUMANISH_SERVE_TUNNEL_START_FAILED",
-          `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-      return;
+function refuseServe(
+  command: Command,
+  io: CliIo,
+  options: ServeOptions,
+  code: ServeErrorCode,
+  message: string,
+): void {
+  const result: ServeResult = {
+    schema: SERVE_SCHEMA,
+    ok: false,
+    cwd: options.cwd,
+    mode: "loopback",
+    safe: options.safe === true,
+    host: "127.0.0.1",
+    runsListed: 0,
+    warnings: [],
+    error: { code, message },
+  };
+  writeResult(command, io, result, formatServeHuman);
+  io.setExitCode(2);
+}
+
+/**
+ * Puts the planned edge in front of the loopback server. Resolves to undefined after closing the
+ * server and reporting the failure when the edge does not start.
+ */
+async function startServeEdge(
+  server: ServeLibraryServer,
+  plan: ExposurePlan,
+  fail: ServeFail,
+): Promise<ExposureResult | undefined> {
+  if (!plan.exposed) return { warnings: [] };
+  try {
+    return await startExposedObserver(server, plan);
+  } catch (error: unknown) {
+    await server.close();
+    if (error instanceof ServeTunnelError) {
+      fail(error.code, error.message);
+    } else {
+      fail(
+        "HUMANISH_SERVE_TUNNEL_START_FAILED",
+        `Tunnel startup failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
+    return undefined;
   }
+}
 
-  if (server.mode === "exposed" && options.safe !== true) {
+function serveExposureWarnings(
+  server: ServeLibraryServer,
+  safe: boolean,
+  publicUrl: string | undefined,
+): string[] {
+  const warnings: string[] = [];
+  if (server.mode === "exposed" && !safe) {
     warnings.push(
       `edge-authed exposure grants read access to all ${server.runsListed} local runs, including any not verified share_ready (local_only raw screenshots, blocked bundles); anyone who clears the edge auth can view them; add --safe to restrict to share_ready`,
     );
   }
-  if (server.mode === "exposed" && options.safe === true) {
+  if (server.mode === "exposed" && safe) {
     warnings.push(
       `edge-authed exposure grants read access to ${server.shareReadyCount ?? 0} share_ready runs; non-share_ready runs are absent even behind the edge`,
     );
@@ -365,6 +384,24 @@ async function handleServe(
   warnings.push(
     "live desktop stream URLs are never served here; remote viewers see persisted evidence (screenshots, events, terminal tails) only",
   );
+  return warnings;
+}
+
+/** Opens the library when asked, writes the result, and serves until a signal closes the edge. */
+async function reportServe(
+  io: CliIo,
+  command: Command,
+  options: ServeOptions,
+  server: ServeLibraryServer,
+  plan: ExposurePlan,
+  edge: ExposureResult,
+): Promise<void> {
+  const wantsMachine = wantsJson(command);
+  const { tunnel, publicUrl } = edge;
+  const warnings = [
+    ...edge.warnings,
+    ...serveExposureWarnings(server, options.safe === true, publicUrl),
+  ];
 
   // Auto-open is suppressed under --expose so the public URL is not shoved into a local opener's
   // argv unasked — the exposure target is a remote device anyway. Explicit --open still honors
