@@ -7,7 +7,6 @@ import {
 import { failureTail } from "../../evidence/redaction.js";
 import { isHttpUrl } from "../../lab/parse-subject.js";
 import type { LabDesktopBrowser } from "../../lab/types.js";
-import { runDesktopCommandOrThrow } from "../command-failure.js";
 import { runDetachedStep } from "../detached.js";
 import { shellQuote } from "../shell.js";
 import type { E2BDesktopSandbox } from "./desktop-launch.js";
@@ -82,7 +81,7 @@ export async function findVisibleBrowserWindowId(
           "  sleep 0.5",
           "done",
         ];
-  const result = await desktop.commands.run(
+  const result = await e2bShell(desktop).run(
     [
       "set -euo pipefail",
       'export DISPLAY="${DISPLAY:-:0}"',
@@ -107,7 +106,7 @@ export async function findVisibleBrowserWindowId(
       timeoutMs: 15_000,
     },
   );
-  return (result.stdout ?? "").match(/^WINDOW_ID=(\S+)$/m)?.[1];
+  return result.stdout.match(/^WINDOW_ID=(\S+)$/m)?.[1];
 }
 
 /**
@@ -142,7 +141,7 @@ export async function fillDesktopBrowserWindow(
   requestTimeoutMs: number,
 ): Promise<void> {
   const [width, height] = resolution;
-  await desktop.commands
+  await e2bShell(desktop)
     .run(buildFillDesktopWindowCommand(windowId, width, height), {
       requestTimeoutMs,
       timeoutMs: 10_000,
@@ -243,27 +242,20 @@ export async function openDesktopBrowserTarget(
       "}",
       "open_target",
     ].join("\n");
-    const result = await runDesktopCommandOrThrow(
-      () =>
-        desktop.commands.run(browserLaunchCommand, {
-          requestTimeoutMs,
-          timeoutMs: 15_000,
-          ...(environment === undefined ? {} : { envs: { ...environment } }),
-        }),
-      ({ exitCode, stderrTail }) =>
-        new Error(
-          `browser launch failed${exitCode === undefined ? "" : ` with exit ${exitCode}`}: ${stderrTail}`,
-        ),
-    );
-    if (result.exitCode !== undefined && result.exitCode !== 0) {
+    const result = await e2bShell(desktop).run(browserLaunchCommand, {
+      requestTimeoutMs,
+      timeoutMs: 15_000,
+      ...(environment === undefined ? {} : { env: environment }),
+    });
+    if (result.exitCode !== 0) {
       throw new Error(
-        `browser launch failed with exit ${result.exitCode}: ${failureTail(result.stderr ?? result.stdout ?? "")}`,
+        `browser launch failed with exit ${result.exitCode}: ${failureTail(result.stderr || result.stdout)}`,
       );
     }
-    const resolved = (result.stdout ?? "").match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
-    const processId = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PID=(\d+)$/m)?.[1];
-    const profileDir = (result.stdout ?? "").match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1];
-    const cdpPortRaw = (result.stdout ?? "").match(/^HUMANISH_BROWSER_CDP_PORT=(\d+)$/m)?.[1];
+    const resolved = result.stdout.match(/^HUMANISH_BROWSER_RESOLVED=(\S+)$/m)?.[1];
+    const processId = result.stdout.match(/^HUMANISH_BROWSER_PID=(\d+)$/m)?.[1];
+    const profileDir = result.stdout.match(/^HUMANISH_BROWSER_PROFILE_DIR=(\S+)$/m)?.[1];
+    const cdpPortRaw = result.stdout.match(/^HUMANISH_BROWSER_CDP_PORT=(\d+)$/m)?.[1];
     const cdpPort = cdpPortRaw === undefined ? undefined : Number(cdpPortRaw);
     return {
       family: desktopBrowserFamily(resolved ?? requestedBrowser),

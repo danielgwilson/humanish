@@ -60,7 +60,7 @@ function screenDesktop(): E2BDesktopLike {
 }
 
 describe("an E2B desktop command that exits non-zero", () => {
-  it.fails("reports the browser-state observer unavailable, once per lane", async () => {
+  it("reports the browser-state observer unavailable, once per lane", async () => {
     const desktop = failingDesktop(exited(127, "bash: line 1: python3: command not found"));
     const onUnavailable = vi.fn();
     const executor = createE2BDesktopExecutor(screenDesktop(), {
@@ -78,7 +78,7 @@ describe("an E2B desktop command that exits non-zero", () => {
     expect(onUnavailable.mock.calls[0]?.[0]).toMatch(/^probe exited 127: .*python3/);
   });
 
-  it.fails("reports a timed-out browser-state probe as unavailable too", async () => {
+  it("reports a timed-out browser-state probe as unavailable too", async () => {
     const desktop = failingDesktop(new TimeoutError("[deadline_exceeded] command timed out"));
     const onUnavailable = vi.fn();
     const observe = makeChromeBrowserStateObserver(
@@ -93,7 +93,7 @@ describe("an E2B desktop command that exits non-zero", () => {
     expect(onUnavailable.mock.calls[0]?.[0]).toMatch(/^probe failed: .*timed out/);
   });
 
-  it.fails("names the exit when the geometry probe fails", async () => {
+  it("names the exit when the geometry probe fails", async () => {
     const desktop = failingDesktop(exited(1, "Traceback: ConnectionRefusedError"));
     const onUnavailable = vi.fn();
     const measure = makeChromeDesktopGeometryObserver(
@@ -109,7 +109,7 @@ describe("an E2B desktop command that exits non-zero", () => {
     );
   });
 
-  it.fails("says why a synthetic camera feed could not be generated", async () => {
+  it("says why a synthetic camera feed could not be generated", async () => {
     const desktop = failingDesktop(exited(127, "bash: line 1: ffmpeg: command not found"));
     await expect(
       prepareDesktopMedia(desktop, { camera: { source: "synthetic" } }, "prompt", "/tmp", 1_000),
@@ -127,7 +127,7 @@ describe("releasing an E2B sandbox that is already gone", () => {
     } as unknown as E2BDesktopModule;
   }
 
-  it.fails("reads the SDK's not-found error as already gone, as reclaim does", async () => {
+  it("reads the SDK's not-found error as already gone, as reclaim does", async () => {
     const module = moduleWith(async (id) => {
       throw new SandboxNotFoundError(`Sandbox ${id} not found`);
     });
@@ -142,7 +142,7 @@ describe("releasing an E2B sandbox that is already gone", () => {
     });
   });
 
-  it.fails("does not read a malformed kill result as already gone during reclaim", async () => {
+  it("does not read a malformed kill result as already gone during reclaim", async () => {
     const module = moduleWith(async () => undefined);
     const { allocation } = await acquireE2BDesktopSandbox({
       module,

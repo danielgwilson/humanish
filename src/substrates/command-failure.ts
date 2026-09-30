@@ -1,12 +1,10 @@
 // Shared handling for @e2b/desktop command failures.
 //
-// The real Sandbox's `commands.run` THROWS a CommandExitError on any non-zero
-// exit (it does not return a non-zero exitCode), so a site that only inspects
-// `result.exitCode` after the call never reaches its non-zero branch in
-// production -- the intended, formatted error is lost and a raw CommandExitError
-// propagates instead. These helpers recover the exit code + a sanitized output
-// tail from the throw, and wrap a run so a site can convert the throw into its
-// own intended error while still handling a non-throwing (fake) runner shape.
+// The SDK's `commands.run` throws a CommandExitError on any non-zero exit (e2b 2.49.0:
+// CommandHandle.wait), so a caller that reads `result.exitCode` after a raw call never sees a
+// failure. Desktop code runs commands through e2bShell (src/substrates/e2b/shell.ts), which turns
+// that throw into a result. These helpers recover the exit code and a sanitized output tail from
+// the throw for the callers that still meet it directly, such as the desktop executor.
 //
 // Public-safety: only the substrate's own output (stderr/stdout/error/message) is
 // read here; caller-supplied text (e.g. typed input) must never be passed to the
@@ -66,22 +64,4 @@ export function commandFailureInfo(error: unknown): { exitCode?: number; stderrT
   return exitCode === undefined
     ? { stderrTail: tailOf(source) }
     : { exitCode, stderrTail: tailOf(source) };
-}
-
-/**
- * Run a desktop command; if the substrate THROWS on a non-zero exit (the real
- * @e2b/desktop behavior), convert the throw into the caller's intended error via
- * `onFailure` (which returns the value to throw -- a new Error, or the original
- * error to preserve raw propagation). A non-throwing runner that RETURNS a
- * non-zero exitCode is left to the caller's own post-call check.
- */
-export async function runDesktopCommandOrThrow<T>(
-  run: () => Promise<T>,
-  onFailure: (info: { exitCode?: number; stderrTail: string }, error: unknown) => unknown,
-): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    throw onFailure(commandFailureInfo(error), error);
-  }
 }

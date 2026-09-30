@@ -6,8 +6,10 @@ import {
   type ChromeMobileEmulationRequest,
 } from "../../routes/computer-use/cdp-probe.js";
 import { failureTail } from "../../evidence/redaction.js";
+import { toErrorMessage } from "../command-failure.js";
 import type { RunDesktopGeometry } from "../../run/bundle.js";
 import { readDetachedLog, startDetachedProcess } from "../detached.js";
+import type { ShellResult } from "../shell.js";
 import type { E2BDesktopSandbox } from "./desktop-launch.js";
 import { e2bShell } from "./shell.js";
 
@@ -74,20 +76,24 @@ export function makeChromeBrowserStateObserver(
     }
     return {};
   };
+  const shell = e2bShell(desktop);
   const checkLaterTarget = async (newTargetId: string): Promise<void> => {
     if (drift === undefined || checkedTargets.has(newTargetId)) return;
     checkedTargets.add(newTargetId);
-    const read = await desktop.commands.run(
-      chromeCdpProbeCommand({
-        ...endpoint,
-        targetId: newTargetId,
-        prefer: "pinned",
-        mode: "fidelity",
-      }),
-      { requestTimeoutMs, timeoutMs: 5_000 },
-    );
+    // A read that fails or cannot be taken leaves the target's width unknown, which is drift.
+    const read = await shell
+      .run(
+        chromeCdpProbeCommand({
+          ...endpoint,
+          targetId: newTargetId,
+          prefer: "pinned",
+          mode: "fidelity",
+        }),
+        { requestTimeoutMs, timeoutMs: 5_000 },
+      )
+      .catch(() => undefined);
     const fidelity =
-      read.exitCode !== undefined && read.exitCode !== 0
+      read === undefined || read.exitCode !== 0
         ? undefined
         : parseChromeCdpProbeOutput(read.stdout).fidelity;
     if (fidelity !== undefined && fidelity.innerWidth === drift.expectedWidth) {
@@ -115,18 +121,24 @@ export function makeChromeBrowserStateObserver(
     );
   };
   return async () => {
-    const result = await desktop.commands.run(
-      chromeCdpProbeCommand({
-        ...endpoint,
-        ...(targetId === undefined ? {} : { targetId }),
-        prefer: "active",
-        mode: "state",
-      }),
-      { requestTimeoutMs, timeoutMs: 5_000 },
-    );
-    if (result.exitCode !== undefined && result.exitCode !== 0) {
+    let result: ShellResult;
+    try {
+      result = await shell.run(
+        chromeCdpProbeCommand({
+          ...endpoint,
+          ...(targetId === undefined ? {} : { targetId }),
+          prefer: "active",
+          mode: "state",
+        }),
+        { requestTimeoutMs, timeoutMs: 5_000 },
+      );
+    } catch (error) {
+      // The executor discards a rejected probe, so a timeout is reported here or nowhere.
+      return unavailable(`probe failed: ${failureTail(toErrorMessage(error))}`);
+    }
+    if (result.exitCode !== 0) {
       return unavailable(
-        `probe exited ${result.exitCode}: ${failureTail(result.stderr ?? result.stdout ?? "")}`,
+        `probe exited ${result.exitCode}: ${failureTail(result.stderr || result.stdout)}`,
       );
     }
     const parsed = parseChromeCdpProbeOutput(result.stdout);
@@ -171,14 +183,15 @@ export async function applyMobileEmulation(
       mode,
       emulation: request,
     });
+  const shell = e2bShell(desktop);
   const read = async () => {
-    const result = await desktop.commands.run(command("fidelity"), {
+    const result = await shell.run(command("fidelity"), {
       requestTimeoutMs,
       timeoutMs: 15_000,
     });
-    if (result.exitCode !== undefined && result.exitCode !== 0) {
+    if (result.exitCode !== 0) {
       return {
-        unavailable: `probe exited ${result.exitCode}: ${failureTail(result.stderr ?? result.stdout ?? "")}`,
+        unavailable: `probe exited ${result.exitCode}: ${failureTail(result.stderr || result.stdout)}`,
       };
     }
     return parseChromeCdpProbeOutput(result.stdout);
@@ -188,7 +201,6 @@ export async function applyMobileEmulation(
   // applier stays attached for the lane's whole life as a detached process; the sandbox teardown
   // ends it. Its first stdout line says what was applied.
   const holderName = `mobile-emulation-${Date.now().toString(36)}`;
-  const shell = e2bShell(desktop);
   await startDetachedProcess(shell, {
     name: holderName,
     command: command("hold"),

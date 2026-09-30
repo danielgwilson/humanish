@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   commandFailureInfo,
   isCommandExitError,
-  runDesktopCommandOrThrow,
   tailOf,
 } from "../../src/substrates/command-failure.js";
 
@@ -87,48 +86,5 @@ describe("isCommandExitError", () => {
     expect(isCommandExitError(null)).toBe(false);
     expect(isCommandExitError("boom")).toBe(false);
     expect(isCommandExitError({ exitCode: "2" })).toBe(false);
-  });
-});
-
-describe("runDesktopCommandOrThrow", () => {
-  it("returns the run result on success and never calls onFailure", async () => {
-    let onFailureCalls = 0;
-    const result = await runDesktopCommandOrThrow(
-      async () => ({ exitCode: 0, stdout: "ok" }),
-      () => {
-        onFailureCalls += 1;
-        return new Error("should not run");
-      },
-    );
-    expect(result).toEqual({ exitCode: 0, stdout: "ok" });
-    expect(onFailureCalls).toBe(0);
-  });
-
-  it("converts a thrown CommandExitError into the caller's intended error", async () => {
-    const thrown = await runDesktopCommandOrThrow(
-      async () => {
-        throw commandExitError({
-          exitCode: 127,
-          stderr: "requested browser firefox was not found",
-        });
-      },
-      ({ exitCode, stderrTail }) =>
-        new Error(`browser launch failed with exit ${exitCode}: ${stderrTail}`),
-    ).catch((error: unknown) => error);
-    expect(thrown).toBeInstanceOf(Error);
-    expect((thrown as Error).message).toBe(
-      "browser launch failed with exit 127: requested browser firefox was not found",
-    );
-  });
-
-  it("can rethrow the ORIGINAL error (e.g. to preserve default propagation)", async () => {
-    const original = commandExitError({ exitCode: 1, stderr: "infra" });
-    const thrown = await runDesktopCommandOrThrow(
-      async () => {
-        throw original;
-      },
-      (_info, error) => error,
-    ).catch((error: unknown) => error);
-    expect(thrown).toBe(original);
   });
 });
