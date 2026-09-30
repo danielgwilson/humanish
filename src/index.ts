@@ -190,14 +190,15 @@ export type {
 } from "./actors/codex/app-server.js";
 export {
   FEEDBACK_RESULT_SCHEMA,
-  FEEDBACK_SCHEMA,
   draftFeedback,
   listFeedback,
   renderIssueMarkdown,
   renderIssueUrl,
   verifyFeedback,
 } from "./feedback/feedback.js";
-export type { FeedbackDraft, FeedbackResult } from "./feedback/feedback.js";
+export { FEEDBACK_SCHEMA } from "./feedback/draft.js";
+export type { FeedbackResult } from "./feedback/feedback.js";
+export type { FeedbackDraft } from "./feedback/draft.js";
 export { INIT_RESPONSE_SCHEMA, runInit } from "./lab/init.js";
 export type { InitChange, InitMode, InitOptions, InitResult } from "./lab/init.js";
 export { OBSERVER_DATA_SCHEMA, buildObserverData, stripAnsi } from "./observer/data.js";

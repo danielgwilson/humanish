@@ -17,13 +17,13 @@ import { describe, expect, it } from "vitest";
 
 import { ACTOR_TRACE_SCHEMA } from "../../src/actors/contract.js";
 import {
-  FEEDBACK_SCHEMA,
   draftFeedback,
   listFeedback,
   renderIssueMarkdown,
   renderIssueUrl,
   verifyFeedback,
 } from "../../src/feedback/feedback.js";
+import { FEEDBACK_SCHEMA } from "../../src/feedback/draft.js";
 import { createProgram } from "../../src/cli/program.js";
 import { runDryRun } from "../../src/run/dry-run.js";
 
