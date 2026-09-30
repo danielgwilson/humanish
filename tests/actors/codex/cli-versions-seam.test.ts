@@ -8,8 +8,8 @@ import type { RunLabOptions } from "../../../src/lab/engine.js";
 import { parseLabConfig } from "../../../src/lab/config.js";
 import type { CuaActorLabHooks } from "../../../src/routes/computer-use/types.js";
 
-// `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for the
-// maintainer's qualification script. These tests prove no public path can set it.
+// `RestrictedCodexSessionOptions.cliVersions` bypasses per-host qualification for
+// scripts/codex-qualify.mjs. These tests prove no public path can set it.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const sourceFiles = readdirSync(path.join(root, "src"), { recursive: true, encoding: "utf8" })
   .filter((file) => file.endsWith(".ts"))

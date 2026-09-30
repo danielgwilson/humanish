@@ -85,7 +85,8 @@ This is drift evidence: 0.157.1 did nothing in these scenarios that 0.154.0 did 
 review of that qualifier found exemptions a release could hide behind (a failed unlink
 counted as a removal, sidecar and schema-output paths matched by prefix, unsampled live
 remotes). Those are harness gaps, fixed in the qualifier's own change, not behavior observed
-in 0.157.1. The qualifier cannot show that a binary built to evade it is safe; see the
+in 0.157.1. With the fixes, `pnpm codex:qualify 0.157.1 --baseline 0.154.0 --live` passed all
+56 of its checks (evidence `.humanish/codex-qualify/0.157.1-r5/evidence.json`). The qualifier cannot show that a binary built to evade it is safe; see the
 [admission rules](../../../architecture/restricted-codex-analysis.md#admitting-a-codex-cli-release).
 
 - Participant isolate, from its own `Object.keys(tools)` and each call's result: 0.154.0

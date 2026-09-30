@@ -68,7 +68,9 @@ lands separately from the admission change. With it,
 `pnpm codex:qualify 0.159.2 --baseline 0.154.0 --live` passed all 53 checks. Evidence is
 retained locally in `.humanish/codex-qualify/0.159.2-r4/evidence.json`. As for 0.157.1, this
 is drift evidence against a vendor release, not proof against an adversarial binary, and the
-harness gaps a later review found are fixed in the qualifier's own change.
+harness gaps a later review found are fixed in the qualifier's own change. With the fixes, the
+same command passed all 56 of its checks (evidence
+`.humanish/codex-qualify/0.159.2-r5/evidence.json`).
 
 - Participant isolate: 0.159.2 exposes only `clock__curr_time` and `humanish_ui`; the clock
   call succeeds and fetch is refused. 0.154.0's `skills__list` and `skills__read` failed
