@@ -16,7 +16,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "media": {
@@ -36,7 +36,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "invalid analysis": {
@@ -71,7 +71,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "unregistered actor": {
@@ -91,7 +91,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "runtime version": {
@@ -111,7 +111,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "product without surfaces": {
@@ -131,7 +131,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "live without caps": {
@@ -151,7 +151,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
   "live positive maxUsd": {
@@ -171,7 +171,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   },
   "real receiving and media": {
@@ -191,7 +191,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "media and invalid analysis": {
@@ -241,7 +241,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "unregistered actor and runtime version": {
@@ -261,7 +261,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "runtime version and product without surfaces": {
@@ -281,7 +281,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "product without surfaces and live without caps": {
@@ -301,7 +301,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_source_unavailable"
+      "reason": "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE"
     }
   }
 }

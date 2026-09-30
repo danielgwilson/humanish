@@ -44,7 +44,7 @@ export async function completeAutomaticAnalysis<
     return {
       ...result,
       ...origin,
-      automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" },
+      automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
     };
   // An early refusal can echo a caller-supplied ID belonging to an older run, so the ID alone
   // proves nothing. Only this invocation's own publication token names a source.
@@ -52,7 +52,7 @@ export async function completeAutomaticAnalysis<
     return {
       ...result,
       ...origin,
-      automaticAnalysis: { state: "skipped", reason: "analysis_source_unavailable" },
+      automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE" },
     };
   }
   const prepared = finished.paths;
@@ -65,7 +65,7 @@ export async function completeAutomaticAnalysis<
       return {
         ...result,
         ...origin,
-        automaticAnalysis: { state: "failed", reason: "analysis_source_changed" },
+        automaticAnalysis: { state: "failed", reason: "AUTOMATIC_ANALYSIS_SOURCE_CHANGED" },
       };
     }
     const sourceCwd = path.dirname(path.dirname(prepared.physicalRunsRoot));
@@ -86,7 +86,7 @@ export async function completeAutomaticAnalysis<
     return {
       ...result,
       ...origin,
-      automaticAnalysis: { state: "failed", reason: "analysis_automatic_failed" },
+      automaticAnalysis: { state: "failed", reason: "AUTOMATIC_ANALYSIS_FAILED" },
     };
   } finally {
     try {
@@ -117,7 +117,7 @@ export function automaticAnalysisSucceeded(result: AutomaticAnalysisResult): boo
   if (value === undefined) return true;
   if (value.state === "skipped")
     return (
-      value.reason === "analysis_dry_run" ||
+      value.reason === "AUTOMATIC_ANALYSIS_DRY_RUN" ||
       (result.automaticAnalysisTrigger === "default" &&
         ["AUTOMATIC_ANALYSIS_KEY_MISSING", "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE"].includes(
           value.reason ?? "",

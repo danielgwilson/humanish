@@ -276,7 +276,7 @@ describe("automatic analysis admission and producer boundary", () => {
       });
       expect(output.backend).toBe(backend);
       expect(output.result).toMatchObject({
-        automaticAnalysis: { state: "skipped", reason: "analysis_dry_run" },
+        automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
       });
       expect(run).not.toHaveBeenCalled();
       expect(onStart).not.toHaveBeenCalled();
@@ -291,7 +291,10 @@ describe("automatic analysis admission and producer boundary", () => {
       config,
       { run, onStart },
     );
-    expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_dry_run" });
+    expect(result.automaticAnalysis).toEqual({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_DRY_RUN",
+    });
     expect(run).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
     expect(automaticAnalysisSucceeded(result)).toBe(true);
@@ -369,7 +372,7 @@ describe("automatic analysis admission and producer boundary", () => {
     });
     expect(output.automaticAnalysis).toEqual({
       state: "failed",
-      reason: "analysis_source_changed",
+      reason: "AUTOMATIC_ANALYSIS_SOURCE_CHANGED",
     });
     expect(fetch).not.toHaveBeenCalled();
     expect(cleanup).toHaveBeenCalledOnce();
@@ -431,7 +434,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
-      reason: "analysis_source_unavailable",
+      reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE",
     });
     expect(run).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
@@ -448,7 +451,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
-      reason: "analysis_source_unavailable",
+      reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE",
     });
     expect(run).not.toHaveBeenCalled();
     expect(onStart).not.toHaveBeenCalled();
@@ -469,7 +472,7 @@ describe("automatic analysis admission and producer boundary", () => {
     );
     expect(result.automaticAnalysis).toEqual({
       state: "skipped",
-      reason: "analysis_source_unavailable",
+      reason: "AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE",
     });
     expect(run).not.toHaveBeenCalled();
   });
@@ -641,7 +644,10 @@ describe("automatic analysis admission and producer boundary", () => {
         "--json",
       ]);
       const result = JSON.parse(stdout);
-      expect(result.automaticAnalysis).toEqual({ state: "skipped", reason: "analysis_dry_run" });
+      expect(result.automaticAnalysis).toEqual({
+        state: "skipped",
+        reason: "AUTOMATIC_ANALYSIS_DRY_RUN",
+      });
       expect(result.ok).toBe(result.runOk);
       expect(exit).toBe(result.ok ? 0 : 2);
       expect(stderr).not.toContain("preparing analysis");

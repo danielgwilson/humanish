@@ -191,7 +191,7 @@
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
       "state": "skipped",
-      "reason": "analysis_dry_run"
+      "reason": "AUTOMATIC_ANALYSIS_DRY_RUN"
     }
   },
   "../latest.json": {
