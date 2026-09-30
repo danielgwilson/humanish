@@ -49,7 +49,7 @@ import { runCuaLane } from "../computer-use/lanes.js";
 import { buildConcurrentSharedWorldBundle } from "./bundle.js";
 import { runCheckpointSnapshot } from "./checkpoints.js";
 import { drainSubjectComms } from "./comms.js";
-import type { SharedWorldLabHooks } from "./hooks.js";
+import type { SharedWorldLabHooks } from "./types.js";
 import {
   buildSubjectProvenance,
   hostOriginDigest,

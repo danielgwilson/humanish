@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import type { LabConfig } from "../../../src/lab/types.js";
 import { runConcurrentSharedWorld } from "../../../src/routes/shared-world/lab.js";
-import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
+import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/types.js";
 import { lab } from "../../admission/fixtures.js";
 
 const dirs: string[] = [];

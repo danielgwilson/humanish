@@ -16,8 +16,7 @@ import type {
   CuaLaneSpec,
   LaneRunOutcome,
 } from "../computer-use/types.js";
-import type { SharedWorldLabHooks } from "./hooks.js";
-import type { LiveSeats, PlaneContext } from "./types.js";
+import type { LiveSeats, PlaneContext, SharedWorldLabHooks } from "./types.js";
 import { labPersonaIds, resolveCommittedPersonasForCwd } from "../../lab/persona-resolve.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { redactText } from "../../evidence/redaction.js";

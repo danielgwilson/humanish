@@ -37,7 +37,7 @@ import {
   extractResponsesOutputText,
   readLobbyCodeFromFrame,
 } from "../../../src/routes/shared-world/lobby-code.js";
-import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/hooks.js";
+import type { SharedWorldLabHooks } from "../../../src/routes/shared-world/types.js";
 import type { BrowserLabScoringContext, RunAdapterScore, RunBundle } from "../../../src/index.js";
 import type { SubjectPhaseEvent } from "../../../src/subject/steps.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
