@@ -24,13 +24,13 @@ import {
 } from "../../src/comms/receiving-types.js";
 import {
   writeContainedOutputFile,
-  type PreparedOutputDirectory,
-} from "../../src/run/selected-output-paths.js";
+  type PreparedOutputRoot,
+} from "../../src/run/contained-output.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 type Preparation = {
   participants: string[];
-  runPaths: PreparedOutputDirectory;
+  runPaths: PreparedOutputRoot;
   registerSecrets(values: string[]): void;
 };
 const seam = vi.hoisted(() => ({
@@ -216,7 +216,7 @@ describe("configured receiving through exported study runners", () => {
     const attached = new Map<string, ReceivingSurface>();
     const ended = new Set<string>();
     let receivingEvidence!: CommsReceivingEvidence;
-    let artifactRoot!: PreparedOutputDirectory;
+    let artifactRoot!: PreparedOutputRoot;
     const persist = () =>
       writeContainedOutputFile(
         artifactRoot,

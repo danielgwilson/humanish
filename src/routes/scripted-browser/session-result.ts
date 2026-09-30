@@ -6,7 +6,7 @@ import path from "node:path";
 import type { ScriptedBrowserSessionResult } from "../../actors/scripted-browser/actor.js";
 import type { BrowserSurface } from "../../actors/scripted-browser/types.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { readContainedRegularFile } from "../../run/selected-output-paths.js";
+import { readContainedRegularFile } from "../../run/contained-output.js";
 
 export class UnsafeScriptedSessionResultError extends Error {
   constructor(message: string) {

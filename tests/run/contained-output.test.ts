@@ -24,7 +24,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   writePreparedSelectedOutputFile,
-} from "../../src/run/selected-output-paths.js";
+} from "../../src/run/contained-output.js";
 
 describe("selected output path containment", () => {
   let root: string;

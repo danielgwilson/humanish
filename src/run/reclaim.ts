@@ -9,7 +9,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedOutputRoot,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import {
   discardPreflightJournal,
   listPreflightJournals,

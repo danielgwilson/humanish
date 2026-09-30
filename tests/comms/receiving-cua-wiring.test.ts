@@ -15,7 +15,7 @@ import { LAB_CONFIG_SCHEMA } from "../../src/lab/types.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
-import { prepareSelectedOutputDirectory } from "../../src/run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 
 describe("real inbox wiring through the actual CUA lane", () => {

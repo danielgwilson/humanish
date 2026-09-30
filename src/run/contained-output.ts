@@ -30,8 +30,8 @@ export interface PreparedSelectedOutputFile {
   readonly requestedPath: string;
 }
 
-export type PreparedOutputDirectory = PreparedSelectedOutputDirectory | PreparedRunArtifactPaths;
-export type PreparedOutputRoot = PreparedOutputDirectory;
+/** A root for contained reads and writes: a prepared run directory or a prepared selected directory. */
+export type PreparedOutputRoot = PreparedSelectedOutputDirectory | PreparedRunArtifactPaths;
 
 /**
  * Prepare an arbitrary caller-selected output directory without changing the
@@ -172,7 +172,7 @@ export async function prepareContainedOutputDirectory(
 
 /** Prepare and identity-bind a generated child directory under a prepared root. */
 export async function prepareContainedOutputDirectoryRoot(
-  rootInput: PreparedOutputDirectory,
+  rootInput: PreparedOutputRoot,
   relativePath: string,
 ): Promise<PreparedSelectedOutputDirectory> {
   const root = await resolveOutputRoot(rootInput);

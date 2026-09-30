@@ -7,7 +7,7 @@ import { startCommsReceiving } from "./receiving.js";
 import { renderReceivingInbox } from "./receiving-render.js";
 import type { ReceivingAdapter } from "./receiving-types.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { writeContainedOutputFile } from "../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../run/contained-output.js";
 
 /** The one place a connection's provider selects its adapter. */
 export function createReceivingAdapter(

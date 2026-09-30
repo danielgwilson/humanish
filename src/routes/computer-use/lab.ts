@@ -48,7 +48,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectory,
   prepareSelectedOutputDirectory,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 import { createLocalTreeArchive, type LocalTreeArchive } from "../../run/source-archive.js";
 import { renderCuaReviewMarkdown } from "./bundle.js";
 import {

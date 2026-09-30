@@ -16,12 +16,12 @@ import { FinishedRun, runScope, type RunScope } from "../../src/run/run.js";
 import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
-} from "../../src/run/selected-output-paths.js";
+} from "../../src/run/contained-output.js";
 import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../src/run/status.js";
 
 // A narrow wrapper around the two writers, so a test can fail or hold one exact publication step.
-vi.mock("../../src/run/selected-output-paths.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/run/selected-output-paths.js")>();
+vi.mock("../../src/run/contained-output.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/run/contained-output.js")>();
   return {
     ...actual,
     writeContainedOutputFile: vi.fn(actual.writeContainedOutputFile),
@@ -29,9 +29,9 @@ vi.mock("../../src/run/selected-output-paths.js", async (importOriginal) => {
   };
 });
 
-const actualWriters = await vi.importActual<
-  typeof import("../../src/run/selected-output-paths.js")
->("../../src/run/selected-output-paths.js");
+const actualWriters = await vi.importActual<typeof import("../../src/run/contained-output.js")>(
+  "../../src/run/contained-output.js",
+);
 
 let template: RunBundle;
 let templateRoot: string;

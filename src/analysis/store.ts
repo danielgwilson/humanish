@@ -13,7 +13,7 @@ import {
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import { STUDY_EVIDENCE_LIMITS, validateStudyAnalysisEvidence } from "./evidence.js";
 import { pathMissing, isStudyEvidencePath, readBoundedStudyFile } from "../run/study-files.js";
 import {

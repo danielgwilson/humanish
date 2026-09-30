@@ -9,7 +9,7 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "./paths.js";
-import { openContainedRegularFile } from "./selected-output-paths.js";
+import { openContainedRegularFile } from "./contained-output.js";
 import type { RunBundle } from "./bundle.js";
 import type { RunStream } from "./streams.js";
 import { readSafeRunArtifactBytes, readSafeRunArtifactJson } from "./locate.js";

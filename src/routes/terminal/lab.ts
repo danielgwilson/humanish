@@ -54,7 +54,7 @@ import {
 import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
-import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../run/contained-output.js";
 import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";

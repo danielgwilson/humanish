@@ -13,7 +13,7 @@ import { labSetupChecks } from "../lab/doctor.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import {
   implicitProjectDirectoryExists,
   readImplicitProjectFile,

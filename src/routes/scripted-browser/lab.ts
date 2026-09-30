@@ -47,7 +47,7 @@ import { runScope, type RunScope } from "../../run/run.js";
 import {
   prepareSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 import { renderScriptedReviewMarkdown } from "./bundle.js";
 import { evidenceAppUrlOf, planScriptedLab, type ScriptedPlanResult } from "./plan.js";
 import { resolveScriptedScenario } from "./scenario.js";

@@ -6,9 +6,9 @@ import {
   prepareContainedOutputDirectory,
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
-  type PreparedOutputDirectory,
+  type PreparedOutputRoot,
   writeContainedOutputFile,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 import { CodexStdioClient, type CodexStdioHandlers } from "./app-server-client.js";
 import {
   CodexTraceRecorder,
@@ -64,7 +64,7 @@ export async function runCodexAppServerSession(
 /** Internal UI seam: the selected root was already prepared and must not be re-authorized. */
 export async function runCodexAppServerSessionInPreparedRoot(
   options: CodexAppServerRunOptions,
-  runRoot: PreparedOutputDirectory,
+  runRoot: PreparedOutputRoot,
 ): Promise<CodexAppServerRunResult> {
   const startedAt = new Date();
   const startedMs = Date.now();
@@ -254,7 +254,7 @@ export const CODEX_APP_SERVER_ARTIFACTS: CodexAppServerArtifacts = {
 };
 /** Writes events.ndjson, summary.json and transcript.txt, then returns the result that names them. */
 async function writeRunArtifacts(
-  runRoot: PreparedOutputDirectory,
+  runRoot: PreparedOutputRoot,
   artifacts: CodexAppServerArtifacts,
   envelopes: readonly string[],
   trace: CodexAppServerTrace,

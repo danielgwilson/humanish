@@ -6,7 +6,7 @@ import { isPathInside, validatePreparedRunRootIdentity } from "./paths.js";
 import {
   assertPreparedSelectedOutputDirectory,
   type PreparedOutputRoot,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import { isNodeError } from "./primitives.js";
 
 // Reading a file from a retained run directory for analysis: the path must be a plain relative path

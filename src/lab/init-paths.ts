@@ -9,7 +9,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import type { InitResult } from "./init.js";
 import { isPathInside } from "../run/paths.js";
 import { isNodeError } from "../run/primitives.js";

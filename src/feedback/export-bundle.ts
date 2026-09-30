@@ -29,7 +29,7 @@ import {
   readContainedRegularFile,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 
 const DERIVATION_SCHEMA = "humanish.redacted-derivation.v1";
 const MAX_FILES = 10_000;

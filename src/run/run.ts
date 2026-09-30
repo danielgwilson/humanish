@@ -13,10 +13,7 @@ import {
   type PreparedRunArtifactPaths,
   type RunIdInUse,
 } from "./paths.js";
-import {
-  writeContainedOutputFile,
-  writePreparedRunLatestPointer,
-} from "./selected-output-paths.js";
+import { writeContainedOutputFile, writePreparedRunLatestPointer } from "./contained-output.js";
 import {
   beginRunStatus,
   runStatusOutcome,

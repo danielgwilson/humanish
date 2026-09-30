@@ -27,8 +27,8 @@ import {
   prepareContainedOutputFile,
   prepareSelectedOutputDirectory,
   writeContainedOutputFile,
-  type PreparedOutputDirectory,
-} from "../../run/selected-output-paths.js";
+  type PreparedOutputRoot,
+} from "../../run/contained-output.js";
 import {
   ACTOR_TRACE_SCHEMA,
   SCRIPTED_BROWSER_CAPABILITIES,
@@ -159,7 +159,7 @@ export async function runScriptedBrowserSession(
 /** Internal lab seam: the run root is already prepared and must stay bound to that identity. */
 export async function runScriptedBrowserSessionInPreparedRoot(
   options: ScriptedBrowserSessionOptions,
-  preparedArtifactRoot: PreparedOutputDirectory,
+  preparedArtifactRoot: PreparedOutputRoot,
 ): Promise<ScriptedBrowserSessionResult> {
   assertScriptedSessionPathIds(options);
   await prepareContainedOutputDirectory(preparedArtifactRoot, "screenshots");
@@ -293,7 +293,7 @@ export async function runScriptedBrowserSessionInPreparedRoot(
  *  semantics (partial blocked steps on error, trace written exactly once, browser closed). */
 async function runScriptedJourney(args: {
   appUrl: string;
-  artifactRoot: PreparedOutputDirectory;
+  artifactRoot: PreparedOutputRoot;
   browser: ScriptedBrowserLike;
   browserCommand: string;
   evidenceAppUrl: string;
@@ -469,7 +469,7 @@ async function withJourneyDeadline<T>(
  *  journey actuation (browser launch crash). Mirrors the driver's failure shape. */
 async function persistScriptedFailureCapture(args: {
   appUrl: string;
-  artifactRoot: PreparedOutputDirectory;
+  artifactRoot: PreparedOutputRoot;
   browserCommand: string;
   evidenceAppUrl: string;
   journey: BrowserPersonaJourney;
@@ -527,7 +527,7 @@ async function persistScriptedFailureCapture(args: {
  *  for frames that actually exist on disk (honest counts; blocked-not-executed steps name a
  *  path that was never written). */
 async function projectScriptedActorTrace(args: {
-  artifactRoot: PreparedOutputDirectory;
+  artifactRoot: PreparedOutputRoot;
   capture: BrowserSurfaceCapture;
   completedAt: string;
   completionReason: ActorCompletionReason;
@@ -610,7 +610,7 @@ async function projectScriptedActorTrace(args: {
   };
 }
 
-async function assertScriptedOutputRoot(root: PreparedOutputDirectory): Promise<string> {
+async function assertScriptedOutputRoot(root: PreparedOutputRoot): Promise<string> {
   if ("physicalRunRoot" in root) {
     await prepareContainedOutputDirectory(root, "");
     return root.physicalRunRoot;

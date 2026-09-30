@@ -68,7 +68,7 @@ import type {
 } from "../../../src/index.js";
 import { containsSensitive } from "../../../src/evidence/redaction.js";
 import { verifyRun } from "../../../src/run/verify.js";
-import { prepareSelectedOutputDirectory } from "../../../src/run/selected-output-paths.js";
+import { prepareSelectedOutputDirectory } from "../../../src/run/contained-output.js";
 import type { LocalTreeArchive } from "../../../src/run/source-archive.js";
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";

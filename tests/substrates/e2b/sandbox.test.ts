@@ -11,7 +11,7 @@ import {
 import {
   prepareSelectedOutputDirectory,
   type PreparedOutputRoot,
-} from "../../../src/run/selected-output-paths.js";
+} from "../../../src/run/contained-output.js";
 import type {
   E2BDesktopCreateOptions,
   E2BDesktopModule,

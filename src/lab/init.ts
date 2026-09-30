@@ -20,7 +20,7 @@ import {
   prepareContainedOutputDirectory,
   prepareSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import { validateCwd } from "../run/project.js";
 import { pathExists, readTextIfExists, validateInitProjectPaths } from "./init-paths.js";
 import { planGitignore, planPackageJson, type PlannedWrite } from "./init-plan.js";

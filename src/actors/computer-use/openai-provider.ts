@@ -21,7 +21,7 @@ import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
   writeContainedOutputFile,
-} from "../../run/selected-output-paths.js";
+} from "../../run/contained-output.js";
 import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,

@@ -9,7 +9,7 @@ import type { createLocalFirecrackerDesktop } from "../../../src/substrates/loca
 import type { CuaActorSessionOptions } from "../../../src/actors/computer-use/actor.js";
 import type { CuaLoopResult, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import type { CuaLaneSpec } from "../../../src/routes/computer-use/types.js";
-import type { PreparedOutputDirectory } from "../../../src/run/selected-output-paths.js";
+import type { PreparedOutputRoot } from "../../../src/run/contained-output.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 
 const seams = vi.hoisted(() => ({
@@ -183,7 +183,7 @@ describe("local study re-entry", () => {
       const lane = options.cuaHooks!.createDesktopLane!(
         spec as CuaLaneSpec,
         [],
-        {} as PreparedOutputDirectory,
+        {} as PreparedOutputRoot,
       );
       await lane.prepare();
       return outcome;

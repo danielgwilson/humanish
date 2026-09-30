@@ -1,6 +1,6 @@
 import type { ActorTrace } from "../../actors/contract.js";
 import type { PreparedRunArtifactPaths } from "../../run/paths.js";
-import { writeContainedOutputFile } from "../../run/selected-output-paths.js";
+import { writeContainedOutputFile } from "../../run/contained-output.js";
 import {
   TERMINAL_EVENTS_ARTIFACT,
   TERMINAL_LEDGERS_ARTIFACT,

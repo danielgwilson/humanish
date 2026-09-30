@@ -7,7 +7,7 @@ import { readBoundedStudyFileResult } from "../../src/run/study-files.js";
 import {
   prepareSelectedOutputDirectory,
   type PreparedSelectedOutputDirectory,
-} from "../../src/run/selected-output-paths.js";
+} from "../../src/run/contained-output.js";
 
 // Lets a test act between the reader's checks: the hook runs before the Nth lstat of `target`.
 const lstatHook: {

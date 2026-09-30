@@ -6,7 +6,7 @@
 // startup fails has already reclaimed its handle when the error reaches the retry here.
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { appendSandboxReceipt } from "../../run/sandbox-receipts.js";
-import type { PreparedOutputRoot } from "../../run/selected-output-paths.js";
+import type { PreparedOutputRoot } from "../../run/contained-output.js";
 import {
   ownDesktopAllocation,
   type DesktopReleaseResult,

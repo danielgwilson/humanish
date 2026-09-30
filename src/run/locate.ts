@@ -13,7 +13,7 @@ import {
   bindExistingManagedHumanishOutputDirectory,
   readContainedRegularFile,
   type PreparedSelectedOutputDirectory,
-} from "./selected-output-paths.js";
+} from "./contained-output.js";
 import type { RunPointer } from "./results.js";
 import { RUN_BUNDLE_FILE, type RunBundle } from "./bundle.js";
 import { isRunBundle, isRunPointer } from "./guards.js";

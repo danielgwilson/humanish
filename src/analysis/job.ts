@@ -15,7 +15,7 @@ import {
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
   type PreparedSelectedOutputDirectory,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { readStudyAnalysisVersion } from "./store.js";

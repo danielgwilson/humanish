@@ -8,7 +8,7 @@ import {
   assertPreparedSelectedOutputDirectory,
   prepareContainedOutputDirectoryRoot,
   writeContainedOutputFile,
-} from "../run/selected-output-paths.js";
+} from "../run/contained-output.js";
 import { pathMissing, readBoundedStudyFile } from "../run/study-files.js";
 import {
   ANALYSIS_MAX_BYTES,
