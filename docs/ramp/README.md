@@ -258,4 +258,7 @@ adoption problem we already knew about in words no test could produce.
 
 This spends money and needs keys, so it is deliberately NOT part of `release:check`
 and never runs in CI. The lab's caps hold product spend to `$0`; what it costs is
-the agent's own tokens and a few sandbox-minutes.
+the agent's own tokens and a few sandbox-minutes. The agent's model key stays outside
+the sandbox in an E2B egress rule (`runtimeAuth: openai-egress`), and its `web_search`
+fetches run on the model provider's side, so an error from one says nothing about the
+sandbox's network.

@@ -39,8 +39,10 @@ actors:
       You are an autonomous coding agent working in a fresh Linux shell on a throwaway machine.
       A teammate is considering adopting a tool called humanish and has asked you to take it as
       far as it goes: not just install it, but work out how they would actually use it for what
-      it is for. Find out what it is from its public surfaces and get it running. There are no
-      provider API keys in this environment, so you cannot complete anything that spends money.
+      it is for. Find out what it is from its public surfaces and get it running. Your only
+      credential is a proxied model credential for your own reasoning. It is not for humanish, and
+      there are no provider API keys here to give humanish, so you cannot complete anything that
+      spends money.
       When you reach something that needs credentials you do not have, work out precisely what
       would be required: which credentials, what they are called, where they go, and the exact
       command your teammate should run next. Then carry on with whatever else you can still
@@ -49,16 +51,16 @@ actors:
       you got stuck or had to guess, and whether you would recommend adopting it.
 execution:
   target: e2b-terminal
-  runtimeAuth: openai-env # dry-run records the name; live injects the key command-scoped only
+  runtimeAuth: openai-egress # live: the raw key stays in E2B's api.openai.com header rule
   timeoutMs: 900000 # agent session wall-clock budget
-  # Deny-all egress with a measured allowlist (#538). The lane injects the operator's runtime LLM
-  # key command-scoped and codex spawns the participant's shell as a child, so the participant
-  # inherits that key. This is the one bound on it that does not rely on the participant's
-  # cooperation. Every host below was established by a live run failing without it:
+  # Deny-all egress with a measured allowlist (#538). The raw runtime key stays outside the
+  # sandbox, but any process in it can still send requests through the api.openai.com rule; this
+  # allowlist bounds every other destination without relying on the participant's cooperation.
+  # Every host below was established by a live run failing without it:
   #   no DNS resolver          -> nothing resolves
   #   no distro archives       -> runtime bootstrap exits 100 (apt) after ~20s, empty transcript
-  # Verified live 2026-09-01: the participant completed this study under this policy and reached
-  # the same next command as the unrestricted runs.
+  # Verified live 2026-09-01 under openai-env: the participant completed this study under this
+  # policy and reached the same next command as the unrestricted runs.
   egressAllow:
     - 8.8.8.8 # DNS. Domain rules match Host/SNI, which is AFTER resolution (UDP:53).
     - 8.8.4.4
@@ -93,3 +95,7 @@ policies:
   allowProviderCredentials: false
   allowPaymentCredentials: false
   allowGitHubMutation: false
+
+# The description promises no spending; post-run model review would be a paid request.
+review:
+  analysis: false

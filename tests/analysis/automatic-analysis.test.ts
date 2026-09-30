@@ -175,6 +175,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it("first-contact and the release gate preserve their explicit zero-spend product scope", async () => {
     const raw = parseYaml(await readFile(path.resolve("humanish/labs/first-contact.yaml"), "utf8"));
     expect(raw.review.analysis).toBe(false);
+    expect(raw.execution.runtimeAuth).toBe("openai-egress");
     expect(parseLabConfig(raw).ok).toBe(true);
     expect(await readFile(path.resolve("scripts/release-dogfood.mjs"), "utf8")).toContain(
       "must explicitly disable automatic analysis",
