@@ -648,10 +648,12 @@ function buildActorSpec(
 ): CuaLaneSpec {
   const mission = config.actors[0]?.mission ?? DEFAULT_MISSION;
   const device = resolveLaneDevice(config, role);
-  const resolvedPersona = role.persona === undefined ? undefined : personas.get(role.persona);
+  // A seat without its own persona takes actors[0].persona, as independent lanes do.
+  const personaId = role.persona ?? config.actors[0]?.persona;
+  const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
   const composed = composeLaneInstructions({
     mission,
-    ...(role.persona === undefined ? {} : { persona: role.persona }),
+    ...(personaId === undefined ? {} : { persona: personaId }),
     ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
     ...(role.instruction === undefined ? {} : { instruction: role.instruction }),
     device: { name: device.name, preset: device.preset },

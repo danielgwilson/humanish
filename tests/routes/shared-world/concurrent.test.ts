@@ -1342,6 +1342,34 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     expect(outcome.result.ok).toBe(true);
   });
 
+  it("a seat without its own persona takes actors[0].persona, as independent lanes do", async () => {
+    const state = { worldVersion: 0 };
+    const seen: Array<{ persona: string; instructions: string }> = [];
+    const baseRun = makeRunSession(state, makeRendezvous(3));
+    const { hooks } = baseHooks(state, makeRendezvous(3));
+    const config = concurrentConfig(3, 3);
+    config.actors[0]!.persona = "careful-reviewer";
+    delete config.actors[0]!.lanes![1]!.persona;
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config,
+      dryRun: false,
+      hooks: {
+        ...hooks,
+        runSession: async (options) => {
+          seen.push({ persona: options.persona.id, instructions: options.instructions });
+          return baseRun(options);
+        },
+      },
+    });
+    expect(result.ok).toBe(true);
+    const personas = seen.map((entry) => entry.persona).sort();
+    expect(personas).toEqual(["careful-reviewer", "persona-1", "persona-3"]);
+    expect(seen.find((entry) => entry.persona === "careful-reviewer")?.instructions).toContain(
+      "Persona: careful-reviewer.",
+    );
+  });
+
   it("runs a direct library config that omits concurrency, as the parser would fill it", async () => {
     // Library callers can skip parseLabConfig, so the route must default concurrency to the
     // participant count itself instead of treating the omission as the removed value 1.
