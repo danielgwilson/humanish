@@ -1,7 +1,7 @@
 // planLab builds the plan a lab would run under, without running anything. These tests pin the
 // plan of every committed lab, compare the plan's derived numbers and key requirements with what
-// the routes and `lab doctor` compute today, and check each combination the plan types cannot
-// hold: an adopted route refuses it with its own code, and shared world still returns a gap.
+// the routes and `lab doctor` compute today, and check that each combination the plan types
+// cannot hold is refused with its route's own code.
 
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -132,7 +132,7 @@ describe("planLab", () => {
       const result = planLab(config, options);
       if (result.ok) return "planned";
       const { refusal } = result;
-      return `${refusal.route} ${"gap" in refusal ? refusal.gap : refusal.code}`;
+      return `${refusal.route} ${refusal.code}`;
     };
     const local = parsed({
       ...cuApp,

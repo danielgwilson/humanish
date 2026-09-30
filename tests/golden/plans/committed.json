@@ -1156,6 +1156,7 @@
       },
       "requirements": [],
       "route": "shared-world",
+      "actor": "openai-computer-use",
       "plane": {
         "kind": "external-public",
         "appUrl": "https://lobby-trivia.example.test/",
@@ -1577,6 +1578,7 @@
       },
       "requirements": [],
       "route": "shared-world",
+      "actor": "openai-computer-use",
       "plane": {
         "kind": "provisioned",
         "subject": {
@@ -1747,6 +1749,7 @@
       },
       "requirements": [],
       "route": "shared-world",
+      "actor": "openai-computer-use",
       "plane": {
         "kind": "provisioned",
         "subject": {

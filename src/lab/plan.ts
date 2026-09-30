@@ -6,31 +6,20 @@
 import { resolveAutomaticAnalysis } from "../analysis/automatic-config.js";
 import { planComputerUseLab } from "../routes/computer-use/plan.js";
 import { planScriptedLab } from "../routes/scripted-browser/plan.js";
+import { planSharedWorldLab } from "../routes/shared-world/plan.js";
 import { planTerminalLab } from "../routes/terminal/plan.js";
+import type { RunLabProvenance } from "../run/status.js";
 import { localBrowserDefaults } from "../substrates/local/runtime-config.js";
 import type { LabBackend, RunLabOptions } from "./engine.js";
-import {
-  type Base,
-  brainOf,
-  type Built,
-  capsOf,
-  desktopRequirements,
-  isNonEmpty,
-  planBase,
-  provisionedSubject,
-} from "./plan-base.js";
-import { sharedWorldSeats } from "./plan-participants.js";
+import { planBase } from "./plan-base.js";
 import type {
-  AtLeastTwo,
   LabBindings,
   LabPlan,
   PlanRefusal,
   PlanResult,
-  SharedWorldPlane,
-  SharedWorldPlan,
+  PreviewRefusalCode,
 } from "./plan-types.js";
 import {
-  actorResolvesToComputerUse,
   routesToComputerUse,
   routesToScriptedBrowser,
   routesToSharedWorld,
@@ -104,150 +93,57 @@ export function resolveLabDryRun(
   return fallback;
 }
 
-function planSharedWorld(config: LabConfig, base: Base): Built<SharedWorldPlan> {
-  const seats = sharedWorldSeats(config);
-  const actor = config.actors[0];
-  const brain = brainOf(config, false);
-  if (brain.kind === "caller" || !actorResolvesToComputerUse(actor?.type))
-    return "unsupported-composition";
-  let plane: SharedWorldPlane;
-  if (seats.plane === "external-public") {
-    const [first, second, ...rest] = seats.seats;
-    const owner = config.subject.publicTarget?.owner;
-    if (first === undefined || second === undefined || owner === undefined)
-      return "unsupported-composition";
-    plane = {
-      kind: "external-public",
-      appUrl: config.subject.appUrl ?? "",
-      owner,
-      participants: [first, second, ...rest],
-    };
-  } else {
-    const [first, second, ...rest] = seats.seats;
-    const subject = provisionedSubject(config);
-    const checkpoint = subject?.state?.checkpoint ?? [];
-    if (
-      first === undefined ||
-      second === undefined ||
-      subject === undefined ||
-      subject.state === undefined ||
-      !isNonEmpty(checkpoint)
-    )
-      return "unsupported-composition";
-    const participants: AtLeastTwo<(typeof seats.seats)[number]> = [first, second, ...rest];
-    plane = {
-      kind: "provisioned",
-      subject: { ...subject, state: { ...subject.state, checkpoint } },
-      participants,
-    };
-  }
-  return {
-    ...base,
-    route: "shared-world",
-    plane,
-    concurrency: config.execution?.concurrency ?? plane.participants.length,
-    brain,
-    caps: capsOf(config),
-    requirements: base.dryRun
-      ? []
-      : desktopRequirements(config, {
-          e2b: true,
-          brain,
-          localVm: false,
-          externalCatch: plane.kind === "external-public",
-        }),
-  };
-}
-
 /**
  * The preview route's refusals before a run starts, in its order: real email receiving, then
  * analysis, then tasks. Each would otherwise be silently ignored by a synthetic run.
  */
-function previewRefusal(config: LabConfig): PlanRefusal | undefined {
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  const analysisReason = analysis.ok ? automaticAnalysisRouteReason(config) : analysis.message;
+function planPreview(
+  config: LabConfig,
+  options: RunLabOptions,
+  input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
+): RoutePlanResult {
+  const refuse = (code: PreviewRefusalCode, message: string): RoutePlanResult => ({
+    ok: false,
+    refusal: { route: "preview", code, message },
+  });
   if (String(config.comms?.email?.kind) === "real")
-    return {
-      route: "preview",
-      code: "HUMANISH_LAB_COMMS_UNSUPPORTED",
-      message:
-        "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study.",
-    };
-  if (analysisReason)
-    return {
-      route: "preview",
-      code: analysis.ok ? "HUMANISH_LAB_ANALYSIS_UNSUPPORTED" : "HUMANISH_LAB_ANALYSIS_INVALID",
-      message: analysisReason,
-    };
+    return refuse(
+      "HUMANISH_LAB_COMMS_UNSUPPORTED",
+      "Real email receiving is unsupported on this backend. Use a supported hosted computer-use study.",
+    );
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  if (!analysis.ok) return refuse("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
+  const unsupported = automaticAnalysisRouteReason(config);
+  if (unsupported) return refuse("HUMANISH_LAB_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
-  if (tasksReason)
-    return { route: "preview", code: "HUMANISH_LAB_TASKS_UNSUPPORTED", message: tasksReason };
-  return undefined;
+  if (tasksReason) return refuse("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
+  return {
+    ok: true,
+    plan: {
+      ...planBase(config, { ...input, analysis }),
+      route: "preview",
+      simCount: options.count ?? config.actors[0]?.count ?? 4,
+    },
+  };
 }
+
+type RoutePlanResult =
+  | { readonly ok: true; readonly plan: LabPlan }
+  | { readonly ok: false; readonly refusal: PlanRefusal };
 
 /**
- * The plan a lab runs under, built without reading files, env or the network. A combination the
- * plan types cannot hold comes back as the gap a route refuses today. Nothing dispatches on the
- * plan yet: each route adopts it in its own change, and the parser's composition rules still run
- * first.
+ * The plan a lab runs under, built without reading files, env or the network. Each route's planner
+ * makes every refusal that route makes, in the route's order and with its codes and messages; the
+ * route's exported runner calls the same planner.
  */
 export function planLab(config: LabConfig, options: RunLabOptions): PlanResult {
-  const route = routeOf(config);
   const lab = localBrowserDefaults(config);
-  const dryRun = resolveLabDryRun(lab, options.dryRun, true) ?? true;
-  const provenance = options.lab === undefined ? {} : { lab: options.lab };
-  // An adopted route's planner makes every refusal that route makes, in the route's order, so it
-  // runs before the checks planLab still makes for the other routes.
-  if (route === "terminal") {
-    const terminal = planTerminalLab(lab, {
-      dryRun,
-      ...provenance,
-      ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
-    });
-    return terminal.ok ? planned(terminal.plan, options) : { ok: false, refusal: terminal.refusal };
-  }
-  if (route === "computer-use") {
-    const computerUse = planComputerUseLab(lab, {
-      dryRun,
-      ...provenance,
-      ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
-      ...(options.count === undefined ? {} : { countOverride: options.count }),
-      ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
-    });
-    return computerUse.ok
-      ? planned(computerUse.plan, options)
-      : { ok: false, refusal: computerUse.refusal };
-  }
-  if (route === "scripted") {
-    const scripted = planScriptedLab(lab, {
-      dryRun,
-      ...provenance,
-      ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
-    });
-    return scripted.ok ? planned(scripted.plan, options) : { ok: false, refusal: scripted.refusal };
-  }
-  if (route === "preview") {
-    const refusal = previewRefusal(lab);
-    if (refusal) return { ok: false, refusal };
-  }
-  const analysis = resolveAutomaticAnalysis(lab.review?.analysis);
-  if (!analysis.ok) return { ok: false, refusal: { route, gap: "analysis-invalid" } };
-  const base: Base = planBase(lab, { dryRun, ...provenance, analysis });
-  let plan: Built<LabPlan>;
-  switch (route) {
-    case "preview":
-      plan = { ...base, route, simCount: options.count ?? lab.actors[0]?.count ?? 4 };
-      break;
-    case "shared-world":
-      plan = planSharedWorld(lab, base);
-      break;
-  }
-  if (typeof plan === "string") return { ok: false, refusal: { route, gap: plan } };
-  return planned(plan, options);
-}
-
-/** The plan with the hook bags planLab read. */
-function planned(plan: LabPlan, options: RunLabOptions): PlanResult {
+  const input = {
+    dryRun: resolveLabDryRun(lab, options.dryRun, true) ?? true,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+  };
+  const result = planRoute(routeOf(config), lab, options, input);
+  if (!result.ok) return result;
   const bindings: LabBindings = {
     ...(options.cuaHooks === undefined ? {} : { cuaHooks: options.cuaHooks }),
     ...(options.scriptedHooks === undefined ? {} : { scriptedHooks: options.scriptedHooks }),
@@ -256,5 +152,39 @@ function planned(plan: LabPlan, options: RunLabOptions): PlanResult {
       ? {}
       : { sharedWorldHooks: options.sharedWorldHooks }),
   };
-  return { ok: true, planned: { plan, bindings } };
+  return { ok: true, planned: { plan: result.plan, bindings } };
+}
+
+function planRoute(
+  route: LabRoute,
+  lab: LabConfig,
+  options: RunLabOptions,
+  input: { readonly dryRun: boolean; readonly lab?: RunLabProvenance },
+): RoutePlanResult {
+  switch (route) {
+    case "preview":
+      return planPreview(lab, options, input);
+    case "computer-use":
+      return planComputerUseLab(lab, {
+        ...input,
+        ...(options.cuaHooks === undefined ? {} : { hooks: options.cuaHooks }),
+        ...(options.count === undefined ? {} : { countOverride: options.count }),
+        ...(options.rerun === undefined ? {} : { rerun: options.rerun }),
+      });
+    case "shared-world":
+      return planSharedWorldLab(lab, {
+        ...input,
+        ...(options.sharedWorldHooks === undefined ? {} : { hooks: options.sharedWorldHooks }),
+      });
+    case "terminal":
+      return planTerminalLab(lab, {
+        ...input,
+        ...(options.terminalHooks === undefined ? {} : { hooks: options.terminalHooks }),
+      });
+    case "scripted":
+      return planScriptedLab(lab, {
+        ...input,
+        ...(options.scriptedHooks === undefined ? {} : { hooks: options.scriptedHooks }),
+      });
+  }
 }

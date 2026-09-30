@@ -26,8 +26,9 @@ with `Run.finish` as in step 7, and skips steps 3 to 6 and 9. It runs step 8 thr
    `runScriptedBrowserLab`, `runTerminalProductLab`, `runConcurrentSharedWorld` or `runPreviewLab`
    (`src/routes/preview.ts`), which takes its sim count and admission from `planLab` and then
    calls `runDryRun`. `runTerminalProductLab` takes its configuration refusals and plan from
-   `planTerminalLab` (`src/routes/terminal/plan.ts`), and `runScriptedBrowserLab` from
-   `planScriptedLab` (`src/routes/scripted-browser/plan.ts`). A run is live only when the lab
+   `planTerminalLab` (`src/routes/terminal/plan.ts`), `runScriptedBrowserLab` from
+   `planScriptedLab` (`src/routes/scripted-browser/plan.ts`), and `runConcurrentSharedWorld` from
+   `planSharedWorldLab` (`src/routes/shared-world/plan.ts`). A run is live only when the lab
    declares `scenario.mode: live`. The `--dry-run` flag forces a dry run.
 3. `planComputerUseLab` (`src/routes/computer-use/plan.ts`) repeats the parse checks for
    library callers and gives `runCuaActorLab` its configuration refusals. On a live run,

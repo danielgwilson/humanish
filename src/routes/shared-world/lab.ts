@@ -34,26 +34,15 @@
 // gate, NOT a no-real-data guarantee (humanish cannot tell synthetic from real data).
 
 import path from "node:path";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
-import { actorRegistry, isCuaActorDescriptor } from "../../actors/registry.js";
 import { completeAutomaticAnalysis } from "../../analysis/automatic-completion.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { scrubLiterals } from "../../evidence/redaction.js";
 import { describeMissingKeys } from "../../keys/key-resolution.js";
-import {
-  concurrentSharedWorldValidationReason,
-  desktopMediaValidationReason,
-  externalPublicSharedWorldValidationReason,
-  outputTokenLimitValidationReason,
-  receivingEmailValidationReason,
-  scenarioCapsValidationReason,
-  taskProtocolValidationReason,
-} from "../../lab/validation.js";
 import { withTransientCommsSecrets } from "../../run/transient-comms-secrets.js";
-import { MODEL_RATES } from "../../run/pricing.js";
 import { runScope, type RunScope } from "../../run/run.js";
 import { makeCuaRunBudget } from "../computer-use/lane-plan.js";
 import { runExternalPublicPlane } from "./external-public.js";
+import { planSharedWorldLab, sharedWorldDescriptorOf } from "./plan.js";
 import { runProvisionedPlane } from "./provisioned.js";
 import { concurrentLabFailure, finishConcurrentRun } from "./result.js";
 import { prepareConcurrentRun } from "./setup.js";
@@ -116,59 +105,18 @@ async function runConcurrentSharedWorldInScope(
 
   const fail = concurrentLabFailure(options, requestedCwd, concurrency);
 
-  const mediaReason = desktopMediaValidationReason(config, false);
-  if (mediaReason) return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", mediaReason);
-
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
-  if (!analysis.ok) return fail("HUMANISH_LAB_ANALYSIS_INVALID", analysis.message);
-  const tasksReason = taskProtocolValidationReason(config, false);
-  if (tasksReason) return fail("HUMANISH_LAB_TASKS_UNSUPPORTED", tasksReason);
-
-  const descriptor = actorRegistry[actorType as keyof typeof actorRegistry];
-  if (!descriptor || !isCuaActorDescriptor(descriptor)) {
-    return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_ACTOR_UNSUPPORTED",
-      `actors[0].type "${actorType}" is not a registered computer-use actor.`,
-    );
-  }
-
-  // The PLANE-class discriminator (#164 phase 2): an app-url subject is the EXTERNAL-PUBLIC plane (a
-  // real operator-owned public deployment used directly as the shared plane — NO getHost, clone,
-  // subject sandbox, or seed); everything else is the historical provisioned-getHost plane.
+  // planSharedWorldLab makes every configuration refusal, in the order this route always has.
+  const planned = planSharedWorldLab(config, {
+    dryRun,
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    hooks,
+  });
+  if (!planned.ok)
+    return fail(planned.refusal.code, planned.refusal.message, planned.refusal.actor);
+  const descriptor = sharedWorldDescriptorOf(actorType);
   const planeClass: ConcurrentSharedWorldPlaneClass =
-    config.subject.source === "app-url" ? "external-public" : "provisioned-getHost";
-
-  // Re-enforce the cross-validation (library API surface). The external-public branch NEVER touches
-  // the getHost synthetic gate — that gate exists because getHost is internet-reachable AND
-  // harness-owned; a public site the harness neither provisioned nor exposed has neither property.
-  const invalidReason =
-    outputTokenLimitValidationReason(config) ??
-    scenarioCapsValidationReason(config) ??
-    (planeClass === "external-public"
-      ? externalPublicSharedWorldValidationReason(config)
-      : concurrentSharedWorldValidationReason(config));
-  if (invalidReason) {
-    return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", invalidReason, descriptor.id);
-  }
-  if (config.actors[0]?.maxOutputTokens !== undefined && hooks.runSession) {
-    return fail(
-      "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-      "maxOutputTokens cannot be enforced by a custom runSession.",
-      descriptor.id,
-    );
-  }
-
+    planned.plan.plane.kind === "external-public" ? "external-public" : "provisioned-getHost";
   const caps = config.execution?.caps;
-  if (!dryRun && (caps?.maxUsd !== undefined || caps?.maxTotalUsd !== undefined)) {
-    const model = (config.actors[0]?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase();
-    if (!MODEL_RATES[model]) {
-      return fail(
-        "HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID",
-        `The declared spend cap cannot be enforced for unpriced model "${model}".`,
-        descriptor.id,
-      );
-    }
-  }
   const runBudget =
     !dryRun && caps?.maxTotalUsd !== undefined ? makeCuaRunBudget(caps.maxTotalUsd) : undefined;
 
@@ -180,9 +128,6 @@ async function runConcurrentSharedWorldInScope(
   const checkpoints = config.subject.state?.checkpoint ?? [];
   const runSession = hooks.runSession ?? descriptor.runSession;
 
-  const receivingReason = receivingEmailValidationReason(config);
-  if (receivingReason)
-    return fail("HUMANISH_CONCURRENT_SHARED_WORLD_LAB_INVALID", receivingReason, descriptor.id);
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const knownSecretValues = [

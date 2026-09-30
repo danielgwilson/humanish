@@ -6,9 +6,7 @@ import type { RunLabProvenance } from "../run/status.js";
 import type {
   Brain,
   ComputerUsePlan,
-  LabPlan,
   NonEmpty,
-  PlanGap,
   PlannedAnalysis,
   ProvisionedSubject,
   Requirement,
@@ -20,7 +18,6 @@ export type Base = Omit<
   ComputerUsePlan,
   "route" | "actor" | "runner" | "concurrency" | "sessionBudgetMs" | "sandboxMs" | "caps" | "rerun"
 >;
-export type Built<P extends LabPlan> = P | PlanGap;
 
 function deepFreeze<T>(value: T): T {
   if (typeof value === "object" && value !== null) {

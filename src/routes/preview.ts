@@ -12,7 +12,7 @@ export async function runPreviewLab(config: LabConfig, options: RunLabOptions): 
   const planned = planLab(config, options);
   if (!planned.ok) {
     const { refusal } = planned;
-    if (!("code" in refusal) || refusal.route !== "preview")
+    if (refusal.route !== "preview")
       throw new Error(`a preview lab was refused on the ${refusal.route} route`);
     return {
       schema: "humanish.run-result.v1",
