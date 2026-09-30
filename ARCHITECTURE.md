@@ -28,7 +28,10 @@ steps 3 to 7 and 9.
 4. `createE2BCuaDesktopLane` (`src/substrates/e2b/cua-desktop.ts`) calls
    `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`). It creates the sandbox, retries
    once on a transient provider error, and appends the id with `"provider": "e2b"` to
-   `sandbox-receipts.ndjson` before it returns the handle. An `app-url` lab with
+   `sandbox-receipts.ndjson` before it returns the handle. The lane then provisions a `clone` or
+   `local-tree` subject with `provisionCloneSubject` or `provisionLocalTreeSubject`
+   (`src/subject/`), which reach the sandbox only through the `Shell` that `e2bShell`
+   (`src/substrates/e2b/shell.ts`) builds from it. An `app-url` lab with
    `execution.target: local` goes to `runLocalFirecrackerStudy`
    (`src/substrates/local/firecracker-study.ts`) instead.
 5. `runAllCuaLanes` (`src/routes/computer-use/lanes.ts`) runs `runCuaLane` for each
@@ -70,7 +73,8 @@ steps 3 to 7 and 9.
 | `src/lab/`             | Lab manifest types, parsing, validation, routing and dispatch                | `src/lab/engine.ts`                 |
 | `src/routes/`          | One folder or file per route, each with its own bundle assembly              | `src/routes/computer-use/lab.ts`    |
 | `src/actors/`          | The actor contract, the registry and each actor's session code               | `src/actors/registry.ts`            |
-| `src/substrates/`      | Hosted E2B desktops in `e2b/` and local Firecracker and Lima VMs             | `src/substrates/e2b/cua-desktop.ts` |
+| `src/subject/`         | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve   | `src/subject/serve.ts`              |
+| `src/substrates/`      | E2B desktops in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`    | `src/substrates/e2b/cua-desktop.ts` |
 | `src/run/`             | Run lifecycle, bundle types, verification, paths, status, receipts, reclaim  | `src/run/run.ts`                    |
 | `src/evidence/`        | Redaction, screenshot checks and desktop recordings                          | `src/evidence/redaction.ts`         |
 | `src/analysis/`        | Automatic and on-demand study analysis                                       | `src/analysis/automatic.ts`         |
