@@ -10,13 +10,11 @@ import type { LabResolveFailure } from "../../lab/discover.js";
 import { resolveLabDryRun, selectLabBackend } from "../../lab/engine.js";
 import type { RunLabProvenance } from "../../run/status.js";
 import type { RunResult } from "../../run/results.js";
-import {
-  runConcurrentSharedWorldBackend,
-  runCuaBackend,
-  runScriptedBackend,
-  runSyntheticBackend,
-  runTerminalBackend,
-} from "./lab-backends.js";
+import { runCuaBackend } from "./lab-backend-cua.js";
+import { runScriptedBackend } from "./lab-backend-scripted.js";
+import { runConcurrentSharedWorldBackend } from "./lab-backend-shared-world.js";
+import { runSyntheticBackend } from "./lab-backend-synthetic.js";
+import { runTerminalBackend } from "./lab-backend-terminal.js";
 import { maybeLoadAdapterScorer } from "./lab-hooks.js";
 import {
   type CliIo,

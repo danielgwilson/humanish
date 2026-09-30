@@ -6,7 +6,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { runConcurrentSharedWorldBackend } from "../../src/cli/commands/lab-backends.js";
+import { runConcurrentSharedWorldBackend } from "../../src/cli/commands/lab-backend-shared-world.js";
 import type { CliIo } from "../../src/cli/io.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runLab } from "../../src/lab/engine.js";
