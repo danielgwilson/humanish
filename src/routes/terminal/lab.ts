@@ -55,10 +55,11 @@ import { digestText, redactText, scrubLiterals } from "../../evidence/redaction.
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { validatePreparedRunArtifactPaths } from "../../run/paths.js";
 import { prepareSelectedOutputDirectory } from "../../run/selected-output-paths.js";
-import { buildRunSource } from "../../run/bundle.js";
+import { buildRunSource, type RunEvent } from "../../run/bundle.js";
 import { buildTerminalProductBundle, renderTerminalReviewMarkdown } from "./bundle.js";
 import { defaultMission, makeTerminalRunId, runLiveTerminalSession } from "./session.js";
 import {
+  type RunLiveTerminalSessionArgs,
   type RunTerminalProductLabOptions,
   TERMINAL_PRODUCT_LAB_SCHEMA,
   type TerminalProductLabResult,
@@ -94,7 +95,6 @@ async function runTerminalProductLabInScope(
 ): Promise<TerminalProductLabResult> {
   const { config, dryRun } = options;
   const cwd = path.resolve(options.cwd);
-  const hooks = options.hooks ?? {};
   const warnings: string[] = [];
   const actorType = config.actors[0]?.type ?? "";
 
@@ -131,7 +131,6 @@ async function runTerminalProductLabInScope(
   }
   const { plan } = planned;
   const product = plan.product;
-  const descriptor = { id: plan.actor };
 
   // LIVE path: the real in-sandbox agent session. A separate orchestrator owns the
   // create -> inject (command-scoped) -> run -> capture -> teardown lifecycle so the dry-run path
@@ -152,8 +151,127 @@ async function runTerminalProductLabInScope(
     });
   }
 
+  return runDryTerminalLab({
+    options,
+    cwd,
+    config,
+    product,
+    actorId: plan.actor,
+    warnings,
+    failed,
+    scope,
+  });
+}
+
+/**
+ * The dry-run path: a contract bundle with the persona and prompt digest bound, published through
+ * the run scope with no sandbox, key or spend.
+ */
+async function runDryTerminalLab(args: {
+  options: RunTerminalProductLabOptions;
+  cwd: string;
+  config: RunTerminalProductLabOptions["config"];
+  product: RunLiveTerminalSessionArgs["product"];
+  actorId: string;
+  warnings: string[];
+  failed: RunLiveTerminalSessionArgs["failed"];
+  scope: RunScope;
+}): Promise<TerminalProductLabResult> {
+  const { options, cwd, config, product, actorId, warnings, failed, scope } = args;
+  const { dryRun } = options;
+  const hooks = options.hooks ?? {};
+  const { evidenceMission, physicalCwd, persona } = await prepareDryPersona({
+    config,
+    product,
+    cwd,
+    env: hooks.env ?? process.env,
+    warnings,
+  });
+
+  const started = await scope.startRun({
+    cwd: physicalCwd,
+    runId: options.runId,
+    mintRunId: makeTerminalRunId,
+    mode: dryRun ? "dry-run" : "live",
+    lab: options.lab,
+    renderReview: renderTerminalReviewMarkdown,
+    observer: { open: options.open === true, render: hooks.renderObserverFn },
+  });
+  if (!started.ok) return failed(started.code, started.message, { actor: actorId });
+  const { run } = started;
+  const { runId, createdAt } = run;
+  const source = await buildRunSource({
+    capturedAt: createdAt,
+    cwd: physicalCwd,
+    humanishSource: "present",
+    packageName: "humanish",
+  });
+
+  const bundle = buildTerminalProductBundle({
+    ...(options.lab === undefined ? {} : { lab: options.lab }),
+    actorId,
+    createdAt,
+    dryRun,
+    labId: config.id,
+    ...(config.title ? { labTitle: config.title } : {}),
+    mission: evidenceMission,
+    persona,
+    productName: product.name,
+    publicSurfaces: product.publicSurfaces,
+    ...(config.scenario?.caps ? { caps: config.scenario.caps } : {}),
+    ...(config.execution?.runtimeAuth ? { runtimeAuth: config.execution.runtimeAuth } : {}),
+    stdin: config.execution?.terminal?.stdin ?? "disabled",
+    policies: {
+      allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
+      allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
+      allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
+      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
+    },
+    runId,
+    source,
+  });
+  bundle.events.push(runtimeDeclaredEvent(config, createdAt));
+
+  const finished = await run.finish(bundle);
+  const observer = await finished.renderObserver();
+  await validatePreparedRunArtifactPaths(finished.paths);
+  const ok = observer.ok;
+
+  return {
+    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
+    ok,
+    cwd,
+    labId: config.id,
+    actor: actorId,
+    product: product.name,
+    dryRun,
+    runId,
+    observer,
+    warnings: [...warnings, ...observer.warnings],
+    ...(ok
+      ? {}
+      : {
+          error: {
+            code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
+            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
+          },
+        }),
+  };
+}
+
+/**
+ * The persona and prompt digest a dry run records: the author mission with known key values
+ * scrubbed, and the committed persona's traits and brief.
+ */
+async function prepareDryPersona(args: {
+  config: RunTerminalProductLabOptions["config"];
+  product: RunLiveTerminalSessionArgs["product"];
+  cwd: string;
+  env: Record<string, string | undefined>;
+  warnings: string[];
+}): Promise<{ evidenceMission: string; physicalCwd: string; persona: ActorPersonaRef }> {
+  const { config, product, cwd, env, warnings } = args;
   const mission = config.actors[0]?.mission ?? defaultMission(product.name);
-  const env = hooks.env ?? process.env;
   const knownSecretValues = [env.CODEX_API_KEY, env.OPENAI_API_KEY, env.E2B_API_KEY]
     .map((value) => value?.trim() ?? "")
     .filter((value) => value.length >= 4);
@@ -194,50 +312,15 @@ async function runTerminalProductLabInScope(
         }
       : {}),
   };
+  return { evidenceMission, physicalCwd, persona };
+}
 
-  const started = await scope.startRun({
-    cwd: physicalCwd,
-    runId: options.runId,
-    mintRunId: makeTerminalRunId,
-    mode: dryRun ? "dry-run" : "live",
-    lab: options.lab,
-    renderReview: renderTerminalReviewMarkdown,
-    observer: { open: options.open === true, render: hooks.renderObserverFn },
-  });
-  if (!started.ok) return failed(started.code, started.message, { actor: descriptor.id });
-  const { run } = started;
-  const { runId, createdAt } = run;
-  const source = await buildRunSource({
-    capturedAt: createdAt,
-    cwd: physicalCwd,
-    humanishSource: "present",
-    packageName: "humanish",
-  });
-
-  const bundle = buildTerminalProductBundle({
-    ...(options.lab === undefined ? {} : { lab: options.lab }),
-    actorId: descriptor.id,
-    createdAt,
-    dryRun,
-    labId: config.id,
-    ...(config.title ? { labTitle: config.title } : {}),
-    mission: evidenceMission,
-    persona,
-    productName: product.name,
-    publicSurfaces: product.publicSurfaces,
-    ...(config.scenario?.caps ? { caps: config.scenario.caps } : {}),
-    ...(config.execution?.runtimeAuth ? { runtimeAuth: config.execution.runtimeAuth } : {}),
-    stdin: config.execution?.terminal?.stdin ?? "disabled",
-    policies: {
-      allowPrivateRepoAccess: config.policies?.allowPrivateRepoAccess ?? false,
-      allowProviderCredentials: config.policies?.allowProviderCredentials ?? false,
-      allowPaymentCredentials: config.policies?.allowPaymentCredentials ?? false,
-      allowGitHubMutation: config.policies?.allowGitHubMutation ?? false,
-    },
-    runId,
-    source,
-  });
-  bundle.events.push({
+/** The declared runtime provenance as a dry-run event; nothing is observed without a sandbox. */
+function runtimeDeclaredEvent(
+  config: RunTerminalProductLabOptions["config"],
+  createdAt: string,
+): RunEvent {
+  return {
     id: "event-terminal-runtime-declared",
     at: createdAt,
     level: "info",
@@ -255,32 +338,6 @@ async function runTerminalProductLabInScope(
         }),
       ),
     ),
-  });
-
-  const finished = await run.finish(bundle);
-  const observer = await finished.renderObserver();
-  await validatePreparedRunArtifactPaths(finished.paths);
-  const ok = observer.ok;
-
-  return {
-    schema: TERMINAL_PRODUCT_LAB_SCHEMA,
-    ok,
-    cwd,
-    labId: config.id,
-    actor: descriptor.id,
-    product: product.name,
-    dryRun,
-    runId,
-    observer,
-    warnings: [...warnings, ...observer.warnings],
-    ...(ok
-      ? {}
-      : {
-          error: {
-            code: "HUMANISH_TERMINAL_LAB_FAILED" as const,
-            message: observer.error?.message ?? "Observer failed for the terminal-product lab run.",
-          },
-        }),
   };
 }
 
