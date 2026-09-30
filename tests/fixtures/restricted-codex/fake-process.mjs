@@ -8,13 +8,15 @@ import readline from "node:readline";
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const [scenario, trace, operation] = process.argv.slice(2);
 const capture = name => JSON.parse(fs.readFileSync(path.join(directory, name), "utf8"));
+// `version-X.Y.Z` reports that release consistently from --version, initialize and thread start.
+const consistentVersion = scenario.startsWith("version-") ? scenario.slice("version-".length) : null;
 const write = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 const note = value => fs.appendFileSync(trace, `${JSON.stringify(value)}\n`);
 note({ operation, pid: process.pid, envKeys: Object.keys(process.env), cwd: process.cwd(), home: process.env.HOME });
 if (operation === "--version") {
   if (scenario === "hang-version") setInterval(() => undefined, 1000);
   else if (scenario === "large-version") process.stdout.write("x".repeat(5000));
-  else console.log(scenario === "wrong-version" ? "codex-cli 0.0.1" : "codex-cli 0.154.0");
+  else console.log(scenario === "wrong-version" ? "codex-cli 0.0.1" : `codex-cli ${consistentVersion ?? "0.157.1"}`);
 } else {
   if (scenario === "ignore-term") { process.on("SIGTERM", () => undefined); setInterval(() => undefined, 1000); }
   let turnNumber = 0;
@@ -24,7 +26,7 @@ if (operation === "--version") {
   const reply = (id, result) => write({ id, result });
   const emit = value => write(map(value));
   const init = capture("initialize.json"); init.codexHome = process.env.HOME;
-  // Native 0.154.0 captures report macos/unix on macOS and linux/unix on Linux.
+  // Native 0.154.0 and 0.157.1 captures report macos/unix on macOS and linux/unix on Linux.
   init.platformOs = process.platform === "darwin" ? "macos" : "linux";
   const config = map(capture("effective-config.json"));
   const thread = map(capture("thread-start.json"));
@@ -75,6 +77,13 @@ if (operation === "--version") {
   if (scenario === "model-mismatch") { thread.model = "unqualified-model"; thread.thread.model = "unqualified-model"; }
   if (scenario === "inherited-instructions") thread.instructionSources = [{ path: "/synthetic/AGENTS.md" }];
   if (scenario === "environment-enabled") thread.thread.environments = [{ environmentId: "synthetic-environment" }];
+  // A different app-server release behind a qualified --version, as a separately updated daemon would be.
+  if (scenario === "initialize-version-mismatch") init.userAgent = init.userAgent.replace("/0.157.1 ", "/0.159.2 ");
+  if (scenario === "thread-version-mismatch") thread.thread.cliVersion = "0.154.0";
+  if (consistentVersion) {
+    init.userAgent = init.userAgent.replace("/0.157.1 ", `/${consistentVersion} `);
+    thread.thread.cliVersion = consistentVersion;
+  }
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", line => {
     const message = JSON.parse(line);

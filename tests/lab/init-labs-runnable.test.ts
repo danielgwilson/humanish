@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 
-import { RESTRICTED_CODEX_ANALYSIS_IDENTITY } from "../../src/actors/codex/restricted-policy.js";
+import { defaultCodexCliVersion } from "../../src/actors/codex/qualified-versions.js";
 import { parseLabConfig } from "../../src/lab/config.js";
 import { runInit } from "../../src/lab/init.js";
 import { starterFilesFor } from "../../src/lab/init-templates.js";
@@ -96,7 +96,7 @@ describe.each(["openai-computer-use", "local-agent"] as const)("the %s starter s
     await mkdir(bin);
     await writeFile(
       path.join(bin, "codex"),
-      `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli ${RESTRICTED_CODEX_ANALYSIS_IDENTITY.cliVersion}\\n"); process.exit(0); }\nprocess.exit(99);\n`,
+      `#!${process.execPath}\nconst args = process.argv.slice(2).join(" ");\nif (args === "login status") { process.stderr.write("Logged in using ChatGPT\\n"); process.exit(0); }\nif (args === "--version") { process.stdout.write("codex-cli ${defaultCodexCliVersion()}\\n"); process.exit(0); }\nprocess.exit(99);\n`,
     );
     await chmod(path.join(bin, "codex"), 0o700);
     const env = { PATH: bin, OPENAI_API_KEY: "synthetic-starter-admission-key" };

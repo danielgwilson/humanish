@@ -5,11 +5,29 @@ execution, with a separate conversation, process and tool authority. It can use
 the same host Codex login as a local-agent participant. Existing API analysis
 remains a separate provider.
 
-The qualified launcher profile is **Codex CLI 0.154.0, Linux x64 or Apple Silicon
-macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**. The Mac
-profile passed installed participant/analysis studies and the native dispatch
-restriction check on an M5 Max. Other versions/platforms,
-keychain-only logins and API-key Codex logins are refused before a model turn.
+The qualified launcher profile is **a qualified Codex CLI release for the host, Linux x64
+or Apple Silicon macOS, file-backed ChatGPT login, `gpt-6-astra`, low reasoning effort**.
+Qualified releases are listed per host in
+[`src/actors/codex/qualified-versions.ts`](../../src/actors/codex/qualified-versions.ts).
+Linux x64 accepts 0.154.0, 0.157.1
+([receipt](../goals/computer-use-actor/receipts/codex-cli-0.157.1-requalification-2026-09-30.md))
+and 0.159.2
+([receipt](../goals/computer-use-actor/receipts/codex-cli-0.159.2-qualification-2026-09-30.md)).
+Apple Silicon accepts 0.154.0, which passed installed participant/analysis studies and the
+native dispatch restriction check on an M5 Max; later releases need the same check on a Mac.
+Hosted participants on Linux arm64 and Intel macOS keep 0.154.0 as a pre-existing admission,
+listed separately in `PREEXISTING_CODEX_CLI_ADMISSIONS`: it is what they ran before per-host
+lists existed, not a qualification, and no later release is admitted there. Other releases and
+platforms, keychain-only logins and API-key Codex logins are refused before a model turn.
+
+A release string is a compatibility check, not binary attestation. The launcher compares the
+release that `codex --version`, initialize and thread start report, then executes the same
+path; it does not pin the executable's contents, and a modified binary can report any release.
+The launcher records the detected release in the participant execution profile and in the
+analysis identity. A recorded release alone is not execution proof: prelaunch and failed
+attempts can carry the declared default, and a request's `dispatched` and `profileVerified`
+receipt shows that the launched release passed its checks. Saved bundles naming any recorded
+release stay readable.
 Readiness validates the installation and effective profile without submitting a
 model turn; it does not guarantee current quota or model access.
 
@@ -50,7 +68,8 @@ threads never share conversation state with each other or the analyst.
 An unresolved child process blocks new sessions until its exit is confirmed.
 Limits and deadlines apply to each request, including startup on the first turn.
 Thread-cumulative token usage is converted to per-turn usage before accounting.
-The qualified CLI omits compaction requests from its thread totals. A turn that
+CLI 0.154.0 omitted compaction requests from its thread totals, and later releases
+were not re-measured. A turn that
 compacts therefore retains known counts but records incomplete usage.
 Evidence is not silently downselected: at most 128 images, 20 MiB decoded image data, and 32 MiB serialized
 request data are admitted. Generated report text is limited to 2 MiB. Raw input
@@ -103,3 +122,32 @@ binary refresh behavior and concurrency with unrelated Codex applications are
 not established by that proof. Recovery deliberately fails closed if storage
 behaves differently. Keychain/other-platform support and whole-process-tree
 leases require their own qualification.
+
+## Admitting a Codex CLI release
+
+A release enters a host's list only with a dated receipt under
+`docs/goals/computer-use-actor/receipts/` showing all of the following, on that host:
+
+1. The release notes since the baseline were read for changes near the tool boundary.
+2. A drift check against a release already qualified on the host found no exec, connection or
+   file write the baseline did not make in the same scenarios, including live account-backed
+   launches, and the same tool inventory, denials and isolate behavior. The qualifier that runs
+   this check lands separately; the receipts name the commit that produced their evidence.
+3. One hosted participant study with the candidate first on `PATH` (for example
+   `PATH=<evidence>/npm-<version>/node_modules/.bin:$PATH pnpm humanish lab run <lab>
+--env-file <file with E2B_API_KEY only>`) reached its goal in the final capture, with a
+   verified request receipt, `humanish verify --run <id>` passing and the automatic Codex
+   analysis recording the release. Keep `OPENAI_API_KEY` out of that environment so the
+   participant stays on ChatGPT-account billing.
+
+The drift check compares a candidate with a vendor release that has already been qualified. It
+can show that an honest new release does nothing new in those scenarios; it cannot show that a
+binary built to evade it is safe. Pair that with the attestation limit above: the launcher
+admits by release string and does not pin the executable.
+
+Then commit the release in `QUALIFIED_CODEX_CLI_VERSIONS` for that host, in
+`RECORDED_CODEX_CLI_VERSIONS` (`src/actors/contract.ts`) and in the Observer's copy
+(`observer/lib/actor-execution-profile.ts`). If any check fails, change no code and record what
+differs.
+
+Removing a release from a host list stops new launches only; readers keep accepting it.

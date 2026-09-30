@@ -57,7 +57,7 @@ humanish analyze --run latest --provider codex --dry-run --json
 humanish analyze --run latest --provider codex --json
 ```
 
-This branch is qualified on Linux x64 with Codex CLI `0.154.0`, a file-backed
+This branch is qualified on Linux x64 with the Codex CLI releases listed for that host in `src/actors/codex/qualified-versions.ts`, a file-backed
 ChatGPT account login, and `gpt-6-astra` with low reasoning effort. The participant conversation
 is never reused. Selected text and screenshots still go to remote inference;
 this is account authentication, not local inference. No API-key, alternate model

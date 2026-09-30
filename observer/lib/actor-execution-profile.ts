@@ -1,3 +1,6 @@
+/** Codex CLI releases a saved account profile may name; append-only, like the server reader. */
+export const RECORDED_CODEX_CLI_VERSIONS = ["0.154.0", "0.157.1", "0.159.2"] as const;
+
 /** Durable artifact profile. This reader never selects or imports CLI execution policy. */
 export function validActorExecutionProfile(value: unknown): boolean {
   const expected = {
@@ -5,16 +8,17 @@ export function validActorExecutionProfile(value: unknown): boolean {
     transport: "codex-app-server",
     authentication: "chatgpt-account",
     billing: "account-unknown",
-    cliVersion: "0.154.0",
   };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
   if (
-    Object.keys(record).length !== Object.keys(expected).length + 5 ||
+    Object.keys(record).length !== Object.keys(expected).length + 6 ||
     !Object.entries(expected).every(([key, expectedValue]) => record[key] === expectedValue)
   )
     return false;
+  // Only 0.154.0 produced the legacy structured-action profile.
   const legacy =
+    record.cliVersion === "0.154.0" &&
     record.requestedModel === "gpt-6-astra" &&
     record.reasoningEffort === "low" &&
     record.toolPolicy === "restricted-codex-v1" &&
@@ -22,6 +26,7 @@ export function validActorExecutionProfile(value: unknown): boolean {
     (record.memoryPolicy === "recent-eight-16k-v1" ||
       record.memoryPolicy === "continuing-thread-v1");
   const uiTools =
+    RECORDED_CODEX_CLI_VERSIONS.some((version) => version === record.cliVersion) &&
     typeof record.requestedModel === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(record.requestedModel) &&
     typeof record.reasoningEffort === "string" &&

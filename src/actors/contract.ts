@@ -202,6 +202,16 @@ export interface ActorTokenUsage {
   costUsd?: number;
 }
 
+/**
+ * Codex CLI releases a recorded account profile may name. Append-only: a release can leave the
+ * launch lists in codex/qualified-versions.ts, but saved bundles naming it stay readable.
+ */
+export const RECORDED_CODEX_CLI_VERSIONS = ["0.154.0", "0.157.1", "0.159.2"] as const;
+export type RecordedCodexCliVersion = (typeof RECORDED_CODEX_CLI_VERSIONS)[number];
+export function isRecordedCodexCliVersion(value: unknown): value is RecordedCodexCliVersion {
+  return RECORDED_CODEX_CLI_VERSIONS.some((version) => version === value);
+}
+
 /** Requested execution profile; per-request verification is recorded separately. */
 export interface ActorExecutionProfile {
   schema: "humanish.actor-execution-profile.v1";
@@ -210,7 +220,7 @@ export interface ActorExecutionProfile {
   billing: "account-unknown";
   requestedModel: string;
   reasoningEffort: import("./reasoning-effort.js").ReasoningEffort;
-  cliVersion: "0.154.0";
+  cliVersion: RecordedCodexCliVersion;
   toolPolicy: "restricted-codex-v1" | "codex-ui-tools-v1";
   participantSchema: "humanish.restricted-participant-turn.v1" | "humanish.codex-ui-tool.v1";
   memoryPolicy: "recent-eight-16k-v1" | "continuing-thread-v1";
@@ -243,16 +253,17 @@ export function validActorExecutionProfile(value: unknown): value is ActorExecut
     transport: "codex-app-server",
     authentication: "chatgpt-account",
     billing: "account-unknown",
-    cliVersion: "0.154.0",
   };
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const object = value as Record<string, unknown>;
   if (
-    Object.keys(object).length !== Object.keys(expected).length + 5 ||
+    Object.keys(object).length !== Object.keys(expected).length + 6 ||
     !Object.entries(expected).every(([key, expectedValue]) => object[key] === expectedValue)
   )
     return false;
+  // Only 0.154.0 produced the legacy structured-action profile.
   const legacy =
+    object.cliVersion === "0.154.0" &&
     object.requestedModel === "gpt-6-astra" &&
     object.reasoningEffort === "low" &&
     object.toolPolicy === "restricted-codex-v1" &&
@@ -260,6 +271,7 @@ export function validActorExecutionProfile(value: unknown): value is ActorExecut
     (object.memoryPolicy === "recent-eight-16k-v1" ||
       object.memoryPolicy === "continuing-thread-v1");
   const uiTools =
+    isRecordedCodexCliVersion(object.cliVersion) &&
     typeof object.requestedModel === "string" &&
     /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(object.requestedModel) &&
     typeof object.reasoningEffort === "string" &&

@@ -1,4 +1,9 @@
-import type { ActorTokenUsage, ProviderRequestReceipt } from "../contract.js";
+import {
+  isRecordedCodexCliVersion,
+  type ActorTokenUsage,
+  type ProviderRequestReceipt,
+} from "../contract.js";
+import { defaultCodexCliVersion } from "./qualified-versions.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import {
   CuaProviderError,
@@ -318,9 +323,16 @@ export function createRestrictedCodexParticipant(options: RestrictedParticipantO
       return session.resolvedModel ?? model;
     },
     get executionProfile() {
-      if (!operator) return PARTICIPANT_PROFILE;
+      const detected = session.cliVersion;
+      const cliVersion = isRecordedCodexCliVersion(detected) ? detected : defaultCodexCliVersion();
+      if (!operator) return { ...PARTICIPANT_PROFILE, cliVersion };
       return session.authentication === "chatgpt-account" && session.resolvedModel
-        ? { ...PARTICIPANT_PROFILE, requestedModel: session.resolvedModel, reasoningEffort: effort }
+        ? {
+            ...PARTICIPANT_PROFILE,
+            cliVersion,
+            requestedModel: session.resolvedModel,
+            reasoningEffort: effort,
+          }
         : undefined;
     },
     modelSettings: { reasoningEffort: effort },

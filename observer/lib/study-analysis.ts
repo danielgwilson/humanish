@@ -9,6 +9,7 @@ import { participantLabels } from "./participant-label";
 import { type StudyReport } from "./study-report";
 import { parseAutomaticAnalysis } from "./automatic-analysis";
 import { buildPlayerModel } from "./player-model";
+import { RECORDED_CODEX_CLI_VERSIONS } from "./actor-execution-profile";
 
 export type { LoadedStudyAnalysis } from "../../src/analysis/study-analysis";
 export const STUDY_ANALYSIS_SCHEMA = "humanish.study-analysis.v1";
@@ -39,9 +40,12 @@ const number = (v: unknown): v is number => typeof v === "number" && Number.isFi
 const nullableNumber = (v: unknown) => v === null || number(v);
 // Durable reader profiles, independent of the producer's current launch policy.
 // Append newly qualified profiles; retain historical entries so saved reports stay readable.
-const accountProfiles = [
-  { cliVersion: "0.154.0", toolPolicy: "restricted-codex-v1", model: "gpt-6-astra", effort: "low" },
-] as const;
+const accountProfiles = RECORDED_CODEX_CLI_VERSIONS.map((cliVersion) => ({
+  cliVersion,
+  toolPolicy: "restricted-codex-v1",
+  model: "gpt-6-astra",
+  effort: "low",
+}));
 function accountConfig(config: Record<string, unknown>): boolean {
   if (
     config.provider !== "codex" ||

@@ -373,16 +373,35 @@ describe("telling the operator what they already have", () => {
     const calls: string[][] = [];
     const probe = async (_bin: string, args: readonly string[]) => {
       calls.push([...args]);
-      return { code: 0, stdout: "codex-cli 0.154.0\n", stderr: "" };
+      return { code: 0, stdout: "codex-cli 0.157.1\n", stderr: "" };
     };
     await expect(
       checkHostedCodexCompatibility("/synthetic/codex", {
         platform: "linux",
-        arch: "arm64",
+        arch: "x64",
         probe,
       }),
     ).resolves.toBe("supported");
     expect(calls).toEqual([["--version"]]);
+    const version = (stdout: string) => async () => ({ code: 0, stdout, stderr: "" });
+    // Qualification is per host: 0.157.1 ran on Linux x64 only, and 0.154.0 stays admitted.
+    for (const [platform, arch, stdout, expected] of [
+      ["linux", "x64", "codex-cli 0.154.0\n", "supported"],
+      ["linux", "arm64", "codex-cli 0.154.0\n", "supported"],
+      ["linux", "arm64", "codex-cli 0.157.1\n", "unsupported_version"],
+      ["darwin", "arm64", "codex-cli 0.154.0\n", "supported"],
+      ["darwin", "arm64", "codex-cli 0.157.1\n", "unsupported_version"],
+      ["linux", "x64", "codex-cli 0.158.0\n", "unsupported_version"],
+      ["linux", "x64", "codex-cli 0.157.1 extra\n", "unsupported_version"],
+    ] as const)
+      await expect(
+        checkHostedCodexCompatibility("/synthetic/codex", {
+          platform,
+          arch,
+          probe: version(stdout),
+        }),
+        `${platform}/${arch} ${stdout.trim()}`,
+      ).resolves.toBe(expected);
     await expect(
       checkHostedCodexCompatibility("/synthetic/codex", {
         platform: "darwin",

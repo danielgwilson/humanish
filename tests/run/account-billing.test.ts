@@ -24,8 +24,13 @@ const { session } = vi.hoisted(() => ({
 }));
 // The participant talks to a local Codex process; the fake stands in for that session so the
 // study runs offline with the real participant, loop, bundle writer and verifier.
+// The detected release differs from the Linux default (0.157.1), so the bundle proves which one it used.
 vi.mock("../../src/actors/codex/restricted-session.js", () => ({
-  createRestrictedCodexSession: vi.fn(() => ({ run: session, close: async () => true })),
+  createRestrictedCodexSession: vi.fn(() => ({
+    run: session,
+    close: async () => true,
+    cliVersion: "0.154.0",
+  })),
 }));
 
 const directories: string[] = [];
@@ -126,7 +131,10 @@ describe("account-billed participants", () => {
 
     const runPath = path.join(cwd, ".humanish/runs/account-proof/run.json");
     const bundle = JSON.parse(await readFile(runPath, "utf8"));
-    expect(bundle.streams[0].actor.executionProfile).toEqual(PARTICIPANT_PROFILE);
+    expect(bundle.streams[0].actor.executionProfile).toEqual({
+      ...PARTICIPANT_PROFILE,
+      cliVersion: "0.154.0",
+    });
     expect(bundle.streams[0].actor.estimatedCost).toMatchObject({
       estimatedCostUsd: null,
       reason: "account_billing_unknown",
