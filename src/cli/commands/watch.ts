@@ -1,6 +1,7 @@
 import { Command, Option } from "commander";
 import { renderObserver, serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
+import { WATCH_SAFE_NOT_APPLICABLE_MESSAGE } from "../../observer/exposure.js";
 import { runDryRun } from "../../run/dry-run.js";
 import type { RunResult } from "../../run/results.js";
 import { runLabCommand } from "./lab-run.js";
@@ -174,6 +175,14 @@ async function handleWatch(
       code: "HUMANISH_WATCH_OPTION_CONFLICT",
       message:
         "--expose/--tunnel/--oauth apply only to a live CUA lab run; to expose finished evidence use `humanish serve --expose`.",
+    });
+    return;
+  }
+  // --safe is a `serve` library filter; watch shows one run and has nothing it could filter.
+  if (options.safe === true) {
+    refuseWatch(command, io, options.cwd, {
+      code: "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
+      message: WATCH_SAFE_NOT_APPLICABLE_MESSAGE,
     });
     return;
   }

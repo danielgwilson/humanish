@@ -59,6 +59,10 @@ const cases: readonly (readonly string[])[] = [
   ["lab", "run", "adm-cu-unpriced", "--json"],
   ["lab", "run", "adm-shared-unpriced", "--json"],
   ["watch", "adm-shared-live", "--port", "99999"],
+  // A live run is never share_ready, so watch refuses --safe on every path (lab or not).
+  ["watch", "adm-cu", "--safe", "--json"],
+  ["watch", "adm-scripted", "--safe", "--json"],
+  ["watch", "--safe", "--json"],
   // Refused at parse since P0b, before any route runs.
   ["lab", "run", "adm-clone-codex-app-server", "--json"],
   ["lab", "inspect", "adm-clone-codex-app-server", "--json"],

@@ -210,6 +210,62 @@
     "subprocess": 0,
     "scorerRan": false
   },
+  "watch adm-cu --safe --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.cua-lab-result.v2",
+      "ok": false,
+      "cwd": "[cwd]",
+      "labId": "adm-cu",
+      "actor": "openai-computer-use",
+      "appUrl": "",
+      "dryRun": true,
+      "runId": "not-created",
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
+        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+      }
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "watch adm-scripted --safe --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.run-result.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
+        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+      }
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "watch --safe --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.run-result.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_WATCH_SAFE_NOT_APPLICABLE",
+        "message": "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain."
+      }
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
   "lab run adm-clone-codex-app-server --json": {
     "exitCode": 2,
     "stdout": {

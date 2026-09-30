@@ -65,6 +65,10 @@ export type ExposureValidation =
   | { ok: true; plan: ExposurePlan }
   | { ok: false; error: { code: ExposureErrorCode; message: string } };
 
+/** Why `watch` refuses `--safe`, on every watch path. */
+export const WATCH_SAFE_NOT_APPLICABLE_MESSAGE =
+  "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain.";
+
 function code(surface: ExposureSurface, suffix: string): ExposureErrorCode {
   return `HUMANISH_${surface.toUpperCase()}_${suffix}` as ExposureErrorCode;
 }
@@ -113,8 +117,11 @@ export function validateExposure(
   }
 
   if (!request.expose) {
-    // Exposure flags without --expose are refused (no silent wide-open). --safe is orthogonal and
-    // stays valid without --expose (a loopback share_ready filter).
+    // Exposure flags without --expose are refused (no silent wide-open). On serve, --safe stays
+    // valid without --expose (a loopback share_ready filter); watch has nothing it could filter.
+    if (surface === "watch" && request.safe) {
+      return fail("SAFE_NOT_APPLICABLE", WATCH_SAFE_NOT_APPLICABLE_MESSAGE);
+    }
     if (request.tunnel) {
       return fail(
         "TUNNEL_REQUIRES_EXPOSE",
@@ -159,10 +166,7 @@ export function validateExposure(
     // --safe is a share_ready LIBRARY filter for `serve`; watch streams a single live run that is
     // never share_ready, so --safe would silently do nothing here. Reject it rather than ignore it.
     if (request.safe) {
-      return fail(
-        "SAFE_NOT_APPLICABLE",
-        "watch streams a single live run that is never share_ready; --safe (a share_ready library filter) applies to `serve`, not `watch`. Restrict viewers with edge auth: --allow-email / --allow-domain.",
-      );
+      return fail("SAFE_NOT_APPLICABLE", WATCH_SAFE_NOT_APPLICABLE_MESSAGE);
     }
     if (!edgeAuthed) {
       return fail(
