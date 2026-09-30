@@ -972,6 +972,62 @@ describe("runConcurrentSharedWorld (the heart: real orchestration + rendezvous l
     ).toBe(true);
   });
 
+  it("tells named and unnamed seats their own inbox, from the recipients the parser filled", async () => {
+    const commsPort = 8025;
+    const state = { worldVersion: 0 };
+    const baseHandler = makeCommandHandler(state);
+    const { module, sandboxes } = makeFakeModule((command: string) =>
+      command.includes("/health")
+        ? { stdout: '{"ok":true,"service":"humanish-comms-catch"}' }
+        : baseHandler(command),
+    );
+    const seenInstructions: string[] = [];
+    const baseRun = makeRunSession(state, makeRendezvous(2));
+    const hooks: SharedWorldLabHooks = {
+      env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k", DATABASE_URL: "opaque-pw-7f3a9c2e" },
+      loadDesktopModule: async () => module,
+      runSession: async (options) => {
+        seenInstructions.push(options.instructions);
+        return baseRun(options);
+      },
+      detachedTimers: { now: () => 0, sleep: async () => {} },
+      proberCadenceMs: 100_000,
+    };
+    const declared = concurrentConfig(2, 2);
+    const [named, unnamed] = declared.actors[0]!.lanes!;
+    const { id: _id, ...unnamedSeat } = unnamed!;
+    // The second seat has no id, and email has no recipients: the parser fills one per seat.
+    const labWith = (email: Record<string, unknown>) =>
+      parseLabConfig({
+        ...declared,
+        actors: [{ ...declared.actors[0], lanes: [named, unnamedSeat] }],
+        comms: { email: { kind: "fake", injectEnv: "RESEND_API_URL", port: commsPort, ...email } },
+      });
+    const parsed = labWith({});
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    expect(parsed.config.comms?.email?.recipients?.map((recipient) => recipient.lane)).toEqual([
+      "persona-01",
+      "role-02",
+    ]);
+    // A recipient may name the unnamed seat by the id the route gives it.
+    expect(labWith({ recipients: [{ lane: "role-02", address: "b@example.test" }] }).ok).toBe(true);
+
+    const result = await runConcurrentSharedWorld({
+      cwd,
+      config: parsed.config,
+      dryRun: false,
+      hooks,
+    });
+    expect(result.ok).toBe(true);
+
+    const inboxUrl = `https://${commsPort + 1}-${sandboxes[0]!.sandboxId}.e2b.app/inbox`;
+    for (const [index, recipient] of (parsed.config.comms?.email?.recipients ?? []).entries()) {
+      const seat = seenInstructions.find((text) => text.includes(`Persona: persona-${index + 1}.`));
+      expect(seat).toContain(inboxUrl);
+      expect(seat).toContain(`Your email address is ${recipient.address}`);
+    }
+  });
+
   it("onPhase (injected DI seam, #263): the ONE shared-plane provision reports clone started/completed, then ready completed ok true, in order, off real stderr", async () => {
     const state = { worldVersion: 0 };
     const { hooks, phaseEvents } = baseHooks(state, makeRendezvous(3));

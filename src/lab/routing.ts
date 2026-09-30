@@ -79,18 +79,29 @@ export function declaredLaneTargets(config: LabConfig): string[] {
 }
 
 /**
- * The lane ids the computer-use engine will actually run: declared roster ids, else the generated
- * `lane-01..lane-NN` names. Mirrors the naming in routes/computer-use/lane-plan.ts laneSpecsAndPlan — a test
- * pins the two together — so comms recipient validation can never drift from the engine (#351).
+ * A participant's id: its declared roster id, else `lane-NN` (independent lanes) or `role-NN`
+ * (shared-world seats) from its 0-based position. The parser's filled email recipients and the
+ * routes that name participants both call this, so a filled recipient names a participant that
+ * runs.
  */
+export function participantIdAt(
+  index: number,
+  declared: string | undefined,
+  kind: "lane" | "seat",
+): string {
+  return declared ?? `${kind === "seat" ? "role" : "lane"}-${String(index + 1).padStart(2, "0")}`;
+}
+
+/** The ids of the participants a computer-use or shared-world lab runs, in roster order. */
 export function effectiveComputerUseLaneIds(config: LabConfig): string[] {
   const actor = config.actors[0];
   const roster = actor?.lanes;
+  const kind = routesToSharedWorld(config) ? "seat" : "lane";
   if (roster && roster.length > 0) {
-    return roster.map((lane, index) => lane.id ?? `lane-${String(index + 1).padStart(2, "0")}`);
+    return roster.map((lane, index) => participantIdAt(index, lane.id, kind));
   }
   const count = Math.max(1, actor?.count ?? 1);
-  return Array.from({ length: count }, (_, index) => `lane-${String(index + 1).padStart(2, "0")}`);
+  return Array.from({ length: count }, (_, index) => participantIdAt(index, undefined, kind));
 }
 
 export function routesToComputerUse(config: LabConfig): boolean {

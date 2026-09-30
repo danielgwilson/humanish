@@ -86,7 +86,7 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint --max-warnings=532",
     "knip": "knip",
-    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=426 --max-fix-tags=38 --max-caps=1933"
+    "prose:check": "node scripts/check-code-prose.mjs --max-issue-refs=425 --max-fix-tags=38 --max-caps=1933"
   },
   "dependencies": {
     "commander": "^15.0.0",

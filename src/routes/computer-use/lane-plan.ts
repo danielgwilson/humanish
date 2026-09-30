@@ -27,7 +27,7 @@ import type { DwellWindow, StopWhen } from "../../actors/stop-conditions.js";
 import { renderTaskPrompt, type LabTask } from "../../lab/tasks.js";
 import { participantAssignment } from "../../lab/participant-assignment.js";
 import { labPersonaIds, resolveCommittedPersonas } from "../../lab/persona-resolve.js";
-import { MAX_CUA_LANES } from "../../lab/routing.js";
+import { MAX_CUA_LANES, participantIdAt } from "../../lab/routing.js";
 import type { PreparedSelectedOutputDirectory } from "../../run/selected-output-paths.js";
 import {
   CUA_FANOUT_STRATEGY,
@@ -303,7 +303,7 @@ function laneSpecsAndPlan(
   const lanes: CuaLaneSpec[] = [];
   for (let i = 0; i < laneCount; i += 1) {
     const lane = roster?.[i];
-    const laneId = lane?.id ?? `lane-${String(i + 1).padStart(2, "0")}`;
+    const laneId = participantIdAt(i, lane?.id, "lane");
     const simId = `sim-${String(i + 1).padStart(3, "0")}`;
     const streamId = `stream-${String(i + 1).padStart(3, "0")}`;
     const device = resolveLaneDevice(config, lane);
