@@ -4,13 +4,16 @@ import { CuaAdmissionLimitError, isCuaAdmissionLimitError } from "./admission-li
 import { CuaPromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
 import {
+  acceptReply,
+  debriefRequestBody,
+  turnRequestBody,
+  type OpenAiConversationState,
+  type OpenAiRequestSettings,
+} from "./openai-requests.js";
+import {
   asRecord,
-  buildCallOutput,
-  buildContinuationRequest,
-  buildInitialRequest,
   optionalString,
   parseOpenAiResponse,
-  type OpenAiCuContext,
   type OpenAiReasoningSummary,
 } from "./openai-wire.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -368,28 +371,25 @@ export function createOpenAiResponsesProvider(
     );
   };
 
-  let lastResponseId: string | undefined;
   let interactionUsageIncomplete = false;
-  let pendingCallIds: string[] = [];
-  let lastOutputItems: unknown[] = [];
-  let mode: "previous_response_id" | "explicit_context" = options.zeroDataRetention
-    ? "explicit_context"
-    : "previous_response_id";
-  // Latches to undefined (stop asking) for the rest of the session when the
-  // account/model rejects the summary request — see OpenAiResponsesProviderOptions.
-  let reasoningSummary: OpenAiReasoningSummary | undefined =
-    options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto");
-
-  const buildContext = (instructions: string): OpenAiCuContext => ({
+  const settings: OpenAiRequestSettings = {
     model,
-    instructions,
     reasoningEffort,
     ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
-    ...(reasoningSummary === undefined ? {} : { reasoningSummary }),
     ...(options.safetyIdentifier === undefined
       ? {}
       : { safetyIdentifier: options.safetyIdentifier }),
-  });
+  };
+  const state: OpenAiConversationState = {
+    lastResponseId: undefined,
+    pendingCallIds: [],
+    lastOutputItems: [],
+    mode: options.zeroDataRetention ? "explicit_context" : "previous_response_id",
+    // Latches to undefined (stop asking) for the rest of the session when the
+    // account/model rejects the summary request — see OpenAiResponsesProviderOptions.
+    reasoningSummary:
+      options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto"),
+  };
 
   // POST the JSON body and return the parsed JSON on success. Retries on
   // transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
@@ -497,6 +497,33 @@ export function createOpenAiResponsesProvider(
     throw new Error(`OpenAI Responses ${lastStatus}`);
   };
 
+  // POST with the recoverable-policy latches: a ZDR rejection switches to explicit-context mode; a
+  // reasoning-summary rejection latches summaries off. Each latch can flip only once, so the loop
+  // is bounded; anything else rethrows. The body is rebuilt per attempt so a flipped latch shows.
+  const postTurn = async (
+    req: CuaTurnRequest,
+    signal: AbortSignal,
+    spend: CuaSpendGate | undefined,
+  ): Promise<unknown> => {
+    if (options.singleDispatch === true)
+      return post(turnRequestBody(settings, state, req), signal, 0);
+    for (;;) {
+      try {
+        return await post(turnRequestBody(settings, state, req), signal, maxRetries, true, spend);
+      } catch (error) {
+        if (error instanceof SummaryRejectionError && state.reasoningSummary !== undefined) {
+          state.reasoningSummary = undefined;
+          continue;
+        }
+        if (error instanceof ZdrError && state.mode !== "explicit_context") {
+          state.mode = "explicit_context";
+          continue;
+        }
+        throw error;
+      }
+    }
+  };
+
   const requestTurn = async (
     req: CuaTurnRequest,
     signal: AbortSignal,
@@ -504,89 +531,12 @@ export function createOpenAiResponsesProvider(
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     await prepareNextCapture();
-    const isFirstTurn = lastResponseId === undefined && pendingCallIds.length === 0;
-
-    // POST with the recoverable-policy latches: a ZDR rejection switches to
-    // explicit-context mode; a reasoning-summary rejection latches summaries off.
-    // Each latch can flip only once, so the loop is bounded; anything else
-    // rethrows. The body is rebuilt per attempt so a flipped latch is reflected.
-    const attempt = async (
-      build: (ctx: OpenAiCuContext) => Record<string, unknown>,
-    ): Promise<unknown> => {
-      // A closing report makes exactly one request: no HTTP or policy-latch retries.
-      if (closing) {
-        return post(
-          {
-            ...build(buildContext(req.instructions)),
-            tool_choice: "none",
-            max_output_tokens: Math.min(maxOutputTokens ?? 1024, 1024),
-            text: {
-              format: {
-                type: "json_schema",
-                name: "participant_closing_report",
-                strict: true,
-                schema: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["summary", "frictionReports"],
-                  properties: {
-                    summary: { type: "string" },
-                    frictionReports: { type: "array", items: { type: "string" } },
-                  },
-                },
-              },
-            },
-          },
-          signal,
-          0,
-          false,
-        );
-      }
-      if (options.singleDispatch === true)
-        return post(build(buildContext(req.instructions)), signal, 0);
-      for (;;) {
-        try {
-          return await post(build(buildContext(req.instructions)), signal, maxRetries, true, spend);
-        } catch (error) {
-          if (error instanceof SummaryRejectionError && reasoningSummary !== undefined) {
-            reasoningSummary = undefined;
-            continue;
-          }
-          if (error instanceof ZdrError && mode !== "explicit_context") {
-            mode = "explicit_context";
-            continue;
-          }
-          throw error;
-        }
-      }
-    };
-
-    let raw: unknown;
-    if (isFirstTurn) {
-      raw = await attempt((ctx) => buildInitialRequest(ctx, req.observation.screenshot));
-    } else {
-      const callOutputs = pendingCallIds.map((id) =>
-        buildCallOutput(id, req.observation.screenshot, req.acknowledgedSafetyChecks),
-      );
-      raw = await attempt((ctx) =>
-        buildContinuationRequest({
-          ctx,
-          previousResponseId: lastResponseId,
-          callOutputs,
-          ...(req.contextHint === undefined ? {} : { contextHint: req.contextHint }),
-          ...(mode === "explicit_context" ? { explicitContextItems: lastOutputItems } : {}),
-        }),
-      );
-    }
-
+    // A closing report makes exactly one request: no HTTP or policy-latch retries.
+    const raw = closing
+      ? await post(debriefRequestBody(settings, state, req), signal, 0, false)
+      : await postTurn(req, signal, spend);
     const parsed = parseOpenAiResponse(raw);
-    // A reply cut off by the output limit is set aside, so the next request is this one again
-    // (outputLimitRetry). Its actions are never run, so no call output is owed for them.
-    if (closing || parsed.turn.interruption !== "output_limit") {
-      if (parsed.turn.responseId !== undefined) lastResponseId = parsed.turn.responseId;
-      pendingCallIds = parsed.callIds;
-      lastOutputItems = parsed.outputItems;
-    }
+    acceptReply(state, parsed, closing);
     if (closing) {
       // Refusals, incomplete output, malformed JSON, and invalid shapes remain no-report results.
       // Never promote raw JSON or a fallback paragraph into a structured finding.
@@ -624,7 +574,7 @@ export function createOpenAiResponsesProvider(
     // Stateless mode retains only the latest output packet, not the whole session needed for
     // retrospective claims. This getter follows both configured ZDR and a runtime policy latch.
     get debrief() {
-      return mode === "explicit_context" || lastResponseId === undefined
+      return state.mode === "explicit_context" || state.lastResponseId === undefined
         ? undefined
         : (req: CuaTurnRequest, signal: AbortSignal) => requestTurn(req, signal, true);
     },
